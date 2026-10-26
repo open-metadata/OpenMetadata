@@ -25,6 +25,7 @@ import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getUserPath } from '../../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../../utils/SettingsModalLinkUtils';
 import Description from '../../../common/EntityDescription/Description';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
@@ -180,7 +181,7 @@ const TableQueryRightPanel = ({
                         name={user.name || ''}
                         width="20"
                       />
-                      <Link to={getUserPath(user.name ?? '')}>
+                      <Link to={getSettingsLink(getUserPath(user.name ?? ''))}>
                         {getEntityName(user)}
                       </Link>
                     </Box>

@@ -15,6 +15,7 @@ import { Box, DatePicker, TimePicker } from '@openmetadata/ui-core-components';
 import { DateTime } from 'luxon';
 import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import { formatCustomPropertyDateTime } from '../../../../../utils/CustomProperty.utils';
 import {
   CustomPropertyRenderer,
@@ -52,6 +53,7 @@ const DatePropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const typeName = property.propertyType.name ?? DATE_CP;
@@ -60,6 +62,8 @@ const DatePropertyEdit = ({
     toDateTimeEditState(value, typeName, config)
   );
 
+  useReportDirty(state, onDirtyChange);
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     onSave(fromDateTimeEditState(state, typeName, config));
@@ -67,12 +71,13 @@ const DatePropertyEdit = ({
 
   return (
     <form noValidate id={formId} onSubmit={handleSubmit}>
-      <Box align="center" gap={3} wrap="wrap">
+      <Box align="center" gap={3}>
         {typeName !== TIME_CP && (
-          <div data-testid="date-time-picker">
+          <div className="tw:min-w-0 tw:flex-1" data-testid="date-time-picker">
             <DatePicker
               aria-label={t('label.date')}
               isDisabled={isSaving}
+              triggerVariant="input"
               value={state.date ? toPickerDate(state.date) : null}
               onChange={(date) =>
                 setState((prev) => ({
@@ -86,7 +91,7 @@ const DatePropertyEdit = ({
           </div>
         )}
         {typeName !== DATE_CP && (
-          <div className="tw:w-40" data-testid="time-picker">
+          <div className="tw:min-w-0 tw:flex-1" data-testid="time-picker">
             {/* Every supported time format stores seconds. */}
             <TimePicker
               aria-label={t('label.time')}

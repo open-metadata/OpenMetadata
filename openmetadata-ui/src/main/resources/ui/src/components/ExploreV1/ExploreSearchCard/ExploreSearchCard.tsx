@@ -330,7 +330,7 @@ const EntityTitleColumn = ({
           onFocus={handlePrefetch}
           onMouseEnter={handlePrefetch}>
           <Typography
-            className="tw:text-link tw:break-words tw:whitespace-normal"
+            className="tw:text-link tw:wrap-anywhere tw:whitespace-normal"
             data-testid="entity-header-display-name"
             size="text-sm"
             weight="medium">

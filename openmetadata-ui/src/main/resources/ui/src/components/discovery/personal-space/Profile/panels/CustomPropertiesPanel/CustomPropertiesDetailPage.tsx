@@ -146,7 +146,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
 
   return (
     <>
-      <TableCard.Root className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none">
+      <TableCard.Root className="tw:rounded-xl tw:shadow-none">
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(k) => setActiveTab(k as string)}>

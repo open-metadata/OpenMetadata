@@ -41,7 +41,10 @@ const PAGES: {
       '[data-testid^="stat-card-"][data-testid$="-value"]',
       '[data-testid^="stat-card-"][data-testid$="-subtitle"]',
       '[data-testid^="stat-card-"][data-testid$="-breakdown"]',
-      '[data-testid="my-data-assets"]',
+      '[data-testid="user-assets-list"]',
+      '[data-testid="user-assets-summary"]',
+      // Unread count: other specs' activity lands in the admin's inbox.
+      '[data-testid="ai-inbox-badge"]',
     ],
   },
   {
@@ -54,16 +57,23 @@ const PAGES: {
       '[data-testid="explore-tree"]',
     ],
   },
+  // Settings live in the settings modal in AI mode; the /settings pages are
+  // classic-only (ADR:2026-10-21-settings-pages-are-classic-only).
   {
     name: 'ai-roles',
-    route: '/settings/access/roles',
+    route: '/my-data#access-control/roles',
     readyTestId: 'roles-list-table',
     mask: [
       '[data-testid="roles-list-table"] tbody',
       '[data-testid="roles-list-container"] [data-testid="pagination"]',
     ],
   },
-  { name: 'ai-bots', route: '/settings/bots', readyTestId: 'add-bot' },
+  {
+    name: 'ai-bots',
+    route: '/my-data#bots',
+    readyTestId: 'bots-list-table',
+    mask: ['[data-testid="bots-list-table"] tbody'],
+  },
 ];
 
 test.beforeEach(async ({ page }) => {

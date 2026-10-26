@@ -38,7 +38,6 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBiTable,
     PowerBITableSource,
     PowerBIUser,
-    ReportPage,
     Tile,
     UpstreaDataflow,
     UpstreamDatamart,
@@ -1193,79 +1192,18 @@ class PowerBIUnitTest(TestCase):
     @pytest.mark.order(13)
     def test_get_report_url(self):
         """
-        Test report URL generation with different page scenarios
+        The report url opens on the given page, and on the report itself without one
         """
-        from unittest.mock import MagicMock
-
         workspace_id = "test-workspace-123"
         dashboard_id = "test-dashboard-456"
-
-        # Create a mock client with api_client
-        mock_api_client = MagicMock()
-        self.powerbi.client = MagicMock()
-        self.powerbi.client.api_client = mock_api_client
-
-        # Create a PowerBIReport object as required by the method signature
+        report_url = f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}"
         dashboard_details = PowerBIReport(id=dashboard_id, name="Test Report")
 
-        # Test with multiple pages - should use first page name
-        with patch("metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri") as mock_clean_uri:
-            mock_clean_uri.return_value = "https://app.powerbi.com"
-            mock_api_client.fetch_report_pages.return_value = [
-                ReportPage(name="page1", displayName="Page 1"),
-                ReportPage(name="page2", displayName="Page 2"),
-                ReportPage(name="page3", displayName="Page 3"),
-            ]
-
-            result = self.powerbi._get_report_url(workspace_id, dashboard_details)
-
-            mock_api_client.fetch_report_pages.assert_called_once_with(workspace_id, dashboard_id)
-            self.assertEqual(
-                result,
-                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}/page1?experience=power-bi",
-            )
-
-        # Test with single page - should use that page name
-        with patch("metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri") as mock_clean_uri:
-            mock_clean_uri.return_value = "https://app.powerbi.com"
-            mock_api_client.fetch_report_pages.reset_mock()
-            mock_api_client.fetch_report_pages.return_value = [
-                ReportPage(name="single-page", displayName="Single Page")
-            ]
-
-            result = self.powerbi._get_report_url(workspace_id, dashboard_details)
-
-            self.assertEqual(
-                result,
-                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}/single-page?experience=power-bi",
-            )
-
-        # Test with no pages - should not add page_id
-        with patch("metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri") as mock_clean_uri:
-            mock_clean_uri.return_value = "https://app.powerbi.com"
-            mock_api_client.fetch_report_pages.reset_mock()
-            mock_api_client.fetch_report_pages.return_value = []
-
-            result = self.powerbi._get_report_url(workspace_id, dashboard_details)
-
-            self.assertEqual(
-                result,
-                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}?experience=power-bi",
-            )
-
-        # Test with exception during fetch_report_pages - should handle gracefully
-        with patch("metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri") as mock_clean_uri:
-            mock_clean_uri.return_value = "https://app.powerbi.com"
-            mock_api_client.fetch_report_pages.reset_mock()
-            mock_api_client.fetch_report_pages.side_effect = Exception("API Error")
-
-            result = self.powerbi._get_report_url(workspace_id, dashboard_details)
-
-            # Should build URL without page_id when exception occurs
-            self.assertEqual(
-                result,
-                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}?experience=power-bi",
-            )
+        assert (
+            self.powerbi._get_report_url(workspace_id, dashboard_details, page_name="page1")
+            == f"{report_url}/page1?experience=power-bi"
+        )
+        assert self.powerbi._get_report_url(workspace_id, dashboard_details) == f"{report_url}?experience=power-bi"
 
     @pytest.mark.order(14)
     def test_powerbi_report_description_parsing(self):

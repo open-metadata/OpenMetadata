@@ -2037,6 +2037,121 @@ describe('AlertAi form field components', () => {
         screen.queryByTestId('label.trigger-section')
       ).not.toBeInTheDocument();
     });
+
+    // Rules stored only in filteringRules, with no `input` selections.
+    const legacyAlert: EventSubscription = {
+      alertType: EventSubscriptionAlertType.Observability,
+      destinations: [
+        {
+          category: SubscriptionCategory.External,
+          config: { endpoint: 'https://hooks.slack.com/services/x' },
+          readTimeout: 12,
+          timeout: 10,
+          type: SubscriptionType.Slack,
+        },
+      ],
+      id: 'legacy-alert-id',
+      name: 'legacy-alert',
+      filteringRules: {
+        actions: [
+          {
+            arguments: ['testSuiteList'],
+            condition: 'matchTestResult(true)',
+            effect: Effect.Include,
+            name: 'testResultTrigger',
+          },
+        ],
+        resources: ['table'],
+        rules: [
+          {
+            arguments: ['domainList'],
+            condition: 'matchAnyDomain(true)',
+            effect: Effect.Include,
+            name: 'domainList',
+          },
+        ],
+      },
+    } as EventSubscription;
+
+    it("renders a legacy-shaped alert's rules in view mode after seeding from filteringRules", () => {
+      // A WrittenByHand alert carries its rules only in the legacy filteringRules
+      // shape with no `input`; getModifiedAlertDataForForm seeds `input` from it.
+      const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
+
+      render(
+        <AlertAiFormFields
+          isViewOnly
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          alert={seeded}
+          selection={selectionOf()}
+          value={seeded}
+        />
+      );
+
+      // The legacy rules are seeded into `input`, so the form lists them in view
+      // mode instead of hiding the sections — "a saved alert never hides them".
+      expect(
+        screen.getByTestId('label.filter-plural-section')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('label.trigger-section')).toBeInTheDocument();
+      expect(screen.getByTestId('filters-0')).toBeInTheDocument();
+      expect(screen.getByTestId('actions-0')).toBeInTheDocument();
+      expect(screen.getByTestId('filters-select-0')).toHaveValue('domainList');
+      expect(screen.getByTestId('actions-select-0')).toHaveValue(
+        'testResultTrigger'
+      );
+    });
+
+    it("keeps a legacy-shaped alert's rules listed when its sources change", () => {
+      const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
+      const onChange = jest.fn();
+
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          alert={seeded}
+          selection={selectionOf()}
+          value={seeded}
+          onChange={onChange}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId('source-select-options'), {
+        target: { value: 'pipeline' },
+      });
+
+      expect(applyLastUpdater(onChange, seeded)).toEqual(
+        expect.objectContaining({
+          input: seeded.input,
+          resources: ['table', 'pipeline'],
+        })
+      );
+    });
+
+    it("keeps a legacy-shaped alert's rules read-only in edit mode", () => {
+      const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
+
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          alert={seeded}
+          selection={selectionOf()}
+          value={seeded}
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(screen.getByTestId('alert-brand')).toHaveTextContent(
+        'message.alert-rules-read-only'
+      );
+      expect(screen.getByTestId('filters-select-0')).toHaveValue('domainList');
+      expect(screen.queryByTestId('add-filters')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('add-actions')).not.toBeInTheDocument();
+      expect(screen.getByTestId('alert-name-input')).not.toBeDisabled();
+    });
   });
 
   it('submits editable forms and skips submit in view mode', async () => {

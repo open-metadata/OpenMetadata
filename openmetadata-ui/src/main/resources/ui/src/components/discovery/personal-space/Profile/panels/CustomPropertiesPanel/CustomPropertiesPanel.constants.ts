@@ -23,6 +23,7 @@ export const GROUP_DASHBOARDS_REPORTING = 'DASHBOARDS & REPORTING';
 export const GROUP_PIPELINES_ML = 'PIPELINES & ML';
 export const GROUP_API = 'API';
 export const GROUP_GOVERNANCE = 'GOVERNANCE';
+export const GROUP_USERS_TEAMS = 'USERS & TEAMS';
 
 export const ENTITY_GROUP_MAP: Record<string, string> = {
   apiCollection: GROUP_API,
@@ -46,7 +47,9 @@ export const ENTITY_GROUP_MAP: Record<string, string> = {
   storedProcedure: GROUP_DATABASE_STORAGE,
   table: GROUP_DATABASE_STORAGE,
   tableColumn: GROUP_DATABASE_STORAGE,
+  team: GROUP_USERS_TEAMS,
   topic: GROUP_PIPELINES_ML,
+  user: GROUP_USERS_TEAMS,
   worksheet: GROUP_DASHBOARDS_REPORTING,
 };
 
@@ -56,6 +59,7 @@ export const GROUP_ORDER = [
   GROUP_PIPELINES_ML,
   GROUP_API,
   GROUP_GOVERNANCE,
+  GROUP_USERS_TEAMS,
 ];
 
 export const GROUP_LABEL_KEYS: Record<string, string> = {
@@ -64,6 +68,7 @@ export const GROUP_LABEL_KEYS: Record<string, string> = {
   [GROUP_PIPELINES_ML]: 'label.entity-group-pipelines-and-ml',
   [GROUP_API]: 'label.api-uppercase',
   [GROUP_GOVERNANCE]: 'label.governance',
+  [GROUP_USERS_TEAMS]: 'label.entity-group-users-and-teams',
 };
 
 /**
