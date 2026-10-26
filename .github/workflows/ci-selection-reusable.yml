@@ -1,0 +1,122 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Select CI work
+'on':
+  workflow_call:
+    inputs:
+      full-python-matrix:
+        description: Test all supported Python versions
+        type: boolean
+        default: false
+    outputs:
+      python:
+        description: Whether Python tests are selected
+        value: ${{ jobs.selection.outputs.python }}
+      style:
+        description: Whether Python checkstyle is selected
+        value: ${{ jobs.selection.outputs.style }}
+      minimum:
+        description: Minimum supported Python
+        value: ${{ jobs.selection.outputs.minimum }}
+      image:
+        description: Published image Python
+        value: ${{ jobs.selection.outputs.image }}
+      versions:
+        description: JSON test version matrix
+        value: ${{ jobs.selection.outputs.versions }}
+      checkout-ref:
+        description: Exact revision to test
+        value: ${{ jobs.selection.outputs.checkout-ref }}
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  selection:
+    name: Select CI work
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      python: ${{ steps.selection.outputs.python }}
+      style: ${{ steps.selection.outputs.style }}
+      minimum: ${{ steps.versions.outputs.minimum }}
+      image: ${{ steps.versions.outputs.image }}
+      versions: ${{ steps.versions.outputs.versions }}
+      checkout-ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+          filter: blob:none
+      - name: Detect changed paths
+        id: filter
+        if: ${{ github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' }}
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          ref: ${{ github.sha }}
+          filters: .github/ci-paths.yml
+      - name: Validate and select changed lanes
+        id: selection
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CI_CHANGED: ${{ steps.filter.outputs.ci }}
+          PYTHON_CHANGED: ${{ steps.filter.outputs.python }}
+          STYLE_CHANGED: ${{ steps.filter.outputs.style }}
+        run: |
+          if [[ "$EVENT_NAME" == workflow_dispatch || "$EVENT_NAME" == schedule ]]; then
+            echo "python=true" >> "$GITHUB_OUTPUT"
+            echo "style=true" >> "$GITHUB_OUTPUT"
+          else
+            for changed in "$CI_CHANGED" "$PYTHON_CHANGED" "$STYLE_CHANGED"; do
+              case "$changed" in
+                true|false) ;;
+                *) echo "Missing or invalid change-filter output: $changed"; exit 1 ;;
+              esac
+            done
+            if [[ "$CI_CHANGED" == true ]]; then
+              PYTHON_CHANGED=true
+              STYLE_CHANGED=true
+            fi
+            echo "python=$PYTHON_CHANGED" >> "$GITHUB_OUTPUT"
+            echo "style=$STYLE_CHANGED" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Read Python versions
+        id: versions
+        shell: bash
+        env:
+          FULL_MATRIX: ${{ inputs.full-python-matrix }}
+        run: |
+          jq -er '
+            .image as $image | select(.tested | index($image)) |
+            "minimum=\(.tested[0])", "image=\(.image)",
+            "versions=\(if env.FULL_MATRIX == "true" then .tested else [.image] end | tojson)"
+          ' ingestion/python-versions.json >> "$GITHUB_OUTPUT"
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994
+        if: ${{ github.event_name == 'pull_request_target' && (steps.selection.outputs.python == 'true' || steps.selection.outputs.style == 'true') }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@657d111bbbe13e22bbd55870f1813c699bde1401
+        if: ${{ github.event_name == 'pull_request_target' && (steps.selection.outputs.python == 'true' || steps.selection.outputs.style == 'true') }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          valid-labels: safe to test
+          pull-request-number: ${{ github.event.pull_request.number }}
+          disable-reviews: true

@@ -194,10 +194,11 @@ def test_ci_queues_the_v1_and_v2_snowflake_jobs_in_one_group():
 
 
 def test_ci_reruns_these_meta_tests_when_a_workflow_they_read_changes():
-    """The shared Python workflow runs these tests only for changed paths in its filters."""
+    """Changes to either E2E workflow select the offline control lane."""
     root = Path(__file__).resolve().parents[4]
-    shared = yaml.safe_load((root / ".github/workflows/py-tests-shared.yml").read_text())
-    step = next(step for job in shared["jobs"].values() for step in job.get("steps", []) if step.get("id") == "filter")
-    filters = yaml.safe_load(step["with"]["filters"])
-    for name in ("python", "e2e"):
-        assert set(_E2E_WORKFLOWS) <= set(filters[name]), name
+    for name in ("ci-pr.yml", "ci-merge-queue.yml"):
+        workflow = yaml.safe_load((root / ".github/workflows" / name).read_text())
+        selection_workflow = yaml.safe_load((root / workflow["jobs"]["changes"]["uses"]).read_text())
+        step = next(step for step in selection_workflow["jobs"]["selection"]["steps"] if step.get("id") == "filter")
+        filters = yaml.safe_load((root / step["with"]["filters"]).read_text())
+        assert set(_E2E_WORKFLOWS) <= set(filters["python"]), name

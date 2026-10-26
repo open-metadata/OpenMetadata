@@ -252,7 +252,21 @@ jobs:
       full_suite: true
       protocol: http
       coarse_bundle: true
+  python-policy:
+    runs-on: ubuntu-latest
+    outputs:
+      tested: ${{ steps.policy.outputs.tested }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - id: policy
+        run: |
+          tested=$(jq -ce '.tested | select(length > 0)' ingestion/python-versions.json)
+          echo "tested=$tested" >> "$GITHUB_OUTPUT"
+
   warm-venv:
+    needs: python-policy
     concurrency:
       group: populate-playwright-caches-venv-${{ matrix.py-version }}
       cancel-in-progress: false
@@ -261,7 +275,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        py-version: ["3.10", "3.11", "3.12"]
+        py-version: ${{ fromJSON(needs.python-policy.outputs.tested) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7

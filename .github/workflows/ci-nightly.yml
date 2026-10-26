@@ -1,0 +1,150 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: CI — Nightly
+'on':
+  schedule:
+    - cron: 0 2 * * *
+  workflow_dispatch: null
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  changes:
+    uses: ./.github/workflows/ci-selection-reusable.yml
+    with:
+      full-python-matrix: true
+  prepare-spacy-model:
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' }}
+    uses: ./.github/workflows/python-assets-reusable.yml
+  backend:
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' }}
+    uses: ./.github/workflows/backend-build-reusable.yml
+    with:
+      checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
+  python-checks:
+    needs:
+      - changes
+      - prepare-spacy-model
+    if: ${{ always() && needs.changes.result == 'success' && (needs.changes.outputs.python == 'true' || needs.changes.outputs.style == 'true') }}
+    uses: ./.github/workflows/python-checks-reusable.yml
+    with:
+      checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
+      run-tests: ${{ needs.changes.outputs.python == 'true' }}
+      run-style: ${{ needs.changes.outputs.style == 'true' }}
+      minimum-python: ${{ needs.changes.outputs.minimum }}
+      python-versions: ${{ needs.changes.outputs.versions }}
+      coverage-python: ${{ needs.changes.outputs.image }}
+      spacy-artifact-id: ${{ needs.prepare-spacy-model.outputs.spacy-artifact-id }}
+  integration:
+    needs:
+      - changes
+      - prepare-spacy-model
+      - backend
+    if: ${{ needs.changes.outputs.python == 'true' }}
+    uses: ./.github/workflows/python-integration-tests-reusable.yml
+    with:
+      checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
+      python-versions: ${{ needs.changes.outputs.versions }}
+      coverage-python: ${{ needs.changes.outputs.image }}
+      spacy-artifact-id: ${{ needs.prepare-spacy-model.outputs.spacy-artifact-id }}
+      backend-artifact-id: ${{ needs.backend.outputs.artifact-id }}
+  py-checkstyle:
+    name: py-checkstyle
+    needs:
+      - changes
+      - python-checks
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Verify Python checkstyle outcome
+        shell: bash
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          STYLE_CHANGED: ${{ needs.changes.outputs.style }}
+          STYLE_RESULT: ${{ needs.python-checks.result == 'skipped' && 'skipped' || needs.python-checks.outputs.style-result }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          case "$STYLE_CHANGED:$STYLE_RESULT" in
+            true:success|false:skipped) ;;
+            *) echo "Unexpected Python checkstyle result: selected=$STYLE_CHANGED result=$STYLE_RESULT"; exit 1 ;;
+          esac
+  py-tests-status:
+    name: py-tests-status
+    needs:
+      - changes
+      - python-checks
+      - integration
+      - backend
+      - prepare-spacy-model
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify expected Python jobs
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          PYTHON_CHANGED: ${{ needs.changes.outputs.python }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          MODEL_RESULT: ${{ needs.prepare-spacy-model.result }}
+          CHECKS_RESULT: ${{ needs.python-checks.result == 'skipped' && 'skipped' || needs.python-checks.outputs.tests-result }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          for result in "$CHECKS_RESULT" "$INTEGRATION_RESULT" "$BACKEND_RESULT" "$MODEL_RESULT"; do
+            case "$PYTHON_CHANGED:$result" in
+              true:success|false:skipped) ;;
+              *) echo "Unexpected Python job result: selected=$PYTHON_CHANGED result=$result"; exit 1 ;;
+            esac
+          done
+        shell: bash
+  coverage:
+    needs:
+      - changes
+      - python-checks
+      - integration
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.python == 'true' }}
+    uses: ./.github/workflows/python-coverage-reusable.yml
+    with:
+      checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
+      python-version: ${{ needs.changes.outputs.image }}
+      report-branch: true
+    secrets:
+      sonar-token: ${{ secrets.INGESTION_SONAR_SECRET }}
+  notify:
+    needs:
+      - py-tests-status
+      - py-checkstyle
+      - coverage
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Slack on failure
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload: |
+            {
+              "channel": "C03EYBDDX17",
+              "text": "<!subteam^S0AH093PEQL> 🔥 *SonarCloud Ingestion Nightly* failed on `${{ github.ref_name }}` 🔥\ntests: ${{ needs.py-tests-status.result }} · checkstyle: ${{ needs.py-checkstyle.result }} · combine+sonar: ${{ needs.coverage.result }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
