@@ -23,7 +23,6 @@ import static org.openmetadata.csv.CsvUtil.addReviewers;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
-import static org.openmetadata.service.search.SearchClient.TAG_SEARCH_INDEX;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 
 import java.io.IOException;
@@ -492,9 +491,6 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     searchRepository
         .getSearchClient()
         .updateClassificationTagByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
-    searchRepository
-        .getSearchClient()
-        .updateByFqnPrefix(TAG_SEARCH_INDEX, oldFqn, newFqn, "fullyQualifiedName");
   }
 
   private List<Tag> getAllTagsByClassification(Classification classification) {
@@ -594,6 +590,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
       invalidateClassification(updated.getId());
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
+      reindexRenamedDescendants(Entity.TAG, renamedTags, newFqn);
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn, Classification updated) {
