@@ -46,6 +46,12 @@ public class SocketAddressFilter implements Filter {
   /** Null when sockets connect without a token. Replaced whole when security settings reload. */
   private volatile JwtFilter jwtFilter;
 
+  /**
+   * Browsers cannot set headers on a WebSocket upgrade, so the UI's socket.io handshake passes the
+   * bearer token as this query parameter when it has no session cookie (public-client SSO).
+   */
+  private static final String TOKEN_QUERY_PARAM = "token";
+
   private SessionService sessionService;
 
   public SocketAddressFilter(
@@ -113,7 +119,7 @@ public class SocketAddressFilter implements Filter {
       ValidatedTokenPrincipal tokenPrincipal = null;
 
       JwtFilter currentJwtFilter = jwtFilter;
-      String tokenWithType = httpServletRequest.getHeader("Authorization");
+      String tokenWithType = resolveHandshakeToken(httpServletRequest, query);
       if (hasText(tokenWithType) && currentJwtFilter == null) {
         // A credential was presented but this filter has no configuration to validate it.
         sendHandshakeError(
@@ -170,6 +176,20 @@ public class SocketAddressFilter implements Filter {
   }
 
   /**
+   * A bearer token presented on the handshake — from the Authorization header, or (browsers cannot
+   * set headers on a WebSocket upgrade) from the {@code token} query parameter.
+   */
+  private static String resolveHandshakeToken(
+      HttpServletRequest request, Map<String, String> query) {
+    String headerToken = request.getHeader("Authorization");
+    if (hasText(headerToken)) {
+      return headerToken;
+    }
+    String queryToken = trimToNull(query.get(TOKEN_QUERY_PARAM));
+    return hasText(queryToken) ? "Bearer " + queryToken : null;
+  }
+
+  /**
    * Every handshake must carry at least one verifiable credential — a validated token principal or
    * a session cookie. Handshakes with neither are rejected so a socket can never be keyed under a
    * caller-supplied identity.
@@ -201,16 +221,16 @@ public class SocketAddressFilter implements Filter {
           response, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
       return SessionValidationResult.rejected();
     }
-    if (sessionService == null) {
-      // No store to revalidate against; the validated token principal stands on its own.
-      return SessionValidationResult.accepted();
+    if (tokenPrincipal.sessionId() != null && sessionService != null) {
+      // OM-issued tokens carry the session claim — revalidate against the store so a revoked
+      // session cannot reconnect under a still-valid token.
+      return validateSessionStillActive(
+          response, tokenPrincipal.sessionId(), tokenPrincipal, socketUserId);
     }
-    if (tokenPrincipal.sessionId() == null) {
-      response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is required");
-      return SessionValidationResult.rejected();
-    }
-    return validateSessionStillActive(
-        response, tokenPrincipal.sessionId(), tokenPrincipal, socketUserId);
+    // Externally-issued tokens (an IdP does not stamp our session claim) and the boot window
+    // before the store is wired are trusted on their token validation alone — the same basis
+    // every HTTP request from this principal already stands on.
+    return SessionValidationResult.accepted();
   }
 
   private SessionValidationResult validateSessionStillActive(

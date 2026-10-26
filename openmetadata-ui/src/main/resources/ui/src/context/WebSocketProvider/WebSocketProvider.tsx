@@ -25,6 +25,7 @@ import { io, Socket } from 'socket.io-client';
 import { ROUTES } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getBasePath } from '../../utils/HistoryUtils';
+import { getOidcToken } from '../../utils/SwTokenStorageUtils';
 
 export const WebSocketContext = createContext<{ socket?: Socket }>({});
 
@@ -37,17 +38,21 @@ const WebSocketProvider: FC<Props> = ({ children }: Props) => {
   const { currentUser } = useApplicationStore();
 
   // Init websocket for Feed & notification
-  const initWebSocket = useCallback(() => {
+  const initWebSocket = useCallback(async () => {
     const basePath = getBasePath();
     const socketPath = basePath
       ? `${basePath}${ROUTES.ACTIVITY_PUSH_FEED}`
       : ROUTES.ACTIVITY_PUSH_FEED;
+    // Browsers cannot set headers on the WebSocket upgrade, so the token rides the handshake
+    // query — the filter validates it when the session cookie is absent (public-client SSO).
+    const token = await getOidcToken();
 
     setSocket(
       io({
         path: socketPath,
         reconnectionAttempts: 3,
         query: {
+          token,
           userId: currentUser?.id,
         },
         // Since we have load balancer in our application
@@ -60,7 +65,7 @@ const WebSocketProvider: FC<Props> = ({ children }: Props) => {
 
   useEffect(() => {
     if (currentUser && currentUser.id) {
-      initWebSocket();
+      void initWebSocket();
     }
   }, [currentUser]);
 

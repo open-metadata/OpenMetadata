@@ -105,8 +105,9 @@
     },
     "enableSecureSocketConnection": {
       "title": "Enable Secure Socket Connection.",
-      "description": "Deprecated — has no effect. Socket handshakes are always authenticated under every configuration.",
-      "type": "boolean"
+      "description": "Deprecated — has no effect (ADR:2026-10-26-push-feed-handshakes-always-authenticate). Socket handshakes are always authenticated under every configuration.",
+      "type": "boolean",
+      "deprecated": true
     },
     "useRolesFromProvider": {
       "title": "Use Roles from Provider",

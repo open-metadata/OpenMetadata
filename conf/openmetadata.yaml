@@ -478,7 +478,8 @@ authorizerConfiguration:
   allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
   allowedDomains: ${AUTHORIZER_ALLOWED_DOMAINS:-[]}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
-  # Deprecated — has no effect: socket handshakes are always authenticated.
+  # Deprecated — has no effect (ADR:2026-10-26-push-feed-handshakes-always-authenticate): socket
+  # handshakes are always authenticated.
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
   useRolesFromProvider: ${AUTHORIZER_USE_ROLES_FROM_PROVIDER:-false}
   # For MCP OAuth: Default role assigned to new OAuth users (e.g., "DataConsumer")

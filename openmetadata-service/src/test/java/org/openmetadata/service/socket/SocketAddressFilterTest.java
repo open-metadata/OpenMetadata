@@ -2,6 +2,7 @@ package org.openmetadata.service.socket;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
@@ -188,6 +190,103 @@ class SocketAddressFilterTest {
     verify(chain, never()).doFilter(any(), any());
   }
 
+  /**
+   * Public-client SSO: the browser holds an IdP token and no session cookie, so the handshake
+   * passes the bearer token as a query param. The default configuration must authenticate it.
+   */
+  @Test
+  void queryTokenHandshakeWithoutSessionCookieIsAuthenticated() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    injectJwtFilter(defaultFilter);
+    UUID tokenUserId = UUID.randomUUID();
+    when(request.getQueryString()).thenReturn("userId=" + tokenUserId + "&token=token");
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    mockTokenClaims("sam", "session-1");
+    when(sessionService.getFreshSessionById("session-1"))
+        .thenReturn(Optional.of(activeSession("session-1", "sam")));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      defaultFilter.doFilter(request, response, chain);
+    }
+
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
+    org.junit.jupiter.api.Assertions.assertEquals(
+        tokenUserId.toString(), wrappedRequest.getHeader("UserId"));
+  }
+
+  @Test
+  void queryTokenWithMismatchedUserIdIsRejected() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    injectJwtFilter(defaultFilter);
+    mockRequest("userId=" + UUID.randomUUID() + "&token=token", null);
+    mockTokenClaims("sam", "session-1");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(UUID.randomUUID()));
+
+      defaultFilter.doFilter(request, response, chain);
+    }
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_FORBIDDEN, "Socket user does not match token");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  /** A presented token must validate even when a session cookie rides along. */
+  @Test
+  void invalidQueryTokenIsRejectedEvenWithValidSessionCookie() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    injectJwtFilter(defaultFilter);
+    when(request.getQueryString()).thenReturn("token=bad-token");
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    // Lenient: the failure happens at token validation, before the cookie is consulted — a valid
+    // cookie alone must not rescue an invalid token.
+    lenient()
+        .when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, validSessionId('s'))});
+    when(jwtFilter.validateJwtAndGetClaims("bad-token"))
+        .thenThrow(new AuthenticationException("invalid token"));
+
+    defaultFilter.doFilter(request, response, chain);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  /** Externally-issued tokens carry no session claim and are accepted on token validity alone. */
+  @Test
+  void externalTokenWithoutSessionClaimIsAcceptedWithoutStoreValidation() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    injectJwtFilter(defaultFilter);
+    UUID tokenUserId = UUID.randomUUID();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    Claim usernameClaim = mock(Claim.class);
+    when(usernameClaim.asString()).thenReturn("sam");
+    when(jwtFilter.validateJwtAndGetClaims("token")).thenReturn(Map.of("sub", usernameClaim));
+    when(jwtFilter.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
+    when(jwtFilter.getJwtPrincipalClaimsMapping()).thenReturn(Map.of());
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      defaultFilter.doFilter(request, response, chain);
+    }
+
+    verify(chain).doFilter(any(), eq(response));
+    verify(sessionService, never()).getFreshSessionById(any(String.class));
+  }
+
   @Test
   void sessionCookieWithoutSessionStoreIsRejected() throws Exception {
     // Session store not yet wired (early startup): a cookie cannot be validated, fail closed.
@@ -306,6 +405,12 @@ class SocketAddressFilterTest {
 
   private SocketAddressFilter defaultConfigFilter() {
     return new SocketAddressFilter(authConfig, authorizerConfig, sessionService);
+  }
+
+  private void injectJwtFilter(SocketAddressFilter filter) throws Exception {
+    Field jwtFilterField = SocketAddressFilter.class.getDeclaredField("jwtFilter");
+    jwtFilterField.setAccessible(true);
+    jwtFilterField.set(filter, jwtFilter);
   }
 
   private String validSessionId(char value) {
