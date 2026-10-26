@@ -48,6 +48,19 @@ class DiagnosticsTest {
     verifyNoMoreInteractions(changeEvents);
   }
 
+  // The page read the latest offset with the alert's position; events written after it are left
+  // for the next count, so a read they fill cannot pass for an exact count of the older ones.
+  @Test
+  void eventsWrittenAfterTheLatestOffsetAreNotCounted() {
+    ChangeEventDAO changeEvents = mock(ChangeEventDAO.class);
+    when(changeEvents.listWithOffset(UnprocessedEvents.MAX_EVALUATED, 10L))
+        .thenReturn(rows(11, UnprocessedEvents.MAX_EVALUATED));
+
+    PendingCount counted = countWith(changeEvents, 10L, 12L);
+
+    assertEquals(new PendingCount(2, false), counted);
+  }
+
   @Test
   void onlyEventsTheRulesLetThroughAreCounted() {
     ChangeEventDAO changeEvents = mock(ChangeEventDAO.class);

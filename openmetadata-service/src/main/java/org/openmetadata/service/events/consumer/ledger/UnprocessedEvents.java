@@ -24,8 +24,14 @@ final class UnprocessedEvents {
       long afterOffset, long latestOffset, Predicate<ChangeEvent> matches) {
     List<ChangeEventRecord> read =
         Entity.getCollectionDAO().changeEventDAO().listWithOffset(MAX_EVALUATED, afterOffset);
-    long count = read.parallelStream().filter(row -> matchesCleanly(row.json(), matches)).count();
-    boolean moreUnread = !read.isEmpty() && read.getLast().offset() < latestOffset;
+    // Up to the latest offset read with the position only: events written since may fill the read
+    // in place of older ones, and a count of them could not say that it stopped short.
+    List<ChangeEventRecord> counted =
+        read.stream().takeWhile(row -> row.offset() <= latestOffset).toList();
+    long count =
+        counted.parallelStream().filter(row -> matchesCleanly(row.json(), matches)).count();
+    boolean moreUnread =
+        counted.size() == read.size() && !read.isEmpty() && read.getLast().offset() < latestOffset;
     return new PendingCount(count, moreUnread);
   }
 

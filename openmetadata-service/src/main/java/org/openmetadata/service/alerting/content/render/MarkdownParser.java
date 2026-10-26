@@ -39,28 +39,14 @@ public final class MarkdownParser {
   }
 
   // A table pads every row to its header's column count, so a wide header over many short rows
-  // parses into far more cells than the text holds. A table never crosses a blank line, so each
-  // run of non-blank lines can hold at most its line count times its widest line's cell count.
+  // parses into far more cells than the text holds.
   private static void requireTableCellsWithinBudget(String markdown) {
-    long cells = 0;
-    long linesInRun = 0;
-    long widestRow = 0;
-    for (String line : markdown.lines().toList()) {
-      boolean blank = line.isBlank();
-      cells += blank ? linesInRun * widestRow : 0;
-      linesInRun = blank ? 0 : linesInRun + 1;
-      widestRow = blank ? 0 : Math.max(widestRow, pipesIn(line) + 1L);
-    }
-    cells += linesInRun * widestRow;
+    long cells = TableCells.in(markdown);
     if (cells > RenderLimits.MAX_TABLE_CELLS) {
       throw new RenderBudgetExceededException(
           String.format(
               "Markdown tables of up to %d cells exceed the render budget of %d cells",
               cells, RenderLimits.MAX_TABLE_CELLS));
     }
-  }
-
-  private static long pipesIn(String line) {
-    return line.chars().filter(c -> c == '|').count();
   }
 }

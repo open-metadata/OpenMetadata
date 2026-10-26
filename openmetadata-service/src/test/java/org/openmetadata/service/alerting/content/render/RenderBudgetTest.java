@@ -13,6 +13,10 @@ import org.junit.jupiter.api.Test;
 class RenderBudgetTest {
 
   private static final HtmlToMarkdownAdapter ADAPTER = HtmlToMarkdownAdapter.getInstance();
+  // A 300-column header over 200 one-cell rows: 60,000 cells from under 4,000 characters.
+  private static final String LOPSIDED_TABLE =
+      "| h ".repeat(300) + "|\n" + "|---".repeat(300) + "|\n" + "x\n".repeat(200);
+  private static final String EM_SPACE = "\u2003";
 
   @Test
   void aTableThatWouldPadPastTheBudgetIsRefusedBeforeItIsWritten() {
@@ -81,11 +85,11 @@ class RenderBudgetTest {
 
   @Test
   void aLinkTargetKeepsItsNonAsciiCharacters() {
-    String html = "<a href=\"https://example.com/café x\">text</a>";
+    String html = "<a href=\"https://example.com/café" + EM_SPACE + "x\">text</a>";
 
     String markdown = ADAPTER.adapt(html).strip();
 
-    assertEquals("[text](https://example.com/café x)", markdown);
+    assertEquals("[text](https://example.com/café" + EM_SPACE + "x)", markdown);
   }
 
   @Test
@@ -107,11 +111,43 @@ class RenderBudgetTest {
 
   @Test
   void markdownThatWouldParseIntoTooManyCellsIsRefused() {
-    String header = "| h ".repeat(300) + "|\n";
-    String separator = "|---".repeat(300) + "|\n";
-    String markdown = header + separator + "x\n".repeat(200);
+    assertTrue(LOPSIDED_TABLE.length() < RenderLimits.MAX_MARKDOWN_CHARS);
+    assertThrows(RenderBudgetExceededException.class, () -> MarkdownParser.parse(LOPSIDED_TABLE));
+  }
 
-    assertTrue(markdown.length() < RenderLimits.MAX_MARKDOWN_CHARS);
+  @Test
+  void pipesInFencedCodeAreNotATable() {
+    String markdown = "```\n" + "|".repeat(250) + "\n" + "x\n".repeat(200) + "```\n";
+
+    assertDoesNotThrow(() -> MarkdownParser.parse(markdown));
+  }
+
+  @Test
+  void pipesInTextWithoutADelimiterRowAreNotATable() {
+    String markdown = "|".repeat(250) + "\n" + "x\n".repeat(200);
+
+    assertDoesNotThrow(() -> MarkdownParser.parse(markdown));
+  }
+
+  @Test
+  void aTableAfterClosedCodeIsStillCounted() {
+    String markdown = "```\ncode\n```\n" + LOPSIDED_TABLE;
+
+    assertThrows(RenderBudgetExceededException.class, () -> MarkdownParser.parse(markdown));
+  }
+
+  @Test
+  void aLineIndentedLikeCodeOpensNoFence() {
+    String markdown = "    ```\n" + LOPSIDED_TABLE;
+
+    assertThrows(RenderBudgetExceededException.class, () -> MarkdownParser.parse(markdown));
+  }
+
+  @Test
+  void aTableInAQuoteIsStillCounted() {
+    String markdown =
+        LOPSIDED_TABLE.lines().map(line -> "> " + line + "\n").reduce("", String::concat);
+
     assertThrows(RenderBudgetExceededException.class, () -> MarkdownParser.parse(markdown));
   }
 
