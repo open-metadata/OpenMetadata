@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.security.auth;
+package org.openmetadata.service.security.credentials;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -33,28 +33,23 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntPredicate;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.bench.BenchSession;
 import org.openmetadata.service.bench.BenchSession.Config;
-import org.openmetadata.service.cache.CacheKeys;
-import org.openmetadata.service.cache.NoopCacheProvider;
-import org.openmetadata.service.security.credentials.CredentialSubject;
-import org.openmetadata.service.security.credentials.CredentialVerificationConfig;
-import org.openmetadata.service.security.credentials.CredentialVerifierFixture;
-import org.openmetadata.service.security.credentials.OmCredential;
+import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 /**
- * Interleaved comparison of the legacy stored-credential check ({@link CredentialTokenState}, local
- * mode) with the {@code CredentialVerifier}. Each legacy cell is followed by the matching verifier
- * cell in the same JVM, so machine load falls on both alike. The name does not match the surefire
- * includes, so CI never runs it. Run it from the repository root, once per JVM:
+ * What the stored-credential check costs a request, over an in-memory source with no database. The
+ * name does not match the surefire includes, so CI never runs it. Run it from the repository root,
+ * once per JVM:
  *
  * <pre>
  * mvn -pl openmetadata-service test -Dtest=CredentialCheckBenchmark \
@@ -65,10 +60,12 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
  * the work {@code JwtFilter.decodeAndVerify} does (decode, expiry check, signature verify with a
  * fresh {@code Algorithm}) on a token minted by {@link JWTTokenGenerator}. The verifier runs as in
  * production: system ticker, default config, sweep started, and a Prometheus registry behind a
- * composite. A verifier cell is timed from a warmed cache: its principals are read once during
- * warm-up and the cell fails if any later call took the request-thread read path. The principal's
- * {@link CredentialSubject} is built outside the timed call, as the legacy cell builds its name; the
- * {@code credentialSubjectOf} cell prices what {@code JwtFilter} pays to build it per request.
+ * composite. A {@code verifierHit} cell is timed from a warmed cache: its principals are read once
+ * during warm-up and the cell fails if any later call took the request-thread read path. The
+ * principal's {@link CredentialSubject} is built outside that timed call; the {@code
+ * credentialSubjectOf} cell prices what {@code JwtFilter} pays to build it per request. {@code
+ * authenticateEndToEnd} times {@link JwtFilter#validateJwtAndGetClaims} on a filter built as the
+ * server builds it: signature, identity, classification and the verifier check together.
  */
 @Tag("benchmark")
 class CredentialCheckBenchmark {
@@ -85,6 +82,11 @@ class CredentialCheckBenchmark {
           new Variant("samePrincipal", CONTENDED_THREADS, false, CONTENDED),
           new Variant("distinctPrincipals", CONTENDED_THREADS, true, CONTENDED));
 
+  private enum Kind {
+    BOT,
+    PERSONAL_ACCESS_TOKEN
+  }
+
   /** One way of driving a cell: how many threads, and whether each presents its own principal. */
   private record Variant(String name, int threads, boolean distinctPrincipals, Config config) {
     int principals() {
@@ -92,13 +94,9 @@ class CredentialCheckBenchmark {
     }
   }
 
-  /** One matched cell. {@code names} holds the principal each worker presents, built up front. */
+  /** One cell. {@code names} holds the principal each worker presents, built up front. */
   private record Cell(
-      CredentialTokenState.Kind kind,
-      int tokensPerUser,
-      Variant variant,
-      List<String> stored,
-      String presented) {
+      Kind kind, int tokensPerUser, Variant variant, List<String> stored, String presented) {
     String label(String implementation) {
       return implementation + "/" + kind + "/tokens=" + tokensPerUser + "/" + variant.name();
     }
@@ -114,8 +112,6 @@ class CredentialCheckBenchmark {
   }
 
   private final BenchSession session = new BenchSession("credential-check");
-  private final CredentialTokenState state =
-      new CredentialTokenState(new NoopCacheProvider(), new CacheKeys("bench:legacy"), false);
   private final StringBuilder verifierProof = new StringBuilder();
   private long sweepFingerprintReads;
   private RSAPublicKey publicKey;
@@ -127,9 +123,10 @@ class CredentialCheckBenchmark {
     mintTokens();
     rs256Verify();
     credentialSubjectOf();
-    for (CredentialTokenState.Kind kind : CredentialTokenState.Kind.values()) {
+    authenticateEndToEnd();
+    for (Kind kind : Kind.values()) {
       for (int tokensPerUser : TOKENS_PER_USER) {
-        matchedCells(kind, tokensPerUser);
+        verifierCells(kind, tokensPerUser);
       }
     }
     System.out.println(session.finish());
@@ -207,41 +204,67 @@ class CredentialCheckBenchmark {
     session.run("credentialSubjectOf/1thread", 1, SINGLE_THREAD, build);
   }
 
-  private void matchedCells(CredentialTokenState.Kind kind, int tokensPerUser) {
-    List<String> pool = kind == CredentialTokenState.Kind.BOT ? botTokens : patTokens;
-    List<String> stored = pool.subList(0, tokensPerUser);
-    String presented = pool.get(tokensPerUser / 2);
-    for (Variant variant : VARIANTS) {
-      Cell cell = new Cell(kind, tokensPerUser, variant, stored, presented);
-      legacyCell(cell);
-      verifierCell(cell);
+  /**
+   * The filter reads the installed verifier, as in the server. Each token's principal is read once
+   * during warm-up; any later request-thread read fails the cell.
+   */
+  private void authenticateEndToEnd() {
+    String bot = botTokens.get(0);
+    String pat = patTokens.get(0);
+    CompositeMeterRegistry registry = new CompositeMeterRegistry();
+    registry.add(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
+    try (CredentialVerifierFixture fixture =
+        new CredentialVerifierFixture(
+            registry, Ticker.systemTicker(), CredentialVerificationConfig.defaults())) {
+      fixture.withJwtMechanisms(Map.of("bench-bot-0", bot));
+      fixture.withPats(Map.of("bench-pat-0", List.of(pat)));
+      fixture.start();
+      Credentials.install(fixture.verifier());
+      JwtFilter filter = new JwtFilter(serverAuthentication(), serverAuthorizer());
+      filter.validateJwtAndGetClaims(bot);
+      filter.validateJwtAndGetClaims(pat);
+      endToEndCells(filter, Kind.BOT, bot);
+      endToEndCells(filter, Kind.PERSONAL_ACCESS_TOKEN, pat);
+      assertEquals(
+          2,
+          readsOnRequestThread(registry, "miss") + readsOnRequestThread(registry, "stale"),
+          "authenticateEndToEnd: request-thread reads beyond the warm-up reads");
+    } finally {
+      Credentials.uninstall();
+      registry.close();
     }
   }
 
-  /**
-   * The loader may run once per principal, during the first warm-up call. Any later load means an
-   * entry was evicted or expired mid-run and the measured calls did not take the hit path.
-   */
-  private void legacyCell(Cell cell) {
-    String label = cell.label("legacyLocalHit");
-    String[] names = cell.names("legacyLocalHit");
-    Set<String> stored = new HashSet<>(cell.stored());
-    AtomicInteger loads = new AtomicInteger();
-    IntPredicate hit =
-        worker ->
-            state.isTokenValid(
-                cell.kind(),
-                names[worker],
-                cell.presented(),
-                () -> {
-                  loads.incrementAndGet();
-                  return stored;
-                });
-    session.run(label, cell.variant().threads(), cell.variant().config(), hit);
-    assertEquals(
-        cell.variant().principals(),
-        loads.get(),
-        label + ": loader calls beyond the warm-up loads");
+  private void endToEndCells(JwtFilter filter, Kind kind, String token) {
+    IntPredicate authenticate = worker -> !filter.validateJwtAndGetClaims(token).isEmpty();
+    String label = "authenticateEndToEnd/" + kind;
+    session.run(label + "/1thread", 1, VERIFY_SINGLE, authenticate);
+    session.run(label + "/samePrincipal", CONTENDED_THREADS, VERIFY_CONTENDED, authenticate);
+  }
+
+  private static AuthenticationConfiguration serverAuthentication() {
+    return new AuthenticationConfiguration()
+        .withProvider(AuthProvider.BASIC)
+        .withPublicKeyUrls(List.of())
+        .withJwtPrincipalClaims(List.of("sub", "email"))
+        .withJwtPrincipalClaimsMapping(List.of())
+        .withTokenValidationAlgorithm(AuthenticationConfiguration.TokenValidationAlgorithm.RS_256);
+  }
+
+  private static AuthorizerConfiguration serverAuthorizer() {
+    return new AuthorizerConfiguration()
+        .withPrincipalDomain("open-metadata.org")
+        .withEnforcePrincipalDomain(false)
+        .withUseRolesFromProvider(false);
+  }
+
+  private void verifierCells(Kind kind, int tokensPerUser) {
+    List<String> pool = kind == Kind.BOT ? botTokens : patTokens;
+    List<String> stored = pool.subList(0, tokensPerUser);
+    String presented = pool.get(tokensPerUser / 2);
+    for (Variant variant : VARIANTS) {
+      verifierCell(new Cell(kind, tokensPerUser, variant, stored, presented));
+    }
   }
 
   /**
@@ -281,7 +304,7 @@ class CredentialCheckBenchmark {
     Map<String, List<String>> pats = new LinkedHashMap<>();
     Map<String, String> mechanisms = new LinkedHashMap<>();
     for (String name : names) {
-      if (cell.kind() == CredentialTokenState.Kind.BOT) {
+      if (cell.kind() == Kind.BOT) {
         mechanisms.put(name, cell.presented());
       } else {
         pats.put(name, cell.stored());
