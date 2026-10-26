@@ -44,7 +44,8 @@ final class NativeOntologyCsvCells {
   private static final ObjectReader EXPRESSIONS_READER =
       JsonUtils.getObjectMapper()
           .readerFor(new TypeReference<List<OntologyExpression>>() {})
-          .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+          .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+          .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
 
   private NativeOntologyCsvCells() {}
 

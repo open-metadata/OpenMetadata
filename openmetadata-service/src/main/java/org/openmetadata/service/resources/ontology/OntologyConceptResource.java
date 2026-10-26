@@ -75,7 +75,8 @@ public class OntologyConceptResource
     addViewOperation("lifecycleStatus", MetadataOperation.VIEW_BASIC);
     bindings =
         new OntologyConceptBindingService(
-            new OntologyConceptBindingStore(Entity.getCollectionDAO()),
+            new OntologyConceptBindingStore(
+                Entity.getCollectionDAO(), OntologyConceptBindingStore.registeredAssetTables()),
             authorizer,
             Entity::getEntityRepository);
   }

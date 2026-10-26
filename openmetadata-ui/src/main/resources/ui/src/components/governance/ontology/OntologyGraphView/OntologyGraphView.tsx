@@ -39,7 +39,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
-import { CreateRelationshipType } from '../../../../generated/api/data/createRelationshipType';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { RelationshipType } from '../../../../generated/entity/data/relationshipType';
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
@@ -48,7 +47,6 @@ import {
   createOntologyAxiom,
   createOntologyProperty,
   createRelationshipType,
-  getRelationshipTypeByName,
   listRelationshipTypes,
   patchOntologyProperty,
   patchRelationshipType,
@@ -57,6 +55,7 @@ import {
   buildInverseBackLink,
   buildNativeRelationCatalog,
   buildNativeRelationGroups,
+  findNativeRelationTypeByLabel,
   MAX_RELATIONSHIP_TYPE_PAGES,
   NativeRelationStep,
   NativeRelationType,
@@ -124,20 +123,11 @@ const writeStep = (step: NativeRelationStep) => {
   }
 };
 
-/** A name the registry already holds, from a stale list or a parallel admin, resolves to that type. */
-const ensureRelationshipType = async (
-  request: CreateRelationshipType
-): Promise<RelationshipType> => {
-  try {
-    return await createRelationshipType(request);
-  } catch (error) {
-    if (isAxiosError(error) && error.response?.status === 409) {
-      return getRelationshipTypeByName(request.name);
-    }
-
-    throw error;
-  }
-};
+const loadRegistry = () =>
+  listAllPages(
+    (after) => listRelationshipTypes({ limit: 1000, after }),
+    MAX_RELATIONSHIP_TYPE_PAGES
+  );
 
 interface RelationshipTypeDialogProps {
   readonly label: string;
@@ -372,20 +362,20 @@ const OntologyGraphView = ({
     gcTime: 30_000,
     staleTime: 30_000,
     retry: false,
-    queryFn: () =>
-      listAllPages(
-        (after) => listRelationshipTypes({ limit: 1000, after }),
-        MAX_RELATIONSHIP_TYPE_PAGES
-      ),
+    queryFn: loadRegistry,
   });
-  const catalog = useMemo(
-    () =>
+  const catalogOf = useCallback(
+    (types: readonly RelationshipType[]) =>
       model
-        ? buildNativeRelationCatalog(model, relationTypes, {
+        ? buildNativeRelationCatalog(model, types, {
             subClassOf: t('label.is-a'),
           })
         : [],
-    [model, relationTypes, t]
+    [model, t]
+  );
+  const catalog = useMemo(
+    () => catalogOf(relationTypes),
+    [catalogOf, relationTypes]
   );
   const relationTypeGroups = useMemo(
     () =>
@@ -413,10 +403,7 @@ const OntologyGraphView = ({
 
   const createType = useCallback(
     async (label: string): Promise<NativeRelationType | undefined> => {
-      const wanted = label.trim().toLowerCase();
-      const existing = catalog.find(
-        (candidate) => candidate.label.toLowerCase() === wanted
-      );
+      const existing = findNativeRelationTypeByLabel(catalog, label);
       if (existing || !canCreateRelationType) {
         return existing;
       }
@@ -427,16 +414,25 @@ const OntologyGraphView = ({
       if (!draft) {
         return undefined;
       }
-      const plan = planRelationshipType(draft, relationTypes);
+      // The cached list is up to 30 s old. A type registered since then is reused as it is,
+      // inverse included, and new names are chosen apart from everything the registry holds now.
+      const registry = await loadRegistry();
+      const registered = findNativeRelationTypeByLabel(
+        catalogOf(registry),
+        draft.label
+      );
+      if (registered) {
+        void refetchRegistry();
+
+        return registered;
+      }
+      const plan = planRelationshipType(draft, registry);
       const inverse = plan.inverse
-        ? await ensureRelationshipType(plan.inverse)
+        ? await createRelationshipType(plan.inverse)
         : undefined;
-      const primary = await ensureRelationshipType(plan.primary);
+      const primary = await createRelationshipType(plan.primary);
       if (inverse) {
-        const backLink = buildInverseBackLink(inverse, primary);
-        if (backLink.length > 0) {
-          await patchRelationshipType(inverse.id, backLink);
-        }
+        await patchRelationshipType(inverse.id, buildInverseBackLink(primary));
       }
       void refetchRegistry();
 
@@ -445,7 +441,7 @@ const OntologyGraphView = ({
         inverse ? [primary, inverse] : [primary]
       );
     },
-    [canCreateRelationType, catalog, refetchRegistry, relationTypes]
+    [canCreateRelationType, catalog, catalogOf, refetchRegistry]
   );
 
   const createRelation = useCallback(

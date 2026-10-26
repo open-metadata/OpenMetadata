@@ -498,13 +498,16 @@ const OntologyNativeImportPanel = ({
         isDisabled={isLockedOrBusy || !canUseTarget}
         state={state}
         onFile={(files) => void handleFile(files)}
-        onSizeLimitExceed={() =>
+        onSizeLimitExceed={() => {
+          const fileId = nextToken();
+          fileToken.current = fileId;
+          content.current = '';
           dispatch({
-            type: 'detectionFailed',
-            fileId: state.fileId,
+            type: 'fileRejected',
+            token: fileId,
             message: t('message.file-size-exceeded', { size: '10 MB' }),
-          })
-        }
+          });
+        }}
       />
       {readySummary && (
         <ImportResult

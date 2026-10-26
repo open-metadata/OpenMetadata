@@ -54,6 +54,31 @@ describe('nativeImportReducer', () => {
     expect(nativeImportStep(state)).toBe('import');
   });
 
+  it('drops the earlier preview and ignores its late answer when a replacement file is rejected', () => {
+    let state = nativeImportReducer(INITIAL_NATIVE_IMPORT_STATE, {
+      type: 'fileChosen',
+      token: 1,
+      fileName: 'a.ttl',
+    });
+    state = nativeImportReducer(state, { type: 'parseStarted', token: 2 });
+    state = nativeImportReducer(state, { type: 'parsed', parseId: 2, summary });
+
+    state = nativeImportReducer(state, {
+      type: 'fileRejected',
+      token: 3,
+      message: 'too big',
+    });
+
+    expect(state.parse).toEqual({ kind: 'idle' });
+    expect(state.fileName).toBeUndefined();
+    expect(state.detection).toEqual({ kind: 'failed', message: 'too big' });
+    expect(nativeImportStep(state)).toBe('drop');
+
+    expect(
+      nativeImportReducer(state, { type: 'parsed', parseId: 2, summary }).parse
+    ).toEqual({ kind: 'idle' });
+  });
+
   it('ignores a detection answer for a file that is no longer chosen', () => {
     let state = nativeImportReducer(INITIAL_NATIVE_IMPORT_STATE, {
       type: 'fileChosen',

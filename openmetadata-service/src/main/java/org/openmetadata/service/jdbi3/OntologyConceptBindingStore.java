@@ -10,10 +10,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.OntologyAssetBinding;
+import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyConceptBindings;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -33,10 +35,18 @@ import org.openmetadata.service.util.FreshReadScope;
  */
 public final class OntologyConceptBindingStore {
   public static final String EXTENSION = "ontology.conceptBindings";
+
+  /**
+   * Rows one internal scan reads per statement, for the data graph and for cleanup under the lock
+   * (ADR:2026-10-19-native-concept-bindings-remain-operational-metadata).
+   */
+  public static final int SCAN_PAGE_SIZE = 500;
+
   private static final String SCHEMA = "ontologyConceptBindings";
   private static final String FIRST_PAGE = "";
   private static final int MAX_ANCESTORS = OntologyReleaseManifest.MAX_MEMBERS;
   private final CollectionDAO dao;
+  private final Function<OntologyBindingAssetType, String> assetTables;
 
   /** Runs under the ontology lock and returns the revision to commit; the current one is a no-op. */
   @FunctionalInterface
@@ -44,8 +54,16 @@ public final class OntologyConceptBindingStore {
     long apply(OntologyConcept concept, OntologyConceptBindingStore locked, long currentRevision);
   }
 
-  public OntologyConceptBindingStore(final CollectionDAO dao) {
+  /** @param assetTables the entity table that holds each bindable asset type */
+  public OntologyConceptBindingStore(
+      final CollectionDAO dao, final Function<OntologyBindingAssetType, String> assetTables) {
     this.dao = dao;
+    this.assetTables = assetTables;
+  }
+
+  /** The production resolver; the one composition point that reads the entity registry. */
+  public static Function<OntologyBindingAssetType, String> registeredAssetTables() {
+    return type -> Entity.getEntityRepository(type.value()).getDao().getTableName();
   }
 
   public long revision(final UUID conceptId) {
@@ -66,10 +84,6 @@ public final class OntologyConceptBindingStore {
   public List<BindingRow> page(final UUID conceptId, final UUID after, final int limit) {
     return dao.ontologyConceptBindingDAO()
         .listAfter(conceptId, after == null ? FIRST_PAGE : after.toString(), limit);
-  }
-
-  public List<BindingRow> rows(final UUID conceptId) {
-    return dao.ontologyConceptBindingDAO().list(conceptId);
   }
 
   public List<BindingRow> page(
@@ -100,7 +114,7 @@ public final class OntologyConceptBindingStore {
     BindingRow.assetIdsByType(rows)
         .forEach(
             (type, ids) -> {
-              final String table = Entity.getEntityRepository(type.value()).getDao().getTableName();
+              final String table = assetTables.apply(type);
               EntityDAO.queryInChunks(
                       ids.stream().map(UUID::toString).distinct().toList(),
                       chunk -> dao.ontologyConceptBindingDAO().findLiveAssets(table, chunk))
@@ -112,7 +126,8 @@ public final class OntologyConceptBindingStore {
   public long update(final OntologyConcept concept, final Mutation mutation) {
     return dao.inTransaction(
         transaction ->
-            new OntologyConceptBindingStore(transaction).updateLocked(concept, mutation));
+            new OntologyConceptBindingStore(transaction, assetTables)
+                .updateLocked(concept, mutation));
   }
 
   private long updateLocked(final OntologyConcept concept, final Mutation mutation) {

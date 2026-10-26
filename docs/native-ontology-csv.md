@@ -38,7 +38,7 @@ Any other filled cell fails the row. The `ONTOLOGY` row supplies the file's labe
 
 ## Strictness and limits
 
-The first problem fails the whole read with `CSV row N, column c: <reason>`, or `CSV row N: <reason>` when no single column is at fault. Row numbers count records with the header as row 1, which is what a spreadsheet shows, so a quoted multi-line cell is one row. A duplicate concept or property IRI, an unknown `kind` or enum, a relative IRI, malformed JSON or literal, and a second `ONTOLOGY` row all fail.
+The first problem fails the whole read with `CSV row N, column c: <reason>`, or `CSV row N: <reason>` when no single column is at fault. Row numbers count records with the header as row 1, which is what a spreadsheet shows, so a quoted multi-line cell is one row. A duplicate concept or property IRI, an unknown `kind` or enum, a relative IRI, malformed JSON or literal, a second `ONTOLOGY` row, text after the JSON value in an `expressions` cell, and a property cell its `propertyKind` cannot carry all fail. Only `DATA` properties take `enumValues`, `unit`, and `identifier`. Only `OBJECT` properties take `inverse` and `propertyChain`. `ANNOTATION` properties take no `disjointWith`, and `characteristics` follow the repository's per-kind list.
 
 The input is at most 10 MiB of UTF-8. Each row and each multi-value item counts toward 100,000 statements, and parsing stops after 30 seconds. A CSV accepts at most 1,000 definition rows, including definitions already stored in the target. More than 1,000 changed definitions fails at preview, as for RDF.
 

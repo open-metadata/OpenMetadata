@@ -53,9 +53,11 @@ public interface OntologyConceptBindingDAO {
       OntologyBindingAssetType assetType,
       String assetFqnHash,
       List<OntologyColumnBinding> columns) {
-    public static Map<OntologyBindingAssetType, List<UUID>> assetIdsByType(List<BindingRow> rows) {
-      Map<OntologyBindingAssetType, List<UUID>> ids = new EnumMap<>(OntologyBindingAssetType.class);
-      for (BindingRow row : rows) {
+    public static Map<OntologyBindingAssetType, List<UUID>> assetIdsByType(
+        final List<BindingRow> rows) {
+      final Map<OntologyBindingAssetType, List<UUID>> ids =
+          new EnumMap<>(OntologyBindingAssetType.class);
+      for (final BindingRow row : rows) {
         ids.computeIfAbsent(row.assetType(), type -> new ArrayList<>()).add(row.assetId());
       }
       return ids;
@@ -124,13 +126,6 @@ public interface OntologyConceptBindingDAO {
   @SqlQuery(
       "SELECT "
           + COLUMNS
-          + " FROM ontology_concept_binding WHERE conceptId = :conceptId ORDER BY assetId ASC")
-  @RegisterRowMapper(BindingRowMapper.class)
-  List<BindingRow> list(@BindUUID("conceptId") UUID conceptId);
-
-  @SqlQuery(
-      "SELECT "
-          + COLUMNS
           + " FROM ontology_concept_binding WHERE conceptId IN (<conceptIds>) "
           + "AND (:hasAfter = FALSE OR conceptId > :afterConceptId "
           + "OR (conceptId = :afterConceptId AND assetId > :afterAssetId)) "
@@ -173,7 +168,7 @@ public interface OntologyConceptBindingDAO {
 
   class BindingRowMapper implements RowMapper<BindingRow> {
     @Override
-    public BindingRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+    public BindingRow map(final ResultSet rs, final StatementContext ctx) throws SQLException {
       return new BindingRow(
           UUID.fromString(rs.getString("conceptId")),
           UUID.fromString(rs.getString("assetId")),
@@ -185,7 +180,8 @@ public interface OntologyConceptBindingDAO {
 
   class ConceptAssetCountMapper implements RowMapper<ConceptAssetCount> {
     @Override
-    public ConceptAssetCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+    public ConceptAssetCount map(final ResultSet rs, final StatementContext ctx)
+        throws SQLException {
       return new ConceptAssetCount(
           UUID.fromString(rs.getString("conceptId")), rs.getLong("assetCount"));
     }
@@ -193,7 +189,7 @@ public interface OntologyConceptBindingDAO {
 
   class LiveAssetMapper implements RowMapper<LiveAsset> {
     @Override
-    public LiveAsset map(ResultSet rs, StatementContext ctx) throws SQLException {
+    public LiveAsset map(final ResultSet rs, final StatementContext ctx) throws SQLException {
       return new LiveAsset(UUID.fromString(rs.getString("id")), rs.getString("serviceType"));
     }
   }

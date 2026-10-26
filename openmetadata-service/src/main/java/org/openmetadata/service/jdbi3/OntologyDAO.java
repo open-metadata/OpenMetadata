@@ -123,6 +123,21 @@ public interface OntologyDAO {
       @Bind("candidateLimit") int candidateLimit,
       @Bind("lineageEdgeLimit") int lineageEdgeLimit);
 
+  /**
+   * Both endpoints are filtered before the limit, so edges from a listed asset to unlisted ones
+   * can never crowd out an edge between two listed assets.
+   */
+  @SqlQuery(
+      "SELECT relation.fromId, relation.toId FROM entity_relationship relation "
+          + "WHERE relation.fromId IN (<assetIds>) AND relation.toId IN (<assetIds>) "
+          + "AND relation.relation = :lineageRelation AND relation.deleted = FALSE "
+          + "ORDER BY relation.fromId ASC, relation.toId ASC LIMIT :lineageEdgeLimit")
+  @RegisterRowMapper(OntologyLineageRowMapper.class)
+  List<OntologyLineageRow> listLineageEdgesBetween(
+      @BindList("assetIds") List<String> assetIds,
+      @Bind("lineageRelation") int lineageRelation,
+      @Bind("lineageEdgeLimit") int lineageEdgeLimit);
+
   @SqlQuery(
       "SELECT COUNT(DISTINCT term.id) FROM glossary_term_entity term "
           + "JOIN tag_usage tagUsage ON tagUsage.tagFQNHash = term.fqnHash "

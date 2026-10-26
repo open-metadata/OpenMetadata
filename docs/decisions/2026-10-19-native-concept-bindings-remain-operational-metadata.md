@@ -1,9 +1,9 @@
 # Native concept bindings remain operational metadata
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-23 (binding rows, bounded paging, the ontology data graph) · v3 2026-10-24 (write confirmation and complete read recovery)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-23 (binding rows, bounded paging, the ontology data graph) · v3 2026-10-24 (write confirmation and complete read recovery) · v4 2026-10-26 (paged cleanup under the lock, lineage between returned assets)
 - **Deciders:** Ontology Studio implementation review
-- **Guard:** OntologyConceptBindingsIT, NativeOntologyDataGraphIT, OntologyBindingRulesTest, OntologyConceptBindingMigrationTest, ontologyAPI.test.ts, useOntologyConceptBindings.test.tsx, OntologyConceptAssets.test.tsx, OntologyColumnBindingEditor.test.tsx, OntologyPropertyBindings.test.tsx, OntologyConceptDataGraph.test.tsx, OntologyConceptInspector.test.tsx
+- **Guard:** OntologyConceptBindingsIT, OntologyConceptBindingCleanupIT, NativeOntologyDataGraphIT, NativeOntologyDataGraphEdgeScanIT, NativeOntologyDataGraphBindingScanIT, OntologyBindingRulesTest, OntologyConceptBindingMigrationTest, ontologyAPI.test.ts, useOntologyConceptBindings.test.tsx, OntologyConceptAssets.test.tsx, OntologyColumnBindingEditor.test.tsx, OntologyPropertyBindings.test.tsx, OntologyConceptDataGraph.test.tsx, OntologyConceptInspector.test.tsx
 - **Related:** ADR:2026-10-17-glossaries-do-not-own-ontology-models,
   [#35984](https://github.com/open-metadata/OpenMetadata/issues/35984)
 
@@ -40,3 +40,9 @@ Conflicts and uncertain responses stop the picker batch. Earlier confirmed selec
 `GET /ontologies/{id}/dataGraph` pages an ontology's bound concepts by offset, ranked by stored binding count, so every reader sees the same order and `paging.total`. Each cluster's `assetCount` and its first assets are only what the reader may view, and a concept with nothing viewable is left out. Edges join returned concepts through object property assertions and class restrictions. Axiom `ViewBasic` permission is required before emitting an edge, including one with a local-name label. The property reference and its display name appear only when the reader may view the property. Lineage edges join returned assets. The Data graph shows the concepts the reader may view with their viewable assets and the observed lineage between the returned assets.
 
 Each graph response contains at most 12 concept clusters, four preview assets per cluster, and 500 concept edges. Internal scans use bounded batches while preserving exact visible asset counts and continuing through denied or irrelevant candidates. These response bounds do not limit the total number of bound concepts. Preview continuation starts after the last returned preview asset. Clients advance through stored ranks by the requested page size, including after a short page.
+
+## Amendment — 2026-10-26: paged cleanup under the lock and lineage between returned assets
+
+The cleanup that a successful mutation performs reads the concept's rows in asset id order, 500 per statement, and deletes the dead rows of each page before reading the next. The page cursor is the last asset id examined, so deleting rows already examined never moves it. The capacity check adds up the column assignments of the live rows across every page, so the 500-assignment bound still counts each surviving link. The data graph's binding scan reads pages of the same size. A write therefore holds one page of rows in memory however many assets the concept binds; it holds the ontology lock for the whole cleanup, as before.
+
+Lineage edges in the data graph are selected with both endpoints restricted to the returned assets before the edge limit applies. An asset's edges to assets outside the page cannot consume the limit and hide an edge between two returned assets.
