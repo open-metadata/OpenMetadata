@@ -16,7 +16,6 @@ package org.openmetadata.service.security.credentials;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -523,7 +522,7 @@ class CredentialVerifierTest {
   }
 
   @Test
-  void aFailingDeepReadLeavesTheBatchReconfirmedAndHealthy() {
+  void aFailingDeepReadLeavesTheBatchReconfirmedAndTheSweepComplete() {
     source.withJwtMechanism(ALICE, JWT_OLD).withJwtMechanism(BOB, JWT_NEW);
     verifier(DEFAULTS);
     assertAccepted(ALICE, JWT_OLD);
@@ -537,7 +536,7 @@ class CredentialVerifierTest {
     assertAccepted(BOB, JWT_NEW);
     assertEquals(1, source.fingerprintReads());
     assertEquals(3, source.fullReads());
-    assertTrue(verifier.healthCheck().execute().isHealthy());
+    assertEquals(0.0, gauge("om.credential.sweep.last.complete.age.seconds"));
     for (int sweep = 1; sweep <= 30; sweep++) {
       sweepAfterInterval();
       assertAccepted(ALICE, JWT_OLD);
@@ -751,10 +750,10 @@ class CredentialVerifierTest {
     long rejectedNow = users.stream().filter(user -> isRejected(user, "token-" + user)).count();
     assertEquals(2, rejectedNow);
     ticker.advanceNanos(MAX_STALENESS_NANOS + 1);
-    assertFalse(verifier.healthCheck().execute().isHealthy());
+    assertEquals(7.000000001, gauge("om.credential.sweep.last.complete.age.seconds"));
 
     verifier.sweepOnce();
-    assertTrue(verifier.healthCheck().execute().isHealthy());
+    assertEquals(0.0, gauge("om.credential.sweep.last.complete.age.seconds"));
     users.forEach(user -> assertRejected(user, "token-" + user));
   }
 
@@ -929,7 +928,7 @@ class CredentialVerifierTest {
     wrapping.advanceNanos(4 * SECOND);
     assertAccepted(ALICE, TOKEN_A);
     assertEquals(1, source.fullReads());
-    assertTrue(verifier.healthCheck().execute().isHealthy());
+    assertEquals(4.0, gauge("om.credential.sweep.last.complete.age.seconds"));
 
     source.revokeAll(ALICE);
     wrapping.advanceNanos(MAX_STALENESS_NANOS + 1);
@@ -938,22 +937,14 @@ class CredentialVerifierTest {
   }
 
   @Test
-  void healthReflectsTheAgeOfTheLastCompleteSweep() {
+  void theSweepAgeGaugeCountsFromTheLastCompleteSweep() {
     verifier(DEFAULTS);
-    assertTrue(verifier.healthCheck().execute().isHealthy());
+    assertEquals(0.0, gauge("om.credential.sweep.last.complete.age.seconds"));
 
-    ticker.advanceNanos(MAX_STALENESS_NANOS);
-    assertTrue(verifier.healthCheck().execute().isHealthy());
-    assertEquals(5.0, gauge("om.credential.sweep.last.complete.age.seconds"));
-
-    ticker.advanceNanos(1);
-    assertFalse(verifier.healthCheck().execute().isHealthy());
-    assertEquals(
-        "No complete credential sweep for 5000 ms; the bound is 5000 ms",
-        verifier.healthCheck().execute().getMessage());
+    ticker.advanceNanos(MAX_STALENESS_NANOS + 1);
+    assertEquals(5.000000001, gauge("om.credential.sweep.last.complete.age.seconds"));
 
     verifier.sweepOnce();
-    assertTrue(verifier.healthCheck().execute().isHealthy());
     assertEquals(0.0, gauge("om.credential.sweep.last.complete.age.seconds"));
   }
 

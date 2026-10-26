@@ -760,7 +760,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     verifier.start();
     Credentials.install(verifier);
     environment.lifecycle().manage(verifier);
-    environment.healthChecks().register("credential-verifier", verifier.healthCheck());
   }
 
   /**

@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.security.credentials;
 
-import com.codahale.metrics.health.HealthCheck;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
@@ -246,21 +245,6 @@ public final class CredentialVerifier implements Managed {
     return Math.ceilDiv(config.sweepIntervalNanos(), NANOS_PER_SECOND);
   }
 
-  /** Unhealthy when no sweep has completed within maxStaleness; the hot path then pays reads. */
-  public HealthCheck healthCheck() {
-    return new HealthCheck() {
-      @Override
-      protected Result check() {
-        long ageNanos = ticker.read() - lastCompleteSweepStartNanos.get();
-        return ageNanos <= config.maxStalenessNanos()
-            ? Result.healthy()
-            : Result.unhealthy(
-                "No complete credential sweep for %d ms; the bound is %d ms",
-                TimeUnit.NANOSECONDS.toMillis(ageNanos), config.maxStaleness().toMilliseconds());
-      }
-    };
-  }
-
   /**
    * Idempotent, and safe to race with {@link #stop}: the scheduler is published before it is
    * scheduled, and a call that finds one published discards its own. The first sweep runs at once,
@@ -321,12 +305,12 @@ public final class CredentialVerifier implements Managed {
   /**
    * One pass: drain nudges, then re-confirm every cached subject in batches. The stamp is read
    * before each query. A batch failure leaves its entries to age out and does not stop the others;
-   * the health stamp moves only when every batch was reconfirmed. When the deep verify is due, each
-   * batch is reconfirmed first and then read in full with every decrypt forced. A deep read that
-   * fails leaves its entries trusted by their fingerprints and health untouched, and the pass is
-   * retried after {@code min(deepVerifyInterval, 1 min)}: a batch fails only on a statement
-   * failure, since the source converts subjects on their own, so the whole pass is what to retry,
-   * and one stamp holds that decision.
+   * the sweep-age gauge restarts only when every batch was reconfirmed. When the deep verify is
+   * due, each batch is reconfirmed first and then read in full with every decrypt forced. A deep
+   * read that fails leaves its entries trusted by their fingerprints and the pass still complete.
+   * The deep pass is then retried after {@code min(deepVerifyInterval, 1 min)}: a batch fails only
+   * on a statement failure, since the source converts subjects on their own, so the whole pass is
+   * what to retry, and one stamp holds that decision.
    */
   void sweepOnce() {
     long sweepStart = ticker.read();
