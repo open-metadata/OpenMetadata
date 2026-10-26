@@ -10,25 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
+import { Dropdown } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as ResolveIcon } from '../../../assets/svg/ic-check-circle.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import {
   Conversation,
   ConversationReply,
 } from '../../../generated/entity/feed/conversation';
-
-import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { isFeedPostAuthor } from '../../../utils/FeedUtilsPure';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
-import './activity-feed-actions.less';
 
 const ConfirmationModal = withSuspenseFallback(
   lazy(
@@ -57,87 +51,9 @@ interface ActivityFeedActionsProps {
    * activity feed, which have no conversation to delete a post from.
    */
   onDelete?: () => void | Promise<void>;
-  /**
-   * Reveal styling from the owning card. These actions stay mounted so they
-   * remain reachable by Tab and by a screen reader; a consumer that wants them
-   * revealed on pointer hover does that with opacity on a `tw:group` ancestor,
-   * never by unmounting them.
-   */
+  /** Places the menu trigger within the owning card. */
   className?: string;
-  /**
-   * The actions as a kebab menu holding only Edit and Delete, as the activity
-   * thread panels show them, instead of the hover bar.
-   */
-  asMenu?: boolean;
 }
-
-type ConversationAction = 'edit' | 'delete';
-
-interface ConversationActionsMenuProps {
-  showEdit: boolean;
-  showDelete: boolean;
-  className?: string;
-  onEdit: () => void;
-  onDelete: () => void;
-}
-
-const ConversationActionsMenu = ({
-  showEdit,
-  showDelete,
-  className,
-  onEdit,
-  onDelete,
-}: ConversationActionsMenuProps) => {
-  const { t } = useTranslation();
-  if (!showEdit && !showDelete) {
-    return null;
-  }
-  const handlers: Record<ConversationAction, () => void> = {
-    edit: onEdit,
-    delete: onDelete,
-  };
-
-  return (
-    <Dropdown.Root>
-      {/* The menu trigger stays pressed while the menu is open; only a
-          keyboard focus keeps the ring. size-6: a 24px target around the
-          20px glyph, which a long name beside it must not shrink. */}
-      <Dropdown.DotsButton
-        className={({ isFocusVisible, isPressed }) =>
-          classNames(
-            'tw:size-6 tw:shrink-0',
-            isPressed && !isFocusVisible && 'tw:outline-0',
-            className
-          )
-        }
-        data-testid="conversation-actions"
-      />
-      <Dropdown.Popover className="tw:w-min">
-        <Dropdown.Menu
-          aria-label={t('label.action-plural')}
-          selectionMode="none"
-          onAction={(key) => handlers[key as ConversationAction]()}>
-          {showEdit ? (
-            <Dropdown.Item
-              data-testid="edit-message"
-              icon={Edit01}
-              id="edit"
-              label={t('label.edit')}
-            />
-          ) : null}
-          {showDelete ? (
-            <Dropdown.Item
-              data-testid="delete-message"
-              icon={Trash01}
-              id="delete"
-              label={t('label.delete')}
-            />
-          ) : null}
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown.Root>
-  );
-};
 
 /**
  * Fall back to the feed's own author-or-admin rule for whichever action the
@@ -156,22 +72,14 @@ const ConversationActionsMenu = ({
 const resolveActionVisibility = (
   isAuthor: boolean,
   isAdmin: boolean,
-  canReply: boolean,
   canEdit?: boolean,
   canDelete?: boolean
 ) => {
   const canManage = isAuthor || isAdmin;
-  const showDelete = canDelete ?? canManage;
-  const showEdit = canEdit ?? canManage;
 
   return {
-    showReply: canReply,
-    showResolve: canReply && canManage,
-    showDelete,
-    showEdit,
-    // antd's Space rendered nothing without children; keep an empty, bordered
-    // bar from appearing on hover when the user may not act on this post.
-    hasActions: canReply || showEdit || showDelete,
+    showEdit: canEdit ?? canManage,
+    showDelete: canDelete ?? canManage,
   };
 };
 
@@ -196,25 +104,13 @@ const ActivityFeedActions = ({
   onEditPost,
   onDelete,
   className,
-  asMenu,
 }: ActivityFeedActionsProps) => {
-  const { t, i18n } = useTranslation();
-  const dir = i18n.dir();
+  const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const isAuthor = getIsAuthor(isReply, currentUser, conversation, reply);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { deleteFeed, showDrawer, hideDrawer, updateEditorFocus, updateFeed } =
-    useActivityFeedProvider();
-
-  const onReply = () => {
-    if (!conversation) {
-      return;
-    }
-    showDrawer(conversation);
-
-    updateEditorFocus(true);
-  };
+  const { deleteFeed, hideDrawer } = useActivityFeedProvider();
 
   const handleDelete = async () => {
     if (onDelete) {
@@ -257,101 +153,59 @@ const ActivityFeedActions = ({
     }
   };
 
-  const { showReply, showResolve, showEdit, showDelete, hasActions } =
-    resolveActionVisibility(
-      isAuthor,
-      Boolean(currentUser?.isAdmin),
-      !isReply && Boolean(conversation),
-      canEdit,
-      canDelete
-    );
+  const { showEdit, showDelete } = resolveActionVisibility(
+    isAuthor,
+    Boolean(currentUser?.isAdmin),
+    canEdit,
+    canDelete
+  );
 
-  const handleResolvedChange = () => {
-    if (!conversation || isReply || !conversationId) {
-      return;
-    }
-    updateFeed(conversationId, conversationId, true, [
-      {
-        op: 'replace',
-        path: '/resolved',
-        value: !conversation.resolved,
-      },
-    ]);
-  };
-
-  const showMenu = Boolean(asMenu);
+  if (!showEdit && !showDelete) {
+    return null;
+  }
 
   return (
     <>
-      {showMenu && (
-        <ConversationActionsMenu
-          className={className}
-          showDelete={showDelete}
-          showEdit={showEdit}
-          onDelete={() => setShowDeleteDialog(true)}
-          onEdit={() => onEditPost?.()}
+      <Dropdown.Root>
+        {/* The menu trigger stays pressed while the menu is open; only a
+            keyboard focus keeps the ring. size-6: a 24px target around the
+            20px glyph, which a long name beside it must not shrink. */}
+        <Dropdown.DotsButton
+          className={({ isFocusVisible, isPressed }) =>
+            classNames(
+              'tw:size-6 tw:shrink-0',
+              isPressed && !isFocusVisible && 'tw:outline-0',
+              className
+            )
+          }
+          data-testid="conversation-actions"
         />
-      )}
-      {!showMenu && hasActions && (
-        <Box
-          align="center"
-          aria-label={t('label.action-plural')}
-          className={classNames('feed-actions', className)}
-          data-testid="feed-actions"
-          dir={dir}
-          gap={3}
-          role="group">
-          {showReply && (
-            <ButtonUtility
-              className="toolbar-button"
-              color="tertiary"
-              data-testid="add-reply"
-              icon={IconReply}
-              size="xs"
-              tooltip={t('label.reply')}
-              onClick={onReply}
-            />
-          )}
-
-          {showResolve && (
-            <ButtonUtility
-              className="toolbar-button"
-              color="tertiary"
-              data-testid="toggle-resolved"
-              icon={ResolveIcon}
-              size="xs"
-              tooltip={
-                conversation?.resolved ? t('label.open') : t('label.resolve')
-              }
-              onClick={handleResolvedChange}
-            />
-          )}
-
-          {showEdit && (
-            <ButtonUtility
-              className="toolbar-button"
-              color="tertiary"
-              data-testid="edit-message"
-              icon={IconEdit}
-              size="xs"
-              tooltip={t('label.edit')}
-              onClick={onEditPost}
-            />
-          )}
-
-          {showDelete && (
-            <ButtonUtility
-              className="toolbar-button"
-              color="tertiary"
-              data-testid="delete-message"
-              icon={DeleteIcon}
-              size="xs"
-              tooltip={t('label.delete')}
-              onClick={() => setShowDeleteDialog(true)}
-            />
-          )}
-        </Box>
-      )}
+        <Dropdown.Popover className="tw:w-min">
+          <Dropdown.Menu
+            aria-label={t('label.action-plural')}
+            selectionMode="none"
+            onAction={(key) =>
+              key === 'delete' ? setShowDeleteDialog(true) : onEditPost?.()
+            }>
+            {showEdit ? (
+              <Dropdown.Item
+                data-testid="edit-message"
+                icon={Edit01}
+                id="edit"
+                label={t('label.edit')}
+              />
+            ) : null}
+            {showDelete ? (
+              <Dropdown.Item
+                data-testid="delete-message"
+                icon={Trash01}
+                id="delete"
+                label={t('label.delete')}
+              />
+            ) : null}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
       <ConfirmationModal
         bodyText={t('message.confirm-delete-message')}
         cancelText={t('label.cancel')}

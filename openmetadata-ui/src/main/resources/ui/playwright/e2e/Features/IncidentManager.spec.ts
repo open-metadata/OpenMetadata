@@ -1095,11 +1095,9 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       .filter({ hasText: message });
     await expect(card).toBeVisible();
 
-    // The affordance is revealed on hover but stays mounted, so it is present
-    // for the keyboard too - hovering here mirrors what a mouse user does.
-    await card.hover();
-
-    await card.getByTestId('delete-message').click();
+    // The menu renders in a popover outside the card.
+    await card.getByTestId('conversation-actions').click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
     await clickAndWaitFor(
       page,
       page.getByTestId('save-button'),

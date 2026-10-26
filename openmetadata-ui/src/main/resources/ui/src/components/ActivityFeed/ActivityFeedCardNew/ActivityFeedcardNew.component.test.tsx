@@ -197,7 +197,7 @@ describe('ActivityFeedCardNew', () => {
     mockProviderValue.activityReplies = [];
   });
 
-  it('keeps root reactions and management actions available in the drawer', () => {
+  it('keeps root reactions and the actions menu available in the drawer', () => {
     render(
       <MemoryRouter>
         <ActivityFeedCardNew isOpenInDrawer showThread feed={conversation} />
@@ -205,16 +205,7 @@ describe('ActivityFeedCardNew', () => {
     );
 
     expect(screen.getByTestId('conversation-reaction-footer')).toBeVisible();
-
-    // Mounted before any pointer interaction: hiding these behind a hover
-    // state put them out of reach of the keyboard and of screen readers. The
-    // hover reveal is presentational, applied by CSS on the owning card.
-    expect(screen.getByTestId('feed-actions')).toBeVisible();
-    expect(screen.getByTestId('edit-message')).toBeVisible();
-
-    fireEvent.mouseEnter(screen.getByTestId('feed-card-v2-sidebar'));
-
-    expect(screen.getByTestId('feed-actions')).toBeVisible();
+    expect(screen.getByTestId('conversation-actions')).toBeVisible();
   });
 
   // FeedEditor no longer focuses itself on mount, so an editor revealed by a
@@ -232,25 +223,6 @@ describe('ActivityFeedCardNew', () => {
       'data-focused',
       'true'
     );
-  });
-
-  it('keeps the root actions a direct child of the card body', () => {
-    render(
-      <MemoryRouter>
-        <ActivityFeedCardNew isOpenInDrawer showThread feed={conversation} />
-      </MemoryRouter>
-    );
-
-    // The hover reveal in activity-feed-actions.less is written as
-    // `.activity-feed-card-new:hover > .activity-feed-card-new-body >
-    // .feed-actions`, so that middle step is load-bearing: drop it and the
-    // selector stops matching, leaving the reply/resolve/edit/delete bar
-    // hidden from mouse users.
-    const actions = screen.getByTestId('feed-actions');
-    const body = actions.parentElement;
-
-    expect(body).toHaveClass('activity-feed-card-new-body');
-    expect(body?.parentElement).toHaveClass('activity-feed-card-new');
   });
 
   it('names the field a conversation was started on after the entity', () => {
@@ -412,17 +384,29 @@ describe('ActivityFeedCardNew', () => {
       return within(screen.getByTestId('feed-reply-card'));
     };
 
-    it('offers edit and delete on the authors own reply', () => {
+    // The menu opens in a popover outside the reply card.
+    const chooseReplyAction = async (
+      reply: ReturnType<typeof renderReply>,
+      name: string
+    ) => {
+      fireEvent.click(reply.getByTestId('conversation-actions'));
+      fireEvent.click(await screen.findByRole('menuitem', { name }));
+    };
+
+    it('offers edit and delete on the authors own reply', async () => {
       const reply = renderReply();
 
-      expect(reply.getByTestId('edit-message')).toBeInTheDocument();
-      expect(reply.getByTestId('delete-message')).toBeInTheDocument();
+      fireEvent.click(reply.getByTestId('conversation-actions'));
+
+      expect(
+        (await screen.findAllByRole('menuitem')).map((item) => item.textContent)
+      ).toEqual(['label.edit', 'label.delete']);
     });
 
     it('patches the reply through updateFeed when the user saves an edit', async () => {
       const reply = renderReply();
 
-      fireEvent.click(reply.getByTestId('edit-message'));
+      await chooseReplyAction(reply, 'label.edit');
 
       const editor = await reply.findByTestId('reply-editor');
       fireEvent.change(within(editor).getByTestId('reply-editor-input'), {
@@ -443,7 +427,7 @@ describe('ActivityFeedCardNew', () => {
     it('removes the reply through deleteFeed when the user confirms', async () => {
       const reply = renderReply();
 
-      fireEvent.click(reply.getByTestId('delete-message'));
+      await chooseReplyAction(reply, 'label.delete');
       fireEvent.click(await screen.findByTestId('confirm-delete'));
 
       await waitFor(() => {
@@ -472,23 +456,25 @@ describe('ActivityFeedCardNew', () => {
     });
   });
 
-  it('puts only Edit and Delete in a menu in the activity thread panel', async () => {
-    render(
-      <MemoryRouter>
-        <ActivityFeedCardNew isThreadPanel feed={conversation} />
-      </MemoryRouter>
-    );
+  it.each([
+    ['an entity Activity tab list', {}],
+    ['an activity thread panel', { isThreadPanel: true }],
+  ])(
+    'puts only Edit and Delete in the conversation menu in %s',
+    async (_surface, props) => {
+      render(
+        <MemoryRouter>
+          <ActivityFeedCardNew feed={conversation} {...props} />
+        </MemoryRouter>
+      );
 
-    expect(screen.queryByTestId('feed-actions')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('conversation-actions'));
 
-    fireEvent.click(screen.getByTestId('conversation-actions'));
-
-    expect(
-      (await screen.findAllByRole('menuitem')).map((item) => item.textContent)
-    ).toEqual(['label.edit', 'label.delete']);
-    expect(screen.queryByTestId('add-reply')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('toggle-resolved')).not.toBeInTheDocument();
-  });
+      expect(
+        (await screen.findAllByRole('menuitem')).map((item) => item.textContent)
+      ).toEqual(['label.edit', 'label.delete']);
+    }
+  );
 
   it('drops the "conversation" label only in the activity thread panel', () => {
     const { rerender } = render(

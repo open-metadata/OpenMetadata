@@ -63,11 +63,11 @@ import '../ActivityFeedTab/activity-feed-tab.less';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import FeedFieldPath from '../Shared/FeedFieldPath/FeedFieldPath';
 import {
+  ACTIONS_CLASS_NAME,
   PANEL_HEADER_LAYOUT,
   SPACE_ITEM_CLASS_NAME,
 } from './ActivityFeedcardNew.constants';
 import {
-  getActionsClassName,
   getFooterVisibility,
   getFullCardBaseClassName,
   getFullCardBodyClassName,
@@ -455,13 +455,10 @@ const ActivityFeedCardNew = ({
     setShowFeedEditor(false);
   }, []);
 
-  // Rendered unconditionally and revealed with CSS: gating the mount on hover
-  // put these permanently out of reach of the keyboard and screen readers.
   const feedActions =
     !isActivityEvent && !isPost && feed ? (
       <ActivityFeedActions
-        asMenu={isThreadPanel}
-        className={getActionsClassName(isThreadPanel)}
+        className={ACTIONS_CLASS_NAME}
         conversation={feed}
         conversationId={feed.id}
         isReply={false}
@@ -664,7 +661,6 @@ const ActivityFeedCardNew = ({
             {isFullSizeWidget && !isActivityEvent && feed && (
               <div className="m-b-md">
                 <FeedCardFooterNew
-                  isForFeedTab
                   conversation={feed}
                   conversationId={feed.id}
                   isReply={isPost}
@@ -875,7 +871,6 @@ const ActivityFeedCardNew = ({
                 )}
                 conversation={feed}
                 conversationId={feed.id}
-                isForFeedTab={isForFeedTab}
                 isReply={isPost}
                 reply={post}
                 showReplyCount={isThreadPanel}

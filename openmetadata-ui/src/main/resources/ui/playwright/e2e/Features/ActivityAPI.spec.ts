@@ -313,8 +313,8 @@ test.describe(
         const firstReplyCard = page
           .getByTestId('feed-reply-card')
           .filter({ hasText: firstReply });
-        await firstReplyCard.hover();
-        await firstReplyCard.getByTestId('edit-message').click();
+        await firstReplyCard.getByTestId('conversation-actions').click();
+        await page.getByRole('menuitem', { name: 'Edit' }).click();
 
         const editingReplyCard = page
           .getByTestId('feed-reply-card')
@@ -357,8 +357,8 @@ test.describe(
             .last()
         ).toContainText(adminDisplayName);
 
-        await editedReplyCard.hover();
-        await editedReplyCard.getByTestId('delete-message').click();
+        await editedReplyCard.getByTestId('conversation-actions').click();
+        await page.getByRole('menuitem', { name: 'Delete' }).click();
         const deleteResponse = page.waitForResponse(
           (response) =>
             response

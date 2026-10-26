@@ -420,22 +420,6 @@
   }
 }
 
-// .feed-actions is absolutely positioned at a fixed top: 24px, which only
-// lined up while this card's padding was also 24px. It now uses 16px, so pull
-// the bar up to match - otherwise it hangs below the author row and covers the
-// first line of the comment. Scoped to the reply card so the conversation
-// card, which keeps its own spacing, is unaffected.
-// A reply renders its actions inside the author row rather than floating them
-// over the card, so undo the shared absolute positioning here. Keeping them in
-// normal flow is what stops the bar overlapping the comment text - it can no
-// longer be mispositioned relative to a padding or line-height it doesn't know
-// about.
-.reply-card .feed-actions {
-  position: static;
-  padding-top: var(--om-space-2);
-  padding-bottom: var(--om-space-2);
-}
-
 .reply-message {
   color: var(--om-legacy-color-4a4a4a);
   white-space: normal;

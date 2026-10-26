@@ -18,9 +18,11 @@ import { ReactionType } from '../../../../generated/type/reaction';
 import ActivityEventFooter from './ActivityEventFooter';
 
 const mockUpdateActivityReaction = jest.fn();
+const mockShowActivityDrawer = jest.fn();
 
 jest.mock('../../ActivityFeedProvider/ActivityFeedProvider', () => ({
   useActivityFeedProvider: () => ({
+    showActivityDrawer: mockShowActivityDrawer,
     updateActivityReaction: mockUpdateActivityReaction,
   }),
 }));
@@ -141,9 +143,11 @@ describe('ActivityEventFooter', () => {
       fireEvent.click(screen.getByTestId('comment-button'));
 
       expect(mockOnActivityClick).toHaveBeenCalledWith(activity);
+      expect(mockShowActivityDrawer).not.toHaveBeenCalled();
     });
 
-    it('should NOT call onActivityClick when isForFeedTab is false', () => {
+    // The entity Activity tab's list cards opened nothing from here.
+    it('opens the activity in the reply drawer when isForFeedTab is false', () => {
       const activity = createMockActivity();
       const mockOnActivityClick = jest.fn();
 
@@ -157,6 +161,7 @@ describe('ActivityEventFooter', () => {
 
       fireEvent.click(screen.getByTestId('comment-button'));
 
+      expect(mockShowActivityDrawer).toHaveBeenCalledWith(activity);
       expect(mockOnActivityClick).not.toHaveBeenCalled();
     });
 

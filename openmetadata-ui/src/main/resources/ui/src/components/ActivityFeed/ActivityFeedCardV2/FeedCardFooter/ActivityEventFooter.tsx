@@ -11,15 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import { Comment } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback } from 'react';
-import {
-  ButtonProps as AriaButtonProps,
-  PressEvent,
-} from 'react-aria-components';
+import { PressEvent } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
@@ -39,7 +36,8 @@ function ActivityEventFooter({
   onActivityClick,
 }: Readonly<ActivityEventFooterProps>) {
   const { t } = useTranslation();
-  const { updateActivityReaction } = useActivityFeedProvider();
+  const { showActivityDrawer, updateActivityReaction } =
+    useActivityFeedProvider();
 
   const onReactionUpdate = useCallback(
     async (reaction: ReactionType, operation: ReactionOperation) => {
@@ -53,34 +51,33 @@ function ActivityEventFooter({
 
   // The press must keep bubbling: the card container behind this footer
   // selects the activity on click, as it did when this was a native button.
+  // Feed tabs (the drawer included) hand the press to the caller; the entity
+  // Activity tab opens the activity in the reply drawer.
   const handleCommentPress = useCallback(
     (event: PressEvent) => {
       event.continuePropagation();
       if (isForFeedTab) {
         onActivityClick?.(activity);
+      } else {
+        showActivityDrawer(activity);
       }
     },
-    [isForFeedTab, onActivityClick, activity]
+    [isForFeedTab, onActivityClick, showActivityDrawer, activity]
   );
-  // ButtonUtility forwards its props to a react-aria Button but does not declare
-  // onPress, and onClick would not let the click bubble, so the press handler is
-  // passed as typed react-aria props.
-  const commentPressProps: Pick<AriaButtonProps, 'onPress'> = {
-    onPress: handleCommentPress,
-  };
 
   return (
     <Box align="start" className={classNames({ 'm-y-md': isForFeedTab })}>
       <Box className="footer-container tw:w-full" direction="col">
         <div>
           <Box align="center" className="w-full rounded-8" gap={1}>
-            <ButtonUtility
+            {/* link-gray: no hover background behind the icon. */}
+            <Button
               aria-label={t('label.comment')}
-              color="tertiary"
+              color="link-gray"
               data-testid="comment-button"
-              icon={Comment}
-              size="sm"
-              {...commentPressProps}
+              iconLeading={Comment}
+              size="xs"
+              onPress={handleCommentPress}
             />
             <Reactions
               reactions={activity.reactions ?? []}

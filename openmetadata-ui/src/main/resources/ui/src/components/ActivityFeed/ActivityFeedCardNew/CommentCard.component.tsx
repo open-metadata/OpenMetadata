@@ -82,10 +82,7 @@ interface CommentCardProps {
    * outside the activity feed have no second editor to close.
    */
   closeFeedEditor?: () => void;
-  /**
-   * In the activity thread panels: Edit / Delete sit in a menu, and the reply
-   * is edited in the comment edit form.
-   */
+  /** In the activity thread panels the reply is edited in the comment edit form. */
   isThreadPanel?: boolean;
 }
 
@@ -263,7 +260,6 @@ const CommentCard = ({
           </div>
           <ActivityFeedActions
             isReply
-            asMenu={isThreadPanel}
             canDelete={canDelete}
             canEdit={canEdit}
             onDelete={onDelete}

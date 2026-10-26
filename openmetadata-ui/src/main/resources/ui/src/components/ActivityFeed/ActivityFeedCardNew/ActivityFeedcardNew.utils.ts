@@ -79,10 +79,6 @@ export const handleCardContainerKeyDown =
 export const CARD_CONTAINER_CLASS_NAME =
   'tw:select-none tw:border tw:border-transparent tw:outline-focus-ring tw:overflow-visible';
 
-// The thread panel's menu sits in the card's top corner.
-export const getActionsClassName = (isThreadPanel?: boolean) =>
-  isThreadPanel ? 'tw:absolute tw:end-2.5 tw:top-4.5' : undefined;
-
 export const getHeaderTagsClassName = (
   showThread: boolean | undefined,
   isThreadPanel?: boolean

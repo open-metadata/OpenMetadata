@@ -21,9 +21,6 @@ import ActivityFeedActions from './ActivityFeedActions';
 
 const mockDeleteFeed = jest.fn().mockResolvedValue(undefined);
 const mockHideDrawer = jest.fn();
-const mockShowDrawer = jest.fn();
-const mockUpdateEditorFocus = jest.fn();
-const mockUpdateFeed = jest.fn();
 const mockUseApplicationStore = jest.fn();
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -34,9 +31,6 @@ jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
   useActivityFeedProvider: () => ({
     deleteFeed: mockDeleteFeed,
     hideDrawer: mockHideDrawer,
-    showDrawer: mockShowDrawer,
-    updateEditorFocus: mockUpdateEditorFocus,
-    updateFeed: mockUpdateFeed,
   }),
 }));
 
@@ -77,6 +71,17 @@ const reply: ConversationReply = {
   updatedAt: 2,
 };
 
+const openMenu = () =>
+  fireEvent.click(screen.getByTestId('conversation-actions'));
+
+const getMenuLabels = async () =>
+  (await screen.findAllByRole('menuitem')).map((item) => item.textContent);
+
+const selectAction = async (name: string) => {
+  openMenu();
+  fireEvent.click(await screen.findByRole('menuitem', { name }));
+};
+
 describe('ActivityFeedActions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -85,7 +90,27 @@ describe('ActivityFeedActions', () => {
     });
   });
 
-  it('shows edit and delete actions to a reply author', () => {
+  it('offers only Edit and Delete for a conversation', async () => {
+    const onEditPost = jest.fn();
+
+    render(
+      <ActivityFeedActions
+        conversation={conversation}
+        conversationId={conversation.id}
+        isReply={false}
+        onEditPost={onEditPost}
+      />
+    );
+    openMenu();
+
+    expect(await getMenuLabels()).toEqual(['label.edit', 'label.delete']);
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.edit' }));
+
+    expect(onEditPost).toHaveBeenCalled();
+  });
+
+  it('offers Edit and Delete to a reply author', async () => {
     render(
       <ActivityFeedActions
         isReply
@@ -94,30 +119,12 @@ describe('ActivityFeedActions', () => {
         reply={reply}
       />
     );
+    openMenu();
 
-    expect(screen.getByTestId('edit-message')).toBeInTheDocument();
-    expect(screen.getByTestId('delete-message')).toBeInTheDocument();
-    expect(screen.queryByTestId('add-reply')).not.toBeInTheDocument();
+    expect(await getMenuLabels()).toEqual(['label.edit', 'label.delete']);
   });
 
-  it('hides author actions from another non-admin user', () => {
-    mockUseApplicationStore.mockReturnValue({
-      currentUser: { id: 'other-id', name: 'alice', isAdmin: false },
-    });
-
-    render(
-      <ActivityFeedActions
-        isReply
-        conversationId={conversation.id}
-        reply={reply}
-      />
-    );
-
-    expect(screen.queryByTestId('edit-message')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('delete-message')).not.toBeInTheDocument();
-  });
-
-  it('renders no action bar when the user has no action on the post', () => {
+  it('renders no menu when the user may not act on the post', () => {
     mockUseApplicationStore.mockReturnValue({
       currentUser: { id: 'other-id', name: 'bob', isAdmin: false },
     });
@@ -130,10 +137,12 @@ describe('ActivityFeedActions', () => {
       />
     );
 
-    expect(screen.queryByTestId('feed-actions')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('conversation-actions')
+    ).not.toBeInTheDocument();
   });
 
-  it('allows an administrator to edit and delete another users reply', () => {
+  it('allows an administrator to edit and delete another users reply', async () => {
     mockUseApplicationStore.mockReturnValue({
       currentUser: { id: 'admin-id', name: 'admin', isAdmin: true },
     });
@@ -145,140 +154,12 @@ describe('ActivityFeedActions', () => {
         reply={reply}
       />
     );
+    openMenu();
 
-    expect(screen.getByTestId('edit-message')).toBeInTheDocument();
-    expect(screen.getByTestId('delete-message')).toBeInTheDocument();
+    expect(await getMenuLabels()).toEqual(['label.edit', 'label.delete']);
   });
 
-  it('toggles resolution only for a manageable conversation root', () => {
-    render(
-      <ActivityFeedActions
-        conversation={conversation}
-        conversationId={conversation.id}
-        isReply={false}
-      />
-    );
-    fireEvent.click(screen.getByTestId('toggle-resolved'));
-
-    expect(mockUpdateFeed).toHaveBeenCalledWith(
-      conversation.id,
-      conversation.id,
-      true,
-      [{ op: 'replace', path: '/resolved', value: true }]
-    );
-  });
-
-  it('deletes a reply by conversation and reply id after confirmation', () => {
-    render(
-      <ActivityFeedActions
-        isReply
-        conversationId={conversation.id}
-        reply={reply}
-      />
-    );
-    fireEvent.click(screen.getByTestId('delete-message'));
-    fireEvent.click(screen.getByTestId('confirm-delete'));
-
-    expect(mockDeleteFeed).toHaveBeenCalledWith(
-      conversation.id,
-      reply.id,
-      false
-    );
-    expect(mockHideDrawer).not.toHaveBeenCalled();
-  });
-
-  it('deletes a user conversation root and closes the drawer', () => {
-    render(
-      <ActivityFeedActions
-        conversation={conversation}
-        conversationId={conversation.id}
-        isReply={false}
-      />
-    );
-    fireEvent.click(screen.getByTestId('delete-message'));
-    fireEvent.click(screen.getByTestId('confirm-delete'));
-
-    expect(mockDeleteFeed).toHaveBeenCalledWith(
-      conversation.id,
-      conversation.id,
-      true
-    );
-    expect(mockHideDrawer).toHaveBeenCalled();
-  });
-
-  it('opens a user conversation and focuses its reply editor', () => {
-    render(
-      <ActivityFeedActions
-        conversation={conversation}
-        conversationId={conversation.id}
-        isReply={false}
-      />
-    );
-    fireEvent.click(screen.getByTestId('add-reply'));
-
-    expect(mockShowDrawer).toHaveBeenCalledWith(conversation);
-    expect(mockUpdateEditorFocus).toHaveBeenCalledWith(true);
-  });
-
-  it('renders every control as a focusable button with an accessible name', () => {
-    render(
-      <ActivityFeedActions
-        conversation={conversation}
-        conversationId={conversation.id}
-        isReply={false}
-      />
-    );
-
-    // The regression this guards: these were `<Icon onClick>`, which Ant
-    // renders as `<span role="img">` - not focusable, not announced as a
-    // control, and unusable with Enter/Space.
-    for (const testId of [
-      'add-reply',
-      'toggle-resolved',
-      'edit-message',
-      'delete-message',
-    ]) {
-      const control = screen.getByTestId(testId);
-
-      expect(control.tagName).toBe('BUTTON');
-      expect(control).toHaveAccessibleName();
-
-      control.focus();
-
-      expect(control).toHaveFocus();
-    }
-  });
-
-  it('groups the actions and never unmounts them on pointer state', () => {
-    render(
-      <ActivityFeedActions
-        isReply
-        conversationId={conversation.id}
-        reply={reply}
-      />
-    );
-
-    expect(screen.getByTestId('feed-actions')).toHaveAttribute('role', 'group');
-    expect(screen.getByTestId('feed-actions')).toHaveAccessibleName();
-  });
-
-  it('merges the reveal class handed down by the owning card', () => {
-    render(
-      <ActivityFeedActions
-        isReply
-        className="tw:opacity-0"
-        conversationId={conversation.id}
-        reply={reply}
-      />
-    );
-
-    const actions = screen.getByTestId('feed-actions');
-
-    expect(actions).toHaveClass('feed-actions');
-    expect(actions).toHaveClass('tw:opacity-0');
-  });
-
-  it('honours canEdit and canDelete independently of the author rule', () => {
+  it('honours canEdit and canDelete independently of the author rule', async () => {
     mockUseApplicationStore.mockReturnValue({
       currentUser: { id: 'other-id', name: 'bob', isAdmin: false },
     });
@@ -292,16 +173,69 @@ describe('ActivityFeedActions', () => {
         reply={reply}
       />
     );
+    openMenu();
 
-    expect(screen.queryByTestId('edit-message')).not.toBeInTheDocument();
-    expect(screen.getByTestId('delete-message')).toBeInTheDocument();
+    expect(await getMenuLabels()).toEqual(['label.delete']);
   });
 
-  it('calls onDelete instead of the feed provider when one is supplied', () => {
+  it('places the menu trigger with the class handed down by the owning card', () => {
+    render(
+      <ActivityFeedActions
+        isReply
+        className="tw:absolute"
+        conversationId={conversation.id}
+        reply={reply}
+      />
+    );
+
+    expect(screen.getByTestId('conversation-actions')).toHaveClass(
+      'tw:absolute'
+    );
+  });
+
+  it('deletes a reply by conversation and reply id after confirmation', async () => {
+    render(
+      <ActivityFeedActions
+        isReply
+        conversationId={conversation.id}
+        reply={reply}
+      />
+    );
+    await selectAction('label.delete');
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    expect(mockDeleteFeed).toHaveBeenCalledWith(
+      conversation.id,
+      reply.id,
+      false
+    );
+    expect(mockHideDrawer).not.toHaveBeenCalled();
+  });
+
+  it('deletes a user conversation root and closes the drawer', async () => {
+    render(
+      <ActivityFeedActions
+        conversation={conversation}
+        conversationId={conversation.id}
+        isReply={false}
+      />
+    );
+    await selectAction('label.delete');
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    expect(mockDeleteFeed).toHaveBeenCalledWith(
+      conversation.id,
+      conversation.id,
+      true
+    );
+    expect(mockHideDrawer).toHaveBeenCalled();
+  });
+
+  it('calls onDelete instead of the feed provider when one is supplied', async () => {
     const onDelete = jest.fn();
 
     render(<ActivityFeedActions canDelete isReply onDelete={onDelete} />);
-    fireEvent.click(screen.getByTestId('delete-message'));
+    await selectAction('label.delete');
     fireEvent.click(screen.getByTestId('confirm-delete'));
 
     expect(onDelete).toHaveBeenCalled();
@@ -317,7 +251,7 @@ describe('ActivityFeedActions', () => {
     );
 
     render(<ActivityFeedActions canDelete isReply onDelete={onDelete} />);
-    fireEvent.click(screen.getByTestId('delete-message'));
+    await selectAction('label.delete');
 
     // Double click while the request is still outstanding. Without the guard
     // the second click deletes again and 404s against the missing comment.
@@ -335,7 +269,7 @@ describe('ActivityFeedActions', () => {
     const onDelete = jest.fn().mockRejectedValue(new Error('boom'));
 
     render(<ActivityFeedActions canDelete isReply onDelete={onDelete} />);
-    fireEvent.click(screen.getByTestId('delete-message'));
+    await selectAction('label.delete');
     fireEvent.click(screen.getByTestId('confirm-delete'));
 
     await waitFor(() => {
@@ -346,7 +280,7 @@ describe('ActivityFeedActions', () => {
     expect(screen.getByTestId('confirmation-modal')).toBeInTheDocument();
   });
 
-  it('closes the confirmation without deleting', () => {
+  it('closes the confirmation without deleting', async () => {
     render(
       <ActivityFeedActions
         isReply
@@ -354,105 +288,10 @@ describe('ActivityFeedActions', () => {
         reply={reply}
       />
     );
-    fireEvent.click(screen.getByTestId('delete-message'));
+    await selectAction('label.delete');
     fireEvent.click(screen.getByTestId('cancel-delete'));
 
     expect(screen.queryByTestId('confirmation-modal')).not.toBeInTheDocument();
     expect(mockDeleteFeed).not.toHaveBeenCalled();
-  });
-
-  describe('as a menu (activity thread panel)', () => {
-    it('offers only Edit and Delete for the conversation', async () => {
-      const onEditPost = jest.fn();
-
-      render(
-        <ActivityFeedActions
-          asMenu
-          conversation={conversation}
-          conversationId={conversation.id}
-          isReply={false}
-          onEditPost={onEditPost}
-        />
-      );
-
-      expect(screen.queryByTestId('feed-actions')).not.toBeInTheDocument();
-
-      fireEvent.click(screen.getByTestId('conversation-actions'));
-
-      const items = await screen.findAllByRole('menuitem');
-
-      expect(items.map((item) => item.textContent)).toEqual([
-        'label.edit',
-        'label.delete',
-      ]);
-
-      fireEvent.click(screen.getByRole('menuitem', { name: 'label.edit' }));
-
-      expect(onEditPost).toHaveBeenCalled();
-    });
-
-    it('deletes the conversation after confirmation', async () => {
-      render(
-        <ActivityFeedActions
-          asMenu
-          conversation={conversation}
-          conversationId={conversation.id}
-          isReply={false}
-        />
-      );
-      fireEvent.click(screen.getByTestId('conversation-actions'));
-      fireEvent.click(
-        await screen.findByRole('menuitem', { name: 'label.delete' })
-      );
-      fireEvent.click(screen.getByTestId('confirm-delete'));
-
-      expect(mockDeleteFeed).toHaveBeenCalledWith(
-        conversation.id,
-        conversation.id,
-        true
-      );
-    });
-
-    it('shows no menu to a user who may not manage the conversation', () => {
-      mockUseApplicationStore.mockReturnValue({
-        currentUser: { id: 'other-id', name: 'bob', isAdmin: false },
-      });
-
-      render(
-        <ActivityFeedActions
-          asMenu
-          conversation={conversation}
-          conversationId={conversation.id}
-          isReply={false}
-        />
-      );
-
-      expect(
-        screen.queryByTestId('conversation-actions')
-      ).not.toBeInTheDocument();
-    });
-
-    it('puts the Edit and Delete of a reply in the menu too', async () => {
-      const onEditPost = jest.fn();
-
-      render(
-        <ActivityFeedActions
-          asMenu
-          isReply
-          conversationId={conversation.id}
-          reply={reply}
-          onEditPost={onEditPost}
-        />
-      );
-
-      expect(screen.queryByTestId('feed-actions')).not.toBeInTheDocument();
-
-      fireEvent.click(screen.getByTestId('conversation-actions'));
-      fireEvent.click(
-        await screen.findByRole('menuitem', { name: 'label.edit' })
-      );
-
-      expect(onEditPost).toHaveBeenCalled();
-    });
   });
 });

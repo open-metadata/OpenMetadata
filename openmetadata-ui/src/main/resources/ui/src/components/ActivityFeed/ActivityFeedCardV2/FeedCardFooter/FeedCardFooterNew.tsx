@@ -14,13 +14,8 @@
 import {
   AvatarStack,
   Box,
-  Button,
   ButtonUtility,
 } from '@openmetadata/ui-core-components';
-import {
-  Comment,
-  MessageDotsCircle,
-} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -36,64 +31,27 @@ import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
 import Reactions from '../../Reactions/Reactions';
+import FeedCardReplyButton from '../FeedCardReplyButton/FeedCardReplyButton';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
-import { LABELLED_REPLY_CLASS } from './FeedCardFooterNew.constants';
 import {
   getReactionsVariant,
-  getReplyCountLabel,
   isReplyButtonShown,
 } from './FeedCardFooterNew.utils';
 
 const MAX_VISIBLE_AVATARS = 3;
-
-interface ReplyButtonProps {
-  count: number;
-  showCount: boolean;
-  pressProps: Pick<AriaButtonProps, 'onPress'>;
-}
-
-const ReplyButton = ({ count, showCount, pressProps }: ReplyButtonProps) => {
-  const { t } = useTranslation();
-
-  // The labelled one (activity thread panels) is the Inbox's footer button.
-  if (showCount) {
-    return (
-      <Button
-        className={LABELLED_REPLY_CLASS}
-        color="tertiary"
-        data-testid="reply-button"
-        iconLeading={<MessageDotsCircle data-icon data-testid="reply-count" />}
-        size="sm"
-        {...pressProps}>
-        {getReplyCountLabel(count, t)}
-      </Button>
-    );
-  }
-
-  return (
-    <ButtonUtility
-      aria-label={t('label.reply')}
-      color="tertiary"
-      data-testid="reply-button"
-      icon={Comment}
-      size="sm"
-      {...pressProps}
-    />
-  );
-};
 
 function FeedCardFooterNew({
   conversation,
   conversationId,
   reply,
   isReply = false,
-  isForFeedTab = false,
   componentsVisibility,
   onReplyPress,
   showReplyCount = false,
 }: Readonly<FeedCardFooterProps>) {
   const { t } = useTranslation();
-  const { showDrawer, updateReactions } = useActivityFeedProvider();
+  const { showDrawer, updateEditorFocus, updateReactions } =
+    useActivityFeedProvider();
 
   const postLength = useMemo(
     () => conversation?.replyCount ?? 0,
@@ -131,8 +89,9 @@ function FeedCardFooterNew({
   const showReplies = useCallback(() => {
     if (conversation) {
       showDrawer(conversation);
+      updateEditorFocus(true);
     }
-  }, [showDrawer, conversation]);
+  }, [showDrawer, updateEditorFocus, conversation]);
 
   // The press must keep bubbling: the card container behind this footer
   // selects the conversation on click, as it did when these were native
@@ -142,11 +101,11 @@ function FeedCardFooterNew({
       event.continuePropagation();
       if (onReplyPress) {
         onReplyPress();
-      } else if (isForFeedTab) {
+      } else {
         showReplies();
       }
     },
-    [isForFeedTab, onReplyPress, showReplies]
+    [onReplyPress, showReplies]
   );
   // ButtonUtility forwards its props to a react-aria Button but does not declare
   // onPress, and onClick would not let the click bubble, so the press handler is
@@ -187,12 +146,12 @@ function FeedCardFooterNew({
                   />
                 ))}
                 maxCount={MAX_VISIBLE_AVATARS}
-                onOverflowClick={isForFeedTab ? showReplies : undefined}
+                onOverflowClick={showReplies}
               />
             )}
 
             {isReplyButtonShown(isReply, componentsVisibility) && (
-              <ReplyButton
+              <FeedCardReplyButton
                 count={postLength}
                 pressProps={repliesPressProps}
                 showCount={showReplyCount}

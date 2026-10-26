@@ -33,9 +33,15 @@ jest.mock('../../ActivityFeedDrawer/ActivityFeedDrawer', () =>
     const { useActivityFeedProvider } = jest.requireActual(
       '../../ActivityFeedProvider/ActivityFeedProvider'
     );
-    const { selectedThread } = useActivityFeedProvider();
+    const { selectedThread, focusReplyEditor } = useActivityFeedProvider();
 
-    return <p data-testid="replies-drawer">{selectedThread?.message}</p>;
+    return (
+      <p
+        data-focus-reply-editor={String(focusReplyEditor)}
+        data-testid="replies-drawer">
+        {selectedThread?.message}
+      </p>
+    );
   })
 );
 
@@ -100,7 +106,7 @@ describe('FeedCardFooterNew', () => {
 
   it('opens the replies from an avatar and lets the click reach the card', async () => {
     const onCardClick = jest.fn();
-    await renderFooter({ isForFeedTab: true }, onCardClick);
+    await renderFooter({}, onCardClick);
 
     expect(screen.queryByTestId('replies-drawer')).not.toBeInTheDocument();
 
@@ -114,14 +120,16 @@ describe('FeedCardFooterNew', () => {
     expect(onCardClick).toHaveBeenCalled();
   });
 
-  it('opens the replies from the reply button', async () => {
-    await renderFooter({ isForFeedTab: true });
+  // The entity Activity tab's list cards opened nothing from here.
+  it('opens the replies with the reply editor focused from the reply button', async () => {
+    await renderFooter();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.reply' }));
 
-    expect(await screen.findByTestId('replies-drawer')).toHaveTextContent(
-      'Footer conversation'
-    );
+    const drawer = await screen.findByTestId('replies-drawer');
+
+    expect(drawer).toHaveTextContent('Footer conversation');
+    expect(drawer).toHaveAttribute('data-focus-reply-editor', 'true');
   });
 
   it('hides the avatars and reply button on a reply', async () => {
@@ -138,7 +146,7 @@ describe('FeedCardFooterNew', () => {
   describe('in an activity thread panel', () => {
     it('hands Reply to the caller instead of opening the drawer', async () => {
       const onReplyPress = jest.fn();
-      await renderFooter({ isForFeedTab: true, onReplyPress });
+      await renderFooter({ onReplyPress });
 
       fireEvent.click(screen.getByTestId('reply-button'));
 

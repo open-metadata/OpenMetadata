@@ -13,6 +13,16 @@
 import classNames from 'classnames';
 import { ReactionsVariant } from '../../../enums/reactions.enum';
 
+const REPLY_TEXT_LAYOUT = {
+  // Held to the row's width: an editor holding a long unbroken word would
+  // otherwise widen the reply past the card.
+  body: 'w-full tw:min-w-0',
+  // A long name wraps, breaking inside an unbroken one, so the menu beside it
+  // stays in the card.
+  header: 'd-flex items-center gap-2 flex-wrap tw:min-w-0',
+  name: 'tw:min-w-0 tw:wrap-anywhere',
+};
+
 // In the thread panels a reply reads compactly, as in the Inbox: a small
 // avatar, no separator before the time, reactions close under the message and
 // no rule between replies.
@@ -24,13 +34,7 @@ export const getReplyLayout = (
     ? {
         root: 'd-flex items-start justify-start relative gap-3',
         avatar: 'tw:shrink-0 tw:pt-0.5',
-        // Held to the row's width: an editor holding a long unbroken word
-        // would otherwise widen the reply past the card.
-        body: 'w-full tw:min-w-0',
-        // A long name wraps, breaking inside an unbroken one, so the menu
-        // beside it stays in the card.
-        header: 'd-flex items-center gap-2 flex-wrap tw:min-w-0',
-        name: 'tw:min-w-0 tw:wrap-anywhere',
+        ...REPLY_TEXT_LAYOUT,
         avatarSize: 'xs' as const,
         showSeparator: false,
         reactions: 'tw:mt-1',
@@ -43,9 +47,7 @@ export const getReplyLayout = (
           { 'reply-card-border-bottom': !isLastReply }
         ),
         avatar: 'profile-picture',
-        body: 'w-full',
-        header: 'd-flex items-center gap-2 flex-wrap',
-        name: undefined,
+        ...REPLY_TEXT_LAYOUT,
         avatarSize: 'sm' as const,
         showSeparator: true,
         reactions: 'm-y-md',

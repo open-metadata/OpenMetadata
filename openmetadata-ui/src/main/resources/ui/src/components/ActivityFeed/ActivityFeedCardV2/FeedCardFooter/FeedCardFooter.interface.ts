@@ -21,7 +21,6 @@ export interface FeedCardFooterProps {
   conversationId: string;
   reply?: ConversationReply;
   isReply?: boolean;
-  isForFeedTab?: boolean;
   componentsVisibility?: {
     showThreadIcon?: boolean;
     showRepliesContainer?: boolean;
