@@ -149,17 +149,23 @@ const EntitySearchSettings = ({
     }
     hasLoadedRef.current = true;
     // Back from the field value boost form: resume the draft it was opened
-    // with. Any other saved draft was abandoned, so it is dropped either way.
+    // with. Any other saved draft was abandoned, so it is dropped.
     const resumed = getReturningSearchState(savedState, itemId);
-    if (savedState) {
-      onSaveState?.(undefined);
-    }
-    void fetchConfig().then((loaded) => {
-      if (loaded && resumed && 'draft' in resumed) {
-        setDraft(resumed.draft);
-        setIsChanged(resumed.isChanged);
+    if (!resumed) {
+      if (savedState) {
+        onSaveState?.(undefined);
       }
-    });
+      void fetchConfig();
+    } else {
+      // Kept until restored, so a failed load does not lose the draft.
+      void fetchConfig().then((loaded) => {
+        if (loaded && 'draft' in resumed) {
+          setDraft(resumed.draft);
+          setIsChanged(resumed.isChanged);
+          onSaveState?.(undefined);
+        }
+      });
+    }
     getCustomPropertiesByEntityType(entityType)
       .then((properties) =>
         setCustomProperties(

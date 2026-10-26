@@ -381,6 +381,22 @@ describe('SearchSettingsView', () => {
     expect(onSaveState).toHaveBeenLastCalledWith(undefined);
   });
 
+  it('keeps returning term boosts when the settings fail to load', async () => {
+    (getSettingsByType as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    render(
+      <SearchSettingsView
+        savedState={{ termBoosts: [], isReturning: true }}
+        onNavigate={onNavigate}
+        onSaveState={onSaveState}
+        onSetHeaderActions={onSetHeaderActions}
+      />
+    );
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+
+    expect(onSaveState).not.toHaveBeenCalled();
+  });
+
   it('drops an entity draft abandoned by leaving the boost form', async () => {
     await renderView({
       entity: 'tables',

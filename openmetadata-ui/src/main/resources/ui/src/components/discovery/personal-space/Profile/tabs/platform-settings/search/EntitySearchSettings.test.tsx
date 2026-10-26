@@ -321,6 +321,28 @@ describe('EntitySearchSettings', () => {
     expect(updateSettingsConfig).not.toHaveBeenCalled();
   });
 
+  it('keeps a returning draft when the settings fail to load', async () => {
+    (getSettingsByType as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    render(
+      <EntitySearchSettings
+        itemId="tables"
+        savedState={{
+          entity: 'tables',
+          draft: TABLE_CONFIG,
+          isChanged: true,
+          isReturning: true,
+        }}
+        onNavigate={onNavigate}
+        onSaveState={onSaveState}
+        onSetHeaderActions={onSetHeaderActions}
+      />
+    );
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+
+    expect(onSaveState).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['saved for another entity', { entity: 'topics', isReturning: true }],
     ['abandoned without the form returning', { entity: 'tables' }],

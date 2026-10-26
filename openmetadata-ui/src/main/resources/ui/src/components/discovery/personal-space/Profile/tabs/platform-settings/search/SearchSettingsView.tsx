@@ -116,15 +116,21 @@ const SearchSettingsView = ({
     // Back from the field value boost form: resume the unsaved term boosts.
     // Any other saved draft (e.g. an entity's, left by a breadcrumb) is dropped.
     const resumed = getReturningSearchState(savedState);
-    if (savedState) {
-      onSaveState?.(undefined);
-    }
-    void fetchConfig().then((loaded) => {
-      if (loaded && resumed && 'termBoosts' in resumed) {
-        setTermBoosts(resumed.termBoosts);
-        setTermBoostsChanged(true);
+    if (!resumed) {
+      if (savedState) {
+        onSaveState?.(undefined);
       }
-    });
+      void fetchConfig();
+    } else {
+      // Kept until restored, so a failed load does not lose the draft.
+      void fetchConfig().then((loaded) => {
+        if (loaded && 'termBoosts' in resumed) {
+          setTermBoosts(resumed.termBoosts);
+          setTermBoostsChanged(true);
+          onSaveState?.(undefined);
+        }
+      });
+    }
     // Load once per mount; the saved state is read on arrival only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchConfig]);
