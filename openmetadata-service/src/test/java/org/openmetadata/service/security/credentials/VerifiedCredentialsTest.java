@@ -35,6 +35,15 @@ class VerifiedCredentialsTest {
   }
 
   @Test
+  void aFullReadStampsBothMoments() {
+    VerifiedCredentials entry = entryAt(1_000L);
+
+    assertEquals(1_000L, entry.verifiedAtNanos());
+    assertEquals(1_000L, entry.fullReadAtNanos());
+    assertEquals(250L, entry.fullReadAgeNanos(1_250L));
+  }
+
+  @Test
   void newerKeepsTheLaterStampInBothArgumentOrders() {
     VerifiedCredentials early = entryAt(100L);
     VerifiedCredentials late = entryAt(200L);
@@ -55,6 +64,25 @@ class VerifiedCredentialsTest {
   }
 
   @Test
+  void reconfirmKeepsTheFullReadStamp() {
+    VerifiedCredentials reconfirmed = entryAt(100L).reconfirmedAt(FINGERPRINT, 200L);
+
+    assertEquals(100L, reconfirmed.fullReadAtNanos());
+    assertEquals(200L, reconfirmed.verifiedAtNanos());
+    assertEquals(150L, reconfirmed.fullReadAgeNanos(250L));
+    assertEquals(50L, reconfirmed.ageNanos(250L));
+  }
+
+  @Test
+  void newerComparesTheTrustStampNotTheFullReadStamp() {
+    VerifiedCredentials reconfirmed = entryAt(100L).reconfirmedAt(FINGERPRINT, 300L);
+    VerifiedCredentials fullRead = entryAt(200L);
+
+    assertSame(reconfirmed, VerifiedCredentials.newer(reconfirmed, fullRead));
+    assertSame(reconfirmed, VerifiedCredentials.newer(fullRead, reconfirmed));
+  }
+
+  @Test
   void stampsThatCrossLongMaxValueStillOrderByElapsedTime() {
     long beforeWrap = Long.MAX_VALUE - 10;
     long afterWrap = beforeWrap + 20;
@@ -67,6 +95,7 @@ class VerifiedCredentialsTest {
     assertEquals(afterWrap, early.reconfirmedAt(FINGERPRINT, afterWrap).verifiedAtNanos());
     assertSame(late, late.reconfirmedAt(FINGERPRINT, beforeWrap));
     assertEquals(20L, early.ageNanos(afterWrap));
+    assertEquals(20L, early.reconfirmedAt(FINGERPRINT, afterWrap).fullReadAgeNanos(afterWrap));
   }
 
   @Test

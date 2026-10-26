@@ -14,21 +14,36 @@
 package org.openmetadata.service.security.credentials;
 
 /**
- * One cache entry: a {@link CredentialRecord} plus the moment, on this server's monotonic clock,
- * at which the read that produced (or re-confirmed) it was about to be issued.
+ * One cache entry: a {@link CredentialRecord} plus two moments on this server's monotonic clock.
+ * {@code verifiedAtNanos} is the trust stamp, the instant at which the read that produced or last
+ * re-confirmed the record was about to be issued. {@code fullReadAtNanos} is the instant the full
+ * read that produced the record was about to be issued; a reconfirmation leaves it where it is.
  *
  * <p><b>Invariant:</b> an entry reflects every commit that completed before
  * {@code verifiedAtNanos}. It holds because the stamp is taken before the SQL is sent and each read
  * is a single autocommit statement, so its snapshot starts after the stamp. The hot path trusts an
  * entry only while {@code now - verifiedAtNanos <= maxStaleness}; that is the revocation bound.
  *
- * <p>The stamp travels with the value, so a slow load that finishes after a newer read cannot
+ * <p>A token the entry lacks may have been created on a peer after the full read, so the window in
+ * which such a token is answered without a read is measured from {@code fullReadAtNanos}: a
+ * reconfirmation proves the record current but reads nothing new.
+ *
+ * <p>The stamps travel with the value, so a slow load that finishes after a newer read cannot
  * extend trust: it carries its own older stamp and {@link #newer} keeps the later read.
  */
-record VerifiedCredentials(CredentialRecord record, long verifiedAtNanos) {
+record VerifiedCredentials(CredentialRecord record, long verifiedAtNanos, long fullReadAtNanos) {
+
+  /** The entry a full read produces: both stamps are the read's own. */
+  VerifiedCredentials(CredentialRecord record, long readStampNanos) {
+    this(record, readStampNanos, readStampNanos);
+  }
 
   long ageNanos(long nowNanos) {
     return nowNanos - verifiedAtNanos;
+  }
+
+  long fullReadAgeNanos(long nowNanos) {
+    return nowNanos - fullReadAtNanos;
   }
 
   /**
@@ -39,13 +54,13 @@ record VerifiedCredentials(CredentialRecord record, long verifiedAtNanos) {
   VerifiedCredentials reconfirmedAt(SourceFingerprint fingerprint, long stampNanos) {
     boolean unchanged = fingerprint.equals(record.fingerprint());
     return unchanged && isLater(stampNanos, verifiedAtNanos)
-        ? new VerifiedCredentials(record, stampNanos)
+        ? new VerifiedCredentials(record, stampNanos, fullReadAtNanos)
         : this;
   }
 
   /**
    * Merge function for {@code asMap().merge/compute}: pure, no I/O. Keeps the read with the later
-   * stamp; on a tie the existing entry stays.
+   * trust stamp; on a tie the existing entry stays.
    */
   static VerifiedCredentials newer(VerifiedCredentials existing, VerifiedCredentials candidate) {
     return isLater(candidate.verifiedAtNanos, existing.verifiedAtNanos) ? candidate : existing;

@@ -38,41 +38,140 @@ class CheckDecisionTest {
   private static final long STAMP = 1_000_000_000_000L;
   private static final TokenDigest HELD = TokenDigest.of("held-token");
   private static final TokenDigest UNKNOWN = TokenDigest.of("unknown-token");
-  private static final VerifiedCredentials ENTRY =
-      new VerifiedCredentials(
-          new CredentialRecord(SourceFingerprint.of("fp"), Set.of(HELD), null, null), STAMP);
+  private static final CredentialRecord RECORD =
+      new CredentialRecord(SourceFingerprint.of("fp"), Set.of(HELD), null, null);
+  private static final VerifiedCredentials ENTRY = new VerifiedCredentials(RECORD, STAMP);
 
-  /** Columns: entry present, age in ns, digest held, expected decision. */
+  /**
+   * Columns: entry present, age of the trust stamp in ns, age of the last full read in ns, digest
+   * held, expected decision. The two ages are equal right after a full read; a sweep reconfirmation
+   * moves only the trust stamp, so the full read is then the older of the two.
+   */
   static Stream<Arguments> decideRows() {
     return Stream.of(
-        Arguments.of("no entry, held", false, 0L, true, LOAD_MISSING),
-        Arguments.of("no entry, unknown", false, 0L, false, LOAD_MISSING),
-        Arguments.of("fresh, held", true, 0L, true, ACCEPT),
-        Arguments.of("fresh, unknown, age below min", true, 0L, false, REJECT),
-        Arguments.of("negative age, held", true, -1L, true, ACCEPT),
-        Arguments.of("negative age, unknown", true, -1L, false, REJECT),
-        Arguments.of("age = minAge - 1, unknown", true, MISS_REFRESH_MIN_AGE - 1, false, REJECT),
+        Arguments.of("no entry, held", false, 0L, 0L, true, LOAD_MISSING),
+        Arguments.of("no entry, unknown", false, 0L, 0L, false, LOAD_MISSING),
+        Arguments.of("fresh, held", true, 0L, 0L, true, ACCEPT),
+        Arguments.of("fresh, unknown, age below min", true, 0L, 0L, false, REJECT),
+        Arguments.of("negative age, held", true, -1L, -1L, true, ACCEPT),
+        Arguments.of("negative age, unknown", true, -1L, -1L, false, REJECT),
         Arguments.of(
-            "age = minAge, unknown", true, MISS_REFRESH_MIN_AGE, false, LOAD_UNKNOWN_TOKEN),
+            "age = minAge - 1, unknown",
+            true,
+            MISS_REFRESH_MIN_AGE - 1,
+            MISS_REFRESH_MIN_AGE - 1,
+            false,
+            REJECT),
         Arguments.of(
-            "age = minAge + 1, unknown", true, MISS_REFRESH_MIN_AGE + 1, false, LOAD_UNKNOWN_TOKEN),
-        Arguments.of("age = minAge, held", true, MISS_REFRESH_MIN_AGE, true, ACCEPT),
-        Arguments.of("age = maxStaleness - 1, held", true, MAX_STALENESS - 1, true, ACCEPT),
-        Arguments.of("age = maxStaleness, held", true, MAX_STALENESS, true, ACCEPT),
-        Arguments.of("age = maxStaleness + 1, held", true, MAX_STALENESS + 1, true, LOAD_STALE),
-        Arguments.of("age = maxStaleness, unknown", true, MAX_STALENESS, false, LOAD_UNKNOWN_TOKEN),
-        Arguments.of("age = maxStaleness + 1, unknown", true, MAX_STALENESS + 1, false, LOAD_STALE),
-        Arguments.of("far past the bound, held", true, 60L * MAX_STALENESS, true, LOAD_STALE));
+            "age = minAge, unknown",
+            true,
+            MISS_REFRESH_MIN_AGE,
+            MISS_REFRESH_MIN_AGE,
+            false,
+            LOAD_UNKNOWN_TOKEN),
+        Arguments.of(
+            "age = minAge + 1, unknown",
+            true,
+            MISS_REFRESH_MIN_AGE + 1,
+            MISS_REFRESH_MIN_AGE + 1,
+            false,
+            LOAD_UNKNOWN_TOKEN),
+        Arguments.of(
+            "age = minAge, held", true, MISS_REFRESH_MIN_AGE, MISS_REFRESH_MIN_AGE, true, ACCEPT),
+        Arguments.of(
+            "age = maxStaleness - 1, held",
+            true,
+            MAX_STALENESS - 1,
+            MAX_STALENESS - 1,
+            true,
+            ACCEPT),
+        Arguments.of("age = maxStaleness, held", true, MAX_STALENESS, MAX_STALENESS, true, ACCEPT),
+        Arguments.of(
+            "age = maxStaleness + 1, held",
+            true,
+            MAX_STALENESS + 1,
+            MAX_STALENESS + 1,
+            true,
+            LOAD_STALE),
+        Arguments.of(
+            "age = maxStaleness, unknown",
+            true,
+            MAX_STALENESS,
+            MAX_STALENESS,
+            false,
+            LOAD_UNKNOWN_TOKEN),
+        Arguments.of(
+            "age = maxStaleness + 1, unknown",
+            true,
+            MAX_STALENESS + 1,
+            MAX_STALENESS + 1,
+            false,
+            LOAD_STALE),
+        Arguments.of(
+            "far past the bound, held",
+            true,
+            60L * MAX_STALENESS,
+            60L * MAX_STALENESS,
+            true,
+            LOAD_STALE),
+        Arguments.of(
+            "reconfirmed now, full read at minAge - 1, unknown",
+            true,
+            0L,
+            MISS_REFRESH_MIN_AGE - 1,
+            false,
+            REJECT),
+        Arguments.of(
+            "reconfirmed now, full read at minAge, unknown",
+            true,
+            0L,
+            MISS_REFRESH_MIN_AGE,
+            false,
+            LOAD_UNKNOWN_TOKEN),
+        Arguments.of(
+            "reconfirmed now, full read at minAge + 1, unknown",
+            true,
+            0L,
+            MISS_REFRESH_MIN_AGE + 1,
+            false,
+            LOAD_UNKNOWN_TOKEN),
+        Arguments.of(
+            "reconfirmed now, full read long ago, held",
+            true,
+            0L,
+            60L * MAX_STALENESS,
+            true,
+            ACCEPT),
+        Arguments.of(
+            "reconfirmed at maxStaleness, full read long ago, held",
+            true,
+            MAX_STALENESS,
+            60L * MAX_STALENESS,
+            true,
+            ACCEPT),
+        Arguments.of(
+            "reconfirmed past maxStaleness, full read long ago, unknown",
+            true,
+            MAX_STALENESS + 1,
+            60L * MAX_STALENESS,
+            false,
+            LOAD_STALE));
   }
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("decideRows")
   void decideFollowsTheTable(
-      String name, boolean present, long ageNanos, boolean held, CheckDecision expected) {
-    VerifiedCredentials entry = present ? ENTRY : null;
+      String name,
+      boolean present,
+      long ageNanos,
+      long fullReadAgeNanos,
+      boolean held,
+      CheckDecision expected) {
+    long now = STAMP + ageNanos;
+    VerifiedCredentials entry =
+        present ? new VerifiedCredentials(RECORD, STAMP, now - fullReadAgeNanos) : null;
 
-    assertEquals(
-        expected, CheckDecision.decide(entry, STAMP + ageNanos, held ? HELD : UNKNOWN, POLICY));
+    assertEquals(expected, CheckDecision.decide(entry, now, held ? HELD : UNKNOWN, POLICY));
   }
 
   /** Columns: age in ns, digest held, expected decision. */

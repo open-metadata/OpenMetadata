@@ -207,6 +207,21 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void tokenCreatedRightAfterAReconfirmationIsAcceptedOnFirstUse() {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(DEFAULTS);
+    assertAccepted(ALICE, TOKEN_A);
+    sweepAfterInterval();
+
+    source.addPat(ALICE, TOKEN_B);
+    ticker.advanceNanos(100 * MILLISECOND);
+
+    assertAccepted(ALICE, TOKEN_B);
+    assertEquals(2, source.fullReads());
+    assertEquals(1.0, counter("om.credential.reads", "reason", "unknown_token", "outcome", "ok"));
+  }
+
+  @Test
   void unknownTokenReloadsAreRateLimited() {
     source.withPats(ALICE, TOKEN_A);
     verifier(DEFAULTS);

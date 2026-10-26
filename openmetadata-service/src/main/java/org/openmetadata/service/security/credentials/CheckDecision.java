@@ -15,14 +15,16 @@ package org.openmetadata.service.security.credentials;
 
 /**
  * The hot-path policy as a pure function of (entry, now, digest, policy): no clock, no I/O, no
- * cache access. {@link CredentialVerifier} gathers the inputs and acts on the answer.
+ * cache access. {@link CredentialVerifier} gathers the inputs and acts on the answer. Staleness is
+ * the age of the trust stamp, which reconfirmations move; the unknown-token window is the age of
+ * the last full read, which only a full read moves.
  *
  * <pre>
- * entry == null               -> LOAD_MISSING
- * age > maxStaleness          -> LOAD_STALE
- * entry holds digest          -> ACCEPT
- * age >= missRefreshMinAge    -> LOAD_UNKNOWN_TOKEN
- * otherwise                   -> REJECT
+ * entry == null                     -> LOAD_MISSING
+ * age > maxStaleness                -> LOAD_STALE
+ * entry holds digest                -> ACCEPT
+ * fullReadAge >= missRefreshMinAge  -> LOAD_UNKNOWN_TOKEN
+ * otherwise                         -> REJECT
  * </pre>
  */
 enum CheckDecision {
@@ -33,9 +35,10 @@ enum CheckDecision {
   /** The entry is older than maxStaleness; trusting it would break the bound. */
   LOAD_STALE,
   /**
-   * A fresh entry lacks the digest and is at least missRefreshMinAge old: the token may have been
-   * created on a peer after this server's last read. The age floor caps these reloads at about one
-   * per missRefreshMinAge per subject, so retries of a revoked token cannot become database load.
+   * A fresh entry lacks the digest and its last full read is at least missRefreshMinAge old: the
+   * token may have been created on a peer after this server last read the subject. The age floor
+   * caps these reloads at about one per missRefreshMinAge per subject, because every reload is a
+   * full read, so retries of a revoked token cannot become database load.
    */
   LOAD_UNKNOWN_TOKEN;
 
@@ -55,7 +58,11 @@ enum CheckDecision {
       VerifiedCredentials entry, long nowNanos, TokenDigest digest, Policy policy) {
     return entry == null
         ? LOAD_MISSING
-        : decideOn(entry.ageNanos(nowNanos), entry.record().holds(digest), policy);
+        : decideOn(
+            entry.ageNanos(nowNanos),
+            entry.fullReadAgeNanos(nowNanos),
+            entry.record().holds(digest),
+            policy);
   }
 
   /**
@@ -74,14 +81,15 @@ enum CheckDecision {
     return decision;
   }
 
-  private static CheckDecision decideOn(long ageNanos, boolean holdsDigest, Policy policy) {
+  private static CheckDecision decideOn(
+      long ageNanos, long fullReadAgeNanos, boolean holdsDigest, Policy policy) {
     CheckDecision decision;
     if (ageNanos > policy.maxStalenessNanos()) {
       decision = LOAD_STALE;
     } else if (holdsDigest) {
       decision = ACCEPT;
     } else {
-      decision = ageNanos >= policy.missRefreshMinAgeNanos() ? LOAD_UNKNOWN_TOKEN : REJECT;
+      decision = fullReadAgeNanos >= policy.missRefreshMinAgeNanos() ? LOAD_UNKNOWN_TOKEN : REJECT;
     }
     return decision;
   }
