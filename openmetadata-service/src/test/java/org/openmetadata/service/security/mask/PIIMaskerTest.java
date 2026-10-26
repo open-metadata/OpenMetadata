@@ -249,6 +249,61 @@ class PIIMaskerTest {
   }
 
   @Test
+  void searchIndexSampleDataMasksTheWholeOpaqueMessageList() {
+    SearchIndex searchIndex = searchIndexWithMessages(List.of(piiTag()), null);
+
+    assertSame(searchIndex, PIIMasker.getSampleData(searchIndex));
+    assertEquals(List.of(PIIMasker.MASKED_VALUE), searchIndex.getSampleData().getMessages());
+  }
+
+  @Test
+  void searchIndexSampleDataFindsSensitiveDescendantsAfterPlainSiblings() {
+    SearchIndexField leaf = searchIndexField("email", true, null);
+    SearchIndexField details = searchIndexField("details", false, List.of(leaf)).withTags(null);
+    SearchIndexField contact =
+        searchIndexField("contact", false, List.of(searchIndexField("city", false, null), details));
+    SearchIndex searchIndex =
+        searchIndexWithMessages(
+            List.of(),
+            List.of(
+                searchIndexField("publicId", false, null).withTags(null),
+                searchIndexField("payload", false, List.of(contact)).withTags(null)));
+
+    PIIMasker.getSampleData(searchIndex);
+
+    assertEquals(List.of(PIIMasker.MASKED_VALUE), searchIndex.getSampleData().getMessages());
+  }
+
+  @Test
+  void searchIndexSampleDataRetainsNonSensitiveTreesAndMissingFields() {
+    List<String> messages = searchIndexWithMessages(List.of(), null).getSampleData().getMessages();
+    SearchIndexField plain =
+        searchIndexField("payload", false, List.of(searchIndexField("email", false, null)))
+            .withTags(List.of(new TagLabel().withTagFQN("PII.NonSensitive")));
+    SearchIndex searchIndex = searchIndexWithMessages(List.of(), List.of(plain));
+
+    assertEquals(messages, PIIMasker.getSampleData(searchIndex).getSampleData().getMessages());
+    searchIndex.setFields(null);
+    assertEquals(messages, PIIMasker.getSampleData(searchIndex).getSampleData().getMessages());
+    searchIndex.setSampleData(null);
+    assertSame(searchIndex, PIIMasker.getSampleData(searchIndex));
+    assertNull(searchIndex.getSampleData());
+  }
+
+  private static SearchIndex searchIndexWithMessages(
+      List<TagLabel> tags, List<SearchIndexField> fields) {
+    return new SearchIndex()
+        .withTags(tags)
+        .withFields(fields)
+        .withSampleData(
+            new SearchIndexSampleData()
+                .withMessages(
+                    List.of(
+                        "{\"publicId\":1,\"payload\":{\"contact\":{\"details\":{\"email\":\"secret-a\"}}}}",
+                        "opaque secret-b")));
+  }
+
+  @Test
   void tableAndColumnProfilesRespectPiiAuthorization() {
     String tableFqn = "service.db.schema.orders";
     String columnFqn = tableFqn + ".email";
