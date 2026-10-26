@@ -91,10 +91,12 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
 
   return (
     <div
-      className={classNames(
-        'items-center entity-label-container',
-        childrenCount > 0 ? 'with-footer' : ''
-      )}>
+      className={classNames('items-center entity-label-container', {
+        'with-footer': childrenCount > 0,
+        // Temp nodes have no breadcrumb or footer to fill the bottom of the
+        // leaf layout's top-weighted padding, so centre the name instead.
+        'tw:flex tw:items-center tw:py-3!': node.isTempTable,
+      })}>
       <div className="d-flex items-center flex-auto">
         {!node.isTempTable && (
           <div className="d-flex entity-service-icon m-r-xs">
