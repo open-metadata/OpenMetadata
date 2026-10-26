@@ -98,49 +98,60 @@ const WebSocketProvider: FC<Props> = ({ children }: Props) => {
   const [socket, setSocket] = useState<Socket>();
   const { currentUser } = useApplicationStore();
 
-  // Init websocket for Feed & notification
-  const initWebSocket = useCallback(async (): Promise<SocketDisposer> => {
-    const basePath = getBasePath();
-    const socketPath = basePath
-      ? `${basePath}${ROUTES.ACTIVITY_PUSH_FEED}`
-      : ROUTES.ACTIVITY_PUSH_FEED;
-    // Browsers cannot set headers on the WebSocket upgrade, so the token rides the handshake
-    // query — the filter validates it when the session cookie is absent (public-client SSO).
-    const token = await getOidcToken();
-    const newSocket = io({
-      path: socketPath,
-      reconnection: false,
-      query: {
-        token,
-        userId: currentUser?.id,
-      },
-      // Since we have load balancer in our application
-      // We need to enforce transports to be websocket only
-      // Refer: https://socket.io/docs/v3/using-multiple-nodes/
-      transports: ['websocket'],
-    });
-    const dispose = driveReconnects(newSocket);
-    setSocket(newSocket);
+  // Init websocket for Feed & notification. The token read is asynchronous, so a setup can be
+  // superseded (user change, unmount) while it waits; a superseded setup must not create a
+  // socket, or it would publish a dead one over the working one the newer setup already made.
+  const initWebSocket = useCallback(
+    async (
+      isSuperseded: () => boolean
+    ): Promise<SocketDisposer | undefined> => {
+      const basePath = getBasePath();
+      const socketPath = basePath
+        ? `${basePath}${ROUTES.ACTIVITY_PUSH_FEED}`
+        : ROUTES.ACTIVITY_PUSH_FEED;
+      // Browsers cannot set headers on the WebSocket upgrade, so the token rides the handshake
+      // query — the filter validates it when the session cookie is absent (public-client SSO).
+      const token = await getOidcToken();
+      if (isSuperseded()) {
+        return undefined;
+      }
+      const newSocket = io({
+        path: socketPath,
+        reconnection: false,
+        query: {
+          token,
+          userId: currentUser?.id,
+        },
+        // Since we have load balancer in our application
+        // We need to enforce transports to be websocket only
+        // Refer: https://socket.io/docs/v3/using-multiple-nodes/
+        transports: ['websocket'],
+      });
+      const dispose = driveReconnects(newSocket);
+      setSocket(newSocket);
 
-    return dispose;
-  }, [currentUser]);
+      return dispose;
+    },
+    [currentUser]
+  );
 
   useEffect(() => {
     if (!currentUser?.id) {
       return;
     }
     let dispose: SocketDisposer | undefined;
-    let cancelled = false;
-    void initWebSocket().then((disposer) => {
-      if (cancelled) {
-        disposer();
+    let superseded = false;
+    void initWebSocket(() => superseded).then((disposer) => {
+      // The cleanup can run between the socket's creation and this callback.
+      if (superseded) {
+        disposer?.();
       } else {
         dispose = disposer;
       }
     });
 
     return () => {
-      cancelled = true;
+      superseded = true;
       dispose?.();
     };
   }, [currentUser, initWebSocket]);

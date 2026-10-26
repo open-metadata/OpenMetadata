@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { act, render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { io } from 'socket.io-client';
 import { getOidcToken } from '../../utils/SwTokenStorageUtils';
-import WebSocketProvider from './WebSocketProvider';
+import WebSocketProvider, { useWebSocketConnector } from './WebSocketProvider';
 
 jest.mock('socket.io-client', () => ({
   io: jest.fn(),
@@ -24,10 +24,12 @@ jest.mock('../../utils/SwTokenStorageUtils', () => ({
   getOidcToken: jest.fn(),
 }));
 
+let mockCurrentUser: { id: string } | undefined = { id: 'user-1' };
+
 jest.mock('../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockReturnValue({
-    currentUser: { id: 'user-1' },
-  }),
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    currentUser: mockCurrentUser,
+  })),
 }));
 
 jest.mock('../../utils/HistoryUtils', () => ({
@@ -66,12 +68,20 @@ const flushPromises = async () => {
   });
 };
 
+// Surfaces which socket the provider currently publishes to its consumers.
+const PublishedSocketUser = () => {
+  const { socket } = useWebSocketConnector();
+
+  return <span data-testid="socket-user">{socket?.io.opts.query?.userId}</span>;
+};
+
 describe('WebSocketProvider', () => {
   let fake: ReturnType<typeof createFakeSocket>;
 
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    mockCurrentUser = { id: 'user-1' };
     fake = createFakeSocket();
     (io as jest.Mock).mockImplementation((options) => {
       fake.socket.io.opts.query = options.query;
@@ -190,6 +200,39 @@ describe('WebSocketProvider', () => {
       expect(fake.socket.connect).not.toHaveBeenCalled();
     }
   );
+
+  it('never publishes a socket for a setup superseded while its token read was pending', async () => {
+    let resolveFirstToken: ((token: string) => void) | undefined;
+    (getOidcToken as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveFirstToken = resolve;
+        })
+    );
+    const view = render(
+      <WebSocketProvider>
+        <PublishedSocketUser />
+      </WebSocketProvider>
+    );
+
+    mockCurrentUser = { id: 'user-2' };
+    view.rerender(
+      <WebSocketProvider>
+        <PublishedSocketUser />
+      </WebSocketProvider>
+    );
+    await waitFor(() => expect(io).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByTestId('socket-user')).toHaveTextContent('user-2');
+
+    resolveFirstToken?.('late-token');
+    await flushPromises();
+    await flushPromises();
+
+    expect(io).toHaveBeenCalledTimes(1);
+    expect(fake.socket.disconnect).not.toHaveBeenCalled();
+    expect(screen.getByTestId('socket-user')).toHaveTextContent('user-2');
+  });
 
   it('closes the socket and drops pending reconnects on unmount', async () => {
     const { unmount } = await renderProvider();
