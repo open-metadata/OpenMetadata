@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-25T03:28:13Z",
+  "generatedAt": "2026-10-26T03:34:29Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "38842001693",
-      "sourceSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
-      "recordedAt": "2026-10-16T03:43:04Z"
-    },
     {
       "runId": "38996045093",
       "sourceSha": "b68f1d73b530ff98e65eeee5474df0b536cf8711",
@@ -53,6 +48,11 @@
       "runId": "40155676742",
       "sourceSha": "f862ad021059f748ac55880ffa495166c1836498",
       "recordedAt": "2026-10-25T03:28:13Z"
+    },
+    {
+      "runId": "40261121182",
+      "sourceSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "recordedAt": "2026-10-26T03:34:29Z"
     }
   ],
   "entries": {
@@ -79,7 +79,8 @@
     "Basic :: Pages/Lineage/LineageLargeResponse.spec.ts :: Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges": {
       "observations": [
         "40055442895",
-        "40155676742"
+        "40155676742",
+        "40261121182"
       ],
       "project": "Basic",
       "file": "Pages/Lineage/LineageLargeResponse.spec.ts",
@@ -159,7 +160,8 @@
     },
     "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Quick link lifecycle validates, creates, edits, and deletes from card": {
       "observations": [
-        "40155676742"
+        "40155676742",
+        "40261121182"
       ],
       "project": "chromium",
       "file": "Features/ContextCenterArticles.spec.ts",
@@ -201,7 +203,8 @@
     },
     "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct exists under TestDomain": {
       "observations": [
-        "40155676742"
+        "40155676742",
+        "40261121182"
       ],
       "project": "chromium",
       "file": "Features/SampleDataDomainDataProduct.spec.ts",
@@ -211,7 +214,8 @@
     },
     "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct shows correct details and domain association": {
       "observations": [
-        "40155676742"
+        "40155676742",
+        "40261121182"
       ],
       "project": "chromium",
       "file": "Features/SampleDataDomainDataProduct.spec.ts",
@@ -221,7 +225,8 @@
     },
     "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion": {
       "observations": [
-        "40155676742"
+        "40155676742",
+        "40261121182"
       ],
       "project": "chromium",
       "file": "Features/SampleDataDomainDataProduct.spec.ts",
@@ -237,16 +242,6 @@
       "file": "Features/Table.spec.ts",
       "title": "Large Table Column Search & Copy Link \u203a Opening and closing a column detail panel on page 2 keeps the columns list on page 2",
       "lastSeenSha": "adb1d317f68e6e4c87e06ff6bc6fe3f6b9b55a47",
-      "hardFailure": false
-    },
-    "chromium :: Features/Tasks/TaskNavigation.spec.ts :: Task Navigation - Activity Feed Widget \u203a task link should contain correct entity FQN, not task ID": {
-      "observations": [
-        "38842001693"
-      ],
-      "project": "chromium",
-      "file": "Features/Tasks/TaskNavigation.spec.ts",
-      "title": "Task Navigation - Activity Feed Widget \u203a task link should contain correct entity FQN, not task ID",
-      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
       "hardFailure": false
     },
     "chromium :: Features/Topic.spec.ts :: Topic entity specific tests \u203a Copy nested field link should include full hierarchical path": {
@@ -281,7 +276,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Api Endpoint \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -292,7 +286,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Chart \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -303,7 +296,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Container \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -314,7 +306,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Dashboard Data Model \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -325,7 +316,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Dashboard \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -336,7 +326,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Directory \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -347,7 +336,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: File \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -358,7 +346,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Metric \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -369,7 +356,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Ml Model \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -380,7 +366,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Pipeline \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -391,7 +376,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Search Index \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -402,7 +386,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Spreadsheet \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -413,7 +396,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Stored Procedure \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -424,7 +406,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Table \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -435,7 +416,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Topic \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -446,7 +426,6 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Worksheet \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -477,7 +456,8 @@
     },
     "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service filter selection": {
       "observations": [
-        "40155676742"
+        "40155676742",
+        "40261121182"
       ],
       "project": "chromium",
       "file": "Pages/Lineage/LineageFilters.spec.ts",
@@ -487,7 +467,8 @@
     },
     "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service type filter selection": {
       "observations": [
-        "40155676742"
+        "40155676742",
+        "40261121182"
       ],
       "project": "chromium",
       "file": "Pages/Lineage/LineageFilters.spec.ts",
@@ -497,7 +478,8 @@
     },
     "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify downstream count for all the entities": {
       "observations": [
-        "40155676742"
+        "40155676742",
+        "40261121182"
       ],
       "project": "chromium",
       "file": "Pages/Lineage/LineageFilters.spec.ts",
@@ -507,7 +489,8 @@
     },
     "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify upstream count for all the entities": {
       "observations": [
-        "40155676742"
+        "40155676742",
+        "40261121182"
       ],
       "project": "chromium",
       "file": "Pages/Lineage/LineageFilters.spec.ts",
@@ -517,7 +500,8 @@
     },
     "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service filter selection": {
       "observations": [
-        "40155676742"
+        "40155676742",
+        "40261121182"
       ],
       "project": "chromium",
       "file": "Pages/Lineage/LineageFilters.spec.ts",
@@ -527,7 +511,8 @@
     },
     "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service type filter selection": {
       "observations": [
-        "40155676742"
+        "40155676742",
+        "40261121182"
       ],
       "project": "chromium",
       "file": "Pages/Lineage/LineageFilters.spec.ts",
@@ -537,7 +522,6 @@
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Api Service \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -548,7 +532,6 @@
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Dashboard Service \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -559,7 +542,6 @@
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Database Schema \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -570,7 +552,6 @@
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Database Service \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -581,7 +562,6 @@
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Database \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -602,7 +582,6 @@
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Drive Service \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -613,7 +592,6 @@
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Messaging Service \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -624,7 +602,6 @@
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Mlmodel Service \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -635,7 +612,6 @@
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Pipeline Service \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -646,7 +622,6 @@
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Search Index Service \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -657,7 +632,6 @@
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Storage Service \u203a Inactive Announcement create & delete": {
       "observations": [
-        "38842001693",
         "39534846171"
       ],
       "project": "chromium",
@@ -668,7 +642,8 @@
     },
     "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks clear provider address intent above weak high-signal description matches with stopwords": {
       "observations": [
-        "40155676742"
+        "40155676742",
+        "40261121182"
       ],
       "project": "search-nightly",
       "file": "Search/SearchRelevance.spec.ts",
@@ -678,7 +653,8 @@
     },
     "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks name and structural table matches before tier and usage description matches": {
       "observations": [
-        "40155676742"
+        "40155676742",
+        "40261121182"
       ],
       "project": "search-nightly",
       "file": "Search/SearchRelevance.spec.ts",
@@ -689,62 +665,32 @@
   },
   "stableIds": [
     "Basic :: Pages/Lineage/LineageLargeResponse.spec.ts :: Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges",
+    "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Quick link lifecycle validates, creates, edits, and deletes from card",
     "chromium :: Features/DataQuality/TestLibrary.spec.ts :: Test Library \u203a should display test platform badges correctly",
-    "chromium :: Pages/Entity.spec.ts :: Api Endpoint \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Chart \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Container \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Dashboard Data Model \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Dashboard \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Directory \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: File \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Metric \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Ml Model \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Pipeline \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Search Index \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Spreadsheet \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Stored Procedure \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Table \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Topic \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Worksheet \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Api Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Dashboard Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Database Schema \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Database Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Database \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Drive Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Messaging Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Mlmodel Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Pipeline Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Search Index Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Storage Service \u203a Inactive Announcement create & delete"
+    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct exists under TestDomain",
+    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct shows correct details and domain association",
+    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion",
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service filter selection",
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service type filter selection",
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify downstream count for all the entities",
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify upstream count for all the entities",
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service filter selection",
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service type filter selection",
+    "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks clear provider address intent above weak high-signal description matches with stopwords",
+    "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks name and structural table matches before tier and usage description matches"
   ],
   "hardFailureStableIds": [
-    "chromium :: Pages/Entity.spec.ts :: Api Endpoint \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Chart \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Container \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Dashboard Data Model \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Dashboard \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Directory \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: File \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Metric \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Ml Model \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Pipeline \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Search Index \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Spreadsheet \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Stored Procedure \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Table \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Topic \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/Entity.spec.ts :: Worksheet \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Api Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Dashboard Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Database Schema \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Database Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Database \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Drive Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Messaging Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Mlmodel Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Pipeline Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Search Index Service \u203a Inactive Announcement create & delete",
-    "chromium :: Pages/ServiceEntity.spec.ts :: Storage Service \u203a Inactive Announcement create & delete"
+    "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Quick link lifecycle validates, creates, edits, and deletes from card",
+    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct exists under TestDomain",
+    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct shows correct details and domain association",
+    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion",
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service filter selection",
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service type filter selection",
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify downstream count for all the entities",
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify upstream count for all the entities",
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service filter selection",
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service type filter selection",
+    "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks clear provider address intent above weak high-signal description matches with stopwords",
+    "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks name and structural table matches before tier and usage description matches"
   ]
 }
