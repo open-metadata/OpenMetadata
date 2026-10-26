@@ -137,6 +137,16 @@ const EntitySearchSettings = ({
   // Once per mount (the page remounts per entity): under StrictMode a second
   // response would reset a draft the user has already started editing.
   const hasLoadedRef = useRef(false);
+  // A load that resolves after the page is left (e.g. back into the boost form)
+  // must not clear the draft the form is now using.
+  const isMountedRef = useRef(false);
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   useEffect(() => {
     if (!entityType) {
       // A stale or mistyped link: back to the entity list.
@@ -159,7 +169,7 @@ const EntitySearchSettings = ({
     } else {
       // Kept until restored, so a failed load does not lose the draft.
       void fetchConfig().then((loaded) => {
-        if (loaded && 'draft' in resumed) {
+        if (loaded && isMountedRef.current && 'draft' in resumed) {
           setDraft(resumed.draft);
           setIsChanged(resumed.isChanged);
           onSaveState?.(undefined);

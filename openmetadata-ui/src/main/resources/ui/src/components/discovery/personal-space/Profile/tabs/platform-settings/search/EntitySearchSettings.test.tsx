@@ -321,6 +321,35 @@ describe('EntitySearchSettings', () => {
     expect(updateSettingsConfig).not.toHaveBeenCalled();
   });
 
+  it('keeps a returning draft when the page is left before the load resolves', async () => {
+    let resolveLoad!: (value: unknown) => void;
+    (getSettingsByType as jest.Mock).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveLoad = resolve;
+      })
+    );
+    const { unmount } = render(
+      <EntitySearchSettings
+        itemId="tables"
+        savedState={{
+          entity: 'tables',
+          draft: TABLE_CONFIG,
+          isChanged: true,
+          isReturning: true,
+        }}
+        onNavigate={onNavigate}
+        onSaveState={onSaveState}
+        onSetHeaderActions={onSetHeaderActions}
+      />
+    );
+    unmount();
+    await act(async () => {
+      resolveLoad(CONFIG);
+    });
+
+    expect(onSaveState).not.toHaveBeenCalled();
+  });
+
   it('keeps a returning draft when the settings fail to load', async () => {
     (getSettingsByType as jest.Mock).mockRejectedValueOnce(new Error('boom'));
     render(
