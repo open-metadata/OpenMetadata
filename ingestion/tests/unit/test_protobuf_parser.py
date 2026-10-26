@@ -386,3 +386,54 @@ def test_concurrent_parses_use_isolated_temporary_directories(tmp_path, monkeypa
 
     assert parsed_names == [f"field_{index}" for index in range(parser_count)]
     assert list(tmp_path.iterdir()) == []
+
+
+def test_parse_compiles_a_dependency_from_another_package(tmp_path):
+    parser = ProtobufParser(
+        ProtobufParserConfig(
+            schema_name="loan",
+            schema_text='syntax = "proto3";\npackage org.example.loans;\nimport "types/money.proto";\n'
+            "message Loan { org.example.money.Money amount = 1; }",
+            dependencies={
+                "types/money.proto": 'syntax = "proto3";\npackage org.example.money;\n'
+                "message Money { int64 units = 1; }"
+            },
+            base_file_path=str(tmp_path),
+        )
+    )
+
+    fields = parser.parse_protobuf_schema()
+
+    assert fields[0].name.root == "Loan"
+    assert [(child.name.root, child.dataType.name) for child in fields[0].children] == [("amount", "RECORD")]
+    assert [child.name.root for child in fields[0].children[0].children] == ["units"]
+
+
+def test_parse_compiles_a_dependency_named_like_the_schema_file(tmp_path):
+    parser = ProtobufParser(
+        ProtobufParserConfig(
+            schema_name="loan",
+            schema_text='syntax = "proto3";\nimport "schema.proto";\nmessage Loan { Money amount = 1; }',
+            dependencies={"schema.proto": 'syntax = "proto3";\nmessage Money { int64 units = 1; }'},
+            base_file_path=str(tmp_path),
+        )
+    )
+
+    fields = parser.parse_protobuf_schema()
+
+    assert fields[0].name.root == "Loan"
+    assert [child.name.root for child in fields[0].children[0].children] == ["units"]
+
+
+def test_dependency_cannot_leave_the_schema_directory(tmp_path):
+    parser = ProtobufParser(
+        ProtobufParserConfig(
+            schema_name="loan",
+            schema_text='syntax = "proto3";\nmessage Loan { string id = 1; }',
+            dependencies={"../escape.proto": 'syntax = "proto3";'},
+            base_file_path=str(tmp_path),
+        )
+    )
+
+    with pytest.raises(ValueError, match="Invalid Protobuf import name"):
+        parser.compile_file_descriptor()

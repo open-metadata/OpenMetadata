@@ -37,6 +37,7 @@ import {
   waitForGlossaryListRefetch,
 } from '../../utils/asyncDelete';
 import {
+  clickIgnoringToasts,
   clickOutside,
   getAuthContext,
   getRandomLastName,
@@ -1231,7 +1232,7 @@ test.describe('Glossary tests', () => {
       await createDescriptionTaskForGlossary(page, value, glossary1);
 
       const taskResolve = waitForTaskResolveResponse(page);
-      await page.getByTestId('approve-button').first().click();
+      await clickIgnoringToasts(page.getByTestId('approve-button').first());
       await taskResolve;
 
       await redirectToHomePage(page);
@@ -1274,7 +1275,7 @@ test.describe('Glossary tests', () => {
       await createDescriptionTaskForGlossary(page, value, glossaryTerm1, false);
 
       const taskResolve = waitForTaskResolveResponse(page);
-      await page.getByTestId('approve-button').first().click();
+      await clickIgnoringToasts(page.getByTestId('approve-button').first());
       await taskResolve;
 
       await redirectToHomePage(page);
@@ -1934,7 +1935,7 @@ test.describe('Glossary tests', () => {
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toHaveText(
+      ).toContainText(
         "You don't have necessary permissions. Please check with the admin to get the View Glossary permission."
       );
     } finally {
@@ -1968,8 +1969,8 @@ test.describe('Glossary tests', () => {
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toHaveText(
-        "You don't have necessary permissions. Please check with the admin to get the  permission."
+      ).toContainText(
+        "You don't have necessary permissions. Please check with the admin to get the Resource permission."
       );
     } finally {
       await consumerAfterAction();

@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
@@ -53,6 +54,7 @@ import org.flowable.engine.runtime.Execution;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.context.MemoryDerivation;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ReviewPolicy;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -75,6 +77,7 @@ import org.openmetadata.schema.type.TaskExternalReference;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.MemoryDerivations;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
@@ -169,7 +172,10 @@ public class CreateTask implements TaskListener {
       UUID workflowInstanceId = getWorkflowInstanceId(delegateTask);
 
       // Build workflow-specific payload for task types that need richer context.
-      Object payload = buildWorkflowPayload(taskType, inputNamespaces, varHandler);
+      Object payload =
+          AutomationProposals.decidesProposal(entityLink.getEntityType(), entity)
+              ? proposalPayload(entity)
+              : buildWorkflowPayload(taskType, inputNamespaces, varHandler);
 
       // Create or update the Task entity for the current workflow stage
       Task task =
@@ -1435,6 +1441,15 @@ public class CreateTask implements TaskListener {
       LOG.warn("Failed to build recognizer feedback payload for task: {}", e.getMessage());
       return null;
     }
+  }
+
+  // The request keeps memories by id only, so it may read the derivation of any memory. The payload
+  // stays a map: the workflow merges the term's pending changes into it and drops anything else.
+  private static Object proposalPayload(EntityInterface<?> term) {
+    List<MemoryDerivation> derivations =
+        new MemoryDerivations()
+            .find(Entity.GLOSSARY_TERM, List.of(term.getId()), UnaryOperator.identity());
+    return JsonUtils.getMap(AutomationProposals.payloadFor(term, derivations));
   }
 
   @JsonInclude(JsonInclude.Include.NON_NULL)

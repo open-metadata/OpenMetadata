@@ -38,7 +38,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EmptyAssetIcon } from '../../../../assets/svg/action-icons/empty-asset.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
@@ -96,11 +95,11 @@ import {
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   ManageMenu,
   ManageMenuItem,
 } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
-import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -895,29 +894,23 @@ const AssetsTabs = forwardRef(
 
     const assetErrorPlaceHolder = useMemo(() => {
       if (isObject(noDataPlaceholder) || searchValue) {
+        const searchMessage =
+          searchValue && type !== AssetsOfEntity.MY_DATA
+            ? t('label.no-matching-data-asset')
+            : undefined;
+
         return (
-          <ErrorPlaceHolderNew
-            className="p-lg "
-            icon={
-              <AddPlaceHolderIcon
-                className="text-grey-14"
-                height={140}
-                width={140}
-              />
-            }>
-            {searchValue && type !== AssetsOfEntity.MY_DATA && (
-              <div className="gap-4">
-                <Typography as="p">
-                  {t('label.no-matching-data-asset')}
-                </Typography>
-              </div>
-            )}
-            {isObject(noDataPlaceholder) && (
-              <div className="gap-4">
-                <Typography as="p">{noDataPlaceholder.message}</Typography>
-              </div>
-            )}
-          </ErrorPlaceHolderNew>
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoDataPlaceholder
+              data-testid="no-data-placeholder"
+              title={
+                searchMessage ??
+                (isObject(noDataPlaceholder)
+                  ? noDataPlaceholder.message
+                  : undefined)
+              }
+            />
+          </div>
         );
       } else {
         return (

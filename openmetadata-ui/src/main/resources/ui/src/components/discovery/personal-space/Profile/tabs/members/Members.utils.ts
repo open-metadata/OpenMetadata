@@ -21,16 +21,27 @@ import {
   User01,
   Users01,
 } from '@openmetadata/ui-core-components/icons';
+import { isEmpty, xor } from 'lodash';
 import type { FC, Key } from 'react';
-import { GlobalSettingOptions } from '../../../../../../constants/GlobalSettings.constants';
+import type { UIPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import type { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { userPermissions } from '../../../../../../utils/PermissionsUtils';
 import type {
   MembersView,
   OnlineStatusInfo,
   ParsedImportResult,
   TeamNode,
+  UserDetailTab,
 } from './Members.types';
+import {
+  TASKS_TAB,
+  TEAMS_ADD,
+  TEAMS_IMPORT,
+  TEAM_DETAIL,
+  USER_DETAIL,
+} from './membersRoute.utils';
 
 // DomainSelect hands back a single ref, an array, or undefined (cleared);
 // normalise to the array shape the Team PATCH expects.
@@ -42,6 +53,44 @@ export const toDomainArray = (
   }
 
   return next ? [next] : [];
+};
+
+// Team-inherited domains aren't the user's to edit: they stay out of the
+// picker and go back to the server untouched (an `{ id, type }` rebuild would
+// drop `inherited` and turn them into direct assignments).
+export const getDirectDomains = (domains?: EntityReference[]) =>
+  (domains ?? []).filter((domain) => !domain.inherited);
+
+// Whether `directIds` differs from the user's directly assigned domains.
+export const hasDirectDomainChanges = (
+  current: EntityReference[] | undefined,
+  directIds: string[]
+) =>
+  !isEmpty(
+    xor(
+      directIds,
+      getDirectDomains(current).map((domain) => domain.id)
+    )
+  );
+
+// The stored domain list with its direct part replaced by `directIds`;
+// unchanged when the direct ids are the same.
+export const mergeDomainEdits = (
+  current: EntityReference[] | undefined,
+  directIds: string[]
+): EntityReference[] | undefined => {
+  if (!hasDirectDomainChanges(current, directIds)) {
+    return current;
+  }
+  const direct = getDirectDomains(current);
+
+  return [
+    ...(current ?? []).filter((domain) => domain.inherited),
+    ...directIds.map(
+      (id) =>
+        direct.find((domain) => domain.id === id) ?? { id, type: 'domain' }
+    ),
+  ];
 };
 
 // Flatten the full team hierarchy (not just direct children) so nested teams —
@@ -91,149 +140,6 @@ export const toImportRows = (data: string[][]): ParsedImportResult => {
     }),
   };
 };
-
-// Route-segment values reuse the shared settings enum; the form-only suffixes
-// below have no enum equivalent.
-const { TEAMS, USERS, ADMINS, ONLINE_USERS } = GlobalSettingOptions;
-const ADD = 'add';
-const CREATE = 'create';
-const USER_CREATE = 'user-create';
-const IMPORT_TEAM = 'import-team';
-const IMPORT_USER = 'import-user';
-// View-type discriminants reused across the route parser and the header maps;
-// consts (not repeated literals) keep no-duplicate-string happy.
-const SECTION = 'section';
-const TEAM_DETAIL = 'team-detail';
-const TEAMS_ADD = 'teams-add';
-const TEAMS_IMPORT = 'teams-import';
-
-// A malformed percent-escape (e.g. a hand-edited `#...%ZZ`) makes
-// decodeURIComponent throw URIError, which would unmount the whole panel; fall
-// back to the raw value so a bad hash degrades gracefully instead of crashing.
-export const safeDecodeURIComponent = (value: string): string => {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-};
-
-// fqns are URL-encoded in the hash to survive the round-trip (they can contain
-// `%`, `.`, `/`); decode the fqn segments back here.
-// ponytail: a team literally named `add`/`import-team`/`import-user` collides with
-// the form-route suffixes and routes to the form instead of team-detail — tolerated
-// for now since those names are unusual; disambiguate with a sentinel if it bites.
-function parseTeamsSubPath(parts: string[]): MembersView {
-  if (parts.length === 1) {
-    return { type: 'teams' };
-  }
-
-  const last = parts[parts.length - 1];
-
-  if (last === ADD) {
-    // `teams/add` = top-level; `teams/<parentFqn>/add` = child under a parent.
-    const parentFqn =
-      parts.length === 2
-        ? undefined
-        : safeDecodeURIComponent(parts.slice(1, -1).join('/'));
-
-    return { type: TEAMS_ADD, parentFqn };
-  }
-
-  if (last === IMPORT_TEAM || last === IMPORT_USER) {
-    // `teams/<fqn>/import-team` or `.../import-user` — fqn is everything between.
-    return {
-      type: TEAMS_IMPORT,
-      fqn: safeDecodeURIComponent(parts.slice(1, -1).join('/')),
-      importType: last === IMPORT_USER ? 'users' : 'teams',
-    };
-  }
-
-  const fqn = safeDecodeURIComponent(parts.slice(1).join('/'));
-
-  return { type: TEAM_DETAIL, fqn, name: fqn };
-}
-
-// `section/<key>[/<subPath>]` — a contributed section owns everything below its
-// key, so the remainder is handed through untouched. Extracted (like
-// parseTeamsSubPath) to keep hashSubPathToView within the complexity budget.
-function parseSectionSubPath(parts: string[]): MembersView {
-  const [, key, ...rest] = parts;
-
-  return key
-    ? { type: SECTION, key, subPath: rest.join('/') || undefined }
-    : { type: 'landing' };
-}
-
-export function hashSubPathToView(subPath: string): MembersView {
-  if (!subPath) {
-    return { type: 'landing' };
-  }
-
-  const parts = subPath.split('/');
-
-  switch (parts[0]) {
-    case TEAMS:
-      return parseTeamsSubPath(parts);
-    case USERS:
-      return parts[1] === CREATE
-        ? { type: USER_CREATE, isAdmin: false }
-        : { type: 'users' };
-    case ADMINS:
-      return parts[1] === CREATE
-        ? { type: USER_CREATE, isAdmin: true }
-        : { type: 'admins' };
-    case ONLINE_USERS:
-      return { type: 'online-users' };
-    case SECTION:
-      return parseSectionSubPath(parts);
-    default:
-      return { type: 'landing' };
-  }
-}
-
-function teamsViewToSubPath(view: MembersView): string {
-  switch (view.type) {
-    case TEAM_DETAIL:
-      return `${TEAMS}/${encodeURIComponent(view.fqn)}`;
-    case TEAMS_ADD:
-      return view.parentFqn
-        ? `${TEAMS}/${encodeURIComponent(view.parentFqn)}/${ADD}`
-        : `${TEAMS}/${ADD}`;
-    case TEAMS_IMPORT:
-      return `${TEAMS}/${encodeURIComponent(view.fqn)}/${
-        view.importType === 'users' ? IMPORT_USER : IMPORT_TEAM
-      }`;
-    default:
-      return TEAMS;
-  }
-}
-
-export function viewToSubPath(view: MembersView): string | undefined {
-  if (view.type === 'landing') {
-    return undefined;
-  }
-  if (view.type === 'users') {
-    return USERS;
-  }
-  if (view.type === 'admins') {
-    return ADMINS;
-  }
-  if (view.type === 'online-users') {
-    return ONLINE_USERS;
-  }
-  if (view.type === USER_CREATE) {
-    return view.isAdmin ? `${ADMINS}/${CREATE}` : `${USERS}/${CREATE}`;
-  }
-  if (view.type === SECTION) {
-    return view.subPath
-      ? `${SECTION}/${view.key}/${view.subPath}`
-      : `${SECTION}/${view.key}`;
-  }
-
-  // teams, team-detail, teams-add, teams-import
-  return teamsViewToSubPath(view);
-}
 
 const MINUTES_IN_HOUR = 60;
 const MINUTES_IN_DAY = 1440;
@@ -317,6 +223,7 @@ export const getMembersIcons = (
   [TEAMS_ADD]: Users01,
   [TEAMS_IMPORT]: Users01,
   users: User01,
+  [USER_DETAIL]: User01,
   admins: ShieldTick,
   'user-create': createUserIsAdmin ? ShieldTick : User01,
   'online-users': Clock,
@@ -334,6 +241,8 @@ export const getMembersDescriptions = (
   [TEAMS_ADD]: t('message.members-teams-description'),
   [TEAMS_IMPORT]: t('message.members-teams-description'),
   users: t('message.members-users-description'),
+  // The user-detail header supplies its own `@username · email` line.
+  [USER_DETAIL]: '',
   admins: t('message.members-admins-description'),
   'user-create': createUserIsAdmin
     ? t('message.members-admins-description')
@@ -341,8 +250,31 @@ export const getMembersDescriptions = (
   'online-users': t('message.members-online-users-description'),
 });
 
+export const USER_DETAIL_BACK_TO_USERS = new Set<Key>([
+  'settings',
+  'members',
+  'users',
+]);
+
+// The fetched display name wins once known; until then the sub-path's raw FQN
+// stands in.
+const getTeamDetailName = (view: MembersView, resolvedName: string) =>
+  view.type === TEAM_DETAIL ? resolvedName || view.name : '';
+
 export const makeBreadcrumbAction =
-  (onNavigate: (view: MembersView) => void) => (id: Key) => {
+  (onNavigate: (view: MembersView) => void, view?: MembersView) =>
+  (id: Key) => {
+    // Inside a user's detail every ancestor up to Users returns to the users
+    // list, and the user/Tasks crumbs above a task return to that user's tasks.
+    if (view?.type === USER_DETAIL) {
+      if (USER_DETAIL_BACK_TO_USERS.has(id)) {
+        onNavigate({ type: 'users' });
+      } else if (id === 'user' || id === 'user-tasks') {
+        onNavigate({ type: USER_DETAIL, name: view.name, tab: TASKS_TAB });
+      }
+
+      return;
+    }
     if (id === 'members') {
       onNavigate({ type: 'landing' });
     } else if (id === 'teams') {
@@ -357,12 +289,37 @@ export const makeBreadcrumbAction =
 export const isTeamsOrDetailView = (view: MembersView): boolean =>
   view.type === 'teams' || view.type === TEAM_DETAIL || view.type === TEAMS_ADD;
 
+const userDetailName = (view: MembersView): string =>
+  view.type === USER_DETAIL ? view.name : '';
+
+// `<username>` — or, on a task page, `<username> › Tasks › TASK-…`, where the
+// first two crumbs lead back to the user's task list.
+const userDetailCrumbs = (
+  view: MembersView,
+  t: (key: string) => string
+): BreadcrumbItemType[] => {
+  if (view.type !== USER_DETAIL) {
+    return [];
+  }
+  if (!view.taskId) {
+    return [{ id: 'current', label: view.name }];
+  }
+
+  return [
+    { id: 'user', label: view.name },
+    { id: 'user-tasks', label: t('label.task-plural') },
+    { id: 'current', label: view.taskId },
+  ];
+};
+
 // Builds the per-view breadcrumb/title/icon/description maps for the members
 // header. Pure, so the header effect stays within its complexity budget.
 export const buildMembersHeaderMaps = (
   view: MembersView,
   t: (key: string, opts?: Record<string, unknown>) => string,
-  resolvedTeamName: string,
+  // Display name a detail view resolved after fetching (team or user); the
+  // sub-path alone only carries the FQN / username.
+  resolvedName: string,
   // A contributed section supplies its own label/description/icon (there is no
   // settings-menu entry to borrow them from), so the panel passes them in.
   section?: {
@@ -383,8 +340,7 @@ export const buildMembersHeaderMaps = (
   const importLabel = t('label.import-entity', {
     entity: importIsUser ? t('label.user') : t('label.team'),
   });
-  const teamName =
-    view.type === TEAM_DETAIL ? resolvedTeamName || view.name : '';
+  const teamName = getTeamDetailName(view, resolvedName);
 
   const settingsItem: BreadcrumbItemType = {
     id: 'settings',
@@ -415,6 +371,7 @@ export const buildMembersHeaderMaps = (
     [TEAMS_ADD]: [...base, teamsItem, { id: 'current', label: addTeamLabel }],
     [TEAMS_IMPORT]: [...base, teamsItem, { id: 'current', label: importLabel }],
     users: [...base, { id: 'current', label: usersLabel }],
+    [USER_DETAIL]: [...base, usersItem, ...userDetailCrumbs(view, t)],
     admins: [...base, { id: 'current', label: adminsLabel }],
     'user-create': [
       ...base,
@@ -432,6 +389,7 @@ export const buildMembersHeaderMaps = (
     [TEAMS_ADD]: addTeamLabel,
     [TEAMS_IMPORT]: importLabel,
     users: usersLabel,
+    [USER_DETAIL]: userDetailName(view),
     admins: adminsLabel,
     'user-create': createUserLabel,
     'online-users': onlineUsersLabel,
@@ -448,4 +406,100 @@ export const buildMembersHeaderMaps = (
       section?.description
     ),
   };
+};
+
+/**
+ * Tabs a viewer can't use on a user's detail. Bots follow nothing; another
+ * user's permission debug info is admin-only on the server (it would 403);
+ * custom properties need view access on that user.
+ */
+export const getHiddenUserDetailTabs = ({
+  isBot,
+  canViewAccess,
+  canViewCustomProperties,
+}: {
+  isBot?: boolean;
+  canViewAccess: boolean;
+  canViewCustomProperties: boolean;
+}): ReadonlySet<UserDetailTab> => {
+  const hidden = new Set<UserDetailTab>();
+  if (isBot) {
+    hidden.add('following');
+  }
+  if (!canViewAccess) {
+    hidden.add('access');
+  }
+  if (!canViewCustomProperties) {
+    hidden.add('custom-properties');
+  }
+
+  return hidden;
+};
+
+/**
+ * What a viewer may open under Members, as in the classic settings menu: Teams
+ * needs view on teams, Users and Admins need view on users, Online users is
+ * admin-only. Admins see everything.
+ */
+export interface MembersAccess {
+  teams: boolean;
+  users: boolean;
+  onlineUsers: boolean;
+}
+
+export const getMembersAccess = (
+  permissions: UIPermission,
+  isAdmin: boolean
+): MembersAccess => ({
+  teams:
+    isAdmin ||
+    Boolean(
+      userPermissions.hasViewPermissions(ResourceEntity.TEAM, permissions)
+    ),
+  users:
+    isAdmin ||
+    Boolean(
+      userPermissions.hasViewPermissions(ResourceEntity.USER, permissions)
+    ),
+  onlineUsers: isAdmin,
+});
+
+export const canOpenMembers = (access: MembersAccess): boolean =>
+  access.teams || access.users;
+
+const CARD_ACCESS: Record<string, keyof MembersAccess> = {
+  teams: 'teams',
+  users: 'users',
+  admins: 'users',
+  'online-users': 'onlineUsers',
+};
+
+/** Landing cards; contributed sections carry their own checks. */
+export const isMembersCardAllowed = (
+  cardId: string,
+  access: MembersAccess
+): boolean => {
+  const key = CARD_ACCESS[cardId];
+
+  return key ? access[key] : true;
+};
+
+const VIEW_ACCESS: Partial<Record<MembersView['type'], keyof MembersAccess>> = {
+  teams: 'teams',
+  'team-detail': 'teams',
+  'teams-add': 'teams',
+  users: 'users',
+  admins: 'users',
+  'user-detail': 'users',
+  'online-users': 'onlineUsers',
+};
+
+/** Guards a deep-linked view the landing would not have offered. */
+export const isMembersViewAllowed = (
+  view: MembersView,
+  access: MembersAccess
+): boolean => {
+  const key = VIEW_ACCESS[view.type];
+
+  return key ? access[key] : true;
 };

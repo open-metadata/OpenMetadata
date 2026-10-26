@@ -163,6 +163,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.Getter;
@@ -194,10 +195,14 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateItemResult;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ChangeSummaryMap;
@@ -276,10 +281,15 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.PatchRequester;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.policyevaluator.UpdatedDomainsResourceContext;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
@@ -343,7 +353,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * deadlock window so a large ingestion batch can't pin one connection for thousands of rows.
    * Atomicity is per-chunk, which is far better than today's per-DAO-call autocommit.
    */
-  private static final int BULK_CREATE_TXN_CHUNK_SIZE = 100;
+  static final int BULK_CREATE_TXN_CHUNK_SIZE = 100;
 
   /**
    * Max entities hydrated + purged per chunk in {@link #bulkHardDeleteSubtree(List, String)}. The
@@ -1162,6 +1172,28 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
+   * The descriptors of an entity that other documents hold in a reference list (domains[],
+   * dataProducts[]) rather than under a field named after its type, where the nested display-name
+   * script would fail. SearchRepository relabels those copies by id, so the name and the display
+   * name only have to open the propagation pass.
+   */
+  protected static List<PropagationDescriptor> relabeledByReference(
+      List<PropagationDescriptor> descriptors) {
+    List<PropagationDescriptor> relabeled =
+        new ArrayList<>(
+            descriptors.stream()
+                .filter(descriptor -> !FIELD_DISPLAY_NAME.equals(descriptor.fieldName()))
+                .toList());
+    relabeled.add(
+        new PropagationDescriptor(
+            Entity.FIELD_NAME, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
+    relabeled.add(
+        new PropagationDescriptor(
+            FIELD_DISPLAY_NAME, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
+    return relabeled;
+  }
+
+  /**
    * Determine whether parent traversal is required for inheritance based on requested fields and
    * whether the entity already has local values.
    */
@@ -1311,6 +1343,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (entities.isEmpty()) return;
     if (fields.contains(FIELD_OWNERS)) fetchAndSetOwners(entities, fields);
     fetchAndSetDomains(entities, fields);
+    // Reviewers are relationships too, so a listed glossary term would otherwise inherit none of
+    // its glossary's while a single read of the same term inherits them all.
+    fetchAndSetReviewers(entities, fields);
     // An ancestor loaded for inheritance comes from find(), which reads the entity JSON only --
     // tags live in tag_usage and so arrive null. Leaving them that way makes each hop contribute
     // nothing but what it inherited in turn, and a tag set on a service never reaches a table.
@@ -1574,8 +1609,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   private void validateEntityStatusChange(T current, T change, String from, String to) {
     requireMoveInLifecycle(from, to);
     checkEntityStatusNotOwnedByWorkflow(current, change);
-    // A workflow's approval task already decided who may approve (reviewers, owners or named
-    // candidates), so the reviewer rule only guards direct edits and imports.
+    checkReviewerLeavesReview(current, change, from, to);
+    checkStageDecision(current, change, from, to);
+  }
+
+  /**
+   * Entity-specific rules on who may make a stage move. Unlike the ownership rule above, they also
+   * apply to a workflow's own writes, which act for the user a workflow variable names.
+   */
+  protected void checkStageDecision(T current, T change, String from, String to) {}
+
+  // A workflow's approval task already decided who may approve (reviewers, owners or named
+  // candidates), so the reviewer rule only guards direct edits and imports.
+  private void checkReviewerLeavesReview(T current, T change, String from, String to) {
     if (EntityStatus.IN_REVIEW.value().equals(from)
         && (EntityStatus.APPROVED.value().equals(to) || EntityStatus.REJECTED.value().equals(to))
         && !EntityStatusWorkflows.isWorkflowChange(change)) {
@@ -3370,11 +3416,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return decodedCursor;
   }
 
+  /** Returns newly created entities, skipping conflicts and rejecting validation errors. */
   public final List<T> createMany(UriInfo uriInfo, List<T> entities) {
-    for (T e : entities) {
-      prepareInternal(e, false);
-    }
-    return createManyEntities(entities);
+    final BulkCreateResult result =
+        new BulkEntityCreator<>(
+                this, this::createManyEntities, BulkCreateConflictPolicy.SKIP, false)
+            .create(entities, Function.identity());
+    return result.getResults().stream()
+        .filter(item -> item.getStatus() == BulkCreateItemResult.Status.CREATED)
+        .map(item -> entities.get(item.getIndex()))
+        .toList();
+  }
+
+  /** Applies the conflict policy per input; valid non-conflicting inputs continue. */
+  public final <C> BulkCreateResult createMany(
+      List<C> requests, Function<C, T> mapper, BulkCreateConflictPolicy onConflict) {
+    return new BulkEntityCreator<>(this, this::createManyEntities, onConflict, true)
+        .create(requests, mapper);
   }
 
   public final T create(UriInfo uriInfo, T entity) {
@@ -3806,6 +3864,30 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     LOG.debug(
         "Post-rename-write re-invalidated cache for {} descendants: type={}",
         affected.size(),
+        entityType);
+  }
+
+  /**
+   * A rename or move rewrites every descendant's FQN in the database without running their
+   * updaters, so their search documents still carry the old FQN. Rebuild them from the renamed
+   * rows once the transaction commits. Matching by the ids captured before the rewrite stays
+   * boundary-safe, unlike a prefix rewrite over the raw FQN. If the rebuild fails, the retry is
+   * filed under the renamed entity, whose retry re-indexes its contained descendants.
+   */
+  protected final void reindexRenamedDescendants(
+      String descendantType, List<EntityDAO.EntityIdFqnPair> descendants, String newFqn) {
+    if (nullOrEmpty(descendants)) {
+      return;
+    }
+    List<EntityReference> references =
+        descendants.stream()
+            .map(descendant -> new EntityReference().withId(descendant.id).withType(descendantType))
+            .toList();
+    searchRepository.deferIfFlushScopeActive(
+        () -> searchRepository.updateEntitiesByReference(references),
+        "reindexRenamedDescendants",
+        null,
+        newFqn,
         entityType);
   }
 
@@ -4457,6 +4539,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     // 1. Batch lock manager check
     checkModificationsAllowed(updates);
+    // The import records its author as impersonatedBy too; it carries no bot impersonation.
+    authorizeImportedDomains(originals, updates, ChangeActor.recorded(updatedBy, null));
 
     List<T> updatedEntities = new ArrayList<>();
     for (int i = 0; i < originals.size(); i++) {
@@ -4613,6 +4697,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     RdfUpdater.updateEntity(updated);
     closeApprovalTaskOnEntityStatusChange(original, updated);
+    invalidateListCountsOnStageChange(original, updated);
+  }
+
+  // Listing totals are cached per filter and dropped only on create or delete, but a stage change
+  // moves the entity between stage-filtered listings, such as a glossary's terms awaiting review.
+  private void invalidateListCountsOnStageChange(T original, T updated) {
+    if (supportsEntityStatus
+        && !Objects.equals(
+            entityLifecycle.adapter().read(original), entityLifecycle.adapter().read(updated))) {
+      ListCountCache.invalidate(entityType);
+    }
   }
 
   @SuppressWarnings("unused")
@@ -4693,7 +4788,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // A PUT body carries a fresh id; the stored asset keeps its own, as EntityUpdater applies it.
     updated.setId(original.getId());
     Optional<StagedChange> staged =
-        ApprovalGate.admit(original, updated, updatedBy, impersonatedBy, Edit.put());
+        admit(original, updated, ChangeActor.recorded(updatedBy, impersonatedBy), Edit.put());
     return staged
         .map(change -> stagedPutResponse(uriInfo, original, change))
         .orElseGet(
@@ -4776,7 +4871,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // A PUT body carries a fresh id; the stored asset keeps its own, as EntityUpdater applies it.
     updated.setId(original.getId());
     Optional<StagedChange> staged =
-        ApprovalGate.admit(original, updated, updatedBy, impersonatedBy, Edit.importUpdate());
+        admit(
+            original,
+            updated,
+            ChangeActor.recorded(updatedBy, impersonatedBy),
+            Edit.importUpdate());
     return staged
         .map(change -> stagedPutResponse(uriInfo, original, change))
         .orElseGet(() -> putForImportAndStore(uriInfo, original, updated));
@@ -4836,7 +4935,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       ChangeSource changeSource,
       String ifMatchHeader,
       String impersonatedBy) {
-    Set<String> patchedFieldNames = JsonUtils.extractPatchedFields(patch);
+    return patch(
+        uriInfo,
+        id,
+        ChangeActor.recorded(user, impersonatedBy),
+        patch,
+        changeSource,
+        ifMatchHeader);
+  }
+
+  public final PatchResponse<T> patch(
+      final UriInfo uriInfo,
+      final UUID id,
+      final ChangeActor actor,
+      final JsonPatch patch,
+      final ChangeSource changeSource,
+      final String ifMatchHeader) {
+    final Set<String> patchedFieldNames = JsonUtils.extractPatchedFields(patch);
 
     // Get only the fields relevant to this patch operation
     T original;
@@ -4861,11 +4976,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         original,
         patch,
         patchedFieldNames,
-        user,
+        actor,
         uriInfo,
         changeSource,
         useOptimisticLocking,
-        impersonatedBy,
         null);
   }
 
@@ -4899,7 +5013,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       ChangeSource changeSource,
       String ifMatchHeader,
       String impersonatedBy) {
-    Set<String> patchedFieldNames = JsonUtils.extractPatchedFields(patch);
+    return patch(
+        uriInfo,
+        fqn,
+        ChangeActor.recorded(user, impersonatedBy),
+        patch,
+        changeSource,
+        ifMatchHeader);
+  }
+
+  public final PatchResponse<T> patch(
+      final UriInfo uriInfo,
+      final String fqn,
+      final ChangeActor actor,
+      final JsonPatch patch,
+      final ChangeSource changeSource,
+      final String ifMatchHeader) {
+    final Set<String> patchedFieldNames = JsonUtils.extractPatchedFields(patch);
 
     // Get only the fields relevant to this patch operation
     T original;
@@ -4924,11 +5054,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         original,
         patch,
         patchedFieldNames,
-        user,
+        actor,
         uriInfo,
         changeSource,
         useOptimisticLocking,
-        impersonatedBy,
         null);
   }
 
@@ -4936,15 +5065,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       T original,
       JsonPatch patch,
       Set<String> patchedFieldNames,
-      String user,
+      ChangeActor actor,
       UriInfo uriInfo,
       ChangeSource changeSource,
       boolean useOptimisticLocking,
-      String impersonatedBy,
       ApprovedApplication approval) {
-    T updated = preparePatched(original, patch, user, impersonatedBy);
+    T updated = preparePatched(original, patch, actor.userName(), actor.impersonatedBy());
     Optional<StagedChange> staged =
-        admitOrVerify(original, updated, user, impersonatedBy, approval, patchedFieldNames);
+        admitOrVerify(original, updated, actor, approval, patchedFieldNames);
     return staged
         .map(change -> stagedPatchResponse(uriInfo, original, change))
         .orElseGet(
@@ -4967,15 +5095,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   final PatchResponse<T> patch(T original, JsonPatch patch, ChangeActor actor) {
     return patchCommonWithOptimisticLocking(
-        original,
-        patch,
-        JsonUtils.extractPatchedFields(patch),
-        actor.userName(),
-        null,
-        null,
-        false,
-        actor.impersonatedBy(),
-        null);
+        original, patch, JsonUtils.extractPatchedFields(patch), actor, null, null, false, null);
   }
 
   /**
@@ -4984,7 +5104,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   public final Optional<StagedChange> previewPatch(UUID id, String user, JsonPatch patch) {
     T original = get(null, id, patchFields, NON_DELETED, false);
-    return previewPatch(original, patch, user);
+    return previewPatch(original, patch, ChangeActor.recorded(user, null));
   }
 
   /**
@@ -4992,12 +5112,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * the patch fields. It runs every check {@link #patch(EntityInterface, JsonPatch, ChangeActor)}
    * runs, and saves nothing.
    */
-  final Optional<StagedChange> previewPatch(T original, JsonPatch patch, String user) {
+  final Optional<StagedChange> previewPatch(T original, JsonPatch patch, ChangeActor actor) {
+    T updated = preparePatched(original, patch, actor.userName(), actor.impersonatedBy());
+    authorizeDomainWrite(original, updated, actor, Edit.Kind.PATCH);
     return ApprovalGate.preview(
-        original,
-        preparePatched(original, patch, user, null),
-        user,
-        Edit.patch(JsonUtils.extractPatchedFields(patch)));
+        original, updated, actor.userName(), Edit.patch(JsonUtils.extractPatchedFields(patch)));
   }
 
   /** Runs the preparation and validation a PATCH by {@code user} would, without storing anything. */
@@ -5051,15 +5170,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   private Optional<StagedChange> admitOrVerify(
       T original,
       T updated,
-      String user,
-      String impersonatedBy,
+      ChangeActor actor,
       ApprovedApplication approval,
       Set<String> patchedFieldNames) {
     Optional<StagedChange> staged = Optional.empty();
     if (approval == null) {
-      staged =
-          ApprovalGate.admit(
-              original, updated, user, impersonatedBy, Edit.patch(patchedFieldNames));
+      staged = admit(original, updated, actor, Edit.patch(patchedFieldNames));
     } else {
       ApprovalGate.verifyApproved(approval, original);
     }
@@ -5084,11 +5200,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             original,
             patch,
             JsonUtils.extractPatchedFields(patch),
-            approval.requestedBy(),
+            ChangeActor.recorded(approval.requestedBy(), null),
             null,
             null,
             false,
-            null,
             approval);
     createAndInsertChangeEvent(
         original,
@@ -5235,6 +5350,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     setFieldsInternal(originalEntity, new Fields(allowedFields, "votes"));
+    // The search update rewrites only the votes when the entity carries this change. Without it,
+    // the document would be rebuilt from this bare read, blanking owners, domains and tags, and the
+    // last stored change would be replayed to the children.
+    originalEntity.setIncrementalChangeDescription(change);
+    originalEntity.setChangeDescription(change);
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
@@ -6316,6 +6436,41 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /** Relationship fields a CSV import replaces with the row's values. */
   public Set<String> getRelationsReplacedByImport() {
     return Set.of(FIELD_TAGS, FIELD_OWNERS, FIELD_DOMAINS, FIELD_REVIEWERS, FIELD_DATA_PRODUCTS);
+  }
+
+  /**
+   * Relations an approval can hold that the entity's JSON does not carry, such as a data product's
+   * ports. A change request names them as list fields of the entity.
+   * ADR:2026-10-19-a-data-product-port-change-is-held-as-a-list-field-of-the-data-product
+   */
+  public Set<String> getStagedRelationFields() {
+    return Set.of();
+  }
+
+  /** Adds {@code fields}, relations of {@link #getStagedRelationFields()}, to the entity's JSON. */
+  public void addStagedRelations(
+      final ObjectNode entityJson, final UUID entityId, final Set<String> fields) {
+    // Entities without staged relations carry everything a change request names in their JSON.
+  }
+
+  /** Refuses, without saving anything, staged relation changes that can no longer be made. */
+  public void validateStagedRelations(final UUID entityId, final List<MutationOp> ops) {
+    throw new IllegalArgumentException(
+        "%s has no relations an approval can hold".formatted(entityType));
+  }
+
+  /**
+   * Publishes approved changes of staged relations, as {@code requestedBy} would have. {@code
+   * withFieldChanges}: the same approval has just published field changes, which the relation
+   * changes join in the entity's change description.
+   */
+  public void applyStagedRelations(
+      final UUID entityId,
+      final List<MutationOp> ops,
+      final String requestedBy,
+      final boolean withFieldChanges) {
+    throw new IllegalArgumentException(
+        "%s has no relations an approval can hold".formatted(entityType));
   }
 
   protected List<String> getFieldsStrippedFromStorageJson() {
@@ -8455,12 +8610,29 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       invalidateMany(changedEntities);
     }
     try (var ignored = phase(phasePrefix + "LifecycleDispatch")) {
+      hydrateForSearchIndex(changedEntities);
       EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(changedEntities, null, null);
     }
     // Cascade children of a recursive delete/restore intentionally do NOT emit per-entity change
     // events. A single change event is recorded for the user-targeted root entity (see the delete
     // and restore paths in EntityResource). This keeps deleting a service with 100k descendants to
     // one audit-log entry and avoids 100k change_event inserts on the delete hot path.
+  }
+
+  /**
+   * The search handler indexes the dispatched entities as they are, and a bulk updater loads only
+   * what a PUT touches. Without the rest of what their documents carry (followers, votes, the owners
+   * and domains a descendant inherits), the rewrite would blank those fields.
+   */
+  private void hydrateForSearchIndex(List<T> entities) {
+    if (!supportsSearch || searchRepository == null) {
+      return;
+    }
+    setFieldsInBulk(
+        getOnlySupportedFields(
+            String.join(
+                ",", searchRepository.getSearchIndexFactory().getReindexFieldsFor(entityType))),
+        entities);
   }
 
   private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
@@ -9447,6 +9619,188 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return refs;
   }
 
+  /**
+   * The own domains an update leaves on {@code original}, or null when it keeps the stored ones:
+   * only a PATCH clears them by sending none, and a bot's PUT never replaces a non-empty
+   * assignment. The updater stores domains by this rule, and a domain move is authorized against
+   * it.
+   */
+  protected List<EntityReference> writtenDomains(
+      final T original, final T updated, final Operation operation, final boolean byBot) {
+    final List<EntityReference> sent = EntityUpdater.getEntityReferences(updated.getDomains());
+    final boolean keepsStored =
+        (!operation.isPatch() && sent.isEmpty())
+            || (operation.isPut() && byBot && !nullOrEmpty(original.getDomains()));
+    return keepsStored ? null : sent;
+  }
+
+  /** The user a write records as its author; {@code admin} is the system, an unknown name a user. */
+  protected static User authorOf(final String userName) {
+    final User author =
+        userName.equalsIgnoreCase(ADMIN_USER_NAME)
+            ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
+            : findEntityByNameOrNull(USER, userName, ALL);
+    return author == null ? new User().withName(userName).withIsAdmin(false) : author;
+  }
+
+  /**
+   * Refuses a write that moves {@code original} into domains its author may not move it into:
+   * EditDomains, evaluated on the entity as the write leaves it. Every way of writing an entity
+   * calls this before the write is stored or held for approval. A system write is not checked.
+   */
+  private void authorizeDomainWrite(
+      final T original, final T updated, final ChangeActor actor, final Edit.Kind kind) {
+    final List<EntityReference> written =
+        checksDomainsWrittenBy(actor) ? domainsWrittenBy(original, updated, actor, kind) : null;
+    final List<List<EntityReference>> targets =
+        written == null
+            ? List.of()
+            : moveTargets(EntityUpdater.getEntityReferences(original.getDomains()), written);
+    if (!targets.isEmpty()) {
+      authorizeDomains(original, targets, actor);
+    }
+  }
+
+  /**
+   * The domain lists a write is authorized against, given the entity's own domains and the ones the
+   * write leaves. Each domain the write adds is a target of its own, because hasDomain() passes when
+   * any domain matches. A write that only removes domains is authorized against the domains it
+   * leaves, and one that keeps them needs no check. See
+   * ADR:2026-10-21-domain-moves-are-authorized-in-the-write-pipeline.
+   */
+  static List<List<EntityReference>> moveTargets(
+      final List<EntityReference> ownDomains, final List<EntityReference> written) {
+    final Set<UUID> storedIds = domainIds(ownDomains);
+    final List<List<EntityReference>> added =
+        written.stream()
+            .filter(domain -> !storedIds.contains(domain.getId()))
+            .map(List::of)
+            .toList();
+    final boolean removesOnly = added.isEmpty() && !storedIds.equals(domainIds(written));
+    return removesOnly ? List.of(written) : added;
+  }
+
+  private boolean checksDomainsWrittenBy(final ChangeActor actor) {
+    return authorDecidesDomains() && !actor.system();
+  }
+
+  /**
+   * Whether the author of a write decides this entity's domains. A repository whose entities take
+   * them from another entity on every write returns false, so following that entity into a new
+   * domain is never authorized as the author's move.
+   */
+  protected boolean authorDecidesDomains() {
+    return supportsDomains;
+  }
+
+  private List<EntityReference> domainsWrittenBy(
+      final T original, final T updated, final ChangeActor actor, final Edit.Kind kind) {
+    return switch (kind) {
+      case PATCH -> writtenDomains(original, updated, Operation.PATCH, false);
+      case PUT -> writtenDomains(
+          original,
+          updated,
+          Operation.PUT,
+          Boolean.TRUE.equals(authorOf(actor.userName()).getIsBot()));
+      case IMPORT_UPDATE, IMPORT_ROW -> EntityUpdater.getEntityReferences(updated.getDomains());
+    };
+  }
+
+  private static Set<UUID> domainIds(final List<EntityReference> domains) {
+    return domains.stream().map(EntityReference::getId).collect(Collectors.toSet());
+  }
+
+  // A user's write is never let through unchecked: without an authorizer it is refused.
+  private void authorizeDomains(
+      final T original, final List<List<EntityReference>> targets, final ChangeActor actor) {
+    final Authorizer authorizer = Entity.getAuthorizer();
+    if (authorizer == null) {
+      throw new IllegalStateException(
+          "No authorizer is registered to check the domain change by " + actor.userName());
+    }
+    // Loaded by id as a request is authorized: a PUT or bulk original carries no inherited owners,
+    // so an owner through the parent would not be seen.
+    final ResourceContextInterface stored =
+        new ResourceContext<>(entityType, original.getId(), null, ALL);
+    for (final List<EntityReference> target : targets) {
+      authorizeMove(authorizer, actor, stored, target);
+    }
+  }
+
+  private void authorizeMove(
+      final Authorizer authorizer,
+      final ChangeActor actor,
+      final ResourceContextInterface stored,
+      final List<EntityReference> target) {
+    final OperationContext editDomains =
+        new OperationContext(entityType, MetadataOperation.EDIT_DOMAINS);
+    try {
+      authorizer.authorizeActor(
+          actor, editDomains, new UpdatedDomainsResourceContext(stored, target));
+    } catch (AuthorizationException e) {
+      throw new AuthorizationException(
+          CatalogExceptionMessage.domainPermissionNotAllowed(
+              actor.userName(), target, List.of(MetadataOperation.EDIT_DOMAINS)),
+          e);
+    }
+  }
+
+  /**
+   * Admits a write of {@code original}, loaded with the fields policies read: its domain move is
+   * authorized, then an approval workflow may hold it.
+   */
+  public final Optional<StagedChange> admit(
+      final T original, final T updated, final ChangeActor actor, final Edit edit) {
+    authorizeDomainWrite(original, updated, actor, edit.kind());
+    return ApprovalGate.admit(original, updated, actor.userName(), actor.impersonatedBy(), edit);
+  }
+
+  /**
+   * Refuses imported rows that move their entities into domains the importer may not move them
+   * into. A batched import replaces each row's domains, and only a row that sends some can move an
+   * entity into one. Every such row is checked, two rows for one entity included, because the batch
+   * stores the domains of both. Each entity is loaded once, with the fields a PATCH authorizes on. A
+   * CSV dry run calls this too, so it refuses what the import would.
+   */
+  public final void authorizeImportedDomains(
+      final List<T> originals, final List<T> updates, final ChangeActor actor) {
+    final List<Integer> rows =
+        checksDomainsWrittenBy(actor) ? rowsSendingDomains(updates) : List.of();
+    if (!rows.isEmpty()) {
+      final Map<UUID, T> stored = storedEntities(originals, rows);
+      for (final int row : rows) {
+        authorizeDomainWrite(
+            storedEntity(stored, originals.get(row).getId()),
+            updates.get(row),
+            actor,
+            Edit.Kind.IMPORT_UPDATE);
+      }
+    }
+  }
+
+  private List<Integer> rowsSendingDomains(final List<T> updates) {
+    return IntStream.range(0, updates.size())
+        .filter(row -> !EntityUpdater.getEntityReferences(updates.get(row).getDomains()).isEmpty())
+        .boxed()
+        .toList();
+  }
+
+  private Map<UUID, T> storedEntities(final List<T> originals, final List<Integer> rows) {
+    final List<UUID> ids = rows.stream().map(row -> originals.get(row).getId()).distinct().toList();
+    return get(null, ids, patchFields, ALL).stream()
+        .collect(Collectors.toMap(EntityInterface::getId, Function.identity()));
+  }
+
+  // An entity deleted while the import ran is refused, not let through unchecked.
+  private T storedEntity(final Map<UUID, T> stored, final UUID id) {
+    final T entity = stored.get(id);
+    if (entity == null) {
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(entityType, id));
+    }
+    return entity;
+  }
+
   @Transaction
   protected void storeOwners(T entity, List<EntityReference> owners) {
     if (supportsOwners && !nullOrEmpty(owners)) {
@@ -10178,16 +10532,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       this.updated = updated;
       this.operation = operation;
       this.originalFqn = original.getFullyQualifiedName();
-      User updatingUser =
-          updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
-              ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
-              : findEntityByNameOrNull(USER, updated.getUpdatedBy(), ALL);
-      if (updatingUser == null) {
-        // user not found, create a new user with name
-        // This is to handle the case where the user is not found in the system. maybe deleted
-        updatingUser = new User().withName(updated.getUpdatedBy()).withIsAdmin(false);
-      }
-      this.updatingUser = updatingUser;
+      this.updatingUser = authorOf(updated.getUpdatedBy());
       this.changeSource = changeSource;
       this.useOptimisticLocking = useOptimisticLocking;
       this.deferredReactExecuted = false;
@@ -10674,11 +11019,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         compareAndUpdate(
             FIELD_TAGS,
             () ->
-                updateTags(
-                    updated.getFullyQualifiedName(),
-                    FIELD_TAGS,
-                    original.getTags(),
-                    updated.getTags()));
+                updated.setTags(
+                    updateTags(
+                        updated.getFullyQualifiedName(),
+                        FIELD_TAGS,
+                        original.getTags(),
+                        updated.getTags())));
         compareAndUpdate(FIELD_DOMAINS, this::updateDomains);
         compareAndUpdate(FIELD_DATA_PRODUCTS, this::updateDataProducts);
         compareAndUpdate(FIELD_EXPERTS, this::updateExperts);
@@ -10886,8 +11232,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
-    protected void updateTags(
+    /**
+     * Applies the tag changes for {@code fqn} and returns the tags it ends up with. A PUT merges the
+     * stored tags into the requested ones, and when the request carried no tags that merge lands in
+     * a new list, so callers must keep the returned list rather than the one they passed in.
+     */
+    protected List<TagLabel> updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      final List<TagLabel> requestedTags = updatedTags;
       // `original` comes off the read path, so it carries its ancestors' tags as DERIVED, while
       // `updated` has been through prepareInternal, whose addDerivedTags strips that label class.
       // Diffing the two as-is sees an inherited label on one side only and calls it a deletion:
@@ -10904,14 +11256,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // inherited `original` and never runs it through prepareInternal, so there the derived
       // labels sit on the updated side instead -- and diffing that way records the same inherited
       // tag as an addition on every restore. `updatedTags` itself is left alone: the PUT branch
-      // merges into that list in place and the entity keeps the result, so only the two diff
-      // reads are narrowed.
+      // merges into that list and returns it, so only the two diff reads are narrowed.
       origTags = getNonDerivedTags(listOrEmpty(origTags));
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
       // its empty.
       updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
       if (origTags.isEmpty() && updatedTags.isEmpty()) {
-        return; // Nothing to update
+        return requestedTags; // Nothing to update
       }
 
       List<TagLabel> addedTags = new ArrayList<>();
@@ -10981,8 +11332,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // This diffs the two lists directly rather than reusing addedTags/deletedTags, so it needs
       // the same persistable view: the version history and the ChangeEvent are exactly what was
       // wrong before. Taken after the PUT merge above, so on that path it still sees the request's
-      // tags unioned with what already existed. `updatedTags` itself stays the live list -- the
-      // entity keeps the merged result and the sort below orders it.
+      // tags unioned with what already existed. `updatedTags` itself stays the live list -- it is
+      // what this method returns, ordered by the sort below.
       recordListChange(
           fieldName,
           origTags,
@@ -10991,6 +11342,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           new ArrayList<>(),
           tagLabelMatch);
       updatedTags.sort(compareTagLabel);
+      return updatedTags;
     }
 
     /**
@@ -11181,32 +11533,24 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     protected void updateDomains() {
-      List<EntityReference> origDomains = getEntityReferences(original.getDomains());
-      List<EntityReference> updatedDomains = getEntityReferences(updated.getDomains());
-      List<EntityReference> addedDomains = new ArrayList<>();
-      List<EntityReference> removedDomains = new ArrayList<>();
+      storeWrittenDomains(writtenDomains(original, updated, operation, updatedByBot()));
+    }
 
-      if (origDomains == updatedDomains) {
-        return;
-      }
-      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
-        // Revert change to non-empty domain if it is being updated by a bot
-        // This is to prevent bots from overwriting the domain. Domain need to be
-        // updated with a PATCH request
-        updated.setDomains(original.getDomains());
-        return;
-      }
-
-      if ((operation.isPatch() || !nullOrEmpty(updatedDomains))
+    // Stores the domains a write leaves, or keeps the stored ones when it leaves them alone.
+    private void storeWrittenDomains(final List<EntityReference> writtenDomains) {
+      final List<EntityReference> origDomains = getEntityReferences(original.getDomains());
+      final List<EntityReference> addedDomains = new ArrayList<>();
+      final List<EntityReference> removedDomains = new ArrayList<>();
+      if (writtenDomains != null
           && recordListChange(
               FIELD_DOMAINS,
               origDomains,
-              updatedDomains,
+              writtenDomains,
               addedDomains,
               removedDomains,
               entityReferenceMatch)) {
-        updateDomains(original, origDomains, updatedDomains);
-        updated.setDomains(updatedDomains);
+        updateDomains(original, origDomains, writtenDomains);
+        updated.setDomains(writtenDomains);
       } else {
         updated.setDomains(original.getDomains());
       }
@@ -11252,28 +11596,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
+    // An import replaces the domains with the ones it sends.
     protected void updateDomainsForImport() {
-      List<EntityReference> origDomains = getEntityReferences(original.getDomains());
-      List<EntityReference> updatedDomains = getEntityReferences(updated.getDomains());
-      List<EntityReference> addedDomains = new ArrayList<>();
-      List<EntityReference> removedDomains = new ArrayList<>();
-
-      if (origDomains == updatedDomains) {
-        return;
-      }
-
-      if (recordListChange(
-          FIELD_DOMAINS,
-          origDomains,
-          updatedDomains,
-          addedDomains,
-          removedDomains,
-          entityReferenceMatch)) {
-        updateDomains(original, origDomains, updatedDomains);
-        updated.setDomains(updatedDomains);
-      } else {
-        updated.setDomains(original.getDomains());
-      }
+      storeWrittenDomains(getEntityReferences(updated.getDomains()));
     }
 
     private void updateDataProducts() {
@@ -12344,11 +12669,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         updateColumnDataLength(columnPrefix, stored, updated);
         updateColumnPrecision(columnPrefix, stored, updated);
         updateColumnScale(columnPrefix, stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(columnPrefix, FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+        updated.setTags(
+            updateTags(
+                stored.getFullyQualifiedName(),
+                EntityUtil.getFieldName(columnPrefix, FIELD_TAGS),
+                stored.getTags(),
+                updated.getTags()));
         updateColumnConstraint(columnPrefix, stored, updated);
         updateColumnExtension(entityId, columnPrefix, stored, updated);
 
@@ -14410,6 +14736,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                   : hydratedOriginal;
           entity.setUpdatedBy(userName);
           entity.setUpdatedAt(System.currentTimeMillis());
+          authorizeDomainWrite(
+              original, entity, ChangeActor.recorded(userName, null), Edit.Kind.PUT);
 
           if (Boolean.TRUE.equals(original.getDeleted())) {
             restoreEntity(entity.getUpdatedBy(), original.getId());
@@ -14419,6 +14747,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           updater.setOverrideMetadata(overrideMetadata);
           updater.updateWithDeferredStore();
           updaters.add(updater);
+        } catch (AuthorizationException e) {
+          failedRequests.add(
+              new BulkResponse()
+                  .withRequest(entity.getFullyQualifiedName())
+                  .withStatus(Status.FORBIDDEN.getStatusCode())
+                  .withMessage(e.getMessage()));
         } catch (Exception e) {
           failedRequests.add(
               new BulkResponse()
@@ -14761,12 +15095,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         entity.setId(published.getId());
         try {
           Optional<StagedChange> change =
-              ApprovalGate.admit(published, entity, userName, null, Edit.bulkPut(overrideMetadata));
+              admit(
+                  published,
+                  entity,
+                  ChangeActor.recorded(userName, null),
+                  Edit.bulkPut(overrideMetadata));
           if (change.isPresent()) {
             candidates.remove();
             successRequests.add(pendingApprovalResponse(entity, change.get()));
             staged++;
           }
+        } catch (AuthorizationException e) {
+          candidates.remove();
+          failedRequests.add(
+              failedBulkItem(entity, Status.FORBIDDEN.getStatusCode(), e.getMessage()));
         } catch (WebApplicationException e) {
           candidates.remove();
           failedRequests.add(failedBulkItem(entity, e.getResponse().getStatus(), e.getMessage()));
@@ -15006,7 +15348,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         continue;
       }
       try {
-        deleteInternal(deletedBy, stale.id, recursive, hardDelete);
+        // The full delete, not deleteInternal: its post-delete steps take the entity out of search.
+        delete(deletedBy, stale.id, recursive, hardDelete);
         deletedHashes.add(fqnHash);
         successRequests.add(staleSuccess(stale.fqn));
       } catch (Exception e) {
@@ -15124,7 +15467,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return result;
   }
 
-  private static boolean isDuplicateKeyException(Exception e) {
+  static boolean isDuplicateKeyException(Exception e) {
     Throwable cause = e.getCause();
     if (cause instanceof SQLException sqlEx) {
       // MySQL: error code 1062 = ER_DUP_ENTRY

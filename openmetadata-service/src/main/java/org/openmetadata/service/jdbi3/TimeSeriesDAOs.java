@@ -965,7 +965,11 @@ public interface TimeSeriesDAOs {
         @Define("postgresStatusFilter") String postgresStatusFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
-        @Define("tierFilter") String tierFilter);
+        @Define("tierFilter") String tierFilter,
+        @Bind("psService") String psService,
+        @Bind("psServiceType") String psServiceType,
+        @Bind("psStatus") String psStatus,
+        @Bind("psTier") String psTier);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1078,7 +1082,11 @@ public interface TimeSeriesDAOs {
         @Define("postgresStatusFilter") String postgresStatusFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
-        @Define("tierFilter") String tierFilter);
+        @Define("tierFilter") String tierFilter,
+        @Bind("psService") String psService,
+        @Bind("psServiceType") String psServiceType,
+        @Bind("psStatus") String psStatus,
+        @Bind("psTier") String psTier);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1130,7 +1138,11 @@ public interface TimeSeriesDAOs {
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
         @Define("startTsFilter") String startTsFilter,
-        @Define("endTsFilter") String endTsFilter);
+        @Define("endTsFilter") String endTsFilter,
+        @Bind("psService") String psService,
+        @Bind("psServiceType") String psServiceType,
+        @Bind("psStatus") String psStatus,
+        @Bind("psTier") String psTier);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1184,7 +1196,11 @@ public interface TimeSeriesDAOs {
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
         @Define("startTsFilter") String startTsFilter,
-        @Define("endTsFilter") String endTsFilter);
+        @Define("endTsFilter") String endTsFilter,
+        @Bind("psService") String psService,
+        @Bind("psServiceType") String psServiceType,
+        @Bind("psStatus") String psStatus,
+        @Bind("psTier") String psTier);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1235,7 +1251,10 @@ public interface TimeSeriesDAOs {
         @Define("postgresStatusFilter") String postgresStatusFilter,
         @Bind("search") String search,
         @Bind("limit") int limit,
-        @Bind("offset") int offset);
+        @Bind("offset") int offset,
+        @Bind("psService") String psService,
+        @Bind("psStatus") String psStatus,
+        @Bind("psTier") String psTier);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1271,7 +1290,10 @@ public interface TimeSeriesDAOs {
         @Define("tierFilter") String tierFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
-        @Bind("search") String search);
+        @Bind("search") String search,
+        @Bind("psService") String psService,
+        @Bind("psStatus") String psStatus,
+        @Bind("psTier") String psTier);
   }
 
   interface AppsDataStore {

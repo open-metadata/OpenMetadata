@@ -312,6 +312,7 @@ const GlossaryTermsV1 = ({
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModalVisible(true)}
             onDelete={handleGlossaryTermDelete}
+            onProposalDecided={refreshActiveGlossaryTerm}
           />
         </div>
 

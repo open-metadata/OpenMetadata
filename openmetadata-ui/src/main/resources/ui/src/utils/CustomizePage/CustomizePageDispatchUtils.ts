@@ -125,6 +125,15 @@ export const getGlossaryDefaultTabs = () => {
       editable: true,
     },
     {
+      id: EntityTabs.REVIEW,
+      name: EntityTabs.REVIEW,
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.REVIEW]),
+      layout: customizeGlossaryPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.REVIEW
+      ),
+      editable: false,
+    },
+    {
       id: EntityTabs.RELATIONS_GRAPH,
       name: EntityTabs.RELATIONS_GRAPH,
       displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.RELATIONS_GRAPH]),

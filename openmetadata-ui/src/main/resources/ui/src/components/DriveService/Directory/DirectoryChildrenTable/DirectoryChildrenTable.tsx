@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  EmptyPlaceholder,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { Assets } from '@openmetadata/ui-core-components/icons';
 import { toLower } from 'lodash';
 import { useMemo } from 'react';
@@ -30,6 +26,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 import Table from '../../../common/Table/TableV2';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
@@ -91,12 +88,11 @@ function DirectoryChildrenTable() {
       locale={{
         emptyText: (
           <div className="tw:relative tw:min-h-70">
-            <EmptyPlaceholder
-              icon={<Assets className="tw:text-utility-gray-600" />}
+            <NoDataPlaceholder
+              icon={<Assets />}
               title={t('message.no-entity-data-available', {
                 entity: t('label.file-plural'),
               })}
-              variant="blank"
             />
           </div>
         ),

@@ -23,7 +23,6 @@ import { useNavigate } from 'react-router-dom';
 import { mockTourSummaryPanelPermission } from '../../../constants/mockTourPermission.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -104,9 +103,9 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
 import { EntityTitleSection } from '../../common/EntityTitleSection/EntityTitleSection';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
@@ -945,14 +944,14 @@ export default function EntitySummaryPanel({
     }
     if (!viewPermission) {
       return (
-        <ErrorPlaceHolder
-          className="border-none h-min-80"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.data-asset'),
-          })}
-          size={SIZE.MEDIUM}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder
+            data-testid="permission-error-placeholder"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.data-asset'),
+            })}
+          />
+        </div>
       );
     }
     const type = (get(entityDetails, DETAILS_ENTITY_TYPE_KEY) ??
@@ -1174,14 +1173,14 @@ export default function EntitySummaryPanel({
               onDisplayNameUpdate={handleDisplayNameUpdate}
             />
           )}
-          <ErrorPlaceHolder
-            className="border-none h-min-80"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.data-asset'),
-            })}
-            size={SIZE.MEDIUM}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <PermissionPlaceholder
+              data-testid="permission-error-placeholder"
+              permissionValue={t('label.view-entity', {
+                entity: t('label.data-asset'),
+              })}
+            />
+          </div>
         </>
       );
     }
@@ -1207,6 +1206,7 @@ export default function EntitySummaryPanel({
             entityLink={entityLink}
             entityType={entityType}
             hasEditPermission={canEditDisplayName}
+            plain={panelPath === 'lineage'}
             testId="entity-header-title"
             tooltipPlacement="bottom left"
             onDisplayNameUpdate={handleDisplayNameUpdate}
@@ -1233,7 +1233,7 @@ export default function EntitySummaryPanel({
             })}>
             <div
               className={classNames(
-                'content-area tw:relative tw:block tw:w-full tw:border tw:border-utility-gray-blue-100 tw:dark:border-subtle',
+                'content-area tw:relative tw:block tw:border tw:border-utility-gray-blue-100 tw:dark:border-subtle',
                 { 'drawer-content-area': isSideDrawer }
               )}>
               <div className="tw:relative">{renderTabContent()}</div>

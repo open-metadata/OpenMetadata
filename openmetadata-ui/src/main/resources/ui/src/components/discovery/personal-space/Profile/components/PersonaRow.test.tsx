@@ -68,12 +68,14 @@ jest.mock('./InlineEditCard', () => {
     renderEdit,
     canEdit,
     onSave,
+    isSaveDisabled,
     onEnterEdit,
   }: {
     view?: ReactNode;
     renderEdit?: () => ReactNode;
     canEdit?: boolean;
     onSave?: () => void;
+    isSaveDisabled?: boolean;
     onEnterEdit?: () => void;
   }) => {
     // The mock renders the edit control immediately, so trigger the row's
@@ -87,7 +89,7 @@ jest.mock('./InlineEditCard', () => {
         <span data-testid="can-edit">{String(canEdit)}</span>
         {view}
         {renderEdit?.()}
-        <button data-testid="save" onClick={onSave}>
+        <button data-testid="save" disabled={isSaveDisabled} onClick={onSave}>
           save
         </button>
       </div>
@@ -211,7 +213,7 @@ describe('PersonaRow', () => {
     expect(screen.getAllByTestId('can-edit')[1]).toHaveTextContent('true');
   });
 
-  it('persists only the existing personas when nothing changed', async () => {
+  it('disables save and skips the API when nothing changed', async () => {
     const updateUserDetails = jest.fn().mockResolvedValue(undefined);
 
     await act(async () => {
@@ -220,20 +222,17 @@ describe('PersonaRow', () => {
       );
     });
 
+    expect(screen.getByTestId('save')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('save'));
+
+    expect(updateUserDetails).not.toHaveBeenCalled();
+
     await act(async () => {
-      fireEvent.click(screen.getByTestId('save'));
+      fireEvent.click(screen.getByTestId('add-persona'));
     });
 
-    await waitFor(() =>
-      expect(updateUserDetails).toHaveBeenCalledWith(
-        {
-          personas: [
-            { id: 'p1', name: 'data-steward', displayName: 'Data Steward' },
-          ],
-        },
-        'personas'
-      )
-    );
+    expect(screen.getByTestId('save')).toBeEnabled();
   });
 
   it('sends the full selected persona refs (with name/FQN) on save', async () => {

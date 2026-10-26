@@ -360,12 +360,22 @@ test.describe('Platform Lineage page (/lineage)', () => {
   }) => {
     // #35783: the empty state escaped the canvas and drew a narrow column
     // over the toolbar.
-    await page.route('**/api/v1/lineage/scene?*', async (route) => {
-      const response = await route.fetch();
-      const scene = await response.json();
-      await route.fulfill({
-        response,
-        json: { ...scene, nodes: [], edges: [] },
+    // Answer without route.fetch(): the map prefetches adjacent bands, and a
+    // fetch still in flight when the test ends throws "page has been closed",
+    // failing a test whose assertions all passed.
+    await page.route('**/api/v1/lineage/scene?*', (route) => {
+      const params = new URL(route.request().url()).searchParams;
+
+      return route.fulfill({
+        json: {
+          lens: params.get('lens'),
+          band: params.get('band'),
+          nodes: [],
+          edges: [],
+          breadcrumb: [],
+          hiddenNodeCount: 0,
+          sampled: false,
+        },
       });
     });
     await redirectToHomePage(page);

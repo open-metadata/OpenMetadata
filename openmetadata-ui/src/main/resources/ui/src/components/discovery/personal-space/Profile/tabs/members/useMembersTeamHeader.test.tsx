@@ -165,4 +165,62 @@ describe('useMembersTeamHeader', () => {
 
     expect(screen.queryByTestId('restore-team')).not.toBeInTheDocument();
   });
+
+  const openMenu = (params: UseMembersTeamHeaderParams) => {
+    render(<Harness {...params} />);
+    render(<>{lastPatch(params.onSetHeader).actions}</>);
+    fireEvent.click(screen.getByRole('button', { name: /open menu/i }));
+  };
+
+  it('offers export and import on a team the viewer can edit', () => {
+    openMenu(buildParams({ isGroupType: false }));
+
+    expect(screen.getByTestId('export-team')).toBeInTheDocument();
+    expect(screen.getByTestId('import-team')).toBeInTheDocument();
+  });
+
+  it('offers export but not import without permission to create teams', () => {
+    openMenu(buildParams({ isGroupType: false, canCreateTeam: false }));
+
+    expect(screen.getByTestId('export-team')).toBeInTheDocument();
+    expect(screen.queryByTestId('import-team')).not.toBeInTheDocument();
+  });
+
+  it('offers export on the Organization even without EditAll on it', () => {
+    openMenu(
+      buildParams({
+        isGroupType: false,
+        isOrgType: true,
+        canEditAll: false,
+        canCreateTeam: false,
+      })
+    );
+
+    expect(screen.getByTestId('export-team')).toBeInTheDocument();
+    expect(screen.queryByTestId('delete-team')).not.toBeInTheDocument();
+  });
+
+  it('offers no export on a team the viewer cannot edit', () => {
+    openMenu(
+      buildParams({ isGroupType: false, canEditAll: false, canDelete: true })
+    );
+
+    expect(screen.queryByTestId('export-team')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('import-team')).not.toBeInTheDocument();
+    expect(screen.getByTestId('delete-team')).toBeInTheDocument();
+  });
+
+  it('hides the menu trigger when no item is left', () => {
+    const params = buildParams({
+      isGroupType: false,
+      canEditAll: false,
+      canDelete: false,
+    });
+    render(<Harness {...params} />);
+    render(<>{lastPatch(params.onSetHeader).actions}</>);
+
+    expect(
+      screen.queryByRole('button', { name: /open menu/i })
+    ).not.toBeInTheDocument();
+  });
 });

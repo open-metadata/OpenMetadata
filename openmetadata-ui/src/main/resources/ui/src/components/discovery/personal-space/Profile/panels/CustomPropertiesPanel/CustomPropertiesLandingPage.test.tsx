@@ -289,4 +289,34 @@ describe('CustomPropertiesLandingPage', () => {
       );
     });
   });
+
+  it('lists user and team custom properties under their own group', () => {
+    const globalSettingsClassBase = jest.requireMock(
+      '../../../../../../utils/GlobalSettingsClassBase'
+    ).default;
+    globalSettingsClassBase.getGlobalSettingsMenuWithPermission.mockReturnValue(
+      [
+        {
+          key: 'customProperties',
+          items: [
+            mockTableItem,
+            { ...mockTableItem, key: 'customProperties.user', label: 'Users' },
+            { ...mockTableItem, key: 'customProperties.team', label: 'Teams' },
+          ],
+        },
+      ]
+    );
+
+    render(
+      <CustomPropertiesLandingPage
+        onSelectEntityType={mockOnSelectEntityType}
+      />
+    );
+
+    expect(
+      screen.getByText('label.entity-group-users-and-teams')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('entity-type-card-user')).toBeInTheDocument();
+    expect(screen.getByTestId('entity-type-card-team')).toBeInTheDocument();
+  });
 });

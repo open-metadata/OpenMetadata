@@ -12,7 +12,7 @@
  */
 
 import { viewToSubPath as acViewToSubPath } from '../access-control/AccessControl.utils';
-import { viewToSubPath as membersViewToSubPath } from './Members.utils';
+import { viewToSubPath as membersViewToSubPath } from './membersRoute.utils';
 
 /**
  * A destination inside the personal-space Profile modal, expressed as the
@@ -30,10 +30,20 @@ export interface ProfileHashTarget {
  * (`access-control` and `members`), avoiding divergent encoding.
  */
 export const profileHash = {
-  user: (name: string): ProfileHashTarget => ({
-    tab: 'profile',
-    subPath: encodeURIComponent(name),
-  }),
+  // A user (yourself included) opens in the Members user detail when the viewer
+  // may browse users there; anyone else gets the same read-only detail under
+  // `#profile/<name>`, which any signed-in user can open.
+  user: (name: string, canBrowseUsers = true): ProfileHashTarget =>
+    canBrowseUsers
+      ? {
+          tab: 'members',
+          subPath: membersViewToSubPath({
+            type: 'user-detail',
+            name,
+            tab: 'overview',
+          }),
+        }
+      : { tab: 'profile', subPath: encodeURIComponent(name) },
   role: (fqn: string): ProfileHashTarget => ({
     tab: 'access-control',
     subPath: acViewToSubPath({ type: 'roles-detail', fqn, name: fqn }),

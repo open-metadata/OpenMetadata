@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import React, { useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useMemo } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import EntityPopOverCard from '../../PopOverCard/EntityPopOverCard';
 import DocumentMarkdownLink from './DocumentMarkdownLink';
 import {
+  EntityLinkInfo,
   EntityMarkdownLinkProps,
   ParsedEntityLink,
 } from './EntityMarkdownLink.interface';
@@ -79,43 +80,54 @@ const parseEntityLink = (href: string): ParsedEntityLink => {
   };
 };
 
+// Settings links (team, role, bot, …) carry the page's query string in AI mode,
+// so the link is built on every render and re-rendered on navigation rather
+// than memoized with the query string it first saw. Only entity links read the
+// location: they render a router Link, so they already need a Router.
+const EntityLinkAnchor: React.FC<{
+  entityInfo: EntityLinkInfo;
+  className?: string;
+  children?: React.ReactNode;
+}> = ({ entityInfo, className, children }) => {
+  useLocation();
+  const entityPath = entityUtilClassBase.getEntityLink(
+    entityInfo.entityType,
+    entityInfo.fullyQualifiedName,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    entityInfo.serviceCategory,
+    entityInfo.serviceFqn
+  );
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+      window.open(entityPath, '_blank');
+    }
+  };
+
+  return (
+    <EntityPopOverCard
+      entityFQN={entityInfo.fullyQualifiedName}
+      entityType={entityInfo.entityType}>
+      <Link
+        className={`entity-markdown-link ${className || ''}`}
+        to={entityPath}
+        onClick={handleClick}>
+        {children}
+      </Link>
+    </EntityPopOverCard>
+  );
+};
+
 const ResolvedEntityLink: React.FC<EntityMarkdownLinkProps> = ({
   href,
   children,
   className,
 }) => {
-  const { parsedLink, entityPath } = useMemo(() => {
-    const parsed = parseEntityLink(href || '');
-    const path =
-      parsed.isEntityLink && parsed.entityInfo
-        ? entityUtilClassBase.getEntityLink(
-            parsed.entityInfo.entityType,
-            parsed.entityInfo.fullyQualifiedName,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            parsed.entityInfo.serviceCategory,
-            parsed.entityInfo.serviceFqn
-          )
-        : '';
-
-    return { parsedLink: parsed, entityPath: path };
-  }, [href]);
-
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (!parsedLink.isEntityLink || !parsedLink.entityInfo) {
-        return;
-      }
-
-      if (e.metaKey || e.ctrlKey) {
-        e.preventDefault();
-        window.open(entityPath, '_blank');
-      }
-    },
-    [parsedLink, entityPath]
-  );
+  const parsedLink = useMemo(() => parseEntityLink(href || ''), [href]);
 
   if (!parsedLink.isEntityLink || !parsedLink.entityInfo) {
     return (
@@ -126,16 +138,9 @@ const ResolvedEntityLink: React.FC<EntityMarkdownLinkProps> = ({
   }
 
   return (
-    <EntityPopOverCard
-      entityFQN={parsedLink.entityInfo.fullyQualifiedName}
-      entityType={parsedLink.entityInfo.entityType}>
-      <Link
-        className={`entity-markdown-link ${className || ''}`}
-        to={entityPath}
-        onClick={handleClick}>
-        {children}
-      </Link>
-    </EntityPopOverCard>
+    <EntityLinkAnchor className={className} entityInfo={parsedLink.entityInfo}>
+      {children}
+    </EntityLinkAnchor>
   );
 };
 

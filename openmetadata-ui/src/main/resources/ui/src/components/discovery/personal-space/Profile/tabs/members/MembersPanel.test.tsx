@@ -19,10 +19,14 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { MembersView } from './Members.types';
+import MembersPanel from './MembersPanel';
 
 // react-i18next is mocked globally in setupTests.js — no per-file mock needed.
 
-let mockPermissions: Record<string, unknown> = { all: { Create: true } };
+// ViewAll keeps every Members view open; tests drop Create to check the gates.
+let mockPermissions: Record<string, unknown> = {
+  all: { Create: true, ViewAll: true },
+};
 jest.mock(
   '../../../../../../context/PermissionProvider/PermissionProvider',
   () => ({ usePermissionProvider: () => ({ permissions: mockPermissions }) })
@@ -112,14 +116,35 @@ jest.mock(
     )
 );
 jest.mock('./MembersUsersPanel', () => () => <div data-testid="users-panel" />);
+jest.mock(
+  './MembersUserDetail',
+  () =>
+    (props: {
+      view: { name: string; tab: string };
+      onSetHeader: (header: { title: string }) => void;
+    }) => {
+      const React = require('react');
+      const { onSetHeader, view } = props;
+      React.useEffect(
+        () => onSetHeader({ title: 'Alice Johnson' }),
+        [onSetHeader]
+      );
+
+      return (
+        <div
+          data-name={view.name}
+          data-tab={view.tab}
+          data-testid="user-detail"
+        />
+      );
+    }
+);
 jest.mock('./MembersCreateUserForm', () => () => (
   <div data-testid="create-user" />
 ));
 jest.mock('./MembersOnlineUsersPanel', () => () => (
   <div data-testid="online-users" />
 ));
-
-import MembersPanel from './MembersPanel';
 
 // useSettingsHash reads the hash from `window.location` (seeded on mount, then
 // driven by popstate) — BrowserRouter mirrors window in production, but
@@ -137,7 +162,7 @@ const renderAt = (hash: string) => {
 describe('MembersPanel', () => {
   beforeEach(() => {
     globalThis.location.hash = '';
-    mockPermissions = { all: { Create: true } };
+    mockPermissions = { all: { Create: true, ViewAll: true } };
   });
 
   it('renders landing view by default', () => {
@@ -170,10 +195,35 @@ describe('MembersPanel', () => {
   });
 });
 
+describe('MembersPanel legacy user links', () => {
+  beforeEach(() => {
+    globalThis.location.hash = '';
+  });
+
+  it("opens #members/user/<name> as that user's detail overview", async () => {
+    globalThis.location.hash = `#members/user/${encodeURIComponent(
+      'jane@acme.io'
+    )}`;
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <MembersPanel onHeaderChange={jest.fn()} />
+        </MemoryRouter>
+      );
+    });
+
+    const detail = screen.getByTestId('user-detail');
+
+    expect(detail).toHaveAttribute('data-name', 'jane@acme.io');
+    expect(detail).toHaveAttribute('data-tab', 'overview');
+  });
+});
+
 describe('MembersPanel hash navigation', () => {
   beforeEach(() => {
     globalThis.location.hash = '';
-    mockPermissions = { all: { Create: true } };
+    mockPermissions = { all: { Create: true, ViewAll: true } };
   });
 
   it('landing -> teams updates the view', () => {
@@ -229,7 +279,7 @@ describe('MembersPanel hash navigation', () => {
   });
 
   it('gates the add-team form behind create permission', () => {
-    mockPermissions = {};
+    mockPermissions = { all: { ViewAll: true } };
     renderAt('#members/teams/add');
 
     expect(
@@ -239,7 +289,7 @@ describe('MembersPanel hash navigation', () => {
   });
 
   it('gates the team-import form behind create permission', () => {
-    mockPermissions = {};
+    mockPermissions = { all: { ViewAll: true } };
     renderAt('#members/teams/Engineering.Data/import-team');
 
     expect(
@@ -248,8 +298,34 @@ describe('MembersPanel hash navigation', () => {
     expect(screen.queryByTestId('import-form')).not.toBeInTheDocument();
   });
 
+  it('deep-links a user and merges the detail header over the members header', async () => {
+    globalThis.location.hash = '#members/user/alice/access';
+    const onHeaderChange = jest.fn();
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <MembersPanel onHeaderChange={onHeaderChange} />
+        </MemoryRouter>
+      );
+    });
+
+    const detail = screen.getByTestId('user-detail');
+
+    expect(detail).toHaveAttribute('data-name', 'alice');
+    expect(detail).toHaveAttribute('data-tab', 'access');
+    expect(onHeaderChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'Alice Johnson',
+        breadcrumbs: expect.arrayContaining([
+          expect.objectContaining({ id: 'current', label: 'alice' }),
+        ]),
+      })
+    );
+  });
+
   it('gates the create-user form behind create permission', () => {
-    mockPermissions = {};
+    mockPermissions = { all: { ViewAll: true } };
     renderAt('#members/users/create');
 
     expect(
