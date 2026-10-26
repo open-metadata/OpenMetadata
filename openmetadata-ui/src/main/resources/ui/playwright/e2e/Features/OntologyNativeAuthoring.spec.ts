@@ -137,7 +137,7 @@ test.describe(
           await page.getByTestId('new-class-property-name').press('Enter');
           await page.getByTestId('new-class-property-name').fill('status');
           await page.getByRole('button', { name: /Type/ }).click();
-          await page.getByRole('option', { name: 'enum', exact: true }).click();
+          await page.getByRole('option', { name: 'Enum', exact: true }).click();
           await page.getByTestId('new-class-enum-values').fill('Pending,');
           await expect(
             page.getByTestId('new-class-add-property')
@@ -148,7 +148,7 @@ test.describe(
           await page.getByTestId('new-class-property-name').fill('customer');
           await page.getByRole('button', { name: /Type/ }).click();
           await page
-            .getByRole('option', { name: 'object', exact: true })
+            .getByRole('option', { name: 'Object', exact: true })
             .click();
           await page.getByRole('button', { name: /Range/ }).click();
           await page
@@ -254,7 +254,9 @@ test.describe(
             page
               .getByTestId('ontology-working-concept-group')
               .filter({ hasText: 'Funds Transfer' })
-          ).toContainText('Payment, Transaction · 3 properties');
+          ).toHaveText(
+            'Class FundsTransfer ⊑ Payment, Transaction · 3 properties'
+          );
           await page.keyboard.press('Escape');
         });
         await test.step('Cancel drawing from source and from the picker close control without persistence', async () => {
@@ -328,7 +330,7 @@ test.describe(
         }
       }
     });
-    test('a competing lease leaves no partial class and retains the same draft', async ({
+    test('a competing lease leaves no partial class and the form stays usable', async ({
       isolatedUserPage: page,
     }) => {
       const api = await getWorkerAdminAPIContext();
@@ -368,21 +370,44 @@ test.describe(
         await expect(
           page.getByTestId('ontology-new-class-panel')
         ).toContainText('This draft is locked by');
+        await expect(page.getByTestId('new-class-create')).toBeEnabled();
         await expect(
           page.getByRole('button', { name: 'Retry', exact: true })
-        ).toBeVisible();
-        const concepts = await okJson<{ data: OntologyConcept[] }>(
+        ).toHaveCount(0);
+        const before = await okJson<{ data: OntologyConcept[] }>(
           await api.get('/api/v1/ontologyConcepts', {
             params: { ontology: ontology.fullyQualifiedName },
           }),
           'Read class after failed lease'
         );
-        expect(concepts.data).toHaveLength(0);
-        await page.getByTestId('mode-tab-view').click();
-        await expect(page.getByTestId('mode-tab-edit')).toHaveAttribute(
-          'aria-selected',
-          'true'
+        expect(before.data).toHaveLength(0);
+        const lease = held;
+        if (!lease) {
+          throw new Error('The competing lease was never taken');
+        }
+        await page.unroute('**/api/v1/ontologyEditLocks/acquire');
+        const released = await api.delete(
+          '/api/v1/ontologyEditLocks/' +
+            lease.resourceType +
+            '/' +
+            lease.resourceId,
+          { params: { sessionId: lease.sessionId } }
         );
+        expect(released.status()).toBe(200);
+        held = undefined;
+        await clickIgnoringToasts(page.getByTestId('new-class-create'));
+        await expect(page.getByTestId('ontology-new-class-panel')).toHaveCount(
+          0
+        );
+        const after = await okJson<{ data: OntologyConcept[] }>(
+          await api.get('/api/v1/ontologyConcepts', {
+            params: { ontology: ontology.fullyQualifiedName },
+          }),
+          'Read class after the lease was released'
+        );
+        expect(after.data.map((c) => c.displayName)).toEqual([
+          'Contended Class',
+        ]);
       } finally {
         await page.unroute('**/api/v1/ontologyEditLocks/acquire');
         if (held) {

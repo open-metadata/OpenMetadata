@@ -1168,6 +1168,8 @@ export function useOntologyGraph({
 }: UseOntologyGraphProps) {
   const graphRef = useRef<Graph | null>(null);
   const settingsRef = useRef(settings);
+  const nodePositionsRef = useRef(nodePositions);
+  nodePositionsRef.current = nodePositions;
   const relationsEdgeRoutesRef = useRef<Map<string, EdgeRoute>>(new Map());
 
   settingsRef.current = settings;
@@ -1251,21 +1253,10 @@ export function useOntologyGraph({
       return {};
     }
     const positions: Record<string, { x: number; y: number }> = {};
-    const getHalfSize = (rawSize: unknown, fallback: number) => {
-      const sizeArr = Array.isArray(rawSize) ? rawSize : null;
-      const size = sizeArr ? Number(sizeArr[0]) : Number(rawSize);
-
-      return (Number.isFinite(size) ? size : fallback) / 2;
-    };
     graph.getNodeData().forEach((node) => {
       const pos = graph.getElementPosition(node.id);
       if (pos && Array.isArray(pos)) {
-        const rawSize = node.style?.size;
-        const w = getHalfSize(rawSize, 200);
-        const h = Array.isArray(rawSize)
-          ? (Number(rawSize[1]) || 40) / 2
-          : getHalfSize(rawSize, 40);
-        positions[node.id] = { x: pos[0] - w, y: pos[1] - h };
+        positions[node.id] = { x: pos[0], y: pos[1] };
       }
     });
 
@@ -1494,10 +1485,10 @@ export function useOntologyGraph({
 
   const positionStudioNodes = useCallback(
     async (graph: Graph) => {
+      const placed = nodePositionsRef.current;
       const positions =
-        nodePositions &&
-        graph.getNodeData().every((node) => nodePositions[String(node.id)])
-          ? nodePositions
+        placed && graph.getNodeData().every((node) => placed[String(node.id)])
+          ? placed
           : await calculateStudioNodePositions(
               graph.getNodeData(),
               graph.getEdgeData(),
@@ -1529,7 +1520,7 @@ export function useOntologyGraph({
         graph.updateNodeData(updates);
       }
     },
-    [containerRef, hierarchicalRelationTypes, nodePositions]
+    [containerRef, hierarchicalRelationTypes]
   );
 
   const applyBakedPositions = useCallback((graph: Graph, nodes: NodeData[]) => {
@@ -2452,6 +2443,22 @@ export function useOntologyGraph({
     studioMode,
     recomputeGraphBounds,
   ]);
+
+  useEffect(() => {
+    const graph = graphRef.current;
+    const covered =
+      graph &&
+      nodePositions &&
+      graph.getNodeData().every((node) => nodePositions[String(node.id)]);
+    if (!studioMode || !graph || !covered) {
+      return;
+    }
+    void positionStudioNodes(graph).then(async () => {
+      if (graphRef.current === graph) {
+        await graph.draw();
+      }
+    });
+  }, [nodePositions, positionStudioNodes, studioMode]);
 
   return {
     graphRef,

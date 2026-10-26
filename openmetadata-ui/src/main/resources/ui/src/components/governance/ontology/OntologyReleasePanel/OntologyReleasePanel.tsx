@@ -355,7 +355,11 @@ const OntologyReleasePanel = ({
         </Typography>
         {working.data && (
           <Typography color="secondary" size="text-sm">
-            {working.data.paging.total} {t('label.pending-changes')}
+            {working.data.groups
+              ? t('label.changed-class-plural') +
+                ': ' +
+                working.data.paging.total
+              : working.data.paging.total + ' ' + t('label.pending-changes')}
           </Typography>
         )}
       </Box>
@@ -372,7 +376,9 @@ const OntologyReleasePanel = ({
                     <Typography size="text-sm" weight="semibold">
                       {group.concept
                         ? t('message.ontology-class-change-summary', {
-                            concept: group.concept,
+                            concept: group.iri
+                              ? group.iri.split(/[#/:]/).pop()
+                              : group.concept,
                             parents: group.parents.length
                               ? ' ⊑ ' + group.parents.join(', ')
                               : '',

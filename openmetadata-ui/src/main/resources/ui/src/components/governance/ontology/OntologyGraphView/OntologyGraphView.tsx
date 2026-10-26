@@ -294,7 +294,7 @@ const OntologyGraphView = ({
     label: string;
     resolve: (draft?: RelationshipTypeDraft) => void;
   }>();
-  const handledCreateConceptRequest = useRef(0);
+  const handledCreateConceptRequest = useRef(createConceptRequestKey);
   const [nodePositions, setNodePositions] =
     useState<Record<string, { x: number; y: number }>>();
   const creationPositions = useRef<Record<string, { x: number; y: number }>>();
@@ -635,11 +635,6 @@ const OntologyGraphView = ({
               oldNodes,
               created.id
             );
-            if (!positions) {
-              creationPositions.current = graphRef.current?.getNodePositions();
-
-              return false;
-            }
             setNodePositions(positions);
             setSelectedId(created.id);
             setConceptEditor(undefined);

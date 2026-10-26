@@ -34,6 +34,10 @@ import { OntologyState } from '../../../../generated/type/ontologyState';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import APIClient from '../../../../rest/axiosClient';
 import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
+import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
@@ -98,6 +102,7 @@ const initialState: OntologyState = {
 let currentState: OntologyState;
 let currentRelease: OntologyRelease;
 let groupedWorking = false;
+let groupedPropertyCount = 3;
 let nextWorkingPage: string | undefined;
 let nextPageState: OntologyState | undefined;
 let nextPageError: Error | undefined;
@@ -149,10 +154,10 @@ const workingDiffPage = (after?: string) => {
       groups: groupedWorking
         ? [
             {
-              concept: 'FundsTransfer',
-              iri: 'urn:FundsTransfer',
+              concept: 'Funds Transfer',
+              iri: 'https://example.org/fin#FundsTransfer',
               parents: ['Payment', 'Transaction'],
-              propertyCount: 3,
+              propertyCount: groupedPropertyCount,
               changes: [],
               changeType: 'ADDED',
             },
@@ -219,6 +224,7 @@ describe('OntologyReleasePanel', () => {
     currentRelease = { ...release };
     nextWorkingPage = undefined;
     groupedWorking = false;
+    groupedPropertyCount = 3;
     nextPageState = undefined;
     nextPageError = undefined;
     const ownerResponse = (url: string) => {
@@ -369,6 +375,7 @@ describe('OntologyReleasePanel', () => {
     anchorClick.mockRestore();
     URL.createObjectURL = originalCreateObjectURL;
     URL.revokeObjectURL = originalRevokeObjectURL;
+    useKeyEchoTranslations();
   });
 
   it('separates working changes from release history for the publication modal', async () => {
@@ -1627,17 +1634,32 @@ describe('OntologyReleasePanel', () => {
   });
 
   it('renders one server-grouped class change row instead of individual definition rows', async () => {
+    useEnUsTranslations();
     groupedWorking = true;
     await renderPanel(true, 'changes');
 
     expect(
       await screen.findByTestId('ontology-working-concept-group')
-    ).toHaveTextContent('message.ontology-class-change-summary');
+    ).toHaveTextContent(
+      'Class FundsTransfer ⊑ Payment, Transaction · 3 properties'
+    );
     expect(
       screen.getAllByTestId('ontology-working-concept-group')
     ).toHaveLength(1);
+    expect(screen.getByText('Changed classes: 1')).toBeVisible();
+    expect(screen.queryByText('Concept')).not.toBeInTheDocument();
+  });
+
+  it('reads a single property in the singular', async () => {
+    useEnUsTranslations();
+    groupedWorking = true;
+    groupedPropertyCount = 1;
+    await renderPanel(true, 'changes');
+
     expect(
-      screen.queryByText('label.ontology-member-concept')
-    ).not.toBeInTheDocument();
+      await screen.findByTestId('ontology-working-concept-group')
+    ).toHaveTextContent(
+      'Class FundsTransfer ⊑ Payment, Transaction · 1 property'
+    );
   });
 });

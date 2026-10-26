@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import { Layer, Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import APIClient from '../../../../rest/axiosClient';
+import {
+  MISSING_TRANSLATION_MARKER,
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
 import OntologyNewClassPanel from './OntologyNewClassPanel';
 jest.mock('../../../../rest/axiosClient', () => ({
@@ -148,7 +154,7 @@ it('commits synonyms on comma and Enter and requires two distinct enum chips', a
 
   fill('new-class-property-name', 'state');
   fireEvent.click(screen.getByRole('button', { name: /label.type/ }));
-  fireEvent.click(await screen.findByRole('option', { name: 'enum' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'label.enum' }));
   fill('new-class-enum-values', 'Pending,');
 
   expect(screen.getByTestId('new-class-add-property')).toBeDisabled();
@@ -221,7 +227,7 @@ it('adds a named own data property with Enter and its identifier flag', () => {
   });
 
   expect(
-    screen.getByText(/reference · string · label.identifier/)
+    screen.getByText(/reference · label.string · label.identifier/)
   ).toBeVisible();
   expect(screen.getByTestId('new-class-property-name')).toHaveValue('');
 });
@@ -366,4 +372,177 @@ it('does not apply or create partial definitions when another editor holds the l
     '/ontologyEditLocks/acquire',
   ]);
   expect(reconcile).not.toHaveBeenCalled();
+});
+
+describe('after a failed attempt', () => {
+  const rejectFirstApply = () => {
+    const normalPost = post.getMockImplementation();
+    let rejected = false;
+    post.mockImplementation(
+      async (url: string, body: Record<string, unknown>) => {
+        if (url.endsWith('/apply') && !rejected) {
+          rejected = true;
+
+          return {
+            data: {
+              ...retained,
+              state: 'APPLY_FAILED',
+              applicationResult: {
+                results: [
+                  { status: 'FAILED', message: 'Definition already exists' },
+                ],
+              },
+            },
+          };
+        }
+
+        return normalPost?.(url, body);
+      }
+    );
+  };
+  const createFundsTransfer = async () => {
+    fill('new-class-label', 'Funds Transfer');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+  };
+
+  it('unlocks the form and Close when the server rejects the plan', async () => {
+    rejectFirstApply();
+    const lockChanged = jest.fn();
+    setup({ onLockChange: lockChanged });
+    await createFundsTransfer();
+
+    expect(await screen.findByText('Definition already exists')).toBeVisible();
+    expect(screen.getByTestId('new-class-label')).toBeEnabled();
+    expect(screen.getByTestId('ontology-new-class-close')).toBeEnabled();
+    expect(lockChanged).toHaveBeenLastCalledWith(false);
+  });
+
+  it('rebuilds the plan from a fresh working revision when Create is pressed again', async () => {
+    rejectFirstApply();
+    setup();
+    await createFundsTransfer();
+    await screen.findByText('Definition already exists');
+    get.mockImplementation(async (url: string) => ({
+      data: url.endsWith('/state') ? { workingRevision: 8 } : readDraft(url),
+    }));
+    fill('new-class-label', 'Wire Transfer');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+    await waitFor(() =>
+      expect(reconcile).toHaveBeenCalledWith(
+        ontology.namespace + 'WireTransfer'
+      )
+    );
+    const creates = post.mock.calls.filter(
+      ([url]) => url === '/ontologyChangeSets'
+    );
+
+    expect(creates.map(([, body]) => body.baseWorkingRevision)).toEqual([7, 8]);
+  });
+
+  it('lets the user leave once the class is applied even if the canvas cannot place it', async () => {
+    const lockChanged = jest.fn();
+    setup({ onLockChange: lockChanged });
+    await createFundsTransfer();
+    await screen.findByRole('button', { name: 'label.retry' });
+
+    expect(screen.getByTestId('ontology-new-class-close')).toBeEnabled();
+    expect(lockChanged).toHaveBeenLastCalledWith(false);
+  });
+});
+
+describe('with the shipped English translations', () => {
+  beforeEach(() => {
+    useEnUsTranslations();
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  it('renders every label from en-us.json', async () => {
+    setup();
+
+    expect(screen.getByText('Identity')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: /^Label/ })).toBeVisible();
+    expect(screen.getByText('Axioms')).toBeVisible();
+    expect(
+      screen.getByRole('textbox', { name: /^Property name/ })
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: /Type/ }));
+    await screen.findByRole('listbox');
+
+    expect(document.body.textContent).not.toContain(MISSING_TRANSLATION_MARKER);
+  });
+
+  it('offers the property types by name', async () => {
+    setup();
+    fireEvent.click(screen.getByRole('button', { name: /Type/ }));
+    const options = await screen.findAllByRole('option');
+
+    expect(options.map((option) => option.textContent)).toEqual([
+      'String',
+      'Integer',
+      'Decimal',
+      'Boolean',
+      'Date',
+      'Date and time',
+      'Enum',
+      'Object',
+    ]);
+  });
+
+  it('names the type of an added property', () => {
+    setup();
+    fill('new-class-property-name', 'reference');
+    fireEvent.keyDown(screen.getByTestId('new-class-property-name'), {
+      key: 'Enter',
+    });
+
+    expect(screen.getByText('reference · String')).toBeVisible();
+  });
+});
+
+describe('focus', () => {
+  const Harness = () => {
+    const [open, setOpen] = useState(false);
+
+    return (
+      <>
+        <button data-testid="trigger" onClick={() => setOpen(true)}>
+          open
+        </button>
+        {open ? (
+          <OntologyNewClassPanel
+            canCreate
+            canCreateAxiom
+            canCreateProperty
+            model={model}
+            ontology={ontology}
+            onBeforeCreate={jest.fn()}
+            onClose={() => setOpen(false)}
+            onCreated={reconcile}
+          />
+        ) : null}
+      </>
+    );
+  };
+
+  it('moves to the label when the panel opens and back to the trigger when it closes', async () => {
+    render(<Harness />);
+    screen.getByTestId('trigger').focus();
+    fireEvent.click(screen.getByTestId('trigger'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('new-class-label')).toHaveFocus()
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-new-class-close'));
+
+    expect(screen.getByTestId('trigger')).toHaveFocus();
+  });
 });

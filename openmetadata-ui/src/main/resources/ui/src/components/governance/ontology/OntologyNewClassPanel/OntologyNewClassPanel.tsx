@@ -61,6 +61,16 @@ import {
   ownPropertyDraft,
   ownPropertyTypeLabel,
 } from './OntologyNewClassPanel.utils';
+const DATATYPE_LABEL_KEYS: Record<StudioDatatype | 'object', string> = {
+  boolean: 'label.boolean',
+  date: 'label.date',
+  dateTime: 'label.date-time',
+  decimal: 'label.decimal',
+  enum: 'label.enum',
+  integer: 'label.integer',
+  object: 'label.object',
+  string: 'label.string',
+};
 interface SelectionValues {
   parents: FormSelectItem[];
   equivalent: FormSelectItem[];
@@ -90,6 +100,20 @@ const OntologyNewClassPanel = ({
   onLockChange,
 }: Props) => {
   const { t } = useTranslation();
+  const trigger = useRef(document.activeElement);
+  const labelInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    labelInput.current?.focus();
+
+    return () => {
+      if (
+        trigger.current instanceof HTMLElement &&
+        trigger.current.isConnected
+      ) {
+        trigger.current.focus();
+      }
+    };
+  }, []);
   const currentUser = useApplicationStore((state) => state.currentUser);
   const ownerPicker = useUserTeamOptions();
   const form = useForm<SelectionValues>({
@@ -159,17 +183,18 @@ const OntologyNewClassPanel = ({
   };
   const apply = useOntologyChangeSetApply({
     canApply: permitted,
+    rebuildAfterFailure: true,
     onApplied: () => {
       void reconcile();
     },
   });
-  const locked =
-    preparing || apply.configurationLocked || apply.status.kind === 'applied';
+  const leaveLocked = preparing || reconciling || apply.configurationLocked;
+  const locked = leaveLocked || apply.status.kind === 'applied';
   useEffect(() => {
-    onLockChange?.(locked);
+    onLockChange?.(leaveLocked);
 
     return () => onLockChange?.(false);
-  }, [locked, onLockChange]);
+  }, [leaveLocked, onLockChange]);
   const removeProperty = (property: OwnPropertyDraft) =>
     setProperties((previous) => previous.filter((p) => p !== property));
   const valid = isValidClassIdentity(model, label, localName, source);
@@ -283,7 +308,7 @@ const OntologyNewClassPanel = ({
         </Button>
       );
     }
-    if (apply.status.kind === 'blocked') {
+    if (apply.outcomeUnknown) {
       return (
         <Button isDisabled={!permitted} onPress={() => void apply.retry()}>
           {t('label.retry')}
@@ -309,7 +334,10 @@ const OntologyNewClassPanel = ({
       {properties.map((property) => (
         <Box align="center" gap={2} justify="between" key={property.name}>
           <Typography size="text-xs">
-            {property.name} · {ownPropertyTypeLabel(property)}
+            {property.name} ·{' '}
+            {property.kind === 'data'
+              ? t(DATATYPE_LABEL_KEYS[property.datatype])
+              : ownPropertyTypeLabel(property)}
             {property.isIdentifier ? ' · ' + t('label.identifier') : ''}
           </Typography>
           <ButtonUtility
@@ -337,9 +365,9 @@ const OntologyNewClassPanel = ({
       />
       <Select
         isDisabled={locked || !canCreateProperty}
-        items={[...STUDIO_DATATYPES, 'object'].map((id) => ({
+        items={[...STUDIO_DATATYPES, 'object' as const].map((id) => ({
           id,
-          label: id,
+          label: t(DATATYPE_LABEL_KEYS[id]),
         }))}
         label={t('label.type')}
         value={datatype}
@@ -446,7 +474,7 @@ const OntologyNewClassPanel = ({
           color="tertiary"
           data-testid="ontology-new-class-close"
           icon={XClose}
-          isDisabled={locked || reconciling}
+          isDisabled={leaveLocked}
           size="sm"
           tooltip={t('label.close')}
           onClick={onClose}
@@ -463,6 +491,7 @@ const OntologyNewClassPanel = ({
               inputDataTestId="new-class-label"
               isDisabled={locked}
               label={t('label.label')}
+              ref={labelInput}
               value={label}
               onChange={setLabel}
             />
