@@ -731,6 +731,61 @@ class CredentialVerifierTest {
     assertEquals(0.0, counter("om.credential.unavailable", "cause", "backoff"));
   }
 
+  /**
+   * The failed read is stamped at 0 and throws 100 ms later, so its window ends at missRefreshMinAge
+   * and not 100 ms after that.
+   */
+  @Test
+  void aReadThatThrowsBacksOffFromItsStampNotFromWhenItFailed() {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(DEFAULTS);
+    source.duringNextRead(
+        () -> {
+          ticker.advanceNanos(100 * MILLISECOND);
+          throw new IllegalStateException("statement failed late");
+        });
+    assertUnavailable(ALICE, TOKEN_A);
+
+    ticker.advanceNanos(300 * MILLISECOND);
+    assertUnavailable(ALICE, TOKEN_A);
+    ticker.advanceNanos(100 * MILLISECOND);
+    assertAccepted(ALICE, TOKEN_A);
+
+    assertEquals(2, source.fullReadsOf(ALICE));
+    assertEquals(1.0, counter("om.credential.unavailable", "cause", "read_failed"));
+    assertEquals(1.0, counter("om.credential.unavailable", "cause", "backoff"));
+  }
+
+  /**
+   * Bob's read is stamped at 0 and withdrawn after the 1 s wait, while the fake clock has moved to
+   * 400 ms. His window runs from the stamp: a check at 400 ms is refused without a read, and one at
+   * 500 ms reads.
+   */
+  @Test
+  void aReadWithdrawnForWantOfASlotBacksOffFromItsStamp() throws Exception {
+    source.withPats(ALICE, TOKEN_A).withPats(BOB, TOKEN_B);
+    verifier(
+        new CredentialVerificationConfig(
+            null, null, null, Duration.seconds(1), 1, null, null, null, null));
+    source.blockNextRead();
+    RunningCheck holder = startCheck(ALICE, TOKEN_A);
+    source.awaitReadStarted();
+    RunningCheck waiter = startCheck(BOB, TOKEN_B);
+    awaitParked(waiter.thread());
+    ticker.advanceNanos(400 * MILLISECOND);
+    assertInstanceOf(CredentialUnavailableException.class, waiter.result());
+
+    assertUnavailable(BOB, TOKEN_B);
+    assertEquals(1.0, counter("om.credential.unavailable", "cause", "backoff"));
+    assertEquals(0, source.fullReadsOf(BOB));
+    source.releaseReads();
+    holder.result();
+    ticker.advanceNanos(100 * MILLISECOND);
+    assertAccepted(BOB, TOKEN_B);
+
+    assertEquals(1, source.fullReadsOf(BOB));
+  }
+
   @Test
   void aFreshEntryIsStillAcceptedWhileItsSubjectBacksOff() {
     source.withJwtMechanism(BOB, JWT_OLD);

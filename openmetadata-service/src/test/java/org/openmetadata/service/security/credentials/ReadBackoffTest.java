@@ -77,4 +77,23 @@ class ReadBackoffTest {
     assertTrue(backoff.isBackingOff(ALICE, nearWrap + WINDOW - 1));
     assertFalse(backoff.isBackingOff(ALICE, nearWrap + WINDOW));
   }
+
+  @Test
+  void aWindowOpenedJustBeforeTheWrapStillHoldsAtTheFirstStampAfterIt() {
+    long nearWrap = Long.MAX_VALUE - 100;
+    backoff.recordCheckFailure(ALICE, nearWrap);
+
+    assertTrue(backoff.isBackingOff(ALICE, nearWrap + 1));
+  }
+
+  @Test
+  void ofTwoFailuresAcrossTheWrapTheLaterStampWins() {
+    long nearWrap = Long.MAX_VALUE - 100;
+    backoff.recordCheckFailure(ALICE, nearWrap);
+
+    backoff.recordCheckFailure(ALICE, nearWrap + 300);
+
+    assertTrue(backoff.isBackingOff(ALICE, nearWrap + 799));
+    assertFalse(backoff.isBackingOff(ALICE, nearWrap + 800));
+  }
 }
