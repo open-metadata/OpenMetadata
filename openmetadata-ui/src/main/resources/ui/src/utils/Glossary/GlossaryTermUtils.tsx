@@ -184,19 +184,17 @@ export const getGlossaryTermDetailPageTabs = (
         firstPanel={{
           className: 'glossary-term-resizable-panel-container',
           children: (
-            <>
-              <AssetsTabs
-                addDisabledMessage={assetsAddDisabledMessage}
-                assetCount={assetCount}
-                entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
-                isSummaryPanelOpen={Boolean(previewAsset)}
-                permissions={assetPermissions}
-                ref={assetTabRef}
-                onAddAsset={() => setAssetModalVisible(true)}
-                onAssetClick={handleAssetClick}
-                onRemoveAsset={handleAssetSave}
-              />
-            </>
+            <AssetsTabs
+              addDisabledMessage={assetsAddDisabledMessage}
+              assetCount={assetCount}
+              entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
+              isSummaryPanelOpen={Boolean(previewAsset)}
+              permissions={assetPermissions}
+              ref={assetTabRef}
+              onAddAsset={() => setAssetModalVisible(true)}
+              onAssetClick={handleAssetClick}
+              onRemoveAsset={handleAssetSave}
+            />
           ),
           flex: 0.7,
           minWidth: 700,

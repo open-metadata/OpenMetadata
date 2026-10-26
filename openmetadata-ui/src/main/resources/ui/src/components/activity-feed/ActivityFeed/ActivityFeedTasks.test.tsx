@@ -30,13 +30,16 @@ const mockQueue = {
   tasks: [],
   visibleTasks: [],
   showEmptyState: false,
+  isLoadFailed: false,
+  handleRetry: jest.fn(),
 };
+let mockQueueOverrides: Partial<typeof mockQueue> & { error?: unknown } = {};
 
 jest.mock('../../discovery/personal-space/InboxPage/useTaskQueue', () => ({
   useTaskQueue: (...args: unknown[]) => {
     mockUseTaskQueue(...args);
 
-    return mockQueue;
+    return { ...mockQueue, ...mockQueueOverrides };
   },
 }));
 
@@ -50,8 +53,31 @@ jest.mock(
   '../../discovery/personal-space/InboxPage/components/TaskQueueBody',
   () => ({
     __esModule: true,
-    default: ({ toolbar }: { toolbar: ReactNode }) => <div>{toolbar}</div>,
-    TaskQueueEmptyState: () => null,
+    default: ({
+      emptyState,
+      isLoadFailed,
+      toolbar,
+    }: {
+      emptyState?: ReactNode;
+      isLoadFailed?: boolean;
+      toolbar: ReactNode;
+    }) => (
+      <div data-load-failed={isLoadFailed} data-testid="task-queue-body">
+        {toolbar}
+        {emptyState}
+      </div>
+    ),
+    TaskQueueEmptyState: ({
+      error,
+      onRetry,
+    }: {
+      error?: unknown;
+      onRetry?: () => void;
+    }) => (
+      <button data-testid="task-queue-empty" onClick={onRetry}>
+        {String(error)}
+      </button>
+    ),
   })
 );
 
@@ -116,6 +142,7 @@ jest.mock('react-i18next', () => ({
 describe('ActivityFeedTasks', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockQueueOverrides = {};
   });
 
   it("queues the scope's tasks beside the host's control", () => {
@@ -157,5 +184,27 @@ describe('ActivityFeedTasks', () => {
 
     expect(mockQueue.handleSearchChange).toHaveBeenCalledWith('refunds');
     expect(mockQueue.setGrouping).toHaveBeenCalledWith('none');
+  });
+
+  it('shows a failed load as an error with a retry, not an empty queue', () => {
+    mockQueueOverrides = {
+      error: new Error('boom'),
+      isLoadFailed: true,
+      showEmptyState: true,
+    };
+    render(<ActivityFeedTasks scope={SCOPE} />);
+
+    expect(screen.getByTestId('task-queue-body')).toHaveAttribute(
+      'data-load-failed',
+      'true'
+    );
+
+    const emptyState = screen.getByTestId('task-queue-empty');
+
+    expect(emptyState).toHaveTextContent('Error: boom');
+
+    fireEvent.click(emptyState);
+
+    expect(mockQueue.handleRetry).toHaveBeenCalled();
   });
 });

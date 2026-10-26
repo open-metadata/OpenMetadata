@@ -153,12 +153,14 @@ const ActivityFeedTasks: React.FC<ActivityFeedTasksProps> = ({
         emptyState={
           queue.showEmptyState ? (
             <TaskQueueEmptyState
+              error={queue.error}
               isNarrowed={queue.isNarrowed}
               isPersonal={false}
               scannedCount={queue.hasMore ? queue.tasks.length : undefined}
               status={queue.status}
               onClearFilters={queue.handleClearFilters}
               onLoadMore={queue.handleScanFurther}
+              onRetry={queue.handleRetry}
             />
           ) : undefined
         }
@@ -166,6 +168,7 @@ const ActivityFeedTasks: React.FC<ActivityFeedTasksProps> = ({
         handleCommentsChanged={queue.handleCommentsChanged}
         handleResolved={queue.handleResolved}
         handleTaskUpdated={queue.handleTaskUpdated}
+        isLoadFailed={queue.isLoadFailed}
         isLoading={queue.isLoading}
         isLoadingMore={queue.isLoadingMore}
         scrollRef={queue.scrollRef}
