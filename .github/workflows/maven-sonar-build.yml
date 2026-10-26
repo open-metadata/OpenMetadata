@@ -23,7 +23,6 @@ on:
       - "openmetadata-sdk/**"
       - "common/**"
       - "pom.xml"
-      - "yarn.lock"
       - "Makefile"
       - "bootstrap/**"
 

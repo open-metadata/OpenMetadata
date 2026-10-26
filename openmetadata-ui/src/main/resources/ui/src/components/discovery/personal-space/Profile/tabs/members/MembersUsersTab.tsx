@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   PaginationCardWithControls,
 } from '@openmetadata/ui-core-components';
 import { Download01, Upload01 } from '@openmetadata/ui-core-components/icons';
@@ -26,6 +25,7 @@ import {
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../../../constants/constants';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Table from '../../../../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import type { MembersUsersTabProps } from './MembersTeamDetail.types';
@@ -55,6 +55,7 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
     <Box direction="col" gap={3}>
       <Table
         columns={userColumns}
+        containerClassName="tw:rounded-none tw:border-0"
         data-testid="team-users-table"
         dataSource={filteredTeamUsers}
         extraTableFilters={
@@ -111,7 +112,7 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
               align="center"
               className="tw:min-h-32 tw:relative"
               justify="center">
-              <EmptyPlaceholder
+              <NoDataPlaceholder
                 description={t(
                   'message.adding-new-entity-is-easy-just-give-it-a-spin',
                   { entity: t('label.user') }

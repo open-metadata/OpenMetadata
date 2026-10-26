@@ -842,7 +842,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await waitForAllLoadersToDisappear(page);
   await page
     .getByTestId('glossary-left-panel')
-    .getByRole('link', { name: glossaryName, exact: true })
+    .getByRole('link')
+    .filter({ has: page.getByText(glossaryName, { exact: true }) })
     .click({ timeout: ACTION_TIMEOUT });
   await waitForAllLoadersToDisappear(page);
 };

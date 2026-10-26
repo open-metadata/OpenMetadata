@@ -28,6 +28,9 @@ const asFirstLogin = (page: Page) =>
     }
   });
 
+// The add-service route differs by distribution (Collate nests it under
+// /connections in AI mode), so the connect tests check which connectors the
+// wizard lists: a database-only grid for classic, every category for AI mode.
 const openHome = async (page: Page, path: string) => {
   await page.goto(path, { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
@@ -72,7 +75,10 @@ test.describe(
 
       await clickIgnoringToasts(page.getByTestId('welcome-screen-connect-btn'));
 
-      await expect(page).toHaveURL(/\/databaseServices\/add-service/);
+      const connectors = page.getByTestId('select-service');
+
+      await expect(connectors.getByTestId('Mysql')).toBeVisible();
+      await expect(connectors.getByTestId('Looker')).toBeHidden();
     });
 
     test('classic: take a product tour opens the tour', async ({ page }) => {
@@ -100,7 +106,10 @@ test.describe(
           page.getByTestId('welcome-screen-connect-btn')
         );
 
-        await expect(page).toHaveURL(/\/all\/add-service/);
+        const connectors = page.getByTestId('select-service');
+
+        await expect(connectors.getByTestId('Mysql')).toBeVisible();
+        await expect(connectors.getByTestId('Looker')).toBeVisible();
       });
 
       await test.step('the kept-alive home does not show it again', async () => {

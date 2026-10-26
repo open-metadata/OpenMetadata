@@ -21,6 +21,7 @@ import { UserClass } from '../../../support/user/UserClass';
 import { okJson, settleAll } from '../../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../../utils/common';
 import {
+  composerEditor,
   createInboxTask,
   createPolicyUser,
   deleteInboxTasks,
@@ -110,9 +111,6 @@ const isUnreadMentionsCount = (r: Response) => {
     params.get('limit') === '1'
   );
 };
-
-const composerEditor = (panel: Locator) =>
-  panel.getByTestId('inbox-comment-composer').locator('.ql-editor');
 
 const postTaskComment = async (page: Page, panel: Locator, text: string) => {
   const editor = composerEditor(panel);

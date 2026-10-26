@@ -60,6 +60,7 @@ import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.tasks.CreateTaskComment;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.tasks.TaskCount;
+import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.BulkTaskOperationParams;
@@ -86,6 +87,7 @@ import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
+import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -242,6 +244,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           UUID createdById,
       @Parameter(description = "Filter by entity FQN the task is about") @QueryParam("aboutEntity")
           String aboutEntity,
+      @Parameter(
+              description =
+                  "Comma-separated entity UUIDs; matches those entities exactly, excluding descendants")
+          @QueryParam("aboutEntityIds")
+          String aboutEntityIds,
       @Parameter(description = "Filter by parent service FQN of the entity the task is about")
           @QueryParam("aboutService")
           String aboutService,
@@ -302,6 +309,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     if (aboutEntity != null) {
       filter.addQueryParam("aboutEntity", aboutEntity);
+    }
+    if (aboutEntityIds != null) {
+      filter.addQueryParam(
+          "aboutEntityIds",
+          Arrays.stream(aboutEntityIds.split(","))
+              .map(String::trim)
+              .map(UUID::fromString)
+              .map(UUID::toString)
+              .collect(Collectors.joining(",")));
     }
     if (aboutService != null) {
       filter.addQueryParam("aboutService", aboutService);
@@ -1043,6 +1059,17 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     OperationContext operationContext =
         new OperationContext(aboutRef.getType(), MetadataOperation.CREATE_TASK);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (OntologyApprovalWorkflow.isReview(task)) {
+      EntityReference target = aboutRef;
+      if (Entity.ONTOLOGY_RELEASE.equals(aboutRef.getType())) {
+        OntologyRelease release = Entity.getEntity(aboutRef, "", Include.NON_DELETED);
+        target = release.getOntology();
+      }
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(target.getType(), MetadataOperation.EDIT_ALL),
+          new ResourceContext<>(target.getType(), target.getId(), null));
+    }
   }
 
   private void authorizeViewOnAboutEntity(

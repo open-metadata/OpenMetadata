@@ -318,7 +318,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(apiEndpointDetails)}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(apiEndpointDetails)}>
       <Box direction="col" gap={3}>
         <div>
           <DataAssetsHeader

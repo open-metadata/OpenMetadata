@@ -16,6 +16,7 @@ import {
   Dialog,
   Divider,
   FormItemLabel,
+  Grid,
   HintText,
   Modal,
   ModalOverlay,
@@ -52,7 +53,6 @@ import icDuration from '../../../../assets/svg/ic_duration.svg';
 import icReasonAccess from '../../../../assets/svg/ic_reason-access.svg';
 import icTicket from '../../../../assets/svg/ic_ticket.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
-import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -105,7 +105,6 @@ import {
   getClassificationTagPath,
   getDomainDetailsPath,
   getGlossaryTermDetailsPath,
-  getUserPath,
 } from '../../../../utils/RouterUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import {
@@ -138,6 +137,10 @@ import {
   isTaskTerminalStatus,
 } from '../../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
+import {
+  getTaskResolveBody,
+  isOntologyReviewTask,
+} from '../../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component';
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
@@ -149,9 +152,14 @@ import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.interface';
+import OntologyReviewPanel from '../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
 import { getLifecycleMove } from '../LifecycleApprovalCard/LifecycleApprovalCard.utils';
+import {
+  getTaskTypeMessageKey,
+  isRevisionRequest,
+} from '../MetadataCompletionTask/MetadataCompletionTask.utils';
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import TaskActionSplitButton, {
@@ -162,6 +170,7 @@ import {
   computeTaskEditAccessFlags,
   computeTaskOwnershipFlags,
   computeWorkflowTaskAccess,
+  getTaskCreatorLink,
 } from './TaskTab.utils';
 
 const FeedbackApprovalTask = withSuspenseFallback(
@@ -402,10 +411,17 @@ export const TaskTabNew = ({
     () => getTaskFormHandlerConfig(task, taskFormSchema?.uiSchema),
     [task, taskFormSchema?.uiSchema]
   );
-  const isWorkflowDrivenTask = useMemo(
-    () => Boolean(task.availableTransitions?.length),
-    [task.availableTransitions]
+  const [readyReviewTask, setReadyReviewTask] = useState<string>();
+  const handleReviewReady = useCallback(
+    (ready: boolean) => {
+      setReadyReviewTask(ready ? task.id : undefined);
+    },
+    [task.id]
   );
+  const reviewReady =
+    !isOntologyReviewTask(task) || readyReviewTask === task.id;
+  const isWorkflowDrivenTask =
+    isOntologyReviewTask(task) || Boolean(task.availableTransitions?.length);
   const [selectedTransitionId, setSelectedTransitionId] = useState<
     string | undefined
   >(task.availableTransitions?.[0]?.id);
@@ -613,7 +629,7 @@ export const TaskTabNew = ({
   }, [taskColumnLabel, t]);
 
   const taskDisplayMessage = useMemo(() => {
-    const taskTypeLabel = t(TASK_ENTITY_TYPES[task.type] ?? 'label.task');
+    const taskTypeLabel = t(getTaskTypeMessageKey(task) ?? 'label.task');
     const entityName = entityFQN
       ? getNameFromFQN(entityFQN)
       : task.about?.name ?? '';
@@ -622,10 +638,12 @@ export const TaskTabNew = ({
       : entityName;
 
     return [taskTypeLabel, taskScope].filter(Boolean).join(' ').trim();
-  }, [entityFQN, task.about, task.type, taskColumnLabel, t]);
+  }, [entityFQN, task, taskColumnLabel, t]);
   const shouldRenderTaskPayload = useMemo(() => {
     return hasTaskFormFields(taskFormSchema?.formSchema);
   }, [taskFormSchema?.formSchema]);
+
+  const createdByLink = getTaskCreatorLink(task);
 
   const darHeaderRows = useMemo(() => {
     if (
@@ -643,11 +661,11 @@ export const TaskTabNew = ({
         value: (
           <Link
             className="no-underline flex items-center gap-2"
-            to={getUserPath(task.createdBy?.name ?? '')}>
+            to={createdByLink}>
             <UserPopOverCard userName={task.createdBy?.name ?? ''}>
               <ProfilePicture name={task.createdBy?.name ?? ''} width="24" />
             </UserPopOverCard>
-            <Typography>{task.createdBy?.name}</Typography>
+            <Typography>{getEntityName(task.createdBy)}</Typography>
           </Link>
         ),
       },
@@ -658,6 +676,7 @@ export const TaskTabNew = ({
       },
     ];
   }, [
+    createdByLink,
     isWorkflowDrivenTask,
     shouldRenderTaskPayload,
     t,
@@ -698,7 +717,7 @@ export const TaskTabNew = ({
             <Typography className="p-0 task-id text-sm task-details-id">{`#${taskDisplayId} `}</Typography>
 
             <Typography className="p-xss task-details">
-              {t(TASK_ENTITY_TYPES[task.type])}
+              {t(getTaskTypeMessageKey(task) ?? 'label.task')}
             </Typography>
 
             {taskColumnName}
@@ -718,7 +737,7 @@ export const TaskTabNew = ({
       entityType,
       handleTaskLinkClick,
       isEntityDetailsAvailable,
-      task.type,
+      task,
       taskColumnName,
       taskDisplayId,
       t,
@@ -742,13 +761,16 @@ export const TaskTabNew = ({
       return;
     }
     try {
-      const updatedTask = await resolveTaskAPI(task.id, {
-        transitionId,
-        resolutionType,
-        comment: data.comment,
-        newValue: data.newValue,
-        payload: data.payload,
-      });
+      const updatedTask = await resolveTaskAPI(
+        task.id,
+        getTaskResolveBody(task, {
+          transitionId,
+          resolutionType,
+          comment: data.comment,
+          newValue: data.newValue,
+          payload: data.payload,
+        })
+      );
       const taskRemainsOpen = isTaskPendingFurtherApproval(updatedTask);
       showSuccessToast(
         taskRemainsOpen
@@ -914,7 +936,9 @@ export const TaskTabNew = ({
       const requiredFields = activeTaskFormSchema?.formSchema?.required;
       if (
         Array.isArray(requiredFields) &&
-        requiredFields.some((field) => !payload?.[field])
+        requiredFields.some(
+          (field) => typeof field !== 'string' || !payload?.[field]
+        )
       ) {
         showErrorToast(
           t('message.field-text-is-required', {
@@ -1171,16 +1195,15 @@ export const TaskTabNew = ({
     }
   };
 
-  const { hasWorkflowAccess, showsWorkflowActions } = computeWorkflowTaskAccess(
-    {
+  const { hasWorkflowAccess: canResolveWorkflow, showsWorkflowActions } =
+    computeWorkflowTaskAccess({
       isRequestApproval: task.type === TaskEntityType.RequestApproval,
       hasChangeRequest: Boolean(changeRequestId),
       isAssignee,
       isPartOfAssigneeTeam: Boolean(isPartOfAssigneeTeam),
       hasEditAccess,
       isCreator,
-    }
-  );
+    });
 
   const workflowTransitionActions = useMemo(() => {
     if (
@@ -1191,6 +1214,7 @@ export const TaskTabNew = ({
       return null;
     }
 
+    const hasWorkflowAccess = reviewReady && canResolveWorkflow;
     const menuItems: TaskActionSplitButtonItem[] =
       task.availableTransitions.map((transition) => ({
         key: transition.id,
@@ -1264,11 +1288,12 @@ export const TaskTabNew = ({
       </Box>
     );
   }, [
-    hasWorkflowAccess,
+    canResolveWorkflow,
     showsWorkflowActions,
     isActionLoading,
     isWorkflowDrivenTask,
     runWorkflowTransition,
+    reviewReady,
     selectedTransition,
     shouldOpenWorkflowTransitionModal,
     task.availableTransitions,
@@ -1551,21 +1576,25 @@ export const TaskTabNew = ({
             'flex-column': isEditAssignee,
           }
         )}>
-        <div className="d-flex gap-2" data-testid="task-assignees">
-          <Box className="m-l-0" rowGap={4} wrap="wrap">
-            <Box
-              align="center"
-              className="text-grey-muted tw:w-1/3 tw:pr-2"
-              gap={2}>
-              <UserIcon height={16} />
-              <Typography className="incident-manager-details-label">
-                {t('label.created-by')}
+        <div className="d-flex gap-2 tw:w-full" data-testid="task-assignees">
+          <Grid className="tw:w-full tw:items-center" colGap="2" rowGap="4">
+            <Grid.Item span={8}>
+              <Box align="center" className="text-grey-muted" gap={2}>
+                <UserIcon height={16} />
+                <Typography className="incident-manager-details-label">
+                  {t('label.created-by')}
+                </Typography>
+              </Box>
+            </Grid.Item>
+            <Grid.Item span={1}>
+              <Typography color="secondary" size="text-sm">
+                :
               </Typography>
-            </Box>
-            <div className="tw:w-2/3 tw:pr-2 tw:pl-0.5">
+            </Grid.Item>
+            <Grid.Item span={15}>
               <Link
                 className="no-underline flex items-center gap-2"
-                to={getUserPath(task.createdBy?.name ?? '')}>
+                to={createdByLink}>
                 <UserPopOverCard userName={task.createdBy?.name ?? ''}>
                   <div className="d-flex items-center">
                     <ProfilePicture
@@ -1575,21 +1604,28 @@ export const TaskTabNew = ({
                   </div>
                 </UserPopOverCard>
 
-                <Typography>{task.createdBy?.name}</Typography>
+                <Typography>{getEntityName(task.createdBy)}</Typography>
               </Link>
-            </div>
+            </Grid.Item>
 
             {isEditAssignee ? (
-              renderAssigneeEditor()
+              <Grid.Item span={24}>{renderAssigneeEditor()}</Grid.Item>
             ) : (
               <>
-                <Box className="text-grey-muted tw:w-1/3 tw:pr-2" gap={2}>
-                  <AssigneesIcon height={16} />
-                  <Typography className="incident-manager-details-label @grey-8">
-                    {t('label.assignee-plural')}
+                <Grid.Item span={8}>
+                  <Box align="center" className="text-grey-muted" gap={2}>
+                    <AssigneesIcon height={16} />
+                    <Typography className="incident-manager-details-label @grey-8">
+                      {t('label.assignee-plural')}
+                    </Typography>
+                  </Box>
+                </Grid.Item>
+                <Grid.Item span={1}>
+                  <Typography color="secondary" size="text-sm">
+                    :
                   </Typography>
-                </Box>
-                <Box className="tw:w-2/3 tw:pr-2 tw:pl-0.5" gap={2}>
+                </Grid.Item>
+                <Grid.Item className="tw:flex tw:gap-2" span={15}>
                   {task?.assignees?.length === 1 ? (
                     <div className="d-flex items-center gap-2">
                       <UserPopOverCard userName={task?.assignees[0].name ?? ''}>
@@ -1614,10 +1650,10 @@ export const TaskTabNew = ({
                       showLabel={false}
                     />
                   )}
-                </Box>
+                </Grid.Item>
               </>
             )}
-          </Box>
+          </Grid>
         </div>
       </div>
     );
@@ -1778,7 +1814,7 @@ export const TaskTabNew = ({
         </div>
       );
     }
-    if (proposedChanges === null) {
+    if (isOntologyReviewTask(task) || proposedChanges === null) {
       return null;
     }
 
@@ -1843,6 +1879,12 @@ export const TaskTabNew = ({
   };
 
   const renderFeedbackOrTaskPayload = () => {
+    if (isOntologyReviewTask(task)) {
+      return (
+        <OntologyReviewPanel task={task} onReadyChange={handleReviewReady} />
+      );
+    }
+
     if (isTaskRecognizerFeedbackApproval) {
       return task.payload ? (
         <div className="feedback-details-container">
@@ -1885,7 +1927,8 @@ export const TaskTabNew = ({
   };
 
   const renderActionRequiredSection = () => {
-    if (!isTaskActionable || rest.isOpenInDrawer) {
+    // A Revise and resubmit task is completed by editing the asset; it has no action of its own.
+    if (!isTaskActionable || rest.isOpenInDrawer || isRevisionRequest(task)) {
       return null;
     }
 
@@ -1936,6 +1979,7 @@ export const TaskTabNew = ({
 
                 {/* Only opens the editor, so it is a button rather than an input. */}
                 <Button
+                  ellipsis
                   className="comments-input-field tw:w-full tw:justify-start"
                   color="secondary"
                   data-testid="comments-input-field"

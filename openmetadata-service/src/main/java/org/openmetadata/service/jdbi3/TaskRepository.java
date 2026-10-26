@@ -66,6 +66,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
+import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -114,6 +115,7 @@ public class TaskRepository extends EntityRepository<Task> {
   // Stage a workflow-managed task holds after being persisted but before its Flowable instance
   // starts.
   public static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
+  public static final String WORKFLOW_START_FAILED_STAGE_ID = "workflow-start-failed";
 
   private static final Set<TaskEntityStatus> ALREADY_OPEN_STATUSES =
       Set.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress);
@@ -389,6 +391,7 @@ public class TaskRepository extends EntityRepository<Task> {
     computeAboutFqnHash(task);
 
     initializeWorkflowManagedTask(task, update);
+    OntologyApprovalWorkflow.prepare(task, update);
 
     // Task domains MUST be inherited from the target entity (about field)
     // This ensures tasks follow domain-based data isolation policies
@@ -523,6 +526,12 @@ public class TaskRepository extends EntityRepository<Task> {
     return new ArrayList<>(byId.values());
   }
 
+  /** A task takes its domains from the entity it is about on every write, never from its author. */
+  @Override
+  protected boolean authorDecidesDomains() {
+    return false;
+  }
+
   /**
    * Inherit domains from the target entity that this task is about.
    * Tasks must belong to the same domains as their target entity for proper data isolation.
@@ -588,7 +597,15 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of(FIELD_ABOUT, FIELD_CREATED_BY, FIELD_ASSIGNEES, FIELD_WATCHERS);
+  }
+
+  @Override
   public void storeEntity(Task task, boolean update) {
+    if (!update && OntologyApprovalWorkflow.isReview(task)) {
+      OntologyApprovalWorkflow.lockTarget(task);
+    }
     List<EntityReference> domains = task.getDomains();
     EntityReference about = task.getAbout();
     EntityReference createdBy = task.getCreatedBy();
@@ -657,6 +674,12 @@ public class TaskRepository extends EntityRepository<Task> {
           Entity.TASK,
           Relationship.MENTIONED_IN);
     }
+    OntologyApprovalWorkflow.start(task);
+  }
+
+  @Override
+  protected void preDelete(Task task, String deletedBy) {
+    OntologyApprovalWorkflow.requireDeletable(task);
   }
 
   private void storeAssignees(Task task) {
@@ -1339,6 +1362,11 @@ public class TaskRepository extends EntityRepository<Task> {
       throw new IllegalArgumentException("Resolution cannot be null");
     }
     Task original = get(null, task.getId(), getFields("*"));
+    if (OntologyApprovalWorkflow.isReview(original)
+        && original.getStatus() == TaskEntityStatus.Cancelled
+        && resolution.getType() == TaskResolutionType.Cancelled) {
+      return original;
+    }
     Task updated = JsonUtils.deepCopy(original, Task.class);
     updated.setStatus(mapResolutionToStatus(resolution.getType()));
     updated.setResolution(resolution);
@@ -1566,6 +1594,19 @@ public class TaskRepository extends EntityRepository<Task> {
     IncidentTcrsSyncHandler.sync(updated);
   }
 
+  @Override
+  protected void flushInOneTransaction(final List<Task> tasks, final Runnable work) {
+    if (tasks.stream().anyMatch(OntologyApprovalWorkflow::isReview)) {
+      executeInTransaction(
+          () -> {
+            work.run();
+            return null;
+          });
+    } else {
+      super.flushInOneTransaction(tasks, work);
+    }
+  }
+
   private void initializeWorkflowManagedTask(Task task, boolean update) {
     if (update || !shouldCreateWorkflowManagedTask(task)) {
       return;
@@ -1653,7 +1694,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
   private void markWorkflowTriggerFailure(Task task) {
     try {
-      task.setWorkflowStageId("workflow-start-failed");
+      task.setWorkflowStageId(WORKFLOW_START_FAILED_STAGE_ID);
       task.setWorkflowStageDisplayName("Workflow start failed");
       task.setUpdatedAt(System.currentTimeMillis());
       storeEntity(task, true);
@@ -1759,10 +1800,13 @@ public class TaskRepository extends EntityRepository<Task> {
         Operation operation,
         org.openmetadata.schema.type.change.ChangeSource changeSource) {
       super(original, updated, operation, changeSource);
+      setUseOptimisticLocking(OntologyApprovalWorkflow.isReview(original));
     }
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      OntologyApprovalWorkflow.requireUnchangedTarget(original, updated);
+      OntologyApprovalWorkflow.cancel(updated);
       preserveComments();
       updateAssignees();
       updateTaskReviewers();
