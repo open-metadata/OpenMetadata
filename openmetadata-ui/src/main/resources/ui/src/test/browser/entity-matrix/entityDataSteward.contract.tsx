@@ -12,10 +12,13 @@
  */
 
 /**
- * Replaces playwright/e2e/Pages/EntityDataSteward.spec.ts: a Data Steward edits
+ * The flows of playwright/e2e/Pages/EntityDataSteward.spec.ts: a Data Steward edits
  * an entity's metadata from its details page. Real page, real widgets, real
  * permission-driven rendering; only the network is mocked. Each test asserts
  * the write the page sends and what it shows after the round trip.
+ *
+ * One `EntityDataSteward.<Type>.browser.test.tsx` per entity type calls
+ * `describeDataStewardFlows`, so Vitest runs the types in parallel workers.
  */
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, test } from 'vitest';
@@ -131,8 +134,25 @@ interface ChildServer {
   writes: () => unknown[];
 }
 
+export type EntityLabel =
+  | 'ApiEndpoint'
+  | 'Table'
+  | 'StoredProcedure'
+  | 'Dashboard'
+  | 'Pipeline'
+  | 'Topic'
+  | 'MlModel'
+  | 'Container'
+  | 'SearchIndex'
+  | 'DashboardDataModel'
+  | 'Metric'
+  | 'Directory'
+  | 'File'
+  | 'Spreadsheet'
+  | 'Worksheet';
+
 interface EntityConfig {
-  label: string;
+  label: EntityLabel;
   url: string;
   endpoint: string;
   make: () => EntityLike;
@@ -523,10 +543,14 @@ const tagFqns = (entity: { tags?: TagLabel[] }) =>
 
 // The Table page renders a 120-column schema, so its multi-step tests run
 // past the default 15s.
-describe.each(ENTITIES)(
-  'Data Steward edits a $label',
-  { timeout: 60_000 },
-  (config) => {
+export const describeDataStewardFlows = (label: EntityLabel) => {
+  const config = ENTITIES.find((entity) => entity.label === label);
+
+  if (!config) {
+    throw new Error(`No entity config for ${label}`);
+  }
+
+  describe(`Data Steward edits a ${label}`, { timeout: 60_000 }, () => {
     let server: EntityServer<EntityLike>;
     let child: ChildServer | void;
 
@@ -818,5 +842,5 @@ describe.each(ENTITIES)(
         expect(childServer().writes()).toHaveLength(3);
       });
     });
-  }
-);
+  });
+};

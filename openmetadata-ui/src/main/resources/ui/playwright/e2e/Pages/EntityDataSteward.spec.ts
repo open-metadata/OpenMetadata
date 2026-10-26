@@ -39,7 +39,7 @@ import { pickEntityMatrix } from '../../utils/entityMatrix';
 const user = new UserClass();
 
 const MIGRATED = migratedTo.browser(
-  'src/test/browser/entity-matrix/EntityDataSteward.browser.test.tsx'
+  'src/test/browser/entity-matrix/EntityDataSteward.*.browser.test.tsx'
 );
 
 const entities = [
