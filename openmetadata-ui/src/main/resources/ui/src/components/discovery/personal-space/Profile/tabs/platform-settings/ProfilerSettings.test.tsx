@@ -107,7 +107,8 @@ describe('Profiler configuration settings', () => {
 
   it('view falls back to the defaults and renders the Collate Spark section when present', async () => {
     mockStored(undefined);
-    mockSparkConfig.mockReturnValue(() => <div data-testid="spark-config" />);
+    const SparkConfig = jest.fn(() => <div data-testid="spark-config" />);
+    mockSparkConfig.mockReturnValue(SparkConfig);
     render(
       <ProfilerSettings
         onNavigate={onNavigate}
@@ -122,6 +123,11 @@ describe('Profiler configuration settings', () => {
       'label.enabled'
     );
     expect(screen.getByTestId('spark-config')).toBeInTheDocument();
+    // The Spark list navigates to its own sub-pages with the page's props.
+    expect(SparkConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ onNavigate }),
+      expect.anything()
+    );
   });
 
   it('form hands an item id to the contributed Spark form, with the same props', async () => {

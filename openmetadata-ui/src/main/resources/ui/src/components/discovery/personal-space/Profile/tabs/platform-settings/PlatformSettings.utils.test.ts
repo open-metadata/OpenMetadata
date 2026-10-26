@@ -12,6 +12,7 @@
  */
 
 import { AuthProvider } from '../../../../../../generated/settings/settings';
+import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { PLATFORM_SETTINGS_PAGES } from './PlatformSettings.constants';
 import type { PlatformSettingsPage } from './PlatformSettings.types';
 import {
@@ -146,6 +147,34 @@ describe('PlatformSettings.utils', () => {
         title: 'label.email',
         breadcrumbs: [{ id: 'email', label: 'label.email' }],
       });
+    });
+
+    it('titles a profiler item route from the Spark form, falling back to "Edit"', () => {
+      const profiler = page('profiler-configuration');
+      const titleSpy = jest.spyOn(
+        profilerConfigurationClassBase,
+        'getSparkAgentConfigFormTitle'
+      );
+      const header = () =>
+        getPageHeader(
+          profiler,
+          {
+            type: 'page',
+            page: 'profiler-configuration',
+            isEditing: true,
+            itemId: 'spark',
+          },
+          t
+        ).title;
+
+      expect(header()).toBe('label.edit-entity');
+
+      titleSpy.mockReturnValueOnce('Add Spark Configuration');
+
+      expect(header()).toBe('Add Spark Configuration');
+      expect(titleSpy).toHaveBeenLastCalledWith(t, 'spark');
+
+      titleSpy.mockRestore();
     });
 
     it('adds an edit crumb, using the page override when it has one', () => {
