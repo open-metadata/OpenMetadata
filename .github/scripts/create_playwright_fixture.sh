@@ -50,26 +50,28 @@ for state_file in \
   fi
 done
 
+# ADR:2026-10-26-playwright-fixture-snapshots-only-after-reindex-settles
 # SearchIndexingApplication's default cron (Sunday 00:30 UTC) can fire while the fixture
 # is being prepared; copying OpenSearch mid-recreate caches half-built indices for every run.
+# The app run record can't answer "is it still running": activeError is written mid-run and
+# gets an endTime stamped then too. /search/stats asks the live Quartz scheduler and the
+# distributed-job table instead. Anything but an explicit false keeps waiting.
 wait_for_reindex_idle() {
-  local token status deadline=$((SECONDS + ${FIXTURE_REINDEX_WAIT_SECONDS:-900}))
+  local token response remaining running
+  local deadline=$((SECONDS + ${FIXTURE_REINDEX_WAIT_SECONDS:-900}))
   token=$(jq -r '.token' "$auth_source/admin-api-token.json")
-  while (( SECONDS < deadline )); do
-    status=$(
-      curl -s --header "Authorization: Bearer $token" \
-        "http://localhost:8585/api/v1/apps/name/SearchIndexingApplication/runs/latest" |
-        jq -r '.status // "none"' 2>/dev/null | tr '[:upper:]' '[:lower:]'
-    )
-    case "$status" in
-      running|started|pending|active|stopinprogress)
-        echo "SearchIndexingApplication is $status; waiting before snapshotting..."
-        sleep 10
-        ;;
-      *) return 0 ;;
-    esac
+  while (( (remaining = deadline - SECONDS) > 0 )); do
+    response=$(
+      curl -sf --max-time "$(( remaining < 30 ? remaining : 30 ))" \
+        --header "Authorization: Bearer $token" \
+        "http://localhost:8585/api/v1/search/stats"
+    ) || response=""
+    running=$(jq -r '.isSearchIndexingRunning | tostring' <<<"$response" 2>/dev/null) || running=""
+    [[ "$running" == "false" ]] && return 0
+    echo "Search indexing not confirmed idle (isSearchIndexingRunning=${running:-unknown}); waiting before snapshotting..."
+    sleep 10
   done
-  echo "SearchIndexingApplication still running; refusing to snapshot a partial search index" >&2
+  echo "Search indexing did not go idle in time; refusing to snapshot a partial search index" >&2
   exit 1
 }
 wait_for_reindex_idle
