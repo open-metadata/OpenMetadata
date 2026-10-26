@@ -166,36 +166,48 @@ public interface FeedDAOs {
         @Bind("oldFqnHash") String oldFqnHash, @Bind("newFqnHash") String newFqnHash);
 
     /**
-     * Swap the {@code oldFqnHash} prefix for {@code newFqnHash} on the tasks whose hash matches
-     * {@code aboutFqnHashPattern}: the hash itself, or {@code hash.%} for the entities nested under
-     * it. Other entity types can share an FQN (a domain and a glossary both named {@code X}), so
-     * only tasks whose {@code about} relationship comes from one of {@code entityTypes} move.
+     * Swap the {@code oldFqnHash} prefix for {@code newFqnHash} on the tasks about the entity
+     * itself (exact hash, {@code entityType}) and about the entities nested under it ({@code
+     * hash.%}, {@code nestedTypes}). One statement, so a row the exact match moves is not matched
+     * again by the prefix. Other entity types can share an FQN (a domain and a glossary both named
+     * {@code X}), so each match also requires the task's {@code about} relationship to come from
+     * the matching type. Hashes are hex and dots, so the prefix holds no LIKE wildcard.
      */
     @ConnectionAwareSqlUpdate(
         value =
             "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', "
                 + "CONCAT(:newFqnHash, SUBSTRING(aboutFqnHash, CHAR_LENGTH(:oldFqnHash) + 1))) "
-                + "WHERE aboutFqnHash LIKE :aboutFqnHashPattern "
-                + "AND EXISTS (SELECT 1 FROM entity_relationship er WHERE er.toId = task_entity.id "
-                + "AND er.toEntity = 'task' AND er.relation = :relation "
-                + "AND er.fromEntity IN (<entityTypes>))",
+                + "WHERE (aboutFqnHash = :oldFqnHash AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "= :entityType)) "
+                + "OR (aboutFqnHash LIKE CONCAT(:oldFqnHash, '.%') AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "IN (<nestedTypes>)))",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "UPDATE task_entity SET json = jsonb_set(json, '{aboutFqnHash}', "
                 + "to_jsonb(:newFqnHash::text || "
                 + "substring(aboutfqnhash from char_length(:oldFqnHash::text) + 1))) "
-                + "WHERE aboutfqnhash LIKE :aboutFqnHashPattern "
-                + "AND EXISTS (SELECT 1 FROM entity_relationship er WHERE er.toId = task_entity.id "
-                + "AND er.toEntity = 'task' AND er.relation = :relation "
-                + "AND er.fromEntity IN (<entityTypes>))",
+                + "WHERE (aboutfqnhash = :oldFqnHash AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "= :entityType)) "
+                + "OR (aboutfqnhash LIKE :oldFqnHash::text || '.%' AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "IN (<nestedTypes>)))",
         connectionType = POSTGRES)
     int repointAboutFqnHash(
         @Bind("oldFqnHash") String oldFqnHash,
-        @Bind("aboutFqnHashPattern") String aboutFqnHashPattern,
         @Bind("newFqnHash") String newFqnHash,
+        @Bind("entityType") String entityType,
         @Bind("relation") int relation,
-        @BindList("entityTypes") List<String> entityTypes);
+        @BindList(value = "nestedTypes", onEmpty = BindList.EmptyHandling.NULL_STRING)
+            List<String> nestedTypes);
+
+    /** Opens the {@code about} relationship check; the caller appends the entity-type predicate. */
+    String TASK_ABOUT_FROM =
+        "SELECT 1 FROM entity_relationship er WHERE er.toId = task_entity.id "
+            + "AND er.toEntity = 'task' AND er.relation = :relation AND er.fromEntity ";
 
     @Override
     default void update(UUID id, String fqn, String json) {

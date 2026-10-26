@@ -2879,31 +2879,25 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * entity itself by exact FQN, and the nested entity types under it by FQN prefix.
    */
   private void repointTasksAndWorkflowInstancesForFqnChange(String oldFqn, String newFqn) {
-    String oldFqnHash = FullyQualifiedName.buildHash(oldFqn);
-    String newFqnHash = FullyQualifiedName.buildHash(newFqn);
     List<String> nestedTypes = List.copyOf(getNestedFqnEntityTypes());
-    int tasks = repointTasks(oldFqnHash, oldFqnHash, newFqnHash, List.of(entityType));
-    repointWorkflowInstancesForFqnChange(entityType, oldFqn, newFqn, false);
-    if (!nestedTypes.isEmpty()) {
-      String nestedPattern = oldFqnHash + Entity.SEPARATOR + "%";
-      tasks += repointTasks(oldFqnHash, nestedPattern, newFqnHash, nestedTypes);
-      nestedTypes.forEach(type -> repointWorkflowInstancesForFqnChange(type, oldFqn, newFqn, true));
-    }
+    int tasks =
+        daoCollection
+            .taskDAO()
+            .repointAboutFqnHash(
+                FullyQualifiedName.buildHash(oldFqn),
+                FullyQualifiedName.buildHash(newFqn),
+                entityType,
+                Relationship.MENTIONED_IN.ordinal(),
+                nestedTypes);
+    // One statement per type, so a link the exact match moves is not matched again by the prefix.
+    repointWorkflowInstancesForFqnChange(
+        entityType, oldFqn, newFqn, nestedTypes.contains(entityType));
+    nestedTypes.stream()
+        .filter(type -> !type.equals(entityType))
+        .forEach(type -> repointWorkflowInstancesForFqnChange(type, oldFqn, newFqn, true));
     if (tasks > 0) {
       LOG.info("[fqn-change] repointed tasks {} -> {} rows={}", oldFqn, newFqn, tasks);
     }
-  }
-
-  private int repointTasks(
-      String oldFqnHash, String aboutFqnHashPattern, String newFqnHash, List<String> types) {
-    return daoCollection
-        .taskDAO()
-        .repointAboutFqnHash(
-            oldFqnHash,
-            aboutFqnHashPattern,
-            newFqnHash,
-            Relationship.MENTIONED_IN.ordinal(),
-            types);
   }
 
   /**
@@ -2919,9 +2913,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     String newLink = new MessageParser.EntityLink(entityType, newFqn).getLinkString();
     String oldStem = oldLink.substring(0, oldLink.length() - 1);
     String newStem = newLink.substring(0, newLink.length() - 1);
-    // Without nested entities the "prefix" is the exact link, so a dotted sibling name never
-    // matches.
-    String oldChildPrefix = includeNested ? oldStem + Entity.SEPARATOR + "%" : oldLink;
+    // Entity names may contain the LIKE wildcards % and _; escape them so the pattern only matches
+    // this link, or the links nested under it.
+    String escapedStem = ListFilter.escapeLikeBindValue(oldStem);
+    String oldChildPrefix =
+        includeNested
+            ? escapedStem + Entity.SEPARATOR + "%"
+            : ListFilter.escapeLikeBindValue(oldLink);
     int instances =
         daoCollection
             .workflowInstanceTimeSeriesDAO()
