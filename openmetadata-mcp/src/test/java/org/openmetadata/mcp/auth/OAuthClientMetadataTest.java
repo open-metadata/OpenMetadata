@@ -48,6 +48,19 @@ class OAuthClientMetadataTest {
   }
 
   @Test
+  void testValidateScope_moreScopesThanTheLimitThrows() throws InvalidScopeException {
+    OAuthClientMetadata metadata = new OAuthClientMetadata();
+    metadata.setScope(null);
+    String atTheLimit = "s ".repeat(OAuthClientMetadata.MAX_REQUESTED_SCOPES).trim();
+
+    assertThat(metadata.validateScope(atTheLimit))
+        .hasSize(OAuthClientMetadata.MAX_REQUESTED_SCOPES);
+    assertThatThrownBy(() -> metadata.validateScope(atTheLimit + " s"))
+        .isInstanceOf(InvalidScopeException.class)
+        .hasMessageContaining("At most");
+  }
+
+  @Test
   void testValidateScope_invalidScopeThrows() {
     OAuthClientMetadata metadata = new OAuthClientMetadata();
     metadata.setScope("read write");

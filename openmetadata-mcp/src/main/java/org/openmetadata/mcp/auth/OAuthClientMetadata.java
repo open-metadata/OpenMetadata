@@ -15,6 +15,14 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class OAuthClientMetadata {
 
+  /**
+   * Most scopes one authorization or refresh request may name. The granted list is stored with the
+   * code and refresh token, put in the JWT and compared on every refresh, so it must not grow with
+   * the request body. A registration (scope capped at 255 characters) cannot name more than this.
+   * ADR:2026-10-26-mcp-oauth-requests-name-at-most-128-scopes
+   */
+  public static final int MAX_REQUESTED_SCOPES = 128;
+
   @JsonProperty("redirect_uris")
   private List<URI> redirectUris;
 
@@ -73,7 +81,7 @@ public class OAuthClientMetadata {
    * all requested scopes are allowed.
    * @param requestedScope The scope requested by the client
    * @return List of validated scopes or null if no scope was requested
-   * @throws InvalidScopeException if the requested scope is not allowed
+   * @throws InvalidScopeException if the requested scope is not allowed or names too many scopes
    */
   public List<String> validateScope(String requestedScope) throws InvalidScopeException {
     if (requestedScope == null) {
@@ -81,6 +89,10 @@ public class OAuthClientMetadata {
     }
 
     List<String> requestedScopes = Arrays.asList(requestedScope.split(" "));
+    if (requestedScopes.size() > MAX_REQUESTED_SCOPES) {
+      throw new InvalidScopeException(
+          "At most " + MAX_REQUESTED_SCOPES + " scopes can be requested");
+    }
 
     // If client didn't register specific scopes, allow any scope
     if (scope == null || scope.trim().isEmpty()) {

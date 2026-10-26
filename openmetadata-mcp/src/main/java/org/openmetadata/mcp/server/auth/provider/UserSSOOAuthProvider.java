@@ -16,6 +16,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -24,6 +25,7 @@ import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.AuthorizationParams;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
+import org.openmetadata.mcp.auth.OAuthClientMetadata;
 import org.openmetadata.mcp.auth.OAuthToken;
 import org.openmetadata.mcp.auth.RefreshToken;
 import org.openmetadata.mcp.auth.exception.AuthorizeException;
@@ -918,6 +920,13 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         throw new TokenException("invalid_request", "Missing refresh token");
       }
 
+      // Same bound as the authorization request; repeated scopes would otherwise regrow the list
+      if (scopes != null && scopes.size() > OAuthClientMetadata.MAX_REQUESTED_SCOPES) {
+        throw new TokenException(
+            "invalid_scope",
+            "At most " + OAuthClientMetadata.MAX_REQUESTED_SCOPES + " scopes can be requested");
+      }
+
       // Load refresh token from database
       RefreshToken tokenRecord = tokenRepository.findRefreshToken(refreshTokenValue);
       if (tokenRecord == null) {
@@ -946,14 +955,20 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       // Validate scope downgrading (cannot request more scopes than originally granted)
       List<String> originalScopes = tokenRecord.getScopes();
+      if (originalScopes.size() > OAuthClientMetadata.MAX_REQUESTED_SCOPES) {
+        // Granted before the limit; refreshing would carry the whole list forward on every
+        // rotation.
+        throw new TokenException(
+            "invalid_grant", "Refresh token carries too many scopes. Please sign in again.");
+      }
       List<String> requestedScopes =
           (scopes != null && !scopes.isEmpty()) ? scopes : originalScopes;
 
-      if (!originalScopes.containsAll(requestedScopes)) {
+      if (!new HashSet<>(originalScopes).containsAll(requestedScopes)) {
         LOG.warn(
-            "Scope expansion attempted: original={}, requested={}",
-            originalScopes,
-            requestedScopes);
+            "Scope expansion attempted: {} scopes granted, {} requested",
+            originalScopes.size(),
+            requestedScopes.size());
         throw new TokenException(
             "invalid_scope",
             "Requested scopes exceed originally granted scopes. Scope expansion is not allowed.");

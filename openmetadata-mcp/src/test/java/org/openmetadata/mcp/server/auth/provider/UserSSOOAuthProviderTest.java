@@ -2,8 +2,15 @@ package org.openmetadata.mcp.server.auth.provider;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -11,12 +18,23 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.net.URI;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
+import org.openmetadata.mcp.auth.OAuthClientMetadata;
+import org.openmetadata.mcp.auth.RefreshToken;
+import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
+import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 /**
  * Unit tests for {@link UserSSOOAuthProvider#handleSSOErrorCallback}, which relays an upstream
@@ -338,6 +356,78 @@ class UserSSOOAuthProviderTest {
     assertThat(html).contains("error=login_required");
     assertThat(html).doesNotContain("iss=null");
     assertThat(html).doesNotContain("&iss=");
+  }
+
+  // ── refresh token exchange ────────────────────────────────────────────────
+
+  @Test
+  void exchangeRefreshToken_moreScopesThanTheLimit_isRefusedBeforeAnyLookup() throws Exception {
+    OAuthTokenRepository tokenRepo = mock(OAuthTokenRepository.class);
+    UserSSOOAuthProvider provider =
+        newProvider(
+            mock(McpPendingAuthRequestRepository.class), mock(OAuthClientRepository.class), ISSUER);
+    setField(provider, "tokenRepository", tokenRepo);
+    RefreshToken refreshToken = new RefreshToken();
+    refreshToken.setToken("refresh-token");
+    List<String> tooMany =
+        Collections.nCopies(OAuthClientMetadata.MAX_REQUESTED_SCOPES + 1, "openid");
+
+    TokenException refused =
+        assertThrows(
+            TokenException.class,
+            () -> provider.exchangeRefreshToken(registeredClient(), refreshToken, tooMany));
+
+    assertThat(refused.getError()).isEqualTo("invalid_scope");
+    verifyNoInteractions(tokenRepo);
+  }
+
+  @Test
+  void exchangeRefreshToken_aGrantHoldingMoreScopesThanTheLimit_mustSignInAgain() throws Exception {
+    TokenException refused =
+        refreshWith(
+            Collections.nCopies(OAuthClientMetadata.MAX_REQUESTED_SCOPES + 1, "openid"), null);
+
+    assertThat(refused.getError()).isEqualTo("invalid_grant");
+  }
+
+  @Test
+  void exchangeRefreshToken_askingForAScopeNeverGranted_isRefused() throws Exception {
+    TokenException refused = refreshWith(List.of("openid"), List.of("openid", "admin"));
+
+    assertThat(refused.getError()).isEqualTo("invalid_scope");
+  }
+
+  /** Refreshes a live token granted {@code granted}, asking for {@code requested}. */
+  private TokenException refreshWith(List<String> granted, List<String> requested)
+      throws Exception {
+    RefreshToken stored =
+        new RefreshToken("refresh-token", CLIENT_ID, granted, System.currentTimeMillis() + 60_000L);
+    stored.setUserName("alice");
+    OAuthTokenRepository tokenRepo = mock(OAuthTokenRepository.class);
+    when(tokenRepo.findRefreshToken("refresh-token")).thenReturn(stored);
+    JWTTokenGenerator jwtGenerator = mock(JWTTokenGenerator.class);
+    when(jwtGenerator.generateJWTToken(
+            anyString(), any(), anyBoolean(), any(), anyLong(), anyBoolean(), any(), any()))
+        .thenReturn(new JWTAuthMechanism().withJWTToken("jwt"));
+    UserSSOOAuthProvider provider =
+        newProvider(
+            mock(McpPendingAuthRequestRepository.class), mock(OAuthClientRepository.class), ISSUER);
+    setField(provider, "tokenRepository", tokenRepo);
+    setField(provider, "jwtGenerator", jwtGenerator);
+    RefreshToken presented = new RefreshToken();
+    presented.setToken("refresh-token");
+    // A live user, so a refresh that passes the scope checks would succeed.
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.USER), eq("alice"), anyString(), eq(Include.NON_DELETED)))
+          .thenReturn(new User().withName("alice").withEmail("alice@example.com"));
+      return assertThrows(
+          TokenException.class,
+          () -> provider.exchangeRefreshToken(registeredClient(), presented, requested).join());
+    }
   }
 
   // ── reflection helpers (mirror AuthenticationCodeFlowHandlerTest) ─────────
