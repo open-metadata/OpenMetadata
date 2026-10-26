@@ -48,6 +48,7 @@ const getReactionsVariant = (showReplyCount: boolean) =>
   showReplyCount ? ReactionsVariant.Pill : ReactionsVariant.Default;
 
 // The Inbox footer's text button: a 16px icon in the reaction smiley's colour.
+// ADR:2026-10-26-conversation-drawers-style-the-reply-count-and-message-like-the-inbox
 const LABELLED_REPLY_CLASS =
   'tw:px-2 tw:*:data-icon:size-4 tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover';
 

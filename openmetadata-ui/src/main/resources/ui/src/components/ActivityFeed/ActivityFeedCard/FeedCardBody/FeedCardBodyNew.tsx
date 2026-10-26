@@ -278,6 +278,7 @@ const FeedCardBodyNew = ({
           : 'tw:mt-0.5 tw:max-h-50 tw:p-5 tw:scrollbar-hide',
         // In the thread panels the card shares the drawer's surface, so the
         // message sits recessed into it, as the Inbox's does.
+        // ADR:2026-10-26-conversation-drawers-style-the-reply-count-and-message-like-the-inbox
         isThreadPanel && ['tw:border-transparent', INBOX_RECESSED_SURFACE_CLASS]
       )}>
       {feedBodyRender}
