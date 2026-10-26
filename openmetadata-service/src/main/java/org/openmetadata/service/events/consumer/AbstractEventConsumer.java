@@ -143,8 +143,7 @@ public abstract class AbstractEventConsumer implements Job {
   }
 
   public ResultList<ChangeEvent> pollEvents(long offset, long batchSize) {
-    var records =
-        Entity.getCollectionDAO().changeEventDAO().listWithOffset((int) batchSize, offset);
+    var records = Entity.getCollectionDAO().changeEventDAO().listWithOffset(batchSize, offset);
     CursorPlan cursorPlan =
         planCursor(offset, ledger.gapWaitSince(), records, System.currentTimeMillis());
     ledger.readUpTo(cursorPlan.offset(), cursorPlan.pendingGapSince());

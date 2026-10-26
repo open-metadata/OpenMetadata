@@ -1,7 +1,6 @@
 package org.openmetadata.service.events.consumer.ledger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -41,7 +40,7 @@ class DiagnosticsTest {
     }
 
     assertEquals(UnprocessedEvents.PAGE_SIZE + 3, counted, "the count stays exact across pages");
-    verify(changeEvents, times(3)).listWithOffset(anyInt(), anyLong());
+    verify(changeEvents, times(3)).listWithOffset(anyLong(), anyLong());
   }
 
   // One row, so the evaluation stays on this thread, where the static mock can see it.
