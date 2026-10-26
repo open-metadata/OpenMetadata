@@ -125,6 +125,17 @@ export const styles = sortCx({
         'tw:*:data-icon:text-utility-gray-500 tw:hover:*:data-icon:text-utility-gray-600',
       ].join(' '),
     },
+    // Primary text for a link that is the heading of a tinted surface (e.g. the
+    // lineage base node), where link-gray's tertiary text washes out.
+    'link-primary': {
+      root: [
+        'tw:text-primary tw:hover:text-secondary_hover',
+        // Inner text underline
+        'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
+        // Icon styles
+        'tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover',
+      ].join(' '),
+    },
     'link-color': {
       root: [
         // Dark keeps light frozen (brand-secondary) but flips to the blue link
@@ -317,9 +328,12 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
     const Component = href ? AriaLink : AriaButton;
 
     const isIcon = (IconLeading || IconTrailing) && !children;
-    const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
-      color
-    );
+    const isLinkType = [
+      'link-gray',
+      'link-primary',
+      'link-color',
+      'link-destructive',
+    ].includes(color);
     const isUnboxedLink = isLinkType && !boxed;
     noTextPadding = isUnboxedLink || noTextPadding;
 

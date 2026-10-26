@@ -16,6 +16,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { getEntityLinkFromType } from '../../EntityLinkUtils';
 import { getTableFQNFromColumnFQN } from '../../FqnUtils';
 import { getEntityDetailsPath, getUserPath } from '../../RouterUtils';
+import { getSettingsLink } from '../../SettingsModalLinkUtils';
 
 export const isGraphColumnNode = (node: GraphNode) =>
   ['column', EntityType.TABLE_COLUMN].includes(node.type);
@@ -32,7 +33,7 @@ export const getGraphNodeHref = (node?: GraphNode): string => {
     );
   }
   if (node.type === EntityType.USER) {
-    return getUserPath(node.fullyQualifiedName);
+    return getSettingsLink(getUserPath(node.fullyQualifiedName));
   }
 
   return getEntityLinkFromType(

@@ -549,7 +549,10 @@ export const Lineage = ({
     entityTypeProp
   );
   const queryParams = new URLSearchParams(location.search);
-  const isFullScreen = queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
+  // Full screen is an asset-lineage view only; the platform page has no toggle.
+  const isFullScreen =
+    !isPlatformLineageProp &&
+    queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
   const { ref: fullScreenRef, bounds: fullScreenBounds } =
     useFullScreenBounds(isFullScreen);
   const { showModal } = useEntityExportModalProvider();

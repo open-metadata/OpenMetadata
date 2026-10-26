@@ -63,15 +63,22 @@ jest.mock('../useInboxActivity', () => ({
 jest.mock('../components/ActivityToolbar', () => ({
   __esModule: true,
   default: ({
+    datePreset,
+    onDatePresetChange,
     onFilterChange,
     onGroupingChange,
     onTypeKeysChange,
   }: {
+    datePreset: string;
+    onDatePresetChange: (key: string) => void;
     onFilterChange: (value: string) => void;
     onGroupingChange: (value: string) => void;
     onTypeKeysChange: (value: string[]) => void;
   }) => (
-    <div>
+    <div data-preset={datePreset} data-testid="toolbar">
+      <button onClick={() => onDatePresetChange('last7days')}>
+        last-7-days
+      </button>
       <button onClick={() => onFilterChange('following')}>following</button>
       <button onClick={() => onGroupingChange('user')}>by-user</button>
       <button onClick={() => onGroupingChange('asset')}>by-asset</button>
@@ -88,15 +95,18 @@ jest.mock('../components/ActivityFeedItem', () => ({
     activity,
     feed,
     isMentioned,
+    mentionedName,
     timeFormat,
   }: {
     activity?: MockItem;
     feed?: MockItem;
     isMentioned?: boolean;
+    mentionedName?: string;
     timeFormat?: string;
   }) => (
     <div
       data-mentioned={isMentioned}
+      data-mentioned-name={mentionedName}
       data-testid="feed-item"
       data-time-format={timeFormat}>
       {activity?.id ?? feed?.id}
@@ -166,7 +176,15 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+import { User } from '../../../../../generated/entity/teams/user';
+import { getInboxDateRange } from '../inbox.utils';
 import ActivityTab from './ActivityTab';
+
+const alice = {
+  id: 'alice-id',
+  name: 'alice.johnson',
+  displayName: 'Alice Johnson',
+} as User;
 
 describe('ActivityTab', () => {
   beforeEach(() => {
@@ -277,13 +295,94 @@ describe('ActivityTab', () => {
   it('fetches the sub-tab the toolbar selects', () => {
     render(<ActivityTab />);
 
-    expect(mockUseInboxActivity).toHaveBeenLastCalledWith('all', undefined);
+    // Uncontrolled, the tab keeps its own window at the default preset.
+    const defaultWindow = expect.objectContaining({ key: 'last30days' });
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      defaultWindow,
+      undefined
+    );
 
     fireEvent.click(screen.getByText('following'));
 
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'following',
+      defaultWindow,
       undefined
+    );
+  });
+
+  // Without a window from the parent, the tab keeps and narrows its own.
+  it('narrows its own window when a preset is picked without a parent window', () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('last-7-days'));
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      { ...getInboxDateRange(7), key: 'last7days' },
+      undefined
+    );
+    expect(screen.getByTestId('toolbar')).toHaveAttribute(
+      'data-preset',
+      'last7days'
+    );
+    // A narrowed window empties to "no activity in period", not first-run.
+    expect(screen.getByText('label.no-activity-in-period')).toBeInTheDocument();
+  });
+
+  it("uses the parent's window and hands it the preset when given one", () => {
+    const dateRange = { startTs: 100, endTs: 200, key: 'last30days' };
+    const onDatePresetChange = jest.fn();
+
+    render(
+      <ActivityTab
+        dateRange={dateRange}
+        onDatePresetChange={onDatePresetChange}
+      />
+    );
+    fireEvent.click(screen.getByText('last-7-days'));
+
+    expect(onDatePresetChange).toHaveBeenCalledWith('last7days');
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      dateRange,
+      undefined
+    );
+    expect(
+      screen.getByText('label.activity-feed-starts-here')
+    ).toBeInTheDocument();
+  });
+
+  it("fetches another user's feeds when given a user", () => {
+    render(<ActivityTab user={alice} />);
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      expect.anything(),
+      'alice-id'
+    );
+  });
+
+  it('names the viewed user, not "you", on mentions and the empty state', () => {
+    render(<ActivityTab user={alice} />);
+
+    expect(screen.getByText('label.no-activity-yet')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.user-activity-empty-description')
+    ).toBeInTheDocument();
+
+    activityState = {
+      items: [{ feed: { id: 't1' } }],
+      total: 1,
+      isLoading: false,
+    };
+    mockMentionItems = [{ feed: { id: 't1' } }];
+    render(<ActivityTab user={alice} />);
+
+    expect(screen.getByTestId('feed-item')).toHaveAttribute(
+      'data-mentioned-name',
+      'Alice'
     );
   });
 
