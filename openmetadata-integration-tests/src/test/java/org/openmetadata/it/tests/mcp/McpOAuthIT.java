@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -18,6 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.mcp.auth.RefreshToken;
+import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Execution(ExecutionMode.SAME_THREAD)
@@ -359,6 +362,52 @@ public class McpOAuthIT extends McpTestBase {
                 + "\"error\":{\"code\":-32001,\"message\":\"Invalid or expired bearer token\"}}");
     // RFC 6750 section 3.1: a token was supplied and rejected, so the challenge says so.
     assertThat(challengeOf(response)).contains("error=\"invalid_token\"");
+  }
+
+  @Test
+  @Order(14)
+  void testRefresh_rotatedTokenKeepsTheEndOfTheGrant() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    long grantEnd = System.currentTimeMillis() + Duration.ofDays(5).toMillis();
+    String refreshToken = seedRefreshToken(grantEnd);
+
+    HttpResponse<String> response = refresh(refreshToken);
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    String rotated = OBJECT_MAPPER.readTree(response.body()).get("refresh_token").asText();
+    assertThat(new OAuthTokenRepository().findRefreshToken(rotated).getExpiresAt())
+        .isEqualTo(grantEnd);
+  }
+
+  /** Stores a refresh token for admin ending at {@code expiresAt}, as a sign-in would. */
+  private static String seedRefreshToken(long expiresAt) {
+    String value = UUID.randomUUID().toString();
+    new OAuthTokenRepository()
+        .storeRefreshToken(
+            new RefreshToken(value, registeredClientId, List.of(), expiresAt),
+            registeredClientId,
+            "admin",
+            List.of());
+    return value;
+  }
+
+  private HttpResponse<String> refresh(String refreshToken) throws Exception {
+    String formBody =
+        "grant_type=refresh_token&refresh_token="
+            + refreshToken
+            + "&client_id="
+            + registeredClientId
+            + "&client_secret="
+            + registeredClientSecret;
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getMcpUrl("/mcp/token")))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .POST(HttpRequest.BodyPublishers.ofString(formBody))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private static String challengeOf(HttpResponse<String> response) {
