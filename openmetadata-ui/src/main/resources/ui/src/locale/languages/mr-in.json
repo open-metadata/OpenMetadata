@@ -6267,6 +6267,7 @@
     "account-verify-success": "ईमेल यशस्वीरित्या सत्यापित केले",
     "add-entity-error": "{{entity}} जोडताना त्रुटी!",
     "api-error": "काहीतरी समस्या आली, कृपया पुन्हा प्रयत्न करा!",
+    "api-only-token-ui-access-denied": "Bot and personal access tokens can only be used with the APIs. Sign in to use the UI.",
     "article-fetch-error": "लेख सामग्री प्राप्त करण्यात त्रुटी",
     "auth-provider-not-supported-renewing": "प्रमाणीकरण प्रदाता {{provider}} टोकन नूतनीकरणासाठी समर्थित नाही.",
     "bulk-update-initiated": "{{count}} {{entity}} साठी एकत्रित अद्यतन पूर्ण झाले.",

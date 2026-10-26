@@ -6267,6 +6267,7 @@
     "account-verify-success": "メールアドレスの認証に成功しました",
     "add-entity-error": "{{entity}}の追加中にエラーが発生しました！",
     "api-error": "問題が発生しました。もう一度お試しください！",
+    "api-only-token-ui-access-denied": "Bot and personal access tokens can only be used with the APIs. Sign in to use the UI.",
     "article-fetch-error": "記事コンテンツの取得中にエラーが発生しました",
     "auth-provider-not-supported-renewing": "トークンの更新はAuth Provider {{provider}}ではサポートされていません。",
     "bulk-update-initiated": "{{count}}個の{{entity}}の一括更新が完了しました。",

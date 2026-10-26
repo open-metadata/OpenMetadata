@@ -6267,6 +6267,7 @@
     "account-verify-success": "電子郵件驗證成功",
     "add-entity-error": "新增 {{entity}} 時發生錯誤！",
     "api-error": "發生問題，請再試一次！",
+    "api-only-token-ui-access-denied": "Bot and personal access tokens can only be used with the APIs. Sign in to use the UI.",
     "article-fetch-error": "擷取文章內容時發生錯誤",
     "auth-provider-not-supported-renewing": "驗證提供者 {{provider}} 不支援更新權杖。",
     "bulk-update-initiated": "已為{{count}}個{{entity}}完成批量更新。",

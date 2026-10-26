@@ -6267,6 +6267,7 @@
     "account-verify-success": "E-postadressen verifierades",
     "add-entity-error": "Fel vid tillägg av {{entity}}!",
     "api-error": "Ett problem uppstod, försök igen!",
+    "api-only-token-ui-access-denied": "Bot and personal access tokens can only be used with the APIs. Sign in to use the UI.",
     "article-fetch-error": "Fel vid hämtning av artikelinnehåll",
     "auth-provider-not-supported-renewing": "Autentiseringsleverantören {{provider}} stöds inte för att förnya token.",
     "bulk-update-initiated": "Massuppdatering slutförd för {{count}} {{entity}}.",

@@ -6267,6 +6267,7 @@
     "account-verify-success": "אימייל אומת בהצלחה",
     "add-entity-error": "שגיאה במהלך הוספת {{entity}}!",
     "api-error": "אירעה בעיה, אנא נסה שוב!",
+    "api-only-token-ui-access-denied": "Bot and personal access tokens can only be used with the APIs. Sign in to use the UI.",
     "article-fetch-error": "שגיאה באחזור תוכן מאמר",
     "auth-provider-not-supported-renewing": "ספק האימות {{provider}} אינו נתמך לחידוש טוקנים.",
     "bulk-update-initiated": "עדכון מרוכז הושלם עבור {{count}} {{entity}}.",

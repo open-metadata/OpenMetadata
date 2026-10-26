@@ -6267,6 +6267,7 @@
     "account-verify-success": "Электронная почта подтверждена",
     "add-entity-error": "Ошибка при добавлении объекта «{{entity}}!»",
     "api-error": "Возникла проблема, пожалуйста, попробуйте снова!",
+    "api-only-token-ui-access-denied": "Bot and personal access tokens can only be used with the APIs. Sign in to use the UI.",
     "article-fetch-error": "Ошибка при получении содержания статьи.",
     "auth-provider-not-supported-renewing": "Поставщик аутентификации {{provider}} не поддерживает обновление токенов.",
     "bulk-update-initiated": "Массовое обновление завершено для {{count}} {{entity}}.",

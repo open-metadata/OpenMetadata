@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
+import jwtDecode from 'jwt-decode';
+import { ServiceTokenEnum } from '../generated/auth/serviceTokenEnum';
+import { t } from './i18next/LocalUtil';
 import { swTokenStorage } from './SwTokenStorage';
+import { showErrorToast } from './ToastUtils';
 
 // Internal keys for the AppState JSON - obscured for security
 const APP_STATE_KEY = 'app_state';
@@ -185,11 +189,56 @@ const clearAppState = async (): Promise<void> => {
   }
 };
 
+/**
+ * Bot tokens (including bot impersonation tokens) and personal access tokens
+ * are meant for API clients; only tokens from a user login flow may drive the UI.
+ */
+export const isApiOnlyToken = (token: string) => {
+  try {
+    const { isBot, tokenType } = jwtDecode<{
+      isBot?: boolean;
+      tokenType?: ServiceTokenEnum;
+    }>(token);
+
+    return (
+      isBot === true ||
+      tokenType === ServiceTokenEnum.Bot ||
+      tokenType === ServiceTokenEnum.PersonalAccess
+    );
+  } catch {
+    return false;
+  }
+};
+
+// Concurrent reads of the same rejected token share one clear and one toast.
+let apiOnlyTokenRejection: Promise<void> | null = null;
+
+const rejectApiOnlyToken = () => {
+  if (!apiOnlyTokenRejection) {
+    showErrorToast(t('server.api-only-token-ui-access-denied'));
+    apiOnlyTokenRejection = clearOidcToken().finally(() => {
+      apiOnlyTokenRejection = null;
+    });
+  }
+
+  return apiOnlyTokenRejection;
+};
+
+// Every consumer (axios interceptor, AuthCoordinator, streams) reads the token
+// here, so a bot/PAT token written into storage by hand - on load or mid
+// session - is dropped before any request carries it.
 export const getOidcToken = async (): Promise<string> => {
   try {
     const state = await getAppState();
+    const token = state[OIDC_TOKEN_KEY] || '';
 
-    return state[OIDC_TOKEN_KEY] || '';
+    if (token && isApiOnlyToken(token)) {
+      await rejectApiOnlyToken();
+
+      return '';
+    }
+
+    return token;
   } catch {
     return '';
   }

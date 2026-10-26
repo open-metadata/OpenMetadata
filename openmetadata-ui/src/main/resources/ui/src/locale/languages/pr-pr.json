@@ -6267,6 +6267,7 @@
     "account-verify-success": "ایمیل با موفقیت تأیید شد.",
     "add-entity-error": "خطا در افزودن {{entity}}!",
     "api-error": "مشکلی پیش آمد، لطفاً دوباره تلاش کنید!",
+    "api-only-token-ui-access-denied": "Bot and personal access tokens can only be used with the APIs. Sign in to use the UI.",
     "article-fetch-error": "خطا در دریافت محتوای مقاله",
     "auth-provider-not-supported-renewing": "ارائه‌دهنده احراز هویت {{provider}} برای تجدید توکن پشتیبانی نمی‌شود.",
     "bulk-update-initiated": "به‌روزرسانی انبوه برای {{count}} {{entity}} تکمیل شد.",

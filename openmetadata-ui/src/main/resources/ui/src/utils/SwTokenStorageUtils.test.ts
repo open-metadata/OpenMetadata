@@ -15,6 +15,7 @@ import {
   clearOidcToken,
   getOidcToken,
   getRefreshToken,
+  isApiOnlyToken,
   isServiceWorkerAvailable,
   resetSwTokenStorageState,
   setOidcToken,
@@ -26,6 +27,12 @@ import {
 const mockSetItem = jest.fn();
 const mockGetItem = jest.fn();
 const mockRemoveItem = jest.fn();
+
+const mockShowErrorToast = jest.fn();
+
+jest.mock('./ToastUtils', () => ({
+  showErrorToast: (message: string) => mockShowErrorToast(message),
+}));
 
 jest.mock('./SwTokenStorage', () => ({
   swTokenStorage: {
@@ -70,6 +77,9 @@ Object.defineProperty(global, 'window', {
   } as MockWindow,
   writable: true,
 });
+
+const tokenWith = (claims: Record<string, unknown>) =>
+  `e30.${btoa(JSON.stringify(claims))}.sig`;
 
 describe('SwTokenStorageUtils', () => {
   beforeEach(() => {
@@ -176,6 +186,39 @@ describe('SwTokenStorageUtils', () => {
       const result = await getOidcToken();
 
       expect(result).toBe('');
+    });
+
+    it('drops a bot token written into storage, clearing it with a single toast', async () => {
+      const botToken = tokenWith({ isBot: true, tokenType: 'BOT' });
+      mockGetItem.mockResolvedValue(JSON.stringify({ primary: botToken }));
+      mockRemoveItem.mockResolvedValue(undefined);
+
+      const results = await Promise.all([getOidcToken(), getOidcToken()]);
+
+      expect(results).toEqual(['', '']);
+      expect(mockRemoveItem).toHaveBeenCalledWith('app_state');
+      expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('isApiOnlyToken', () => {
+    it.each([
+      [{ isBot: true, tokenType: 'BOT' }],
+      [{ isBot: false, tokenType: 'BOT' }],
+      [{ isBot: false, tokenType: 'PERSONAL_ACCESS' }],
+    ])('rejects %j', (claims) => {
+      expect(isApiOnlyToken(tokenWith(claims))).toBe(true);
+    });
+
+    it.each([[{ isBot: false, tokenType: 'OM_USER' }], [{ sub: 'sso-user' }]])(
+      'allows %j',
+      (claims) => {
+        expect(isApiOnlyToken(tokenWith(claims))).toBe(false);
+      }
+    );
+
+    it('allows an opaque, non-JWT token', () => {
+      expect(isApiOnlyToken('opaque')).toBe(false);
     });
   });
 
