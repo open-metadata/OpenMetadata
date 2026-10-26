@@ -23,11 +23,11 @@ import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import { PageLoader } from '../../components/common/Loader/Loader';
 import { ContainerChildrenCountContext } from '../../components/Container/ContainerChildren/ContainerChildrenCountContext';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
@@ -811,7 +811,7 @@ const ContainerPage = () => {
   );
   // Rendering
   if (isPermissionsLoading || containerLoading || loading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (hasError || isError) {
@@ -819,10 +819,7 @@ const ContainerPage = () => {
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={getEntityMissingError(
-            t('label.container'),
-            decodedEntityFqn
-          )}
+          title={getEntityMissingError(t('label.container'), decodedEntityFqn)}
         />
       </div>
     );
@@ -859,7 +856,7 @@ const ContainerPage = () => {
     );
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(containerData)}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(containerData)}>
       <Box direction="col" gap={3}>
         <div>
           <DataAssetsHeader

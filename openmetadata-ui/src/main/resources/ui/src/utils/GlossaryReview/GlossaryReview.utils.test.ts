@@ -21,14 +21,10 @@ import { Task } from '../../rest/tasksAPI';
 import {
   canDecideProposal,
   collectAiDraftIds,
-  getActiveFilter,
   getConfidencePercent,
   getDeciders,
-  getPageSlices,
   getProposalAuthor,
   getProposalSource,
-  getTotalPages,
-  hasProposalsFromBothSources,
   toProposals,
 } from './GlossaryReview.utils';
 
@@ -101,16 +97,6 @@ describe('GlossaryReview utils', () => {
     expect(proposals[1].approvalTask).toBe(approvalTask);
   });
 
-  it('filters by source only while both AI agents and people have proposals', () => {
-    expect(getActiveFilter({ all: 3, ai: 2, person: 1 }, 'person')).toBe(
-      'person'
-    );
-    expect(getActiveFilter({ all: 2, ai: 2, person: 0 }, 'person')).toBe('all');
-    expect(hasProposalsFromBothSources({ all: 1, ai: 0, person: 1 })).toBe(
-      false
-    );
-  });
-
   it('keeps the order the server pages proposals in', () => {
     const ai = term({ id: 'ai', provider: ProviderType.Automation });
     const first = term({ id: 'first', updatedAt: 1 });
@@ -121,28 +107,6 @@ describe('GlossaryReview utils', () => {
         (proposal) => proposal.term.id
       )
     ).toEqual(['ai', 'first', 'second']);
-  });
-
-  it('pages AI proposals first, then people, across the boundary between them', () => {
-    const counts = { all: 20, ai: 7, person: 13 };
-
-    expect(getPageSlices('all', 1, counts, 5)).toEqual([
-      { source: 'ai', offset: 0, limit: 5 },
-    ]);
-    expect(getPageSlices('all', 2, counts, 5)).toEqual([
-      { source: 'ai', offset: 5, limit: 2 },
-      { source: 'person', offset: 0, limit: 3 },
-    ]);
-    expect(getPageSlices('all', 3, counts, 5)).toEqual([
-      { source: 'person', offset: 3, limit: 5 },
-    ]);
-    expect(getPageSlices('person', 2, counts, 5)).toEqual([
-      { source: 'person', offset: 5, limit: 5 },
-    ]);
-    expect(getPageSlices('ai', 3, counts, 5)).toEqual([]);
-    expect(getPageSlices('all', 5, counts, 5)).toEqual([]);
-    expect(getTotalPages(counts, 'all', 5)).toBe(4);
-    expect(getTotalPages({ all: 0, ai: 0, person: 0 }, 'ai', 5)).toBe(1);
   });
 
   it('collects the AI drafts among the loaded rows, nested ones included', () => {
@@ -169,28 +133,42 @@ describe('GlossaryReview utils', () => {
     expect(getProposalAuthor(ai)).toBe('karthick');
   });
 
-  it('lets anyone who can edit decide an AI draft in a glossary without reviewers', () => {
-    const [ai] = toProposals([aiDraft], [], []);
+  it('lets no one decide an AI proposal before its approval request opens', () => {
+    const [ai] = toProposals([{ ...aiDraft, reviewers: [reviewer] }], [], []);
 
-    expect(canDecideProposal(ai, user('anyone'), true)).toBe(true);
-    expect(canDecideProposal(ai, user('anyone'), false)).toBe(false);
+    expect(canDecideProposal(ai, user('reviewer-id'))).toBe(false);
+    expect(canDecideProposal(ai, user('admin'))).toBe(false);
     expect(getDeciders(ai)).toEqual([]);
   });
 
-  it('lets only reviewers decide an AI draft in a reviewed glossary', () => {
-    const [ai] = toProposals([{ ...aiDraft, reviewers: [reviewer] }], [], []);
+  it('lets only the assignees of its approval request decide an AI proposal', () => {
+    const admin = { id: 'admin-id', name: 'admin', type: 'user' };
+    const [ai] = toProposals(
+      [{ ...aiDraft, entityStatus: EntityStatus.InReview }],
+      [],
+      [
+        {
+          ...approvalTask,
+          about: {
+            fullyQualifiedName: 'Customers.Churn',
+            type: 'glossaryTerm',
+          },
+          assignees: [admin],
+        } as Task,
+      ]
+    );
 
-    expect(canDecideProposal(ai, user('reviewer-id'), true)).toBe(true);
-    expect(canDecideProposal(ai, user('admin'), true)).toBe(false);
-    expect(getDeciders(ai)).toEqual([reviewer]);
+    expect(canDecideProposal(ai, user('admin-id'))).toBe(true);
+    expect(canDecideProposal(ai, user('reviewer-id'))).toBe(false);
+    expect(getDeciders(ai)).toEqual([admin]);
   });
 
   it('lets only the assignees decide a proposal held by its approval request', () => {
     const [person] = toProposals([personDraft], [], [approvalTask]);
 
-    expect(canDecideProposal(person, user('reviewer-id'), false)).toBe(true);
-    expect(canDecideProposal(person, user('author-id'), true)).toBe(false);
-    expect(canDecideProposal(person, undefined, true)).toBe(false);
+    expect(canDecideProposal(person, user('reviewer-id'))).toBe(true);
+    expect(canDecideProposal(person, user('author-id'))).toBe(false);
+    expect(canDecideProposal(person, undefined)).toBe(false);
     expect(getDeciders(person)).toEqual([reviewer]);
   });
 });

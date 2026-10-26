@@ -141,8 +141,75 @@ public interface SearchClient
       }
       """;
 
+  /**
+   * Runs {@code body} on every {@code tags} list nested under an entity's child fields (columns and
+   * their children, a container's data-model columns, topic and API schema fields, search-index
+   * fields, ML features, pipeline tasks), with the list bound to {@code nestedTags}. Tag renames,
+   * deletes and label updates have to reach these copies too: the top-level {@code tags} only holds
+   * them merged. The walk is iterative because Painless allows functions only at the top of a
+   * script and these snippets get concatenated; the guard block keeps every variable local.
+   */
+  static String forEachNestedTagList(String body) {
+    return """
+        if (ctx._source != null) {
+          List pending = new ArrayList();
+          for (def container : ['columns', 'dataModel', 'messageSchema', 'requestSchema', 'responseSchema', 'fields', 'mlFeatures', 'tasks']) {
+            if (ctx._source.containsKey(container) && ctx._source[container] != null) {
+              pending.add(ctx._source[container]);
+            }
+          }
+          for (int p = 0; p < pending.size(); p++) {
+            def node = pending.get(p);
+            if (node instanceof List) {
+              for (def item : node) {
+                if (item instanceof Map || item instanceof List) {
+                  pending.add(item);
+                }
+              }
+            } else if (node instanceof Map) {
+              for (def entry : node.entrySet()) {
+                def value = entry.getValue();
+                if (entry.getKey() == 'tags' && value instanceof List) {
+                  def nestedTags = value;
+        """
+        + body
+        + """
+                } else if (value instanceof Map || value instanceof List) {
+                  pending.add(value);
+                }
+              }
+            }
+          }
+        }
+        """;
+  }
+
+  /** Boundary-safe rename of nested tag labels from {@code source}; see the top-level fragment. */
+  static String renameNestedTagsScript(String source) {
+    return forEachNestedTagList(
+        """
+                  for (def nestedTag : nestedTags) {
+                    if (nestedTag instanceof Map && nestedTag.get('tagFQN') != null
+                        && nestedTag.get('source') == '%s') {
+                      String nestedFQN = nestedTag.get('tagFQN');
+                      if (nestedFQN.equals(params.oldParentFQN)) {
+                        nestedTag.put('tagFQN', params.newParentFQN);
+                      } else if (nestedFQN.startsWith(params.oldParentFQN + '.')) {
+                        nestedTag.put('tagFQN', params.newParentFQN + nestedFQN.substring(params.oldParentFQN.length()));
+                      }
+                    }
+                  }
+        """
+            .formatted(source));
+  }
+
   String REMOVE_TAGS_CHILDREN_SCRIPT =
-      "ctx._source.tags.removeIf(tag -> tag.tagFQN == params.fqn);" + TAG_RESEPARATION_SCRIPT;
+      "ctx._source.tags.removeIf(tag -> tag.tagFQN == params.fqn);"
+          + forEachNestedTagList(
+              """
+                  nestedTags.removeIf(nestedTag -> nestedTag instanceof Map && nestedTag.get('tagFQN') == params.fqn);
+              """)
+          + TAG_RESEPARATION_SCRIPT;
 
   /**
    * Drops references to {@code params.ids} (lowercase UUIDs) from custom-property values: {@code
@@ -312,12 +379,11 @@ public interface SearchClient
 
   // FQN-boundary aware, idempotent rewrite of a single tagFQN. A bare
   // startsWith + replace is NOT idempotent when the new FQN keeps the old one
-  // as a prefix (rename "a" -> "a b"): the glossary rename fires this twice
-  // (in-transaction updateAssetIndexes, then the post-commit propagation pass)
-  // and the second pass turns "a b" into "a b b", dropping the asset from the
-  // term (issue #28696). Matching only an exact FQN or a real "oldFQN." child
-  // boundary makes the second pass a no-op and never touches a sibling that
-  // merely shares a textual prefix (e.g. "a" must not rewrite "ab").
+  // as a prefix (rename "a" -> "a b"): running it twice turns "a b" into
+  // "a b b", dropping the asset from the term (issue #28696). Matching only an
+  // exact FQN or a real "oldFQN." child boundary makes a replay a no-op and
+  // never touches a sibling that merely shares a textual prefix (e.g. "a" must
+  // not rewrite "ab").
   String UPDATE_TAG_FQN_BY_PREFIX_FRAGMENT =
       """
             String currentFQN = ctx._source.tags[i].tagFQN;
@@ -342,6 +408,7 @@ public interface SearchClient
         }
       }
       """
+          + renameNestedTagsScript("Glossary")
           + TAG_RESEPARATION_SCRIPT;
 
   String UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT =
@@ -358,6 +425,7 @@ public interface SearchClient
         }
       }
       """
+          + renameNestedTagsScript("Classification")
           + TAG_RESEPARATION_SCRIPT;
 
   String UPDATE_FQN_PREFIX_SCRIPT =
@@ -700,6 +768,11 @@ public interface SearchClient
       // Do nothing for other entity types
       """;
 
+  /**
+   * Sets {@code params.updates} on and drops {@code params.removes} from every copy of the tag label
+   * {@code params.tagFQN}. Removals are a separate list because a null map value does not survive
+   * the parameter serialization.
+   */
   String UPDATE_TAGS_FIELD_SCRIPT =
       """
       if (ctx._source.tags != null) {
@@ -710,8 +783,60 @@ public interface SearchClient
                 ctx._source.tags[i][field] = params.updates[field];
               }
             }
+            if (params.containsKey('removes')) {
+              for (String field : params.removes) {
+                ctx._source.tags[i].remove(field);
+              }
+            }
           }
         }
+      }
+      """
+          + forEachNestedTagList(
+              """
+                  for (def nestedTag : nestedTags) {
+                    if (nestedTag instanceof Map && nestedTag.get('tagFQN') == params.tagFQN) {
+                      for (String field : params.updates.keySet()) {
+                        if (field != null && params.updates[field] != null) {
+                          nestedTag.put(field, params.updates[field]);
+                        }
+                      }
+                      if (params.containsKey('removes')) {
+                        for (String field : params.removes) {
+                          nestedTag.remove(field);
+                        }
+                      }
+                    }
+                  }
+              """);
+
+  /**
+   * Overwrites, in the reference lists {@code params.fields}, every copy of the reference {@code
+   * params.id} with {@code params.label} (its name, FQN and display name), then rebuilds the owner
+   * display names derived from {@code owners}.
+   */
+  String RELABEL_REFERENCE_COPIES_SCRIPT =
+      """
+      for (String field : params.fields) {
+        def refs = ctx._source[field];
+        if (refs instanceof List) {
+          for (def ref : refs) {
+            if (ref instanceof Map && ref.get('id') == params.id) {
+              ref.putAll(params.label);
+            }
+          }
+        }
+      }
+      if (params.fields.contains('owners') && ctx._source.containsKey('ownerDisplayName')
+          && ctx._source.owners instanceof List) {
+        List ownerDisplayNames = new ArrayList();
+        for (def owner : ctx._source.owners) {
+          if (owner instanceof Map && owner.get('displayName') != null
+              && owner.get('displayName') != '') {
+            ownerDisplayNames.add(owner.get('displayName'));
+          }
+        }
+        ctx._source.ownerDisplayName = ownerDisplayNames;
       }
       """;
 

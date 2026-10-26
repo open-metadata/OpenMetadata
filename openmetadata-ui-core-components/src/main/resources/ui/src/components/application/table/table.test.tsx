@@ -226,12 +226,20 @@ describe('TableCard theme roles', () => {
 
     expect(screen.getByTestId('table-card')).toHaveClass(
       'tw:bg-surface',
-      'tw:outline-subtle'
+      'tw:after:outline-subtle'
     );
     // Drawn inside the card: an outer outline is clipped by any scrolling
     // parent the card sits flush against (e.g. the top of a modal body).
     expect(screen.getByTestId('table-card')).toHaveClass(
-      'tw:-outline-offset-1'
+      'tw:after:-outline-offset-1'
+    );
+    // On an overlay above the content, inside the card's own stacking
+    // context: an outline on the card itself is painted over by a sticky
+    // (z-10, opaque) table header.
+    expect(screen.getByTestId('table-card')).toHaveClass(
+      'tw:isolate',
+      'tw:after:absolute',
+      'tw:after:z-20'
     );
     expect(header).toHaveClass('tw:bg-surface', 'tw:border-subtle');
   });

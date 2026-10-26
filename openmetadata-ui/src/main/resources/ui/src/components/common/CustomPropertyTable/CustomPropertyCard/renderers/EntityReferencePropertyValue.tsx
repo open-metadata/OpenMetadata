@@ -24,6 +24,7 @@ import { Link } from 'react-router-dom';
 import { PAGE_SIZE } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import { searchQuery } from '../../../../../rest/searchAPI';
 import { getCustomPropertyReferenceSearchIndex } from '../../../../../utils/CustomProperty.utils';
 import { getEntityIcon } from '../../../../../utils/EntityIconUtils';
@@ -90,6 +91,7 @@ const EntityReferencePropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const isList = property.propertyType.name === ENTITY_REFERENCE_LIST;
@@ -158,6 +160,8 @@ const EntityReferencePropertyEdit = ({
       setSelected((prev) => (isList ? [...prev, reference] : [reference]));
     }
   };
+
+  useReportDirty(selected, onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

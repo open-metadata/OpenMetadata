@@ -18,8 +18,11 @@ import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
+import org.openmetadata.service.governance.workflows.metadata.MetadataCollectionService;
+import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityFieldUtils;
 
@@ -115,6 +118,20 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       EntityFieldUtils.setEntityField(
           entity, entityType, GOVERNANCE_BOT, update.fieldName(), update.fieldValue(), true, null);
     }
+    if (EntityStatusWorkflows.isStageField(update.fieldName()) && update.fieldValue() != null) {
+      // The stage is saved as its EntityStatus, whatever the case and spacing of the value.
+      closeRevisionsOutsideStage(
+          entity, EntityFieldUtils.parseEntityStatus(update.fieldValue()).value());
+    }
+  }
+
+  // A Revise and resubmit task asks for changes within one stage; once the workflow moves the
+  // asset to another stage it can no longer be resubmitted there.
+  private static void closeRevisionsOutsideStage(EntityInterface<?> entity, String stage) {
+    new MetadataCollectionService(
+            (TaskRepository) Entity.getEntityRepository(Entity.TASK),
+            Entity.getEntityReferenceByName(Entity.USER, GOVERNANCE_BOT, Include.NON_DELETED))
+        .closeRevisionsOutside(entity, stage);
   }
 
   /** The field a node sets, the value it sets it to, and the user it acts for, if any. */
