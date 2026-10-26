@@ -282,12 +282,22 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     }
 
     const { fqn, teamId, key, subPath } = view;
+    // Match MembersTeamDetail's own filter: a tab whose `condition` is false,
+    // or that is hidden, is not offered there, so a deep link must not open its
+    // sub-page either.
     const tab = getContributions<TabContribution>(
       EXTENSION_POINTS.TEAM_DETAILS_TABS
-    ).find((contribution) => contribution.key === key);
+    ).find((contribution) => {
+      const isVisible = contribution.condition
+        ? contribution.condition({ teamId })
+        : !contribution.isHidden;
 
-    // An unknown key (a stale link, or a plugin that is no longer registered)
-    // has no component to render, so fall back to the team it belongs to.
+      return contribution.key === key && isVisible;
+    });
+
+    // A key that is unknown, hidden, or whose condition is now false (a stale
+    // link, or a plugin that is no longer registered) has no component to
+    // render, so fall back to the team it belongs to.
     if (!tab) {
       return (
         <MembersTeamDetail
