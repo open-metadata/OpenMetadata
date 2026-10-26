@@ -10,6 +10,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
@@ -37,6 +38,7 @@ import org.openmetadata.service.events.consumer.schedule.EventSubscriptionSchedu
 class AlertTickOutcomesIT {
 
   private static final int EVERY_ROW = 100;
+  private static final int SET_ASIDE_AFTER_TICKS = 7;
 
   @Test
   void twoFailingDestinationsAreBothNamed(TestNamespace ns) throws Exception {
@@ -102,6 +104,49 @@ class AlertTickOutcomesIT {
       assertEquals(1, failures.size());
       assertTrue(failures.getFirst().getReason().contains("Interrupted repeatedly"));
     }
+  }
+
+  // A tick that dies of an Error, as an out-of-memory would, is an interrupted tick: the event it
+  // was on is set aside after the same number of attempts as one whose tick never came back.
+  @Test
+  void anEventWhoseTickDiesOfAnErrorIsSetAsideAndTheNextIsSent(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert =
+          webhookAlert(ns, "dies_of_error", ErrorThrowingConsumer.ID, receiver);
+      QuietAlert.settle(alert);
+      List<String> events = FixtureEvents.tableEvents().subList(0, 2);
+      ErrorThrowingConsumer.poison(alert.getId(), idOf(events.getFirst()));
+      try {
+        FixtureEvents.insert(events);
+
+        int errors = 0;
+        for (int tick = 0; tick < SET_ASIDE_AFTER_TICKS; tick++) {
+          errors += tickCountingErrors(alert);
+        }
+
+        assertEquals(SET_ASIDE_AFTER_TICKS - 1, errors, "the last tick sets the event aside");
+        assertEquals(1, receiver.received().size(), "the event after it is sent");
+        List<FailedEventResponse> failures = failuresOf(alert);
+        assertEquals(1, failures.size());
+        assertTrue(failures.getFirst().getReason().contains("Interrupted repeatedly"));
+      } finally {
+        ErrorThrowingConsumer.cure(alert.getId());
+      }
+    }
+  }
+
+  private static int tickCountingErrors(EventSubscription alert) {
+    int errors = 0;
+    try {
+      DirectTick.run(alert);
+    } catch (OutOfMemoryError simulated) {
+      errors = 1;
+    }
+    return errors;
+  }
+
+  private static UUID idOf(String event) {
+    return UUID.fromString(JsonUtils.readTree(event).get("id").asText());
   }
 
   // A tick whose commit fails came back all the same: only one that never does was interrupted.

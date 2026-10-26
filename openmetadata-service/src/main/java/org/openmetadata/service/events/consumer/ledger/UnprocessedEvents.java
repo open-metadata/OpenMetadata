@@ -9,27 +9,24 @@ import org.openmetadata.service.util.ChangeEventJsonUtils;
 import org.openmetadata.service.util.PerRequestContextCleaner;
 
 /**
- * The events an alert has not processed yet, for diagnostics. They are read in pages of a fixed
- * size, so memory stays bounded while the count stays exact, and every evaluation that runs on a
- * pooled thread starts and ends with cleared per-request caches, because those threads never pass
- * the request filter that clears them.
+ * The events an alert has not processed yet, for diagnostics. Each one is evaluated against the
+ * alert's rules, so one count evaluates at most {@link #MAX_EVALUATED} of them, in one read, and
+ * says when more are unread. Every evaluation that runs on a pooled thread starts and ends with
+ * cleared per-request caches, because those threads never pass the request filter that clears them.
  */
 final class UnprocessedEvents {
 
-  static final int PAGE_SIZE = 500;
+  static final int MAX_EVALUATED = 500;
 
   private UnprocessedEvents() {}
 
-  static long countMatching(long afterOffset, Predicate<ChangeEvent> matches) {
-    long count = 0;
-    long cursor = afterOffset;
-    List<ChangeEventRecord> page = readPage(cursor);
-    while (!page.isEmpty()) {
-      count += page.parallelStream().filter(row -> matchesCleanly(row.json(), matches)).count();
-      cursor = page.getLast().offset();
-      page = readPage(cursor);
-    }
-    return count;
+  static PendingCount countMatching(
+      long afterOffset, long latestOffset, Predicate<ChangeEvent> matches) {
+    List<ChangeEventRecord> read =
+        Entity.getCollectionDAO().changeEventDAO().listWithOffset(MAX_EVALUATED, afterOffset);
+    long count = read.parallelStream().filter(row -> matchesCleanly(row.json(), matches)).count();
+    boolean moreUnread = !read.isEmpty() && read.getLast().offset() < latestOffset;
+    return new PendingCount(count, moreUnread);
   }
 
   static List<ChangeEvent> matching(List<String> rows, Predicate<ChangeEvent> matches) {
@@ -37,10 +34,6 @@ final class UnprocessedEvents {
         .map(json -> ChangeEventJsonUtils.readOrNull(json, ChangeEvent.class))
         .filter(event -> event != null && evaluateCleanly(event, matches))
         .toList();
-  }
-
-  private static List<ChangeEventRecord> readPage(long afterOffset) {
-    return Entity.getCollectionDAO().changeEventDAO().listWithOffset(PAGE_SIZE, afterOffset);
   }
 
   private static boolean matchesCleanly(String json, Predicate<ChangeEvent> matches) {

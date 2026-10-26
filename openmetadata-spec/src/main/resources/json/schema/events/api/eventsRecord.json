@@ -21,6 +21,11 @@
     "failedEventsCount": {
       "description": "Count of failed events for specific alert.",
       "existingJavaType": "java.lang.Long"
+    },
+    "countsAreLowerBound": {
+      "description": "True when more events are unread than one request evaluates, so pendingEventsCount and totalEventsCount count only the first unread events.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

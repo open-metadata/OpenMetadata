@@ -250,9 +250,15 @@ public final class WebhookRequests {
   public static WebTarget addQueryParams(WebTarget target, Map<String, String> queryParams) {
     if (!CommonUtil.nullOrEmpty(queryParams)) {
       for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-        target = target.queryParam(entry.getKey(), entry.getValue());
+        target = target.queryParam(literally(entry.getKey()), literally(entry.getValue()));
       }
     }
     return target;
+  }
+
+  // The client reads {name} in a query parameter as a template to fill in, so a value with a
+  // brace failed to send; encoded, it is sent as written.
+  private static String literally(String part) {
+    return part == null ? null : part.replace("{", "%7B").replace("}", "%7D");
   }
 }

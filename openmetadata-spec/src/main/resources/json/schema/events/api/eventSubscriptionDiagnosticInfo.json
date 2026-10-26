@@ -34,6 +34,11 @@
       "description": "The number of relevant unprocessed events based on the alert's filtering rules for specific alert.",
       "existingJavaType": "java.lang.Long"
     },
+    "relevantUnprocessedEventsCountIsLowerBound": {
+      "description": "True when more events are unread than one request evaluates, so relevantUnprocessedEventsCount counts only the first unread events.",
+      "type": "boolean",
+      "default": false
+    },
     "totalUnprocessedEventsCount": {
       "description": "The total number of unprocessed events.",
       "existingJavaType": "java.lang.Long"
@@ -50,7 +55,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/changeEvent.json"
-      }    }
+      }
+    }
   },
   "additionalProperties": false
 }

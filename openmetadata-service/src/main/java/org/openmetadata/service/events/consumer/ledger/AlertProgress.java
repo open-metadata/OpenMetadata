@@ -47,8 +47,8 @@ public sealed interface AlertProgress {
 
   long latestOffset();
 
-  /** The unread change events the alert lets through. */
-  long relevantUnreadCount(Relevance relevance);
+  /** The unread change events the alert lets through, up to how many one request may evaluate. */
+  PendingCount relevantUnreadCount(Relevance relevance);
 
   List<ChangeEvent> relevantUnread(int limit, int pageOffset, Relevance relevance);
 
@@ -92,8 +92,8 @@ public sealed interface AlertProgress {
     }
 
     @Override
-    public long relevantUnreadCount(Relevance relevance) {
-      return UnprocessedEvents.countMatching(currentOffset(), relevant(relevance));
+    public PendingCount relevantUnreadCount(Relevance relevance) {
+      return UnprocessedEvents.countMatching(currentOffset(), latest, relevant(relevance));
     }
 
     @Override
@@ -146,8 +146,8 @@ public sealed interface AlertProgress {
     }
 
     @Override
-    public long relevantUnreadCount(Relevance relevance) {
-      return 0;
+    public PendingCount relevantUnreadCount(Relevance relevance) {
+      return PendingCount.NONE;
     }
 
     @Override

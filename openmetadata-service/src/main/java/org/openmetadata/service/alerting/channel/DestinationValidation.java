@@ -19,6 +19,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.BadRequestException;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -40,13 +44,16 @@ public final class DestinationValidation {
     listOrEmpty(alert.getDestinations()).forEach(DestinationValidation::validate);
   }
 
+  // Each destination is looked up by its configuration written as text with its keys in order,
+  // so a save costs time in proportion to the destinations, not to their square.
   public static void ofWhatChanged(EventSubscription original, EventSubscription updated) {
-    List<JsonNode> stored =
+    Set<String> stored =
         listOrEmpty(original.getDestinations()).stream()
             .map(DestinationValidation::whatAUserConfigures)
-            .toList();
+            .map(JsonNode::toString)
+            .collect(Collectors.toSet());
     listOrEmpty(updated.getDestinations()).stream()
-        .filter(destination -> !stored.contains(whatAUserConfigures(destination)))
+        .filter(destination -> !stored.contains(whatAUserConfigures(destination).toString()))
         .forEach(DestinationValidation::validate);
   }
 
@@ -77,8 +84,12 @@ public final class DestinationValidation {
     JsonNode result = node;
     if (node.isObject()) {
       ObjectNode kept = JsonUtils.getObjectNode();
-      node.properties()
-          .forEach(field -> keepIfItSaysSomething(kept, field.getKey(), field.getValue()));
+      Map<String, JsonNode> byName =
+          node.properties().stream()
+              .collect(
+                  Collectors.toMap(
+                      Map.Entry::getKey, Map.Entry::getValue, (a, b) -> b, TreeMap::new));
+      byName.forEach((name, value) -> keepIfItSaysSomething(kept, name, value));
       result = kept;
     }
     return result;

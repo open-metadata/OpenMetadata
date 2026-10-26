@@ -54,6 +54,8 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.MatchResult;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.AlertCapabilities;
@@ -79,6 +81,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.alerting.TestSends;
 import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.alerting.channel.DestinationStatuses;
 import org.openmetadata.service.alerting.channel.DestinationValidation;
@@ -113,8 +116,10 @@ public class EventSubscriptionResource
     extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions/";
   public static final String FIELDS = "owners,filteringRules";
-  private static final Pattern URL_QUERY_PATTERN = Pattern.compile("(https?://[^\\s?]*)\\?\\S*");
-  private static final String REDACTED_QUERY_REPLACEMENT = "$1?***";
+  // Possessive, so text with many URLs and no query is read once rather than once per URL.
+  private static final Pattern URL_QUERY_PATTERN =
+      Pattern.compile("(https?://[^\\s?]*+)(\\?\\S*+)?");
+  private static final int MAX_REASON_CHARS = 2048;
   // RFC 9745: the per-source list is deprecated since 2026-10-20, in favour of /capabilities.
   // ADR:2026-10-20-alert-forms-read-only-the-capabilities-answer
   private static final String RESOURCES_DEPRECATED_SINCE = "@1792454400";
@@ -1471,36 +1476,57 @@ public class EventSubscriptionResource
           Response.Status.BAD_REQUEST);
     }
 
+    request.getDestinations().forEach(DestinationValidation::validate);
     List<SubscriptionDestination> resultDestinations =
-        request.getDestinations().stream().map(this::sendTestMessageToDestination).toList();
+        TestSends.toEach(
+            request.getDestinations(),
+            this::sendTestMessageToDestination,
+            EventSubscriptionResource::timedOutTestSend);
 
     return Response.ok(resultDestinations).build();
   }
 
+  private static SubscriptionDestination timedOutTestSend(SubscriptionDestination destination) {
+    destination.setStatusDetails(
+        DestinationStatuses.buildTestDestinationStatus(
+            TestDestinationStatus.Status.FAILED,
+            String.format("Timed out after %d s", TestSends.DEADLINE.toSeconds()),
+            System.currentTimeMillis()));
+    return destination.withConfig(null);
+  }
+
   private SubscriptionDestination sendTestMessageToDestination(
       SubscriptionDestination destination) {
-    DestinationValidation.validate(destination);
     try {
       Destination<ChangeEvent> alert = AlertFactory.getAlert(new EventSubscription(), destination);
       alert.sendTestMessage();
     } catch (EventPublisherException e) {
-      LOG.error("Failed to send test message to destination: {}", e.getMessage());
+      String reason = redactUrlQueryParams(e.getMessage());
+      LOG.error("Failed to send test message to destination: {}", reason);
       destination.setStatusDetails(
           DestinationStatuses.buildTestDestinationStatus(
-              TestDestinationStatus.Status.FAILED,
-              redactUrlQueryParams(e.getMessage()),
-              System.currentTimeMillis()));
+              TestDestinationStatus.Status.FAILED, reason, System.currentTimeMillis()));
     }
     return destination.withConfig(null);
   }
 
-  /** Endpoint query strings can carry credentials, so keep them out of the returned reason. */
-  private static String redactUrlQueryParams(String reason) {
+  /**
+   * Endpoint query strings can carry credentials, so keep them out of the returned reason. The
+   * reason can quote what the caller sent, so only its start is kept.
+   */
+  static String redactUrlQueryParams(String reason) {
     String result = null;
     if (reason != null) {
-      result = URL_QUERY_PATTERN.matcher(reason).replaceAll(REDACTED_QUERY_REPLACEMENT);
+      String start =
+          reason.length() > MAX_REASON_CHARS ? reason.substring(0, MAX_REASON_CHARS) : reason;
+      result = URL_QUERY_PATTERN.matcher(start).replaceAll(EventSubscriptionResource::withoutQuery);
     }
     return result;
+  }
+
+  private static String withoutQuery(MatchResult url) {
+    String redacted = url.group(2) == null ? url.group(1) : url.group(1) + "?***";
+    return Matcher.quoteReplacement(redacted);
   }
 
   public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors() {
