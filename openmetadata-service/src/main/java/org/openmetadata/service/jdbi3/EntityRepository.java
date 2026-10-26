@@ -8598,7 +8598,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * charts attached to dashboards) and entity types without a {@code parent.id} field in
    * their ES mapping would otherwise drift — DB shows restored / soft-deleted, but ES still
    * reflects the previous state. {@code SearchIndexHandler.onEntitiesUpdated} batches the
-   * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side.
+   * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side. The RDF graph
+   * gets the same descendants for the same reason: no cascade hook reaches it otherwise.
    */
   private void persistBulkUpdaters(List<EntityUpdater> changed, String phasePrefix) {
     writeBulkVersionHistory(changed, phasePrefix);
@@ -8613,6 +8614,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       hydrateForSearchIndex(changedEntities);
       EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(changedEntities, null, null);
     }
+    RdfUpdater.updateEntities(changedEntities);
     // Cascade children of a recursive delete/restore intentionally do NOT emit per-entity change
     // events. A single change event is recorded for the user-targeted root entity (see the delete
     // and restore paths in EntityResource). This keeps deleting a service with 100k descendants to

@@ -13,6 +13,7 @@
 package org.openmetadata.service.rdf;
 
 import io.micrometer.core.instrument.Timer;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -51,6 +52,16 @@ public final class RdfLiveWriter implements AutoCloseable {
   public void enqueue(final RdfLiveWrite command) {
     try {
       store.enqueue(JsonUtils.pojoToJson(command));
+    } catch (RuntimeException exception) {
+      RdfProjectionHealth.markDegraded(exception);
+      throw exception;
+    }
+    wake();
+  }
+
+  public void enqueueAll(final List<RdfLiveWrite> commands) {
+    try {
+      store.enqueueAll(commands.stream().map(JsonUtils::pojoToJson).toList());
     } catch (RuntimeException exception) {
       RdfProjectionHealth.markDegraded(exception);
       throw exception;

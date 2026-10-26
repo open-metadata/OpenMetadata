@@ -54,7 +54,7 @@ class RdfUpdaterTest {
     queueField = RdfUpdater.class.getDeclaredField("writeQueue");
     queueField.setAccessible(true);
     originalQueue = queueField.get(null);
-    queueField.set(null, (Consumer<RdfLiveWrite>) submitted::add);
+    queueField.set(null, (Consumer<List<RdfLiveWrite>>) submitted::addAll);
   }
 
   @AfterEach
@@ -131,6 +131,23 @@ class RdfUpdaterTest {
       assertFalse(((RdfLiveWrite.RelationshipChange) submitted.getFirst()).remove());
       assertTrue(((RdfLiveWrite.RelationshipChange) submitted.getLast()).remove());
     }
+  }
+
+  @Test
+  void cascadeProjectsEveryProjectableEntityInOneDeferredEnqueue() {
+    final Table first = new Table().withId(UUID.randomUUID()).withName("first");
+    final Table second = new Table().withId(UUID.randomUUID()).withName("second");
+    PostCommitActionQueue.begin();
+    RdfUpdater.updateEntities(List.of(first, second));
+
+    final List<Runnable> deferred = PostCommitActionQueue.drain();
+    assertEquals(1, deferred.size());
+    assertTrue(submitted.isEmpty());
+    PostCommitActionQueue.run(deferred);
+
+    assertEquals(
+        List.of(first.getId(), second.getId()),
+        submitted.stream().map(write -> ((RdfLiveWrite.EntityUpdate) write).entityId()).toList());
   }
 
   @Test

@@ -13,6 +13,8 @@
 package org.openmetadata.service.rdf;
 
 import java.time.Clock;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +32,7 @@ import org.openmetadata.service.util.PostCommitActionQueue;
 
 @Slf4j
 public final class RdfUpdater {
-  private static volatile Consumer<RdfLiveWrite> writeQueue;
+  private static volatile Consumer<List<RdfLiveWrite>> writeQueue;
   private static volatile RdfLiveWriteStore liveWriteStore;
   private static RdfLiveWriter writer;
 
@@ -58,7 +60,7 @@ public final class RdfUpdater {
               store,
               command -> command.apply(repository),
               AsyncService.getInstance().getExecutorService());
-      writeQueue = writer::enqueue;
+      writeQueue = writer::enqueueAll;
       liveWriteStore = store;
       writer.start();
       LOG.info("RDF updater initialized with durable, ordered live writes");
@@ -96,6 +98,18 @@ public final class RdfUpdater {
   public static void updateEntity(final EntityInterface<?> entity) {
     if (isEnabled() && !RdfExcludedEntities.isExcluded(Entity.getEntityTypeFromObject(entity))) {
       submit(RdfLiveWrite.EntityUpdate.capture(entity));
+    }
+  }
+
+  /** Projects a cascade's entities with one deferred enqueue instead of one per entity. */
+  public static void updateEntities(final Collection<? extends EntityInterface<?>> entities) {
+    if (isEnabled()) {
+      submitAll(
+          entities.stream()
+              .filter(
+                  entity -> !RdfExcludedEntities.isExcluded(Entity.getEntityTypeFromObject(entity)))
+              .<RdfLiveWrite>map(RdfLiveWrite.EntityUpdate::capture)
+              .toList());
     }
   }
 
@@ -158,9 +172,13 @@ public final class RdfUpdater {
   }
 
   private static void submit(final RdfLiveWrite command) {
-    final Consumer<RdfLiveWrite> queue = writeQueue;
-    if (queue != null) {
-      PostCommitActionQueue.runOrDefer(() -> queue.accept(command));
+    submitAll(List.of(command));
+  }
+
+  private static void submitAll(final List<RdfLiveWrite> commands) {
+    final Consumer<List<RdfLiveWrite>> queue = writeQueue;
+    if (queue != null && !commands.isEmpty()) {
+      PostCommitActionQueue.runOrDefer(() -> queue.accept(commands));
     }
   }
 }
