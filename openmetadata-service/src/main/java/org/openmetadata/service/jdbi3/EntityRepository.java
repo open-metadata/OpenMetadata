@@ -3113,12 +3113,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Get previous version from version history
     String json = daoCollection.entityExtensionDAO().getExtension(id, extension);
     if (json != null) {
-      return JsonUtils.readValue(json, entityClass);
+      return JsonUtils.readValue(withoutFieldsHiddenFromHistory(json), entityClass);
     }
     // If requested the latest version, return it from current version of the entity
     T entity = setFieldsInternal(find(id, ALL), putFields);
     if (entity.getVersion().equals(requestedVersion)) {
-      return entity;
+      return withoutFieldsHiddenFromHistory(entity);
     }
     throw EntityNotFoundException.byMessage(
         CatalogExceptionMessage.entityVersionNotFound(entityType, id, requestedVersion));
@@ -3139,10 +3139,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     final List<Object> versions = new ArrayList<>();
 
     if (offset == 0) {
-      versions.add(JsonUtils.pojoToJson(latest));
+      versions.add(withoutFieldsHiddenFromHistory(JsonUtils.pojoToJson(latest)));
     }
 
-    oldVersions.forEach(version -> versions.add(version.getEntityJson()));
+    oldVersions.forEach(
+        version -> versions.add(withoutFieldsHiddenFromHistory(version.getEntityJson())));
     return new EntityHistoryWithOffset(
         new EntityHistory().withEntityType(entityType).withVersions(versions), offset + limit);
   }
@@ -3202,8 +3203,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     oldVersions.sort(EntityUtil.compareVersion.reversed());
 
     final List<Object> allVersions = new ArrayList<>();
-    allVersions.add(JsonUtils.pojoToJson(latest));
-    oldVersions.forEach(version -> allVersions.add(version.getEntityJson()));
+    allVersions.add(withoutFieldsHiddenFromHistory(JsonUtils.pojoToJson(latest)));
+    oldVersions.forEach(
+        version -> allVersions.add(withoutFieldsHiddenFromHistory(version.getEntityJson())));
     return new EntityHistory().withEntityType(entityType).withVersions(allVersions);
   }
 
@@ -3297,7 +3299,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // before its last page.
     String firstCursor = pageRows.isEmpty() ? null : historyCursor(pageRows.getFirst());
     String lastCursor = pageRows.isEmpty() ? null : historyCursor(pageRows.getLast());
-    List<T> entities = hydrateHistoryPage(pageRows);
+    List<T> entities =
+        hydrateHistoryPage(pageRows).stream().map(this::withoutFieldsHiddenFromHistory).toList();
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
     return historyPageResult(
@@ -6448,7 +6451,28 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   protected String serializeForVersionHistory(T entity) {
-    return JsonUtils.pojoToJson(entity);
+    return withoutFieldsHiddenFromHistory(JsonUtils.pojoToJson(entity));
+  }
+
+  /**
+   * Fields no version of this entity shows, such as secrets: versions are stored without them, and
+   * every read of a version or of the entity history leaves them out, older rows included.
+   */
+  protected List<String> getFieldsHiddenFromHistory() {
+    return List.of();
+  }
+
+  private String withoutFieldsHiddenFromHistory(String versionJson) {
+    List<String> hidden = getFieldsHiddenFromHistory();
+    ObjectNode node = hidden.isEmpty() ? null : (ObjectNode) JsonUtils.readTree(versionJson);
+    return node == null ? versionJson : node.remove(hidden).toString();
+  }
+
+  private T withoutFieldsHiddenFromHistory(T entity) {
+    return getFieldsHiddenFromHistory().isEmpty()
+        ? entity
+        : JsonUtils.readValue(
+            withoutFieldsHiddenFromHistory(JsonUtils.pojoToJson(entity)), entityClass);
   }
 
   @Transaction
