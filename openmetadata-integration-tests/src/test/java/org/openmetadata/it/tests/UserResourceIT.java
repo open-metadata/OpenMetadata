@@ -2852,7 +2852,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   @Test
   void test_createPersonalAccessToken_impersonatedBot_forbidden(TestNamespace ns) {
     // The bot's stored name must equal its email local-part: JwtFilter resolves the bot's
-    // username from the token's email claim, and BotTokenCache is keyed by that name.
+    // username from the token's email claim, and the stored-credential check reads that name.
     String localPart = "patbot" + ns.shortPrefix();
     AuthenticationMechanism authMechanism =
         new AuthenticationMechanism()

@@ -105,7 +105,6 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String AUTHORIZATION_HEADER = "Authorization";
   public static final String TOKEN_PREFIX = "Bearer";
   public static final String BOT_CLAIM = "isBot";
-  public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   public static final String IMPERSONATE_USER_HEADER = "X-Impersonate-User";
   public static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
   private static final Set<String> MULTI_TENANT_AUTHORITIES =

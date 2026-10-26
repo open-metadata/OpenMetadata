@@ -162,10 +162,8 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.CatalogPrincipal;
 import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
-import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
-import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -942,10 +940,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    BotTokenCache.mutateToken(
-        user.getName(),
-        () ->
-            repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName()));
+    repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
 
     return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
@@ -998,10 +993,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    BotTokenCache.mutateToken(
-        user.getName(),
-        () ->
-            repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName()));
+    repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
     return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
 
@@ -1037,11 +1029,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
     PutResponse<User> response =
-        BotTokenCache.mutateToken(
-            user.getName(),
-            () ->
-                repository.createOrUpdate(
-                    uriInfo, user, securityContext.getUserPrincipal().getName()));
+        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -1990,17 +1978,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
       userName = securityContext.getUserPrincipal().getName();
     }
     User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, false);
-    UserTokenCache.mutateToken(
-        user.getName(),
-        () -> {
-          if (removeAll) {
-            tokenRepository.revokeAllPersonalAccessTokens(user.getName(), user.getId());
-          } else {
-            tokenRepository.revokePersonalAccessTokens(
-                user.getName(), user.getId(), request.getTokenIds());
-          }
-          return null;
-        });
+    if (removeAll) {
+      tokenRepository.revokeAllPersonalAccessTokens(user.getName(), user.getId());
+    } else {
+      tokenRepository.revokePersonalAccessTokens(
+          user.getName(), user.getId(), request.getTokenIds());
+    }
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
@@ -2050,12 +2033,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
                   null);
       PersonalAccessToken personalAccessToken =
           TokenUtil.getPersonalAccessToken(tokenRequest, user, authMechanism);
-      UserTokenCache.mutateToken(
-          user.getName(),
-          () -> {
-            tokenRepository.insertPersonalAccessToken(user.getName(), personalAccessToken);
-            return null;
-          });
+      tokenRepository.insertPersonalAccessToken(user.getName(), personalAccessToken);
       return Response.status(Response.Status.OK).entity(personalAccessToken).build();
     }
     throw new CustomExceptionMessage(
@@ -2245,11 +2223,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     addAuthMechanismToBot(user, create, uriInfo);
     addRolesToBot(user, uriInfo);
     PutResponse<User> response =
-        BotTokenCache.mutateToken(
-            user.getName(),
-            () ->
-                repository.createOrUpdate(
-                    uriInfo, user, securityContext.getUserPrincipal().getName()));
+        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
     decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
   }

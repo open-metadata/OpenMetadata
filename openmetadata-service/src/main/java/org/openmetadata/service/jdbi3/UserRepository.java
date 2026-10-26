@@ -100,10 +100,8 @@ import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
-import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.credentials.Credentials;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -1677,29 +1675,6 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  protected DeleteLifecycle beginDeleteLifecycle(User entity, String deletedBy) {
-    DeleteLifecycle parentLifecycle = super.beginDeleteLifecycle(entity, deletedBy);
-    try {
-      Runnable finishCredentialDelete =
-          Boolean.TRUE.equals(entity.getIsBot())
-              ? BotTokenCache.denyToken(entity.getName())
-              : UserTokenCache.denyToken(entity.getName());
-      return () -> {
-        try (parentLifecycle) {
-          finishCredentialDelete.run();
-        }
-      };
-    } catch (RuntimeException | Error failure) {
-      try {
-        parentLifecycle.close();
-      } catch (RuntimeException | Error closeFailure) {
-        failure.addSuppressed(closeFailure);
-      }
-      throw failure;
-    }
-  }
-
-  @Override
   protected void postDelete(User entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
     JwtFilter.invalidateResolvedEmailIdentity(entity.getEmail());
@@ -1730,17 +1705,7 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   protected void postRestore(User entity) {
     super.postRestore(entity);
-    String userName = entity.getName();
-    boolean isBot = Boolean.TRUE.equals(entity.getIsBot());
-    PostCommitActionQueue.runOrDefer(
-        () -> {
-          if (isBot) {
-            BotTokenCache.reloadToken(userName);
-          } else {
-            UserTokenCache.reloadToken(userName);
-          }
-          Credentials.changed(userName);
-        });
+    Credentials.changed(entity.getName());
   }
 
   /**

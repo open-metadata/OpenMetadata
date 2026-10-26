@@ -72,10 +72,6 @@ public final class CacheKeys {
     return ns + ":credential:" + credentialType + ":" + EntityUtil.hash(userName);
   }
 
-  public String credentialMutationLock(String credentialType, String userName) {
-    return ns + ":credential:lock:" + credentialType + ":" + EntityUtil.hash(userName);
-  }
-
   /**
    * Redis hash key holding cached listing totals for an entity type. Each ListFilter variant
    * lives as a field (hash of its WHERE clause + bound params) under this single key, so a
