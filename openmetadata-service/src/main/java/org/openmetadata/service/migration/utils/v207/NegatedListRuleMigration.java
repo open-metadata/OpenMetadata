@@ -16,12 +16,15 @@ package org.openmetadata.service.migration.utils.v207;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -118,15 +121,19 @@ public final class NegatedListRuleMigration {
   }
 
   static boolean rewriteWorkflow(final ObjectNode definition) {
+    final Optional<ObjectNode> encodedFilter = decodeStringFilter(definition);
     boolean changed = false;
     for (final RuleField field : workflowRules(definition)) {
       changed |= field.rewrite();
     }
+    encodedFilter.ifPresent(config -> config.put(FILTER, config.path(FILTER).toString()));
     return changed;
   }
 
   static boolean hasNegatedList(final ObjectNode definition) {
-    return workflowRules(definition).stream()
+    final ObjectNode decoded = definition.deepCopy();
+    decodeStringFilter(decoded);
+    return workflowRules(decoded).stream()
         .anyMatch(field -> NegatedListRuleRewriter.hasNegatedList(field.rule()));
   }
 
@@ -137,21 +144,39 @@ public final class NegatedListRuleMigration {
         addTextField(fields, node.path(CONFIG), RULES);
       }
     }
-    final JsonNode trigger = definition.path("trigger");
-    if (EVENT_TRIGGER.equals(trigger.path("type").asText())) {
-      addFilterFields(fields, trigger.path(CONFIG));
-    }
+    final JsonNode filter = eventTriggerConfig(definition).path(FILTER);
+    filter.fieldNames().forEachRemaining(entityType -> addTextField(fields, filter, entityType));
     return fields;
   }
 
-  /** The filter is one rule for every entity type, or one rule per entity type. */
-  private static void addFilterFields(final List<RuleField> fields, final JsonNode config) {
+  private static JsonNode eventTriggerConfig(final JsonNode definition) {
+    final JsonNode trigger = definition.path("trigger");
+    return EVENT_TRIGGER.equals(trigger.path("type").asText())
+        ? trigger.path(CONFIG)
+        : MissingNode.getInstance();
+  }
+
+  /**
+   * A filter stored as a string is a JSON-encoded map of entity type to rule, the only string form
+   * the trigger reads; it is decoded in place so its rules are rewritten like a map's, and the
+   * returned config is where to encode it again.
+   */
+  private static Optional<ObjectNode> decodeStringFilter(final ObjectNode definition) {
+    final JsonNode config = eventTriggerConfig(definition);
     final JsonNode filter = config.path(FILTER);
+    Optional<ObjectNode> decodedIn = Optional.empty();
     if (filter.isTextual()) {
-      addTextField(fields, config, FILTER);
-    } else if (filter.isObject()) {
-      filter.fieldNames().forEachRemaining(entityType -> addTextField(fields, filter, entityType));
+      try {
+        final JsonNode map = JsonUtils.readTree(filter.asText());
+        if (map != null && map.isObject()) {
+          ((ObjectNode) config).set(FILTER, map);
+          decodedIn = Optional.of((ObjectNode) config);
+        }
+      } catch (JsonParsingException e) {
+        LOG.warn("[v207] Leaving a trigger filter that is not JSON unchanged: {}", e.getMessage());
+      }
     }
+    return decodedIn;
   }
 
   private static void addTextField(

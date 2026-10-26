@@ -59,13 +59,29 @@ class NegatedListRuleMigrationTest {
                 .formatted(JsonUtils.pojoToJson(triggerFilter), JsonUtils.pojoToJson(checkRules)));
   }
 
+  private static String encodedFilter(String tableRule) {
+    return "{\"table\":%s}".formatted(JsonUtils.pojoToJson(tableRule));
+  }
+
   @Test
-  void checkConditionRulesAndTriggerFilterAreRewritten() {
-    ObjectNode definition = workflow(LEGACY_IS_NOT, LEGACY_IS_NOT);
+  void checkConditionRulesAndAStringEncodedFilterMapAreRewritten() {
+    ObjectNode definition = workflow(LEGACY_IS_NOT, encodedFilter(LEGACY_IS_NOT));
 
     assertTrue(NegatedListRuleMigration.rewriteWorkflow(definition));
     assertEquals(IS_NOT, definition.at("/nodes/0/config/rules").asText());
-    assertEquals(IS_NOT, definition.at("/trigger/config/filter").asText());
+    assertTrue(definition.at("/trigger/config/filter").isTextual(), "the filter stays a string");
+    assertEquals(
+        IS_NOT,
+        JsonUtils.readTree(definition.at("/trigger/config/filter").asText())
+            .path("table")
+            .asText());
+  }
+
+  @Test
+  void aPlainRuleStringTheTriggerIgnoresIsLeftAsStored() {
+    ObjectNode definition = workflow(IS, LEGACY_IS_NOT);
+
+    assertFalse(NegatedListRuleMigration.rewriteWorkflow(definition));
   }
 
   @Test
