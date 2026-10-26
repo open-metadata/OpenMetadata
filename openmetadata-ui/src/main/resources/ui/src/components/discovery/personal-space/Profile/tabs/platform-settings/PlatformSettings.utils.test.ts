@@ -149,11 +149,11 @@ describe('PlatformSettings.utils', () => {
       });
     });
 
-    it('titles a profiler item route from the Spark form, falling back to "Edit"', () => {
+    it('titles a profiler item route from the downstream form, falling back to "Edit"', () => {
       const profiler = page('profiler-configuration');
       const titleSpy = jest.spyOn(
         profilerConfigurationClassBase,
-        'getSparkAgentConfigFormTitle'
+        'getSettingsItemFormTitle'
       );
       const header = () =>
         getPageHeader(
@@ -162,17 +162,17 @@ describe('PlatformSettings.utils', () => {
             type: 'page',
             page: 'profiler-configuration',
             isEditing: true,
-            itemId: 'spark',
+            itemId: 'new',
           },
           t
         ).title;
 
       expect(header()).toBe('label.edit-entity');
 
-      titleSpy.mockReturnValueOnce('Add Spark Configuration');
+      titleSpy.mockReturnValueOnce('Add Item');
 
-      expect(header()).toBe('Add Spark Configuration');
-      expect(titleSpy).toHaveBeenLastCalledWith(t, 'spark');
+      expect(header()).toBe('Add Item');
+      expect(titleSpy).toHaveBeenLastCalledWith(t, 'new');
 
       titleSpy.mockRestore();
     });

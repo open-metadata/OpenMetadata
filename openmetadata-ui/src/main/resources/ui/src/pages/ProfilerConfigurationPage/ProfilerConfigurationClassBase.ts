@@ -28,17 +28,17 @@ class ProfilerConfigurationClassBase {
   }
 
   /**
-   * The settings modal's add/edit sub-page for a Spark agent, served at
+   * A downstream add/edit sub-page served at
    * `profiler-configuration/edit/<itemId>`; the item id format is the
    * implementer's.
    */
-  public getSparkAgentConfigForm():
+  public getSettingsItemForm():
     | ComponentType<PlatformSettingsFormProps>
     | undefined {
     return undefined;
   }
 
-  public getSparkAgentConfigFormTitle(
+  public getSettingsItemFormTitle(
     _t: TFunction,
     _itemId: string
   ): string | undefined {

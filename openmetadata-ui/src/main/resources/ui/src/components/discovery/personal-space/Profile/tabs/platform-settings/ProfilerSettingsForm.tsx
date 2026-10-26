@@ -26,7 +26,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { SettingType } from '../../../../../../generated/settings/settings';
-// eslint-disable-next-line openmetadata-imports/no-lower-layer-page-imports -- Spark extension point lives there
+// eslint-disable-next-line openmetadata-imports/no-lower-layer-page-imports -- profiler extension point lives there
 import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { updateSettingsConfig } from '../../../../../../rest/settingConfigAPI';
 import {
@@ -264,18 +264,14 @@ const ProfilerConfigForm = ({
   );
 };
 
-// An item id addresses a contributed Spark agent sub-page; without one (or
-// without a contributor) this is the profiler configuration form.
+// An item id addresses a downstream sub-page; without one (or without a
+// contributor) this is the profiler configuration form.
 const ProfilerSettingsForm = (props: PlatformSettingsFormProps) => {
-  const SparkAgentConfigForm = props.itemId
-    ? profilerConfigurationClassBase.getSparkAgentConfigForm()
+  const ItemForm = props.itemId
+    ? profilerConfigurationClassBase.getSettingsItemForm()
     : undefined;
 
-  return SparkAgentConfigForm ? (
-    <SparkAgentConfigForm {...props} />
-  ) : (
-    <ProfilerConfigForm {...props} />
-  );
+  return ItemForm ? <ItemForm {...props} /> : <ProfilerConfigForm {...props} />;
 };
 
 export default ProfilerSettingsForm;
