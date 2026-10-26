@@ -429,8 +429,7 @@ public abstract class AbstractEventConsumer
 
   @Override
   public ResultList<ChangeEvent> pollEvents(long offset, long batchSize) {
-    var records =
-        Entity.getCollectionDAO().changeEventDAO().listWithOffset((int) batchSize, offset);
+    var records = Entity.getCollectionDAO().changeEventDAO().listWithOffset(batchSize, offset);
     CursorPlan cursorPlan =
         planCursor(offset, pendingGapSince, records, System.currentTimeMillis());
     gapStateChanged = cursorPlan.pendingGapSince() != pendingGapSince;
