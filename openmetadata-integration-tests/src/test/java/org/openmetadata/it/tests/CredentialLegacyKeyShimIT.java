@@ -39,9 +39,9 @@ import org.openmetadata.service.cache.CacheProvider;
 
 /**
  * A server still on the previous release reads {@code credential:bot:*} and {@code
- * credential:pat:*} from Redis on every request. A revoke on a new server must delete both, so the
- * old server's next request reloads from the database. A new server never writes either key, so
- * both are absent after the revoke.
+ * credential:pat:*} from Redis on every request, and reads the database when they are absent. A
+ * revoke on a new server deletes both. A new server never writes either key, so both are absent
+ * after the revoke.
  */
 @Tag("multi-node")
 @ExtendWith(TestNamespaceExtension.class)
