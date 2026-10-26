@@ -62,6 +62,13 @@ const goNext = async (page: Page) => {
   await expectNoFallback(page);
 };
 
+// On the last step react-tour renders the finish button inside its Next arrow,
+// so one Next too many ends the tour. The button renders with the step's text,
+// but is not visible until react-tour places the popover, after a page change's
+// view transition ends: check that it is rendered, not that it is visible.
+const isLastStep = async (page: Page) =>
+  (await page.getByTestId('last-step-button').count()) > 0;
+
 const goToStep = async (page: Page, step: number) => {
   for (let current = 1; current < step; current++) {
     await goNext(page);
@@ -131,8 +138,7 @@ test.describe('Product tour — Classic', () => {
       await expect(page).toHaveURL(/\/explore/);
       await expectStep(page, 'Explore');
 
-      const lastStep = page.getByTestId('last-step-button');
-      for (let step = 2; step < 20 && !(await lastStep.isVisible()); step++) {
+      for (let step = 2; step < 20 && !(await isLastStep(page)); step++) {
         await goNext(page);
       }
       await expect(page).toHaveURL(/\/context-center\/memories/);
