@@ -90,6 +90,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DataContracts;
 import org.openmetadata.sdk.fluent.DataContracts.FluentDataContract;
@@ -8957,6 +8958,57 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertFalse(Boolean.TRUE.equals(restored.getDeleted()));
     TestSuite suite = client.testSuites().get(restored.getTestSuite().getId().toString(), "");
     assertEquals(created.getId().toString(), suite.getName());
+  }
+
+  /**
+   * A PUT the caller may not make leaves the contract's suite alone. PUT prepares a contract before
+   * it authorizes, so the suite is only changed once the update itself runs.
+   */
+  @Test
+  void testForbiddenPutLeavesTheContractsTestSuite(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    TestCase test = rowCountTest(client, ns, table, "forbidden_put_tc");
+    DataContract contract = contractWithExpectations(ns, table, "forbidden_put", List.of(test));
+    CreateDataContract withoutExpectations =
+        new CreateDataContract()
+            .withName(contract.getName())
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED);
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> SdkClients.user2Client().dataContracts().createOrUpdate(withoutExpectations));
+
+    TestSuite suite = client.testSuites().get(contract.getTestSuite().getId().toString(), "tests");
+    assertEquals(
+        List.of(test.getId()), suite.getTests().stream().map(EntityReference::getId).toList());
+  }
+
+  /** A PUT that may not create a contract does not put its test cases in a new suite. */
+  @Test
+  void testForbiddenPutCreateLeavesTheTestCasesSuites(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    TestCase test = rowCountTest(client, ns, table, "forbidden_create_tc");
+    int suitesBefore = suitesOf(client, test);
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("forbidden_create"))
+            .withEntity(table.getEntityReference())
+            .withQualityExpectations(List.of(test.getEntityReference()));
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> SdkClients.user2Client().dataContracts().createOrUpdate(request));
+
+    assertEquals(suitesBefore, suitesOf(client, test));
+  }
+
+  private static int suitesOf(OpenMetadataClient client, TestCase test) {
+    List<TestSuite> suites =
+        client.testCases().get(test.getId().toString(), "testSuites").getTestSuites();
+    return suites == null ? 0 : suites.size();
   }
 
   private DataContract contractWithExpectations(
