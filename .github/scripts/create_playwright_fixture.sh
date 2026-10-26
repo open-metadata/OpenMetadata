@@ -50,6 +50,30 @@ for state_file in \
   fi
 done
 
+# SearchIndexingApplication's default cron (Sunday 00:30 UTC) can fire while the fixture
+# is being prepared; copying OpenSearch mid-recreate caches half-built indices for every run.
+wait_for_reindex_idle() {
+  local token status deadline=$((SECONDS + ${FIXTURE_REINDEX_WAIT_SECONDS:-900}))
+  token=$(jq -r '.token' "$auth_source/admin-api-token.json")
+  while (( SECONDS < deadline )); do
+    status=$(
+      curl -s --header "Authorization: Bearer $token" \
+        "http://localhost:8585/api/v1/apps/name/SearchIndexingApplication/runs/latest" |
+        jq -r '.status // "none"' 2>/dev/null | tr '[:upper:]' '[:lower:]'
+    )
+    case "$status" in
+      running|started|pending|active|stopinprogress)
+        echo "SearchIndexingApplication is $status; waiting before snapshotting..."
+        sleep 10
+        ;;
+      *) return 0 ;;
+    esac
+  done
+  echo "SearchIndexingApplication still running; refusing to snapshot a partial search index" >&2
+  exit 1
+}
+wait_for_reindex_idle
+
 docker stop --time 30 openmetadata_ingestion openmetadata_server >/dev/null 2>&1 || true
 docker stop --time 30 openmetadata_postgresql openmetadata_opensearch >/dev/null
 
