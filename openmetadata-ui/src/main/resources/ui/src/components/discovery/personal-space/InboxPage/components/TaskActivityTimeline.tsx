@@ -158,22 +158,13 @@ const TaskActivityTimeline: React.FC<TaskActivityTimelineProps> = ({
 
   return (
     <Box data-testid="task-activity-timeline" direction="col" gap={5}>
-      <Box align="center" className="tw:justify-between" gap={3}>
-        <Box align="center" gap={2}>
-          <Typography size="text-sm" weight="medium">
-            {t('label.activity')}
-          </Typography>
-          <Badge color="gray" size="sm" type="pill-color">
-            {entries.length}
-          </Badge>
-        </Box>
-        <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
-        <Typography
-          className="tw:shrink-0 tw:text-tertiary"
-          size="text-xs"
-          weight="medium">
-          {t('label.comments-and-events')}
+      <Box align="center" gap={2}>
+        <Typography size="text-sm" weight="medium">
+          {t('label.activity')}
         </Typography>
+        <Badge color="gray" size="sm" type="pill-color">
+          {entries.length}
+        </Badge>
       </Box>
 
       <Box direction="col" gap={4}>

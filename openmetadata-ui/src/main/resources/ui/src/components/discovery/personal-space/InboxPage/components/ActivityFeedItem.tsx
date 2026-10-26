@@ -108,6 +108,8 @@ export interface ActivityFeedItemProps {
   timeFormat?: string;
   // The item, or a reply under it, names the viewer or one of their teams.
   isMentioned?: boolean;
+  // Who the mention badge names when the feed is another user's; "you" if unset.
+  mentionedName?: string;
 }
 
 const getActorName = (
@@ -348,10 +350,12 @@ const UNDO_REACTION: Record<ReactionOperation, ReactionOperation> = {
 // The header's right side: whether it names the viewer, and when it happened.
 const CardMeta = ({
   isMentioned,
+  mentionedName,
   timeFormat,
   timestamp,
 }: {
   isMentioned: boolean;
+  mentionedName?: string;
   timeFormat: string;
   timestamp?: number;
 }) => {
@@ -366,7 +370,9 @@ const CardMeta = ({
           data-testid="activity-mentioned-you"
           size="sm"
           type="color">
-          {t('label.mentioned-you')}
+          {mentionedName
+            ? t('label.mentioned-name', { name: mentionedName })
+            : t('label.mentioned-you')}
         </Badge>
       )}
       <Tooltip
@@ -388,6 +394,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   feed,
   timeFormat = ACTIVITY_DATE_FORMAT,
   isMentioned = false,
+  mentionedName,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -547,6 +554,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
               </Typography>
               <CardMeta
                 isMentioned={isMentioned}
+                mentionedName={mentionedName}
                 timeFormat={cardTimeFormat}
                 timestamp={timestamp}
               />

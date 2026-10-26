@@ -36,7 +36,11 @@ import {
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { TOPIC_ROW_CLASSES } from '../Common/TopicWidget/topicRowStyles';
+import {
+  TOPIC_ROW_CLASSES,
+  TOPIC_ROW_DIVIDER_CLASSES,
+  TOPIC_ROW_TILE_CLASSES,
+} from '../Common/TopicWidget/topicRowStyles';
 import {
   DURATION_UNITS,
   NOT_RUN_STYLE,
@@ -121,68 +125,79 @@ const PipelineStatusRow: React.FC<PipelineStatusRowProps> = ({
   return (
     <li
       className={classNames(
-        'tw:flex tw:min-w-0 tw:items-start tw:gap-3 tw:py-3',
-        TOPIC_ROW_CLASSES
+        'tw:flex tw:min-w-0 tw:flex-col tw:gap-1 tw:py-3',
+        TOPIC_ROW_CLASSES,
+        TOPIC_ROW_DIVIDER_CLASSES
       )}
       data-testid={`pipeline-status-row-${summary.pipelineId}`}>
-      <span
-        className={classNames(
-          'tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full',
-          style.tile
-        )}>
-        <StatusIcon aria-hidden size={16} />
-      </span>
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
-        <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
-          <Link
-            className="tw:min-w-0 tw:flex-1 tw:no-underline!"
-            to={getEntityDetailsPath(EntityType.PIPELINE, summary.pipelineFqn)}>
+      {/* The tile centres on the name and meta lines only, so a failed run's
+        error message below does not pull it down. */}
+      <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
+        <span
+          aria-hidden
+          className={classNames(
+            'tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
+            style.tile,
+            TOPIC_ROW_TILE_CLASSES
+          )}>
+          <StatusIcon size={16} />
+        </span>
+        <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
+          <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+            <Link
+              className="tw:min-w-0 tw:flex-1 tw:no-underline!"
+              to={getEntityDetailsPath(
+                EntityType.PIPELINE,
+                summary.pipelineFqn
+              )}>
+              <Typography
+                className="tw:text-text-primary!"
+                data-testid="pipeline-status-name"
+                ellipsis={{ rows: 1 }}
+                size="text-sm"
+                weight="medium">
+                {summary.pipelineName}
+              </Typography>
+            </Link>
             <Typography
-              className="tw:text-text-primary!"
-              data-testid="pipeline-status-name"
-              ellipsis={{ rows: 1 }}
-              size="text-sm"
+              className={classNames('tw:shrink-0', style.text)}
+              data-testid="pipeline-status-label"
+              size="text-xs"
               weight="medium">
-              {summary.pipelineName}
+              {statusLabel}
             </Typography>
-          </Link>
-          <Typography
-            className={classNames('tw:shrink-0', style.text)}
-            data-testid="pipeline-status-label"
-            size="text-xs"
-            weight="medium">
-            {statusLabel}
-          </Typography>
-        </div>
-        <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
-          {/* The span takes the free width so the strip sits flush right;
+          </div>
+          <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
+            {/* The span takes the free width so the strip sits flush right;
             Typography's ellipsis box does not stretch as a flex item. */}
-          <span className="tw:min-w-0 tw:flex-1">
-            <Typography
-              className="tw:text-text-tertiary!"
-              ellipsis={{ rows: 1 }}
-              size="text-xs">
-              {meta}
-            </Typography>
-          </span>
-          <RunHistoryBar
-            ariaLabel={historyLabel}
-            className="tw:shrink-0"
-            data-testid="pipeline-run-history"
-            max={PIPELINE_RUN_HISTORY_SIZE}
-            runs={historyItems}
-          />
+            <span className="tw:min-w-0 tw:flex-1">
+              <Typography
+                className="tw:text-text-tertiary!"
+                ellipsis={{ rows: 1 }}
+                size="text-xs">
+                {meta}
+              </Typography>
+            </span>
+            <RunHistoryBar
+              ariaLabel={historyLabel}
+              className="tw:shrink-0"
+              data-testid="pipeline-run-history"
+              max={PIPELINE_RUN_HISTORY_SIZE}
+              runs={historyItems}
+            />
+          </div>
         </div>
-        {errorMessage && (
-          <Typography
-            className="tw:mt-1 tw:rounded-lg tw:bg-utility-error-50 tw:px-2.5 tw:py-2 tw:text-utility-error-700!"
-            data-testid="pipeline-status-error"
-            ellipsis={{ rows: 3 }}
-            size="text-xs">
-            {errorMessage}
-          </Typography>
-        )}
       </div>
+      {/* Indented by the tile and its gap, so it lines up with the name. */}
+      {errorMessage && (
+        <Typography
+          className="tw:mt-1 tw:ms-11 tw:rounded-lg tw:bg-utility-error-50 tw:px-2.5 tw:py-2 tw:text-utility-error-700!"
+          data-testid="pipeline-status-error"
+          ellipsis={{ rows: 3 }}
+          size="text-xs">
+          {errorMessage}
+        </Typography>
+      )}
     </li>
   );
 };

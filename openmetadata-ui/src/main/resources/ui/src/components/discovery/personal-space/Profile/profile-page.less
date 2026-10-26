@@ -22,9 +22,8 @@
   max-width: 100%;
 }
 
-/* The OSS Explore asset list (FollowingTab + MyDataPage's MyDataAssetsList)
-   hard-codes a light theme (legacy `bg-white`, `.black` text, `text-black`
-   icons) and doesn't react to the tailwind `.dark-mode` toggle. Scope the
+/* The OSS Explore asset list (AssetsTabs) hard-codes a light theme (legacy
+   `bg-white`, `.black` text, `text-black` icons) and doesn't react to the tailwind `.dark-mode` toggle. Scope the
    overrides to the Explore container `.assets-tab-container` itself so they
    apply wherever the list renders (parent-agnostic) and nowhere else — ONLY
    under `.dark-mode`, leaving light mode 100% on the original Explore styling.

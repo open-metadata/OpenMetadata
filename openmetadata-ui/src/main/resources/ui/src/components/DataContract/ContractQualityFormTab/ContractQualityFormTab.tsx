@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Dropdown,
-  EmptyPlaceholder,
-} from '@openmetadata/ui-core-components';
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ClipboardCheck,
@@ -46,6 +42,9 @@ import { ContractTestTypeLabelMap } from '../../../utils/DataContract/DataContra
 import { generateEntityLink } from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
@@ -195,6 +194,9 @@ export const ContractQualityFormTab: React.FC<{
   );
 
   const isFiltered = Boolean(searchValue) || testType !== TestCaseType.all;
+  const EmptyStatePlaceholder = searchValue
+    ? NoSearchResultsPlaceholder
+    : NoFilteredResultsPlaceholder;
   // Nothing to narrow down until the table has at least one test.
   const hasNoTests = !isFiltered && allTestCases.length === 0;
 
@@ -300,19 +302,17 @@ export const ContractQualityFormTab: React.FC<{
           loading={isTestsLoading}
           locale={{
             emptyText: isFiltered ? (
-              <EmptyPlaceholder
+              <EmptyStatePlaceholder
                 description={t('message.check-spelling-or-try-shorter-term')}
                 icon={<NoSearch className="tw:text-secondary" />}
                 title={t('label.no-matching-result-plural')}
-                variant="blank"
               />
             ) : (
-              <EmptyPlaceholder
+              <NoDataPlaceholder
                 icon={<ClipboardCheck className="tw:text-fg-quaternary" />}
                 title={t('label.no-entity-available', {
                   entity: t('label.test-case-plural'),
                 })}
-                variant="blank"
               />
             ),
           }}
