@@ -41,6 +41,11 @@ final class CredentialMetrics {
     NUDGE,
     REFRESH;
 
+    /** A check's own read of one subject, as opposed to a sweep, deep, refresh or nudge read. */
+    boolean startedByCheck() {
+      return this == MISS || this == STALE || this == UNKNOWN_TOKEN;
+    }
+
     static ReadReason of(CheckDecision load) {
       return switch (load) {
         case LOAD_MISSING -> MISS;

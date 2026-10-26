@@ -27,7 +27,7 @@ class ReadBackoffTest {
 
   @Test
   void aFailureBacksItsSubjectOffForOneWindowFromItsStamp() {
-    assertTrue(backoff.recordFailure(ALICE, 100));
+    backoff.recordCheckFailure(ALICE, 100);
 
     assertTrue(backoff.isBackingOff(ALICE, 599));
     assertFalse(backoff.isBackingOff(ALICE, 600));
@@ -36,23 +36,32 @@ class ReadBackoffTest {
 
   @Test
   void aFailureFinishingAfterANewerOneKeepsTheNewerWindow() {
-    backoff.recordFailure(ALICE, 300);
+    backoff.recordCheckFailure(ALICE, 300);
 
-    assertFalse(backoff.recordFailure(ALICE, 100));
+    backoff.recordCheckFailure(ALICE, 100);
     assertTrue(backoff.isBackingOff(ALICE, 799));
   }
 
   @Test
   void aFailureOpensAWindowOnlyOnceTheLatestOneHasPassed() {
-    assertTrue(backoff.recordFailure(ALICE, 0));
-    assertFalse(backoff.recordFailure(ALICE, 499));
-    assertFalse(backoff.recordFailure(ALICE, 998));
-    assertTrue(backoff.recordFailure(ALICE, 1498));
+    assertTrue(backoff.recordLeftOut(ALICE, 0, true));
+    assertFalse(backoff.recordLeftOut(ALICE, 499, true));
+    assertFalse(backoff.recordLeftOut(ALICE, 998, true));
+    assertTrue(backoff.recordLeftOut(ALICE, 1498, true));
+  }
+
+  @Test
+  void aSubjectLeftOutByAReadNoCheckStartedPacesWarningsButNeverBacksChecksOff() {
+    assertTrue(backoff.recordLeftOut(ALICE, 100, false));
+    assertFalse(backoff.recordLeftOut(ALICE, 200, false));
+
+    assertFalse(backoff.isBackingOff(ALICE, 300));
+    assertTrue(backoff.recordLeftOut(ALICE, 700, false));
   }
 
   @Test
   void aSuccessEndsOnlyAWindowThatStartedNoLaterThanItsStamp() {
-    backoff.recordFailure(ALICE, 300);
+    backoff.recordCheckFailure(ALICE, 300);
 
     backoff.recordSuccess(ALICE, 299);
     assertTrue(backoff.isBackingOff(ALICE, 400));
@@ -63,7 +72,7 @@ class ReadBackoffTest {
   @Test
   void stampsCompareByDifferenceAcrossTheTickerWrap() {
     long nearWrap = Long.MAX_VALUE - 100;
-    backoff.recordFailure(ALICE, nearWrap);
+    backoff.recordCheckFailure(ALICE, nearWrap);
 
     assertTrue(backoff.isBackingOff(ALICE, nearWrap + WINDOW - 1));
     assertFalse(backoff.isBackingOff(ALICE, nearWrap + WINDOW));

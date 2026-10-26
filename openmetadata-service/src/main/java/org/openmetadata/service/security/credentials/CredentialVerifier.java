@@ -159,7 +159,7 @@ public final class CredentialVerifier implements Managed {
      */
     private void reject(RejectedExecutionException why) {
       metrics.recordRead(reason, ReadOutcome.NO_PERMIT, ticker.read() - stampNanos);
-      backoff.recordFailure(subject, stampNanos);
+      backoff.recordCheckFailure(subject, stampNanos);
       fail(subject, read, why);
     }
   }
@@ -570,7 +570,7 @@ public final class CredentialVerifier implements Managed {
   /**
    * The only call into the source for full reads. Records the read, whatever it ends in, and the
    * subjects it left out; a failure propagates as is. Each subject's outcome ends or opens its
-   * backoff from {@code stampNanos}, the read's stamp, so every read path counts.
+   * backoff from {@code stampNanos}, the read's stamp, when a check started the read.
    */
   private Map<CredentialSubject, CredentialRecord> timedRead(
       Collection<CredentialSubject> subjects,
@@ -581,11 +581,13 @@ public final class CredentialVerifier implements Managed {
     try {
       Map<CredentialSubject, CredentialRecord> records = source.read(subjects, previous);
       metrics.recordRead(reason, ReadOutcome.OK, ticker.read() - started);
-      recordConversions(subjects, records, stampNanos);
+      recordConversions(subjects, records, reason, stampNanos);
       return records;
     } catch (RuntimeException | Error failure) {
       metrics.recordRead(reason, ReadOutcome.ERROR, ticker.read() - started);
-      subjects.forEach(subject -> backoff.recordFailure(subject, stampNanos));
+      if (reason.startedByCheck()) {
+        subjects.forEach(subject -> backoff.recordCheckFailure(subject, stampNanos));
+      }
       throw failure;
     }
   }
@@ -593,6 +595,7 @@ public final class CredentialVerifier implements Managed {
   private void recordConversions(
       Collection<CredentialSubject> subjects,
       Map<CredentialSubject, CredentialRecord> records,
+      ReadReason reason,
       long stampNanos) {
     long leftOut = 0;
     for (CredentialSubject subject : subjects) {
@@ -600,7 +603,7 @@ public final class CredentialVerifier implements Managed {
         backoff.recordSuccess(subject, stampNanos);
       } else {
         leftOut++;
-        recordLeftOut(subject, stampNanos);
+        recordLeftOut(subject, reason, stampNanos);
       }
     }
     if (leftOut > 0) {
@@ -609,8 +612,8 @@ public final class CredentialVerifier implements Managed {
   }
 
   /** Warns once per backoff window, however many reads leave the subject out within it. */
-  private void recordLeftOut(CredentialSubject subject, long stampNanos) {
-    if (backoff.recordFailure(subject, stampNanos)) {
+  private void recordLeftOut(CredentialSubject subject, ReadReason reason, long stampNanos) {
+    if (backoff.recordLeftOut(subject, stampNanos, reason.startedByCheck())) {
       LOG.warn(
           "The stored credentials of {} could not be converted, so checks that need a read of it"
               + " answer unavailable until a read converts them; the cause is logged at DEBUG",

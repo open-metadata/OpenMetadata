@@ -639,6 +639,64 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void subjectsSharingADeepReadWithOneWhoseReadThrowsAnErrorAreAcceptedOnTheirNextCheck() {
+    List<String> users = IntStream.range(0, 50).mapToObj(i -> "u" + i).toList();
+    users.forEach(user -> source.withPats(user, "first-" + user));
+    source.withJwtMechanism(BOB, JWT_OLD);
+    verifier(new CredentialVerificationConfig(null, null, null, null, null, null, 100, 100, null));
+    users.forEach(user -> assertAccepted(user, "first-" + user));
+    assertAccepted(BOB, JWT_OLD);
+    source.failReadsOfWithError(BOB);
+    source.duringNextFingerprints(() -> users.forEach(user -> source.addPat(user, "new-" + user)));
+
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    assertNull(sweepAsScheduled());
+    ticker.advanceNanos(100 * MILLISECOND);
+
+    users.forEach(user -> assertAccepted(user, "new-" + user));
+    assertEquals(0.0, counter("om.credential.unavailable", "cause", "backoff"));
+    assertEquals(102, source.fullReads());
+  }
+
+  @Test
+  void aSubjectWhoseSweepRereadFailedIsAcceptedAtItsFirstCheckAfterTheSourceRecovers() {
+    source.withPats(ALICE, TOKEN_A).withJwtMechanism(BOB, JWT_OLD);
+    verifier(DEFAULTS);
+    assertAccepted(ALICE, TOKEN_A);
+    assertAccepted(BOB, JWT_OLD);
+    source.addPat(ALICE, TOKEN_B);
+    source.withJwtMechanism(BOB, JWT_NEW);
+    source.duringNextFingerprints(source::failReads);
+
+    sweepAfterInterval();
+    source.heal();
+    ticker.advanceNanos(100 * MILLISECOND);
+
+    assertAccepted(ALICE, TOKEN_B);
+    assertAccepted(BOB, JWT_NEW);
+    assertEquals(0.0, counter("om.credential.unavailable", "cause", "backoff"));
+    assertEquals(1.0, counter("om.credential.reads", "reason", "sweep", "outcome", "error"));
+  }
+
+  @Test
+  void aTokenCreatedAndUsedOnTheWritingServerIsAcceptedAfterOneFailedRefresh() {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(DEFAULTS);
+    assertAccepted(ALICE, TOKEN_A);
+    ticker.advanceNanos(MISS_REFRESH_MIN_AGE);
+    source.addPat(ALICE, TOKEN_B);
+    source.failReads();
+
+    verifier.refreshNow(subject(ALICE));
+    source.heal();
+    ticker.advanceNanos(50 * MILLISECOND);
+
+    assertAccepted(ALICE, TOKEN_B);
+    assertEquals(1.0, counter("om.credential.reads", "reason", "refresh", "outcome", "error"));
+    assertEquals(0.0, counter("om.credential.unavailable", "cause", "backoff"));
+  }
+
+  @Test
   void aFreshEntryIsStillAcceptedWhileItsSubjectBacksOff() {
     source.withJwtMechanism(BOB, JWT_OLD);
     verifier(DEFAULTS);
