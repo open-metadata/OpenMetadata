@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.factories.UserTestFactory;
@@ -15,6 +16,8 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -34,7 +37,7 @@ class UserSecretsIT {
   @Test
   void aBotsUpdateIsStoredWithoutItsToken(TestNamespace ns) {
     long since = System.currentTimeMillis();
-    User bot = updateBot(ns);
+    User bot = updateBot(ns.prefix("updated"));
 
     JsonNode event = storedEventOf(bot.getId(), since);
 
@@ -44,7 +47,7 @@ class UserSecretsIT {
   @Test
   void aBotsHistoryShowsNoTokenToAUserWhoMayViewIt(TestNamespace ns) {
     long since = System.currentTimeMillis();
-    User bot = updateBot(ns);
+    User bot = updateBot(ns.prefix("updated"));
     User viewer = UserTestFactory.createUser(ns, "viewer");
     HttpClient asViewer =
         SdkClients.createClient(viewer.getName(), viewer.getEmail(), new String[] {})
@@ -72,17 +75,34 @@ class UserSecretsIT {
     history.path("data").forEach(user -> assertFalse(user.has(AUTHENTICATION)));
   }
 
+  // Two edits by one user in one session are merged against the version before them, which is
+  // stored without the token: the merged change must not report a credential change.
+  @Test
+  void editsMergedInOneSessionReportNoCredentialChange(TestNamespace ns) {
+    updateBot(ns.prefix("first"));
+    User bot = updateBot(ns.prefix("second"));
+
+    ChangeDescription change = bot.getChangeDescription();
+    List<String> changed =
+        Stream.of(change.getFieldsAdded(), change.getFieldsUpdated(), change.getFieldsDeleted())
+            .flatMap(List::stream)
+            .map(FieldChange::getName)
+            .toList();
+    assertTrue(changed.contains("description"), "The merged change must hold the edits");
+    assertFalse(changed.contains(AUTHENTICATION), "No credential changed: " + changed);
+  }
+
   // Stored events and versions hold the entity as a string of JSON or as an object.
   private static JsonNode asObject(JsonNode node) {
     return node.isTextual() ? JsonUtils.readTree(node.asText()) : node;
   }
 
-  private static User updateBot(TestNamespace ns) {
+  private static User updateBot(String description) {
     HttpClient admin = SdkClients.adminClient().getHttpClient();
     User bot = admin.execute(HttpMethod.GET, "/v1/users/name/" + BOT, null, User.class);
     String patch =
         JsonUtils.pojoToJson(
-            List.of(Map.of("op", "add", "path", "/description", "value", ns.prefix("updated"))));
+            List.of(Map.of("op", "add", "path", "/description", "value", description)));
     admin.executeForString(
         HttpMethod.PATCH,
         "/v1/users/" + bot.getId(),

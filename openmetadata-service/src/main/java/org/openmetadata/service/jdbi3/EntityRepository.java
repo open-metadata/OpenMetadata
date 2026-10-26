@@ -6475,6 +6475,21 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             withoutFieldsHiddenFromHistory(JsonUtils.pojoToJson(entity)), entityClass);
   }
 
+  // A stored version has no hidden fields, so one read back to merge a session's edits takes the
+  // current values: otherwise the merged change would report them as changed.
+  private String withHiddenFieldsOf(T current, String versionJson) {
+    List<String> hidden = getFieldsHiddenFromHistory();
+    boolean restore = versionJson != null && !hidden.isEmpty();
+    ObjectNode version = restore ? (ObjectNode) JsonUtils.readTree(versionJson) : null;
+    if (restore) {
+      JsonNode currentNode = JsonUtils.valueToTree(current);
+      hidden.stream()
+          .filter(currentNode::hasNonNull)
+          .forEach(field -> version.set(field, currentNode.get(field)));
+    }
+    return restore ? version.toString() : versionJson;
+  }
+
   @Transaction
   protected void store(T entity, boolean update) {
     store(entity, update, null);
@@ -12508,7 +12523,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // The JSON already contains the correct historical state of all fields including experts.
       // Calling setFieldsInternal would fetch current relationships from DB which is wrong.
       // The version history JSON is a complete snapshot of the entity at that point in time.
-      return JsonUtils.readValue(json, entityClass);
+      return JsonUtils.readValue(withHiddenFieldsOf(original, json), entityClass);
     }
   }
 
