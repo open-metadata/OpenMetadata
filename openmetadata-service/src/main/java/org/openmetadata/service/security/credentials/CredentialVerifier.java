@@ -297,9 +297,10 @@ public final class CredentialVerifier implements Managed {
     }
   }
 
+  /** The clock is read after the lookup, so the age it gives the entry errs on the older side. */
   private boolean isCurrent(CredentialSubject subject, TokenDigest digest) {
-    long now = ticker.read();
     VerifiedCredentials entry = entries.getIfPresent(subject);
+    long now = ticker.read();
     CheckDecision decision = CheckDecision.decide(entry, now, digest, policy);
     if (decision.needsLoad()) {
       entry = readOnRequestThread(subject, ReadReason.of(decision));
