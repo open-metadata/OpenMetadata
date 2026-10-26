@@ -39,7 +39,6 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
-import org.openmetadata.service.migration.utils.v210.AppEventSubscriptionRemoval;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
@@ -60,14 +59,6 @@ public class Migration extends MigrationProcessImpl {
     // First, so no later step loads an entity still typed DeltaLake:
     // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
     retireDeltaLakeServices(handle, MYSQL, getPipelineServiceClient());
-    // Apps no longer bring their own alerts. Next, so no later step reads an app, a definition or
-    // one of their change events that still lists them.
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        AppEventSubscriptionRemoval.STEP_NAME,
-        () ->
-            AppEventSubscriptionRemoval.removeAppEventSubscriptions(handle, MYSQL, collectionDAO));
     alignFlowableTableCharsets(handle);
     ConversationMigration.migrate(handle, MYSQL);
     ConversationReferenceMigration.migrate(handle, MYSQL);
