@@ -14,6 +14,7 @@ import { http, HttpResponse } from 'msw';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { User } from '../../../generated/entity/teams/user';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { worker } from '../msw';
 
 /**
@@ -24,7 +25,14 @@ import { worker } from '../msw';
  */
 export interface Persona {
   user: User;
+  /** Unconditional allow rules on every resource. */
   allowed: Operation[];
+  /** Unconditional allow rules that name one resource (e.g. `task`). */
+  allowedOn?: Record<string, Operation[]>;
+  /** Allow rules with an `isOwner()` condition. */
+  ifOwner?: Operation[];
+  /** Allow rules with a `noOwner()` condition. */
+  ifNoOwner?: Operation[];
 }
 
 /**
@@ -65,11 +73,62 @@ export const DATA_STEWARD: Persona = {
 };
 
 /**
+ * DataConsumer role (DataConsumerPolicy, TaskAuthorPolicy) plus
+ * OrganizationPolicy, which every user inherits, for a user who does not own
+ * the entity. TaskAuthorPolicy is left out: each of its rules is conditional
+ * on the task's filer/assignee, so it never allows anything on a data asset.
+ */
+export const DATA_CONSUMER: Persona = {
+  user: {
+    id: '0a8f0c1e-0000-4000-8000-0000000000c5',
+    name: 'pw_data_consumer',
+    displayName: 'PW Data Consumer',
+    fullyQualifiedName: 'pw_data_consumer',
+    email: 'pw_data_consumer@open-metadata.org',
+    isAdmin: false,
+    isBot: false,
+    teams: [],
+    roles: [
+      {
+        id: '0a8f0c1e-0000-4000-8000-0000000000e2',
+        type: 'role',
+        name: 'DataConsumer',
+      },
+    ],
+  },
+  allowed: [
+    Operation.ViewAll,
+    Operation.EditDescription,
+    Operation.EditTags,
+    Operation.EditGlossaryTerms,
+    Operation.EditTier,
+    Operation.EditCertification,
+    Operation.CreateTask,
+    Operation.EditTask,
+    Operation.ExecuteSparqlQuery,
+  ],
+  allowedOn: {
+    task: [Operation.Create],
+    conversation: [Operation.Create],
+    contextMemory: [Operation.Create],
+  },
+  ifOwner: [Operation.All],
+  ifNoOwner: [Operation.EditOwners],
+};
+
+/** Operations an allow rule must name; `All` does not grant them (CompiledRule). */
+const EXPLICIT_ONLY = [Operation.Impersonate, Operation.ExecuteSparqlQuery];
+
+/**
  * Mirrors CompiledRule.matchOperation: `All` matches every operation, `ViewAll`
  * every View* and `EditAll` every Edit* one. Unmatched operations come back
  * `notAllow`, not `deny`; `deny` only results from an explicit deny rule.
  */
 const grantedBy = (operation: Operation): Operation[] => {
+  if (EXPLICIT_ONLY.includes(operation)) {
+    return [operation];
+  }
+
   if (operation.startsWith('View')) {
     return [Operation.All, Operation.ViewAll, operation];
   }
@@ -84,26 +143,96 @@ const grantedBy = (operation: Operation): Operation[] => {
 const isAllowed = (allowed: Operation[], operation: Operation) =>
   grantedBy(operation).some((grant) => allowed.includes(grant));
 
-const permissionsFor = (allowed: Operation[], resource = 'all') => ({
+/**
+ * The entity a lookup is about. Without one (the resource-level lookups) the
+ * server cannot evaluate a condition, so a conditional rule answers
+ * `conditionalAllow`; with one, PolicyEvaluator evaluates it against the
+ * entity's owners and answers `allow` or leaves `notAllow`.
+ */
+type Owned = { owners?: EntityReference[] };
+
+/**
+ * The conditional grants whose condition holds. Without an entity every one
+ * may hold. `isOwner()` is checked against user owners only: these personas
+ * belong to no team.
+ */
+const conditionalGrants = (
+  { user, ifOwner = [], ifNoOwner = [] }: Persona,
+  entity?: Owned
+) => {
+  if (!entity) {
+    return [...ifOwner, ...ifNoOwner];
+  }
+  const owners = entity.owners ?? [];
+
+  return [
+    ...(owners.some((owner) => owner.id === user.id) ? ifOwner : []),
+    ...(owners.length === 0 ? ifNoOwner : []),
+  ];
+};
+
+const accessFor = (
+  persona: Persona,
+  resource: string,
+  operation: Operation,
+  entity?: Owned
+) => {
+  const unconditional = [
+    ...persona.allowed,
+    ...(persona.allowedOn?.[resource] ?? []),
+  ];
+
+  if (isAllowed(unconditional, operation)) {
+    return 'allow';
+  }
+  if (isAllowed(conditionalGrants(persona, entity), operation)) {
+    return entity ? 'allow' : 'conditionalAllow';
+  }
+
+  return 'notAllow';
+};
+
+const permissionsFor = (
+  persona: Persona,
+  resource: string,
+  entity?: Owned
+) => ({
   resource,
   permissions: Object.values(Operation).map((operation) => ({
     operation,
-    access: isAllowed(allowed, operation) ? 'allow' : 'notAllow',
+    access: accessFor(persona, resource, operation, entity),
   })),
 });
 
-/** Answers every permission lookup the app makes as the persona's server would. */
-export const servePersona = ({ allowed }: Persona) => {
+/**
+ * Answers every permission lookup the app makes as the persona's server would.
+ * `entity` is the one the page shows: lookups by id or name evaluate the
+ * persona's conditional rules against its owners at request time.
+ */
+export const servePersona = (
+  persona: Persona,
+  entity: () => Owned = () => ({ owners: [] })
+) => {
   worker.use(
     http.get('/api/v1/permissions', () =>
       HttpResponse.json({
         data: Object.values(ResourceEntity).map((resource) =>
-          permissionsFor(allowed, resource)
+          permissionsFor(persona, resource)
         ),
       })
     ),
-    http.get('/api/v1/permissions/*', () =>
-      HttpResponse.json(permissionsFor(allowed))
+    http.get('/api/v1/permissions/:resource/name/:fqn', ({ params }) =>
+      HttpResponse.json(
+        permissionsFor(persona, String(params.resource), entity())
+      )
+    ),
+    http.get('/api/v1/permissions/:resource/:id', ({ params }) =>
+      HttpResponse.json(
+        permissionsFor(persona, String(params.resource), entity())
+      )
+    ),
+    http.get('/api/v1/permissions/:resource', ({ params }) =>
+      HttpResponse.json(permissionsFor(persona, String(params.resource)))
     )
   );
 };
