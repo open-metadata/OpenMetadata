@@ -15,6 +15,7 @@ package org.openmetadata.service.socket;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -364,14 +365,11 @@ class SocketAddressFilterSpoofRevalidationBypassTest {
     }
 
     private void mockTokenClaims() {
-      Claim usernameClaim = mock(Claim.class);
       Claim sessionClaim = mock(Claim.class);
-      when(usernameClaim.asString()).thenReturn(username);
       when(sessionClaim.asString()).thenReturn(SESSION_ID);
       when(jwtFilter.validateJwtAndGetClaims("token"))
-          .thenReturn(
-              Map.of("sub", usernameClaim, JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
-      when(jwtFilter.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
+          .thenReturn(Map.of(JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
+      when(jwtFilter.resolveUserName(any())).thenReturn(username);
     }
 
     private Enumeration<String> enumeration(String... values) {

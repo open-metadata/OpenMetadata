@@ -503,6 +503,17 @@ public class JwtFilter implements ContainerRequestFilter {
         resolvedIdentity.userName(), resolvedIdentity.email(), resolvedIdentity.emailFirstFlow());
   }
 
+  /**
+   * The principal name an HTTP request carrying these claims is authenticated as: resolved from
+   * the email when {@code emailClaim} is configured, from the legacy principal claims otherwise.
+   * Any other entry point that binds an identity to a token (the push-feed handshake) must use
+   * this, or a user whose stored name differs from the token claim authenticates over HTTP yet
+   * loses the socket.
+   */
+  public String resolveUserName(Map<String, Claim> claims) {
+    return resolveIdentity(claims, isBot(claims)).userName();
+  }
+
   /** Caching wrapper around {@link UserUtil#resolveUserName}; this runs on every request. */
   private String resolveUserNameForEmail(String email) {
     String cached = EMAIL_TO_USERNAME_CACHE.getIfPresent(email);

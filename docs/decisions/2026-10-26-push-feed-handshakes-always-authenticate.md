@@ -4,8 +4,10 @@
 - **Revisions:** v1 2026-10-26 (initial)
 - **Deciders:** TeddyCr
 - **Guard:** `SocketAddressFilterTest` (unit) — the credential-less regression test fails any
-  change that re-opens a token-less, cookie-less handshake under the default configuration;
-  `WebSocketManagerTest` covers handler bookkeeping.
+  change that re-opens a token-less, cookie-less handshake under the default configuration, and the
+  email-first test fails any handshake that resolves the principal differently from HTTP;
+  `WebSocketManagerTest` covers handler bookkeeping; `WebSocketProvider.test.tsx` (Jest) fails a
+  browser reconnect that re-sends a token captured before the drop.
 - **Related:** open-metadata/OpenMetadata#36143
 
 ## Context
@@ -30,8 +32,12 @@ Every push-feed handshake carries at least one validated credential, under every
   the session claim) are revalidated against the store too; externally-issued tokens have no session
   claim and are trusted on token validation alone — the same basis their HTTP requests stand on.
 - A handshake with neither a token nor a session cookie is rejected.
+- A validated token binds the socket to the identity its HTTP requests carry
+  (`JwtFilter.resolveUserName`): the stored username resolved from the email when `emailClaim` is
+  configured, the legacy principal claims otherwise. The handshake never resolves the principal on
+  its own, or an email-first user authenticates over HTTP yet loses the push feed.
 - The socket identity and session come only from the headers `SocketAddressFilter` stamps after
-  validation; query parameters never key a socket.
+  validation; query parameters never key a socket, nor bind it to a session.
 - The authorizer setting `enableSecureSocketConnection` is a deprecated no-op, kept only so
   existing YAML still loads (the schema forbids unknown properties). Its `deprecated: true`
   annotation drives the generated classes.
@@ -43,3 +49,7 @@ socket gets 401. The handshake query is the only place a browser can present a t
 rides an upgrade URL (same-origin only, like the cookie it replaces); the servlet therefore does not
 log the handshake query string. Configurations that once enabled `enableSecureSocketConnection` see
 no behavior change; those that disabled it gain the token and session checks it previously guarded.
+Because a presented token must validate, the browser cannot reconnect with a token that expired while
+the socket was down; the UI therefore drives its own bounded reconnection, reading the current token
+before each attempt instead of relying on socket.io's automatic reconnect, whose handshake query is
+fixed at construction.

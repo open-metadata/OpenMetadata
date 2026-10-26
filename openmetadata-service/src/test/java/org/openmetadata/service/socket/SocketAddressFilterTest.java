@@ -2,10 +2,14 @@ package org.openmetadata.service.socket;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,10 +36,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -269,11 +275,8 @@ class SocketAddressFilterTest {
     injectJwtFilter(defaultFilter);
     UUID tokenUserId = UUID.randomUUID();
     mockRequest("userId=" + tokenUserId, "Bearer token");
-    Claim usernameClaim = mock(Claim.class);
-    when(usernameClaim.asString()).thenReturn("sam");
-    when(jwtFilter.validateJwtAndGetClaims("token")).thenReturn(Map.of("sub", usernameClaim));
-    when(jwtFilter.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
-    when(jwtFilter.getJwtPrincipalClaimsMapping()).thenReturn(Map.of());
+    when(jwtFilter.validateJwtAndGetClaims("token")).thenReturn(Map.of("sub", mock(Claim.class)));
+    when(jwtFilter.resolveUserName(any())).thenReturn("sam");
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock
@@ -285,6 +288,51 @@ class SocketAddressFilterTest {
 
     verify(chain).doFilter(any(), eq(response));
     verify(sessionService, never()).getFreshSessionById(any(String.class));
+  }
+
+  /**
+   * With {@code emailClaim} configured, HTTP requests resolve the stored username from the email
+   * claim; the token carries no legacy principal claim. The handshake must bind the socket to that
+   * same identity instead of failing on the missing legacy claim.
+   */
+  @Test
+  void emailFirstTokenBindsSocketToStoredUsername() throws Exception {
+    when(authConfig.getEmailClaim()).thenReturn("email");
+    JwtFilter emailFirstJwtFilter = spy(new JwtFilter(authConfig, authorizerConfig));
+    Claim emailClaim = mock(Claim.class);
+    when(emailClaim.asString()).thenReturn("socket.user@company.com");
+    doReturn(Map.of("email", emailClaim))
+        .when(emailFirstJwtFilter)
+        .validateJwtAndGetClaims("token");
+    doNothing().when(emailFirstJwtFilter).checkValidationsForToken(any(), any(), any(), isNull());
+    SocketAddressFilter emailFirstFilter = defaultConfigFilter();
+    Field jwtFilterField = SocketAddressFilter.class.getDeclaredField("jwtFilter");
+    jwtFilterField.setAccessible(true);
+    jwtFilterField.set(emailFirstFilter, emailFirstJwtFilter);
+
+    UUID storedUserId = UUID.randomUUID();
+    UserRepository userRepository = mock(UserRepository.class);
+    when(userRepository.getActiveUserByEmailForAuth(eq("socket.user@company.com"), any()))
+        .thenReturn(new User().withName("socket.user_x7k2"));
+    mockRequest("userId=" + storedUserId + "&token=token", null);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getUserRepository).thenReturn(userRepository);
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      Entity.USER, "socket.user_x7k2", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(storedUserId));
+
+      emailFirstFilter.doFilter(request, response, chain);
+    }
+
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
+    org.junit.jupiter.api.Assertions.assertEquals(
+        storedUserId.toString(), wrappedRequest.getHeader("UserId"));
   }
 
   @Test
@@ -378,13 +426,11 @@ class SocketAddressFilterTest {
   }
 
   private void mockTokenClaims(String username, String sessionId) {
-    Claim usernameClaim = mock(Claim.class);
     Claim sessionClaim = mock(Claim.class);
-    when(usernameClaim.asString()).thenReturn(username);
     when(sessionClaim.asString()).thenReturn(sessionId);
     when(jwtFilter.validateJwtAndGetClaims("token"))
-        .thenReturn(Map.of("sub", usernameClaim, JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
-    when(jwtFilter.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
+        .thenReturn(Map.of(JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
+    when(jwtFilter.resolveUserName(any())).thenReturn(username);
   }
 
   private UserSession activeSession(String sessionId, String username) {
