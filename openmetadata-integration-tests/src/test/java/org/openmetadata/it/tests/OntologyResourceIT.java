@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -99,6 +100,32 @@ class OntologyResourceIT {
 
   @Test
   void assetGraphIncludesConnectedTermContextAndPreviewLineage(final TestNamespace namespace) {
+    final TaggedGraph graph = taggedGraph(namespace);
+    final GlossaryTermService service = SdkClients.adminClient().glossaryTerms();
+    awaitIndexedClusters(service, graph);
+
+    final OntologyDataGraph firstPage = service.ontologyData(graph.glossaryFqn(), 1, 0, 1);
+    assertFirstPageClusters(firstPage, graph);
+    assertFirstPageEdges(firstPage, graph);
+    assertFirstPageLineage(firstPage, graph);
+    assertSecondPage(service.ontologyData(graph.glossaryFqn(), 1, 1, 2), graph);
+  }
+
+  /** A parent and child term, related to each other, each tagging topics joined by lineage. */
+  private record TaggedGraph(
+      Glossary glossary,
+      GlossaryTerm parent,
+      GlossaryTerm child,
+      UUID semanticId,
+      Topic first,
+      Topic second,
+      Topic downstream) {
+    String glossaryFqn() {
+      return glossary.getFullyQualifiedName();
+    }
+  }
+
+  private static TaggedGraph taggedGraph(final TestNamespace namespace) {
     final Glossary glossary = GlossaryTestFactory.createSimple(namespace);
     final GlossaryTerm parent =
         GlossaryTermTestFactory.createWithName(namespace, glossary, "parent");
@@ -107,7 +134,7 @@ class OntologyResourceIT {
     final GlossaryTermService service = SdkClients.adminClient().glossaryTerms();
     service.addRelation(parent.getId(), child.getId(), "relatedTo");
     final GlossaryTerm related = service.get(parent.getId().toString(), "relatedTerms");
-    final var semanticId = related.getRelatedTerms().getFirst().getId();
+    final UUID semanticId = related.getRelatedTerms().getFirst().getId();
     assertThat(semanticId).isNotNull();
     final String messagingService =
         MessagingServiceTestFactory.createKafka(namespace).getFullyQualifiedName();
@@ -116,77 +143,87 @@ class OntologyResourceIT {
     final Topic downstream = taggedTopic(namespace, messagingService, child);
     addLineage(first, downstream);
     addLineage(second, downstream);
+    return new TaggedGraph(glossary, parent, child, semanticId, first, second, downstream);
+  }
 
+  private static void awaitIndexedClusters(
+      final GlossaryTermService service, final TaggedGraph graph) {
     Awaitility.await("glossary graph includes indexed topic tags")
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(1))
         .untilAsserted(
             () -> {
-              final OntologyDataGraph graph =
-                  service.ontologyData(glossary.getFullyQualifiedName(), 1, 0, 1);
-              assertThat(graph.getPaging().getTotal()).isEqualTo(2);
-              assertThat(graph.getClusters()).hasSize(2);
-              assertThat(graph.getClusters().getFirst().getAssetCount()).isEqualTo(2);
-              assertThat(graph.getClusters().get(1).getAssetCount()).isEqualTo(1);
+              final OntologyDataGraph data = service.ontologyData(graph.glossaryFqn(), 1, 0, 1);
+              assertThat(data.getPaging().getTotal()).isEqualTo(2);
+              assertThat(data.getClusters()).hasSize(2);
+              assertThat(data.getClusters().getFirst().getAssetCount()).isEqualTo(2);
+              assertThat(data.getClusters().get(1).getAssetCount()).isEqualTo(1);
             });
+  }
 
-    final OntologyDataGraph firstPage =
-        service.ontologyData(glossary.getFullyQualifiedName(), 1, 0, 1);
-    assertThat(firstPage.getSeedTermIds()).containsExactly(parent.getId());
+  private static void assertFirstPageClusters(
+      final OntologyDataGraph firstPage, final TaggedGraph graph) {
+    assertThat(firstPage.getSeedTermIds()).containsExactly(graph.parent().getId());
     assertThat(firstPage.getClusters())
         .extracting(cluster -> cluster.getTerm().getId())
-        .containsExactly(parent.getId(), child.getId());
+        .containsExactly(graph.parent().getId(), graph.child().getId());
     assertThat(firstPage.getClusters().getFirst().getAssets()).hasSize(1);
     assertThat(firstPage.getClusters().getFirst().getAssets().getFirst().getId())
-        .isIn(first.getId(), second.getId());
+        .isIn(graph.first().getId(), graph.second().getId());
     assertThat(firstPage.getClusters().get(1).getAssets())
         .extracting(asset -> asset.getId())
-        .containsExactly(downstream.getId());
-    assertThat(firstPage.getEdges()).hasSize(2);
+        .containsExactly(graph.downstream().getId());
+    assertThat(firstPage.getPaging().getLimit()).isEqualTo(1);
+    assertThat(firstPage.getPaging().getOffset()).isZero();
+    assertThat(firstPage.getPaging().getTotal()).isEqualTo(2);
+  }
+
+  private static void assertFirstPageEdges(
+      final OntologyDataGraph firstPage, final TaggedGraph graph) {
     assertThat(firstPage.getEdges())
-        .anySatisfy(
+        .satisfiesExactlyInAnyOrder(
             edge -> {
-              assertThat(edge.getFrom()).isEqualTo(parent.getId());
-              assertThat(edge.getTo()).isEqualTo(child.getId());
+              assertThat(edge.getFrom()).isEqualTo(graph.parent().getId());
+              assertThat(edge.getTo()).isEqualTo(graph.child().getId());
               assertThat(edge.getRelationType()).isEqualTo("parentOf");
-            });
-    assertThat(firstPage.getEdges())
-        .anySatisfy(
+            },
             edge -> {
               assertThat(edge.getRelationType()).isEqualTo("relatedTo");
               assertThat(List.of(edge.getFrom(), edge.getTo()))
-                  .containsExactlyInAnyOrder(parent.getId(), child.getId());
-              assertThat(edge.getId()).isEqualTo(semanticId);
+                  .containsExactlyInAnyOrder(graph.parent().getId(), graph.child().getId());
+              assertThat(edge.getId()).isEqualTo(graph.semanticId());
               assertThat(edge.getRelationshipType().getName()).isEqualTo("relatedTo");
             });
+  }
+
+  private static void assertFirstPageLineage(
+      final OntologyDataGraph firstPage, final TaggedGraph graph) {
     assertThat(firstPage.getLineageEdges())
         .singleElement()
         .satisfies(
             edge -> {
               assertThat(edge.getFromEntity())
                   .isEqualTo(firstPage.getClusters().getFirst().getAssets().getFirst().getId());
-              assertThat(edge.getToEntity()).isEqualTo(downstream.getId());
+              assertThat(edge.getToEntity()).isEqualTo(graph.downstream().getId());
             });
-    assertThat(firstPage.getPaging().getLimit()).isEqualTo(1);
-    assertThat(firstPage.getPaging().getOffset()).isZero();
-    assertThat(firstPage.getPaging().getTotal()).isEqualTo(2);
+  }
 
-    final OntologyDataGraph secondPage =
-        service.ontologyData(glossary.getFullyQualifiedName(), 1, 1, 2);
-    assertThat(secondPage.getSeedTermIds()).containsExactly(child.getId());
+  private static void assertSecondPage(
+      final OntologyDataGraph secondPage, final TaggedGraph graph) {
+    assertThat(secondPage.getSeedTermIds()).containsExactly(graph.child().getId());
     assertThat(secondPage.getClusters())
         .extracting(cluster -> cluster.getTerm().getId())
-        .containsExactly(child.getId(), parent.getId());
+        .containsExactly(graph.child().getId(), graph.parent().getId());
     assertThat(secondPage.getClusters().get(1).getAssets())
         .extracting(asset -> asset.getId())
-        .containsExactlyInAnyOrderElementsOf(Set.of(first.getId(), second.getId()));
+        .containsExactlyInAnyOrderElementsOf(Set.of(graph.first().getId(), graph.second().getId()));
     assertThat(secondPage.getLineageEdges()).hasSize(2);
     assertThat(secondPage.getPaging().getOffset()).isEqualTo(1);
     assertThat(secondPage.getPaging().getTotal()).isEqualTo(2);
   }
 
   private static Topic taggedTopic(
-      TestNamespace namespace, String messagingService, GlossaryTerm term) {
+      final TestNamespace namespace, final String messagingService, final GlossaryTerm term) {
     final Topic topic = TopicTestFactory.createSimple(namespace, messagingService);
     final Topic fetched = SdkClients.adminClient().topics().get(topic.getId().toString(), "tags");
     fetched.setTags(
@@ -199,7 +236,7 @@ class OntologyResourceIT {
     return SdkClients.adminClient().topics().update(topic.getId().toString(), fetched);
   }
 
-  private static void addLineage(Topic from, Topic to) {
+  private static void addLineage(final Topic from, final Topic to) {
     SdkClients.adminClient()
         .lineage()
         .addLineage(

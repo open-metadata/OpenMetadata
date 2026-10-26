@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.openmetadata.it.tests.OntologyBindingFixtures.wideTableAsset;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -18,7 +19,6 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -482,34 +482,6 @@ class OntologyConceptBindingsIT extends BaseOntologyApprovalIT {
     return new OntologyAssetBinding()
         .withAssetType(OntologyBindingAssetType.TABLE)
         .withAssetId(table.getId());
-  }
-
-  private static OntologyAssetBinding wideTableAsset(
-      TestNamespace ns, String schema, OntologyProperty property) {
-    final var columns =
-        IntStream.range(0, 100)
-            .mapToObj(
-                index -> new Column().withName("field" + index).withDataType(ColumnDataType.STRING))
-            .toList();
-    final var table =
-        admin()
-            .tables()
-            .create(
-                new CreateTable()
-                    .withName(ns.prefix("wide" + UUID.randomUUID()))
-                    .withDatabaseSchema(schema)
-                    .withColumns(columns));
-    return new OntologyAssetBinding()
-        .withAssetType(OntologyBindingAssetType.TABLE)
-        .withAssetId(table.getId())
-        .withColumns(
-            columns.stream()
-                .map(
-                    column ->
-                        new OntologyColumnBinding()
-                            .withPropertyId(property.getId())
-                            .withColumnPath(List.of(column.getName())))
-                .toList());
   }
 
   private static Table table(TestNamespace ns) {
