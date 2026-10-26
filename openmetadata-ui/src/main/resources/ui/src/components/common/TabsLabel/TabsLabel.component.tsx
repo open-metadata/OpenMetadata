@@ -13,7 +13,6 @@
 import {
   Badge,
   Skeleton,
-  Tooltip,
   useTabItemState,
 } from '@openmetadata/ui-core-components';
 
@@ -31,7 +30,6 @@ const TabsLabel = ({
   description,
   isBeta,
   isLoading,
-  proposedCount,
 }: TabsLabelProps) => {
   const { t } = useTranslation();
   const tabState = useTabItemState();
@@ -60,23 +58,6 @@ const TabsLabel = ({
           <Badge className="service-beta-tag" color="brand" size="sm">
             {t('label.beta')}
           </Badge>
-        )}
-        {Boolean(proposedCount) && (
-          <span data-testid="proposed-count">
-            {/* Inside a tab: a focusable trigger would nest one control in another. */}
-            <Tooltip
-              excludeTriggerFromTabOrder
-              title={t('label.count-proposed', { count: proposedCount })}>
-              <span aria-hidden="true">
-                <Badge className="m-x-xss" color="purple" size="sm">
-                  {proposedCount}
-                </Badge>
-              </span>
-            </Tooltip>
-            <span className="tw:sr-only">
-              {t('label.count-proposed', { count: proposedCount })}
-            </span>
-          </span>
         )}
       </div>
       {/* Note: add ".custom-menu-with-description" class in Menu component if need description in menu */}

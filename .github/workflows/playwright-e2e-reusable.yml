@@ -708,7 +708,7 @@ jobs:
             --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
             --workdir /workspace/openmetadata-ui/src/main/resources/ui \
             --env CI=true \
-            node:22.22.2-bookworm-slim \
+            "node:$(sed 's/^v//' "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/.nvmrc")-bookworm-slim" \
             ./node_modules/.bin/playwright test \
             --config=playwright/helper-tests.config.ts --output=/tmp/helper-test-results
 
@@ -731,7 +731,7 @@ jobs:
               --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
               --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules" \
               --workdir "/workspace/$core_dir" \
-              node:22.22.2-bookworm-slim \
+              "node:$(sed 's/^v//' "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/.nvmrc")-bookworm-slim" \
               yarn --ignore-scripts --frozen-lockfile --cache-folder /tmp/yarn-cache \
                 --network-timeout 100000 && break
             if [[ "$attempt" -eq 3 ]]; then
@@ -753,7 +753,7 @@ jobs:
             --mount "type=bind,source=$core_output/dist,target=/workspace/$core_dir/dist" \
             --mount "type=bind,source=$core_output/vite-temp,target=/workspace/$core_dir/node_modules/.vite-temp" \
             --workdir "/workspace/$core_dir" \
-            node:22.22.2-bookworm-slim \
+            "node:$(sed 's/^v//' "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/.nvmrc")-bookworm-slim" \
             ./node_modules/.bin/vite build
 
       - name: Verify browser helper behavior
@@ -881,7 +881,7 @@ jobs:
             --env CI=true --env PLAYWRIGHT_IS_OSS=true \
             --env PLAYWRIGHT_RUN_QUARANTINED=true \
             --env PW_DEDICATED_INGESTION=true --env PW_DEDICATED_IMPORT_EXPORT=true \
-            node:22.22.2-bookworm-slim \
+            "node:$(sed 's/^v//' "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/.nvmrc")-bookworm-slim" \
             ./node_modules/.bin/playwright test --list --reporter=json --pass-with-no-tests \
             --project=chromium --project=Basic --project="Data Insight" \
             --project=Ingestion --project=ImportExport \

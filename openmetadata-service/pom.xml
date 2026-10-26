@@ -25,11 +25,10 @@
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     <socket.io-client.version>2.1.1</socket.io-client.version>
     <json-smart.version>2.5.2</json-smart.version>
-    <jetty.version>12.1.10</jetty.version>
+    <jetty.version>12.1.14</jetty.version>
     <logback-core.version>1.5.38</logback-core.version>
     <logback-classic.version>1.5.38</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
-    <tika.version>3.2.3</tika.version>
     <!-- Matches the reasoner worker in the openmetadata/fuseki image (open-metadata/jena). -->
     <owlapi.version>5.5.1</owlapi.version>
   </properties>
@@ -1173,16 +1172,6 @@
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-scratchpad</artifactId>
       <version>5.4.1</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.tika</groupId>
-      <artifactId>tika-core</artifactId>
-      <version>${tika.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.tika</groupId>
-      <artifactId>tika-parser-ocr-module</artifactId>
-      <version>${tika.version}</version>
     </dependency>
   </dependencies>
 

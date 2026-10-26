@@ -208,6 +208,29 @@ describe('re-rendering with changed series settings', () => {
   });
 });
 
+describe('hovering a real chart right after a re-render', () => {
+  // A caller-built option whose series carry no `id` gets new series models
+  // on every update, so a hovered bar resolves to a model ECharts just made.
+  const bars = (data: number[]): ChartOption => ({
+    xAxis: { type: 'category', data: ['a', 'b', 'c'] },
+    yAxis: {},
+    series: [{ type: 'bar', data }],
+  });
+
+  it('reads the new series without throwing', () => {
+    const chart = mount(bars([1, 2, 3]));
+    // Still drawn from the old option until the next frame repaints them.
+    const elements = chart.getZr().storage.getDisplayList(true);
+    chart.setOption(bars([4, 5, 6]), MERGE);
+
+    expect(() =>
+      elements.forEach((target) =>
+        chart.getZr().trigger('mousemove', { target, offsetX: 1, offsetY: 1 })
+      )
+    ).not.toThrow();
+  });
+});
+
 describe('zoom window on a real chart', () => {
   it('survives a re-render when the current window is re-applied', () => {
     const chart = mount(

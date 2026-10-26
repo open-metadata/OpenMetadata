@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Button } from '@openmetadata/ui-core-components';
 import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -19,6 +19,7 @@ import { ServicesUpdateRequest } from 'Models';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import FormPanelBody, {
   getFormFirstPanelProps,
 } from '../../components/common/FormPanelBody/FormPanelBody.component';
@@ -355,9 +356,9 @@ const EditIngestionPage = () => {
   if (errorMsg) {
     return (
       <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
-        <EmptyPlaceholder
+        <SomethingWentWrongPlaceholder
           description={errorMsg}
-          icon={<AlertTriangle className="tw:text-secondary" />}
+          icon={<AlertTriangle />}
           title={t('message.something-went-wrong')}
         />
       </div>

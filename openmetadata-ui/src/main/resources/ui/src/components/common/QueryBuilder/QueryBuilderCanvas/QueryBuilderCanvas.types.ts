@@ -100,6 +100,7 @@ export interface QueryBuilderControlProps {
   render?: (props: FieldProps) => ReactNode;
   // Overrides the testid the registered renderer would use by default.
   dataTestId?: string;
+  className?: string;
   onChange: (key: string) => void;
 }
 

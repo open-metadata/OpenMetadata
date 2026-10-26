@@ -15,78 +15,134 @@ package org.openmetadata.service.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
-@ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class UpdatedDomainsResourceContextTest {
-  @Mock private ResourceContextInterface storedResource;
+
+  /** A stored resource whose every attribute is a fixed value. */
+  private record StoredResource(
+      List<EntityReference> owners,
+      List<TagLabel> tags,
+      Table entity,
+      Set<String> loadedFields,
+      List<EntityReference> domains,
+      EntityReference service)
+      implements ResourceContextInterface {
+
+    @Override
+    public String getResource() {
+      return Entity.TABLE;
+    }
+
+    @Override
+    public List<EntityReference> getOwners() {
+      return owners;
+    }
+
+    @Override
+    public List<TagLabel> getTags() {
+      return tags;
+    }
+
+    @Override
+    public EntityInterface<?> getEntity() {
+      return entity;
+    }
+
+    @Override
+    public EntityInterface<?> getResolvedEntity() {
+      return entity;
+    }
+
+    @Override
+    public Set<String> getLoadedFields() {
+      return loadedFields;
+    }
+
+    @Override
+    public List<EntityReference> getDomains() {
+      return domains;
+    }
+
+    @Override
+    public EntityReference getServiceReference() {
+      return service;
+    }
+  }
 
   @Test
   void testReportsTheDomainsTheUpdateIsMovingInto() {
-    EntityReference storedDomain = domainRef();
-    EntityReference targetDomain = domainRef();
-    when(storedResource.getDomains()).thenReturn(List.of(storedDomain));
+    final EntityReference targetDomain = domainRef();
 
-    ResourceContextInterface updated =
-        new UpdatedDomainsResourceContext(storedResource, List.of(targetDomain));
+    final ResourceContextInterface updated =
+        new UpdatedDomainsResourceContext(storedIn(domainRef()), List.of(targetDomain));
 
     assertEquals(List.of(targetDomain), updated.getDomains());
   }
 
   /**
-   * The second authorization pass must differ from the first only on domains — otherwise a policy
+   * The second authorization pass must differ from the first only on domains. Otherwise a policy
    * condition such as isOwner() or matchAnyTag() could resolve differently and deny writes that have
    * nothing to do with a domain change.
    */
   @Test
   void testDelegatesEveryAttributeOtherThanDomains() {
-    Table entity = new Table();
-    List<EntityReference> owners = List.of(new EntityReference().withId(UUID.randomUUID()));
-    List<TagLabel> tags = List.of(new TagLabel().withTagFQN("PII.Sensitive"));
-    Set<String> loadedFields = Set.of(Entity.FIELD_TAGS);
-    when(storedResource.getResource()).thenReturn(Entity.TABLE);
-    when(storedResource.getOwners()).thenReturn(owners);
-    when(storedResource.getTags()).thenReturn(tags);
-    // doReturn avoids the EntityInterface<?> wildcard-capture that thenReturn cannot satisfy.
-    doReturn(entity).when(storedResource).getEntity();
-    doReturn(entity).when(storedResource).getResolvedEntity();
-    when(storedResource.getLoadedFields()).thenReturn(loadedFields);
+    final StoredResource stored = storedIn(domainRef());
 
-    ResourceContextInterface updated =
-        new UpdatedDomainsResourceContext(storedResource, List.of(domainRef()));
+    final ResourceContextInterface updated =
+        new UpdatedDomainsResourceContext(stored, List.of(domainRef()));
 
     assertEquals(Entity.TABLE, updated.getResource());
-    assertSame(owners, updated.getOwners());
-    assertSame(tags, updated.getTags());
-    assertSame(entity, updated.getEntity());
-    assertSame(entity, updated.getResolvedEntity());
-    assertSame(loadedFields, updated.getLoadedFields());
+    assertSame(stored.owners(), updated.getOwners());
+    assertSame(stored.tags(), updated.getTags());
+    assertSame(stored.entity(), updated.getEntity());
+    assertSame(stored.entity(), updated.getResolvedEntity());
+    assertSame(stored.loadedFields(), updated.getLoadedFields());
+    // A service entity is its own service, which the interface default cannot know.
+    assertSame(stored.service(), updated.getServiceReference());
   }
 
   @Test
   void testClearingTheAssignmentReportsNoDomains() {
-    when(storedResource.getDomains()).thenReturn(List.of(domainRef()));
-
-    ResourceContextInterface updated = new UpdatedDomainsResourceContext(storedResource, List.of());
+    final ResourceContextInterface updated =
+        new UpdatedDomainsResourceContext(storedIn(domainRef()), List.of());
 
     assertTrue(updated.getDomains().isEmpty());
+  }
+
+  @Test
+  void testTheDomainsCheckedCannotChangeAfterConstruction() {
+    final EntityReference targetDomain = domainRef();
+    final List<EntityReference> target = new ArrayList<>(List.of(targetDomain));
+
+    final ResourceContextInterface updated =
+        new UpdatedDomainsResourceContext(storedIn(domainRef()), target);
+    target.add(domainRef());
+
+    assertEquals(List.of(targetDomain), updated.getDomains());
+    assertThrows(UnsupportedOperationException.class, () -> updated.getDomains().clear());
+  }
+
+  private static StoredResource storedIn(final EntityReference domain) {
+    return new StoredResource(
+        List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)),
+        List.of(new TagLabel().withTagFQN("PII.Sensitive")),
+        new Table().withId(UUID.randomUUID()),
+        Set.of(Entity.FIELD_TAGS),
+        List.of(domain),
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE));
   }
 
   private static EntityReference domainRef() {

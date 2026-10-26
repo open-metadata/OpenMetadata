@@ -41,11 +41,11 @@ import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   ManageMenu,
   ManageMenuItem,
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TableComponent from '../../common/Table/TableV2';
@@ -146,7 +146,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       return {
         name: column,
         title: (
-          <div className="d-flex flex-column">
+          <Box className="tw:text-start tw:wrap-anywhere" direction="col">
             <Typography> {column}</Typography>
             {matchedColumn?.dataType && (
               <Typography
@@ -155,7 +155,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
                 matchedColumn?.dataType ?? ''
               )})`}</Typography>
             )}
-          </div>
+          </Box>
         ),
         dataIndex: columnKey,
         key: columnKey,
@@ -289,25 +289,28 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
-      <ErrorPlaceHolder className="error-placeholder">
-        <Typography as="p" className="tw:mb-3.5!">
-          <Transi18next
-            i18nKey="message.view-sample-data-entity"
-            renderElement={
-              <a
-                aria-label={t('label.auto-classification')}
-                href={AUTO_CLASSIFICATION_DOCS}
-                rel="noreferrer"
-                style={{ color: theme.primaryColor }}
-                target="_blank"
-              />
-            }
-            values={{
-              entity: t('label.auto-classification'),
-            }}
-          />
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-[calc(100vh-255px)] tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:in-[.assistant-content]:min-h-60">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={
+            <Transi18next
+              i18nKey="message.view-sample-data-entity"
+              renderElement={
+                <a
+                  aria-label={t('label.auto-classification')}
+                  href={AUTO_CLASSIFICATION_DOCS}
+                  rel="noreferrer"
+                  style={{ color: theme.primaryColor }}
+                  target="_blank"
+                />
+              }
+              values={{
+                entity: t('label.auto-classification'),
+              }}
+            />
+          }
+        />
+      </div>
     );
   }
 

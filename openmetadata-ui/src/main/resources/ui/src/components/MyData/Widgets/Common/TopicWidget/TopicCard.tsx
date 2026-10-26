@@ -12,20 +12,22 @@
  */
 
 import {
-  EmptyPlaceholder,
+  Button,
+  Card,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AlertCircle } from '@openmetadata/ui-core-components/icons';
+import { AlertCircle, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import type { TFunction } from 'i18next';
 import React, { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import TopicCardControls from './TopicCardControls';
 import TopicCardFooter from './TopicCardFooter';
 import TopicCardHeader from './TopicCardHeader';
 import { useTopicCollapse } from './TopicCollapseContext';
-import TopicEmptyState from './TopicEmptyState';
 import {
   TopicAction,
   TopicEmptyStateConfig,
@@ -125,12 +127,12 @@ const TopicError = ({
   return (
     // `tw:static` lifts the placeholder out of its page-level absolute
     // positioning, so it sits in the card's flow instead of covering it.
-    <EmptyPlaceholder
+    <SomethingWentWrongPlaceholder
       actions={
         onRetry
           ? [
               {
-                color: 'secondary',
+                color: 'primary',
                 key: 'retry',
                 label: t('label.retry'),
                 onPress: onRetry,
@@ -140,9 +142,11 @@ const TopicError = ({
       }
       className="tw:static tw:py-2"
       data-testid={`topic-error-${topicKey}`}
+      description={t('server.entity-fetch-error', { entity: title })}
       gap={3}
       icon={AlertCircle}
-      title={t('server.entity-fetch-error', { entity: title })}
+      // The card header already shows the error summary.
+      title=""
     />
   );
 };
@@ -164,13 +168,26 @@ const TopicContent = ({
   <>
     {children}
     {emptyState && (
-      <TopicEmptyState
-        action={emptyState.footer ? undefined : emptyState.action}
+      <NoDataPlaceholder
+        // Keep empty content in flow so it cannot cover the card's separate footer.
+        className="tw:static tw:flex-1"
+        data-layout={emptyState.footer ? 'footer' : 'body'}
+        data-testid={`topic-empty-${topicKey}`}
         description={emptyState.description}
+        footer={
+          !emptyState.footer && emptyState.action ? (
+            <Button
+              color="primary"
+              data-testid={`topic-empty-action-${topicKey}`}
+              iconLeading={Plus}
+              size="md"
+              onPress={emptyState.action.onPress}>
+              {emptyState.action.label}
+            </Button>
+          ) : undefined
+        }
         icon={emptyState.icon}
-        layout={emptyState.footer ? 'footer' : 'body'}
         title={emptyState.title}
-        topicKey={topicKey}
       />
     )}
   </>
@@ -324,9 +341,9 @@ const TopicCard: React.FC<TopicCardProps> = ({
   );
 
   return (
-    <section
+    <Card
       className={classNames(
-        'tw:flex tw:min-w-0 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:shadow-xs',
+        'tw:flex tw:min-w-0 tw:flex-col',
         // Expanded, the card fills its grid cell so the body can scroll inside
         // it. Collapsed, it is only a header — stretching would hang an empty
         // half-card below the summary, which is the cell's height showing
@@ -387,7 +404,7 @@ const TopicCard: React.FC<TopicCardProps> = ({
           topicKey={topicKey}
         />
       )}
-    </section>
+    </Card>
   );
 };
 

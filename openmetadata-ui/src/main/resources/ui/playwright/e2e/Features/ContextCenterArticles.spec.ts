@@ -53,6 +53,7 @@ import {
   verifyArticleSearch,
   waitForArticleInFollows,
   waitForArticleSearchResponse,
+  waitForArticleSettled,
   waitForDraftPersisted,
   waitForDraftSyncedIntoEditor,
   waitForRecentlyViewed,
@@ -230,6 +231,8 @@ test.describe('Context Center Articles', () => {
         draftArticleB.fullyQualifiedName,
         'page'
       ),
+      waitForArticleSettled(apiContext, draftArticleA.id),
+      waitForArticleSettled(apiContext, draftArticleB.id),
     ]);
 
     await afterAction();

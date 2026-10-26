@@ -36,7 +36,8 @@ const findCategoryConfig = (serviceCategory?: string) =>
       category.key === (serviceCategory as ConnectionsServiceCategory)
   );
 
-const getCategoryListPath = (category: ConnectionsServiceCategory) =>
+/** A category's tab on the Connections listing. */
+export const getCategoryListPath = (category: ConnectionsServiceCategory) =>
   `${CONNECTIONS_ROUTE}?${CATEGORY_PARAM}=${category}`;
 
 export const getConnectionsRootBreadcrumb = (

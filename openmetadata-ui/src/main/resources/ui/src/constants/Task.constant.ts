@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { TaskType } from '../generated/entity/tasks/task';
 import { TaskEntityType } from '../rest/tasksAPI';
 
 export const TASK_ENTITY_TYPES: Record<TaskEntityType, string> = {
@@ -35,3 +36,10 @@ export const TASK_ENTITY_TYPES: Record<TaskEntityType, string> = {
     'message.memory-conflict-review-message',
   [TaskEntityType.MetadataCompletion]: 'message.metadata-completion-message',
 };
+
+// The server lets users with EditStatus / EditTests on the test case resolve
+// these even when ResolveTask on the task itself is denied.
+export const INCIDENT_TASK_TYPES: ReadonlySet<TaskType> = new Set([
+  TaskType.IncidentResolution,
+  TaskType.TestCaseResolution,
+]);

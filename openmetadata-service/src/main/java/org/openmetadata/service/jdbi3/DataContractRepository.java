@@ -1617,14 +1617,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private void updateLatestResult(DataContract dataContract, DataContractResult result) {
     try {
-      // Reload with the relationship fields the search doc is built from: callers pass contracts
-      // fetched without owners/reviewers, and the reindex after this update would blank them.
-      DataContract original =
-          Entity.getEntity(
-              Entity.DATA_CONTRACT,
-              dataContract.getId(),
-              "owners,reviewers,extension",
-              Include.NON_DELETED);
+      // Callers pass contracts loaded without owners/reviewers/extension. The updater diffs every
+      // patch field, so a field missing here would be recorded as deleted (#34343).
+      DataContract original = get(null, dataContract.getId(), getPatchFields());
       DataContract updated = JsonUtils.deepCopy(original, DataContract.class);
       updated.setLatestResult(
           new LatestResult()

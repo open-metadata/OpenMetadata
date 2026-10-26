@@ -379,6 +379,37 @@ describe('DataQualityTab', () => {
         expect(getListTestCaseIncidentStatus).toHaveBeenCalled();
       });
     });
+
+    it('should show the incidents empty message on the incidents tab', async () => {
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
+      const { getListTestCaseIncidentStatus } = jest.requireMock(
+        '../../../../rest/incidentManagerAPI'
+      );
+
+      getListTestCaseBySearch.mockResolvedValue({ data: [] });
+      getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
+
+      render(<DataQualityTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('message.no-data-quality-test-message')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole('tab', { name: /label.incident-plural/ })
+      );
+
+      expect(
+        await screen.findByText('message.no-incident-found')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.no-data-quality-test-message')
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe('Test Cases Rendering', () => {
@@ -617,6 +648,34 @@ describe('DataQualityTab', () => {
       await waitFor(() => {
         expect(screen.getByText(/label.no-entity/)).toBeInTheDocument();
       });
+    });
+
+    it('reports no matching results when a search finds no test cases', async () => {
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
+      const { getListTestCaseIncidentStatus } = jest.requireMock(
+        '../../../../rest/incidentManagerAPI'
+      );
+      getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
+
+      render(<DataQualityTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getAllByTestId('data-quality-section')[0]
+        ).toBeInTheDocument();
+      });
+
+      // The search re-queries the API; the counts from the first load stay.
+      getListTestCaseBySearch.mockResolvedValueOnce({ data: [] });
+      fireEvent.change(screen.getAllByTestId('search-input')[0], {
+        target: { value: 'zzz_no_such_test' },
+      });
+
+      expect(
+        await screen.findByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
     });
   });
 
@@ -972,7 +1031,7 @@ describe('DataQualityTab', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('message.no-access-placeholder')
+          screen.getByTestId('permission-error-placeholder')
         ).toBeInTheDocument();
       });
 

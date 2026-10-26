@@ -24,3 +24,6 @@ export const SummaryListHighlightKeys = [
   'mlFeatures.name',
   'mlFeatures.description',
 ];
+
+// Muted empty-state text in the entity summary panel sections.
+export const NO_DATA_PLACEHOLDER_CLASS_NAME = 'tw:text-xs tw:text-quaternary';
