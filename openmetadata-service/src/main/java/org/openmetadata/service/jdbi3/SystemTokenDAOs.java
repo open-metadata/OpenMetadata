@@ -614,11 +614,10 @@ public interface SystemTokenDAOs {
     void deleteTokenByUserAndType(
         @BindUUID("userid") UUID userid, @Bind("tokenType") String tokenType);
 
-    /** Every row of the user, whatever its type, so no token outlives a hard-deleted user. */
+    /** Every token row of the user, whatever its type. */
     @SqlUpdate(value = "DELETE from user_tokens WHERE userid = :userid")
     void deleteAllForUser(@BindUUID("userid") UUID userid);
 
-    /** Scoped to the owner, so a caller who knows another user's token id cannot delete it. */
     @SqlUpdate(
         value =
             "DELETE from user_tokens WHERE userid = :userid AND tokenType = :tokenType"

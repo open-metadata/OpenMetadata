@@ -3089,24 +3089,24 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
-  void test_revokePat_onlyDeletesTheCallersTokens(TestNamespace ns) {
-    OpenMetadataClient attacker = clientFor(createRegularUser(ns, "patattacker"));
-    OpenMetadataClient victim = clientFor(createRegularUser(ns, "patvictim"));
-    PersonalAccessToken victimPat = createPersonalAccessToken(victim, ns.prefix("pat"));
-    OpenMetadataClient victimPatClient = clientWithToken(victimPat.getJwtToken());
-    assertNotNull(getLoggedInUser(victimPatClient));
+  void test_revokePat_isScopedToTheCaller(TestNamespace ns) {
+    OpenMetadataClient caller = clientFor(createRegularUser(ns, "patcaller"));
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patowner"));
+    PersonalAccessToken ownerPat = createPersonalAccessToken(owner, ns.prefix("pat"));
+    OpenMetadataClient ownerPatClient = clientWithToken(ownerPat.getJwtToken());
+    assertNotNull(getLoggedInUser(ownerPatClient));
 
-    attacker
+    caller
         .getHttpClient()
         .executeForString(
             HttpMethod.PUT,
             "/v1/users/security/token/revoke",
-            "{\"tokenIds\":[\"" + victimPat.getToken() + "\"]}");
+            "{\"tokenIds\":[\"" + ownerPat.getToken() + "\"]}");
 
-    assertNotNull(getLoggedInUser(victimPatClient));
+    assertNotNull(getLoggedInUser(ownerPatClient));
     String listed =
-        victim.getHttpClient().executeForString(HttpMethod.GET, "/v1/users/security/token", null);
-    assertTrue(listed.contains(victimPat.getToken().toString()), listed);
+        owner.getHttpClient().executeForString(HttpMethod.GET, "/v1/users/security/token", null);
+    assertTrue(listed.contains(ownerPat.getToken().toString()), listed);
   }
 
   @Test

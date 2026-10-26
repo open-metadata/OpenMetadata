@@ -42,9 +42,8 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.credentials.CredentialSourceTestSupport;
 
 /**
- * A revoked personal access token stops working on the MCP endpoint twice over: the transport
- * answers 401, and the tool callback refuses the token even when it is invoked without the
- * transport in front of it (a caller that bypasses the transport check must not get past it).
+ * A revoked personal access token is refused on the MCP endpoint at both layers: the transport
+ * answers 401, and the tool callback checks the token itself.
  */
 @ExtendWith(TestNamespaceExtension.class)
 class CredentialMcpRevocationIT extends McpTestBase {
