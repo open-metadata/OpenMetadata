@@ -65,6 +65,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -516,18 +517,7 @@ public class TeamRepository extends EntityRepository<Team> {
                 .relationshipDAO()
                 .findToBatch(teamIds, Relationship.OWNS.ordinal(), ownsEntityType, Include.ALL);
 
-    Map<UUID, List<EntityReference>> teamToOwns = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject record : ownsRecords) {
-      UUID teamId = UUID.fromString(record.getFromId());
-      try {
-        EntityReference ownedRef =
-            Entity.getEntityReferenceById(
-                record.getToEntity(), UUID.fromString(record.getToId()), Include.ALL);
-        teamToOwns.computeIfAbsent(teamId, k -> new ArrayList<>()).add(ownedRef);
-      } catch (Exception e) {
-        LOG.warn("Failed to get entity reference for owned entity: {}", record.getToId(), e);
-      }
-    }
+    Map<UUID, List<EntityReference>> teamToOwns = resolveTargetsBySource(ownsRecords, Include.ALL);
 
     for (Team team : teams) {
       List<EntityReference> ownsRefs = teamToOwns.get(team.getId());
@@ -1284,6 +1274,7 @@ public class TeamRepository extends EntityRepository<Team> {
         .ifPresent(
             ids ->
                 bulkRemoveToRelationship(teamId, ids, Entity.TEAM, Entity.USER, Relationship.HAS));
+    reindexMembership(team, Stream.concat(addedUserIds.stream(), removedUserIds.stream()).toList());
 
     setFieldsInternal(team, new EntityUtil.Fields(allowedFields, USERS_FIELD));
     ChangeDescription change = new ChangeDescription().withPreviousVersion(team.getVersion());
@@ -1315,6 +1306,7 @@ public class TeamRepository extends EntityRepository<Team> {
     EntityReference user = Entity.getEntityReferenceById(Entity.USER, userId, NON_DELETED);
 
     deleteRelationship(teamId, Entity.TEAM, userId, Entity.USER, Relationship.HAS);
+    reindexMembership(team, List.of(userId));
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(team.getVersion());
     fieldDeleted(change, USERS_FIELD, List.of(user));
@@ -1334,6 +1326,25 @@ public class TeamRepository extends EntityRepository<Team> {
             .withPreviousVersion(change.getPreviousVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
+  }
+
+  /**
+   * The users endpoints change membership without running an updater on either side, so nothing
+   * else rebuilds the documents that show it: the users' teams and the team's user count.
+   */
+  private void reindexMembership(Team team, List<UUID> userIds) {
+    if (userIds.isEmpty()) {
+      return;
+    }
+    List<EntityReference> references = new ArrayList<>();
+    references.add(team.getEntityReference());
+    userIds.forEach(id -> references.add(new EntityReference().withId(id).withType(Entity.USER)));
+    searchRepository.deferIfFlushScopeActive(
+        () -> searchRepository.updateEntitiesByReference(references),
+        "reindexTeamMembership",
+        team.getId().toString(),
+        team.getFullyQualifiedName(),
+        Entity.TEAM);
   }
 
   public void initOrganization() {
@@ -1513,6 +1524,17 @@ public class TeamRepository extends EntityRepository<Team> {
     }
   }
 
+  /** A team is given the domains an update sends; only a bot's PUT keeps a non-empty assignment. */
+  @Override
+  protected List<EntityReference> writtenDomains(
+      final Team original, final Team updated, final Operation operation, final boolean byBot) {
+    final boolean botKeepsStored =
+        operation.isPut() && byBot && !nullOrEmpty(original.getDomains());
+    return botKeepsStored
+        ? null
+        : EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains()));
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class TeamUpdater extends EntityUpdater {
     public TeamUpdater(Team original, Team updated, Operation operation) {
@@ -1657,18 +1679,15 @@ public class TeamRepository extends EntityRepository<Team> {
 
     @Override
     protected void updateDomains() {
-      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
-        // Revert change to non-empty domain if it is being updated by a bot
-        // This is to prevent bots from overwriting the domain. Domain need to be
-        // updated with a PATCH request
+      List<EntityReference> updatedDomains =
+          writtenDomains(original, updated, operation, updatedByBot());
+      if (updatedDomains == null) {
         updated.setDomains(original.getDomains());
         return;
       }
 
       List<EntityReference> origDomains =
           EntityUtil.populateEntityReferences(listOrEmptyMutable(original.getDomains()));
-      List<EntityReference> updatedDomains =
-          EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains()));
 
       // Remove Domains for the user
       deleteTo(original.getId(), TEAM, Relationship.HAS, Entity.DOMAIN);

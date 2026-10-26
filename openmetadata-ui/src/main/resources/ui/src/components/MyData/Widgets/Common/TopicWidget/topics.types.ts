@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { BadgeColors } from '@openmetadata/ui-core-components';
+import { BadgeColors, FeaturedIcon } from '@openmetadata/ui-core-components';
 import { IconProps } from '@openmetadata/ui-core-components/icons';
-import { FC } from 'react';
+import { ComponentProps, FC } from 'react';
 
 /**
  * Stable ids for the cards in "Topics to catch up on". They key the per-card
@@ -22,6 +22,9 @@ import { FC } from 'react';
 export enum TopicKey {
   PLATFORM_HEALTH = 'platformHealth',
   DATA_ESTATE = 'dataEstate',
+  TOTAL_DATA_ASSETS = 'totalDataAssets',
+  MY_TASKS = 'myTasks',
+  PIPELINE_STATUS = 'pipelineStatus',
   TEAM_ACTIVITY = 'teamActivity',
   YOURS_AND_FOLLOWED = 'yoursAndFollowed',
   CONTEXT_CENTER = 'contextCenter',
@@ -62,13 +65,29 @@ export interface TopicEmptyStateConfig {
   needsSetup?: boolean;
   /** Absent when the viewer may not create what the card is waiting for. */
   action?: TopicAction;
+  /**
+   * Keeps the card's footer while it is empty: a line of context ("0 assets")
+   * and the link that fills the card. When set, `action` is ignored — the step
+   * to take is the footer link, as on the populated card — and the body shows
+   * only the icon, title and description.
+   */
+  footer?: TopicEmptyStateFooter;
 }
 
-export interface TopicIconTone {
-  icon: FC<IconProps>;
-  /** Tinted tile behind the icon — surface plus its matching foreground. */
-  tile: string;
+export interface TopicEmptyStateFooter {
+  meta: string;
+  /** Absent when the viewer may not take the step the card is waiting for. */
+  action?: TopicAction;
 }
+
+/**
+ * The tile behind a topic card's icon: a core `FeaturedIcon` colour where core
+ * ships one, so both themes come from core; otherwise a utility tint (indigo,
+ * purple, blue-light, …) with its matching foreground.
+ */
+export type TopicIconTone =
+  | { icon: FC<IconProps>; color: ComponentProps<typeof FeaturedIcon>['color'] }
+  | { icon: FC<IconProps>; tile: string };
 
 /** One size for every icon-button affordance in a topic card's header. */
 export const TOGGLE_ICON_CLASS = 'tw:*:data-icon:size-3.5';

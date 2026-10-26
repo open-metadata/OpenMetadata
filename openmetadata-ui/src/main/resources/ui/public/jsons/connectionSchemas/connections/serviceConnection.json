@@ -2576,6 +2576,12 @@
                               "type": "boolean",
                               "default": true
                             },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                              "type": "boolean",
+                              "default": true
+                            },
                             "supportsDatabase": {
                               "title": "Supports Database",
                               "description": "The source service supports the database concept in its hierarchy",
@@ -7153,6 +7159,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsDatabase": {
                       "title": "Supports Database",
                       "description": "The source service supports the database concept in its hierarchy",
@@ -9109,6 +9121,11 @@
                       "default": true,
                       "title": "Supports Metadata Extraction"
                     },
+                    "supportsLineageExtraction": {
+                      "description": "Supports Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
@@ -10600,6 +10617,12 @@
                             "supportsProfiler": {
                               "title": "Supports Profiler",
                               "description": "Supports Profiler",
+                              "type": "boolean",
+                              "default": true
+                            },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                               "type": "boolean",
                               "default": true
                             },
@@ -13764,6 +13787,12 @@
                       "description": "Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA privileges.",
                       "default": true
                     },
+                    "includeTemporaryTables": {
+                      "title": "Include Temporary Tables",
+                      "type": "boolean",
+                      "description": "Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped. When enabled, GTTs are ingested with TableType=Local so they can be distinguished from regular tables.",
+                      "default": false
+                    },
                     "connectionOptions": {
                       "title": "Connection Options",
                       "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
@@ -14374,6 +14403,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsDatabase": {
                       "title": "Supports Database",
                       "description": "The source service supports the database concept in its hierarchy",
@@ -14816,6 +14851,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                       "type": "boolean",
                       "default": true
                     },
@@ -16212,6 +16253,14 @@
                       "description": "Full name of the schema where the account usage data is stored.",
                       "type": "string",
                       "default": "SNOWFLAKE.ACCOUNT_USAGE"
+                    },
+                    "systemMetricsBatchSize": {
+                      "title": "System Metrics Batch Size",
+                      "description": "Number of tables whose DML history is read from QUERY_HISTORY with a single query when the profiler computes system metrics. Higher values issue fewer scans but hold more history in memory at once.",
+                      "type": "integer",
+                      "default": 50,
+                      "minimum": 1,
+                      "maximum": 500
                     },
                     "privateKey": {
                       "title": "Private Key",
@@ -19336,6 +19385,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsDatabase": {
                       "title": "Supports Database",
                       "description": "The source service supports the database concept in its hierarchy",
@@ -19588,6 +19643,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsQueryComment": {
                       "title": "Supports Query Comment",
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
@@ -19831,6 +19892,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                       "type": "boolean",
                       "default": true
                     },
@@ -21567,6 +21634,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                       "type": "boolean",
                       "default": true
                     }
@@ -24952,7 +25025,8 @@
                         "EN",
                         "JP",
                         "ZH",
-                        "RU"
+                        "RU",
+                        "KO"
                       ],
                       "default": "EN"
                     },
@@ -26121,6 +26195,12 @@
                             "supportsProfiler": {
                               "title": "Supports Profiler",
                               "description": "Supports Profiler",
+                              "type": "boolean",
+                              "default": true
+                            },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                               "type": "boolean",
                               "default": true
                             },
@@ -29413,6 +29493,12 @@
                               "type": "boolean",
                               "default": true
                             },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                              "type": "boolean",
+                              "default": true
+                            },
                             "supportsDatabase": {
                               "title": "Supports Database",
                               "description": "The source service supports the database concept in its hierarchy",
@@ -31050,6 +31136,11 @@
                       "description": "Fivetran API Limit For Pagination.",
                       "type": "integer",
                       "default": 1000
+                    },
+                    "logSchema": {
+                      "title": "Fivetran Platform Connector Schema",
+                      "description": "Destination schema holding the Fivetran Platform Connector log table, used to extract per-phase run status. Leave empty to read the schema name from the Fivetran API.",
+                      "type": "string"
                     },
                     "pipelineFilterPattern": {
                       "description": "Regex exclude pipelines.",
@@ -40189,6 +40280,12 @@
                               "type": "boolean",
                               "default": true
                             },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                              "type": "boolean",
+                              "default": true
+                            },
                             "supportsDatabase": {
                               "title": "Supports Database",
                               "description": "The source service supports the database concept in its hierarchy",
@@ -44766,6 +44863,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsDatabase": {
                       "title": "Supports Database",
                       "description": "The source service supports the database concept in its hierarchy",
@@ -46722,6 +46825,11 @@
                       "default": true,
                       "title": "Supports Metadata Extraction"
                     },
+                    "supportsLineageExtraction": {
+                      "description": "Supports Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
@@ -48213,6 +48321,12 @@
                             "supportsProfiler": {
                               "title": "Supports Profiler",
                               "description": "Supports Profiler",
+                              "type": "boolean",
+                              "default": true
+                            },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                               "type": "boolean",
                               "default": true
                             },
@@ -51377,6 +51491,12 @@
                       "description": "Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA privileges.",
                       "default": true
                     },
+                    "includeTemporaryTables": {
+                      "title": "Include Temporary Tables",
+                      "type": "boolean",
+                      "description": "Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped. When enabled, GTTs are ingested with TableType=Local so they can be distinguished from regular tables.",
+                      "default": false
+                    },
                     "connectionOptions": {
                       "title": "Connection Options",
                       "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
@@ -51987,6 +52107,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsDatabase": {
                       "title": "Supports Database",
                       "description": "The source service supports the database concept in its hierarchy",
@@ -52429,6 +52555,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                       "type": "boolean",
                       "default": true
                     },
@@ -53825,6 +53957,14 @@
                       "description": "Full name of the schema where the account usage data is stored.",
                       "type": "string",
                       "default": "SNOWFLAKE.ACCOUNT_USAGE"
+                    },
+                    "systemMetricsBatchSize": {
+                      "title": "System Metrics Batch Size",
+                      "description": "Number of tables whose DML history is read from QUERY_HISTORY with a single query when the profiler computes system metrics. Higher values issue fewer scans but hold more history in memory at once.",
+                      "type": "integer",
+                      "default": 50,
+                      "minimum": 1,
+                      "maximum": 500
                     },
                     "privateKey": {
                       "title": "Private Key",
@@ -56949,6 +57089,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsDatabase": {
                       "title": "Supports Database",
                       "description": "The source service supports the database concept in its hierarchy",
@@ -57201,6 +57347,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsQueryComment": {
                       "title": "Supports Query Comment",
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
@@ -57444,6 +57596,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                       "type": "boolean",
                       "default": true
                     },
@@ -59180,6 +59338,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                       "type": "boolean",
                       "default": true
                     }
@@ -62565,7 +62729,8 @@
                         "EN",
                         "JP",
                         "ZH",
-                        "RU"
+                        "RU",
+                        "KO"
                       ],
                       "default": "EN"
                     },
@@ -63734,6 +63899,12 @@
                             "supportsProfiler": {
                               "title": "Supports Profiler",
                               "description": "Supports Profiler",
+                              "type": "boolean",
+                              "default": true
+                            },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                               "type": "boolean",
                               "default": true
                             },
@@ -67026,6 +67197,12 @@
                               "type": "boolean",
                               "default": true
                             },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                              "type": "boolean",
+                              "default": true
+                            },
                             "supportsDatabase": {
                               "title": "Supports Database",
                               "description": "The source service supports the database concept in its hierarchy",
@@ -68663,6 +68840,11 @@
                       "description": "Fivetran API Limit For Pagination.",
                       "type": "integer",
                       "default": 1000
+                    },
+                    "logSchema": {
+                      "title": "Fivetran Platform Connector Schema",
+                      "description": "Destination schema holding the Fivetran Platform Connector log table, used to extract per-phase run status. Leave empty to read the schema name from the Fivetran API.",
+                      "type": "string"
                     },
                     "pipelineFilterPattern": {
                       "description": "Regex exclude pipelines.",

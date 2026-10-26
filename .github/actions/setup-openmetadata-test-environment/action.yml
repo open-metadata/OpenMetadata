@@ -8,9 +8,6 @@ inputs:
   java-version:
     description: Java Version to install
     default: '21'
-  npm-version:
-    description: NPM Version to install
-    default: 'v22.x'
   args:
     description: Arguments to pass to run_local_docker.sh
     required: false
@@ -79,11 +76,11 @@ runs:
     # ------------------------------------------------------------------------------
 
     # ---- Setup Node --------------------------------------------------------------
-    - name: Use Node.js ${{ inputs.npm-version }}
+    - name: Use Node.js
       if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
       with:
-        node-version: ${{ inputs.npm-version }}
+        node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
 
     - name: Install yarn
       if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}

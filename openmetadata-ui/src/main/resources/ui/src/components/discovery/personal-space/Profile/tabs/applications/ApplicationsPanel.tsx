@@ -12,13 +12,14 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import { GridView, Lock01 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import AppDetail from './AppDetail';
 import { AppFooterSlotContext } from './AppFooter';
@@ -122,10 +123,10 @@ const ApplicationsPanel: FC<ApplicationsPanelProps> = ({ onHeaderChange }) => {
     if (MARKETPLACE_VIEWS.has(view.type) && !isAdminUser) {
       return (
         <Box className="tw:relative tw:flex-1 tw:min-h-90 tw:mx-8">
-          <EmptyPlaceholder
+          <PermissionPlaceholder
             data-testid="app-no-permission"
+            description={t('message.no-permission-to-view')}
             icon={Lock01}
-            title={t('message.no-permission-to-view')}
           />
         </Box>
       );

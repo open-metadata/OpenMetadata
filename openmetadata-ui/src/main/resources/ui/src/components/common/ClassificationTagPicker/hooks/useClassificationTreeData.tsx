@@ -17,6 +17,7 @@ import {
 import { Tag01 as TagIcon } from '@openmetadata/ui-core-components/icons';
 import axios, { AxiosError } from 'axios';
 import { useCallback } from 'react';
+import { PAGE_SIZE } from '../../../../constants/constants';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import tagClassBase from '../../../../utils/TagClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -29,10 +30,14 @@ import {
 // Flat fetcher — classification tags have no hierarchy, every node is a leaf.
 export const useClassificationTreeData =
   (): TreeSelectDataFetcher<TagLabel> => {
-    return useCallback(async ({ searchTerm }) => {
+    return useCallback(async ({ searchTerm, after }) => {
+      // The search API pages by number, so the cursor is the next page number.
+      const page = Number(after ?? 1);
       try {
-        const response = await tagClassBase.getTags(searchTerm ?? '', 1);
+        const response = await tagClassBase.getTags(searchTerm ?? '', page);
         const results: RawTagResult[] = response?.data ?? [];
+        const total = response?.paging?.total ?? 0;
+        const hasMore = (page - 1) * PAGE_SIZE + results.length < total;
 
         const nodes: TreeSelectNode<TagLabel>[] = results.map((result) => ({
           id: result.value,
@@ -44,7 +49,12 @@ export const useClassificationTreeData =
           icon: <TagIcon size={16} />,
         }));
 
-        return { nodes };
+        return {
+          nodes,
+          hasMore,
+          total,
+          nextCursor: hasMore ? String(page + 1) : undefined,
+        };
       } catch (error) {
         if (axios.isCancel(error)) {
           throw error;

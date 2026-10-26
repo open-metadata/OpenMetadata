@@ -14,9 +14,9 @@ that preceded it).
 |---|---|---|---|
 | `opensearch-analysis-ik-3.4.0.zip` | `https://release.infinilabs.com/analysis-ik/stable/opensearch-analysis-ik-3.4.0.zip` | Apache-2.0 ([infinilabs/analysis-ik](https://github.com/infinilabs/analysis-ik)) | `5f1d7dbb66f1a0c88f81d21621e0711505ce1ea0b153f28a34e30fe9b1c483a2` |
 
-`analysis-kuromoji` is deliberately **not** vendored: it is an official OpenSearch plugin resolved by
-name from `artifacts.opensearch.org`, the same host the base image comes from, and it has never been
-the flaky one.
+`analysis-kuromoji` and `analysis-nori` are deliberately **not** vendored: they are official OpenSearch
+plugins resolved by name from `artifacts.opensearch.org`, the same host the base image comes from,
+which has never been the flaky one.
 
 ## Version coupling
 

@@ -18,14 +18,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { PageLoader } from '../../components/common/Loader/Loader';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import WorksheetDetails from '../../components/DriveService/Worksheet/WorksheetDetails';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Worksheet } from '../../generated/entity/data/worksheet';
@@ -388,24 +388,28 @@ const WorksheetDetailsPage = () => {
     isPermissionsLoading ||
     (canViewBasic && isEntityLoading)
   ) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
   if (isError) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError('worksheet', decodedWorksheetFQN)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError('worksheet', decodedWorksheetFQN)}
+        />
+      </div>
     );
   }
   if (!hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.worksheet'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.worksheet'),
+          })}
+        />
+      </div>
     );
   }
 

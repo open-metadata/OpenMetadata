@@ -2435,6 +2435,34 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_updateUserEmailToAnotherDomainIsIgnored(TestNamespace ns) throws Exception {
+    // The allowed email domains are checked only when a user is created (UserRepository
+    // createNewEntity). That is complete only while no update can move an email to another
+    // domain, which this pins for both PATCH and PUT
+    String userName = ns.prefix("emailDomainUpdateUser");
+    String originalEmail = toValidEmail(userName);
+    User user = createEntity(new CreateUser().withName(userName).withEmail(originalEmail));
+    String otherDomainEmail =
+        originalEmail.substring(0, originalEmail.indexOf('@')) + "@other-domain.example";
+
+    user.setEmail(otherDomainEmail);
+    User patched = patchEntity(user.getId().toString(), user);
+    assertEquals(originalEmail.toLowerCase(), patched.getEmail().toLowerCase());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser().withName(userName).withEmail(otherDomainEmail));
+
+    assertEquals(
+        originalEmail.toLowerCase(),
+        getEntity(user.getId().toString()).getEmail().toLowerCase(),
+        "PUT must not move an existing user's email to another domain");
+  }
+
+  @Test
   void test_userWithIsBot(TestNamespace ns) {
 
     String botName = ns.prefix("simpleBot");
@@ -3239,6 +3267,257 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     String response =
         editorClient.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", updateBody);
     assertTrue(response.contains(description), "Cross user edit without roles must stay allowed");
+  }
+
+  // ===================================================================
+  // USER DOMAINS
+  // hasDomain() grants access by the user's domains, so setting them is admin only, like roles
+  // ===================================================================
+
+  @Test
+  void test_patchUser_ownDomains_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "owndomainpatch");
+
+    assertPatchForbidden(clientFor(user), user, addDomainsOp(testDomain().getEntityReference()));
+
+    assertHoldsNoDomain(user);
+  }
+
+  @Test
+  void test_patchUser_ownDomainsByRootReplacement_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "owndomainroot");
+    final ObjectNode withDomain =
+        userJsonWithField(user, "domains", List.of(testDomain().getEntityReference()));
+
+    assertPatchForbidden(clientFor(user), user, rootReplacementOps(withDomain));
+
+    assertHoldsNoDomain(user);
+  }
+
+  @Test
+  void test_putUser_ownDomains_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "owndomainput");
+
+    final OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                clientFor(user)
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", userBodyWithDomain(user)));
+    assertEquals(
+        403,
+        exception.getStatusCode(),
+        "Adding a domain to your own user is admin only: " + exception.getMessage());
+
+    assertHoldsNoDomain(user);
+  }
+
+  @Test
+  void test_putUser_keepsOwnDomainButCannotClaimTeamDomain(TestNamespace ns) {
+    // A domain held only through a team goes away with the membership, so naming it on a PUT would
+    // turn it into a direct assignment that outlives the team.
+    final Team team =
+        SdkClients.adminClient()
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("domainTeam"))
+                    .withTeamType(CreateTeam.TeamType.GROUP)
+                    .withDomains(List.of(testSubDomain().getFullyQualifiedName())));
+    final String localPart = "teamdomainput" + ns.shortPrefix();
+    final User user =
+        createEntity(
+            new CreateUser()
+                .withName(localPart)
+                .withEmail(localPart + "@open-metadata.org")
+                .withTeams(List.of(team.getId()))
+                .withDomains(List.of(testDomain().getFullyQualifiedName())));
+    final OpenMetadataClient self = clientFor(user);
+
+    self.getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/users", userBodyInTeam(user, team, List.of(testDomain())));
+    final OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                self.getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/users",
+                        userBodyInTeam(user, team, List.of(testDomain(), testSubDomain()))));
+    assertEquals(
+        403,
+        exception.getStatusCode(),
+        "A team's domain is not the user's own: " + exception.getMessage());
+
+    final List<UUID> directDomainIds =
+        Users.get(user.getId().toString(), "domains").getDomains().stream()
+            .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+            .map(EntityReference::getId)
+            .toList();
+    assertEquals(List.of(testDomain().getId()), directDomainIds);
+  }
+
+  @Test
+  void test_createUser_selfSignUpWithDomains_forbidden(TestNamespace ns) {
+    // The name must equal the email local part for JwtFilter to resolve the caller.
+    final String userName = "domainsignup" + ns.shortPrefix();
+    final String email = userName + "@test.com";
+    final OpenMetadataClient newcomerClient =
+        SdkClients.createClient(userName, email, new String[] {});
+    final String createBody =
+        "{\"name\":\""
+            + userName
+            + "\",\"email\":\""
+            + email
+            + "\",\"domains\":[\""
+            + testDomain().getFullyQualifiedName()
+            + "\"]}";
+
+    final OpenMetadataException postException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                newcomerClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.POST, "/v1/users", createBody));
+    assertEquals(
+        403,
+        postException.getStatusCode(),
+        "Self sign-up cannot set domains: " + postException.getMessage());
+
+    final OpenMetadataException putException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                newcomerClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", createBody));
+    assertEquals(
+        403,
+        putException.getStatusCode(),
+        "Self creation through PUT cannot set domains: " + putException.getMessage());
+
+    final OpenMetadataException notCreated =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/users/name/" + userName, null));
+    assertEquals(404, notCreated.getStatusCode(), "The rejected user should not exist");
+  }
+
+  @Test
+  void test_patchUser_ownDisplayName_allowedAndKeepsDomains(TestNamespace ns) {
+    final String localPart = "domainholder" + ns.shortPrefix();
+    final User user =
+        createEntity(
+            new CreateUser()
+                .withName(localPart)
+                .withEmail(localPart + "@open-metadata.org")
+                .withDomains(List.of(testDomain().getFullyQualifiedName())));
+
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/users/" + user.getId(),
+            replaceOp("/displayName", "Domain Holder"));
+
+    final User stored = Users.get(user.getId().toString(), "domains");
+    assertEquals("Domain Holder", stored.getDisplayName());
+    assertEquals(List.of(testDomain().getId()), domainIds(stored));
+  }
+
+  @Test
+  void test_admin_canSetUserDomains(TestNamespace ns) {
+    final User patched = createRegularUser(ns, "admindomainpatch");
+    final User put = createRegularUser(ns, "admindomainput");
+    final OpenMetadataClient admin = SdkClients.adminClient();
+
+    admin
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/users/" + patched.getId(),
+            addDomainsOp(testDomain().getEntityReference()));
+    admin.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", userBodyWithDomain(put));
+
+    assertEquals(
+        List.of(testDomain().getId()), domainIds(Users.get(patched.getId().toString(), "domains")));
+    assertEquals(
+        List.of(testDomain().getId()), domainIds(Users.get(put.getId().toString(), "domains")));
+  }
+
+  @Test
+  void test_updateUser_crossUserDomains_forbidden(TestNamespace ns) {
+    // A principal holding EDIT on users may update somebody else, but assigning them a domain stays
+    // admin only, as granting a role does.
+    final OpenMetadataClient editorClient = createUserEditorClient(ns);
+    final User target = createRegularUser(ns, "domaintarget");
+
+    assertPatchForbidden(editorClient, target, addDomainsOp(testDomain().getEntityReference()));
+    final OpenMetadataException putException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                editorClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", userBodyWithDomain(target)));
+    assertEquals(
+        403,
+        putException.getStatusCode(),
+        "Assigning a domain to another user is admin only: " + putException.getMessage());
+
+    assertHoldsNoDomain(target);
+  }
+
+  private ArrayNode addDomainsOp(final EntityReference domain) {
+    final ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    final ObjectNode operation = ops.addObject().put("op", "add").put("path", "/domains");
+    operation
+        .putArray("value")
+        .addObject()
+        .put("id", domain.getId().toString())
+        .put("type", domain.getType());
+    return ops;
+  }
+
+  private String userBodyWithDomain(final User user) {
+    return "{\"name\":\""
+        + user.getName()
+        + "\",\"email\":\""
+        + user.getEmail()
+        + "\",\"domains\":[\""
+        + testDomain().getFullyQualifiedName()
+        + "\"]}";
+  }
+
+  // Naming the team keeps the user in it; without teams the server moves them to the organization.
+  private static String userBodyInTeam(
+      final User user, final Team team, final List<Domain> domains) {
+    final ObjectNode body =
+        PATCH_MAPPER.createObjectNode().put("name", user.getName()).put("email", user.getEmail());
+    body.putArray("teams").add(team.getId().toString());
+    final ArrayNode domainFqns = body.putArray("domains");
+    domains.forEach(domain -> domainFqns.add(domain.getFullyQualifiedName()));
+    return body.toString();
+  }
+
+  private void assertHoldsNoDomain(final User user) {
+    assertEquals(
+        List.of(),
+        domainIds(Users.get(user.getId().toString(), "domains")),
+        "The rejected request must not have assigned a domain");
+  }
+
+  private static List<UUID> domainIds(final User user) {
+    return user.getDomains() == null
+        ? List.of()
+        : user.getDomains().stream().map(EntityReference::getId).toList();
   }
 
   // A non admin whose role grants EDIT_ALL on users, through a team's default roles.

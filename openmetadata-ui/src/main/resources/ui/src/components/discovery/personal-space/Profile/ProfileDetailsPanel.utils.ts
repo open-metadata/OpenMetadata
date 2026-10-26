@@ -13,24 +13,38 @@
 
 import { AuthProvider } from '../../../../generated/settings/settings';
 
-/** Auth providers that keep the credential in OpenMetadata itself. */
+/**
+ * Auth providers whose password OpenMetadata can change. LDAP keeps the
+ * credential in the directory: its authenticator rejects a change (501).
+ */
 const PASSWORD_OWNING_PROVIDERS: readonly AuthProvider[] = [AuthProvider.Basic];
 
 /**
- * The SECURITY section is only meaningful for the signed-in user's own, live
- * profile on a password-owning provider. With an external IdP (SAML, OIDC,
- * Google, ...) the credential lives there, so the section is hidden rather
- * than offered as an action that would always fail.
+ * The SECURITY section is offered on a live profile that is your own, or to an
+ * admin acting on someone else, on a password-owning provider. With an external
+ * IdP (SAML, OIDC, Google, LDAP, ...) the credential lives there, and a bot
+ * authenticates with a JWT, so the section is hidden rather than offered as an
+ * action that would always fail.
  */
 export const canUserChangePassword = ({
   provider,
   isSelf,
+  isAdmin,
   isDeleted,
+  isBot,
 }: {
   provider?: AuthProvider;
   isSelf: boolean;
+  isAdmin?: boolean;
   isDeleted?: boolean;
-}): boolean =>
-  Boolean(provider && PASSWORD_OWNING_PROVIDERS.includes(provider)) &&
-  isSelf &&
-  !isDeleted;
+  isBot?: boolean;
+}): boolean => {
+  if (isDeleted || isBot) {
+    return false;
+  }
+
+  return (
+    Boolean(provider && PASSWORD_OWNING_PROVIDERS.includes(provider)) &&
+    (isSelf || Boolean(isAdmin))
+  );
+};

@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { expect } from '@playwright/test';
+import { expect, mergeTests } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
+import { test as isolatedUserTest } from '../../support/fixtures/isolatedUser';
 import {
   chooseSelectOption,
   createNewPage,
@@ -44,9 +45,13 @@ import { test as base } from '../fixtures/pages';
 const unescapeSearchQuery = (query: string | null) =>
   (query ?? '').replace(/\\(.)/g, '$1');
 
-const test = base;
+const test = mergeTests(base, isolatedUserTest);
 
-test.use({ storageState: 'playwright/.auth/admin.json' });
+// The shared admin has no distinct display name; the other seeded roles cannot create memories.
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+  isolatedUserOptions: { isAdmin: true },
+});
 
 // ─── Shared test data ─────────────────────────────────────────────────────────
 
@@ -524,6 +529,40 @@ test.describe(
     // ─── 4. Memory Row Card — Visible Metadata ──────────────────────────────
 
     test.describe('Memory Row Card Metadata', () => {
+      test('row shows the creator display name', async ({
+        page,
+        isolatedUserPage,
+      }) => {
+        await redirectToHomePage(isolatedUserPage);
+        const { apiContext, afterAction } = await getApiContext(
+          isolatedUserPage
+        );
+        const title = `Creator Display Name ${uuid()}`;
+
+        try {
+          const author = await getLoggedInUser(apiContext);
+          expect(author.displayName).not.toBe(author.name);
+
+          const memory = await createMemoryViaApi(apiContext, {
+            name: `cc_memory_display_name_${uuid()}`,
+            title,
+            question: 'Who created this memory?',
+            answer: 'The creator should be identified by their display name.',
+            shareConfig: { visibility: 'Shared' },
+          });
+          globalMemoryIds.push(memory.id);
+
+          await navigateToMemories(page);
+          const row = await searchAndGetMemoryRow(page, title, memory.id);
+
+          await expect(
+            row.getByText(author.displayName, { exact: true })
+          ).toBeVisible();
+        } finally {
+          await afterAction();
+        }
+      });
+
       test('row shows owner name and memory title', async ({ page }) => {
         test.slow();
 
@@ -700,34 +739,6 @@ test.describe(
         ).toBeVisible();
       });
 
-      test('"Created by Me" tab shows admin\'s own memories and hides the second author\'s', async ({
-        page,
-      }) => {
-        test.slow();
-
-        await navigateToMemories(page);
-
-        const listResPromise = waitForResponseWithStatus(
-          page,
-          (res) =>
-            res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'GET',
-          200
-        );
-        await page.getByRole('tab', { name: /created by me/i }).click();
-        await listResPromise;
-        await waitForAllLoadersToDisappear(page);
-
-        // The list is paginated, so search for the title rather than
-        // assuming the memory is visible on the currently-loaded page.
-        await expect(
-          await searchAndGetMemoryRow(page, SHARED_MEMORY_TITLE, sharedMemoryId)
-        ).toBeVisible();
-        await expect(
-          page.getByTestId(`memory-row-${secondAuthorMemoryId}`)
-        ).not.toBeVisible();
-      });
-
       test('clicking "Total Memories" count card activates the All view', async ({
         page,
       }) => {
@@ -736,7 +747,7 @@ test.describe(
         await navigateToMemories(page);
 
         // Move away from All first
-        await page.getByRole('tab', { name: /created by me/i }).click();
+        await page.getByTestId('memory-count-card-created-by-me').click();
         await waitForAllLoadersToDisappear(page);
 
         const listResPromise = waitForResponseWithStatus(
@@ -900,49 +911,6 @@ test.describe(
             secondAuthorMemoryTitle,
             secondAuthorMemoryId
           )
-        ).toBeVisible();
-      });
-
-      test('clicking "All" tab after applying an author filter clears the filter', async ({
-        page,
-      }) => {
-        test.slow();
-
-        await navigateToMemories(page);
-
-        // Apply author filter
-        await page.getByRole('button', { name: /all.*author/i }).click();
-        const authorSearch = page.getByPlaceholder(/search.*author/i);
-        await expect(authorSearch).toBeVisible();
-        await authorSearch.fill(dataConsumerUser.name);
-        await waitForAllLoadersToDisappear(page);
-
-        const authorOption = page.getByRole('menuitemradio', {
-          name: dataConsumerUser.displayName,
-        });
-        await expect(authorOption).toBeVisible();
-        await authorOption.click();
-        await waitForAllLoadersToDisappear(page);
-
-        // "All" tab clears the author filter
-        const listResPromise = waitForResponseWithStatus(
-          page,
-          (res) =>
-            res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'GET',
-          200
-        );
-        await page.getByRole('tab', { name: /^all$/i }).click();
-        await listResPromise;
-        await waitForAllLoadersToDisappear(page);
-
-        await expect(
-          page.getByRole('button', { name: /clear all/i })
-        ).not.toBeVisible();
-        // The list is paginated, so search for the title rather than
-        // assuming the memory is visible on the currently-loaded page.
-        await expect(
-          await searchAndGetMemoryRow(page, SHARED_MEMORY_TITLE, sharedMemoryId)
         ).toBeVisible();
       });
 

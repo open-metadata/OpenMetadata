@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import {
   Activity,
   DataHealthScore,
 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import type { TFunction } from 'i18next';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { HEALTH_PARAM } from '../../../../components/integration/ConnectionsPage/ConnectionsPage.constants';
@@ -31,8 +32,10 @@ import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageC
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
+import BucketServiceRow from '../Common/TopicWidget/BucketServiceRow';
 import FailingServiceRow from '../Common/TopicWidget/FailingServiceRow';
 import TopicCard from '../Common/TopicWidget/TopicCard';
+import { TOPIC_FILTERED_BODY_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
@@ -41,8 +44,11 @@ import TopicStatChips, {
   TopicStat,
 } from '../Common/TopicWidget/TopicStatChips';
 import {
+  BucketService,
   FailingService,
+  QuietHealthFilter,
   ServiceHealthFilter,
+  useBucketServices,
   useIngestionPipelineStats,
 } from './useIngestionPipelineStats';
 
@@ -61,39 +67,64 @@ interface HealthCounts {
   pendingServices: number;
 }
 
+// Chip ids are the testids the specs reach for; the bucket is the filter the
+// Connections listing reads.
+const CHIP_TO_BUCKET: Record<string, ServiceHealthFilter> = {
+  failing: 'failing',
+  healthy: 'healthy',
+  'not-run': 'notRun',
+};
+const BUCKET_TO_CHIP: Record<ServiceHealthFilter, string> = {
+  failing: 'failing',
+  healthy: 'healthy',
+  notRun: 'not-run',
+};
+
+const VIEW_ALL_KEYS: Record<QuietHealthFilter, string> = {
+  healthy: 'message.view-all-count-healthy-services',
+  notRun: 'message.view-all-count-not-run-services',
+};
+
+const bucketSize = (
+  { failingCount, healthyServices, pendingServices }: HealthCounts,
+  bucket: ServiceHealthFilter
+): number =>
+  ({
+    failing: failingCount,
+    healthy: healthyServices,
+    notRun: pendingServices,
+  }[bucket]);
+
+/** The card opens on the worst bucket that has anything in it. */
+const getDefaultBucket = (counts: HealthCounts): ServiceHealthFilter =>
+  (['failing', 'healthy', 'notRun'] as const).find(
+    (bucket) => bucketSize(counts, bucket) > 0
+  ) ?? 'failing';
+
 /**
- * The three bucket chips. A bucket is only clickable when it has something in
- * it — a link to an empty filtered list is a dead end.
+ * The three bucket chips. Each filters the rows below in place; an empty
+ * bucket has no rows to show, so its chip cannot be picked.
  */
-const buildHealthStats = (
-  {
-    connectedServices,
-    failingCount,
-    healthyServices,
-    pendingServices,
-  }: HealthCounts,
-  goToHealth: (filter: ServiceHealthFilter) => void,
-  t: TFunction
-): TopicStat[] => [
+const buildHealthStats = (counts: HealthCounts, t: TFunction): TopicStat[] => [
   {
     id: 'failing',
+    isDisabled: counts.failingCount === 0,
     label: t('message.count-of-total-failing', {
-      count: failingCount,
-      total: connectedServices,
+      count: counts.failingCount,
+      total: counts.connectedServices,
     }),
-    onPress: failingCount > 0 ? () => goToHealth('failing') : undefined,
     tone: 'critical',
   },
   {
     id: 'healthy',
-    label: t('message.count-healthy', { count: healthyServices }),
-    onPress: healthyServices > 0 ? () => goToHealth('healthy') : undefined,
+    isDisabled: counts.healthyServices === 0,
+    label: t('message.count-healthy', { count: counts.healthyServices }),
     tone: 'success',
   },
   {
     id: 'not-run',
-    label: t('message.count-not-run-yet', { count: pendingServices }),
-    onPress: pendingServices > 0 ? () => goToHealth('notRun') : undefined,
+    isDisabled: counts.pendingServices === 0,
+    label: t('message.count-not-run-yet', { count: counts.pendingServices }),
     tone: 'muted',
   },
 ];
@@ -162,6 +193,55 @@ interface FailingServicesListProps {
   onViewAll: () => void;
 }
 
+interface BucketServicesListProps {
+  bucket: QuietHealthFilter;
+  count: number;
+  services: BucketService[];
+  onOpen: (service: BucketService) => void;
+  onViewAll: () => void;
+}
+
+/** The first few healthy or not-run services, and a way to the rest. */
+const BucketServicesList: React.FC<BucketServicesListProps> = ({
+  bucket,
+  count,
+  services,
+  onOpen,
+  onViewAll,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {services.length > 0 && (
+        <ul
+          className="tw:mt-2 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+          data-testid="platform-health-rows">
+          {services.map((service) => (
+            <BucketServiceRow
+              bucket={bucket}
+              key={service.id}
+              service={service}
+              onOpen={onOpen}
+            />
+          ))}
+        </ul>
+      )}
+
+      {count > MAX_VISIBLE_ROWS && (
+        <Button
+          className="tw:mt-3 tw:self-start tw:px-0"
+          color="link-color"
+          data-testid={`view-all-${bucket}-services`}
+          size="xs"
+          onPress={onViewAll}>
+          {t(VIEW_ALL_KEYS[bucket], { count })}
+        </Button>
+      )}
+    </>
+  );
+};
+
 /** The worst offenders, and a way to the rest when there are more of them. */
 const FailingServicesList: React.FC<FailingServicesListProps> = ({
   failingCount,
@@ -175,7 +255,7 @@ const FailingServicesList: React.FC<FailingServicesListProps> = ({
     <>
       {failingServices.length > 0 && (
         <ul
-          className="tw:mt-4 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+          className="tw:mt-2 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
           data-testid="platform-health-rows">
           {failingServices.slice(0, MAX_VISIBLE_ROWS).map((service) => (
             <FailingServiceRow
@@ -199,6 +279,112 @@ const FailingServicesList: React.FC<FailingServicesListProps> = ({
           })}
         </Button>
       )}
+    </>
+  );
+};
+
+// Stands in for the rows while a bucket's first page loads.
+const BucketRowsSkeleton = () => (
+  <div
+    className="tw:mt-4 tw:flex tw:flex-col tw:gap-4 tw:py-3"
+    data-testid="platform-health-rows-loading">
+    {['70%', '55%', '62%'].map((width) => (
+      <Skeleton height={14} key={width} width={width} />
+    ))}
+  </div>
+);
+
+/**
+ * A healthy or not-run bucket whose read failed. Said outright, with a retry:
+ * an empty list under a chip that counts services would read as a contradiction.
+ */
+const BucketRowsError = ({ onRetry }: { onRetry: () => void }) => {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      className="tw:mt-4 tw:flex tw:items-center tw:gap-2 tw:py-3"
+      data-testid="platform-health-bucket-error"
+      role="alert">
+      <Typography className="tw:text-text-tertiary!" size="text-xs">
+        {t('server.unexpected-error')}
+      </Typography>
+      <Button
+        color="link-color"
+        data-testid="platform-health-bucket-retry"
+        size="xs"
+        onPress={onRetry}>
+        {t('label.retry')}
+      </Button>
+    </div>
+  );
+};
+
+interface HealthBucketsProps {
+  counts: HealthCounts;
+  failingServices: FailingService[];
+  goToHealth: (filter: ServiceHealthFilter) => void;
+  onOpen: (service: Pick<FailingService, 'fqn' | 'serviceCategory'>) => void;
+}
+
+/**
+ * The bucket chips and the rows of whichever bucket is picked. The failing
+ * rows come with the counts; the healthy and not-run ones are read only once
+ * their chip is picked.
+ */
+const HealthBuckets: React.FC<HealthBucketsProps> = ({
+  counts,
+  failingServices,
+  goToHealth,
+  onOpen,
+}) => {
+  const { t } = useTranslation();
+  const stats = useMemo(() => buildHealthStats(counts, t), [counts, t]);
+  // Unset until the viewer picks one, so the default follows the counts as
+  // they change rather than freezing on the first response.
+  const [chosenBucket, setChosenBucket] = useState<ServiceHealthFilter>();
+  const bucket = chosenBucket ?? getDefaultBucket(counts);
+  const quietBucket = bucket === 'failing' ? undefined : bucket;
+  const bucketServices = useBucketServices(quietBucket, MAX_VISIBLE_ROWS);
+
+  const renderRows = () => {
+    if (!quietBucket) {
+      return (
+        <FailingServicesList
+          failingCount={counts.failingCount}
+          failingServices={failingServices}
+          onOpen={onOpen}
+          onViewAll={() => goToHealth('failing')}
+        />
+      );
+    }
+
+    if (bucketServices.isError) {
+      return <BucketRowsError onRetry={bucketServices.refetch} />;
+    }
+
+    return bucketServices.isLoading ? (
+      <BucketRowsSkeleton />
+    ) : (
+      <BucketServicesList
+        bucket={quietBucket}
+        count={bucketSize(counts, quietBucket)}
+        services={bucketServices.services}
+        onOpen={onOpen}
+        onViewAll={() => goToHealth(quietBucket)}
+      />
+    );
+  };
+
+  return (
+    <>
+      <TopicStatChips
+        label={t('label.platform-health')}
+        stats={stats}
+        value={BUCKET_TO_CHIP[bucket]}
+        onChange={(chip) => setChosenBucket(CHIP_TO_BUCKET[chip])}
+      />
+      {renderRows()}
     </>
   );
 };
@@ -259,7 +445,7 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
   );
 
   const openService = useCallback(
-    (service: FailingService): void => {
+    (service: Pick<FailingService, 'fqn' | 'serviceCategory'>): void => {
       navigate(
         connectionsRouterClassBase.getServiceDetailsPath(
           service.serviceCategory,
@@ -271,26 +457,14 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
     [navigate]
   );
 
-  const stats = useMemo<TopicStat[]>(
-    () =>
-      buildHealthStats(
-        {
-          connectedServices,
-          failingCount,
-          healthyServices,
-          pendingServices,
-        },
-        goToHealth,
-        t
-      ),
-    [
-      failingCount,
+  const counts = useMemo<HealthCounts>(
+    () => ({
       connectedServices,
+      failingCount,
       healthyServices,
       pendingServices,
-      goToHealth,
-      t,
-    ]
+    }),
+    [connectedServices, failingCount, healthyServices, pendingServices]
   );
 
   const summary = buildSummary(
@@ -310,6 +484,7 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
         onPress: () =>
           navigate(connectionsRouterClassBase.getSettingsServicesPath()),
       }}
+      bodyClassName={classNames(TOPIC_FILTERED_BODY_CLASSES, 'tw:pb-3')}
       emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
@@ -328,15 +503,12 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
       widgetKey={widgetKey}
       onRetry={refetch}>
       {!isError && !emptyState && (
-        <>
-          <TopicStatChips stats={stats} />
-          <FailingServicesList
-            failingCount={failingCount}
-            failingServices={failingServices}
-            onOpen={openService}
-            onViewAll={() => goToHealth('failing')}
-          />
-        </>
+        <HealthBuckets
+          counts={counts}
+          failingServices={failingServices}
+          goToHealth={goToHealth}
+          onOpen={openService}
+        />
       )}
 
       {PlatformHealthInsight && !emptyState && (

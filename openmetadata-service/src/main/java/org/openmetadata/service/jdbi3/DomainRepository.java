@@ -58,11 +58,13 @@ import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.AssetEditService.AssetEdit;
 import org.openmetadata.service.jdbi3.AssetEditService.Selection;
 import org.openmetadata.service.resources.domains.DomainResource;
+import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
@@ -78,6 +80,7 @@ import org.openmetadata.service.util.IntakeFormValidator;
 public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
   private static final String FIELD_CHILDREN_COUNT = "childrenCount";
+  private static final String MULTIPLE_DOMAINS_RULE = "Multiple Domains are not allowed";
   private static final String DESCENDANT_WILDCARD = "%";
   private static final String NOT_A_DOMAIN_ASSET = "An asset of type %s cannot belong to a domain";
 
@@ -123,6 +126,11 @@ public class DomainRepository extends EntityRepository<Domain> {
     fieldFetchers.put(FIELD_PARENT, this::fetchAndSetParents);
     fieldFetchers.put(FIELD_EXPERTS, this::fetchAndSetExperts);
     fieldFetchers.put(FIELD_CHILDREN_COUNT, this::fetchAndSetChildrenCount);
+  }
+
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    return relabeledByReference(super.getSearchPropagationDescriptors());
   }
 
   @Override
@@ -322,12 +330,31 @@ public class DomainRepository extends EntityRepository<Domain> {
         : response;
   }
 
+  // With the single-domain rule on, the asset moves into the domain; with it off, the domain is
+  // added beside the ones the asset holds itself, as on the asset's own page.
   private AssetEdit assignTo(EntityReference domain) {
     return (asset, selection) -> {
       requireDomainAsset(selection);
-      asset.setDomains(new ArrayList<>(List.of(domain)));
-      asset.setDataProducts(dataProductsWithin(asset.getDataProducts(), Set.of(domain.getId())));
+      if (singleDomainOnly()) {
+        asset.setDomains(new ArrayList<>(List.of(domain)));
+      } else if (!holdsDomain(asset, domain.getId())) {
+        List<EntityReference> domains =
+            new ArrayList<>(
+                listOrEmpty(asset.getDomains()).stream()
+                    .filter(held -> !Boolean.TRUE.equals(held.getInherited()))
+                    .toList());
+        domains.add(domain);
+        asset.setDomains(domains);
+      }
+      asset.setDataProducts(
+          dataProductsWithin(
+              asset.getDataProducts(),
+              asset.getDomains().stream().map(EntityReference::getId).collect(Collectors.toSet())));
     };
+  }
+
+  private static boolean singleDomainOnly() {
+    return RuleEngine.getInstance().isRuleEnabled(MULTIPLE_DOMAINS_RULE);
   }
 
   // Only a domain the asset holds itself comes off; one it inherits from a parent stays, as on the
@@ -475,15 +502,16 @@ public class DomainRepository extends EntityRepository<Domain> {
       UUID targetDomainId, EntityReference ref, Relationship relationship, boolean isAdd) {
     BulkResponse response;
     try {
-      EntityReference currentDomain =
-          getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
+      List<EntityReference> ownDomains = findFrom(ref.getId(), ref.getType(), relationship, DOMAIN);
+      List<EntityReference> otherDomains =
+          ownDomains.stream().filter(domain -> !targetDomainId.equals(domain.getId())).toList();
+      boolean inDomain = otherDomains.size() < ownDomains.size();
+      List<EntityReference> movedFrom = isAdd && singleDomainOnly() ? otherDomains : List.of();
       List<EntityReference> affectedDataProducts =
-          getAffectedDataProductsForDryRun(targetDomainId, ref, isAdd);
-      boolean isMove =
-          isAdd && currentDomain != null && !currentDomain.getId().equals(targetDomainId);
-      boolean hasSideEffects = isMove || !affectedDataProducts.isEmpty();
+          getAffectedDataProductsForDryRun(targetDomainId, ref, ownDomains, isAdd);
+      boolean hasSideEffects = !movedFrom.isEmpty() || !affectedDataProducts.isEmpty();
       String message =
-          buildDryRunImpactMessage(ref, currentDomain, targetDomainId, affectedDataProducts, isAdd);
+          buildDryRunImpactMessage(ref, inDomain, movedFrom, affectedDataProducts, isAdd);
       response =
           new BulkResponse()
               .withRequest(ref)
@@ -506,18 +534,19 @@ public class DomainRepository extends EntityRepository<Domain> {
   // The data products the real run drops: the asset's own domains change as in assignTo/removeFrom,
   // and removing a domain the asset only inherits changes nothing.
   private List<EntityReference> getAffectedDataProductsForDryRun(
-      UUID targetDomainId, EntityReference ref, boolean isAdd) {
+      UUID targetDomainId,
+      EntityReference ref,
+      List<EntityReference> ownDomainRefs,
+      boolean isAdd) {
     Set<UUID> ownDomains =
-        findFrom(ref.getId(), ref.getType(), Relationship.HAS, DOMAIN).stream()
-            .map(EntityReference::getId)
-            .collect(Collectors.toSet());
+        ownDomainRefs.stream().map(EntityReference::getId).collect(Collectors.toSet());
     boolean unchanged = !isAdd && !ownDomains.contains(targetDomainId);
-    Set<UUID> domainsAfter =
-        isAdd
-            ? Set.of(targetDomainId)
-            : ownDomains.stream()
-                .filter(domainId -> !domainId.equals(targetDomainId))
-                .collect(Collectors.toSet());
+    Set<UUID> domainsAfter = new HashSet<>(isAdd && singleDomainOnly() ? Set.of() : ownDomains);
+    if (isAdd) {
+      domainsAfter.add(targetDomainId);
+    } else {
+      domainsAfter.remove(targetDomainId);
+    }
     return unchanged
         ? List.of()
         : dataProductRepository()
@@ -526,19 +555,24 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   private String buildDryRunImpactMessage(
       EntityReference ref,
-      EntityReference currentDomain,
-      UUID targetDomainId,
+      boolean inDomain,
+      List<EntityReference> movedFrom,
       List<EntityReference> affectedDataProducts,
       boolean isAdd) {
     StringBuilder message = new StringBuilder();
     if (isAdd) {
-      if (currentDomain == null) {
+      if (!movedFrom.isEmpty()) {
         message
             .append(ref.getType())
             .append(" '")
             .append(ref.getFullyQualifiedName())
-            .append("' will be added to the domain.");
-      } else if (currentDomain.getId().equals(targetDomainId)) {
+            .append("' will be moved from domain '")
+            .append(
+                movedFrom.stream()
+                    .map(EntityReference::getFullyQualifiedName)
+                    .collect(Collectors.joining("', '")))
+            .append("'.");
+      } else if (inDomain) {
         message
             .append(ref.getType())
             .append(" '")
@@ -549,9 +583,7 @@ public class DomainRepository extends EntityRepository<Domain> {
             .append(ref.getType())
             .append(" '")
             .append(ref.getFullyQualifiedName())
-            .append("' will be moved from domain '")
-            .append(currentDomain.getFullyQualifiedName())
-            .append("'.");
+            .append("' will be added to the domain.");
       }
       if (!affectedDataProducts.isEmpty()) {
         message.append(" The following data product relationships will be removed: ");

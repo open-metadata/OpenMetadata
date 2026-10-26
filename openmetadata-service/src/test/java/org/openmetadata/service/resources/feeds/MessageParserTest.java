@@ -18,9 +18,19 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 
 class MessageParserTest {
+  @ParameterizedTest
+  @ValueSource(strings = {"ontology", "ontologyConcept", "ontologyProperty", "ontologyRelease"})
+  void parseIndependentOntologyLinks(String type) {
+    EntityLink link = EntityLink.parse("<#E::" + type + "::Sales.Customer>");
+    assertEquals(type, link.getEntityType());
+    assertEquals("Sales.Customer", link.getEntityFQN());
+  }
+
   @Test
   void parseMessage() {
     String s =

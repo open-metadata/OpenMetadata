@@ -583,6 +583,11 @@ WHERE name = 'KnowledgeCenter' AND entityType = 'KnowledgePanel';
 -- Retired: their seed files are gone and no component resolves their key, so the renderer would
 -- answer with a render-nothing component and leave an empty cell. The UI already filters them out
 -- of both the grid and the picker; this stops the rows accumulating.
+--
+-- MyTask and TotalAssets are the exception: their keys now hold the My Tasks and Total Data Assets
+-- topic cards and their seed files are back. Deleting the old rows is still right, because the
+-- loader re-inserts any seeded row it cannot find on the next boot, so they come back with the
+-- topic cards' name and description rather than the retired widgets'.
 DELETE FROM doc_store
 WHERE entityType = 'KnowledgePanel'
   AND name IN ('DataAssets', 'Following', 'MyData', 'MyTask', 'TotalAssets');
@@ -615,3 +620,63 @@ SET json = jsonb_set(
 WHERE name = 'tableDiff'
   AND jsonb_typeof(json->'parameterDefinition') = 'array'
   AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "parallelQueries"}]'::jsonb);
+
+-- Auto-classification sampleDataCount gained a schema maximum of 1000, the most rows a run reads.
+-- Clamp saved pipelines above it so they still validate after upgrade instead of failing on edit.
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(json::jsonb, '{sourceConfig,config,sampleDataCount}', '1000'::jsonb)::json
+WHERE json::jsonb -> 'sourceConfig' -> 'config' ->> 'type' = 'AutoClassification'
+  AND jsonb_typeof(json::jsonb -> 'sourceConfig' -> 'config' -> 'sampleDataCount') = 'number'
+  AND (json::jsonb -> 'sourceConfig' -> 'config' ->> 'sampleDataCount')::numeric > 1000;
+
+-- Say how to choose tableCustomSQLQuery.strategy and what columnValuesToBeInSet.matchEnum changes,
+-- so users and test generation read it from the definition. Seed data only creates missing definitions.
+UPDATE test_definition
+SET json = jsonb_set(
+    json,
+    '{parameterDefinition}',
+    (
+        SELECT jsonb_agg(
+            CASE
+                WHEN param->>'name' = 'strategy' THEN param || jsonb_build_object(
+                    'description',
+                    'How the query result is compared to the threshold. ROWS (default): the query returns the rows that break the rule, such as `SELECT * FROM t WHERE amount < 0`, and the number of rows returned is compared. COUNT: the query returns a single integer, such as `SELECT COUNT(*) FROM t WHERE amount < 0`, and that number is compared. Under ROWS a `SELECT COUNT(*)` query always returns one row. Do not use COUNT with a query that can return NULL or a non-integer, such as SUM or AVG.'
+                )
+                ELSE param
+            END
+            ORDER BY position
+        )
+        FROM jsonb_array_elements(json->'parameterDefinition') WITH ORDINALITY AS params(param, position)
+    )
+)
+WHERE name = 'tableCustomSQLQuery'
+  AND json->'parameterDefinition' @> '[{"name": "strategy"}]'::jsonb;
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json,
+    '{parameterDefinition}',
+    (
+        SELECT jsonb_agg(
+            CASE
+                WHEN param->>'name' = 'matchEnum' THEN param || jsonb_build_object(
+                    'description',
+                    'If true, every observed value must be allowed. If false or omitted, the test passes when at least one allowed value occurs, even if other values are outside the set.'
+                )
+                WHEN param->>'name' = 'allowedValues' THEN param || jsonb_build_object(
+                    'description',
+                    'Values used for matching. Neither mode requires every allowed value to occur in the column.'
+                )
+                ELSE param
+            END
+            ORDER BY position
+        )
+        FROM jsonb_array_elements(json->'parameterDefinition') WITH ORDINALITY AS params(param, position)
+    )
+)
+WHERE name = 'columnValuesToBeInSet'
+  AND json->'parameterDefinition' @> '[{"name": "matchEnum"}]'::jsonb;
+
+UPDATE test_definition
+SET json = jsonb_set(json, '{description}', to_jsonb('Checks column values against an allowed set according to the matchEnum mode.'::text))
+WHERE name = 'columnValuesToBeInSet';

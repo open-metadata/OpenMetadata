@@ -40,6 +40,7 @@ import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
+import { borderAfter } from '@/utils/tailwindClasses';
 
 export const TableRowActionsDropdown = () => {
   const { t } = useCoreTranslation();
@@ -156,7 +157,12 @@ const TableCardRoot = ({
       <div
         {...props}
         className={cx(
-          'tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:outline-1 tw:-outline-offset-1 tw:outline-subtle',
+          // The edge is an overlay above the content: an inset outline on the
+          // card itself is painted over by a `stickyHeader` thead (sticky,
+          // z-10, opaque), so the frame vanished along the header. `isolate`
+          // keeps the overlay's z-index inside the card.
+          'tw:relative tw:isolate tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:after:z-20 tw:after:outline-subtle',
+          borderAfter,
           className
         )}>
         {children}
@@ -297,6 +303,9 @@ const TableHeader = <T extends object>({
           // Row border—using an "after" pseudo-element to avoid the border taking up space.
           bordered &&
             'tw:[&>tr>th]:after:pointer-events-none tw:[&>tr>th]:after:absolute tw:[&>tr>th]:after:inset-x-0 tw:[&>tr>th]:after:bottom-0 tw:[&>tr>th]:after:h-px tw:[&>tr>th]:after:bg-border-secondary tw:[&>tr>th]:focus-visible:after:bg-transparent',
+          // Dark: the 8% white divider resolves to the body-row surface under the darker
+          // header band, so the edge vanishes; border-primary keeps it visible.
+          bordered && 'tw:dark:[&>tr>th]:after:bg-border-primary',
 
           typeof className === 'function' ? className(state) : className
         )
@@ -442,7 +451,7 @@ const TableRow = <T extends object>({
           // an anonymous table cell — a phantom column that Chrome 151's
           // fixed-layout algorithm counts when splitting leftover width, so
           // every table came up one column-share short of its own right edge.
-          'tw:relative tw:outline-focus-ring tw:transition-colors tw:hover:bg-secondary tw:dark:hover:bg-primary_hover tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+          'tw:relative tw:outline-focus-ring tw:transition-colors tw:[&:hover]:bg-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
           TABLE_SIZES[size].rowHeight,
           highlightSelectedRow &&
             'tw:selected:bg-secondary tw:dark:selected:bg-primary_hover',

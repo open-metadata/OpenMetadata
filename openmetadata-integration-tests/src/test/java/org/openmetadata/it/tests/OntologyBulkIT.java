@@ -21,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.util.OntologyChangeSetTestSupport.applyOntologyChangeSet;
 
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
@@ -51,8 +50,6 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.OntologyChangeSetState;
-import org.openmetadata.schema.type.OntologyConfiguration;
-import org.openmetadata.schema.type.OntologyLayer;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.service.Entity;
@@ -207,23 +204,13 @@ public class OntologyBulkIT {
   private static Glossary createGlossary(
       final OpenMetadataClient client, final TestNamespace namespace) {
     final String name = namespace.prefix("BulkOntology");
-    final OntologyConfiguration configuration =
-        new OntologyConfiguration()
-            .withBaseIri(URI.create("https://example.org/bulk/" + name + '/'))
-            .withLayer(OntologyLayer.L_2)
-            .withImports(List.of())
-            .withPrefixes(List.of())
-            .withIriMintingPattern("concept/{term}/{uuid}")
-            .withReadOnly(false)
-            .withInstalledPacks(List.of());
     final Glossary glossary =
         client
             .glossaries()
             .create(
                 new CreateGlossary()
                     .withName(name)
-                    .withDescription("Typed ontology bulk integration model")
-                    .withOntologyConfiguration(configuration));
+                    .withDescription("Typed ontology bulk integration model"));
     return namespace.trackRoot(Entity.GLOSSARY, glossary);
   }
 

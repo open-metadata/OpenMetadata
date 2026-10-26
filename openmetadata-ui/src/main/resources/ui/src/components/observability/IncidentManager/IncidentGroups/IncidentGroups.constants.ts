@@ -65,6 +65,20 @@ export const DEFAULT_INCIDENT_GROUP_BY = IncidentGroupBy.TestDefinition;
 
 export const INCIDENT_GROUPS_PAGE_SIZE = PAGE_SIZE_BASE;
 
+/**
+ * The incident tables' card, as designed: the core TableCard edge with no
+ * shadow. That edge stays visible along a sticky header, so no border of its
+ * own is needed (one would draw a second line inside it).
+ */
+export const INCIDENT_TABLE_CARD_CLASS = 'tw:shadow-none';
+
+/**
+ * The pager under an incident table: one line above it, and none of its own
+ * side and bottom borders, which would double the card's.
+ */
+export const INCIDENT_TABLE_PAGER_CLASS =
+  'tw:shrink-0 tw:border-0 tw:border-t tw:border-secondary tw:shadow-none';
+
 /** The page sizes the application's paged lists offer. */
 export const INCIDENT_GROUPS_PAGE_SIZE_OPTIONS = [
   PAGE_SIZE_BASE,

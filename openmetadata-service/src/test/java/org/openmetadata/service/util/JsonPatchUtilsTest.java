@@ -77,6 +77,8 @@ class JsonPatchUtilsTest {
       {"/" + Entity.FIELD_DESCRIPTION, MetadataOperation.EDIT_DESCRIPTION},
       {"/" + Entity.FIELD_DISPLAY_NAME, MetadataOperation.EDIT_DISPLAY_NAME},
       {"/" + Entity.FIELD_TAGS, MetadataOperation.EDIT_TAGS},
+      {"/" + Entity.FIELD_DOMAINS, MetadataOperation.EDIT_DOMAINS},
+      {"/" + Entity.FIELD_DOMAINS + "/0/id", MetadataOperation.EDIT_DOMAINS},
       {"/Unknown", MetadataOperation.EDIT_ALL} // Unknown fields map to EDIT_ALL
     };
     for (Object[] patchPathToOperation : patchPathToOperations) {
@@ -342,6 +344,24 @@ class JsonPatchUtilsTest {
     // Assertions
     assertTrue(operations.contains(MetadataOperation.EDIT_CERTIFICATION));
     assertEquals(1, operations.size());
+  }
+
+  /** The write path turns this replace into an add, so the check must see the tag it adds. */
+  @Test
+  void replaceTagsOnEntityWithoutTagsMapsToTagOperation() {
+    Mockito.<EntityInterface<?>>when(resourceContextMock.getEntity())
+        .thenReturn(new Table().withName("untagged_table").withTags(null));
+    String patch =
+        """
+        [{"op": "replace", "path": "/tags", "value": [
+          {"tagFQN": "PII.Sensitive", "source": "Classification",
+           "labelType": "Manual", "state": "Confirmed"}]}]
+        """;
+
+    Set<MetadataOperation> operations =
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch(patch));
+
+    assertEquals(Set.of(MetadataOperation.EDIT_TAGS), operations);
   }
 
   @Test

@@ -106,10 +106,6 @@ const COLUMN_PROFILER = {
   median: 7344.0,
 };
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
-});
-
 describe('DataDistributionHistogram component test', () => {
   it('Component should render', async () => {
     const { container } = render(
@@ -226,6 +222,10 @@ describe('DataDistributionHistogram component test', () => {
       />
     );
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 });

@@ -1437,6 +1437,7 @@ export interface Connection {
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?:          FilterPattern;
+    supportsAutoPartitionDetection?:        boolean;
     supportsDatabase?:                      boolean;
     supportsDataDiff?:                      boolean;
     supportsDBTExtraction?:                 boolean;
@@ -2032,6 +2033,13 @@ export interface Connection {
      */
     databaseMode?: string;
     /**
+     * Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data
+     * dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped.
+     * When enabled, GTTs are ingested with TableType=Local so they can be distinguished from
+     * regular tables.
+     */
+    includeTemporaryTables?: boolean;
+    /**
      * This directory will be used to set the LD_LIBRARY_PATH env variable. It is required if
      * you need to enable thick connection mode. By default, we bring instant client 19 and
      * point to /instantclient.
@@ -2249,6 +2257,12 @@ export interface Connection {
      * Snowflake source host for the Snowflake account.
      */
     snowflakeSourceHost?: string;
+    /**
+     * Number of tables whose DML history is read from QUERY_HISTORY with a single query when
+     * the profiler computes system metrics. Higher values issue fewer scans but hold more
+     * history in memory at once.
+     */
+    systemMetricsBatchSize?: number;
     /**
      * Use Snowflake's ACCOUNT_USAGE.ACCESS_HISTORY view as the source of query lineage.
      * ACCESS_HISTORY provides Snowflake-computed table- and column-level lineage, including for
@@ -2832,6 +2846,11 @@ export interface Connection {
      * Fivetran API Limit For Pagination.
      */
     limit?: number;
+    /**
+     * Destination schema holding the Fivetran Platform Connector log table, used to extract
+     * per-phase run status. Leave empty to read the schema name from the Fivetran API.
+     */
+    logSchema?: string;
     /**
      * URL to the Dagster instance
      *
@@ -4496,13 +4515,14 @@ export interface AirflowConnectionConnection {
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
-    storedProcedureFilterPattern?: FilterPattern;
-    supportsDatabase?:             boolean;
-    supportsDataDiff?:             boolean;
-    supportsDBTExtraction?:        boolean;
-    supportsLineageExtraction?:    boolean;
-    supportsQueryComment?:         boolean;
-    supportsUsageExtraction?:      boolean;
+    storedProcedureFilterPattern?:   FilterPattern;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDatabase?:               boolean;
+    supportsDataDiff?:               boolean;
+    supportsDBTExtraction?:          boolean;
+    supportsLineageExtraction?:      boolean;
+    supportsQueryComment?:           boolean;
+    supportsUsageExtraction?:        boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -5090,15 +5110,16 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
-    storedProcedureFilterPattern?: FilterPattern;
-    supportsDatabase?:             boolean;
-    supportsDataDiff?:             boolean;
-    supportsDBTExtraction?:        boolean;
-    supportsLineageExtraction?:    boolean;
-    supportsMetadataExtraction?:   boolean;
-    supportsProfiler?:             boolean;
-    supportsQueryComment?:         boolean;
-    supportsUsageExtraction?:      boolean;
+    storedProcedureFilterPattern?:   FilterPattern;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDatabase?:               boolean;
+    supportsDataDiff?:               boolean;
+    supportsDBTExtraction?:          boolean;
+    supportsLineageExtraction?:      boolean;
+    supportsMetadataExtraction?:     boolean;
+    supportsProfiler?:               boolean;
+    supportsQueryComment?:           boolean;
+    supportsUsageExtraction?:        boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -5434,6 +5455,7 @@ export enum AirflowConnectionScheme {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ko = "KO",
     Ru = "RU",
     Zh = "ZH",
 }

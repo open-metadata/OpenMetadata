@@ -14,6 +14,8 @@
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
+  ClipboardCheck,
+  NoSearch,
   Plus as PlusIcon,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -40,6 +42,9 @@ import { ContractTestTypeLabelMap } from '../../../utils/DataContract/DataContra
 import { generateEntityLink } from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
@@ -69,13 +74,35 @@ export const ContractQualityFormTab: React.FC<{
     prevLabel?: string;
     isNextVisible?: boolean;
   };
-}> = ({ selectedQuality, onChange, onNext, onPrev, buttonProps }) => {
+}> = ({
+  selectedQuality,
+  onChange,
+  onNext,
+  onPrev,
+  initialValues,
+  buttonProps,
+}) => {
   const [testType, setTestType] = useState<TestCaseType>(TestCaseType.all);
+  const [searchValue, setSearchValue] = useState('');
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const { data: table } = useGenericContext<TableType>();
   const [isTestsLoading, setIsTestsLoading] = useState<boolean>(false);
   const [selectedKeys, setSelectedKeys] = useState<string[]>(
     selectedQuality ?? []
+  );
+
+  // Stored quality-expectation references keyed by id, seeded from the saved
+  // contract. The test-case list is server-paged and filterable, so a seeded
+  // expectation whose test case lives on a later page (or is excluded by the
+  // testType filter, or was deleted) is never in `allTestCases`. Without this
+  // fallback, rebuilding `qualityExpectations` from `allTestCases` alone would
+  // silently drop those off-page selections whenever the user toggles any row.
+  const storedRefsById = useMemo(
+    () =>
+      new Map(
+        (initialValues?.qualityExpectations ?? []).map((q) => [q.id ?? '', q])
+      ),
+    [initialValues?.qualityExpectations]
   );
   const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] =
     useState<boolean>(false);
@@ -166,6 +193,13 @@ export const ContractQualityFormTab: React.FC<{
     []
   );
 
+  const isFiltered = Boolean(searchValue) || testType !== TestCaseType.all;
+  const EmptyStatePlaceholder = searchValue
+    ? NoSearchResultsPlaceholder
+    : NoFilteredResultsPlaceholder;
+  // Nothing to narrow down until the table has at least one test.
+  const hasNoTests = !isFiltered && allTestCases.length === 0;
+
   const paginationProps = useMemo(
     () => ({
       currentPage,
@@ -192,13 +226,22 @@ export const ContractQualityFormTab: React.FC<{
     const qualityExpectations = selectedRowKeys.map((id) => {
       const testCase = allTestCases.find((test) => test.id === id);
 
-      return {
-        description: testCase?.description,
-        name: testCase?.name,
-        id: testCase?.id,
-        type: EntityType.TEST_CASE,
-      } as EntityReference;
-    });
+      // When the test case is in the currently fetched (paged/filtered) list,
+      // resolve the full reference from it. Otherwise fall back to the stored
+      // reference seeded from the saved contract so off-page, filtered-out, or
+      // deleted test cases are preserved rather than silently dropped.
+      return testCase
+        ? {
+            description: testCase.description,
+            name: testCase.name,
+            id: testCase.id,
+            type: EntityType.TEST_CASE,
+          }
+        : storedRefsById.get(id) ?? {
+            id,
+            type: EntityType.TEST_CASE,
+          };
+    }) as EntityReference[];
 
     onChange({
       qualityExpectations,
@@ -234,7 +277,12 @@ export const ContractQualityFormTab: React.FC<{
           dataSource={allTestCases}
           extraTableFilters={
             <Dropdown.Root>
-              <Button color="secondary" iconTrailing={ChevronDown} size="sm">
+              <Button
+                color="secondary"
+                data-testid="quality-filter-button"
+                iconTrailing={ChevronDown}
+                isDisabled={hasNoTests}
+                size="sm">
                 {t('label.filter-plural')}
               </Button>
               <Dropdown.Popover className="tw:w-auto">
@@ -252,6 +300,22 @@ export const ContractQualityFormTab: React.FC<{
             </Dropdown.Root>
           }
           loading={isTestsLoading}
+          locale={{
+            emptyText: isFiltered ? (
+              <EmptyStatePlaceholder
+                description={t('message.check-spelling-or-try-shorter-term')}
+                icon={<NoSearch className="tw:text-secondary" />}
+                title={t('label.no-matching-result-plural')}
+              />
+            ) : (
+              <NoDataPlaceholder
+                icon={<ClipboardCheck className="tw:text-fg-quaternary" />}
+                title={t('label.no-entity-available', {
+                  entity: t('label.test-case-plural'),
+                })}
+              />
+            ),
+          }}
           pagination={false}
           rowKey="id"
           rowSelection={{
@@ -260,12 +324,14 @@ export const ContractQualityFormTab: React.FC<{
               setSelectedKeys(selectedRowKeys as string[]);
               handleSelection(selectedRowKeys as string[]);
             },
+            preserveSelectedRowKeys: true, // Preserve selections across page changes
           }}
           searchProps={{
             placeholder: t('label.search-by-type', {
               type: t('label.name'),
             }),
             onSearch: (value) => {
+              setSearchValue(value);
               fetchAllTests({
                 offset: 0,
                 limit: pageSize,

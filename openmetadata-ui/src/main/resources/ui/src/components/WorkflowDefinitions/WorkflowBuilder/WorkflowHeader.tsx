@@ -14,8 +14,11 @@
 import {
   Badge,
   Button,
+  ButtonUtility,
   Card,
   Dialog,
+  Dropdown,
+  FeaturedIcon,
   Input,
   Modal,
   ModalOverlay,
@@ -24,6 +27,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { DotsVertical } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,18 +40,82 @@ import { WorkflowControls } from './WorkflowControls';
 
 const getInitialDisplayName = (title?: string) => title ?? '';
 
+type WorkflowManageMenuProps = Pick<
+  WorkflowHeaderProps,
+  'handleDeleteWorkflow' | 'handleToggleSuspend' | 'isSuspended'
+>;
+
+const WorkflowManageMenu: React.FC<WorkflowManageMenuProps> = ({
+  handleDeleteWorkflow,
+  handleToggleSuspend,
+  isSuspended = false,
+}) => {
+  const { t } = useTranslation();
+  const { showDeleteButton, showEditButton } = useWorkflowModeContext();
+  // Suspending is allowed wherever the workflow can be edited; deleting is a separate capability.
+  const onToggleSuspend = showEditButton ? handleToggleSuspend : undefined;
+  const onDelete = showDeleteButton ? handleDeleteWorkflow : undefined;
+
+  if (!onToggleSuspend && !onDelete) {
+    return null;
+  }
+
+  return (
+    <Dropdown.Root>
+      <ButtonUtility
+        color="tertiary"
+        data-testid="workflow-manage-button"
+        icon={DotsVertical}
+        size="sm"
+        tooltip={t('label.more-action-plural')}
+      />
+      <Dropdown.Popover className="tw:w-min">
+        <Dropdown.Menu
+          aria-label={t('label.more-action-plural')}
+          selectionMode="none">
+          {onToggleSuspend && (
+            <Dropdown.Item
+              data-testid={
+                isSuspended
+                  ? 'resume-workflow-button'
+                  : 'suspend-workflow-button'
+              }
+              id="suspend"
+              label={isSuspended ? t('label.resume') : t('label.suspend')}
+              onAction={onToggleSuspend}
+            />
+          )}
+          {onDelete && (
+            <Dropdown.Item
+              data-testid="delete-workflow-button"
+              id="delete"
+              textValue={t('label.delete')}
+              onAction={onDelete}>
+              <span className="tw:text-error-primary">{t('label.delete')}</span>
+            </Dropdown.Item>
+          )}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
+
 export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   breadcrumb,
+  editorLink,
   isAiMode = false,
   title,
   workflowName,
   handleTestWorkflow,
   handleSaveWorkflow,
   handleDeleteWorkflow,
+  handleToggleSuspend,
+  isSuspended,
   handleRevertAndCancel,
   handleRunWorkflow,
   isRunLoading = false,
   onUpdateDisplayName,
+  variant = 'page',
 }) => {
   const { t } = useTranslation();
   const {
@@ -55,7 +123,6 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     showSaveButton,
     showCancelButton,
     showTestButton,
-    showDeleteButton,
     enterEditMode,
     enterViewMode,
     isViewMode,
@@ -95,12 +162,19 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     setIsEditModalOpen(false);
   };
 
+  const manageMenu = (
+    <WorkflowManageMenu
+      handleDeleteWorkflow={handleDeleteWorkflow}
+      handleToggleSuspend={handleToggleSuspend}
+      isSuspended={isSuspended}
+    />
+  );
+
   const workflowControls = useMemo(
     () => (
       <WorkflowControls
         isRunLoading={isRunLoading}
         onCancelWorkflow={showCancelButton ? enterViewMode : undefined}
-        onDeleteWorkflow={showDeleteButton ? handleDeleteWorkflow : undefined}
         onRevertAndCancel={showCancelButton ? handleRevertAndCancel : undefined}
         onRunWorkflow={handleRunWorkflow}
         onSaveWorkflow={showSaveButton ? handleSaveAndEnterViewMode : undefined}
@@ -111,8 +185,6 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
       isRunLoading,
       showCancelButton,
       enterViewMode,
-      showDeleteButton,
-      handleDeleteWorkflow,
       handleRevertAndCancel,
       handleRunWorkflow,
       showSaveButton,
@@ -125,15 +197,36 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   const editWorkflowButton = useMemo(
     () =>
       showEditButton && (
-        <Button
-          color="primary"
-          data-testid="edit-workflow-button"
-          size="sm"
-          onPress={enterEditMode}>
-          {t('label.edit-workflow')}
-        </Button>
+        <>
+          {editorLink && (
+            <Button
+              color="secondary"
+              data-testid="workflow-editor-link"
+              href={editorLink.path}
+              size="sm">
+              {t(editorLink.labelKey)}
+            </Button>
+          )}
+          <Button
+            color="primary"
+            data-testid="edit-workflow-button"
+            size="sm"
+            onPress={enterEditMode}>
+            {t('label.edit-workflow')}
+          </Button>
+        </>
       ),
-    [showEditButton, enterEditMode, t]
+    [showEditButton, enterEditMode, editorLink, t]
+  );
+
+  const suspendedBadge = isSuspended && (
+    <Badge
+      color="warning"
+      data-testid="workflow-suspended-badge"
+      size="sm"
+      type="color">
+      {t('label.suspended')}
+    </Badge>
   );
 
   const systemBadge = useMemo(
@@ -172,10 +265,20 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   );
 
   const workflowIcon = (
-    <div className="tw:flex tw:items-center tw:justify-center tw:size-8 tw:rounded-md tw:bg-brand-solid">
-      <WorkflowIcon className="tw:size-4 tw:text-white" />
-    </div>
+    <FeaturedIcon color="brand" icon={WorkflowIcon} size="sm" theme="dark" />
   );
+
+  // The host page shows the title, so only the controls that act on the workflow remain.
+  if (variant === 'actions') {
+    return (
+      <div
+        className="tw:flex tw:gap-3 tw:items-center"
+        data-testid="workflow-header-actions">
+        {workflowControls}
+        {editWorkflowButton}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -185,10 +288,12 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
             <>
               {workflowControls}
               {editWorkflowButton}
+              {manageMenu}
             </>
           }
           badge={
             <>
+              {suspendedBadge}
               {systemBadge}
               {editTitleButton}
             </>
@@ -211,10 +316,10 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
           }
           title={
             <Typography
-              ellipsis
               as="h3"
               className="tw:m-0 tw:text-primary"
               data-testid="workflow-title"
+              ellipsis={{ tooltip: true }}
               size="text-xl"
               weight="semibold">
               {title}
@@ -224,20 +329,21 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
         />
       ) : (
         <Card className="tw:px-6 tw:py-4" data-testid="workflow-header">
-          <div className="tw:flex tw:items-center tw:justify-between">
-            <div className="tw:flex tw:items-center tw:gap-3">
+          <div className="tw:flex tw:items-center tw:justify-between tw:gap-4">
+            <div className="tw:flex tw:items-center tw:gap-3 tw:min-w-0">
               {workflowIcon}
-              <div data-testid="workflow-title-section">
+              <div className="tw:min-w-0" data-testid="workflow-title-section">
                 <div className="tw:flex tw:items-center tw:gap-2">
                   <Typography
-                    ellipsis
                     as="p"
                     className="tw:m-0 tw:mb-1 tw:text-primary"
                     data-testid="workflow-title"
+                    ellipsis={{ tooltip: true }}
                     size="text-md"
                     weight="semibold">
                     {title}
                   </Typography>
+                  {suspendedBadge}
                   {systemBadge}
                   {editTitleButton}
                 </div>
@@ -254,9 +360,10 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
               </div>
             </div>
 
-            <div className="tw:flex tw:gap-3 tw:items-center">
+            <div className="tw:flex tw:shrink-0 tw:gap-3 tw:items-center">
               {workflowControls}
               {editWorkflowButton}
+              {manageMenu}
             </div>
           </div>
         </Card>

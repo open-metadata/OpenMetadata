@@ -17,14 +17,13 @@ import jakarta.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 /**
- * Thrown when a caller's task-resolve request loses a race against another concurrent
- * resolve / a workflow instance that has already advanced past the target node. Maps to
+ * Thrown when task submission or resolution conflicts with an open review, a concurrent
+ * decision, or a workflow instance that has already advanced past the target node. Maps to
  * 409 CONFLICT — the caller's request was well-formed but the task's current state no
  * longer permits the requested transition.
  *
- * <p>Distinct from {@code IllegalStateException} on purpose: only the specific
- * resolve-race sites in {@link org.openmetadata.service.tasks.TaskWorkflowHandler} throw
- * this. Other {@code IllegalStateException} instances remain server bugs and continue to
+ * <p>Distinct from {@code IllegalStateException} on purpose: only explicit
+ * lifecycle conflicts throw this. Other {@code IllegalStateException} instances remain server bugs and continue to
  * surface as 500 via {@link CatalogGenericExceptionMapper} — a global mapping would
  * hide those.
  */

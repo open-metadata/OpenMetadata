@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box, SelectItemType, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  SelectItemType,
+  TableCard,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { Reorder } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import {
@@ -62,6 +68,7 @@ import {
   exportUserOfTeam,
   getTeamByName,
   getTeams,
+  getTeamsAssetCounts,
   patchTeamDetail,
   restoreTeam,
 } from '../../../../../../rest/teamsAPI';
@@ -79,10 +86,6 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
-import type {
-  CustomPropertyProps,
-  ExtentionEntitiesKeys,
-} from '../../../../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
 import Loader from '../../../../../common/Loader/Loader';
@@ -91,6 +94,7 @@ import type { ExpandableConfig } from '../../../../../common/Table/Table.interfa
 import { useEntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import type { EntityDetailsObjectInterface } from '../../../../../Explore/ExplorePage.interface';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { TABLE_TABS } from './Members.constants';
 import type { MembersTeamDetailProps } from './Members.types';
 import MembersAssetsTab from './MembersAssetsTab';
 import MembersInlineEntityTab from './MembersInlineEntityTab';
@@ -121,19 +125,11 @@ import { useMembersTeamHeader } from './useMembersTeamHeader';
 
 const CUSTOM_PROPERTIES = 'custom-properties' as const;
 
-// Lazy-loaded for the same reason TeamDetailsV1 does it: the custom-property
-// table pulls in the RJSF form stack, which no other team tab needs.
-const CustomPropertyTable = withSuspenseFallback(
-  lazy(() =>
-    import(
-      '../../../../../common/CustomPropertyTable/CustomPropertyTable'
-    ).then((module) => ({ default: module.CustomPropertyTable }))
-  )
-  // withSuspenseFallback erases the component's generic; restore it the same
-  // way TeamDetailsV1 does so `entityDetails` narrows to Team.
-) as <T extends ExtentionEntitiesKeys>(
-  props: CustomPropertyProps<T>
-) => JSX.Element;
+// Lazy-loaded: the per-type value editors pull in the SQL and rich-text
+// editors, which no other team tab needs.
+const CustomPropertiesList = withSuspenseFallback(
+  lazy(() => import('../../customProperties/CustomPropertiesList'))
+);
 
 // The global `.drag-icon { width: 6px }` LESS rule is tuned for the legacy 8×15
 // drag.svg; the square 20×20 Reorder icon collapses to ~6px there. An inline
@@ -144,6 +140,7 @@ const ReorderDragIcon: FC<{ className?: string }> = ({ className }) => (
 
 // The inline role/policy add flow is identical bar the team field it writes to.
 type InlineAddField = 'defaultRoles' | 'policies';
+
 type AddOption = {
   id: string;
   name: string;
@@ -168,10 +165,13 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const { showModal } = useEntityExportModalProvider();
   const { currentUser } = useApplicationStore();
   const closePersonalSpace = usePersonalSpaceStore((state) => state.close);
-  const { goTo } = useSettingsHash();
+  const { goTo, state: hashState, updateParams } = useSettingsHash();
 
   const [team, setTeam] = useState<Team>();
   const [childTeams, setChildTeams] = useState<Team[]>([]);
+  const [teamAssetCounts, setTeamAssetCounts] = useState<
+    Record<string, number>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [isChildTeamsLoading, setIsChildTeamsLoading] = useState(false);
   const [showDeletedTeam, setShowDeletedTeam] = useState(false);
@@ -319,11 +319,20 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     }
   }, [fqn, onRename]);
 
+  const fetchTeamAssetCounts = useCallback(async () => {
+    try {
+      setTeamAssetCounts(await getTeamsAssetCounts());
+    } catch {
+      // Same as the Teams settings page: without the aggregation, counts show 0.
+    }
+  }, []);
+
   const fetchChildTeams = useCallback(async () => {
     if (!team?.fullyQualifiedName) {
       return;
     }
     setIsChildTeamsLoading(true);
+    void fetchTeamAssetCounts();
     try {
       const { data } = await getTeams({
         parentTeam: team.fullyQualifiedName,
@@ -331,7 +340,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         fields: [
           TabSpecificField.USER_COUNT,
           TabSpecificField.CHILDREN_COUNT,
-          TabSpecificField.OWNS,
           TabSpecificField.PARENTS,
         ],
       });
@@ -342,7 +350,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     } finally {
       setIsChildTeamsLoading(false);
     }
-  }, [team?.fullyQualifiedName, showDeletedTeam]);
+  }, [team?.fullyQualifiedName, showDeletedTeam, fetchTeamAssetCounts]);
 
   // Lazy-load a row's sub-teams on first expand and graft them into the tree,
   // so the hierarchy is revealed without fetching every level upfront.
@@ -358,7 +366,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           fields: [
             TabSpecificField.USER_COUNT,
             TabSpecificField.CHILDREN_COUNT,
-            TabSpecificField.OWNS,
             TabSpecificField.PARENTS,
           ],
         });
@@ -580,13 +587,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     [team, t]
   );
 
-  // CustomPropertyTable hands back the whole team with `extension` replaced;
-  // handlePatchTeam diffs it, so no separate extension-only path is needed.
+  // handlePatchTeam diffs the whole team, so an extension-only save is just a
+  // team with `extension` replaced.
   const handleTeamExtensionUpdate = useCallback(
-    async (updatedTeam: Team): Promise<void> => {
-      await handlePatchTeam(updatedTeam);
-    },
-    [handlePatchTeam]
+    async (extension: Record<string, unknown> | undefined) =>
+      team ? handlePatchTeam({ ...team, extension }) : false,
+    [team, handlePatchTeam]
   );
 
   const handleDescriptionSave = useCallback(async () => {
@@ -895,8 +901,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   // Child team columns
   const childTeamColumns = useMemo(
-    () => getChildTeamColumns(t, onNavigate),
-    [t, onNavigate]
+    () => getChildTeamColumns(t, onNavigate, teamAssetCounts),
+    [t, onNavigate, teamAssetCounts]
   );
 
   const childTeamExpandable = useMemo<ExpandableConfig<Team>>(
@@ -1029,6 +1035,23 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   );
 
   pluginTabKeysRef.current = pluginTabs.map((tab) => tab.key);
+
+  // `#members/teams/<fqn>?activeTab=<key>` (`getSettingsLink(getTeamsWithFqnPath(fqn, {
+  // activeTab }))`) opens on that tab once it exists: built-in tabs follow the
+  // team type, contributed ones register after mount. Applied once per request
+  // so later tab clicks are not pulled back to it.
+  const requestedTab = hashState.params.activeTab;
+  const appliedTabRef = useRef<string>();
+  useEffect(() => {
+    if (
+      requestedTab &&
+      requestedTab !== appliedTabRef.current &&
+      allTabKeys.includes(requestedTab)
+    ) {
+      appliedTabRef.current = requestedTab;
+      setActiveTab(requestedTab);
+    }
+  }, [requestedTab, allTabKeys]);
 
   const filteredChildTeams = useMemo(() => {
     if (!searchTerm) {
@@ -1170,12 +1193,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
     if (activeTab === CUSTOM_PROPERTIES) {
       return (
-        <CustomPropertyTable<EntityType.TEAM>
-          entityDetails={team}
+        <CustomPropertiesList
+          canEdit={Boolean(canEditCustomFields) && !team.deleted}
+          canView={Boolean(canViewCustomFields)}
           entityType={EntityType.TEAM}
-          hasEditAccess={Boolean(canEditCustomFields) && !team.deleted}
-          hasPermission={Boolean(canViewCustomFields)}
-          onEntityUpdate={handleTeamExtensionUpdate}
+          extension={team.extension as Record<string, unknown> | undefined}
+          onUpdate={handleTeamExtensionUpdate}
         />
       );
     }
@@ -1256,6 +1279,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             canEditAll={canEditAll}
             columns={roleColumns}
             dataSource={team.defaultRoles ?? []}
+            entityDescription={t('message.page-sub-header-for-roles')}
             entityLabel={t('label.role')}
             entityPluralLabel={t('label.role-plural')}
             filterOption={inlineFilterOption}
@@ -1280,6 +1304,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             canEditAll={canEditAll}
             columns={policyColumns}
             dataSource={team.policies ?? []}
+            entityDescription={t('message.page-sub-header-for-policies')}
             entityLabel={t('label.policy')}
             entityPluralLabel={t('label.policy-plural')}
             filterOption={inlineFilterOption}
@@ -1304,10 +1329,14 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       data-testid="team-detail"
       direction="col">
       {/* Pinned header: info widgets + description. Capped at half the height and
-          scrollable so a long description or the open inline editor (incl. its
-          Save/Cancel) can't push the tab table to zero height or get clipped. */}
+          scrollable so a long description can't push the tab table to zero
+          height; its cards never shrink (they would clip instead of scroll), and
+          the cap lifts while the editor is open so Save/Cancel stay in view. */}
       <Box
-        className="tw:shrink-0 tw:max-h-[50%] tw:overflow-y-auto"
+        className={classNames(
+          'tw:shrink-0 tw:overflow-y-auto tw:[&>*]:shrink-0',
+          !isDescEditing && 'tw:max-h-[50%]'
+        )}
         direction="col">
         {/* Info widget section */}
         <MembersTeamInfoWidgets
@@ -1331,30 +1360,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
       {/* Tabs */}
       <Box className="tw:px-8 tw:flex-1 tw:min-h-0" direction="col">
-        <Tabs
-          selectedKey={activeTab}
-          onSelectionChange={(key: Key) => setActiveTab(String(key))}>
-          <Tabs.List size="sm" type="underline">
-            {allTabKeys.map((tab) => {
-              const plugin = pluginTabs.find((item) => item.key === tab);
-
-              return (
-                <Tabs.Item id={tab} key={tab}>
-                  {plugin
-                    ? plugin.label
-                    : getTabLabel(
-                        tab as TeamTab,
-                        t,
-                        team,
-                        childTeams.length,
-                        assetCount
-                      )}
-                </Tabs.Item>
-              );
-            })}
-          </Tabs.List>
-        </Tabs>
-
         {/* A plain block, NOT a `Box`: `Box` is display:flex, and inside a flex
             container the tab content becomes a flex item that shrinks to the
             container's height instead of overflowing it, so `overflow-auto`
@@ -1362,7 +1367,57 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             clientHeight). A block container lets the content keep its natural
             height and scroll. `min-h-0` keeps the flex parent from growing. */}
         <div className="tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-y-auto tw:py-4">
-          {renderActiveTab()}
+          <TableCard.Root
+            className="tw:rounded-xl tw:shadow-none"
+            size="compact">
+            <Tabs
+              selectedKey={activeTab}
+              onSelectionChange={(key: Key) => {
+                setActiveTab(String(key));
+                // Record the tab in the hash, so a later link to another tab of
+                // this team changes the hash and is applied, as is Back/Forward.
+                updateParams({ activeTab: String(key) });
+              }}>
+              {/* -mb-px lays the tab underline over the row border so the divider
+                  also runs under the actions. */}
+              <Box
+                align="center"
+                className="tw:border-b tw:border-secondary tw:pr-4"
+                direction="row"
+                gap={4}
+                justify="between">
+                <Tabs.List
+                  className="tw:-mb-px tw:px-4 tw:pt-3"
+                  size="sm"
+                  type="underline">
+                  {allTabKeys.map((tab) => {
+                    const plugin = pluginTabs.find((item) => item.key === tab);
+
+                    return (
+                      <Tabs.Item id={tab} key={tab}>
+                        {plugin
+                          ? plugin.label
+                          : getTabLabel(
+                              tab as TeamTab,
+                              t,
+                              team,
+                              childTeams.length,
+                              assetCount
+                            )}
+                      </Tabs.Item>
+                    );
+                  })}
+                </Tabs.List>
+              </Box>
+            </Tabs>
+            {TABLE_TABS.has(activeTab) ? (
+              renderActiveTab()
+            ) : (
+              <Box className="tw:p-4" direction="col">
+                {renderActiveTab()}
+              </Box>
+            )}
+          </TableCard.Root>
         </div>
       </Box>
 

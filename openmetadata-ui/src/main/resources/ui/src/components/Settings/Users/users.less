@@ -18,60 +18,19 @@
   overflow-y: scroll;
 }
 
-.summary-panel-container {
+// Scoped to the summary panel: unscoped, this lazily loaded rule also painted
+// the column detail drawer. :where() keeps the old specificity so the scoping
+// changes nothing else. Being unlayered, it still beats the panel's layered
+// tw: utilities (e.g. tw:bg-surface), exactly as before.
+:where(.entity-summary-panel-container) .summary-panel-container {
   border-radius: var(--om-radius-xl);
-  border: 1px solid var(--om-color-gray-blue-100);
-  background-color: var(--tw-color-bg-primary);
+  border: 1px solid var(--tw-border-color-secondary);
+  background-color: var(--tw-background-color-surface);
 }
 
 .profile-section {
   height: @profile-page-sidebar;
   overflow-y: scroll;
-
-  .profile-section-user-details-card {
-    padding: var(--om-space-20);
-    margin-bottom: var(--om-space-20);
-    background: var(--tw-color-bg-primary);
-    justify-content: center;
-    align-items: center;
-    border-radius: var(--om-radius-xl);
-    border: 1px solid var(--om-color-gray-blue-100);
-
-    .user-details-menu-icon {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-    }
-
-    .profile-details-title {
-      margin-top: var(--om-space-20);
-      font-size: var(--om-font-size-lg);
-      font-style: normal;
-      font-weight: var(--om-font-weight-semibold);
-      line-height: 28px;
-      color: var(--om-color-gray-900);
-      text-align: center;
-      word-break: break-word;
-    }
-
-    .profile-details-email {
-      color: @primary-heading-color;
-      text-align: center;
-      font-size: var(--om-font-size-sm);
-      line-height: 20px;
-      word-break: break-word;
-    }
-
-    .profile-details-desc {
-      font-size: var(--om-font-size-sm);
-      font-style: normal;
-      font-weight: var(--om-font-weight-regular);
-      line-height: 20px;
-      color: @text-color;
-      text-align: center;
-      margin-top: @margin-xs;
-    }
-  }
 }
 
 .profile-section-card {
@@ -79,7 +38,7 @@
   box-shadow: '0 2px 8px rgba(0, 0, 0, 0.1)';
   margin-bottom: var(--om-space-16);
   padding: var(--om-space-20);
-  background-color: var(--tw-color-bg-primary);
+  background-color: var(--tw-background-color-surface);
   margin: var(--om-space-8) 0;
   width: 100%;
   gap: var(--om-space-10);
@@ -93,7 +52,7 @@
 }
 
 .tab-label {
-  color: @grey-13;
+  color: var(--tw-text-color-tertiary);
   font-size: var(--om-font-size-md);
   line-height: 24px;
   margin: 0 var(--om-space-16);
@@ -106,54 +65,16 @@
   padding: var(--om-space-20);
 }
 
-.user-profile-card {
-  background: white;
-  padding: var(--om-space-20) var(--om-space-20) var(--om-space-10)
-    var(--om-space-20);
-  border-radius: var(--om-radius-xl);
-  margin-bottom: var(--om-space-20);
-  border: 1px solid var(--om-color-gray-blue-100);
-
-  .user-profile-card-header {
-    margin-bottom: @margin-xs;
-  }
-
-  .user-profile-card-body {
-    margin-bottom: var(--om-space-10);
-  }
-}
-
 .user-profile-edit-popover-card-title {
   font-size: var(--om-font-size-sm);
   font-weight: var(--om-font-weight-semibold);
   line-height: 20px;
 }
 
-.chip-text {
-  color: @primary-heading-color;
-  border: none;
-  font-size: var(--om-font-size-xs);
-  background-color: white;
-}
-
-.default-persona-text {
-  .chip-tag-link {
-    color: @primary-heading-color;
-  }
-
-  .no-data-chip-placeholder {
-    margin-top: 0;
-  }
-}
-
 .no-default-persona-text {
   padding-left: var(--om-space-26);
   font-size: var(--om-font-size-sm);
   color: @text-color-tertiary;
-}
-
-.user-page-icon {
-  margin: var(--om-space-2);
 }
 
 .profile-edit-popover-card {
@@ -292,7 +213,7 @@
     font-weight: var(--om-font-weight-regular);
 
     &:hover {
-      color: @primary-heading-color;
+      color: var(--tw-text-color-brand-secondary);
     }
   }
 }
