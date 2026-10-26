@@ -217,6 +217,59 @@ describe('PortOverlay', () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([true, false])(
+    'cancels source selection without a relation, port=%s',
+    (isPort) => {
+      const persist = jest.fn();
+      render(<Harness onCreateRelation={persist} />);
+      dispatchNodeClick({
+        clientX: 600,
+        clientY: 180,
+        isPort: true,
+        nodeId: 'source',
+      });
+
+      expect(screen.getByTestId('ontology-connection-line')).toHaveClass(
+        'tw:motion-safe:animate-pulse'
+      );
+
+      dispatchNodeClick({
+        clientX: 600,
+        clientY: 180,
+        isPort,
+        nodeId: 'source',
+      });
+
+      expect(
+        screen.queryByTestId('ontology-connection-line')
+      ).not.toBeInTheDocument();
+      expect(persist).not.toHaveBeenCalled();
+    }
+  );
+
+  it('closes the pending picker without persisting', () => {
+    const persist = jest.fn();
+    render(<Harness onCreateRelation={persist} />);
+    dispatchNodeClick({
+      clientX: 600,
+      clientY: 180,
+      isPort: true,
+      nodeId: 'source',
+    });
+    dispatchNodeClick({
+      clientX: 780,
+      clientY: 180,
+      isPort: false,
+      nodeId: 'target',
+    });
+    fireEvent.click(screen.getByTestId('relationship-type-picker-cancel'));
+
+    expect(
+      screen.queryByTestId('ontology-connection-line')
+    ).not.toBeInTheDocument();
+    expect(persist).not.toHaveBeenCalled();
+  });
+
   it('does not render edit controls outside edit mode', () => {
     render(<Harness isEditMode={false} onCreateRelation={jest.fn()} />);
 

@@ -97,6 +97,7 @@ const initialState: OntologyState = {
 };
 let currentState: OntologyState;
 let currentRelease: OntologyRelease;
+let groupedWorking = false;
 let nextWorkingPage: string | undefined;
 let nextPageState: OntologyState | undefined;
 let nextPageError: Error | undefined;
@@ -145,18 +146,32 @@ const workingDiffPage = (after?: string) => {
   return {
     data: {
       state: isNextPage ? nextPageState ?? currentState : currentState,
-      data: [
-        {
-          changeType: 'ADDED',
-          entity: {
-            id: isNextPage ? 'account-id' : 'concept-id',
-            name: isNextPage ? 'Account' : 'Customer',
-            type: 'ontologyConcept',
-          },
-          memberKind: 'CONCEPT',
-          ontologyId: ontology.id,
-        },
-      ],
+      groups: groupedWorking
+        ? [
+            {
+              concept: 'FundsTransfer',
+              iri: 'urn:FundsTransfer',
+              parents: ['Payment', 'Transaction'],
+              propertyCount: 3,
+              changes: [],
+              changeType: 'ADDED',
+            },
+          ]
+        : undefined,
+      data: groupedWorking
+        ? []
+        : [
+            {
+              changeType: 'ADDED',
+              entity: {
+                id: isNextPage ? 'account-id' : 'concept-id',
+                name: isNextPage ? 'Account' : 'Customer',
+                type: 'ontologyConcept',
+              },
+              memberKind: 'CONCEPT',
+              ontologyId: ontology.id,
+            },
+          ],
       paging: {
         total: nextWorkingPage ? 2 : 1,
         after: isNextPage ? undefined : nextWorkingPage,
@@ -203,6 +218,7 @@ describe('OntologyReleasePanel', () => {
     currentState = { ...initialState };
     currentRelease = { ...release };
     nextWorkingPage = undefined;
+    groupedWorking = false;
     nextPageState = undefined;
     nextPageError = undefined;
     const ownerResponse = (url: string) => {
@@ -1608,5 +1624,20 @@ describe('OntologyReleasePanel', () => {
     ).toBeDisabled();
     expect(post).not.toHaveBeenCalled();
     expect(put).not.toHaveBeenCalled();
+  });
+
+  it('renders one server-grouped class change row instead of individual definition rows', async () => {
+    groupedWorking = true;
+    await renderPanel(true, 'changes');
+
+    expect(
+      await screen.findByTestId('ontology-working-concept-group')
+    ).toHaveTextContent('message.ontology-class-change-summary');
+    expect(
+      screen.getAllByTestId('ontology-working-concept-group')
+    ).toHaveLength(1);
+    expect(
+      screen.queryByText('label.ontology-member-concept')
+    ).not.toBeInTheDocument();
   });
 });

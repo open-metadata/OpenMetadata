@@ -190,6 +190,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       useOntologyGraph({
         containerRef,
         graphData,
+        nodePositions,
         inputNodes,
         mergedEdgesList,
         explorationMode,

@@ -786,7 +786,7 @@ describe('OntologyGraphView', () => {
       />
     );
 
-    expect(await screen.findByTestId('ontology-concept-editor')).toBeVisible();
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
   });
 
   it('links a reused pair the ontology left unlinked before writing the restriction', async () => {
@@ -1121,7 +1121,7 @@ describe('OntologyGraphView', () => {
       />
     );
 
-    expect(screen.getByRole('textbox', { name: 'label.name' })).toHaveValue('');
+    expect(screen.getByTestId('new-class-label')).toHaveValue('');
 
     rerender(
       <OntologyGraphView
@@ -1211,7 +1211,7 @@ describe('OntologyGraphView', () => {
     expect(screen.getByTestId('ontology-property-name')).toBeVisible();
   });
 
-  it('does not replay an old add-concept request after the graph remounts', async () => {
+  it('consumes a nonzero scoped add-concept request present at first mount', async () => {
     render(
       <OntologyGraphView
         isEditing
@@ -1224,9 +1224,7 @@ describe('OntologyGraphView', () => {
 
     await screen.findByTestId('native-ontology-graph');
 
-    expect(
-      screen.queryByTestId('ontology-concept-editor')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-new-class-panel')).toBeVisible();
   });
 
   it('shows a retryable error instead of a partial model', () => {

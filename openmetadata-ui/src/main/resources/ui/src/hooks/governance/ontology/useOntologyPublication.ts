@@ -160,7 +160,7 @@ export const useOntologyPublication = (
     queryFn: async ({ signal }) => {
       const value = await getOntologyWorkingDiff(
         ontologyId,
-        { limit: 25 },
+        { limit: 25, groupBy: 'concept' },
         signal
       );
       if (value.state.ontologyId !== ontologyId) {

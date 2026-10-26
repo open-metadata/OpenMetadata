@@ -581,12 +581,32 @@ const OntologyConceptInspector = ({
         <Badge color="brand" size="sm" type="pill-color">
           {humanizeName(concept.conceptType)}
         </Badge>
+        {concept.abstract ? (
+          <Badge color="gray" size="sm" type="pill-color">
+            {t('label.abstract')}
+          </Badge>
+        ) : null}
         {concept.provider ? (
           <Badge color="gray" size="sm" type="pill-color">
             {concept.provider}
           </Badge>
         ) : null}
       </Box>
+      <Box gap={1} wrap="wrap">
+        {concept.synonyms?.map((synonym) => (
+          <Badge key={synonym} size="sm">
+            {synonym}
+          </Badge>
+        ))}
+      </Box>
+      {concept.definitionSource ? (
+        <Typography
+          className="tw:break-all"
+          data-testid="ontology-concept-definition-source"
+          size="text-xs">
+          {t('label.definition-source')} · {concept.definitionSource}
+        </Typography>
+      ) : null}
       <Typography as="p" color="secondary" size="text-sm">
         {concept.description || t('label.no-description')}
       </Typography>

@@ -328,7 +328,7 @@ export const getOntologyState = async (
 
 export const getOntologyWorkingDiff = async (
   ontologyId: string,
-  params: Pick<ListParams, 'limit' | 'after'> = {},
+  params: Pick<ListParams, 'limit' | 'after'> & { groupBy?: 'concept' } = {},
   signal?: AbortSignal
 ) => {
   const response = await APIClient.get<OntologyWorkingDiff>(

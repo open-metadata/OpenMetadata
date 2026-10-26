@@ -951,7 +951,7 @@ describe('OntologyExplorerPage', () => {
 
     fireEvent.click(screen.getByTestId('ontology-add-concept'));
 
-    expect(await screen.findByTestId('ontology-concept-editor')).toBeVisible();
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
   });
 
   it('starts a new query in the selected native ontology', async () => {

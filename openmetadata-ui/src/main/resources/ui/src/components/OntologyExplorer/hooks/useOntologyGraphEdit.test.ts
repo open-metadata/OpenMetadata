@@ -92,14 +92,14 @@ describe('useOntologyGraphEdit', () => {
     });
   });
 
-  it('does not create a pending relation when the source is selected', () => {
+  it('cancels without persistence when the source is selected', () => {
     const { result } = setup();
 
     act(() => result.current.startArm('a', { x: 0, y: 0 }));
     act(() => result.current.selectTarget('a'));
 
     expect(result.current.pendingRelation).toBeNull();
-    expect(result.current.armedFromId).toBe('a');
+    expect(result.current.armedFromId).toBeNull();
   });
 
   it('cancels the gesture on Escape', () => {

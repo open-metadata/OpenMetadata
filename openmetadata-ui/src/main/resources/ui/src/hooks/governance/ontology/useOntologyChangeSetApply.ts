@@ -26,6 +26,7 @@ import {
   getOntologyChangeSet,
   listOntologyChangeSets,
 } from '../../../rest/ontologyAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useOntologyEditLease } from './useOntologyEditLease';
 
@@ -231,7 +232,13 @@ export const useOntologyChangeSetApply = ({
       return;
     }
     if (lease.state === 'contended' || lease.state === 'lost') {
-      block(t('message.native-ontology-import-lease-unavailable'));
+      block(
+        lease.lock?.holder
+          ? t('message.ontology-class-lease-holder', {
+              holder: getEntityName(lease.lock.holder),
+            })
+          : t('message.native-ontology-import-lease-unavailable')
+      );
 
       return;
     }

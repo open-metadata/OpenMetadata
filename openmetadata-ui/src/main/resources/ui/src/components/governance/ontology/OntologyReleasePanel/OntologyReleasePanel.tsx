@@ -123,7 +123,11 @@ const OntologyReleasePanel = ({
       currentUser?.id,
     ],
     queryFn: ({ signal }) =>
-      getOntologyWorkingDiff(ontology.id, { limit: 25, after }, signal),
+      getOntologyWorkingDiff(
+        ontology.id,
+        { limit: 25, after, groupBy: 'concept' },
+        signal
+      ),
     enabled: [
       view === 'changes',
       cursors.length > 1,
@@ -358,6 +362,37 @@ const OntologyReleasePanel = ({
       {renderChangeStatus()}
       {hasCoherentPreview && changes.data && (
         <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-3 tw:p-0">
+          {changes.data.groups?.map((group, index) => (
+            <li
+              data-testid="ontology-working-concept-group"
+              key={group.iri ?? index}>
+              <Card size="sm">
+                <Card.Content>
+                  <Box gap={2} justify="between">
+                    <Typography size="text-sm" weight="semibold">
+                      {group.concept
+                        ? t('message.ontology-class-change-summary', {
+                            concept: group.concept,
+                            parents: group.parents.length
+                              ? ' ⊑ ' + group.parents.join(', ')
+                              : '',
+                            count: group.propertyCount,
+                          })
+                        : group.changes
+                            .map((change) => getEntityName(change.entity))
+                            .join(', ')}
+                    </Typography>
+                    <Badge
+                      color={
+                        group.changeType === 'DEPRECATED' ? 'warning' : 'gray'
+                      }>
+                      {t('label.' + group.changeType.toLowerCase())}
+                    </Badge>
+                  </Box>
+                </Card.Content>
+              </Card>
+            </li>
+          ))}
           {changes.data.data.map((change) => (
             <li key={change.entity.id + ':' + change.memberKind}>
               <Card size="sm">

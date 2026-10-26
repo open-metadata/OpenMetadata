@@ -276,6 +276,7 @@ interface GraphComboMeta {
 }
 
 interface UseOntologyGraphProps {
+  nodePositions?: Record<string, { x: number; y: number }>;
   containerRef: React.RefObject<HTMLDivElement>;
   graphData: GraphData;
   inputNodes: OntologyNode[];
@@ -1140,6 +1141,7 @@ const getMaxNodeWidth = (nodes: NodeData[]): number =>
   }, NODE_WIDTH);
 
 export function useOntologyGraph({
+  nodePositions,
   containerRef,
   graphData,
   inputNodes,
@@ -1492,14 +1494,18 @@ export function useOntologyGraph({
 
   const positionStudioNodes = useCallback(
     async (graph: Graph) => {
-      const positions = await calculateStudioNodePositions(
-        graph.getNodeData(),
-        graph.getEdgeData(),
-        {
-          hierarchicalRelationTypes,
-          viewportWidth: containerRef.current?.offsetWidth,
-        }
-      );
+      const positions =
+        nodePositions &&
+        graph.getNodeData().every((node) => nodePositions[String(node.id)])
+          ? nodePositions
+          : await calculateStudioNodePositions(
+              graph.getNodeData(),
+              graph.getEdgeData(),
+              {
+                hierarchicalRelationTypes,
+                viewportWidth: containerRef.current?.offsetWidth,
+              }
+            );
       const updates = graph
         .getNodeData()
         .map((node) => {
@@ -1523,7 +1529,7 @@ export function useOntologyGraph({
         graph.updateNodeData(updates);
       }
     },
-    [containerRef, hierarchicalRelationTypes]
+    [containerRef, hierarchicalRelationTypes, nodePositions]
   );
 
   const applyBakedPositions = useCallback((graph: Graph, nodes: NodeData[]) => {
