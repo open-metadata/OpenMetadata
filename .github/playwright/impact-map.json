@@ -1452,6 +1452,22 @@
       ],
       "projects": ["chromium"],
       "specs": ["playwright/e2e/Flow/Navbar.spec.ts"]
+    },
+    {
+      "_comment": "The lineage seed behind LineageDataClass, run from entity-data.setup.ts. LineageFilters.spec.ts is the only spec that reads those entities and edges.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/e2e/lineage-data.helper.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"]
+    },
+    {
+      "_comment": "Browser helper tests run under playwright/browser-helper-tests.config.ts, not in any e2e project, so no change to them can alter a spec outcome. Mapped to no specs rather than left unmapped, so a change does not escalate to a full-suite run.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/browser-tests/**"
+      ],
+      "projects": [],
+      "specs": []
     }
   ]
 }

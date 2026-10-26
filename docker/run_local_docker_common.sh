@@ -566,11 +566,10 @@ run_local_docker_main() {
     sleep 5
   done
 
-  # The seeded app carries the weekly recreate-reindex cron (Sunday 00:30 UTC).
-  # A run that fires while data is being written swaps in indexes rebuilt from
-  # an earlier read, so those writes vanish from search. The Playwright CI
-  # fixture is a copy of this stack's data, and on 2026-10-25 it was cached
-  # without six lineage edges. Reindexing here is triggered explicitly below.
+  # A scheduled recreate-reindex that overlaps later writes swaps in indexes
+  # rebuilt from an earlier read, so those writes vanish from search. Reindex
+  # only through the explicit trigger below.
+  # ADR:2026-10-26-local-docker-stacks-reindex-on-demand-only
   ensure_app_installed "SearchIndexingApplication"
   if ! disable_app_schedule "SearchIndexingApplication"; then
     exit 1

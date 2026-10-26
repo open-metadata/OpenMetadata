@@ -149,8 +149,11 @@ export async function seedLineageAndSharedInfra(
   // A searchable document does not mean its lineage edge is searchable: the
   // edge is written to the downstream document separately. The CI fixture
   // copies the search data as it is now, so wait until the lineage API, which
-  // reads from search, returns every depth-2 entity.
-  const depth2Ids = depth2.map((entity) => entity.entityResponseData.id);
+  // reads from search, returns every seeded entity below the root.
+  // ADR:2026-10-26-local-docker-stacks-reindex-on-demand-only
+  const downstreamIds = [depth1, ...depth2].map(
+    (entity) => entity.entityResponseData.id
+  );
   await expect
     .poll(
       async () => {
@@ -159,10 +162,10 @@ export async function seedLineageAndSharedInfra(
         }>(
           await apiContext.get('/api/v1/lineage/getLineage', {
             params: {
-              fqn: depth1.entityResponseData.fullyQualifiedName ?? '',
-              type: getEntityTypeSearchIndexMapping(depth1.type),
+              fqn: root.entityResponseData.fullyQualifiedName ?? '',
+              type: getEntityTypeSearchIndexMapping(root.type),
               upstreamDepth: 0,
-              downstreamDepth: 1,
+              downstreamDepth: 2,
             },
           }),
           'lineage-data seeding: getLineage'
@@ -171,10 +174,10 @@ export async function seedLineageAndSharedInfra(
           Object.values(nodes).map((node) => node.entity?.id)
         );
 
-        return depth2Ids.filter((id) => !lineageIds.has(id));
+        return downstreamIds.filter((id) => !lineageIds.has(id));
       },
       {
-        message: 'depth-2 entities missing from the depth-1 lineage',
+        message: 'seeded entities missing from the root lineage',
         intervals: [1_000, 2_000, 5_000],
         timeout: 120_000,
       }
