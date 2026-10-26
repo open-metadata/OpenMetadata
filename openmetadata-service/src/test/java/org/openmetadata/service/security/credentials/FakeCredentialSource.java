@@ -267,6 +267,14 @@ final class FakeCredentialSource implements CredentialSource {
   @Override
   public Map<CredentialSubject, CredentialRecord> read(
       Collection<CredentialSubject> subjects, Map<CredentialSubject, CredentialRecord> previous) {
+    return read(subjects, previous, new HashMap<>());
+  }
+
+  @Override
+  public Map<CredentialSubject, CredentialRecord> read(
+      Collection<CredentialSubject> subjects,
+      Map<CredentialSubject, CredentialRecord> previous,
+      Map<CredentialSubject, Throwable> unconverted) {
     fullReads.incrementAndGet();
     for (CredentialSubject subject : subjects) {
       fullReadsBySubject
@@ -277,7 +285,11 @@ final class FakeCredentialSource implements CredentialSource {
     failIfPoisoned(subjects);
     Map<CredentialSubject, CredentialRecord> records = new HashMap<>();
     for (CredentialSubject subject : subjects) {
-      if (!unconvertible.contains(subject.principal())) {
+      if (unconvertible.contains(subject.principal())) {
+        unconverted.put(
+            subject,
+            new IllegalStateException("injected conversion failure of " + subject.principal()));
+      } else {
         records.put(subject, recordOf(rows.get(subject.principal()), previous.get(subject)));
       }
     }

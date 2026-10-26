@@ -26,7 +26,6 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlStatements;
@@ -47,7 +46,6 @@ import org.openmetadata.service.security.credentials.CredentialSourceDAO.FullRow
  * skipped. A statement failure propagates, because a failed read must never look like an absent
  * credential; a subject whose rows cannot be converted is left out of the result on its own.
  */
-@Slf4j
 final class JdbiCredentialSource implements CredentialSource {
 
   private final Jdbi jdbi;
@@ -79,6 +77,14 @@ final class JdbiCredentialSource implements CredentialSource {
   @Override
   public Map<CredentialSubject, CredentialRecord> read(
       Collection<CredentialSubject> subjects, Map<CredentialSubject, CredentialRecord> previous) {
+    return read(subjects, previous, new HashMap<>());
+  }
+
+  @Override
+  public Map<CredentialSubject, CredentialRecord> read(
+      Collection<CredentialSubject> subjects,
+      Map<CredentialSubject, CredentialRecord> previous,
+      Map<CredentialSubject, Throwable> unconverted) {
     Map<CredentialSubject, CredentialRecord> result = new HashMap<>();
     if (!subjects.isEmpty()) {
       Map<CredentialSubject, String> hashes = hashesOf(subjects);
@@ -87,22 +93,23 @@ final class JdbiCredentialSource implements CredentialSource {
               .collect(groupingBy(FullRow::nameHash));
       BiFunction<String, AuthenticationMechanism, AuthenticationMechanism> decrypt =
           (name, mechanism) -> secretsManager.get().decryptAuthenticationMechanism(name, mechanism);
-      result = convert(hashes, rows, previous, decrypt);
+      result = convert(hashes, rows, previous, decrypt, unconverted);
     }
     return result;
   }
 
   /**
    * Converts each subject on its own. A subject whose rows cannot be converted, because a decrypt
-   * or a stored JSON value fails, is left out with its cause logged at DEBUG, so the other
-   * subjects of the statement still confirm. The caller treats a missing subject as unconfirmed
-   * and warns about it once per backoff window, since this runs on every read of the subject.
+   * or a stored JSON value fails, is left out with its cause put into {@code unconverted}, so the
+   * other subjects of the statement still confirm. The caller treats a missing subject as
+   * unconfirmed and reports it with the cause.
    */
   static Map<CredentialSubject, CredentialRecord> convert(
       Map<CredentialSubject, String> hashes,
       Map<String, List<FullRow>> rowsByHash,
       Map<CredentialSubject, CredentialRecord> previous,
-      BiFunction<String, AuthenticationMechanism, AuthenticationMechanism> decrypt) {
+      BiFunction<String, AuthenticationMechanism, AuthenticationMechanism> decrypt,
+      Map<CredentialSubject, Throwable> unconverted) {
     Map<CredentialSubject, CredentialRecord> result = new HashMap<>();
     hashes.forEach(
         (subject, hash) -> {
@@ -110,10 +117,7 @@ final class JdbiCredentialSource implements CredentialSource {
             List<FullRow> rows = rowsByHash.getOrDefault(hash, List.of());
             result.put(subject, toRecord(rows, previous.get(subject), decrypt));
           } catch (RuntimeException failure) {
-            LOG.debug(
-                "The stored credentials of {} could not be converted",
-                subject.principal(),
-                failure);
+            unconverted.put(subject, failure);
           }
         });
     return result;

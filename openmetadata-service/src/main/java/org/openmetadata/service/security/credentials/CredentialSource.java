@@ -47,4 +47,15 @@ interface CredentialSource {
    */
   Map<CredentialSubject, CredentialRecord> read(
       Collection<CredentialSubject> subjects, Map<CredentialSubject, CredentialRecord> previous);
+
+  /**
+   * As {@link #read(Collection, Map)}, and puts into {@code unconverted} the cause for each subject
+   * it left out, so the caller can report why. The default reports no cause.
+   */
+  default Map<CredentialSubject, CredentialRecord> read(
+      Collection<CredentialSubject> subjects,
+      Map<CredentialSubject, CredentialRecord> previous,
+      Map<CredentialSubject, Throwable> unconverted) {
+    return read(subjects, previous);
+  }
 }

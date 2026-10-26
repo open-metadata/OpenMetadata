@@ -581,10 +581,12 @@ public final class CredentialVerifier implements Managed {
       ReadReason reason,
       long stampNanos) {
     long started = ticker.read();
+    Map<CredentialSubject, Throwable> unconverted = new HashMap<>();
     try {
-      Map<CredentialSubject, CredentialRecord> records = source.read(subjects, previous);
+      Map<CredentialSubject, CredentialRecord> records =
+          source.read(subjects, previous, unconverted);
       metrics.recordRead(reason, ReadOutcome.OK, ticker.read() - started);
-      recordConversions(subjects, records, reason, stampNanos);
+      recordConversions(subjects, records, unconverted, reason, stampNanos);
       return records;
     } catch (RuntimeException | Error failure) {
       metrics.recordRead(reason, ReadOutcome.ERROR, ticker.read() - started);
@@ -598,6 +600,7 @@ public final class CredentialVerifier implements Managed {
   private void recordConversions(
       Collection<CredentialSubject> subjects,
       Map<CredentialSubject, CredentialRecord> records,
+      Map<CredentialSubject, Throwable> unconverted,
       ReadReason reason,
       long stampNanos) {
     long leftOut = 0;
@@ -606,7 +609,7 @@ public final class CredentialVerifier implements Managed {
         backoff.recordSuccess(subject, stampNanos);
       } else {
         leftOut++;
-        recordLeftOut(subject, reason, stampNanos);
+        recordLeftOut(subject, unconverted.get(subject), reason, stampNanos);
       }
     }
     if (leftOut > 0) {
@@ -615,12 +618,15 @@ public final class CredentialVerifier implements Managed {
   }
 
   /** Warns once per backoff window, however many reads leave the subject out within it. */
-  private void recordLeftOut(CredentialSubject subject, ReadReason reason, long stampNanos) {
+  private void recordLeftOut(
+      CredentialSubject subject, Throwable cause, ReadReason reason, long stampNanos) {
     if (backoff.recordLeftOut(subject, stampNanos, reason.startedByCheck())) {
       LOG.warn(
-          "The stored credentials of {} could not be converted, so checks that need a read of it"
-              + " answer unavailable until a read converts them; the cause is logged at DEBUG",
-          subject.principal());
+          "The stored credentials of {} could not be converted ({}), so checks that need a read of"
+              + " it answer unavailable until a read converts them",
+          subject.principal(),
+          cause == null ? "no cause reported" : cause.getMessage(),
+          cause);
     }
   }
 

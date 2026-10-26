@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -194,10 +195,14 @@ class JdbiCredentialSourceTest {
           throw new IllegalStateException("secret " + name + " is gone");
         };
 
+    Map<CredentialSubject, Throwable> unconverted = new HashMap<>();
+
     Map<CredentialSubject, CredentialRecord> result =
-        JdbiCredentialSource.convert(hashes, rows, Map.of(), deletedSecret);
+        JdbiCredentialSource.convert(hashes, rows, Map.of(), deletedSecret, unconverted);
 
     assertEquals(Set.of(bob, ghost), result.keySet());
+    assertEquals(Set.of(bot), unconverted.keySet());
+    assertEquals("secret ingestion-bot is gone", unconverted.get(bot).getMessage());
     assertEquals(Set.of(TokenDigest.of("pat-one")), result.get(bob).digests());
     assertEquals(CredentialRecord.ABSENT, result.get(ghost));
   }
@@ -217,10 +222,13 @@ class JdbiCredentialSourceTest {
             List.of(
                 new FullRow("hash-bob", "user-2", false, 10, null, T2, PLAIN_USER, "not json")));
 
+    Map<CredentialSubject, Throwable> unconverted = new HashMap<>();
+
     Map<CredentialSubject, CredentialRecord> result =
-        JdbiCredentialSource.convert(hashes, rows, Map.of(), decrypt);
+        JdbiCredentialSource.convert(hashes, rows, Map.of(), decrypt, unconverted);
 
     assertEquals(Set.of(alice), result.keySet());
+    assertEquals(Set.of(bob), unconverted.keySet());
     assertEquals(Set.of(TokenDigest.of("pat-one")), result.get(alice).digests());
   }
 
