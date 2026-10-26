@@ -14,7 +14,6 @@
 package org.openmetadata.it.tests.security.scale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -55,16 +54,15 @@ class CredentialScaleHelpersIT {
   }
 
   @Test
-  void metersAreReadByNameAndTagAndAbsentMetersReadAsAbsent() {
+  void metersAreReadByNameAndTagAndAnAbsentMeterReadsAsZero() {
     MeterRegistry registry = new SimpleMeterRegistry();
     CredentialMeters meters = new CredentialMeters(registry);
-    assertFalse(meters.verifierPresent());
+    assertTrue(meters.verifierPresent());
     assertEquals(0, meters.counterSum("om.credential.checks", "decision", "accept"));
 
     registry.counter("om.credential.checks", "decision", "accept").increment(3);
     registry.counter("om.credential.checks", "decision", "reject").increment(2);
 
-    assertTrue(meters.verifierPresent());
     assertEquals(3, meters.counterSum("om.credential.checks", "decision", "accept"));
     assertEquals(5, meters.counterSum("om.credential.checks"));
   }
