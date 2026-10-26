@@ -35,6 +35,7 @@ import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -87,6 +88,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.credentials.CredentialSourceTestSupport;
+import org.openmetadata.service.security.credentials.TokenDigest;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.TokenUtil;
 
@@ -3164,22 +3166,30 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertNotNull(getLoggedInUser(second));
   }
 
+  /**
+   * A PATCH cannot change a user's authentication mechanism: {@code UserRepository} puts the
+   * stored one back before the update, so the token a patch carries is never stored and is
+   * rejected. Bot tokens change through generateToken and revokeToken, which the tests above cover.
+   */
   @Test
-  void test_patchBotAuthMechanism_revokesOldToken(TestNamespace ns) {
+  void test_patchBotAuthMechanism_isIgnored(TestNamespace ns) {
     User botUser = createBotUser(ns, "patchedbot");
-    OpenMetadataClient oldClient = clientWithToken(generateBotToken(botUser, JWTTokenExpiry.Seven));
-    assertEquals(botUser.getId(), getLoggedInUser(oldClient).getId());
-    JWTAuthMechanism replacement =
+    String storedToken = generateBotToken(botUser, JWTTokenExpiry.Seven);
+    OpenMetadataClient storedClient = clientWithToken(storedToken);
+    assertEquals(botUser.getId(), getLoggedInUser(storedClient).getId());
+    JWTAuthMechanism patched =
         JWTTokenGenerator.getInstance().generateJWTToken(botUser, JWTTokenExpiry.Thirty);
 
     SdkClients.adminClient()
         .getHttpClient()
         .executeForString(
-            HttpMethod.PATCH, "/v1/users/" + botUser.getId(), replaceJwtMechanism(replacement));
+            HttpMethod.PATCH, "/v1/users/" + botUser.getId(), replaceJwtMechanism(patched));
 
-    assertUnauthorized(oldClient);
     assertEquals(
-        botUser.getId(), getLoggedInUser(clientWithToken(replacement.getJWTToken())).getId());
+        Set.of(TokenDigest.of(storedToken)),
+        CredentialSourceTestSupport.digests(Entity.getJdbi(), botUser.getName()));
+    assertEquals(botUser.getId(), getLoggedInUser(storedClient).getId());
+    assertUnauthorized(clientWithToken(patched.getJWTToken()));
   }
 
   @Test
