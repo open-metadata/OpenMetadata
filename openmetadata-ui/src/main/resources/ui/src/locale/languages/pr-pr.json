@@ -3820,6 +3820,7 @@
     "view-plural": "مشاهدات",
     "view-property-plural": "مشاهده ویژگی‌ها",
     "view-reindex-failure-plural": "مشاهده خطاهای فهرست‌بندی مجدد",
+    "view-replies-by-user": "مشاهده پاسخ‌های {{user}}",
     "view-run-history": "مشاهده تاریخچه اجرا",
     "view-selected": "مشاهده موارد انتخاب‌شده",
     "view-upstream-issue": "مشاهده مشکل بالادست",

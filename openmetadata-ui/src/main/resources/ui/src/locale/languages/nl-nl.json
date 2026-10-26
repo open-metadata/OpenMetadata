@@ -3820,6 +3820,7 @@
     "view-plural": "Weergaven",
     "view-property-plural": "Eigenschappen bekijken",
     "view-reindex-failure-plural": "Bekijk fouten bij het opnieuw indexeren",
+    "view-replies-by-user": "Antwoorden van {{user}} bekijken",
     "view-run-history": "Uitvoeringsgeschiedenis bekijken",
     "view-selected": "Bekijk geselecteerd",
     "view-upstream-issue": "Upstream probleem bekijken",

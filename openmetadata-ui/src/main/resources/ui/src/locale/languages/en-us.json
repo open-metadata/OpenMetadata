@@ -3820,6 +3820,7 @@
     "view-plural": "Views",
     "view-property-plural": "View Properties",
     "view-reindex-failure-plural": "View Reindex Failures",
+    "view-replies-by-user": "View replies by {{user}}",
     "view-run-history": "View run history",
     "view-selected": "View Selected",
     "view-upstream-issue": "View upstream issue",

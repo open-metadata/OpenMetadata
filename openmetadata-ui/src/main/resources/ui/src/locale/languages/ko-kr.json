@@ -3820,6 +3820,7 @@
     "view-plural": "뷰들",
     "view-property-plural": "속성 보기",
     "view-reindex-failure-plural": "재색인 실패 보기",
+    "view-replies-by-user": "{{user}}의 답글 보기",
     "view-run-history": "실행 기록 보기",
     "view-selected": "선택된 결과 보기",
     "view-upstream-issue": "업스트림 문제 보기",

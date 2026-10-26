@@ -14,15 +14,18 @@
 import '@github/g-emoji-element';
 import {
   Button,
+  ButtonUtility,
   Popover,
   PopoverTrigger,
 } from '@openmetadata/ui-core-components';
-import { FaceSmile } from '@openmetadata/ui-core-components/icons';
+import {
+  FaceSmile,
+  Reactions as AddReactionIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { groupBy } from 'lodash';
 import { FC, MouseEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-add-emoji.svg';
 import {
   REACTION_LIST,
   REACTION_TYPE_LIST,
@@ -123,6 +126,10 @@ const Reactions: FC<ReactionsProps> = ({
     );
   });
 
+  const addReactionLabel = t('label.add-entity', {
+    entity: t('label.reaction-lowercase-plural'),
+  });
+
   return (
     <div
       className={classNames(
@@ -133,30 +140,28 @@ const Reactions: FC<ReactionsProps> = ({
       {emojis}
       {canAddReaction && (
         <PopoverTrigger isOpen={visible} onOpenChange={setVisible}>
-          <Button
-            aria-label={t('label.add-entity', {
-              entity: t('label.reaction-lowercase-plural'),
-            })}
-            className={
-              isPill(variant)
-                ? 'tw:h-6.5 tw:w-7 tw:rounded-full! tw:p-1! tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover'
-                : 'tw:size-[22px] tw:rounded-md! tw:p-[3px]!'
-            }
-            color="tertiary"
-            data-testid="add-reactions"
-            iconLeading={
-              isPill(variant) ? (
-                <FaceSmile data-icon size={16} />
-              ) : (
-                <AddReactionIcon data-icon height={16} width={16} />
-              )
-            }
-            size="xs"
-            title={t('label.add-entity', {
-              entity: t('label.reaction-lowercase-plural'),
-            })}
-            onClick={(e: MouseEvent) => e.stopPropagation()}
-          />
+          {isPill(variant) ? (
+            <Button
+              aria-label={addReactionLabel}
+              className="tw:h-6.5 tw:w-7 tw:rounded-full! tw:p-1! tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover"
+              color="tertiary"
+              data-testid="add-reactions"
+              iconLeading={<FaceSmile data-icon size={16} />}
+              size="xs"
+              title={addReactionLabel}
+              onClick={(e: MouseEvent) => e.stopPropagation()}
+            />
+          ) : (
+            <ButtonUtility
+              aria-label={addReactionLabel}
+              color="tertiary"
+              data-testid="add-reactions"
+              icon={AddReactionIcon}
+              size="sm"
+              title={addReactionLabel}
+              onClick={(e: MouseEvent) => e.stopPropagation()}
+            />
+          )}
           <Popover
             arrow
             containerClassName="tw:flex tw:gap-2 tw:p-1"
