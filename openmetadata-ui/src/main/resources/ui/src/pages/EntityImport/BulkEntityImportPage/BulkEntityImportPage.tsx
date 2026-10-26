@@ -47,6 +47,11 @@ import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 import { useLocation, useNavigate } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
+import {
+  BULK_EDIT_OPERATION_KEY,
+  filterBulkEditRows,
+  getBulkEditRenderedColumns,
+} from '../../../components/BulkEditEntity/BulkEditEntity.utils';
 import Banner from '../../../components/common/Banner/Banner';
 import { LazyDataGrid } from '../../../components/common/DataGrid/LazyDataGrid';
 import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
@@ -323,6 +328,44 @@ const BulkEntityImportPage = () => {
     [columns, shouldShowCsvColumn]
   );
 
+  const shouldRenderMetricImportEditor = useMemo(
+    () => isRichGridImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE,
+    [isRichGridImport, activeStep]
+  );
+
+  const shouldRenderBulkEditView = useMemo(
+    () => isBulkEdit || shouldRenderMetricImportEditor,
+    [isBulkEdit, shouldRenderMetricImportEditor]
+  );
+
+  const [bulkEditSearchText, setBulkEditSearchText] = useState('');
+  const bulkEditGridRows = useMemo(
+    () =>
+      shouldRenderBulkEditView
+        ? filterBulkEditRows(dataSource, bulkEditSearchText)
+        : dataSource,
+    [bulkEditSearchText, dataSource, shouldRenderBulkEditView]
+  );
+
+  // The bulk edit grid renders an operation column and frozen columns first;
+  // the controller maps aria-colindex to a column, so it needs that order.
+  const gridEditColumns = useMemo(
+    () =>
+      shouldRenderBulkEditView
+        ? getBulkEditRenderedColumns(filterColumns, {
+            key: BULK_EDIT_OPERATION_KEY,
+            name: '',
+            editable: false,
+          })
+        : filterColumns,
+    [filterColumns, shouldRenderBulkEditView]
+  );
+
+  const handleClipboardError = useCallback(
+    () => showErrorToast(t('message.clipboard-not-available')),
+    [t]
+  );
+
   const {
     handleCopy,
     handlePaste: actualHandlePaste,
@@ -333,7 +376,9 @@ const BulkEntityImportPage = () => {
   } = useGridEditController({
     dataSource,
     setDataSource,
-    columns: filterColumns,
+    columns: gridEditColumns,
+    rows: bulkEditGridRows,
+    onClipboardError: handleClipboardError,
   });
 
   const bulkEditChangeSummary = useMemo(() => {
@@ -1706,9 +1751,6 @@ const BulkEntityImportPage = () => {
     </div>
   );
 
-  const shouldRenderMetricImportEditor =
-    isRichGridImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE;
-
   const metricImportWorkflowHeaderConfig = useMemo(
     () => ({
       currentLabel: t('label.import'),
@@ -1755,10 +1797,12 @@ const BulkEntityImportPage = () => {
             }
             isValidating={isValidating}
             pushToUndoStack={pushToUndoStack}
+            searchText={bulkEditSearchText}
             setGridContainer={setGridContainer}
             sourceEntityType={effectiveSourceEntityType}
             validateCSVData={validateCSVData}
             validationData={validationData}
+            visibleRows={bulkEditGridRows}
             workflowHeaderConfig={
               shouldRenderMetricImportEditor
                 ? metricImportWorkflowHeaderConfig
@@ -1768,6 +1812,7 @@ const BulkEntityImportPage = () => {
               shouldRenderMetricImportEditor ? 'import' : 'bulkEdit'
             }
             onCSVReadComplete={onCSVReadComplete}
+            onSearchTextChange={setBulkEditSearchText}
           />
         ) : (
           <>

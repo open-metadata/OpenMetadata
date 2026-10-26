@@ -1183,11 +1183,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           continue;
         }
         updateTaskDescription(storedTask, updatedTask);
-        updateTags(
-            storedTask.getFullyQualifiedName(),
-            EntityUtil.getFieldName(TASKS_FIELD, updatedTask.getName(), FIELD_TAGS),
-            storedTask.getTags(),
-            updatedTask.getTags());
+        updatedTask.setTags(
+            updateTags(
+                storedTask.getFullyQualifiedName(),
+                EntityUtil.getFieldName(TASKS_FIELD, updatedTask.getName(), FIELD_TAGS),
+                storedTask.getTags(),
+                updatedTask.getTags()));
       }
 
       boolean removedTasks = updatedTasks.size() < origTasks.size();
@@ -1717,10 +1718,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Build database-specific serviceType filters
     String mysqlServiceTypeFilter =
         serviceType != null
-            ? "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = '" + serviceType + "'"
+            ? "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = :psServiceType"
             : "";
     String postgresServiceTypeFilter =
-        serviceType != null ? "AND pe.json->>'serviceType' = '" + serviceType + "'" : "";
+        serviceType != null ? "AND pe.json->>'serviceType' = :psServiceType" : "";
 
     String domainFilterSql =
         domainId != null
@@ -1738,9 +1739,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Build tier filter using tag_usage table (works on both MySQL and PostgreSQL)
     String tierFilterSql =
         tier != null
-            ? "AND EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = pe.fqnHash AND tu.tagFQN = '"
-                + tier.replace("'", "''")
-                + "')"
+            ? "AND EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = pe.fqnHash AND tu.tagFQN = :psTier)"
             : "";
 
     // Parse timestamp filters
@@ -1783,10 +1782,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       if (endTs != null) {
         mysqlStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
       }
-      mysqlStatusFilter +=
-          "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
-              + statusFilter.replace("'", "''")
-              + "'";
+      mysqlStatusFilter += "ORDER BY eets_filter.timestamp DESC LIMIT 1) = :psStatus";
     } else if (statusFilter != null) {
       // Case 2: Status only = check overall latest status
       mysqlStatusFilter =
@@ -1794,9 +1790,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               + "FROM entity_extension_time_series eets_filter "
               + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
               + "  AND eets_filter.extension = 'pipeline.pipelineStatus' "
-              + "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
-              + statusFilter.replace("'", "''")
-              + "'";
+              + "ORDER BY eets_filter.timestamp DESC LIMIT 1) = :psStatus";
     } else if (startTs != null || endTs != null) {
       // Case 3: Timestamps only = check if pipeline ran in time range
       mysqlStatusFilter =
@@ -1827,10 +1821,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       if (endTs != null) {
         postgresStatusFilter += "  AND eets_filter.timestamp <= " + endTs + " ";
       }
-      postgresStatusFilter +=
-          "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
-              + statusFilter.replace("'", "''")
-              + "'";
+      postgresStatusFilter += "ORDER BY eets_filter.timestamp DESC LIMIT 1) = :psStatus";
     } else if (statusFilter != null) {
       // Case 2: Status only = check overall latest status
       postgresStatusFilter =
@@ -1838,9 +1829,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               + "FROM entity_extension_time_series eets_filter "
               + "WHERE eets_filter.entityFQNHash = pe.fqnHash "
               + "  AND eets_filter.extension = 'pipeline.pipelineStatus' "
-              + "ORDER BY eets_filter.timestamp DESC LIMIT 1) = '"
-              + statusFilter.replace("'", "''")
-              + "'";
+              + "ORDER BY eets_filter.timestamp DESC LIMIT 1) = :psStatus";
     } else if (startTs != null || endTs != null) {
       // Case 3: Timestamps only = check if pipeline ran in time range
       postgresStatusFilter =
@@ -1871,7 +1860,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                 postgresStatusFilter,
                 searchFilter,
                 limit,
-                offset);
+                offset,
+                service,
+                serviceType,
+                statusFilter,
+                tier);
 
     // Get total count for pagination
     int total =
@@ -1886,7 +1879,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                 tierFilterSql,
                 mysqlStatusFilter,
                 postgresStatusFilter,
-                searchFilter);
+                searchFilter,
+                service,
+                serviceType,
+                statusFilter,
+                tier);
 
     // Convert rows to Pipeline objects and build summaries
     List<PipelineSummary> summaries = new ArrayList<>();
@@ -2116,7 +2113,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   ownerFilter,
                   tierFilter,
                   startTsFilter,
-                  endTsFilter);
+                  endTsFilter,
+                  service,
+                  serviceType,
+                  status,
+                  tier);
       List<CollectionDAO.ServiceBreakdownRow> serviceRows =
           daoCollection
               .entityExtensionTimeSeriesDao()
@@ -2129,7 +2130,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   ownerFilter,
                   tierFilter,
                   startTsFilter,
-                  endTsFilter);
+                  endTsFilter,
+                  service,
+                  serviceType,
+                  status,
+                  tier);
 
       PipelineMetrics metrics = new PipelineMetrics();
       metrics.setDataAvailable(true);
@@ -2249,7 +2254,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   postgresStatusFilter,
                   domainFilter,
                   ownerFilter,
-                  tierFilter);
+                  tierFilter,
+                  service,
+                  serviceType,
+                  status,
+                  tier);
 
       Map<String, PipelineExecutionTrend> trendMap = new HashMap<>();
       int totalSuccess = 0, totalFailed = 0, totalExecutions = 0;
@@ -2417,7 +2426,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   postgresStatusFilter,
                   domainFilter,
                   ownerFilter,
-                  tierFilter);
+                  tierFilter,
+                  service,
+                  serviceType,
+                  status,
+                  tier);
 
       List<PipelineRuntimeTrend> trends = new ArrayList<>();
       for (CollectionDAO.RuntimeTrendRow row : rows) {
@@ -2523,9 +2536,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private String buildServiceTypeFilter(String serviceType) {
     if (serviceType != null && !serviceType.isEmpty()) {
-      String safeServiceType = serviceType.replace("'", "''");
-      String filter =
-          "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = '" + safeServiceType + "'";
+      String filter = "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = :psServiceType";
       LOG.debug("buildServiceTypeFilter: input='{}', filter='{}'", serviceType, filter);
       return filter;
     }
@@ -2535,18 +2546,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private String buildMysqlStatusFilter(String status) {
     if (status != null && !status.isEmpty()) {
-      String safeStatus = status.replace("'", "''");
-      return "AND eets.json IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = '"
-          + safeStatus
-          + "'";
+      return "AND eets.json IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = :psStatus";
     }
     return "";
   }
 
   private String buildPostgresStatusFilter(String status) {
     if (status != null && !status.isEmpty()) {
-      String safeStatus = status.replace("'", "''");
-      return "AND eets.json IS NOT NULL AND eets.json->>'executionStatus' = '" + safeStatus + "'";
+      return "AND eets.json IS NOT NULL AND eets.json->>'executionStatus' = :psStatus";
     }
     return "";
   }
@@ -2628,28 +2635,22 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private String buildTierFilter(String tier) {
     if (tier != null && !tier.isEmpty()) {
-      String safeTier = tier.replace("'", "''");
       return "AND EXISTS (SELECT 1 FROM tag_usage tu "
           + "WHERE tu.targetFQNHash = pe.fqnHash "
-          + "AND tu.tagFQN = '"
-          + safeTier
-          + "')";
+          + "AND tu.tagFQN = :psTier)";
     }
     return "";
   }
 
   private String buildServiceFilter(String service) {
     if (service != null && !service.isEmpty()) {
-      String safeService = service.replace("'", "''");
       return "AND EXISTS (SELECT 1 FROM entity_relationship er "
           + "JOIN pipeline_service_entity pse ON er.fromId = pse.id "
           + "WHERE er.toId = pe.id "
           + "AND er.fromEntity = 'pipelineService' "
           + "AND er.toEntity = 'pipeline' "
           + "AND er.relation = 0 "
-          + "AND pse.name = '"
-          + safeService
-          + "')";
+          + "AND pse.name = :psService)";
     }
     LOG.debug("buildServiceFilter: returning empty filter (service was null or empty)");
     return "";

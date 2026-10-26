@@ -89,7 +89,7 @@ check_version() {
         return
     fi
     for v in "${required_versions[@]}"; do
-        if [[ "$current" =~ $v.* ]]; then
+        if [[ "$current" =~ ^v?$v ]]; then
             echo "✓ $tool_name version $version is supported."
             return
         fi
@@ -109,6 +109,20 @@ for dependency in python docker java maven jq node yarn antlr; do
     required_version=${dependency["required_version"]}
     check_version $tool_name "$version" "$required_version"
 done
+
+# The UI's engines floor; an older 22.x passes the major check above but fails `yarn install`.
+node_floor="$(sed 's/^v//' "$(dirname "${BASH_SOURCE[0]}")/../openmetadata-ui/src/main/resources/ui/.nvmrc")"
+if [[ $(check_command_existence node) -eq 0 ]] && ! awk -v current="$(node --version | sed 's/^v//')" -v floor="$node_floor" 'BEGIN {
+    split(current, c, "."); split(floor, f, ".")
+    for (i = 1; i <= 3; i++) {
+        if (c[i] + 0 > f[i] + 0) exit 0
+        if (c[i] + 0 < f[i] + 0) exit 1
+    }
+    exit 0
+}'; then
+    print_error "Node $(node --version) is older than v$node_floor (.nvmrc); yarn install will reject it. Run: nvm install $node_floor"
+    code=1
+fi
 if [[ $code -eq 0 ]]; then
     echo "✓ All prerequisites are met."
 else

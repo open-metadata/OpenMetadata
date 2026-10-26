@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=22.0.0",
+    "node": ">=22.23.4",
     "yarn": "^1.22.0"
   },
   "repository": {
@@ -113,7 +113,7 @@
     "cronstrue": "^2.53.0",
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
     "diff": "^8.0.3",
-    "dompurify": "^3.4.13",
+    "dompurify": "^3.4.17",
     "elkjs": "^0.9.3",
     "eventemitter3": "^5.0.1",
     "fast-json-patch": "^3.1.1",
@@ -293,7 +293,7 @@
     "path-to-regexp": "1.9.0",
     "cookie": "0.7.0",
     "cross-spawn": "7.0.5",
-    "serialize-javascript": "7.0.5",
+    "serialize-javascript": "7.1.4",
     "@melloware/react-logviewer/immutable": "5.1.9",
     "@react-awesome-query-builder/core/immutable": "4.3.9",
     "@tootallnate/once": "3.0.1",
@@ -314,7 +314,7 @@
     "postcss": "8.5.23",
     "postcss-selector-parser": "7.1.7",
     "socket.io-parser": "4.2.7",
-    "undici": "^6.28.0",
+    "undici": "^6.29.1",
     "qs": "6.16.1",
     "follow-redirects": "1.16.1"
   }

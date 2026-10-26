@@ -192,13 +192,33 @@ jobs:
           wait-interval: 90
 
       - name: Verify PR labels
+        # verify-pr-label-action refuses to run on `pull_request` events for
+        # cross-repository PRs (v1.4.0 exits 1 with "PRs from forks are only
+        # supported when trigger on pull_request_target"), so same-repo PRs go
+        # through the action and fork PRs get an equivalent read-only check.
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           valid-labels: "safe to test"
           pull-request-number: "${{ github.event.pull_request.number }}"
           disable-reviews: true
+
+      - name: Verify safe-to-test label (fork PRs)
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        # Reads labels via GET /repos/{repo}/issues/{n}/labels; for pull
+        # requests that endpoint accepts either the Issues or the Pull
+        # requests repo permission (read) — covered by pull-requests: read.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! gh api "/repos/${REPO}/issues/${PR_NUMBER}/labels" --jq '.[].name' | grep -Fxq 'safe to test'; then
+            echo "::error::PR is missing the 'safe to test' label — a maintainer must add it to run CI (PRs from forks cannot be verified by verify-pr-label-action on pull_request events)."
+            exit 1
+          fi
 
       - name: Checkout
         uses: actions/checkout@v5

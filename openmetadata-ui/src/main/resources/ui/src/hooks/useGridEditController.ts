@@ -14,6 +14,9 @@
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Column } from 'react-data-grid';
+import { mergeGridRows } from '../utils/CSV/GridRowsUtils';
+
+type SetRows = (rows: Record<string, string>[]) => void;
 
 export type Range = {
   startRow: number;
@@ -95,10 +98,17 @@ function useClipboardHandlers(
   selectedRange: Range | null,
   getFinalSelectedRange: () => Range | null,
   dataSource: Record<string, string>[],
-  setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>,
+  setDataSource: SetRows,
   columns: Column<Record<string, string>>[],
-  pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void
+  pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void,
+  onClipboardError?: () => void
 ) {
+  // The cells of the last grid copy, pasted as-is. Other text is split into
+  // rows and tab-separated columns (what spreadsheets copy) — except into a
+  // single selected cell, where a description with commas or newlines from
+  // another page must stay one value instead of overwriting its neighbours.
+  const copiedCells = useRef<{ text: string; cells: string[][] } | null>(null);
+
   const handleCopy = useCallback(() => {
     const range = getFinalSelectedRange();
     if (range && dataSource.length > 0) {
@@ -108,22 +118,22 @@ function useClipboardHandlers(
       const minCol = Math.min(startCol, endCol);
       const maxCol = Math.max(startCol, endCol);
 
-      const tsv: string[] = [];
+      const cells: string[][] = [];
       for (let r = minRow; r <= maxRow; r++) {
         const row = dataSource[r];
         const rowValues: string[] = [];
         for (let c = minCol; c <= maxCol; c++) {
-          const key = columns[c].key;
-          let value = row[key];
-          if (value === undefined || value === null) {
-            value = '';
-          }
-          rowValues.push(value || '');
+          rowValues.push(row[columns[c].key] || '');
         }
-        tsv.push(rowValues.join(','));
+        cells.push(rowValues);
       }
+      // Tab-separated, like spreadsheets, so it parses back the same way.
+      const text = cells.map((rowValues) => rowValues.join('\t')).join('\n');
+      // Stored with the line endings paste normalises, so a cell holding a
+      // CRLF still matches and pastes back cell for cell.
+      copiedCells.current = { text: text.replaceAll('\r\n', '\n'), cells };
       if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(tsv.join('\n'));
+        navigator.clipboard.writeText(text).catch(() => onClipboardError?.());
 
         return undefined;
       } else {
@@ -132,7 +142,7 @@ function useClipboardHandlers(
         // and the grid stops responding until the user clicks a cell again.
         const previouslyFocused = document.activeElement as HTMLElement | null;
         const textarea = document.createElement('textarea');
-        textarea.value = tsv.join('\n');
+        textarea.value = text;
         document.body.appendChild(textarea);
         textarea.select();
         let success = false;
@@ -150,41 +160,69 @@ function useClipboardHandlers(
     }
 
     return undefined;
-  }, [selectedRange, dataSource, columns, getFinalSelectedRange]);
+  }, [
+    selectedRange,
+    dataSource,
+    columns,
+    getFinalSelectedRange,
+    onClipboardError,
+  ]);
 
   const handlePaste = useCallback(() => {
     const range = getFinalSelectedRange();
     const newRows = dataSource.map((row) => ({ ...row }));
 
     if (range && dataSource.length > 0) {
-      return navigator.clipboard.readText().then((clipText) => {
-        const { startRow, endRow, startCol, endCol } = range;
-        const minRow = Math.min(startRow, endRow);
-        const minCol = Math.min(startCol, endCol);
-        const lines = clipText.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          const rowIdx = minRow + i;
-          if (rowIdx >= dataSource.length) {
-            break;
+      return navigator.clipboard.readText().then(
+        (clipText) => {
+          const { startRow, endRow, startCol, endCol } = range;
+          const minRow = Math.min(startRow, endRow);
+          const minCol = Math.min(startCol, endCol);
+          // A header selection (startRow -1) spans the column even when one
+          // row is visible, so it is never a single cell.
+          const isSingleCell =
+            selectedRange?.startRow !== -1 &&
+            startRow === endRow &&
+            startCol === endCol;
+          const normalizedText = clipText.replaceAll('\r\n', '\n');
+          let pastedCells = normalizedText
+            .split('\n')
+            .map((line) => line.split('\t'));
+          if (normalizedText === copiedCells.current?.text) {
+            pastedCells = copiedCells.current.cells;
+          } else if (isSingleCell) {
+            pastedCells = [[clipText]];
           }
-          const cells = lines[i].split(',');
-          for (let j = 0; j < cells.length; j++) {
-            const colIdx = minCol + j;
-            if (colIdx >= columns.length) {
+          for (let i = 0; i < pastedCells.length; i++) {
+            const rowIdx = minRow + i;
+            if (rowIdx >= dataSource.length) {
               break;
             }
-            const column = columns[colIdx];
-            if (column.editable) {
-              (newRows[rowIdx] as Record<string, string>)[column.key] =
-                cells[j];
+            const cells = pastedCells[i];
+            for (let j = 0; j < cells.length; j++) {
+              const colIdx = minCol + j;
+              if (colIdx >= columns.length) {
+                break;
+              }
+              const column = columns[colIdx];
+              if (column.editable) {
+                (newRows[rowIdx] as Record<string, string>)[column.key] =
+                  cells[j];
+              }
             }
           }
-        }
-        setDataSource(newRows);
-        pushToUndoStack(dataSource);
+          setDataSource(newRows);
+          pushToUndoStack(dataSource);
 
-        return newRows;
-      });
+          return newRows;
+        },
+        () => {
+          // Clipboard read was denied; the keystroke was already consumed.
+          onClipboardError?.();
+
+          return dataSource;
+        }
+      );
     }
 
     return dataSource;
@@ -195,9 +233,76 @@ function useClipboardHandlers(
     pushToUndoStack,
     columns,
     getFinalSelectedRange,
+    onClipboardError,
   ]);
 
   return { handleCopy, handlePaste };
+}
+
+// --- Keyboard Handler Helpers ---
+const DELETE_KEYS = ['Delete', 'Backspace'];
+
+function isEventTargetGridCell(
+  target: EventTarget | null
+): target is HTMLElement {
+  return (
+    target instanceof HTMLElement &&
+    (target.classList.contains('rdg-cell') || !!target.closest('.rdg-cell'))
+  );
+}
+
+// Keys and mouse gestures inside an open cell editor belong to the editor
+// (text selection, select-all, undo), not to grid range selection.
+function isEventInsideCellEditor(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    !!target.closest(
+      'input, textarea, [contenteditable="true"], .rdg-editor-container'
+    )
+  );
+}
+
+// Delete/Backspace keep their own editor handling in handleDeleteOrBackspace.
+function getGridKeyTarget(e: KeyboardEvent): HTMLElement | null {
+  if (!isEventTargetGridCell(e.target)) {
+    return null;
+  }
+  if (isEventInsideCellEditor(e.target) && !DELETE_KEYS.includes(e.key)) {
+    return null;
+  }
+
+  return e.target;
+}
+
+// react-data-grid copies only body cells, and pastes only a cell it copied
+// itself — a copy it forgets on any Escape, which closing a picker editor
+// sends. So copy header cells here, and paste from the system clipboard for
+// every cell.
+function handleClipboardShortcuts(
+  e: KeyboardEvent,
+  target: HTMLElement,
+  handleCopy: () => void,
+  handlePaste: () => void
+): boolean {
+  if (!(e.ctrlKey || e.metaKey)) {
+    return false;
+  }
+  const key = e.key.toLowerCase();
+
+  if (key === 'v' && window.isSecureContext) {
+    e.preventDefault();
+    e.stopPropagation();
+    handlePaste();
+
+    return true;
+  }
+  if (key === 'c' && target.getAttribute('role') === 'columnheader') {
+    handleCopy();
+
+    return true;
+  }
+
+  return false;
 }
 
 // --- Main Hook ---
@@ -205,32 +310,63 @@ export function useGridEditController({
   dataSource,
   setDataSource,
   columns,
+  rows,
   rowIdKey = 'id',
+  onClipboardError,
 }: {
   dataSource: Record<string, string>[];
   setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>;
   columns: Column<Record<string, string>>[];
+  /** Rows the grid renders, when it shows a filtered subset of dataSource. */
+  rows?: Record<string, string>[];
   rowIdKey?: string | null;
+  /**
+   * Called when the clipboard cannot be read or written. Passed in, not
+   * imported here, so this hook stays free of app modules (toast, i18n):
+   * playwright/browser-tests/gridEditors.spec.ts bundles it on its own.
+   */
+  onClipboardError?: () => void;
 }) {
   const [gridContainer, setGridContainer] = useState<HTMLElement | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
+
+  // Cell positions index into the rendered rows; writes go to the full data.
+  const gridRows = rows ?? dataSource;
+  const setGridRows = useCallback(
+    (updatedGridRows: Record<string, string>[]) =>
+      setDataSource(mergeGridRows(dataSource, gridRows, updatedGridRows)),
+    [dataSource, gridRows, setDataSource]
+  );
 
   // Undo/redo
   const { pushToUndoStack, undo, redo } = useUndoRedo(
     dataSource,
     setDataSource
   );
+  // Snapshots the full data, never the filtered rows the edit helpers see.
+  const pushFullUndo = useCallback(() => pushToUndoStack(), [pushToUndoStack]);
   // Selection state
   const { selectedRange, setSelectedRange, getFinalSelectedRange } =
-    useSelectionState(dataSource);
+    useSelectionState(gridRows);
+  // A selected range indexes the rendered rows. Once a search or an edit
+  // changes which rows those are, it would point at different rows.
+  const gridRowIds = rows
+    ?.map((row, index) => (rowIdKey ? row[rowIdKey] : index))
+    .join(',');
+  useEffect(() => {
+    if (gridRowIds !== undefined) {
+      setSelectedRange(null);
+    }
+  }, [gridRowIds, setSelectedRange]);
   // Clipboard
   const { handleCopy, handlePaste } = useClipboardHandlers(
     selectedRange,
     getFinalSelectedRange,
-    dataSource,
-    setDataSource,
+    gridRows,
+    setGridRows,
     columns,
-    pushToUndoStack
+    pushFullUndo,
+    onClipboardError
   );
 
   const isShiftArrow = useRef(false);
@@ -344,6 +480,9 @@ export function useGridEditController({
     }
 
     function onMouseDown(e: MouseEvent) {
+      if (isEventInsideCellEditor(e.target)) {
+        return;
+      }
       const indices = getCellIndices(e.target);
       if (indices) {
         if (isShiftArrow.current) {
@@ -388,7 +527,11 @@ export function useGridEditController({
     }
 
     function onMouseOver(e: MouseEvent) {
-      if (!isSelecting || !selectionStart.current) {
+      if (
+        !isSelecting ||
+        !selectionStart.current ||
+        isEventInsideCellEditor(e.target)
+      ) {
         return;
       }
       const indices = getCellIndices(e.target);
@@ -436,30 +579,13 @@ export function useGridEditController({
       // Do NOT handle Arrow keys or Tab for cell movement!
       // Let the grid handle navigation and focus.
 
-      // Only respond if the event target is a cell
-      if (
-        !(
-          e.target instanceof HTMLElement &&
-          (e.target.classList.contains('rdg-cell') ||
-            e.target.closest('.rdg-cell'))
-        )
-      ) {
+      const target = getGridKeyTarget(e);
+      if (!target) {
         return;
       }
 
-      // handleCopy & handlePaste on header cell focused as react-data-grid only trigger on body cells
-      if (
-        e.target.getAttribute('role') === 'columnheader' &&
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === 'c'
-      ) {
-        handleCopy();
-      } else if (
-        e.target.getAttribute('role') === 'columnheader' &&
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === 'v'
-      ) {
-        handlePaste();
+      if (handleClipboardShortcuts(e, target, handleCopy, handlePaste)) {
+        return;
       }
 
       // Undo/Redo
@@ -488,11 +614,11 @@ export function useGridEditController({
       // Select all (Ctrl+A)
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
         e.preventDefault();
-        if (dataSource.length > 0) {
+        if (gridRows.length > 0) {
           setSelectedRange({
             startRow: 0,
             startCol: 0,
-            endRow: dataSource.length - 1,
+            endRow: gridRows.length - 1,
             endCol: columns.length - 1,
           });
         }
@@ -503,7 +629,6 @@ export function useGridEditController({
       // Handle Delete and Backspace keys to clear cell content
       if (e.key === 'Delete' || e.key === 'Backspace') {
         // Only handle if we're in a cell and not in a text input
-        const target = e.target as HTMLElement;
         const isInInput =
           target.tagName === 'INPUT' ||
           target.tagName === 'TEXTAREA' ||
@@ -539,12 +664,12 @@ export function useGridEditController({
 
               if (column && column.editable) {
                 // Clear all cells in the column
-                const newRows = [...dataSource];
+                const newRows = [...gridRows];
                 for (let row = 0; row < newRows.length; row++) {
                   newRows[row] = { ...newRows[row], [column.key]: '' };
                 }
-                setDataSource(newRows);
-                pushToUndoStack(dataSource);
+                setGridRows(newRows);
+                pushFullUndo();
               }
             }
           } else if (isInRowHeader) {
@@ -553,9 +678,9 @@ export function useGridEditController({
             if (rowAttr) {
               const rowIndex = parseInt(rowAttr, 10) - 2; // -2 for header row offset
 
-              if (rowIndex >= 0 && rowIndex < dataSource.length) {
+              if (rowIndex >= 0 && rowIndex < gridRows.length) {
                 // Clear all cells in the row
-                const newRows = [...dataSource];
+                const newRows = [...gridRows];
                 const row = newRows[rowIndex];
 
                 // Clear all editable columns in the row
@@ -565,14 +690,14 @@ export function useGridEditController({
                   }
                 });
 
-                setDataSource(newRows);
-                pushToUndoStack(dataSource);
+                setGridRows(newRows);
+                pushFullUndo();
               }
             }
           } else if (selectedRange) {
             // Handle range selection deletion
             const { startRow, endRow, startCol, endCol } = selectedRange;
-            const newRows = [...dataSource];
+            const newRows = [...gridRows];
 
             for (let row = startRow; row <= endRow; row++) {
               if (row < newRows.length) {
@@ -585,8 +710,8 @@ export function useGridEditController({
               }
             }
 
-            setDataSource(newRows);
-            pushToUndoStack(dataSource);
+            setGridRows(newRows);
+            pushFullUndo();
           } else {
             // Handle single cell deletion
             const cellIndices = getCellIndices(target);
@@ -594,12 +719,12 @@ export function useGridEditController({
               const { row, col } = cellIndices;
               const column = columns[col];
 
-              if (column && column.editable && row < dataSource.length) {
+              if (column && column.editable && row < gridRows.length) {
                 // Clear the cell content
-                const newRows = [...dataSource];
+                const newRows = [...gridRows];
                 newRows[row] = { ...newRows[row], [column.key]: '' };
-                setDataSource(newRows);
-                pushToUndoStack(dataSource);
+                setGridRows(newRows);
+                pushFullUndo();
               }
             }
           }
@@ -618,12 +743,12 @@ export function useGridEditController({
               const { row, col } = cellIndices;
               const column = columns[col];
 
-              if (column && column.editable && row < dataSource.length) {
+              if (column && column.editable && row < gridRows.length) {
                 // Clear the cell content for custom editors
-                const newRows = [...dataSource];
+                const newRows = [...gridRows];
                 newRows[row] = { ...newRows[row], [column.key]: '' };
-                setDataSource(newRows);
-                pushToUndoStack(dataSource);
+                setGridRows(newRows);
+                pushFullUndo();
               }
             }
           }
@@ -663,9 +788,9 @@ export function useGridEditController({
 
         // Move focus in the arrow direction
         if (e.key === 'ArrowUp') {
-          focus.row = clamp(focus.row - 1, 0, dataSource.length - 1);
+          focus.row = clamp(focus.row - 1, 0, gridRows.length - 1);
         } else if (e.key === 'ArrowDown') {
-          focus.row = clamp(focus.row + 1, 0, dataSource.length - 1);
+          focus.row = clamp(focus.row + 1, 0, gridRows.length - 1);
         } else if (e.key === 'ArrowLeft') {
           focus.col = clamp(focus.col - 1, 0, columns.length - 1);
         } else if (e.key === 'ArrowRight') {
@@ -720,11 +845,13 @@ export function useGridEditController({
     undo,
     redo,
     gridContainer,
-    dataSource,
+    gridRows,
     selectedRange,
     columns,
-    setDataSource,
-    pushToUndoStack,
+    setGridRows,
+    pushFullUndo,
+    handleCopy,
+    handlePaste,
   ]);
 
   useEffect(() => {
@@ -734,7 +861,11 @@ export function useGridEditController({
 
     function onCellFocus(e: FocusEvent) {
       // Only update selectedRange if Shift is NOT pressed, because shift + cell click should extend the selection
-      if (isShiftArrow.current || selectedRange) {
+      if (
+        isShiftArrow.current ||
+        selectedRange ||
+        isEventInsideCellEditor(e.target)
+      ) {
         return;
       }
       const target =
@@ -769,17 +900,17 @@ export function useGridEditController({
   // Column/row header selection
   const handleColumnSelect = useCallback(
     (colIdx: number) => {
-      if (dataSource.length === 0) {
+      if (gridRows.length === 0) {
         return;
       }
       setSelectedRange({
         startRow: 0,
-        endRow: dataSource.length - 1,
+        endRow: gridRows.length - 1,
         startCol: colIdx,
         endCol: colIdx,
       });
     },
-    [dataSource]
+    [gridRows, setSelectedRange]
   );
 
   const handleRowSelect = useCallback(
@@ -797,22 +928,13 @@ export function useGridEditController({
 
   const handleOnRowsChange = useCallback(
     (updatedRows: Record<string, string>[]) => {
-      const hasPromises = updatedRows.some(
-        (updatedRow) => updatedRow instanceof Promise
-      );
-      if (hasPromises) {
-        updatedRows.forEach((updatedRow) => {
-          if (updatedRow instanceof Promise) {
-            updatedRow.then((newRows) => {
-              setDataSource(newRows);
-              pushToUndoStack(dataSource);
-            });
-          }
-        });
-      } else {
-        setDataSource(updatedRows);
-        pushToUndoStack(dataSource);
+      // A react-data-grid paste hands back handlePaste's pending result;
+      // handlePaste applies that update itself.
+      if (updatedRows.some((updatedRow) => updatedRow instanceof Promise)) {
+        return;
       }
+      setDataSource(updatedRows);
+      pushToUndoStack(dataSource);
     },
     [dataSource, setDataSource, pushToUndoStack]
   );

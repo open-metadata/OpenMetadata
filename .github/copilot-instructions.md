@@ -294,9 +294,8 @@ sudo apt-get install -y openjdk-21-jdk
 sudo update-alternatives --set java /usr/lib/jvm/java-21-openjdk-amd64/bin/java
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 
-# Install Node.js 18 LTS
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
+# Install Node.js — the version in openmetadata-ui/src/main/resources/ui/.nvmrc
+nvm install "$(cat openmetadata-ui/src/main/resources/ui/.nvmrc)"
 
 # Install ANTLR CLI
 make install_antlr_cli
@@ -480,7 +479,7 @@ After making changes, ALWAYS test complete user scenarios:
 - **ANTLR missing**: Install with `make install_antlr_cli` - **REQUIRED for frontend tests and builds**
 - **Frontend tests fail with missing modules**: Run `make generate` and `yarn run build-check` first
 - **Python dependency conflicts**: Use Python 3.9-3.11, NOT 3.12+
-- **Node version issues**: Use Node 18 LTS, NOT Node 20+
+- **Node version issues**: Use the version in `openmetadata-ui/src/main/resources/ui/.nvmrc`; `yarn install` rejects anything older
 
 ### Network Timeouts
 - **Pip install timeouts**: Retry `make install_dev_env` with increased timeouts
