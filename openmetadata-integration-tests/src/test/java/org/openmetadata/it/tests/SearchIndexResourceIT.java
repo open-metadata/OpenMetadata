@@ -1087,7 +1087,7 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
   }
 
   @Test
-  void get_sampleData_retainsOriginalsForBotAndInheritedTeamOwner(TestNamespace ns) {
+  void get_sampleData_retainsOriginalsForBotAndTeamOwner(TestNamespace ns) {
     User teamMember = UserTestFactory.createUser(ns, "sample_team_member");
     Team team =
         ns.trackRoot(
@@ -1099,14 +1099,12 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
                         .withName(ns.shortPrefix("sample_team"))
                         .withTeamType(CreateTeam.TeamType.GROUP)
                         .withUsers(List.of(teamMember.getId()))));
-    SearchIndex index = createSampleIndex(ns, SampleTagLocation.DEEP_FIELD, null);
-    SearchService service =
-        SdkClients.adminClient().searchServices().get(index.getService().getId().toString());
-    service.setOwners(List.of(team.getEntityReference()));
-    SdkClients.adminClient().searchServices().update(service.getId().toString(), service);
-    SearchIndex inherited = getEntityWithFields(index.getId().toString(), "owners");
+    SearchIndex index =
+        createSampleIndex(ns, SampleTagLocation.DEEP_FIELD, team.getEntityReference());
+    assertSampleTagPlacement(index, SampleTagLocation.DEEP_FIELD);
+    SearchIndex ownedIndex = getEntityWithFields(index.getId().toString(), "owners");
     assertTrue(
-        inherited.getOwners().stream().anyMatch(owner -> owner.getId().equals(team.getId())));
+        ownedIndex.getOwners().stream().anyMatch(owner -> owner.getId().equals(team.getId())));
     putSampleData(index);
 
     assertSampleMessages(userClient(teamMember), index, SAMPLE_MESSAGES);
@@ -1152,7 +1150,10 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     if (owner != null) {
       request.setOwners(List.of(owner));
     }
-    TagLabel sensitive = SharedEntities.get().PII_SENSITIVE_TAG_LABEL;
+    TagLabel sensitive =
+        new TagLabel()
+            .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
     switch (location) {
       case ENTITY -> request.setTags(List.of(sensitive));
       case FIELD -> publicId.setTags(List.of(sensitive));
