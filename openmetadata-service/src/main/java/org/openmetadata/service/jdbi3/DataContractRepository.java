@@ -862,6 +862,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return Entity.TABLE.equals(entityType);
   }
 
+  private static final String FIELD_TEST_SUITE = "testSuite";
+
   public static String getTestSuiteName(DataContract dataContract) {
     return dataContract.getId().toString();
   }
@@ -1564,6 +1566,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       super(original, updated, operation, changeSource);
     }
 
+    /**
+     * prepare() sets testSuite itself, so it is compared whichever fields a PATCH names: a PATCH of
+     * other fields can still have replaced another contract's suite with this contract's own.
+     */
+    @Override
+    protected boolean shouldCompare(String fieldName) {
+      return FIELD_TEST_SUITE.equals(fieldName) || super.shouldCompare(fieldName);
+    }
+
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       preserveUnspecifiedODCSPassthrough();
@@ -1572,8 +1583,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           () ->
               recordChange("latestResult", original.getLatestResult(), updated.getLatestResult()));
       compareAndUpdate(
-          "testSuite",
-          () -> recordChange("testSuite", original.getTestSuite(), updated.getTestSuite()));
+          FIELD_TEST_SUITE,
+          () -> recordChange(FIELD_TEST_SUITE, original.getTestSuite(), updated.getTestSuite()));
       compareAndUpdate(
           "termsOfUse",
           () -> recordChange("termsOfUse", original.getTermsOfUse(), updated.getTermsOfUse()));

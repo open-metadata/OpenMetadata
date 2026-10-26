@@ -5,7 +5,8 @@
 - **Deciders:** Vishnu Jain
 - **Guard:** `DataContractTestSuiteOwnershipTest`, `DataContractResourceIT`
   (`testUpdateReleasesAnotherContractsTestSuite`, `testHardDeleteLeavesAnotherContractsTestSuite`,
-  `testPutRestoringASoftDeletedContractKeepsItsOwnSuite`),
+  `testPutRestoringASoftDeletedContractKeepsItsOwnSuite`,
+  `testNoOpPatchStoresTheReleasedContractsOwnSuite`),
   `CreateEntityToolTest` (`aDataContractCannotBeGivenFieldsItsRepositoryOwns`)
 
 ## Context
@@ -35,7 +36,8 @@ tests on every update. REST never takes that reference from a caller (`CreateDat
   it keeps that contract's id and suite instead of making a suite named after a fresh id.
 - Only `prepare` creates a contract's suite, since it also stores the reference. `postCreate` and
   `postUpdate` only find it: a result update reaches them without `prepare`, and a suite created
-  there would not be stored on the contract.
+  there would not be stored on the contract. The updater compares `testSuite` on every update,
+  whichever fields a PATCH names, so a suite `prepare` swapped in is always stored.
 - MCP `create_entity` and `describe_entity_type` do not offer those four fields for a data contract.
 
 ## Consequences

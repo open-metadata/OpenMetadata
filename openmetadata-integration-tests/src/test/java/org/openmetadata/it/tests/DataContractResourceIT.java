@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.json.Json;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
@@ -8894,6 +8895,45 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         .findTo(suite.getId(), Entity.TEST_SUITE, Relationship.CONTAINS.ordinal())
         .stream()
         .anyMatch(link -> contract.getId().equals(link.getId()));
+  }
+
+  /**
+   * A PATCH that changes nothing still stores the suite a contract gets in place of another
+   * contract's, so its next update does not try to create that suite again.
+   */
+  @Test
+  void testNoOpPatchStoresTheReleasedContractsOwnSuite(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table ownerTable = createTestTable(ns);
+    TestCase ownerTest = rowCountTest(client, ns, ownerTable, "noop_owner_tc");
+    DataContract owner = contractWithExpectations(ns, ownerTable, "noop_owner", List.of(ownerTest));
+    Table borrowerTable = createTestTable(ns);
+    TestCase borrowerTest = rowCountTest(client, ns, borrowerTable, "noop_borrower_tc");
+    CreateDataContract borrowerRequest =
+        new CreateDataContract()
+            .withName(ns.prefix("noop_borrower"))
+            .withDescription("unchanged")
+            .withEntity(borrowerTable.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED);
+    DataContract borrower = createEntity(borrowerRequest);
+    pointAtTestSuiteOf(borrower, owner, List.of(borrowerTest));
+
+    // Patched by another user, so the change is not folded into admin's editing session.
+    Entity.getEntityRepository(Entity.DATA_CONTRACT)
+        .patch(
+            null,
+            borrower.getId(),
+            "ingestion-bot",
+            Json.createPatchBuilder().replace("/description", "unchanged").build());
+    DataContract updated =
+        client
+            .dataContracts()
+            .createOrUpdate(
+                borrowerRequest.withQualityExpectations(
+                    List.of(borrowerTest.getEntityReference())));
+
+    TestSuite suite = client.testSuites().get(updated.getTestSuite().getId().toString(), "");
+    assertEquals(borrower.getId().toString(), suite.getName());
   }
 
   /** A PUT that restores a soft-deleted contract keeps the suite named after that contract. */
