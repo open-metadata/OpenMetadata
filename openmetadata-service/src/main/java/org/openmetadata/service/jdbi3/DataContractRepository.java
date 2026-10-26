@@ -276,16 +276,41 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   /**
-   * The suite this contract owns, or null. A contract's suite is always named after the contract's
-   * id, so a reference to any other suite is never followed: a create can carry it as caller input.
-   * ADR:2026-10-26-a-data-contract-only-acts-on-the-test-suite-named-after-it
+   * A contract's suite is always named after the contract's id, so a reference to any other suite
+   * is never followed. ADR:2026-10-26-a-data-contract-only-acts-on-the-test-suite-named-after-it
    */
+  static boolean isOwnSuite(DataContract dataContract, TestSuite testSuite) {
+    return testSuite != null && getTestSuiteName(dataContract).equals(testSuite.getName());
+  }
+
+  /** The suite this contract owns, or null. */
   private TestSuite findContractTestSuite(DataContract dataContract, Include include) {
     TestSuite testSuite =
         Entity.getEntityOrNull(dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, include);
-    return testSuite != null && getTestSuiteName(dataContract).equals(testSuite.getName())
-        ? testSuite
-        : null;
+    return isOwnSuite(dataContract, testSuite) ? testSuite : null;
+  }
+
+  /**
+   * Drops a stored reference to a suite this contract does not own, and that suite's link back to
+   * the contract, so the suite's runs stop writing this contract's results. The contract then gets
+   * a suite of its own if it has expectations.
+   */
+  private void releaseForeignTestSuite(DataContract dataContract) {
+    TestSuite referenced = Entity.getEntityOrNull(dataContract.getTestSuite(), "", Include.ALL);
+    if (referenced != null && !isOwnSuite(dataContract, referenced)) {
+      LOG.warn(
+          "Data contract {} referenced test suite {}, which belongs to another contract; "
+              + "releasing it",
+          dataContract.getId(),
+          referenced.getId());
+      deleteRelationship(
+          referenced.getId(),
+          Entity.TEST_SUITE,
+          dataContract.getId(),
+          Entity.DATA_CONTRACT,
+          Relationship.CONTAINS);
+      dataContract.setTestSuite(null);
+    }
   }
 
   /**
@@ -821,6 +846,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     try {
       if (update) { // If we're running an update, fetch the existing test suite information
         restoreExistingDataContract(dataContract);
+        releaseForeignTestSuite(dataContract);
       }
 
       // If we don't have quality expectations or a test suite, we don't need to create one
