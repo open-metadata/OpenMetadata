@@ -33,10 +33,17 @@ beforeAll(async () => {
   await worker.start({
     quiet: true,
     onUnhandledRequest(request, print) {
-      const { pathname } = new URL(request.url);
+      const { pathname, searchParams } = new URL(request.url);
       // Only API traffic must be mocked; Vite module/asset requests pass through.
       if (pathname.startsWith('/api/')) {
-        unhandledApiCalls.push(`${request.method} ${pathname}`);
+        // index/q identify which picker a stray search came from.
+        const hint = ['index', 'q']
+          .filter((key) => searchParams.has(key))
+          .map((key) => `${key}=${searchParams.get(key)}`)
+          .join('&');
+        unhandledApiCalls.push(
+          `${request.method} ${pathname}${hint ? `?${hint}` : ''}`
+        );
         print.error();
       }
     },
