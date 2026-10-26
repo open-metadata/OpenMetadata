@@ -1248,7 +1248,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   return (
     <div className="explore-page bg-grey" data-testid="explore-page">
-      <CoreCard className="m-b-box tw:block tw:border-utility-gray-blue-100 tw:p-2 tw:dark:border-subtle">
+      <CoreCard
+        className="m-b-box tw:block tw:border-utility-gray-blue-100 tw:p-2 tw:dark:border-subtle"
+        data-tour-step="explore-search">
         <div className="tw:mr-2 tw:flex tw:flex-wrap tw:gap-y-2">
           {/* Zero flex-basis: with flex-wrap, a max-content basis would place
               the sort controls on their own row before shrinking is even

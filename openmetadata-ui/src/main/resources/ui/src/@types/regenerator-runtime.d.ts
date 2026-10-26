@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-export enum CurrentTourPageType {
-  MY_DATA_PAGE = 'myDataPage',
-  EXPLORE_PAGE = 'explorePage',
-  DATASET_PAGE = 'datasetPage',
-}
+// Loaded for its side effect: it defines the global `regeneratorRuntime` the
+// product tour's react-tour bundle calls.
+declare module 'regenerator-runtime/runtime';

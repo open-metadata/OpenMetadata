@@ -391,6 +391,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/constant/productTour.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/ProductTour.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/constant/profilerConfiguration.ts"
       ],
       "specs": [
@@ -2389,6 +2397,7 @@
         "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
+        "playwright/e2e/Flow/ProductTour.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
@@ -4329,6 +4338,7 @@
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Flow/ProductTour.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
@@ -7913,17 +7923,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Modals/TourEndModal/TourEndModal.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
-        "playwright/e2e/Features/CuratedAssets.spec.ts",
-        "playwright/e2e/Flow/PersonaFlow.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/UnsavedChangesModal/UnsavedChangesModal.component.tsx"
       ],
       "specs": [
@@ -8258,6 +8257,7 @@
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Flow/ApiDocs.spec.ts",
+        "playwright/e2e/Flow/ProductTour.spec.ts",
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
@@ -12037,6 +12037,22 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/product-tour/ProductTour/ProductTour.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/ProductTour.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/product-tour/ProductTour/ProductTour.utils.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/ProductTour.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/enums/DataQuality.enum.ts"
       ],
       "specs": [
@@ -12903,6 +12919,7 @@
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Flow/ProductTour.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts",
         "playwright/e2e/Flow/SearchRBAC.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
@@ -14285,20 +14302,6 @@
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Flow/TestConnectionModal.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/utils/TourUtils.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/BulkImport.spec.ts",
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
-        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
-        "playwright/e2e/Pages/DataProducts.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
-        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
     {
