@@ -13,7 +13,6 @@
 
 import type { RJSFSchema } from '@rjsf/utils';
 import type { App } from '../../../../../../generated/entity/applications/app';
-import type { AppRunRecordWithId } from '../../../../../Settings/Applications/AppRunsHistory/AppRunsHistory.interface';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 
 export type ApplicationsView =
@@ -55,10 +54,4 @@ export interface McpConfigFormProps {
   jsonSchema: RJSFSchema;
   showHint: boolean;
   onCancel: () => void;
-}
-
-export interface RunConfigPageProps {
-  appData: App;
-  jsonSchema?: RJSFSchema;
-  runConfig: AppRunRecordWithId;
 }

@@ -32,7 +32,7 @@ import {
 import { RJSFSchema } from '@rjsf/utils';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import {
   FC,
   ReactNode,
@@ -100,7 +100,6 @@ import {
 } from './Applications.utils';
 import AppScheduleEdit from './AppScheduleEdit';
 import McpConfigForm from './McpConfigForm';
-import RunConfigPage from './RunConfigPage';
 
 type AppAction = 'restore' | 'disable' | 'uninstall';
 
@@ -397,6 +396,9 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   const handleViewRunConfig = (record: AppRunRecordWithId) =>
     setSubPage({ type: SUB_PAGE_RUN_CONFIG, record });
 
+  const ConfigurationComponent =
+    applicationsClassBase.getModalAppConfigurationComponent();
+
   const getTabs = (): DetailTab[] => {
     if (!appData) {
       return [];
@@ -408,8 +410,6 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       Boolean(isAdminUser),
       Boolean(jsonSchema)
     );
-    const ConfigurationComponent =
-      applicationsClassBase.getModalAppConfigurationComponent();
 
     const candidates: (DetailTab & { show: boolean })[] = [
       {
@@ -619,12 +619,17 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   }
 
   const renderContent = () => {
-    if (subPage?.type === SUB_PAGE_RUN_CONFIG) {
+    // Config is disabled without a schema, so a run-config page always has one.
+    if (subPage?.type === SUB_PAGE_RUN_CONFIG && jsonSchema) {
       return (
-        <RunConfigPage
-          appData={appData}
+        <ConfigurationComponent
+          isReadOnly
+          appData={{ ...appData, appConfiguration: subPage.record.config }}
+          isSaving={false}
           jsonSchema={jsonSchema}
-          runConfig={subPage.record}
+          showHint={false}
+          submitLabel={t('label.save')}
+          onSave={noop}
         />
       );
     }

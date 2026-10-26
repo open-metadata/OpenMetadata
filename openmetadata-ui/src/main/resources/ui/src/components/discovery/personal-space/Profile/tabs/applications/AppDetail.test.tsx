@@ -386,7 +386,7 @@ describe('AppDetail', () => {
       onViewRunConfig({ id: 'run-1', config: { batchSize: 99 } });
     });
 
-    expect(screen.getByTestId('app-run-config')).toBeInTheDocument();
+    expect(screen.getByTestId('config-form')).toBeInTheDocument();
     expect(screen.queryByTestId('app-schedule')).not.toBeInTheDocument();
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     expect(configForm).toHaveBeenLastCalledWith(
@@ -399,8 +399,6 @@ describe('AppDetail', () => {
       expect.anything()
     );
     expect(lastHeader().subPage?.label).toBe('label.entity-configuration');
-
-    expect(screen.queryByTestId('app-run-config-back')).not.toBeInTheDocument();
 
     // The app crumb in the breadcrumb is the way back.
     act(() => {
