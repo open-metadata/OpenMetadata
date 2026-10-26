@@ -46,7 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
@@ -84,6 +84,7 @@ public final class CredentialVerifier implements Managed {
   private static final long DEEP_RETRY_CAP_NANOS = TimeUnit.MINUTES.toNanos(1);
   private static final long READ_THREAD_IDLE_SECONDS = 60;
   private static final int QUEUED_READS_PER_THREAD = 16;
+  private static final BooleanSupplier NEVER_CREATES = () -> false;
 
   private final CredentialVerificationConfig config;
   private final CredentialSource source;
@@ -102,14 +103,21 @@ public final class CredentialVerifier implements Managed {
   private volatile ScheduledExecutorService sweeper;
 
   /**
-   * A check's read of one subject, registered in {@link #inFlight} until it has installed its
-   * result, so other checks of the subject join it instead of reading again. Its future completes
-   * with the installed entry, with null when the source left the subject out, or exceptionally with
-   * whatever the read threw.
+   * A read of one subject that may create its entry: a check's read, a refresh or a nudge. It is
+   * registered in {@link #inFlight} until it has installed its result, so checks of the subject
+   * join it instead of reading again. Its future completes with the entry to decide on, with null
+   * when the source left the subject out, or exceptionally with whatever the read threw. A refresh
+   * or nudge supersedes the read it finds registered: no check can join that read any more, and it
+   * never creates an entry, though it may still replace an older one.
    */
   private static final class InFlightRead {
     private final CompletableFuture<VerifiedCredentials> result = new CompletableFuture<>();
     private volatile RequestRead task;
+    private volatile boolean superseded;
+
+    private boolean mayCreate() {
+      return !superseded;
+    }
   }
 
   /**
@@ -289,8 +297,9 @@ public final class CredentialVerifier implements Managed {
   /**
    * Re-reads {@code subject} on the calling thread after one of its credentials changed here, so
    * this server is read-your-writes. Only a cached or in-flight subject is read: anything else loads
-   * fresh on its next check. The in-flight case matters, because a read stamped before the commit
-   * could still install the old set, and the merge keeps this later stamp over it.
+   * fresh on its next check. The read supersedes the read in flight, if any, so no read registered
+   * before it can create the subject's entry, even once the entry this refresh installs is evicted.
+   * A read registered later is stamped after that registration, so after the write committed.
    */
   void refreshNow(CredentialSubject subject) {
     if (isCachedOrInFlight(subject)) {
@@ -372,9 +381,9 @@ public final class CredentialVerifier implements Managed {
    * within what is left of {@code loadTimeout} since the check's first clock read. A result that
    * lacks the digest and comes from a full read older than that clock read minus missRefreshMinAge
    * cannot show a token created since, so the check then joins or starts one newer read within the
-   * same budget. That read is registered after the first one finished, so after this check began,
-   * and is stamped later still. A check therefore waits for at most two reads and never answers
-   * "not current" from a read too old to decide.
+   * same budget. That read was registered after this check joined the first one, so after this
+   * check began, and is stamped later still. A check therefore waits for at most two reads and
+   * never answers "not current" from a read too old to decide.
    */
   private VerifiedCredentials loadForCheck(
       CredentialSubject subject, TokenDigest digest, long checkStartNanos, ReadReason reason) {
@@ -395,8 +404,8 @@ public final class CredentialVerifier implements Managed {
    * owner of a new registration decides again on the cached entry first, because the read it
    * missed may have installed its entry and left the registry between this check's lookup and its
    * registration; that decision keeps the new-token floor, since it is the same decision at a later
-   * instant. A read is stamped once registered, so a read registered later carries a later stamp,
-   * and before it waits for a pool slot.
+   * instant. A read is stamped after it is registered, so a read registered after some instant is
+   * stamped after it too, and before it waits for a pool slot.
    */
   private InFlightRead joinOrStart(
       CredentialSubject subject, TokenDigest digest, ReadReason reason) {
@@ -504,7 +513,7 @@ public final class CredentialVerifier implements Managed {
           timedRead(reads.keySet(), cachedRecords(reads.keySet()), reason);
       reads.forEach(
           (subject, read) ->
-              finish(subject, read, installRead(subject, records.get(subject), stampNanos)));
+              finish(subject, read, installRead(subject, read, records.get(subject), stampNanos)));
     } catch (Throwable failure) {
       reads.forEach((subject, read) -> fail(subject, read, failure));
       throw failure;
@@ -513,10 +522,10 @@ public final class CredentialVerifier implements Managed {
 
   /** Null when the source left the subject out: unconfirmed, so nothing is installed. */
   private VerifiedCredentials installRead(
-      CredentialSubject subject, CredentialRecord record, long stampNanos) {
+      CredentialSubject subject, InFlightRead read, CredentialRecord record, long stampNanos) {
     return record == null
         ? null
-        : install(subject, new VerifiedCredentials(record, stampNanos), true);
+        : install(subject, new VerifiedCredentials(record, stampNanos), read::mayCreate);
   }
 
   /** Deregisters before completing, so a check that reads again can never find a finished read. */
@@ -554,29 +563,40 @@ public final class CredentialVerifier implements Managed {
   }
 
   /**
-   * Newer-wins install. {@code createIfAbsent} is true for request, refresh and nudge reads, which
-   * must beat a slower read still in flight, and false for sweeps, so a sweep can never create an
-   * entry or revive one that idled out while the sweep ran. Listeners hear about digests the
-   * replaced record held and the installed one lacks, after the merge returns.
+   * Newer-wins install, under the subject's slot lock. An absent slot is filled only while {@code
+   * mayCreate} answers true there: a sweep never creates an entry, so it cannot revive one that
+   * idled out while it ran, and a superseded read never does, so it cannot recreate an entry that a
+   * later refresh installed and the cache then evicted. Returns the cache's entry, or the candidate
+   * when the cache holds none. Listeners hear about digests the replaced record held and the
+   * installed one lacks, after the compute returns.
    */
   private VerifiedCredentials install(
-      CredentialSubject subject, VerifiedCredentials candidate, boolean createIfAbsent) {
+      CredentialSubject subject, VerifiedCredentials candidate, BooleanSupplier mayCreate) {
     AtomicReference<VerifiedCredentials> replaced = new AtomicReference<>();
-    BiFunction<VerifiedCredentials, VerifiedCredentials, VerifiedCredentials> newer =
-        (existing, incoming) -> {
-          replaced.set(existing);
-          return VerifiedCredentials.newer(existing, incoming);
-        };
     VerifiedCredentials installed =
-        createIfAbsent
-            ? entries.asMap().merge(subject, candidate, newer)
-            : entries
-                .asMap()
-                .computeIfPresent(subject, (key, existing) -> newer.apply(existing, candidate));
+        entries
+            .asMap()
+            .compute(
+                subject,
+                (key, existing) -> {
+                  replaced.set(existing);
+                  return merged(existing, candidate, mayCreate);
+                });
     if (installed == candidate && replaced.get() != null) {
       notifyRemovedDigests(subject, replaced.get().record(), candidate.record());
     }
-    return installed;
+    return installed == null ? candidate : installed;
+  }
+
+  private static VerifiedCredentials merged(
+      VerifiedCredentials existing, VerifiedCredentials candidate, BooleanSupplier mayCreate) {
+    VerifiedCredentials kept;
+    if (existing != null) {
+      kept = VerifiedCredentials.newer(existing, candidate);
+    } else {
+      kept = mayCreate.getAsBoolean() ? candidate : null;
+    }
+    return kept;
   }
 
   private void notifyRemovedDigests(
@@ -625,7 +645,7 @@ public final class CredentialVerifier implements Managed {
   private boolean deepReadQuietly(List<CredentialSubject> batch) {
     boolean succeeded = false;
     try {
-      reread(batch, ReadReason.DEEP, Map.of(), false);
+      reread(batch, ReadReason.DEEP, Map.of());
       metrics.recordSweepQuery(SweepQuery.FULL);
       succeeded = true;
     } catch (RuntimeException failure) {
@@ -647,7 +667,7 @@ public final class CredentialVerifier implements Managed {
     List<CredentialSubject> changed = confirm(batch, fingerprints, stamp);
     metrics.recordSweepChanged(changed.size());
     if (!changed.isEmpty()) {
-      reread(changed, ReadReason.SWEEP, cachedRecords(changed), false);
+      reread(changed, ReadReason.SWEEP, cachedRecords(changed));
       metrics.recordSweepQuery(SweepQuery.FULL);
     }
   }
@@ -674,24 +694,31 @@ public final class CredentialVerifier implements Managed {
     return changed;
   }
 
+  /** A sweep's or a deep verify's read: it replaces cached entries and never creates one. */
   private void reread(
       List<CredentialSubject> subjects,
       ReadReason reason,
-      Map<CredentialSubject, CredentialRecord> previous,
-      boolean createIfAbsent) {
+      Map<CredentialSubject, CredentialRecord> previous) {
     long stamp = ticker.read();
     Map<CredentialSubject, CredentialRecord> records = timedRead(subjects, previous, reason);
     for (CredentialSubject subject : subjects) {
       CredentialRecord record = records.get(subject);
       if (record != null) {
-        install(subject, new VerifiedCredentials(record, stamp), createIfAbsent);
+        install(subject, new VerifiedCredentials(record, stamp), NEVER_CREATES);
       }
     }
   }
 
+  /**
+   * A refresh or nudge read. It registers for each subject, superseding the read in flight, and is
+   * stamped after that, so a check that begins later joins it and no read registered earlier can
+   * create the subject's entry from then on.
+   */
   private void rereadQuietly(List<CredentialSubject> subjects, ReadReason reason) {
+    Map<CredentialSubject, InFlightRead> reads = new HashMap<>();
+    subjects.forEach(subject -> reads.put(subject, supersede(subject)));
     try {
-      reread(subjects, reason, cachedRecords(subjects), true);
+      readAndInstall(reads, ticker.read(), reason);
     } catch (RuntimeException failure) {
       LOG.warn(
           "Could not re-read {} credential subjects after a {}; the sweep converges within the bound",
@@ -699,6 +726,15 @@ public final class CredentialVerifier implements Managed {
           reason,
           failure);
     }
+  }
+
+  private InFlightRead supersede(CredentialSubject subject) {
+    InFlightRead mine = new InFlightRead();
+    InFlightRead previous = inFlight.put(subject, mine);
+    if (previous != null) {
+      previous.superseded = true;
+    }
+    return mine;
   }
 
   private void drainNudges() {
@@ -733,8 +769,13 @@ public final class CredentialVerifier implements Managed {
     }
   }
 
+  /**
+   * The registry is read before the cache. A read leaves the registry once it has finished, its
+   * install included, or been superseded, and a superseded read never creates an entry, so when
+   * neither holds the subject, no read registered before this call can still create its entry.
+   */
   private boolean isCachedOrInFlight(CredentialSubject subject) {
-    return entries.policy().getIfPresentQuietly(subject) != null || inFlight.containsKey(subject);
+    return inFlight.containsKey(subject) || entries.policy().getIfPresentQuietly(subject) != null;
   }
 
   /** Cached records for decrypt reuse, read without touching idle expiry. */

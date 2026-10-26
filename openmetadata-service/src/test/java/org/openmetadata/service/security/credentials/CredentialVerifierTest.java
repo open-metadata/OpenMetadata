@@ -43,6 +43,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.service.security.AuthenticationException;
 
 /**
@@ -75,6 +77,30 @@ class CredentialVerifierTest {
     Throwable result() throws Exception {
       return outcome.get(30, TimeUnit.SECONDS);
     }
+  }
+
+  /** A read of alice, other than a check's, that may create her entry. */
+  enum SlowRead {
+    REFRESH {
+      @Override
+      Future<?> start(CredentialVerifierTest test) {
+        return test.threads.submit(() -> test.verifier.refreshNow(subject(ALICE)));
+      }
+    },
+    /**
+     * The sweep pass that drains the nudge. Its fingerprint read fails, because the pass would
+     * otherwise re-read alice after the drain and so repair whatever the nudge read installed.
+     */
+    NUDGE {
+      @Override
+      Future<?> start(CredentialVerifierTest test) {
+        test.verifier.nudge(subject(ALICE));
+        test.source.failNextFingerprintRead();
+        return test.threads.submit(test.verifier::sweepOnce);
+      }
+    };
+
+    abstract Future<?> start(CredentialVerifierTest test);
   }
 
   private final FakeCredentialSource source = new FakeCredentialSource();
@@ -547,6 +573,68 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void aCheckReadStampedBeforeARefreshCannotRecreateTheEntryAfterItIdlesOut() throws Exception {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(idleExpiryOfOneSecond(Duration.seconds(4)));
+    source.blockNextRead();
+    RunningCheck slow = startCheck(ALICE, TOKEN_A);
+    source.awaitReadStarted();
+
+    source.revokeAll(ALICE);
+    ticker.advanceNanos(MILLISECOND);
+    verifier.refreshNow(subject(ALICE));
+    ticker.advanceNanos(1100 * MILLISECOND);
+    assertEquals(0, verifier.cachedSubjects());
+    source.releaseReads();
+
+    assertNull(slow.result());
+    assertRejected(ALICE, TOKEN_A);
+    assertEquals(3, source.fullReads());
+  }
+
+  @ParameterizedTest
+  @EnumSource(SlowRead.class)
+  void aRereadStampedBeforeARefreshCannotRecreateTheEntryAfterItIdlesOut(SlowRead slowRead)
+      throws Exception {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(idleExpiryOfOneSecond(null));
+    assertAccepted(ALICE, TOKEN_A);
+    source.blockNextRead();
+    Future<?> slow = slowRead.start(this);
+    source.awaitReadStarted();
+
+    source.revokeAll(ALICE);
+    ticker.advanceNanos(MILLISECOND);
+    verifier.refreshNow(subject(ALICE));
+    ticker.advanceNanos(1100 * MILLISECOND);
+    assertEquals(0, verifier.cachedSubjects());
+    source.releaseReads();
+    slow.get(30, TimeUnit.SECONDS);
+
+    assertRejected(ALICE, TOKEN_A);
+    assertEquals(4, source.fullReads());
+  }
+
+  @Test
+  void aCheckThatMissesAfterARefreshReadsAgainInsteadOfJoiningTheOlderRead() throws Exception {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(idleExpiryOfOneSecond(Duration.milliseconds(200)));
+    source.blockNextRead();
+    RunningCheck slow = startCheck(ALICE, TOKEN_A);
+    source.awaitReadStarted();
+
+    source.revokeAll(ALICE);
+    ticker.advanceNanos(MILLISECOND);
+    verifier.refreshNow(subject(ALICE));
+    ticker.advanceNanos(1100 * MILLISECOND);
+
+    assertRejected(ALICE, TOKEN_A);
+    assertEquals(3, source.fullReads());
+    assertInstanceOf(CredentialUnavailableException.class, slow.result());
+    source.releaseReads();
+  }
+
+  @Test
   void refreshNowSwallowsASourceFailure() {
     source.withPats(ALICE, TOKEN_A);
     verifier(DEFAULTS);
@@ -908,6 +996,11 @@ class CredentialVerifierTest {
                 (subject, removed) ->
                     revocations.add(new Revocation(subject, Set.copyOf(removed)))));
     return verifier;
+  }
+
+  private static CredentialVerificationConfig idleExpiryOfOneSecond(Duration loadTimeout) {
+    return new CredentialVerificationConfig(
+        null, null, null, loadTimeout, null, Duration.seconds(1), null, null, null);
   }
 
   /** A sweep as production runs it: one sweepInterval after whatever happened last. */
