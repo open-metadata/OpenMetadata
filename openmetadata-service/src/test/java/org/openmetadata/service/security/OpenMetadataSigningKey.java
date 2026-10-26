@@ -13,8 +13,15 @@
 
 package org.openmetadata.service.security;
 
+import com.auth0.jwt.algorithms.Algorithm;
+import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
+import java.security.KeyFactory;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.List;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
@@ -50,6 +57,18 @@ final class OpenMetadataSigningKey {
   /** Resolves OpenMetadata's own key locally, as the server's key lookup does. */
   static MultiUrlJwkProvider keyLookup() {
     return new MultiUrlJwkProvider(List.of());
+  }
+
+  /** Signs with OpenMetadata's own key, for claim shapes that no mint call produces. */
+  static Algorithm signingAlgorithm() {
+    try {
+      byte[] der = Files.readAllBytes(Path.of(resourcePath("private_key.der")));
+      KeyFactory rsa = KeyFactory.getInstance("RSA");
+      return Algorithm.RSA256(
+          null, (RSAPrivateKey) rsa.generatePrivate(new PKCS8EncodedKeySpec(der)));
+    } catch (IOException | GeneralSecurityException e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   private static String resourcePath(String name) {

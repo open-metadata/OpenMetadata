@@ -763,6 +763,25 @@ class JwtFilterTest {
     assertEquals(0, credentials.fullReads());
   }
 
+  /** OpenMetadata writes tokenType as text, so a value of any other JSON type is no issued kind. */
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void openMetadataSignedTokenWithANonTextTokenTypeIsRejected(boolean isBot) {
+    String jwt =
+        JWT.create()
+            .withKeyId(OpenMetadataSigningKey.KEY_ID)
+            .withIssuer(OpenMetadataSigningKey.ISSUER)
+            .withExpiresAt(inOneDay())
+            .withClaim("sub", USER)
+            .withClaim("email", emailOf(USER))
+            .withClaim(JwtFilter.BOT_CLAIM, isBot)
+            .withClaim(TOKEN_TYPE, 7)
+            .sign(OpenMetadataSigningKey.signingAlgorithm());
+
+    assertRejectedBy(omFilter, jwt, UNRECOGNIZED);
+    assertEquals(0, credentials.fullReads());
+  }
+
   @Test
   void providerTokenClaimingToBeABotIsRejected() {
     String jwt =

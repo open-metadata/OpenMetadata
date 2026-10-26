@@ -120,6 +120,7 @@ public class JwtFilter implements ContainerRequestFilter {
       "The given token does not match the current bot's token!";
   private static final String INVALID_PERSONAL_ACCESS_TOKEN = "Invalid personal access token!";
   private static final String UNRECOGNIZED_TOKEN = "Unrecognized token type!";
+  private static final String NON_TEXT_TOKEN_TYPE = "non-text";
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   @Getter private String jwtTeamClaimMapping;
@@ -726,9 +727,18 @@ public class JwtFilter implements ContainerRequestFilter {
     return message;
   }
 
+  /**
+   * The raw claim {@link OmCredential#classify} parses, null only when the token carries no value.
+   * OpenMetadata writes the claim as text, so any other JSON type becomes a value of no issued kind.
+   */
   private static String tokenTypeOf(Map<String, Claim> claims) {
     Claim tokenType = claims.get(TOKEN_TYPE);
-    return tokenType == null ? null : tokenType.asString();
+    String value = null;
+    if (tokenType != null && !tokenType.isNull()) {
+      String text = tokenType.asString();
+      value = text != null ? text : NON_TEXT_TOKEN_TYPE;
+    }
+    return value;
   }
 
   @SneakyThrows
