@@ -366,7 +366,7 @@ class CredentialVerifierTest {
     source.withPats(ALICE, TOKEN_A).withPats(BOB, TOKEN_B);
     verifier(
         new CredentialVerificationConfig(
-            null, null, null, Duration.milliseconds(100), 1, null, null, null, null));
+            null, null, null, Duration.seconds(1), 1, null, null, null, null));
     source.blockNextRead();
     Future<Throwable> holder = requireAsync(ALICE, TOKEN_A);
     source.awaitReadStarted();
@@ -389,7 +389,7 @@ class CredentialVerifierTest {
     source.withPats(ALICE, TOKEN_A).withPats(BOB, TOKEN_B);
     verifier(
         new CredentialVerificationConfig(
-            null, null, null, Duration.milliseconds(200), 2, null, null, null, null));
+            null, null, null, Duration.seconds(1), 2, null, null, null, null));
     source.blockNextRead();
 
     assertUnavailable(ALICE, TOKEN_A);
@@ -479,7 +479,7 @@ class CredentialVerifierTest {
     source.withPats(ALICE, TOKEN_A);
     verifier(
         new CredentialVerificationConfig(
-            null, null, null, Duration.milliseconds(200), null, null, null, null, null));
+            null, null, null, Duration.seconds(1), null, null, null, null, null));
     source.blockNextRead();
     RunningCheck first = startCheck(ALICE, TOKEN_A);
     source.awaitReadStarted();
@@ -881,7 +881,7 @@ class CredentialVerifierTest {
   @Test
   void aCheckThatMissesAfterARefreshReadsAgainInsteadOfJoiningTheOlderRead() throws Exception {
     source.withPats(ALICE, TOKEN_A);
-    verifier(idleExpiryOfOneSecond(Duration.milliseconds(200)));
+    verifier(idleExpiryOfOneSecond(Duration.seconds(1)));
     source.blockNextRead();
     RunningCheck slow = startCheck(ALICE, TOKEN_A);
     source.awaitReadStarted();
