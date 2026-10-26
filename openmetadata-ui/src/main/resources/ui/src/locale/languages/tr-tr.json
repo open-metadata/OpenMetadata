@@ -3820,6 +3820,7 @@
     "view-plural": "Görünümler",
     "view-property-plural": "Özellikleri Görüntüle",
     "view-reindex-failure-plural": "Yeniden Dizinleme Hatalarını Görüntüle",
+    "view-replies-by-user": "{{user}} tarafından verilen yanıtları görüntüle",
     "view-run-history": "Çalıştırma geçmişini görüntüle",
     "view-selected": "Seçileni Görüntüle",
     "view-upstream-issue": "Yukarı akış sorununu görüntüle",
