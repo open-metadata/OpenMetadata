@@ -25,7 +25,6 @@ import { ENTITY_PATH } from '../../../../../../../constants/constants';
 import {
   AllowedFieldField,
   BoostMode,
-  FieldValueBoost,
   ScoreMode,
   SearchSettings,
   TermBoost,
@@ -52,7 +51,6 @@ import {
 import ConfirmDialog from '../ConfirmDialog';
 import type { PlatformSettingsPageProps } from '../PlatformSettings.types';
 import { SettingsSkeleton } from '../SettingsFormLayout';
-import FieldValueBoostDialog from './FieldValueBoostDialog';
 import FieldValueBoostTable from './FieldValueBoostTable';
 import MatchingFieldCard from './MatchingFieldCard';
 import RankingSection, {
@@ -63,11 +61,12 @@ import SearchPreviewPanel from './SearchPreviewPanel';
 import SearchSection, { SearchSectionTitle } from './SearchSection';
 import {
   EntitySearchDraft,
+  EntitySearchSavedState,
   toEntityDraft,
+  toFieldValueBoostItemId,
   toggleHighlightField,
   toggleSearchField,
   updateSearchField,
-  upsertFieldValueBoost,
   upsertTermBoost,
   withEntityDraft,
 } from './SearchSettings.utils';
@@ -81,6 +80,8 @@ const EntitySearchSettings = ({
   itemId = '',
   onNavigate,
   onSetHeaderActions,
+  savedState,
+  onSaveState,
 }: PlatformSettingsPageProps) => {
   const { t } = useTranslation();
   const entityType: string | undefined =
@@ -97,9 +98,6 @@ const EntitySearchSettings = ({
   );
   const [lastAddedField, setLastAddedField] = useState<string>();
   const [showNewTermBoost, setShowNewTermBoost] = useState(false);
-  const [editingBoost, setEditingBoost] = useState<{
-    boost?: FieldValueBoost;
-  } | null>(null);
   const [isRestoreOpen, setIsRestoreOpen] = useState(false);
 
   const applyConfig = useCallback(
@@ -149,7 +147,15 @@ const EntitySearchSettings = ({
       return;
     }
     hasLoadedRef.current = true;
-    void fetchConfig();
+    // Back from the field value boost form: resume the draft it was opened with.
+    const resumed = savedState as EntitySearchSavedState | undefined;
+    void fetchConfig().then((loaded) => {
+      if (loaded && resumed?.entity === itemId) {
+        setDraft(resumed.draft);
+        setIsChanged(resumed.isChanged);
+        onSaveState?.(undefined);
+      }
+    });
     getCustomPropertiesByEntityType(entityType)
       .then((properties) =>
         setCustomProperties(
@@ -263,6 +269,17 @@ const EntitySearchSettings = ({
   if (!config || !entityType || !previewConfig) {
     return <SettingsSkeleton rows={6} />;
   }
+
+  const openFieldValueBoostForm = (field?: string) => {
+    const state: EntitySearchSavedState = { entity: itemId, draft, isChanged };
+    onSaveState?.(state);
+    onNavigate({
+      type: 'page',
+      page: 'search',
+      isEditing: true,
+      itemId: toFieldValueBoostItemId(itemId, field),
+    });
+  };
 
   const handleTermBoostChange = (boost: TermBoost) => {
     if (!boost.value || !boost.boost) {
@@ -443,7 +460,7 @@ const EntitySearchSettings = ({
                 data-testid="add-field-value-boost-btn"
                 iconLeading={Plus}
                 size="sm"
-                onPress={() => setEditingBoost({})}>
+                onPress={() => openFieldValueBoostForm()}>
                 {t('label.add')}
               </Button>
             }
@@ -455,7 +472,7 @@ const EntitySearchSettings = ({
                 ),
               })
             }
-            onEdit={(boost) => setEditingBoost({ boost })}
+            onEdit={(boost) => openFieldValueBoostForm(boost.field)}
           />
         </Box>
       </Box>
@@ -464,27 +481,6 @@ const EntitySearchSettings = ({
         entityType={entityType}
         searchConfig={previewConfig}
       />
-
-      {editingBoost && (
-        <FieldValueBoostDialog
-          boost={editingBoost.boost}
-          fieldOptions={
-            config.allowedFieldValueBoosts?.[0]?.fields?.map(
-              (field) => field.name
-            ) ?? []
-          }
-          onClose={() => setEditingBoost(null)}
-          onSave={(boost) => {
-            updateDraft({
-              fieldValueBoosts: upsertFieldValueBoost(
-                draft.fieldValueBoosts,
-                boost
-              ),
-            });
-            setEditingBoost(null);
-          }}
-        />
-      )}
 
       <ConfirmDialog
         confirmLabel={t('label.restore-default-plural')}

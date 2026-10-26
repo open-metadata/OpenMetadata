@@ -57,6 +57,8 @@ interface SettingsFormLayoutProps<T extends FieldValues> {
   showHint: boolean;
   isSaving: boolean;
   isSaveDisabled?: boolean;
+  /** Centres the fields at half the panel width instead of aligning them left. */
+  isCentered?: boolean;
   onCancel: () => void;
   onSubmit: (values: T) => void | Promise<void>;
   children: ReactNode;
@@ -68,6 +70,7 @@ const SettingsFormLayout = <T extends FieldValues>({
   showHint,
   isSaving,
   isSaveDisabled = false,
+  isCentered = false,
   onCancel,
   onSubmit,
   children,
@@ -88,7 +91,10 @@ const SettingsFormLayout = <T extends FieldValues>({
       showFieldDocs={showHint}
       onSubmit={form.handleSubmit(onSubmit)}>
       <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0">
-        <Box className="tw:max-w-240" direction="col" gap={8}>
+        <Box
+          className={isCentered ? 'tw:mx-auto tw:w-1/2' : 'tw:max-w-240'}
+          direction="col"
+          gap={8}>
           {children}
         </Box>
       </div>

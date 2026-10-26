@@ -314,30 +314,33 @@ describe('SearchSettingsView', () => {
     expect(screen.getByTestId('term-boost-save-btn')).toBeEnabled();
   });
 
-  it('saves an edited field value boost straight away', async () => {
+  it('opens the field value boost form to add or edit a boost', async () => {
     await renderView();
+    fireEvent.click(screen.getByTestId('add-field-value-boost-btn'));
     fireEvent.click(
       within(screen.getByTestId('field-value-boost-totalVotes')).getByTestId(
         'edit-field-value-boost-btn'
       )
     );
-    const dialog = await screen.findByTestId('field-value-boost-dialog');
-    fireEvent.change(
-      within(dialog).getByTestId('lt-input').querySelector('input') as Element,
-      { target: { value: '9' } }
-    );
-    await act(async () => {
-      fireEvent.click(within(dialog).getByTestId('save-field-value-boost'));
-    });
 
-    await waitFor(() =>
-      expect(savedGlobalSettings().fieldValueBoosts[0]).toEqual(
-        expect.objectContaining({
-          field: 'totalVotes',
-          condition: { range: { lt: 9 } },
-        })
-      )
-    );
+    expect(onNavigate.mock.calls).toEqual([
+      [
+        {
+          type: 'page',
+          page: 'search',
+          isEditing: true,
+          itemId: 'field-value-boost',
+        },
+      ],
+      [
+        {
+          type: 'page',
+          page: 'search',
+          isEditing: true,
+          itemId: 'field-value-boost/totalVotes',
+        },
+      ],
+    ]);
   });
 
   it('toasts and keeps the settings when a save fails', async () => {
@@ -354,7 +357,7 @@ describe('SearchSettingsView', () => {
     ).not.toBeChecked();
   });
 
-  it('keeps the limit editor and the boost dialog open when a save fails', async () => {
+  it('keeps the limit editor open when a save fails', async () => {
     (updateSettingsConfig as jest.Mock).mockRejectedValue(new Error('boom'));
     await renderView();
 
@@ -373,19 +376,6 @@ describe('SearchSettingsView', () => {
     expect(
       screen.getByTestId('global-setting-input-maxAggregateSize')
     ).toHaveValue(500);
-
-    fireEvent.click(
-      within(screen.getByTestId('field-value-boost-totalVotes')).getByTestId(
-        'edit-field-value-boost-btn'
-      )
-    );
-    const dialog = await screen.findByTestId('field-value-boost-dialog');
-    await act(async () => {
-      fireEvent.click(within(dialog).getByTestId('save-field-value-boost'));
-    });
-
-    expect(updateSettingsConfig).toHaveBeenCalledTimes(2);
-    expect(screen.getByTestId('field-value-boost-dialog')).toBeInTheDocument();
   });
 
   it('leaves column indexing on when the confirmation is cancelled', async () => {

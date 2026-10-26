@@ -120,16 +120,19 @@ const CONFIG = {
 };
 
 const onNavigate = jest.fn();
+const onSaveState = jest.fn();
 let headerActions: ReactNode;
 const onSetHeaderActions = (actions: ReactNode) => {
   headerActions = actions;
 };
 
-const renderPage = async (itemId = 'tables') => {
+const renderPage = async (itemId = 'tables', savedState?: unknown) => {
   render(
     <EntitySearchSettings
       itemId={itemId}
+      savedState={savedState}
       onNavigate={onNavigate}
+      onSaveState={onSaveState}
       onSetHeaderActions={onSetHeaderActions}
     />
   );
@@ -270,33 +273,67 @@ describe('EntitySearchSettings', () => {
     expect(toggleOf('description')).toBeDisabled();
   });
 
-  it('edits a field value boost into the draft without saving', async () => {
+  it('hands the draft to the field value boost form when editing a boost', async () => {
     await renderPage();
     fireEvent.click(
       within(screen.getByTestId('field-value-boost-totalVotes')).getByTestId(
         'edit-field-value-boost-btn'
       )
     );
-    const dialog = await screen.findByTestId('field-value-boost-dialog');
-    fireEvent.change(
-      within(dialog).getByTestId('gte-input').querySelector('input') as Element,
-      { target: { value: '5' } }
-    );
-    await act(async () => {
-      fireEvent.click(within(dialog).getByTestId('save-field-value-boost'));
+
+    expect(onSaveState).toHaveBeenCalledWith({
+      entity: 'tables',
+      draft: expect.objectContaining({
+        fieldValueBoosts: [{ field: 'totalVotes', factor: 2 }],
+      }),
+      isChanged: false,
+    });
+    expect(onNavigate).toHaveBeenCalledWith({
+      type: 'page',
+      page: 'search',
+      isEditing: true,
+      itemId: 'tables/field-value-boost/totalVotes',
+    });
+  });
+
+  it('resumes the draft the field value boost form handed back, unsaved', async () => {
+    const boost = {
+      field: 'totalVotes',
+      factor: 2,
+      condition: { range: { gte: 5 } },
+    };
+    await renderPage('tables', {
+      entity: 'tables',
+      draft: { ...TABLE_CONFIG, fieldValueBoosts: [boost] },
+      isChanged: true,
     });
 
     await waitFor(() =>
-      expect(lastPreviewTableConfig().fieldValueBoosts).toEqual([
-        expect.objectContaining({
-          field: 'totalVotes',
-          factor: 2,
-          condition: { range: { gte: 5 } },
-        }),
-      ])
+      expect(lastPreviewTableConfig().fieldValueBoosts).toEqual([boost])
     );
 
+    expect(onSaveState).toHaveBeenCalledWith(undefined);
+
+    renderHeader();
+
+    expect(screen.getByTestId('save-btn')).toBeEnabled();
     expect(updateSettingsConfig).not.toHaveBeenCalled();
+  });
+
+  it('ignores a draft saved for another entity', async () => {
+    await renderPage('tables', {
+      entity: 'topics',
+      draft: { ...TABLE_CONFIG, fieldValueBoosts: [] },
+      isChanged: true,
+    });
+
+    await waitFor(() =>
+      expect(lastPreviewTableConfig().fieldValueBoosts).toEqual(
+        TABLE_CONFIG.fieldValueBoosts
+      )
+    );
+
+    expect(onSaveState).not.toHaveBeenCalledWith(undefined);
   });
 
   const choose = async (selectTestId: string, option: string) => {
@@ -414,7 +451,7 @@ describe('EntitySearchSettings', () => {
     expect(screen.getByTestId('add-term-boost-btn')).toBeEnabled();
   });
 
-  it('removes a field value boost and opens an empty dialog to add one', async () => {
+  it('removes a field value boost and opens the form to add one', async () => {
     await renderPage();
     fireEvent.click(
       within(screen.getByTestId('field-value-boost-totalVotes')).getByTestId(
@@ -427,14 +464,16 @@ describe('EntitySearchSettings', () => {
     );
 
     fireEvent.click(screen.getByTestId('add-field-value-boost-btn'));
-    const dialog = await screen.findByTestId('field-value-boost-dialog');
-    await act(async () => {
-      fireEvent.click(within(dialog).getByTestId('save-field-value-boost'));
-    });
 
-    expect(
-      await within(dialog).findByText('message.field-required')
-    ).toBeInTheDocument();
+    expect(onSaveState).toHaveBeenCalledWith(
+      expect.objectContaining({ entity: 'tables', isChanged: true })
+    );
+    expect(onNavigate).toHaveBeenCalledWith({
+      type: 'page',
+      page: 'search',
+      isEditing: true,
+      itemId: 'tables/field-value-boost',
+    });
   });
 
   it('restores the defaults after confirmation and reloads them', async () => {
