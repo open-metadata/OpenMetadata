@@ -19,7 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -52,6 +54,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -140,6 +143,50 @@ class GetEntityToolTest {
                       securityContext,
                       Map.of("entityType", Entity.CONTEXT_MEMORY, "fqn", fqn)));
     }
+  }
+
+  /** A Query reference names the question its SQL answered; REST reduces it to id and type. */
+  @Test
+  void plainReadReducesAQueryTheCallerMayNotViewToIdAndType() throws Exception {
+    String fqn = "alices-note";
+    EntityReference query =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.QUERY)
+            .withName("payroll")
+            .withFullyQualifiedName("erp.payroll")
+            .withDisplayName("Who earns more than the CEO?");
+    ContextMemory memory = privateMemoryOwnedBy("alice", fqn).withRelatedEntities(List.of(query));
+    CatalogSecurityContext securityContext = securityContextFor("alice");
+    Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("denied"))
+        .when(authorizer)
+        .authorize(
+            eq(securityContext),
+            argThat(operation -> Entity.QUERY.equals(operation.getResource())),
+            any());
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
+      entities
+          .when(
+              () -> Entity.getEntityByName(eq(Entity.CONTEXT_MEMORY), eq(fqn), anyString(), any()))
+          .thenReturn(memory);
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(new User().withName("alice"), null, null));
+
+      result =
+          new GetEntityTool()
+              .execute(
+                  authorizer,
+                  securityContext,
+                  Map.of("entityType", Entity.CONTEXT_MEMORY, "fqn", fqn));
+    }
+
+    assertThat(result.get("relatedEntities"))
+        .isEqualTo(List.of(Map.of("id", query.getId().toString(), "type", Entity.QUERY)));
   }
 
   @Test

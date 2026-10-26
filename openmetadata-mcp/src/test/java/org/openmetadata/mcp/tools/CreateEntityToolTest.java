@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
@@ -390,6 +391,44 @@ class CreateEntityToolTest {
                 new DescribeEntityTypeTool()
                     .execute(null, null, Map.of("entityType", Entity.CONTEXT_MEMORY)));
     assertFalse(attributeNames(described).contains("sourceType"));
+  }
+
+  @Test
+  void contextMemoryAnswerReducesAQueryTheCallerMayNotViewToIdAndType() {
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(ContextMemory.class);
+    EntityReference query =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.QUERY)
+            .withName("payroll")
+            .withFullyQualifiedName("erp.payroll")
+            .withDisplayName("Who earns more than the CEO?");
+    ContextMemory saved =
+        new ContextMemory()
+            .withId(UUID.randomUUID())
+            .withName("memory")
+            .withFullyQualifiedName("memory")
+            .withRelatedEntities(List.of(query));
+    stubWrite(repository, saved);
+    Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("denied"))
+        .when(authorizer)
+        .authorize(
+            any(), argThat(operation -> Entity.QUERY.equals(operation.getResource())), any());
+    Map<String, Object> params = params(Entity.CONTEXT_MEMORY);
+    params.put("attributes", Map.of("question", "Q", "answer", "A"));
+
+    Map<String, Object> result =
+        withRepository(
+            Entity.CONTEXT_MEMORY,
+            repository,
+            () ->
+                new CreateEntityTool()
+                    .execute(authorizer, mock(Limits.class), securityContext(), params));
+
+    assertEquals(
+        List.of(Map.of("id", query.getId().toString(), "type", Entity.QUERY)),
+        result.get("relatedEntities"));
   }
 
   @Test
