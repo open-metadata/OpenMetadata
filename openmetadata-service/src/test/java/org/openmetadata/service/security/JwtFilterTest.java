@@ -716,7 +716,7 @@ class JwtFilterTest {
   }
 
   @Test
-  void impersonationStillChecksTheBotsOwnToken() {
+  void impersonatedRequestIsCheckedAgainstTheBotsOwnToken() {
     String jwt = botToken(BOT);
     credentials.withJwtMechanisms(Map.of(BOT, jwt));
     assertEquals(BOT, principalOf(omFilter, jwt));
