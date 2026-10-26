@@ -504,6 +504,7 @@ const VIEW_ACCESS: Partial<Record<MembersView['type'], keyof MembersAccess>> = {
   teams: 'teams',
   'team-detail': 'teams',
   'teams-add': 'teams',
+  [TEAM_TAB_SUBPAGE]: 'teams',
   users: 'users',
   admins: 'users',
   'user-detail': 'users',

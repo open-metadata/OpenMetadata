@@ -307,7 +307,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       // a full page here, so a sticky footer inside it needs a bounded height
       // to pin against. Padding matches the profile panel's content body, so a
       // page written for one host lays out the same in the other.
-      <div className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:px-8 tw:pb-8">
+      <Box className="tw:min-h-0 tw:flex-1 tw:px-8 tw:pb-8" direction="col">
         <TabComponent
           subPath={subPath}
           teamId={teamId}
@@ -319,7 +319,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
             )
           }
         />
-      </div>
+      </Box>
     );
   };
 
