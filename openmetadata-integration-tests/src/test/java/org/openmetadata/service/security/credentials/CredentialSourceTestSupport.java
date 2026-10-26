@@ -69,6 +69,11 @@ public final class CredentialSourceTestSupport {
       this.registry = registry;
     }
 
+    /** The meters this verifier reports to, for reading by name and tag. */
+    public MeterRegistry meters() {
+      return registry;
+    }
+
     public void start() {
       verifier.start();
     }
