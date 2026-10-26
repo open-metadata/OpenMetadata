@@ -438,6 +438,20 @@ export const openOwnerPicker = async (tab: 'Users' | 'Teams') => {
 /** Every search the mounted page sent; see `mountEntityPage`. */
 let searches: URLSearchParams[] = [];
 
+/** Polls until a search sent after `from` matches `index` and contains `term`. */
+const searchLanded = (from: number, index: string, term: string) =>
+  expect
+    .poll(() =>
+      searches
+        .slice(from)
+        .some(
+          (q) =>
+            q.get('index') === index &&
+            (q.get('q') ?? '').toLowerCase().includes(term.toLowerCase())
+        )
+    )
+    .toBe(true);
+
 /**
  * Replaces the owners with `users` through the picker, as a user would; with
  * `clear: false`, adds them to the owners already picked.
@@ -512,10 +526,14 @@ export const addReplaceRemoveTeamOwner = async (
 ) => {
   for (const owner of TEAMS) {
     await openOwnerPicker('Teams');
+    const from = searches.length;
     await userEvent.fill(
       page.getByTestId('owner-select-teams-search-bar'),
       owner.displayName
     );
+    // The option may already be listed; wait for the debounced search too, so
+    // it cannot fire after the test and land unmocked in the next one.
+    await searchLanded(from, 'team', owner.displayName);
     await userEvent.click(
       page.getByTestId('owner-option').filter({ hasText: owner.displayName })
     );
@@ -608,20 +626,6 @@ const setSelected = (option: Locator, selected: boolean) =>
       { timeout: 10_000, interval: 300 }
     )
     .toBe(selected);
-
-/** Polls until a search sent after `from` matches `index` and contains `term`. */
-const searchLanded = (from: number, index: string, term: string) =>
-  expect
-    .poll(() =>
-      searches
-        .slice(from)
-        .some(
-          (q) =>
-            q.get('index') === index &&
-            (q.get('q') ?? '').toLowerCase().includes(term.toLowerCase())
-        )
-    )
-    .toBe(true);
 
 /** Toggles `fqn` in the classification tag picker `trigger` opens, and applies. */
 export const pickTag = async (trigger: Locator, fqn: string) => {
