@@ -287,13 +287,10 @@ const isLandingPageWidgetVisible = async (
     return false;
   }
 
-  // The grid cell is visible as soon as the grid lays out, before its deferred
-  // slot has mounted anything. When the grid renders between the reveal above
-  // and this check, nothing was scrolled, so a below-fold widget never mounts and
-  // never fetches -- yet the cell alone would pass the poll, the caller's
-  // skeleton checks would pass vacuously, and a hoisted waitForResponse would
-  // then hang to the test timeout. Only a mounted slot counts; the next poll
-  // re-runs the reveal. The customize view has no slot and is decided above.
+  // The grid cell is visible before its deferred slot mounts, and if the grid
+  // rendered after the reveal above nothing was scrolled, so the widget would
+  // never mount. Only a mounted slot counts; the next poll re-runs the reveal.
+  // The customize view renders no slot.
   const slot = getLandingPageWidgetSlot(page, widgetKey);
 
   if ((await slot.count()) === 0) {

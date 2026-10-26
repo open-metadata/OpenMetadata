@@ -34,7 +34,10 @@ const bundle = buildSync({
       const LateWidget = () => {
         const [painted, setPainted] = useState(false);
         useEffect(() => {
-          const timer = window.setTimeout(() => setPainted(true), 600);
+          const timer = window.setTimeout(() => {
+            window.lateWidgetPainted = true;
+            setPainted(true);
+          }, 600);
           return () => window.clearTimeout(timer);
         }, []);
         return painted ? <output data-testid="asset-count">3</output> : null;
@@ -92,9 +95,7 @@ for (const assertion of ['visibility', 'asset count']) {
 test('a visible grid cell is not ready until its deferred slot mounts the widget', async ({
   page,
 }) => {
-  // The real grid cell wraps the slot and is visible as soon as the grid lays
-  // out. Returning on that alone let callers race a widget that had not mounted
-  // -- and, when nothing had scrolled it, never would -- so its fetch never fired.
+  // The real grid cell wraps the slot, so it is visible before the widget mounts.
   test.setTimeout(4_000);
   await page.setContent('<div id="root"></div>');
   await page.addScriptTag({ content: bundle });
@@ -106,6 +107,12 @@ test('a visible grid cell is not ready until its deferred slot mounts the widget
 
   // Read once rather than retried: a retrying assertion would wait for the
   // late paint and pass whether or not the helper waited for it.
-  expect(await page.getByTestId('asset-count').isVisible()).toBe(true);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { lateWidgetPainted?: boolean }).lateWidgetPainted
+    )
+  ).toBe(true);
+  await expect(page.getByTestId('asset-count')).toHaveText('3');
   await expect(page.getByTestId(widgetKey)).toBeInViewport();
 });
