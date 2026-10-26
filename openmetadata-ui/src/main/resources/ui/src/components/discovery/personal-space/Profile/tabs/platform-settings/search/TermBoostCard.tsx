@@ -52,8 +52,6 @@ interface TermBoostCardProps {
   termBoost?: TermBoost;
   onChange: (termBoost: TermBoost) => void;
   onDelete: (tagFqn: string) => void;
-  /** Sizes the card; a grid caller passes `tw:w-full` to fill its column. */
-  className?: string;
 }
 
 /**
@@ -64,7 +62,6 @@ const TermBoostCard = ({
   termBoost,
   onChange,
   onDelete,
-  className = 'tw:w-64',
 }: TermBoostCardProps) => {
   const { t } = useTranslation();
   const isExisting = Boolean(termBoost?.value);
@@ -120,7 +117,7 @@ const TermBoostCard = ({
 
   return (
     <Card
-      className={className}
+      className="tw:w-64"
       data-testid={`term-boost-${draft.value || 'new'}`}
       variant="muted">
       <Card.Content className="tw:flex tw:flex-col tw:gap-4">
