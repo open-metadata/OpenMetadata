@@ -57,7 +57,9 @@ public final class OntologyApprovalWorkflow {
 
   public static void start(final Task task) {
     if (isReview(task)) {
-      repository(task).startReview(task);
+      try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
+        repository(task).startReview(task);
+      }
       trackExecution(task.getId(), null);
     }
   }

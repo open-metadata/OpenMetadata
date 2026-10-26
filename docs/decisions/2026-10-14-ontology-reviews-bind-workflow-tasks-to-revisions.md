@@ -94,8 +94,9 @@ workflow enforces. The requester's and the author's own user entries are left ou
 because neither can vote; a review with no other entry is refused at submission.
 
 Each counted vote on a workflow approval task is recorded in `reviewVotes` as voter, covered entry,
-decision, comment and timestamp, one per voter. This shared task behavior includes non-ontology
-workflows. Typed vote details commit in the same Flowable command as the vote count, under a
+decision, comment, workflow stage and timestamp, one per voter in each stage, so a task that moves
+through several approval stages keeps every stage's vote. This shared task behavior includes
+non-ontology workflows. Typed vote details commit in the same Flowable command as the vote count, under a
 variable keyed by task UUID, then project onto the task. Completed process history supplies the
 same details during ontology reconciliation. This closes the race where a final vote could
 reconstruct an earlier voter before that voter's task write, losing the original comment. The
@@ -103,14 +104,17 @@ Flowable lists remain the count. No ontology vote table or decision endpoint is 
 
 While any release of an ontology is `In Review`, a change to the ontology's `reviewers` or
 `approvalRule` is refused with 409 under the ontology state lock that starting, deciding and
-cancelling a review also take. Reviewer eligibility is still checked on every vote, and team
-membership is not frozen. The repair path for a reviewer change during a review is to cancel the
-review, change the reviewers, and submit a new review.
+cancelling a review also take. Starting a review rechecks the frozen rule and the chosen reviewers
+under that lock and refuses with 409 when either changed since the request was prepared, so the
+lock has no window before the release is `In Review`. Reviewer eligibility is still checked on
+every vote, and team membership is not frozen. The repair path for a reviewer change during a
+review is to cancel the review, change the reviewers, and submit a new review.
 
 `GET /v1/ontologyReleases/{id}/review` and `GET /v1/ontologies/reviews?view=assigned|created|pending`
 read a review from the task alone: each entry with `Pending`, `Approved` or `Rejected` and its vote,
 the deciding vote with its verbatim reason, `callerCanVote`, and `callerCompletesRule` derived from
 the frozen rule and the recorded votes. The list covers open reviews; a decided review is read
 through its release. List rows and totals include only releases the caller can view under the
-same policy check as the per-release endpoint. The scan follows bounded database pages through
-all open reviews, so unrelated recent reviews cannot hide older assigned reviews.
+same policy check as the per-release endpoint. The list starts from the caller's own open approval
+tasks, which the database narrows to the caller as reviewer, assignee or requester, so a page costs
+the caller's reviews rather than every open review in the catalog.
