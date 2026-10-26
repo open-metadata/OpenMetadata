@@ -896,12 +896,28 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/CustomizeAppModeSidebarPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/CustomizeDetailsPage/**",
-        "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/**"
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Customization/GenericTab/**",
+        "openmetadata-ui/src/main/resources/ui/src/constants/CustomizeWidgets.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/enums/CustomizeDetailPage.enum.ts"
       ],
       "projects": ["chromium", "Data Insight"],
       "specs": [
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Default glossary and glossary-term page layouts and their widget registry. Persona customization edits these layouts, and the glossary pages render them.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeGlossaryPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeGlossaryTerm/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
+        "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
+        "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
     {

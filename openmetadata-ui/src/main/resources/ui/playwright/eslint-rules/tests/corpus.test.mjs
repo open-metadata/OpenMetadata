@@ -71,7 +71,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // one more, editor-scoped bulk tag selection removes another
     // positional fallback, and scoping the Topic nested copy-link button to its
     // row removes two more.
-    'om-playwright/no-positional-locator': 539,
+    'om-playwright/no-positional-locator': 538,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

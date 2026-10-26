@@ -11,15 +11,26 @@
  *  limitations under the License.
  */
 
-import { AvatarStack, Box, Button } from '@openmetadata/ui-core-components';
-import { MessageDotsCircle } from '@openmetadata/ui-core-components/icons';
+import {
+  AvatarStack,
+  Box,
+  Button,
+  ButtonUtility,
+} from '@openmetadata/ui-core-components';
+import {
+  Comment,
+  MessageDotsCircle,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { TFunction } from 'i18next';
 import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
-import { PressEvent } from 'react-aria-components';
+import {
+  ButtonProps as AriaButtonProps,
+  PressEvent,
+} from 'react-aria-components';
+import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
+import { FEED_FOOTER_AVATAR_SIZE } from '../../../../constants/Feeds.constants';
 import {
   ReactionOperation,
   ReactionsVariant,
@@ -54,14 +65,13 @@ const getReplyCountLabel = (count: number, t: TFunction): string => {
 interface ReplyButtonProps {
   count: number;
   showCount: boolean;
-  onPress: (event: PressEvent) => void;
+  pressProps: Pick<AriaButtonProps, 'onPress'>;
 }
 
-const ReplyButton = ({ count, showCount, onPress }: ReplyButtonProps) => {
+const ReplyButton = ({ count, showCount, pressProps }: ReplyButtonProps) => {
   const { t } = useTranslation();
 
-  // The labelled one (activity thread panels) is the Inbox's footer button:
-  // the core icon, coloured for the theme. The legacy SVG is dark in dark mode.
+  // The labelled one (activity thread panels) is the Inbox's footer button.
   if (showCount) {
     return (
       <Button
@@ -70,28 +80,23 @@ const ReplyButton = ({ count, showCount, onPress }: ReplyButtonProps) => {
         data-testid="reply-button"
         iconLeading={<MessageDotsCircle data-icon data-testid="reply-count" />}
         size="sm"
-        onPress={onPress}>
+        {...pressProps}>
         {getReplyCountLabel(count, t)}
       </Button>
     );
   }
 
   return (
-    <Button
+    <ButtonUtility
       aria-label={t('label.reply')}
-      className="p-0 flex-center tw:h-10! tw:border tw:border-transparent"
       color="tertiary"
       data-testid="reply-button"
-      iconLeading={
-        <ThreadIcon data-testid="reply-count" height={18} width={18} />
-      }
-      onPress={onPress}
+      icon={Comment}
+      size="sm"
+      {...pressProps}
     />
   );
 };
-
-// The stack's slot matches the `xs` avatar inside it.
-const AVATAR_SIZE = 24;
 
 function FeedCardFooterNew({
   conversation,
@@ -102,6 +107,7 @@ function FeedCardFooterNew({
   onReplyPress,
   showReplyCount = false,
 }: Readonly<FeedCardFooterProps>) {
+  const { t } = useTranslation();
   const { showDrawer, updateReactions } = useActivityFeedProvider();
 
   const postLength = useMemo(
@@ -157,6 +163,12 @@ function FeedCardFooterNew({
     },
     [isForFeedTab, onReplyPress, showReplies]
   );
+  // ButtonUtility forwards its props to a react-aria Button but does not declare
+  // onPress, and onClick would not let the click bubble, so the press handler is
+  // passed as typed react-aria props.
+  const repliesPressProps: Pick<AriaButtonProps, 'onPress'> = {
+    onPress: handleRepliesPress,
+  };
 
   return (
     <Box align="start" className={classNames({ 'm-y-md': isReply })}>
@@ -167,21 +179,27 @@ function FeedCardFooterNew({
         data-testid="feed-card-footer"
         direction="col">
         <div>
-          <Box align="center" className="w-full rounded-8" gap={2}>
+          <Box align="center" className="w-full rounded-8" gap={1}>
             {postLength > 0 && !isReply && !showReplyCount && (
               <AvatarStack
-                avatarSize={AVATAR_SIZE}
+                avatarSize={FEED_FOOTER_AVATAR_SIZE}
+                // The avatar fills its button while the icons sit inside padding, so the
+                // stack takes extra space to match the icons' visible gap.
+                className="tw:mr-0.75"
                 items={repliedUsers.map((user) => (
-                  <Button
-                    noTextPadding
-                    className="p-0 tw:rounded-full"
+                  <ButtonUtility
+                    aria-label={t('label.view-replies-by-user', { user })}
+                    className="tw:align-top"
                     color="tertiary"
+                    icon={
+                      <UserPopOverCard userName={user}>
+                        <ProfilePicture name={user} size="xs" />
+                      </UserPopOverCard>
+                    }
                     key={user}
-                    onPress={handleRepliesPress}>
-                    <UserPopOverCard userName={user}>
-                      <ProfilePicture name={user} size="xs" />
-                    </UserPopOverCard>
-                  </Button>
+                    size="xs"
+                    {...repliesPressProps}
+                  />
                 ))}
                 maxCount={MAX_VISIBLE_AVATARS}
                 onOverflowClick={isForFeedTab ? showReplies : undefined}
@@ -191,12 +209,11 @@ function FeedCardFooterNew({
             {!isReply && (
               <ReplyButton
                 count={postLength}
+                pressProps={repliesPressProps}
                 showCount={showReplyCount}
-                onPress={handleRepliesPress}
               />
             )}
             <Reactions
-              // The pill reactions draw core icons that follow the theme.
               reactions={(reply ?? conversation)?.reactions ?? []}
               variant={getReactionsVariant(showReplyCount)}
               onReactionSelect={onReactionUpdate ?? noop}

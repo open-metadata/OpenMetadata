@@ -1,0 +1,34 @@
+{
+  "$id": "https://open-metadata.org/schema/type/automationProposal.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AutomationProposal",
+  "description": "What an approval request says about the entity an automation, such as an AI agent, proposed. Every user may read tasks while the memories an agent derives from may be Private or Shared, so it names its sources by id and type only and carries none of the agent's reasons: the memory derivations API serves those to whoever may read the memories.",
+  "javaType": "org.openmetadata.schema.type.AutomationProposal",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "description": "Provider of the proposed entity.",
+      "$ref": "basic.json#/definitions/providerType"
+    },
+    "agent": {
+      "description": "Display name of the agent that proposed the entity, when it recorded one.",
+      "type": "string"
+    },
+    "confidence": {
+      "description": "The agent's confidence in the proposal, from 0 to 1, when it recorded one.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "derivedFrom": {
+      "description": "The context memories the agent derived the entity from, by id and type only.",
+      "type": "array",
+      "items": {
+        "$ref": "entityReference.json"
+      },
+      "default": []
+    }
+  },
+  "required": ["provider"],
+  "additionalProperties": false
+}
