@@ -44,6 +44,11 @@ import { FeedCardFooterProps } from './FeedCardFooter.interface';
 
 const MAX_VISIBLE_AVATARS = 3;
 
+const isReplyButtonShown = (
+  isReply: boolean,
+  visibility: FeedCardFooterProps['componentsVisibility']
+): boolean => !isReply && visibility?.showThreadIcon !== false;
+
 const getReactionsVariant = (showReplyCount: boolean) =>
   showReplyCount ? ReactionsVariant.Pill : ReactionsVariant.Default;
 
@@ -105,6 +110,7 @@ function FeedCardFooterNew({
   reply,
   isReply = false,
   isForFeedTab = false,
+  componentsVisibility,
   onReplyPress,
   showReplyCount = false,
 }: Readonly<FeedCardFooterProps>) {
@@ -207,7 +213,7 @@ function FeedCardFooterNew({
               />
             )}
 
-            {!isReply && (
+            {isReplyButtonShown(isReply, componentsVisibility) && (
               <ReplyButton
                 count={postLength}
                 pressProps={repliesPressProps}

@@ -164,5 +164,15 @@ describe('FeedCardFooterNew', () => {
         ).not.toBeInTheDocument();
       }
     );
+
+    it('drops the reply button where the conversation is already open', async () => {
+      await renderFooter({
+        showReplyCount: true,
+        componentsVisibility: { showThreadIcon: false },
+      });
+
+      expect(screen.queryByTestId('reply-button')).not.toBeInTheDocument();
+      expect(screen.getByTestId('feed-reaction-container')).toBeInTheDocument();
+    });
   });
 });

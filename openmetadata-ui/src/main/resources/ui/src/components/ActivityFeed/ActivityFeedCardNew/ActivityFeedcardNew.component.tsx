@@ -254,6 +254,16 @@ const DEFAULT_HEADER_LAYOUT = {
   timestamp: undefined,
 };
 
+// An open conversation in a thread panel already lists its replies, so its
+// reply count would only reopen the same conversation.
+const OPEN_THREAD_FOOTER_VISIBILITY = { showThreadIcon: false };
+
+const getFooterVisibility = (
+  isThreadPanel?: boolean,
+  isPanelLayout?: boolean
+) =>
+  isThreadPanel && isPanelLayout ? OPEN_THREAD_FOOTER_VISIBILITY : undefined;
+
 const getHeaderLayout = (isThreadPanel?: boolean) =>
   isThreadPanel ? PANEL_HEADER_LAYOUT : DEFAULT_HEADER_LAYOUT;
 
@@ -963,6 +973,10 @@ const ActivityFeedCardNew = ({
           {!isActivityEvent && feed && (
             <div className={SPACE_ITEM_CLASS_NAME}>
               <FeedCardFooterNew
+                componentsVisibility={getFooterVisibility(
+                  isThreadPanel,
+                  isPanelLayout
+                )}
                 conversation={feed}
                 conversationId={feed.id}
                 isForFeedTab={isForFeedTab}

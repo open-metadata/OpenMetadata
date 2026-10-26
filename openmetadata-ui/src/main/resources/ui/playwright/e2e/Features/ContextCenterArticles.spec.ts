@@ -1433,6 +1433,14 @@ test.describe('Context Center Articles', () => {
         page.getByTestId('popover-content').filter({ hasText: /admin/i }).last()
       ).toContainText(/admin/i);
 
+      // The reply count opens the conversation inside the drawer. That view
+      // already lists the replies, so it shows no reply count of its own.
+      await mainMessage.getByTestId('reply-button').click();
+      await expect(page.getByTestId('thread-panel-comments')).toBeVisible();
+      await expect(mainMessage.getByTestId('reply-button')).toHaveCount(0);
+      await page.getByTestId('thread-back').click();
+      await expect(mainMessage.getByTestId('reply-button')).toBeVisible();
+
       // In the drawer a conversation's Edit / Delete sit in its menu, which
       // renders in a popover outside the card.
       await mainMessage.getByTestId('conversation-actions').click();
