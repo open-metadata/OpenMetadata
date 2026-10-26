@@ -69,6 +69,7 @@ import {
   SPACE_ITEM_CLASS_NAME,
 } from './ActivityFeedcardNew.constants';
 import {
+  canManageConversation,
   getFooterVisibility,
   getFullCardBaseClassName,
   getFullCardBodyClassName,
@@ -456,16 +457,21 @@ const ActivityFeedCardNew = ({
     setShowFeedEditor(false);
   }, []);
 
-  const feedActions =
-    !isActivityEvent && !isPost && feed ? (
-      <ActivityFeedActions
-        className={ACTIONS_CLASS_NAME}
-        conversation={feed}
-        conversationId={feed.id}
-        isReply={false}
-        onEditPost={() => setIsEditPost((current) => !current)}
-      />
-    ) : null;
+  const feedActions = canManageConversation(
+    currentUser,
+    feed,
+    !isActivityEvent && !isPost
+  ) ? (
+    <ActivityFeedActions
+      canDelete
+      canEdit
+      className={ACTIONS_CLASS_NAME}
+      conversation={feed}
+      conversationId={feed.id}
+      isReply={false}
+      onEditPost={() => setIsEditPost((current) => !current)}
+    />
+  ) : null;
 
   const posts = useMemo(() => {
     if (!showThread && !isOpenInDrawer) {

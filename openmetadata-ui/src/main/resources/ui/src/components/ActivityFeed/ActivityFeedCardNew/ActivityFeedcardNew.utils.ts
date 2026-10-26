@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
+import { Conversation } from '../../../generated/entity/feed/conversation';
+import { isFeedPostAuthor } from '../../../utils/FeedUtilsPure';
 import {
   DEFAULT_HEADER_LAYOUT,
   HEADER_ITEM_CLASS_NAME,
@@ -145,3 +147,15 @@ export const getFullCardBaseClassName = (isThreadPanel?: boolean): string =>
     'relative activity-feed-card-new activity-feed-card-new-surface tw:overflow-visible tw:border-primary tw:text-primary',
     isThreadPanel ? 'tw:rounded-xl' : 'tw:rounded-none'
   );
+
+// A root conversation's menu, and the header room kept clear for it, show only
+// to its author or an admin: the rule ActivityFeedActions applies.
+export const canManageConversation = (
+  currentUser: { id?: string; name?: string; isAdmin?: boolean } | undefined,
+  feed: Conversation | undefined,
+  isRoot: boolean
+): feed is Conversation =>
+  Boolean(feed) &&
+  isRoot &&
+  (isFeedPostAuthor(currentUser, feed?.createdBy) ||
+    Boolean(currentUser?.isAdmin));

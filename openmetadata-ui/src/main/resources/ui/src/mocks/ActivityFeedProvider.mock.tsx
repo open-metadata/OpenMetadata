@@ -444,6 +444,7 @@ export const DummyActivityDrawerComponent = ({
     showDrawer,
     hideDrawer,
     isDrawerOpen,
+    isPostsLoading,
     selectedActivity,
     activityReplies,
   } = useActivityFeedProvider();
@@ -464,6 +465,7 @@ export const DummyActivityDrawerComponent = ({
         {t('label.close')}
       </button>
       <span data-testid="drawer-open">{String(isDrawerOpen)}</span>
+      <span data-testid="posts-loading">{String(isPostsLoading)}</span>
       <span data-testid="selected-activity-id">
         {selectedActivity?.id ?? 'none'}
       </span>

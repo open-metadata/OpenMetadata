@@ -764,13 +764,15 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   }, []);
 
   // The drawer shows an activity ahead of a thread, and closing it keeps the
-  // activity selected, so opening a conversation drops it here.
+  // activity selected, so opening a conversation drops it here. Dropped first:
+  // clearing an activity turns the replies loading state off, which would
+  // otherwise hide the thread's own fetch.
   const showDrawer = useCallback(
     (thread: Conversation) => {
       setIsDrawerOpen(true);
+      setActiveActivity(undefined);
       setActiveThread(thread);
       setSelectedTask(undefined);
-      setActiveActivity(undefined);
     },
     [setActiveThread, setActiveActivity]
   );

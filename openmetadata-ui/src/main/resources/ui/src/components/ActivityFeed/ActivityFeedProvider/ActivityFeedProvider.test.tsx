@@ -57,6 +57,7 @@ import {
   createConversationReply,
   deleteConversation,
   deleteConversationReply,
+  listConversationReplies,
   listConversations,
   patchConversationReply,
 } from '../../../rest/conversationsAPI';
@@ -894,6 +895,36 @@ describe('ActivityFeedProvider', () => {
     );
 
     expect(screen.getByTestId('drawer-open')).toHaveTextContent('true');
+  });
+
+  it('keeps the replies loading while a conversation drawer fetches them', async () => {
+    (listConversationReplies as jest.Mock).mockReturnValue(
+      new Promise(() => undefined)
+    );
+
+    render(
+      <ActivityFeedProvider>
+        <DummyActivityDrawerComponent
+          activity={activity}
+          thread={
+            {
+              id: 'thread-1',
+              replyCount: 10,
+              replies: [],
+            } as unknown as Conversation
+          }
+        />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('open-thread-drawer'));
+
+    await waitFor(() =>
+      expect(listConversationReplies).toHaveBeenCalledWith('thread-1', {
+        limit: 100,
+      })
+    );
+
+    expect(screen.getByTestId('posts-loading')).toHaveTextContent('true');
   });
 
   describe('updateReactions rejection handling', () => {

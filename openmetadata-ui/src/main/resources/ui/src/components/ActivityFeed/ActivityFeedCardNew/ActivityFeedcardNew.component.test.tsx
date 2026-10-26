@@ -476,6 +476,32 @@ describe('ActivityFeedCardNew', () => {
     }
   );
 
+  it('keeps no menu and no header room for it on a conversation the user cannot manage', () => {
+    const { container, rerender } = render(
+      <MemoryRouter>
+        <ActivityFeedCardNew feed={conversation} />
+      </MemoryRouter>
+    );
+
+    expect(container.querySelector('.tw\\:pe-8')).toBeInTheDocument();
+
+    rerender(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          feed={{
+            ...conversation,
+            createdBy: { id: 'other-id', type: 'user', name: 'bob' },
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.queryByTestId('conversation-actions')
+    ).not.toBeInTheDocument();
+    expect(container.querySelector('.tw\\:pe-8')).not.toBeInTheDocument();
+  });
+
   it('drops the "conversation" label only in the activity thread panel', () => {
     const { rerender } = render(
       <MemoryRouter>
