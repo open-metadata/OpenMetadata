@@ -10685,38 +10685,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesAddPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesDetailPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesEditPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesLandingPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlAddPolicyForm.tsx"
       ],
       "specs": [
@@ -10963,6 +10931,38 @@
       ],
       "specs": [
         "playwright/e2e/Pages/BotsProfile.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesAddPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesDetailPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesEditPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesLandingPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
       ]
     },
     {
