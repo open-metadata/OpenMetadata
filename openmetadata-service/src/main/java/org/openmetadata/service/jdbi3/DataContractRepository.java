@@ -182,8 +182,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       validateEntityReference(requestedRef);
       dataContract.setCreatedAt(dataContract.getUpdatedAt());
       dataContract.setCreatedBy(dataContract.getUpdatedBy());
-      // A new contract has no suite, result or history yet, and is never a virtual inherited one.
-      dataContract.setTestSuite(null);
+      // A new contract has no result or history yet, and is never a virtual inherited one. Its
+      // suite reference is dropped only when another contract owns the suite: a PUT that creates
+      // runs prepare twice, and the first pass has already made the contract's own suite.
+      releaseForeignTestSuite(dataContract);
       dataContract.setLatestResult(null);
       dataContract.setContractUpdates(null);
       dataContract.setInherited(null);
@@ -243,7 +245,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   protected void postUpdate(DataContract original, DataContract updated) {
     super.postUpdate(original, updated);
-
+    unlinkForeignTestSuite(original);
     postCreateOrUpdate(updated);
   }
 
@@ -290,26 +292,42 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return isOwnSuite(dataContract, testSuite) ? testSuite : null;
   }
 
+  /** The suite this contract stores a reference to but does not own, or null. */
+  private TestSuite findForeignTestSuite(DataContract dataContract) {
+    TestSuite referenced = Entity.getEntityOrNull(dataContract.getTestSuite(), "", Include.ALL);
+    return referenced != null && !isOwnSuite(dataContract, referenced) ? referenced : null;
+  }
+
   /**
-   * Drops a stored reference to a suite this contract does not own, and that suite's link back to
-   * the contract, so the suite's runs stop writing this contract's results. The contract then gets
-   * a suite of its own if it has expectations.
+   * Drops a stored reference to a suite this contract does not own. The contract then gets a suite
+   * of its own if it has expectations; {@link #unlinkForeignTestSuite} removes the old link.
    */
   private void releaseForeignTestSuite(DataContract dataContract) {
-    TestSuite referenced = Entity.getEntityOrNull(dataContract.getTestSuite(), "", Include.ALL);
-    if (referenced != null && !isOwnSuite(dataContract, referenced)) {
+    TestSuite foreign = findForeignTestSuite(dataContract);
+    if (foreign != null) {
       LOG.warn(
           "Data contract {} referenced test suite {}, which belongs to another contract; "
               + "releasing it",
           dataContract.getId(),
-          referenced.getId());
+          foreign.getId());
+      dataContract.setTestSuite(null);
+    }
+  }
+
+  /**
+   * Removes the link from a suite the contract used to reference but does not own, so that suite's
+   * runs stop writing this contract's results. Runs after the update, not in prepare(), because a
+   * PUT prepares before it authorizes.
+   */
+  private void unlinkForeignTestSuite(DataContract original) {
+    TestSuite foreign = findForeignTestSuite(original);
+    if (foreign != null) {
       deleteRelationship(
-          referenced.getId(),
+          foreign.getId(),
           Entity.TEST_SUITE,
-          dataContract.getId(),
+          original.getId(),
           Entity.DATA_CONTRACT,
           Relationship.CONTAINS);
-      dataContract.setTestSuite(null);
     }
   }
 
@@ -329,7 +347,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private void postCreateOrUpdate(DataContract dataContract) {
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
-      TestSuite testSuite = getOrCreateTestSuite(dataContract);
+      // Find, never create: prepare() makes the suite and stores its reference. A result update
+      // reaches here without prepare(), and a suite created now would not be stored on the
+      // contract, so its next update would fail creating a suite with the same name.
+      TestSuite testSuite = findContractTestSuite(dataContract, Include.NON_DELETED);
       // Write the reverse edge testSuite -> dataContract BEFORE any pipeline work so a
       // pipeline-service outage cannot leave the contract without its reverse link.
       // TestSuiteRepository.onTestSuiteExecutionComplete guards on
@@ -950,8 +971,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
       }
       LOG.warn(
-          "Test suite {} referenced by data contract {} no longer exists or belongs to another "
-              + "contract; creating a new suite to replace the reference",
+          "Test suite {} referenced by data contract {} no longer exists; creating a new suite to "
+              + "replace the reference",
           dataContract.getTestSuite(),
           dataContract.getId());
     }
@@ -1185,15 +1206,13 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   public void deployAndTriggerDQValidation(DataContract dataContract) {
-    if (dataContract.getTestSuite() == null) {
+    TestSuite testSuite = findContractTestSuite(dataContract, Include.NON_DELETED);
+    if (testSuite == null) {
       throw DataContractValidationException.byMessage(
           String.format(
               "Data contract %s does not have a test suite defined, cannot trigger DQ validation",
               dataContract.getFullyQualifiedName()));
     }
-    TestSuite testSuite =
-        Entity.getEntity(
-            dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
 
     if (nullOrEmpty(testSuite.getPipelines())) {
       throw DataContractValidationException.byMessage(

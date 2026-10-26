@@ -8829,9 +8829,15 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             .withEntity(borrowerTable.getEntityReference())
             .withEntityStatus(EntityStatus.APPROVED);
     DataContract borrower = createEntity(borrowerRequest);
-    pointAtTestSuiteOf(borrower, owner);
-
     TestCase borrowerTest = rowCountTest(client, ns, borrowerTable, "suite_borrower_tc");
+    pointAtTestSuiteOf(borrower, owner, List.of(borrowerTest));
+
+    DataContractResult refused = client.dataContracts().validate(borrower.getId());
+    assertEquals(ContractExecutionStatus.Aborted, refused.getContractExecutionStatus());
+    assertTrue(
+        refused.getResult().contains("does not have a test suite defined"),
+        "validating must not run another contract's suite: " + refused.getResult());
+
     DataContract updated =
         client
             .dataContracts()
@@ -8848,12 +8854,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         List.of(ownerTest.getId()),
         ownerSuite.getTests().stream().map(EntityReference::getId).toList());
     assertEquals(owner.getId(), ownerSuite.getDataContract().getId());
-    assertTrue(
-        Entity.getCollectionDAO()
-            .relationshipDAO()
-            .findTo(ownerSuite.getId(), Entity.TEST_SUITE, Relationship.CONTAINS.ordinal())
-            .stream()
-            .noneMatch(link -> borrower.getId().equals(link.getId())),
+    assertFalse(
+        suiteLinksTo(ownerSuite, borrower),
         "the owner's suite must no longer link back to the borrowing contract");
   }
 
@@ -8870,16 +8872,28 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                 .withName(ns.prefix("deleted_borrower"))
                 .withEntity(createTestTable(ns).getEntityReference())
                 .withEntityStatus(EntityStatus.APPROVED));
-    pointAtTestSuiteOf(borrower, owner);
+    pointAtTestSuiteOf(borrower, owner, List.of());
 
     hardDeleteEntity(borrower.getId().toString());
 
     TestSuite ownerSuite =
-        client.testSuites().get(owner.getTestSuite().getId().toString(), "tests");
+        client.testSuites().get(owner.getTestSuite().getId().toString(), "tests,dataContract");
     assertFalse(Boolean.TRUE.equals(ownerSuite.getDeleted()));
     assertEquals(
         List.of(ownerTest.getId()),
         ownerSuite.getTests().stream().map(EntityReference::getId).toList());
+    assertEquals(owner.getId(), ownerSuite.getDataContract().getId());
+    assertFalse(
+        suiteLinksTo(ownerSuite, borrower),
+        "the owner's suite must not link back to the deleted contract");
+  }
+
+  private static boolean suiteLinksTo(TestSuite suite, DataContract contract) {
+    return Entity.getCollectionDAO()
+        .relationshipDAO()
+        .findTo(suite.getId(), Entity.TEST_SUITE, Relationship.CONTAINS.ordinal())
+        .stream()
+        .anyMatch(link -> contract.getId().equals(link.getId()));
   }
 
   private DataContract contractWithExpectations(
@@ -8903,13 +8917,21 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   /**
-   * Stores {@code contract} pointing at {@code owner}'s suite, with the suite linked back to it. The
-   * server runs in-process, so this seeds a state no public API can produce any more.
+   * Stores {@code contract} with {@code expectations}, pointing at {@code owner}'s suite, with the
+   * suite linked back to it. The server runs in-process, so this seeds a state no public API can
+   * produce any more.
    */
-  private static void pointAtTestSuiteOf(DataContract contract, DataContract owner) {
+  private static void pointAtTestSuiteOf(
+      DataContract contract, DataContract owner, List<TestCase> expectations) {
     DataContract stored =
         Entity.getCollectionDAO().dataContractDAO().findEntityById(contract.getId());
-    Entity.getCollectionDAO().dataContractDAO().update(stored.withTestSuite(owner.getTestSuite()));
+    Entity.getCollectionDAO()
+        .dataContractDAO()
+        .update(
+            stored
+                .withTestSuite(owner.getTestSuite())
+                .withQualityExpectations(
+                    expectations.stream().map(TestCase::getEntityReference).toList()));
     EntityRepository.invalidateCacheForEntity(
         Entity.DATA_CONTRACT, contract.getId(), contract.getFullyQualifiedName());
     Entity.getEntityRepository(Entity.DATA_CONTRACT)

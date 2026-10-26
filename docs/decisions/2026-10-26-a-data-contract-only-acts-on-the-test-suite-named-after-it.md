@@ -20,13 +20,19 @@ tests on every update. REST never takes that reference from a caller (`CreateDat
 
 ## Decision
 
-- Creating a contract clears `testSuite`, `latestResult`, `contractUpdates` and `inherited`: a new
-  contract owns no suite, result or history yet, and is never a virtual inherited contract.
+- Creating a contract clears `latestResult`, `contractUpdates` and `inherited`: a new contract has
+  no result or history yet, and is never a virtual inherited contract. It drops a `testSuite`
+  reference only to a suite it does not own: a PUT that creates runs `prepare` twice, and the first
+  pass has already created the contract's own suite.
 - `DataContractRepository` follows a stored `testSuite` reference only when the suite it points to
-  is named after the contract's id (`isOwnSuite`). Any other suite is never deleted or edited.
+  is named after the contract's id (`isOwnSuite`). Any other suite is never deleted, edited or run.
 - Updating a contract that stores another contract's suite drops that reference and the suite's
   `CONTAINS` link back to the contract, so the suite's runs stop writing this contract's results.
-  A contract with expectations then gets its own suite.
+  A contract with expectations then gets its own suite. The link is removed in `postUpdate`, after
+  the update is authorized and stored, because a PUT runs `prepare` before it authorizes.
+- Only `prepare` creates a contract's suite, since it also stores the reference. `postCreate` and
+  `postUpdate` only find it: a result update reaches them without `prepare`, and a suite created
+  there would not be stored on the contract.
 - MCP `create_entity` and `describe_entity_type` do not offer those four fields for a data contract.
 
 ## Consequences
@@ -34,5 +40,5 @@ tests on every update. REST never takes that reference from a caller (`CreateDat
 - Contract suites must keep being named after the contract id. Changing that needs a new record and
   a migration of the stored references.
 - A contract that already stored another suite's reference keeps it, and the suite's link back,
-  until its next update or hard delete (which removes all of the contract's links). Until then
-  `deployAndTriggerDQValidation` still follows the raw reference: it runs that suite's pipeline.
+  until its next update or hard delete (which removes all of the contract's links). Until then,
+  validating it aborts with "no test suite defined" instead of running that suite's pipeline.
