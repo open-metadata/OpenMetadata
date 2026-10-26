@@ -4620,21 +4620,49 @@ public interface CollectionDAO {
     int updateAboutFqnHash(
         @Bind("oldFqnHash") String oldFqnHash, @Bind("newFqnHash") String newFqnHash);
 
-    @Transaction
-    @ConnectionAwareSqlBatch(
+    /**
+     * Swap the {@code oldFqnHash} prefix for {@code newFqnHash} on the tasks about the entity
+     * itself (exact hash, {@code entityType}) and about the entities nested under it ({@code
+     * hash.%}, {@code nestedTypes}). One statement, so a row the exact match moves is not matched
+     * again by the prefix. Other entity types can share an FQN (a domain and a glossary both named
+     * {@code X}), so each match also requires the task's {@code about} relationship to come from
+     * the matching type. Hashes are hex and dots, so the prefix holds no LIKE wildcard.
+     */
+    @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', :newFqnHash) "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.aboutFqnHash')) = :oldFqnHash",
+            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', "
+                + "CONCAT(:newFqnHash, SUBSTRING(aboutFqnHash, CHAR_LENGTH(:oldFqnHash) + 1))) "
+                + "WHERE (aboutFqnHash = :oldFqnHash AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "= :entityType)) "
+                + "OR (aboutFqnHash LIKE CONCAT(:oldFqnHash, '.%') AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "IN (<nestedTypes>)))",
         connectionType = MYSQL)
-    @ConnectionAwareSqlBatch(
+    @ConnectionAwareSqlUpdate(
         value =
             "UPDATE task_entity SET json = jsonb_set(json, '{aboutFqnHash}', "
-                + "to_jsonb(:newFqnHash::text)) WHERE json->>'aboutFqnHash' = :oldFqnHash",
+                + "to_jsonb(:newFqnHash::text || "
+                + "substring(aboutfqnhash from char_length(:oldFqnHash::text) + 1))) "
+                + "WHERE (aboutfqnhash = :oldFqnHash AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "= :entityType)) "
+                + "OR (aboutfqnhash LIKE :oldFqnHash::text || '.%' AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "IN (<nestedTypes>)))",
         connectionType = POSTGRES)
-    @BatchChunkSize(100)
-    int[] updateAboutFqnHashBatch(
-        @Bind("oldFqnHash") List<String> oldFqnHashes,
-        @Bind("newFqnHash") List<String> newFqnHashes);
+    int repointAboutFqnHash(
+        @Bind("oldFqnHash") String oldFqnHash,
+        @Bind("newFqnHash") String newFqnHash,
+        @Bind("entityType") String entityType,
+        @Bind("relation") int relation,
+        @BindList(value = "nestedTypes", onEmpty = BindList.EmptyHandling.NULL_STRING)
+            List<String> nestedTypes);
+
+    /** Opens the {@code about} relationship check; the caller appends the entity-type predicate. */
+    String TASK_ABOUT_FROM =
+        "SELECT 1 FROM entity_relationship er WHERE er.toId = task_entity.id "
+            + "AND er.toEntity = 'task' AND er.relation = :relation AND er.fromEntity ";
 
     @Override
     default void update(UUID id, String fqn, String json) {

@@ -1201,6 +1201,16 @@ public class ListFilter extends Filter<ListFilter> {
     return escapeBackslashAndApostrophe(regexEscaped);
   }
 
+  /**
+   * Escape a value that travels as a LIKE <em>bind</em> parameter: only the LIKE metacharacters
+   * and the escape character itself need escaping. Apostrophes stay as typed — {@link #escape}
+   * doubles them for literal interpolation, which would make a bound search for "it's" match
+   * nothing.
+   */
+  public static String escapeLikeBindValue(String value) {
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+  }
+
   public static String escape(String name) {
     // Escape string to be using in LIKE clause
     // "'" is used for indicated start and end of the string. Use "''" to escape it.
