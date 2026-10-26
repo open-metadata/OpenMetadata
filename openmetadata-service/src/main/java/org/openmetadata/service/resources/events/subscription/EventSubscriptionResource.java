@@ -86,6 +86,7 @@ import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
+import org.openmetadata.service.events.subscription.AlertLimits;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
 import org.openmetadata.service.events.subscription.ResourceEventTypes;
@@ -749,6 +750,7 @@ public class EventSubscriptionResource
           @QueryParam("limit")
           @DefaultValue("15")
           @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = AlertLimits.MAX_LISTING_ROWS, message = AlertLimits.MAX_LISTING_ROWS_MESSAGE)
           int limit,
       @Parameter(
               description = "Offset for pagination (starting point for records)",
@@ -902,6 +904,7 @@ public class EventSubscriptionResource
       @Parameter(description = "Maximum number of unprocessed events returned")
           @DefaultValue("15")
           @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = AlertLimits.MAX_LISTING_ROWS, message = AlertLimits.MAX_LISTING_ROWS_MESSAGE)
           @QueryParam("limit")
           int limit,
       @Parameter(
@@ -968,6 +971,7 @@ public class EventSubscriptionResource
       @Parameter(description = "Maximum number of unprocessed events returned")
           @DefaultValue("15")
           @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = AlertLimits.MAX_LISTING_ROWS, message = AlertLimits.MAX_LISTING_ROWS_MESSAGE)
           @QueryParam("limit")
           int limit,
       @Parameter(
@@ -1043,6 +1047,7 @@ public class EventSubscriptionResource
           @QueryParam("limit")
           @DefaultValue("15")
           @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = AlertLimits.MAX_LISTING_ROWS, message = AlertLimits.MAX_LISTING_ROWS_MESSAGE)
           int limit,
       @Parameter(
               description = "Offset for pagination (starting point for records)",
@@ -1100,6 +1105,7 @@ public class EventSubscriptionResource
           @QueryParam("limit")
           @DefaultValue("15")
           @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = AlertLimits.MAX_LISTING_ROWS, message = AlertLimits.MAX_LISTING_ROWS_MESSAGE)
           int limit,
       @Parameter(
               description = "Offset for pagination (starting point for records)",
@@ -1161,6 +1167,7 @@ public class EventSubscriptionResource
           @QueryParam("limit")
           @DefaultValue("15")
           @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = AlertLimits.MAX_LISTING_ROWS, message = AlertLimits.MAX_LISTING_ROWS_MESSAGE)
           int limit,
       @Parameter(
               description = "Offset for pagination (starting point for records)",
@@ -1221,6 +1228,7 @@ public class EventSubscriptionResource
           @QueryParam("limit")
           @DefaultValue("15")
           @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = AlertLimits.MAX_LISTING_ROWS, message = AlertLimits.MAX_LISTING_ROWS_MESSAGE)
           int limit,
       @Parameter(
               description = "Offset for pagination (starting point for records)",
@@ -1286,6 +1294,7 @@ public class EventSubscriptionResource
           @QueryParam("limit")
           @DefaultValue("15")
           @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = AlertLimits.MAX_LISTING_ROWS, message = AlertLimits.MAX_LISTING_ROWS_MESSAGE)
           int limit,
       @Parameter(
               description = "Offset for pagination (starting point for records)",
