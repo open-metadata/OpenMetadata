@@ -3,8 +3,9 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-25 (initial)
 - **Deciders:** Sriharsha Chintalapani
-- **Guard:** `CredentialVerifierTest`, `OmCredentialTest`, `JwtFilterTest`,
-  `MintedTokensAreRecognizedTest`; `CredentialRevocationTwoProcessIT`, `CredentialDatabaseOutageIT`
+- **Guard:** `CredentialVerifierTest`, `CredentialsTest`, `OmCredentialTest`, `JwtFilterTest`,
+  `MintedTokensAreRecognizedTest`; `CredentialRevocationTwoProcessIT`, `CredentialDatabaseOutageIT`,
+  `RevokeWaitForPropagationIT`, `UserResourceIT`
 - **Related:** ADR:2026-10-14-cache-misses-that-do-io-load-outside-the-cache-lock
 
 ## Context
@@ -34,6 +35,15 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
 - Correctness asks nothing of writers, since the sweep sees every committed change. The
   repositories still call `Credentials.changed` after commit, which gives the writing server
   read-your-writes.
+- `PUT /v1/users/revokeToken` and `PUT /v1/users/security/token/revoke` take `waitForPropagation`,
+  `false` by default. With `true`, the call responds after the write has committed and
+  `maxStaleness` plus 50 ms has passed on the monotonic clock. The wait is a time bound and needs no
+  membership. At most 8 such waits run at once in a process, taken with `tryAcquire` before the
+  wait begins, so they cannot hold every request slot; the limit is a constant, not a setting. When
+  the wait cannot finish, because the call is interrupted or no permit is free, the call answers 503
+  with `Retry-After`. `REVIEW.md` asks that an `InterruptedException` never map to a retryable
+  status. Here the write has committed, both endpoints converge on a repeat, and a repeat waits
+  again, so the 503 is a request to repeat the call and not an unfinished operation.
 
 ## Consequences
 - While any principal is cached, each server sends one fingerprint statement per 500 cached
