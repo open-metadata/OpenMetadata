@@ -23,8 +23,10 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.bootstrap.ForkedOperations;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -46,6 +48,10 @@ class OpsRegenerateBotTokensIT {
   @Test
   void tokensRegeneratedByTheOpsCommandReplaceTheOldOnesWithinMaxStaleness(TestNamespace ns) {
     User bot = CredentialFixtures.createBot(ns, "opsbot");
+    // The command regenerates the token of each Bot entity's user, so the user needs one.
+    SdkClients.adminClient()
+        .bots()
+        .create(new CreateBot().withName(ns.prefix("opsbot")).withBotUser(bot.getName()));
     String oldToken = CredentialFixtures.botToken(bot);
     assertEquals(200, CredentialFixtures.status(LOGGED_IN_USER, oldToken), "old token works");
 
