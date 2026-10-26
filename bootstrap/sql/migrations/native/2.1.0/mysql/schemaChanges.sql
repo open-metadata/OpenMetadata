@@ -915,6 +915,42 @@ PREPARE rdf_projection_health_watermark_stmt FROM @rdf_projection_health_waterma
 EXECUTE rdf_projection_health_watermark_stmt;
 DEALLOCATE PREPARE rdf_projection_health_watermark_stmt;
 
+-- Reindex partitions keep the keyset cursors that bound them, so every server reads the same rows
+-- while entities are created or deleted during the run.
+SET @search_index_partition_startKey_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'search_index_partition'
+        AND column_name = 'startKey'
+    ),
+    'SELECT 1',
+    'ALTER TABLE search_index_partition ADD COLUMN startKey TEXT NULL'
+  )
+);
+PREPARE search_index_partition_startKey_stmt FROM @search_index_partition_startKey_ddl;
+EXECUTE search_index_partition_startKey_stmt;
+DEALLOCATE PREPARE search_index_partition_startKey_stmt;
+
+SET @search_index_partition_endKey_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'search_index_partition'
+        AND column_name = 'endKey'
+    ),
+    'SELECT 1',
+    'ALTER TABLE search_index_partition ADD COLUMN endKey TEXT NULL'
+  )
+);
+PREPARE search_index_partition_endKey_stmt FROM @search_index_partition_endKey_ddl;
+EXECUTE search_index_partition_endKey_stmt;
+DEALLOCATE PREPARE search_index_partition_endKey_stmt;
+
 -- Independent ontology definitions and releases.
 CREATE TABLE IF NOT EXISTS ontology_entity (
   id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,

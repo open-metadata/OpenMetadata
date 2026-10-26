@@ -44,7 +44,7 @@ class PaginatedSourceReadFailureTest {
   @Test
   void entitiesKeysetReadFailureReportsTheLostBatch() {
     EntityRepository<?> repository = mock(EntityRepository.class);
-    when(repository.listAfterKeyset(any(), anyInt(), any(), anyInt(), anyBoolean(), any()))
+    when(repository.listAfterKeyset(any(), anyInt(), any(), any(), anyInt(), anyBoolean(), any()))
         .thenThrow(DB_DOWN);
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {

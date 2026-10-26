@@ -48,6 +48,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   private final StepStats stats = new StepStats();
   private final ListFilter filter;
   private final int cachedTotalCount;
+  private final String endKey;
   private String lastFailedCursor = null;
   private final AtomicReference<String> cursor = new AtomicReference<>(RestUtil.encodeCursor("0"));
   private final AtomicReference<Boolean> isDone = new AtomicReference<>(false);
@@ -60,6 +61,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         Entity.getEntityRepository(entityType);
     this.filter = entityRepository.getReindexFilter();
     this.cachedTotalCount = entityRepository.getDao().listCount(this.filter);
+    this.endKey = null;
     this.stats
         .withTotalRecords(cachedTotalCount)
         .withSuccessRecords(0)
@@ -69,11 +71,21 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
 
   public PaginatedEntitiesSource(
       String entityType, int batchSize, List<String> fields, int knownTotal) {
+    this(entityType, batchSize, fields, knownTotal, (String) null);
+  }
+
+  /**
+   * A source whose keyset reads stop at {@code endKey}: rows that sort after that cursor are left to
+   * whoever reads the next range. A null {@code endKey} reads to the end of the table.
+   */
+  public PaginatedEntitiesSource(
+      String entityType, int batchSize, List<String> fields, int knownTotal, String endKey) {
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
     this.filter = Entity.getEntityRepository(entityType).getReindexFilter();
     this.cachedTotalCount = knownTotal;
+    this.endKey = endKey;
     this.stats
         .withTotalRecords(cachedTotalCount)
         .withSuccessRecords(0)
@@ -88,6 +100,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     this.fields = fields;
     this.filter = filter;
     this.cachedTotalCount = Entity.getEntityRepository(entityType).getDao().listCount(filter);
+    this.endKey = null;
     this.stats
         .withTotalRecords(cachedTotalCount)
         .withSuccessRecords(0)
@@ -102,6 +115,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     this.fields = fields;
     this.filter = filter;
     this.cachedTotalCount = knownTotal;
+    this.endKey = null;
     this.stats
         .withTotalRecords(cachedTotalCount)
         .withSuccessRecords(0)
@@ -304,6 +318,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               filter,
               batchSize,
               keysetCursor,
+              endKey,
               cachedTotalCount,
               true,
               Entity.getOnlySupportedFields(entityType, fields));

@@ -21,10 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
@@ -40,6 +40,7 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -58,6 +59,7 @@ import org.mockito.quality.Strictness;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.EntityError;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -323,7 +325,6 @@ class PartitionWorkerTest {
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
-      when(coordinator.getPartitionStartCursor(jobId, "table", 5L)).thenReturn(null);
       when(repository.getReindexFilter()).thenReturn(reindexFilter);
       when(repository.getCursorAtOffset(reindexFilter, 4)).thenReturn("cursor-4");
 
@@ -354,52 +355,112 @@ class PartitionWorkerTest {
             5L));
   }
 
-  /**
-   * Bug 2 regression: precomputed cursor on the coordinator must short-circuit the
-   * OFFSET-based fallback. Without this, every PartitionWorker pays SQL OFFSET cost at the
-   * partition start (O(rangeStart) per partition, O(N²) across all partitions for a job).
-   * With it, workers hit the cache in O(1) and the slow path is never invoked. Cache key
-   * includes jobId so cursors precomputed for an earlier job on this server cannot
-   * falsely match a later job initialized elsewhere.
-   */
   @Test
-  void initializeKeysetCursorHitsPrecomputedCacheAndSkipsOffsetFallback() throws Exception {
-    @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
+  void keyRangePartitionReadsFromItsStartKeyUntilTheReaderReportsNoMoreRows() {
+    SearchIndexPartition partition = keyRangePartition();
+    List<List<?>> constructorArgs = new ArrayList<>();
+    stubPartitionRun();
 
-    UUID jobId = UUID.randomUUID();
-    SearchIndexPartition partition =
-        SearchIndexPartition.builder()
-            .id(UUID.randomUUID())
-            .jobId(jobId)
-            .entityType("table")
-            .partitionIndex(1)
-            .rangeStart(10000)
-            .rangeEnd(20000)
-            .estimatedCount(10000)
-            .workUnits(10000)
-            .priority(50)
-            .status(PartitionStatus.PENDING)
-            .cursor(10000)
-            .build();
+    try (MockedStatic<ServerIdentityResolver> resolverMock = mockServerIdentity();
+        MockedConstruction<PaginatedEntitiesSource> ignored =
+            mockConstruction(
+                PaginatedEntitiesSource.class,
+                (mock, context) -> {
+                  constructorArgs.add(context.arguments());
+                  doReturn(page(2, "page-2")).when(mock).readNextKeyset("start-key");
+                  doReturn(page(1, null)).when(mock).readNextKeyset("page-2");
+                })) {
+      PartitionWorker.PartitionResult result = worker.processPartition(partition);
 
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
-      when(coordinator.getPartitionStartCursor(jobId, "table", 10000L))
-          .thenReturn("precomputed-10k");
-
-      Object cursor =
-          invokePrivate(
-              worker,
-              "initializeKeysetCursor",
-              new Class<?>[] {SearchIndexPartition.class, long.class},
-              partition,
-              10000L);
-
-      assertEquals("precomputed-10k", cursor);
-      verify(coordinator).getPartitionStartCursor(jobId, "table", 10000L);
-      verify(repository, never()).getCursorAtOffset(any(ListFilter.class), anyInt());
+      assertEquals(3, result.successCount());
     }
+
+    assertEquals("end-key", constructorArgs.getFirst().get(4));
+    verify(coordinator).completePartition(partition.getId(), 3L, 0L, 0L);
+  }
+
+  @Test
+  void keyRangePartitionIsRetriedFromItsStartKeyWhenARowReadFails() {
+    SearchIndexPartition partition = keyRangePartition();
+    stubPartitionRun();
+
+    try (MockedStatic<ServerIdentityResolver> resolverMock = mockServerIdentity();
+        MockedConstruction<PaginatedEntitiesSource> ignored =
+            mockConstruction(
+                PaginatedEntitiesSource.class,
+                (mock, context) ->
+                    doThrow(readerFailure()).when(mock).readNextKeyset("start-key"))) {
+      worker.processPartition(partition);
+    }
+
+    verify(coordinator).failPartition(eq(partition.getId()), anyString());
+    verify(coordinator, never()).completePartition(any(), anyLong(), anyLong(), anyLong());
+  }
+
+  @Test
+  void keyRangePartitionContinuesAfterABatchItCouldNotWrite() throws Exception {
+    SearchIndexPartition partition = keyRangePartition();
+    stubPartitionRun();
+    doThrow(new RuntimeException("bulk rejected"))
+        .doNothing()
+        .when(bulkSink)
+        .write(anyList(), anyMap());
+
+    try (MockedStatic<ServerIdentityResolver> resolverMock = mockServerIdentity();
+        MockedConstruction<PaginatedEntitiesSource> ignored =
+            mockConstruction(
+                PaginatedEntitiesSource.class,
+                (mock, context) -> {
+                  doReturn(page(2, "page-2")).when(mock).readNextKeyset("start-key");
+                  doReturn(page(1, null)).when(mock).readNextKeyset("page-2");
+                })) {
+      worker.processPartition(partition);
+    }
+
+    verify(bulkSink, times(2)).write(anyList(), anyMap());
+    verify(coordinator).completePartition(eq(partition.getId()), anyLong(), anyLong(), anyLong());
+    verify(coordinator, never()).failPartition(any(), anyString());
+  }
+
+  private SearchIndexPartition keyRangePartition() {
+    return buildPartition("table", 1, 2).toBuilder()
+        .startKey("start-key")
+        .endKey("end-key")
+        .build();
+  }
+
+  private void stubPartitionRun() {
+    when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(searchIndexServerStatsDAO);
+    when(bulkSink.flushAndAwait(30)).thenReturn(true);
+    when(bulkSink.getPendingVectorTaskCount()).thenReturn(0);
+  }
+
+  private static MockedStatic<ServerIdentityResolver> mockServerIdentity() {
+    ServerIdentityResolver resolver = mock(ServerIdentityResolver.class);
+    when(resolver.getServerId()).thenReturn("server-a");
+    MockedStatic<ServerIdentityResolver> resolverMock = mockStatic(ServerIdentityResolver.class);
+    resolverMock.when(ServerIdentityResolver::getInstance).thenReturn(resolver);
+    return resolverMock;
+  }
+
+  private static ResultList<EntityInterface<?>> page(int rows, String after) {
+    ResultList<EntityInterface<?>> page = new ResultList<>();
+    List<EntityInterface<?>> data = new ArrayList<>();
+    for (int i = 0; i < rows; i++) {
+      data.add(mock(EntityInterface.class));
+    }
+    page.setData(data);
+    page.setPaging(new Paging().withAfter(after));
+    return page;
+  }
+
+  private static SearchIndexException readerFailure() {
+    return new SearchIndexException(
+        new IndexingError()
+            .withErrorSource(IndexingError.ErrorSource.READER)
+            .withFailedCount(BATCH_SIZE)
+            .withMessage("database unavailable"));
   }
 
   @Test
@@ -604,7 +665,7 @@ class PartitionWorkerTest {
             mockConstruction(
                 PaginatedEntitiesSource.class,
                 (mock, context) -> {
-                  constructorArgs.set(List.copyOf(context.arguments()));
+                  constructorArgs.set(new ArrayList<>(context.arguments()));
                   doReturn(resultList).when(mock).readNextKeyset(any());
                 })) {
       reindexingUtilMock
@@ -617,10 +678,11 @@ class PartitionWorkerTest {
       invokePrivate(
           worker,
           "readEntitiesKeyset",
-          new Class<?>[] {String.class, String.class, int.class},
+          new Class<?>[] {String.class, String.class, int.class, String.class},
           Entity.CONTAINER,
           "cursor",
-          BATCH_SIZE);
+          BATCH_SIZE,
+          null);
     }
 
     assertEquals(Entity.CONTAINER, constructorArgs.get().get(0));
@@ -662,10 +724,11 @@ class PartitionWorkerTest {
           invokePrivate(
               timeSeriesWorker,
               "readEntitiesKeyset",
-              new Class<?>[] {String.class, String.class, int.class},
+              new Class<?>[] {String.class, String.class, int.class, String.class},
               Entity.QUERY_COST_RECORD,
               "cursor",
-              3));
+              3,
+              null));
     }
 
     assertEquals(Entity.QUERY_COST_RECORD, constructorArgs.get().get(0));
@@ -699,10 +762,11 @@ class PartitionWorkerTest {
           invokePrivate(
               timeSeriesWorker,
               "readEntitiesKeyset",
-              new Class<?>[] {String.class, String.class, int.class},
+              new Class<?>[] {String.class, String.class, int.class, String.class},
               SearchIndexEntityTypes.QUERY_COST_RESULT,
               "cursor",
-              3));
+              3,
+              null));
     }
 
     assertEquals(Entity.QUERY_COST_RECORD, constructorArgs.get().get(0));
@@ -1116,10 +1180,13 @@ class PartitionWorkerTest {
         invokePrivate(
             target,
             "processBatch",
-            new Class<?>[] {String.class, String.class, int.class, StageStatsTracker.class},
+            new Class<?>[] {
+              String.class, String.class, int.class, String.class, StageStatsTracker.class
+            },
             entityType,
             cursor,
             batchSize,
+            null,
             statsTracker);
   }
 

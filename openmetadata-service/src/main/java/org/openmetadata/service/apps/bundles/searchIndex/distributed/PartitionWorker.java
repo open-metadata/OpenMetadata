@@ -171,17 +171,16 @@ public class PartitionWorker {
               .build();
       coordinator.updatePartitionProgress(processing);
 
-      // Initialize keyset cursor for efficient pagination (avoids OFFSET degradation)
-      long cursorInitStart = System.currentTimeMillis();
-      String keysetCursor = initializeKeysetCursor(partition, rangeStart);
-      LOG.debug(
-          "initializeKeysetCursor for {} offset={} took {}ms",
-          entityType,
-          rangeStart,
-          System.currentTimeMillis() - cursorInitStart);
+      // A key range ends where the next partition starts, so rows created or deleted during the run
+      // cannot push a row out of every partition. Offset ranges remain for partitions without keys.
+      boolean keyRange = partition.hasKeyRange();
+      String keysetCursor =
+          keyRange ? partition.getStartKey() : initializeKeysetCursor(partition, rangeStart);
+      boolean exhausted = false;
 
       // Process in batches
-      while (currentOffset < rangeEnd
+      while (!exhausted
+          && (keyRange || currentOffset < rangeEnd)
           && !stopped.get()
           && !Thread.currentThread().isInterrupted()) {
         // Yield before pulling the next batch when the pod's heap is tight. AutoTune sizes batch
@@ -191,11 +190,13 @@ public class PartitionWorker {
         // the
         // writes — lets in-flight docs drain and GC reclaim, so reindex adapts to any pod size.
         HeapBackpressure.awaitHeadroom();
-        int currentBatchSize = (int) Math.min(batchSize, rangeEnd - currentOffset);
+        int currentBatchSize =
+            keyRange ? batchSize : (int) Math.min(batchSize, rangeEnd - currentOffset);
 
         try {
           BatchResult batchResult =
-              processBatch(entityType, keysetCursor, currentBatchSize, statsTracker);
+              processBatch(
+                  entityType, keysetCursor, currentBatchSize, partition.getEndKey(), statsTracker);
           // Check for stop/interrupt after DB read completes
           if (stopped.get() || Thread.currentThread().isInterrupted()) {
             break;
@@ -203,10 +204,11 @@ public class PartitionWorker {
           successCount.addAndGet(batchResult.successCount());
           failedCount.addAndGet(batchResult.failedCount());
           warningsCount.addAndGet(batchResult.warningsCount());
-          processedCount.addAndGet(
-              batchResult.successCount() + batchResult.failedCount() + batchResult.warningsCount());
+          long rowsRead =
+              batchResult.successCount() + batchResult.failedCount() + batchResult.warningsCount();
+          processedCount.addAndGet(rowsRead);
 
-          currentOffset += currentBatchSize;
+          currentOffset += keyRange ? rowsRead : currentBatchSize;
           keysetCursor = batchResult.nextCursor();
 
           // Update progress periodically
@@ -220,7 +222,9 @@ public class PartitionWorker {
           }
 
           // If keyset cursor exhausted, recompute or stop
-          if (keysetCursor == null && currentOffset < rangeEnd) {
+          if (keyRange) {
+            exhausted = keysetCursor == null;
+          } else if (keysetCursor == null && currentOffset < rangeEnd) {
             keysetCursor = initializeKeysetCursor(partition, currentOffset);
             if (keysetCursor == null) {
               LOG.debug(
@@ -243,6 +247,14 @@ public class PartitionWorker {
               e.getIndexingError() != null
                   && e.getIndexingError().getErrorSource()
                       == org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
+
+          if (keyRange && !(e instanceof SinkBatchException)) {
+            throw new IllegalStateException(
+                "Could not read "
+                    + entityType
+                    + " rows; the partition is retried from its start key",
+                e);
+          }
 
           int batchFailedCount =
               e.getIndexingError() != null && e.getIndexingError().getFailedCount() != null
@@ -276,8 +288,11 @@ public class PartitionWorker {
           processedCount.addAndGet(batchFailedCount);
           currentOffset += currentBatchSize;
 
-          // Recompute keyset cursor after failure
-          if (currentOffset < rangeEnd) {
+          // A failed write still read its rows, so a key range continues right after them
+          if (keyRange) {
+            keysetCursor = ((SinkBatchException) e).nextCursor();
+            exhausted = keysetCursor == null;
+          } else if (currentOffset < rangeEnd) {
             keysetCursor = initializeKeysetCursor(partition, currentOffset);
             if (keysetCursor == null) {
               break;
@@ -495,11 +510,15 @@ public class PartitionWorker {
    * @return Batch processing result
    */
   private BatchResult processBatch(
-      String entityType, String keysetCursor, int batchSize, StageStatsTracker statsTracker)
+      String entityType,
+      String keysetCursor,
+      int batchSize,
+      String endKey,
+      StageStatsTracker statsTracker)
       throws SearchIndexException {
 
     long readStartNanos = System.nanoTime();
-    ResultList<?> resultList = readEntitiesKeyset(entityType, keysetCursor, batchSize);
+    ResultList<?> resultList = readEntitiesKeyset(entityType, keysetCursor, batchSize, endKey);
     long readDurationNanos = System.nanoTime() - readStartNanos;
 
     int readSuccessCount = resultList != null ? listOrEmpty(resultList.getData()).size() : 0;
@@ -549,12 +568,13 @@ public class PartitionWorker {
           readSuccessCount);
       return new BatchResult(readSuccessCount, readErrorCount, warningsCount, nextCursor);
     } catch (Exception e) {
-      throw new SearchIndexException(
+      throw new SinkBatchException(
           new org.openmetadata.schema.system.IndexingError()
               .withErrorSource(org.openmetadata.schema.system.IndexingError.ErrorSource.SINK)
               .withSubmittedCount(readSuccessCount)
               .withFailedCount(readSuccessCount)
-              .withMessage("Failed to write batch to search index: " + e.getMessage()));
+              .withMessage("Failed to write batch to search index: " + e.getMessage()),
+          nextCursor);
     }
   }
 
@@ -628,7 +648,8 @@ public class PartitionWorker {
    * @param limit Number of entities to read
    * @return Result list containing entities
    */
-  private ResultList<?> readEntitiesKeyset(String entityType, String keysetCursor, int limit)
+  private ResultList<?> readEntitiesKeyset(
+      String entityType, String keysetCursor, int limit, String endKey)
       throws SearchIndexException {
     String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
@@ -638,7 +659,7 @@ public class PartitionWorker {
 
     if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
       PaginatedEntitiesSource source =
-          new PaginatedEntitiesSource(normalizedEntityType, limit, fields, 0);
+          new PaginatedEntitiesSource(normalizedEntityType, limit, fields, 0, endKey);
       return source.readNextKeyset(keysetCursor);
     } else {
       Long filterStartTs = null;
@@ -666,17 +687,6 @@ public class PartitionWorker {
     String entityType = SearchIndexEntityTypes.normalizeEntityType(partition.getEntityType());
     if (SearchIndexEntityTypes.isTimeSeriesEntity(entityType)) {
       return RestUtil.encodeCursor(String.valueOf(offset));
-    }
-    // Fast path: coordinator precomputed boundary cursors for every partition's
-    // rangeStart at job initialization (single keyset walk per entity type, O(N) total).
-    // Only the partition's first call lands on a known rangeStart value; mid-partition
-    // recomputes (after batch failure) won't hit this path and fall through to the
-    // OFFSET-based fallback below. Cache lookup is scoped by jobId to avoid stale hits
-    // from a previous job that ran on the same server.
-    String precomputed =
-        coordinator.getPartitionStartCursor(partition.getJobId(), entityType, offset);
-    if (precomputed != null) {
-      return precomputed;
     }
     int cursorOffset = toCursorOffset(entityType, offset);
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
@@ -799,6 +809,21 @@ public class PartitionWorker {
 
   public record BatchResult(
       int successCount, int failedCount, int warningsCount, String nextCursor) {}
+
+  /** A batch that was read but could not be written; carries where the next batch starts. */
+  private static final class SinkBatchException extends SearchIndexException {
+    private final transient String nextCursor;
+
+    SinkBatchException(
+        org.openmetadata.schema.system.IndexingError indexingError, String nextCursor) {
+      super(indexingError);
+      this.nextCursor = nextCursor;
+    }
+
+    String nextCursor() {
+      return nextCursor;
+    }
+  }
 
   public record PartitionResult(
       long successCount,
