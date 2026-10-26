@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactElement } from 'react';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
-import { EntityType } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import {
   EntityStatus,
   GlossaryTerm,
   ProviderType,
 } from '../generated/entity/data/glossaryTerm';
-import { User } from '../generated/entity/teams/user';
 import {
   MOCKED_GLOSSARY_TERMS,
   MOCKED_GLOSSARY_TERMS_1,
@@ -27,7 +27,6 @@ import {
 } from '../mocks/Glossary.mock';
 import {
   buildTree,
-  canDecideAiGeneratedDraft,
   findAndUpdateNested,
   findExpandableKeys,
   findExpandableKeysForArray,
@@ -38,6 +37,7 @@ import {
   referenceURLValidator,
   validateReferenceURL,
 } from './GlossaryPureUtils';
+import { getReviewTab } from './GlossaryUtils';
 
 describe('Glossary Utils', () => {
   it('getQueryFilterToExcludeTerm returns the correct query filter', () => {
@@ -532,8 +532,6 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
 });
 
 describe('AI-generated glossary drafts', () => {
-  const reviewer = { id: 'reviewer-id', type: EntityType.USER };
-  const reviewerTeam = { id: 'team-id', type: EntityType.TEAM };
   const draft = (overrides: Partial<GlossaryTerm> = {}): GlossaryTerm =>
     ({
       id: 'term-id',
@@ -544,8 +542,6 @@ describe('AI-generated glossary drafts', () => {
       entityStatus: EntityStatus.Draft,
       ...overrides,
     } as GlossaryTerm);
-  const user = (overrides: Partial<User> = {}): User =>
-    ({ id: 'user-id', name: 'user', email: 'u@x.io', ...overrides } as User);
 
   it('marks an automation term until it is approved', () => {
     expect(isAiGeneratedDraft(draft())).toBe(true);
@@ -560,35 +556,39 @@ describe('AI-generated glossary drafts', () => {
       false
     );
   });
+});
 
-  it('lets anyone who can edit decide a draft without reviewers', () => {
-    expect(canDecideAiGeneratedDraft(draft(), user(), true)).toBe(true);
-    expect(canDecideAiGeneratedDraft(draft(), user(), false)).toBe(false);
+describe('getReviewTab', () => {
+  it('lists the tasks about the glossary in the Review tab, counting the open ones', () => {
+    const onTasksChange = jest.fn();
+    const reviewTab = getReviewTab({
+      entityFqn: 'Banking Core',
+      openTaskCount: 6,
+      onTasksChange,
+    }) as unknown as {
+      label: ReactElement<{ children: ReactElement }>;
+      children: ReactElement<{ children: ReactElement }>;
+    };
+
+    expect(reviewTab.label.props).toEqual(
+      expect.objectContaining({
+        count: 6,
+        id: EntityTabs.REVIEW,
+        name: 'label.review',
+      })
+    );
+    expect(reviewTab.children.props.children.props).toEqual({
+      aboutEntity: 'Banking Core',
+      onCountChange: onTasksChange,
+    });
   });
 
-  it('leaves a reviewed draft to its reviewers, directly or through a team', () => {
-    const reviewed = draft({ reviewers: [reviewer, reviewerTeam] });
+  it('names the Review tab as a persona renamed it', () => {
+    const reviewTab = getReviewTab({
+      entityFqn: 'Banking Core',
+      name: 'Approvals',
+    }) as unknown as { label: ReactElement<{ name: string }> };
 
-    expect(canDecideAiGeneratedDraft(reviewed, user(), true)).toBe(false);
-    expect(
-      canDecideAiGeneratedDraft(reviewed, user({ id: 'reviewer-id' }), true)
-    ).toBe(true);
-    expect(
-      canDecideAiGeneratedDraft(
-        reviewed,
-        user({ teams: [{ id: 'team-id', type: EntityType.TEAM }] }),
-        true
-      )
-    ).toBe(true);
-  });
-
-  it('leaves an In Review draft to its approval task', () => {
-    expect(
-      canDecideAiGeneratedDraft(
-        draft({ entityStatus: EntityStatus.InReview }),
-        user(),
-        true
-      )
-    ).toBe(false);
+    expect(reviewTab.label.props.name).toBe('Approvals');
   });
 });
