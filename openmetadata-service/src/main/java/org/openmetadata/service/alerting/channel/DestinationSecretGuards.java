@@ -102,15 +102,15 @@ public final class DestinationSecretGuards {
   /**
    * A caller only ever reads the mask, so a copy or move operation is the one way a request can
    * place a stored secret where it is served as stored. Rejects {@code patched}, the result of
-   * applying {@code patch} to {@code original}, when such an operation leaves a stored secret
-   * anywhere but a secret field.
+   * applying {@code patch} to {@code original}, when such an operation introduces a stored secret
+   * anywhere but a secret field. Unchanged values may already coincide with a legacy secret.
    */
   public static void requireSecretsOnlyInSecretFields(
       EventSubscription original, EventSubscription patched, JsonPatch patch) {
     if (JsonPatchUtils.readsFromAnotherPath(patch)) {
       Set<String> secrets = storedSecrets(original);
       if (!secrets.isEmpty()) {
-        findText(callerSetFields(patched), JsonPointer.empty(), secrets)
+        findText(callerSetFields(patched), callerSetFields(original), JsonPointer.empty(), secrets)
             .ifPresent(
                 pointer -> {
                   throw new BadRequestException(COPIED_MESSAGE.formatted(pointer));
@@ -160,7 +160,10 @@ public final class DestinationSecretGuards {
   }
 
   private static Optional<JsonPointer> findText(
-      JsonNode node, JsonPointer pointer, Set<String> values) {
+      JsonNode node, JsonNode original, JsonPointer pointer, Set<String> values) {
+    if (node.equals(original)) {
+      return Optional.empty();
+    }
     Optional<JsonPointer> found = Optional.empty();
     if (node.isTextual()) {
       String text = node.textValue();
@@ -169,13 +172,18 @@ public final class DestinationSecretGuards {
       found = values.contains(node.asText()) ? Optional.of(pointer) : found;
     } else if (node.isArray()) {
       for (int i = 0; i < node.size() && found.isEmpty(); i++) {
-        found = findText(node.get(i), pointer.appendIndex(i), values);
+        found = findText(node.get(i), original.path(i), pointer.appendIndex(i), values);
       }
     } else if (node.isObject()) {
       var fields = node.properties().iterator();
       while (fields.hasNext() && found.isEmpty()) {
         var field = fields.next();
-        found = findText(field.getValue(), pointer.appendProperty(field.getKey()), values);
+        found =
+            findText(
+                field.getValue(),
+                original.path(field.getKey()),
+                pointer.appendProperty(field.getKey()),
+                values);
       }
     }
     return found;

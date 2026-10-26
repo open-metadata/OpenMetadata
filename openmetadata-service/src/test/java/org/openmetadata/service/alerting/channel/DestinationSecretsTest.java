@@ -278,6 +278,23 @@ class DestinationSecretsTest {
   }
 
   @Test
+  void restore_reservesExplicitIdsWhenInsertingADestination() {
+    SubscriptionDestination stored = incomingWebhook(SubscriptionType.SLACK);
+    DestinationSecrets.encrypt(List.of(stored));
+    SubscriptionDestination inserted = incomingWebhook(SubscriptionType.SLACK).withId(null);
+    SubscriptionDestination retained = DestinationSecrets.mask(List.of(stored)).getFirst();
+    EventSubscription updated =
+        new EventSubscription().withDestinations(List.of(inserted, retained));
+
+    DestinationSecrets.restore(new EventSubscription().withDestinations(List.of(stored)), updated);
+    DestinationSecrets.encrypt(updated.getDestinations());
+
+    assertFalse(inserted.getId().equals(retained.getId()));
+    assertEquals(stored.getId(), retained.getId());
+    assertEquals(configOf(stored), configOf(retained));
+  }
+
+  @Test
   void restore_plaintextTheStoredCiphertextDecryptsTo_keepsTheCiphertext() {
     SubscriptionDestination stored = incomingWebhook(SubscriptionType.SLACK);
     DestinationSecrets.encrypt(List.of(stored));

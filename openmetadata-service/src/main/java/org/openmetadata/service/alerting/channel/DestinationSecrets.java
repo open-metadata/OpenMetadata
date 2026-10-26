@@ -26,8 +26,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -132,9 +134,15 @@ public final class DestinationSecrets {
   public static void restore(EventSubscription original, EventSubscription updated) {
     List<SubscriptionDestination> stored = listOrEmpty(original.getDestinations());
     List<SubscriptionDestination> incoming = listOrEmpty(updated.getDestinations());
+    Set<UUID> explicitIds =
+        incoming.stream()
+            .map(SubscriptionDestination::getId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
     for (int position = 0; position < incoming.size(); position++) {
       SubscriptionDestination destination = incoming.get(position);
       counterpart(stored, destination, position)
+          .filter(it -> destination.getId() != null || !explicitIds.contains(it.getId()))
           .ifPresent(
               storedDestination -> {
                 restore(storedDestination, destination);

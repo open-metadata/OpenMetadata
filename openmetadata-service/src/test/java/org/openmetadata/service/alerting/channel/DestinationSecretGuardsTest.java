@@ -164,6 +164,21 @@ class DestinationSecretGuardsTest {
   }
 
   @Test
+  void unrelatedCopyMayLeaveAPreexistingNumericSecretMatchUnchanged() {
+    SubscriptionDestination destination = incomingWebhook(SubscriptionType.WEBHOOK);
+    Map<String, Object> config = new LinkedHashMap<>(configOf(destination));
+    config.put("headers", Map.of("Authorization", 123));
+    destination.withConfig(config);
+    EventSubscription original = alertWith(destination).withBatchSize(123);
+    EventSubscription patched =
+        JsonUtils.deepCopy(original, EventSubscription.class).withDisplayName(original.getName());
+    JsonPatch patch = Json.createPatchBuilder().copy("/displayName", "/name").build();
+
+    assertDoesNotThrow(
+        () -> DestinationSecretGuards.requireSecretsOnlyInSecretFields(original, patched, patch));
+  }
+
+  @Test
   void theMaskItselfIsNeverASecret() {
     SubscriptionDestination storedDestination = stored();
     EventSubscription original = alertWith(storedDestination);

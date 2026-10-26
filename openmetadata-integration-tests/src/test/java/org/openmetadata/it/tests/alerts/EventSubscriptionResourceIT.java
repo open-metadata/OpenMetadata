@@ -2272,6 +2272,54 @@ public class EventSubscriptionResourceIT
   }
 
   @Test
+  void test_putInsertedDestinationKeepsDistinctIds(TestNamespace ns) {
+    CreateEventSubscription request =
+        secretRequest(ns, "insert_destination", "http://localhost:8585/original", "header", null);
+    EventSubscription created = createEntity(request);
+    SubscriptionDestination retained = created.getDestinations().getFirst();
+    SubscriptionDestination inserted =
+        secretRequest(ns, "inserted", "http://localhost:8585/inserted", "new-header", null)
+            .getDestinations()
+            .getFirst()
+            .withId(null);
+    request.withDestinations(List.of(inserted, retained));
+
+    EventSubscription updated = putSubscription(request);
+
+    assertEquals(2, updated.getDestinations().size());
+    assertEquals(
+        2,
+        updated.getDestinations().stream().map(SubscriptionDestination::getId).distinct().count());
+    assertEquals(retained.getId(), updated.getDestinations().get(1).getId());
+    assertEquals(
+        "http://localhost:8585/inserted", decrypted(storedConfig(created.getId()).get("endpoint")));
+  }
+
+  @Test
+  void test_unrelatedPatchCopyWithLegacyNumericHeader(TestNamespace ns) throws Exception {
+    EventSubscription created =
+        createEntity(
+            secretRequest(ns, "legacy_numeric", "http://localhost:8585/hook", "123", null));
+    EventSubscription stored = AlertFixtures.stored(created.getId());
+    Map<String, Object> config = configOf(stored.getDestinations().getFirst());
+    config.put("headers", Map.of("Authorization", 123));
+    stored.getDestinations().getFirst().withConfig(config);
+    stored.withBatchSize(123);
+    AlertFixtures.writeBehindTheServer(stored);
+    JsonNode patch =
+        JsonUtils.readTree("[{\"op\":\"copy\",\"from\":\"/name\",\"path\":\"/displayName\"}]");
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/events/subscriptions/" + created.getId(), patch);
+
+    EventSubscription updated = getEntity(created.getId().toString());
+    assertEquals(created.getName(), updated.getDisplayName());
+    assertEquals(123, updated.getBatchSize());
+    assertEquals("123", decrypted(headersOf(storedConfig(created.getId())).get("Authorization")));
+  }
+
+  @Test
   void test_putNewDestinationSecretsAreEncryptedAndGuarded(TestNamespace ns) {
     String endpoint = "http://localhost:8585/" + ns.prefix("new_put_hook");
     EventSubscription created =
