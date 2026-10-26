@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Locator, Page, Response } from '@playwright/test';
+import test, { expect, Locator, Page } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
@@ -1155,7 +1155,6 @@ test.describe(
       const PAGINATION_TEST_NAME = `zzzzPaginationTest${uuid()}`;
       const PAGINATION_TEST_DISPLAY_NAME = `Zzzz Pagination Test ${uuid()}`;
       const UPDATED_DISPLAY_NAME = `Updated ${PAGINATION_TEST_DISPLAY_NAME}`;
-      let pageResponse: Response | undefined;
 
       await test.step('Create a test definition starting with "z"', async () => {
         await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
@@ -1216,28 +1215,33 @@ test.describe(
         );
         // Wait for dropdown to open and select 25
         await page.getByRole('menuitem', { name: /^25 \// }).click();
-        pageResponse = await pageChangeResponse;
+        await pageChangeResponse;
       });
 
       await test.step('Navigate until we find our test definition or reach last page', async () => {
+        const nextButton = page.getByTestId('next');
         const testDefLocator = page.getByTestId(PAGINATION_TEST_NAME);
+        // The GET resolves before React renders its rows; isVisible() is a
+        // one-shot read, so wait for the table to settle before each check.
+        const tableContainer = page.getByTestId(
+          'test-definition-table-container'
+        );
 
-        // Decide from each page's GET body, not the DOM: the response resolves
-        // before React renders its rows, so a DOM read here can see the old page.
-        let body = await pageResponse?.json();
-        while (
-          !body.data.some(
-            (testDef: { name: string }) => testDef.name === PAGINATION_TEST_NAME
-          ) &&
-          body.paging?.after
-        ) {
+        await expect(tableContainer).toHaveAttribute('aria-busy', 'false');
+        let isItemVisible = await testDefLocator.isVisible();
+
+        // Navigate until we find our test definition or reach the last page
+        while (!isItemVisible && (await nextButton.isEnabled())) {
           const fetchResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/dataQuality/testDefinitions') &&
               response.request().method() === 'GET'
           );
-          await page.getByTestId('next').click();
-          body = await (await fetchResponse).json();
+          await nextButton.click();
+          await fetchResponse;
+
+          await expect(tableContainer).toHaveAttribute('aria-busy', 'false');
+          isItemVisible = await testDefLocator.isVisible();
         }
 
         // Verify our test definition is now visible
