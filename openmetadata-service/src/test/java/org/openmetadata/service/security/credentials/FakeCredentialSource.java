@@ -29,6 +29,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.openmetadata.service.security.credentials.CredentialRecord.MechanismVersion;
 
 /**
@@ -71,6 +72,8 @@ final class FakeCredentialSource implements CredentialSource {
   private final AtomicBoolean failNextFingerprints = new AtomicBoolean();
   private final AtomicBoolean blockNext = new AtomicBoolean();
   private final AtomicBoolean errorOnRead = new AtomicBoolean();
+  private final AtomicReference<Runnable> duringNextFingerprints = new AtomicReference<>();
+  private final AtomicReference<Runnable> duringNextRead = new AtomicReference<>();
   private final Set<String> unconvertible = ConcurrentHashMap.newKeySet();
   private final Set<String> poison = ConcurrentHashMap.newKeySet();
   private volatile CountDownLatch readStarted = new CountDownLatch(1);
@@ -186,6 +189,19 @@ final class FakeCredentialSource implements CredentialSource {
     errorOnRead.set(true);
   }
 
+  /**
+   * The next fingerprint statement runs {@code hook} after it has seen the rows and before it
+   * returns, the way a write can commit while a statement is still in flight.
+   */
+  void duringNextFingerprints(Runnable hook) {
+    duringNextFingerprints.set(hook);
+  }
+
+  /** The next full read runs {@code hook} after it has seen the rows and before it returns. */
+  void duringNextRead(Runnable hook) {
+    duringNextRead.set(hook);
+  }
+
   /** The next full read computes its result, then parks until {@link #releaseReads()}. */
   void blockNextRead() {
     readStarted = new CountDownLatch(1);
@@ -230,6 +246,7 @@ final class FakeCredentialSource implements CredentialSource {
     for (CredentialSubject subject : subjects) {
       fingerprints.put(subject, fingerprintOf(rows.get(subject.principal())));
     }
+    runOnce(duringNextFingerprints);
     return fingerprints;
   }
 
@@ -250,6 +267,7 @@ final class FakeCredentialSource implements CredentialSource {
         records.put(subject, recordOf(rows.get(subject.principal()), previous.get(subject)));
       }
     }
+    runOnce(duringNextRead);
     blockIfRequested();
     if (errorOnRead.get()) {
       throw new AssertionError("injected error inside the read");
@@ -263,6 +281,13 @@ final class FakeCredentialSource implements CredentialSource {
         throw new IllegalStateException(
             "injected statement failure for a batch holding " + subject.principal());
       }
+    }
+  }
+
+  private static void runOnce(AtomicReference<Runnable> hook) {
+    Runnable pending = hook.getAndSet(null);
+    if (pending != null) {
+      pending.run();
     }
   }
 

@@ -79,7 +79,7 @@ class CredentialVerifierTest {
     }
   }
 
-  /** A read of alice, other than a check's, that may create her entry. */
+  /** A read of alice other than a check's; the test holds it in the source until it releases it. */
   enum SlowRead {
     REFRESH {
       @Override
@@ -96,6 +96,14 @@ class CredentialVerifierTest {
       Future<?> start(CredentialVerifierTest test) {
         test.verifier.nudge(subject(ALICE));
         test.source.failNextFingerprintRead();
+        return test.threads.submit(test.verifier::sweepOnce);
+      }
+    },
+    /** A sweep pass that re-reads alice in full, because a new token moved her fingerprint. */
+    SWEEP {
+      @Override
+      Future<?> start(CredentialVerifierTest test) {
+        test.source.addPat(ALICE, TOKEN_B);
         return test.threads.submit(test.verifier::sweepOnce);
       }
     };
@@ -177,6 +185,37 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void aReconfirmationIsTrustedFromBeforeItsFingerprintStatement() {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(DEFAULTS);
+    assertAccepted(ALICE, TOKEN_A);
+    source.duringNextFingerprints(revokeAliceThenWait(3 * SECOND));
+
+    sweepAfterInterval();
+    ticker.advanceNanos(2 * SECOND + 1);
+    source.failReads();
+
+    assertEquals(1, source.fullReads());
+    assertUnavailable(ALICE, TOKEN_A);
+  }
+
+  @Test
+  void aSweepRereadIsTrustedFromBeforeItsReadStatement() {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(DEFAULTS);
+    assertAccepted(ALICE, TOKEN_A);
+    source.addPat(ALICE, TOKEN_B);
+    source.duringNextRead(revokeAliceThenWait(3 * SECOND));
+
+    sweepAfterInterval();
+    ticker.advanceNanos(2 * SECOND + 1);
+    source.failReads();
+
+    assertEquals(2, source.fullReads());
+    assertUnavailable(ALICE, TOKEN_A);
+  }
+
+  @Test
   void slowLoadThatStartedBeforeRevocationCannotExtendTrust() throws Exception {
     source.withPats(ALICE, TOKEN_A);
     verifier(DEFAULTS);
@@ -188,6 +227,7 @@ class CredentialVerifierTest {
     ticker.advanceNanos(SECOND);
     verifier.nudge(subject(ALICE));
     verifier.sweepOnce();
+    ticker.advanceNanos(MILLISECOND);
     source.releaseReads();
 
     assertInstanceOf(AuthenticationException.class, slow.get());
@@ -213,14 +253,17 @@ class CredentialVerifierTest {
   @Test
   void joinedLoadIsTrustedOnlyUntilItsOwnStampAges() throws Exception {
     source.withPats(ALICE, TOKEN_A);
-    verifier(DEFAULTS);
+    verifier(loadTimeoutOf(Duration.seconds(4)));
     source.blockNextRead();
-    List<Future<Throwable>> checks =
-        IntStream.range(0, 100).mapToObj(i -> requireAsync(ALICE, TOKEN_A)).toList();
+    List<RunningCheck> checks =
+        IntStream.range(0, 100).mapToObj(i -> startCheck(ALICE, TOKEN_A)).toList();
     source.awaitReadStarted();
+    await("every check waits on the one read")
+        .atMost(10, TimeUnit.SECONDS)
+        .until(() -> checks.stream().allMatch(check -> isParked(check.thread())));
     source.releaseReads();
-    for (Future<Throwable> check : checks) {
-      assertNull(check.get());
+    for (RunningCheck check : checks) {
+      assertNull(check.result());
     }
     assertEquals(1, source.fullReads());
     assertEquals(100.0, counter("om.credential.checks", "decision", "accept"));
@@ -338,9 +381,7 @@ class CredentialVerifierTest {
   @Test
   void anErrorInsideTheSourceFailsTheStarterAndItsJoinerAtOnce() throws Exception {
     source.withPats(ALICE, TOKEN_A);
-    verifier(
-        new CredentialVerificationConfig(
-            null, null, null, Duration.milliseconds(1500), null, null, null, null, null));
+    verifier(loadTimeoutOf(Duration.seconds(4)));
     source.blockNextRead();
     source.failReadsWithError();
     RunningCheck starter = startCheck(ALICE, TOKEN_A);
@@ -360,7 +401,7 @@ class CredentialVerifierTest {
   @Test
   void aCheckThatJoinsAnOldReadLackingItsTokenReadsAgainBeforeAnswering() throws Exception {
     source.withPats(ALICE, TOKEN_A);
-    verifier(DEFAULTS);
+    verifier(loadTimeoutOf(Duration.seconds(4)));
     source.blockNextRead();
     RunningCheck first = startCheck(ALICE, TOKEN_A);
     source.awaitReadStarted();
@@ -1018,6 +1059,23 @@ class CredentialVerifierTest {
     return verifier;
   }
 
+  /** A revocation that commits while a statement is in flight, which then takes {@code nanos}. */
+  private Runnable revokeAliceThenWait(long nanos) {
+    return () -> {
+      source.revokeAll(ALICE);
+      ticker.advanceNanos(nanos);
+    };
+  }
+
+  /**
+   * Checks wait for a read in real time, so a test that stages a read across several steps gives
+   * them a budget with room for a loaded machine.
+   */
+  private static CredentialVerificationConfig loadTimeoutOf(Duration loadTimeout) {
+    return new CredentialVerificationConfig(
+        null, null, null, loadTimeout, null, null, null, null, null);
+  }
+
   private static CredentialVerificationConfig idleExpiryOfOneSecond(Duration loadTimeout) {
     return new CredentialVerificationConfig(
         null, null, null, loadTimeout, null, Duration.seconds(1), null, null, null);
@@ -1085,12 +1143,12 @@ class CredentialVerifierTest {
   }
 
   private static void awaitParked(Thread thread) {
-    await()
-        .atMost(10, TimeUnit.SECONDS)
-        .until(
-            () ->
-                thread.getState() == Thread.State.WAITING
-                    || thread.getState() == Thread.State.TIMED_WAITING);
+    await().atMost(10, TimeUnit.SECONDS).until(() -> isParked(thread));
+  }
+
+  private static boolean isParked(Thread thread) {
+    Thread.State state = thread.getState();
+    return state == Thread.State.WAITING || state == Thread.State.TIMED_WAITING;
   }
 
   private static void awaitLatch(CountDownLatch latch) {
