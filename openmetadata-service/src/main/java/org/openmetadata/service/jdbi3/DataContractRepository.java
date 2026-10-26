@@ -182,6 +182,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       validateEntityReference(requestedRef);
       dataContract.setCreatedAt(dataContract.getUpdatedAt());
       dataContract.setCreatedBy(dataContract.getUpdatedBy());
+      // A new contract has no suite, result or history yet, and is never a virtual inherited one.
+      dataContract.setTestSuite(null);
+      dataContract.setLatestResult(null);
+      dataContract.setContractUpdates(null);
+      dataContract.setInherited(null);
     }
 
     // Store the entity's own reference, not what the request sent (often only id and type), so
@@ -267,12 +272,20 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    */
   @Override
   protected void hardDeleteAdditionalChildren(UUID id, String updatedBy) {
-    deleteContractTestSuite(findContractTestSuite(find(id, Include.ALL)), updatedBy);
+    deleteContractTestSuite(findContractTestSuite(find(id, Include.ALL), Include.ALL), updatedBy);
   }
 
-  private TestSuite findContractTestSuite(DataContract dataContract) {
-    return Entity.getEntityOrNull(
-        dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.ALL);
+  /**
+   * The suite this contract owns, or null. A contract's suite is always named after the contract's
+   * id, so a reference to any other suite is never followed: a create can carry it as caller input.
+   * ADR:2026-10-26-a-data-contract-only-acts-on-the-test-suite-named-after-it
+   */
+  private TestSuite findContractTestSuite(DataContract dataContract, Include include) {
+    TestSuite testSuite =
+        Entity.getEntityOrNull(dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, include);
+    return testSuite != null && getTestSuiteName(dataContract).equals(testSuite.getName())
+        ? testSuite
+        : null;
   }
 
   /**
@@ -818,7 +831,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
       // If we had a test suite from older tests, but we removed them, we can delete the suite
       if (nullOrEmpty(dataContract.getQualityExpectations())) {
-        deleteContractTestSuite(findContractTestSuite(dataContract), dataContract.getUpdatedBy());
+        deleteContractTestSuite(
+            findContractTestSuite(dataContract, Include.ALL), dataContract.getUpdatedBy());
         dataContract.setTestSuite(null);
         return null;
       }
@@ -892,15 +906,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     // A non-null reference can point to a suite that was soft-deleted via the DQ API without
     // clearing DataContract.testSuite; returning null would NPE in updateTestSuiteTests.
     if (contractHasTestSuite(dataContract)) {
-      TestSuite existing =
-          Entity.getEntityOrNull(
-              dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
+      TestSuite existing = findContractTestSuite(dataContract, Include.NON_DELETED);
       if (existing != null) {
         return existing;
       }
-      TestSuite softDeleted =
-          Entity.getEntityOrNull(
-              dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.ALL);
+      TestSuite softDeleted = findContractTestSuite(dataContract, Include.ALL);
       if (softDeleted != null) {
         // Restore (not re-create): entity tables have a UNIQUE constraint on fqnHash and the
         // soft-deleted row keeps it, so a fresh insert would collide with the dangling reference.
@@ -914,8 +924,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
       }
       LOG.warn(
-          "Test suite {} referenced by data contract {} no longer exists; creating a new suite "
-              + "to replace the dangling reference",
+          "Test suite {} referenced by data contract {} no longer exists or belongs to another "
+              + "contract; creating a new suite to replace the reference",
           dataContract.getTestSuite(),
           dataContract.getId());
     }

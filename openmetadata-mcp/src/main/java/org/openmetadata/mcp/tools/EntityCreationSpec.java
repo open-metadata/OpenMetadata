@@ -7,6 +7,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.service.Entity;
@@ -33,6 +34,10 @@ record EntityCreationSpec(
           "processingError",
           "processingStatus",
           "votes");
+
+  /** Data contract fields its repository owns: its test suite, last run, history, inheritance. */
+  private static final Set<String> DATA_CONTRACT_SYSTEM_FIELDS =
+      Set.of("contractUpdates", "inherited", "latestResult", "testSuite");
 
   private static final Map<String, String> DEDICATED_CREATE_FLOWS =
       Map.of(
@@ -103,7 +108,8 @@ record EntityCreationSpec(
 
   boolean isMcpOwned(String field) {
     return (ContextMemory.class.equals(entityClass) && "sourceType".equals(field))
-        || (Page.class.equals(entityClass) && PAGE_SYSTEM_FIELDS.contains(field));
+        || (Page.class.equals(entityClass) && PAGE_SYSTEM_FIELDS.contains(field))
+        || (DataContract.class.equals(entityClass) && DATA_CONTRACT_SYSTEM_FIELDS.contains(field));
   }
 
   boolean hasConditionalRequirements() {

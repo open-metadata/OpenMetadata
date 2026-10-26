@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.Article;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
@@ -646,6 +648,42 @@ class CreateEntityToolTest {
                     () -> new CreateEntityTool().execute(null, null, securityContext(), params)));
 
     assertTrue(failure.getMessage().contains("children"), failure.getMessage());
+    verify(repository, never()).prepareInternal(any(), anyBoolean());
+  }
+
+  @Test
+  void aDataContractCannotBeGivenFieldsItsRepositoryOwns() {
+    // A caller-supplied testSuite pointed a new contract at another contract's suite.
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(DataContract.class);
+
+    Map<String, Object> described =
+        withRepository(
+            Entity.DATA_CONTRACT,
+            repository,
+            () ->
+                new DescribeEntityTypeTool()
+                    .execute(null, null, Map.of("entityType", Entity.DATA_CONTRACT)));
+
+    assertTrue(
+        Collections.disjoint(
+            attributeNames(described),
+            Set.of("testSuite", "latestResult", "contractUpdates", "inherited")),
+        attributeNames(described).toString());
+
+    Map<String, Object> params = params(Entity.DATA_CONTRACT);
+    params.put(
+        "attributes",
+        Map.of("testSuite", Map.of("id", UUID.randomUUID().toString(), "type", Entity.TEST_SUITE)));
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                withRepository(
+                    Entity.DATA_CONTRACT,
+                    repository,
+                    () -> new CreateEntityTool().execute(null, null, securityContext(), params)));
+
+    assertTrue(failure.getMessage().contains("testSuite"), failure.getMessage());
     verify(repository, never()).prepareInternal(any(), anyBoolean());
   }
 
