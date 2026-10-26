@@ -101,3 +101,24 @@ def test_native_results_independently_verify_timing_coverage(
         module.main()
         assert json.loads(output.read_text())["nativeEvidenceIssues"] == []
     assert json.loads(output.read_text())["quarantinedTests"] == 3
+
+
+def test_every_setup_and_teardown_project_is_excluded_from_native_coverage():
+    # A fixture project (playwright.config.ts FIXTURE_TEST_MATCH) runs alongside
+    # the planned tests but is never planned, so the merge-queue native check
+    # rejects it unless excluded.
+    import re
+    from pathlib import Path
+
+    module = load_script("verify_playwright_coverage")
+    config = (
+        Path(__file__).parents[3] / "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
+    ).read_text()
+    projects = re.findall(r"name:\s*'([^']+)',\s*testMatch:\s*'([^']+)'", config)
+    fixtures = {
+        name
+        for name, test_match in projects
+        if re.search(r"(?:\.(?:setup|teardown)\.ts|dataInsightApp\.ts)$", test_match)
+    }
+    assert "ontology-rdf-setup" in fixtures
+    assert fixtures - module.LIFECYCLE_PROJECTS == set()
