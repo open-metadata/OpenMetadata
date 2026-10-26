@@ -22,7 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.dropwizard.util.Duration;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,6 +55,7 @@ class CredentialsTest {
   void uninstall() {
     Credentials.uninstall();
     PostCommitActionQueue.clear();
+    Thread.interrupted();
   }
 
   @Test
@@ -140,25 +144,17 @@ class CredentialsTest {
   }
 
   @Test
-  void awaitPropagationWaitsAtLeastMaxStaleness() {
+  void awaitPropagationWaitsMaxStalenessPlusTheMargin() {
     Credentials.install(
-        verifier(
-            new CredentialVerificationConfig(
-                Duration.milliseconds(200),
-                Duration.milliseconds(100),
-                Duration.milliseconds(50),
-                Duration.milliseconds(100),
-                null,
-                null,
-                null,
-                null,
-                null)));
+        verifier(configWith(Duration.milliseconds(200), Duration.milliseconds(100))));
     long started = System.nanoTime();
 
     Credentials.awaitPropagation();
 
-    long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
-    assertTrue(elapsedMillis >= 200, "waited " + elapsedMillis + " ms");
+    long waitedNanos = System.nanoTime() - started;
+    assertTrue(
+        waitedNanos >= TimeUnit.MILLISECONDS.toNanos(250),
+        "waited " + TimeUnit.NANOSECONDS.toMillis(waitedNanos) + " ms");
   }
 
   @Test
@@ -173,13 +169,54 @@ class CredentialsTest {
   }
 
   @Test
-  void awaitPropagationWithoutAVerifierReturnsAtOnce() {
+  void awaitPropagationInterruptedWhileWaitingAnswersUnavailable() throws Exception {
+    Credentials.install(verifier(configWith(Duration.minutes(1), Duration.seconds(3))));
+    CompletableFuture<CredentialUnavailableException> unfinished = new CompletableFuture<>();
+    AtomicBoolean flagRestored = new AtomicBoolean();
+    Thread waiter =
+        Thread.ofPlatform().daemon().start(() -> awaitPropagationInto(unfinished, flagRestored));
+    Awaitility.await()
+        .until(() -> waiter.getState() == Thread.State.TIMED_WAITING || unfinished.isDone());
+
+    waiter.interrupt();
+
+    assertEquals(3, unfinished.get(10, TimeUnit.SECONDS).retryAfterSeconds());
+    assertTrue(flagRestored.get(), "the interrupt flag was restored");
+  }
+
+  @Test
+  void awaitPropagationWithoutAVerifierAnswersUnavailable() {
     Credentials.uninstall();
-    long started = System.nanoTime();
 
-    Credentials.awaitPropagation();
+    CredentialUnavailableException unbounded =
+        assertThrows(CredentialUnavailableException.class, Credentials::awaitPropagation);
 
-    assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) < 5000);
+    assertEquals(2, unbounded.retryAfterSeconds());
+  }
+
+  private static void awaitPropagationInto(
+      CompletableFuture<CredentialUnavailableException> unfinished, AtomicBoolean flagRestored) {
+    try {
+      Credentials.awaitPropagation();
+      unfinished.completeExceptionally(new AssertionError("the wait returned normally"));
+    } catch (CredentialUnavailableException unavailable) {
+      flagRestored.set(Thread.currentThread().isInterrupted());
+      unfinished.complete(unavailable);
+    }
+  }
+
+  private static CredentialVerificationConfig configWith(
+      Duration maxStaleness, Duration sweepInterval) {
+    return new CredentialVerificationConfig(
+        maxStaleness,
+        sweepInterval,
+        Duration.milliseconds(50),
+        Duration.milliseconds(100),
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   private CredentialVerifier verifier(CredentialVerificationConfig config) {

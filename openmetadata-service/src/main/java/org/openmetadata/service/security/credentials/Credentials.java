@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
@@ -28,7 +29,8 @@ import org.openmetadata.service.util.PostCommitActionQueue;
  * against; {@link #changed} is the write side's whole API and is optional for correctness, since
  * the sweep finds every committed change by itself; {@link #awaitPropagation} is the opt-in
  * synchronous revoke. Before a verifier is installed (early startup, the ops CLI) every Stored check
- * answers "cannot confirm", never "unchecked", and the write-side calls are no-ops.
+ * and every {@link #awaitPropagation} call answer "cannot confirm", never "unchecked", and {@link
+ * #changed} and {@link #nudgeFromPeer} do nothing.
  */
 @Slf4j
 public final class Credentials {
@@ -82,16 +84,29 @@ public final class Credentials {
   }
 
   /**
-   * Blocks for maxStaleness plus a margin for clock-rate differences between servers. By the
-   * design's guarantee, every server rejects a revoked token on every check that begins at or after
-   * commit + maxStaleness on its own clock, so once this returns no server accepts it for a new
-   * request. An interrupt restores the flag and throws, so a caller never reports a wait it did not
-   * complete.
+   * Returns once the installed verifier's maxStaleness, plus a margin for clock-rate differences
+   * between servers, has passed on the monotonic clock since this call. Call it after the revoking
+   * write has committed. By the verifier's staleness bound, every server rejects a revoked token on
+   * every check that begins at or after commit + maxStaleness on its own clock, so once this
+   * returns no server accepts it for a new request.
+   *
+   * <p>It throws {@link CredentialUnavailableException}, answered with 503, when it cannot wait the
+   * bound out. That happens when no verifier is installed, so the bound is unknown, and when the
+   * thread is interrupted, in which case it restores the flag. The write has committed by then and
+   * repeating it is harmless, so the 503 asks the client to repeat the call, and the repeat waits
+   * the whole bound again.
    */
   public static void awaitPropagation() {
-    CredentialVerifier verifier = installed;
-    if (verifier != null) {
-      sleep(verifier.maxStaleness().plus(PROPAGATION_MARGIN), verifier.retryAfterSeconds());
+    CredentialVerifier verifier = requireInstalled();
+    long deadline = System.nanoTime() + verifier.maxStaleness().plus(PROPAGATION_MARGIN).toNanos();
+    try {
+      sleepUntil(deadline);
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw new CredentialUnavailableException(
+          "Interrupted before the revocation had propagated to every server",
+          verifier.retryAfterSeconds(),
+          interrupted);
     }
   }
 
@@ -116,15 +131,23 @@ public final class Credentials {
     }
   }
 
-  private static void sleep(Duration bound, long retryAfterSeconds) {
-    try {
-      Thread.sleep(bound);
-    } catch (InterruptedException interrupted) {
-      Thread.currentThread().interrupt();
+  private static CredentialVerifier requireInstalled() {
+    CredentialVerifier verifier = installed;
+    if (verifier == null) {
       throw new CredentialUnavailableException(
-          "Interrupted before the revocation had propagated to every server",
-          retryAfterSeconds,
-          interrupted);
+          "No credential verifier is installed to bound the propagation wait",
+          UNINSTALLED.retryAfterSeconds(),
+          null);
+    }
+    return verifier;
+  }
+
+  // Thread.sleep does not promise to sleep the whole time, so the loop re-reads the clock.
+  private static void sleepUntil(long deadlineNanos) throws InterruptedException {
+    long remaining = deadlineNanos - System.nanoTime();
+    while (remaining > 0) {
+      TimeUnit.NANOSECONDS.sleep(remaining);
+      remaining = deadlineNanos - System.nanoTime();
     }
   }
 
