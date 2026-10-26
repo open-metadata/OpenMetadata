@@ -1403,7 +1403,8 @@ export interface CreateEventSubscription {
      */
     alertType: AlertType;
     /**
-     * Maximum number of events sent in a batch (Default 10).
+     * Maximum number of events sent in a batch, from 1 to 1000 (Default 10). An alert stored
+     * past 1000 keeps its value but cannot grow.
      */
     batchSize?: number;
     /**
@@ -1418,7 +1419,8 @@ export interface CreateEventSubscription {
      */
     description?: string;
     /**
-     * Subscription Config.
+     * Subscription Config. At most 50 destinations; an alert stored with more keeps them but
+     * cannot add one.
      */
     destinations?: Destination[];
     /**
