@@ -74,8 +74,7 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   again, so the 503 is a request to repeat the call and not an unfinished operation. The wait uses
   the writing server's `maxStaleness`, so it holds for the cluster only when every server runs the
   same `credentialVerification` settings. During a rollout that changes `maxStaleness`, the larger
-  value applies until every server runs the new one, and a revoke that waits on a server with the
-  smaller value can return before a server with the larger one stops accepting the token.
+  value applies until every server runs the new one.
 
 ## Consequences
 - While any principal is cached, each server sends one fingerprint statement per 500 cached
