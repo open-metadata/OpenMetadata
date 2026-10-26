@@ -293,6 +293,80 @@ class TestSAPHanaTableMetricComputer:
         result = computer.compute()
         assert result is mock_result
 
+    def test_compute_uppercases_schema_and_table_in_where_clause(self):
+        """MockModel has lowercase schema='test_schema' and table='test_table'.
+        HANA catalog stores identifiers in uppercase — WHERE must use .upper()."""
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = 10
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, SAPHanaTableMetricComputer)
+        computer.compute()
+        sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
+        assert "TEST_SCHEMA" in sql, f"WHERE clause must use uppercased schema name, got: {sql}"
+        assert "TEST_TABLE" in sql, f"WHERE clause must use uppercased table name, got: {sql}"
+        assert "test_schema" not in sql.split("FROM")[1] if "FROM" in sql else True, (
+            "Lowercase schema name must not appear in WHERE clauses"
+        )
+
+    def test_compute_returns_result_when_create_time_is_none(self):
+        """LEFT JOIN means CREATE_TIME can be NULL (table in M_TABLES but not TABLES).
+        Should still return result — not fall back to base compute."""
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = 50
+        mock_result.createDateTime = None
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, SAPHanaTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as base_compute:
+            result = computer.compute()
+            assert result is mock_result
+            base_compute.assert_not_called()
+
+    def test_compute_uses_two_ctes_with_left_join(self):
+        """Query must have two CTEs (M_TABLES + TABLES) joined with LEFT OUTER JOIN."""
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = 10
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, SAPHanaTableMetricComputer)
+        computer.compute()
+        sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
+        sql_upper = sql.upper()
+        normalized_sql = " ".join(sql_upper.split())
+        sql_without_quotes = normalized_sql.replace('"', "")
+        assert "WITH " in normalized_sql, f"Expected WITH clause in query, got: {sql}"
+        assert sql_without_quotes.count(" AS (") >= 2, f"Expected two CTE definitions in query, got: {sql}"
+        assert "FROM SYS.M_TABLES" in sql_without_quotes, f"Expected M_TABLES source in query, got: {sql}"
+        assert "FROM SYS.TABLES" in sql_without_quotes, f"Expected TABLES source in query, got: {sql}"
+        assert "LEFT OUTER JOIN" in normalized_sql or "LEFT JOIN" in normalized_sql, (
+            f"TABLES CTE must be LEFT JOINed, got: {sql}"
+        )
+
+    def test_compute_returns_none_for_nonexistent_table(self):
+        """When table absent from HANA system views, compute returns None and
+        still queries using uppercased identifiers expected by the catalog."""
+        session = _build_mock_session()
+        session.execute.return_value.first.return_value = None
+        computer = _build_computer(session, SAPHanaTableMetricComputer)
+        result = computer.compute()
+        sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
+        assert result is None
+        assert "TEST_SCHEMA" in sql, f"Nonexistent-table lookup must use uppercased schema, got: {sql}"
+        assert "TEST_TABLE" in sql, f"Nonexistent-table lookup must use uppercased table, got: {sql}"
+
+    def test_compute_includes_column_count_and_names(self):
+        """Result query must include columnCount and columnNames labels."""
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = 10
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, SAPHanaTableMetricComputer)
+        computer.compute()
+        sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
+        assert "columnCount" in sql, f"Query must select columnCount, got: {sql}"
+        assert "columnNames" in sql, f"Query must select columnNames, got: {sql}"
+
 
 class TestExasolTableMetricComputer:
     def test_exasol_registration(self):
@@ -412,6 +486,18 @@ class TestTeradataTableMetricComputer:
     def test_teradata_registration(self):
         assert table_metric_computer_factory._constructs.get(Dialects.Teradata) is TeradataTableMetricComputer
 
+    @staticmethod
+    def _sqls_by_table(session):
+        """Rendered SQL for each executed query, matched to the system view
+        it selects rather than to a call order."""
+        sqls = {}
+        for call in session.execute.call_args_list:
+            sql = str(call[0][0])
+            for table in ("TableStatsV", "TableSizeV"):
+                if table in sql:
+                    sqls[table] = sql
+        return sqls
+
     def test_size_query_does_not_select_rowcount_from_table_size_v(self):
         """Regression #3032: `sum(RowCount)` against DBC.TableSizeV raises
         Teradata error 5628. The size query must only touch CurrentPerm."""
@@ -422,9 +508,10 @@ class TestTeradataTableMetricComputer:
         ]
         computer = _build_computer(session, TeradataTableMetricComputer)
         computer.compute()
-        size_sql = str(session.execute.call_args_list[1][0][0])
-        assert "TableSizeV" in size_sql, f"Expected size query on DBC.TableSizeV, got: {size_sql}"
-        assert "RowCount" not in size_sql, f"TableSizeV has no RowCount column, got: {size_sql}"
+        size_query = self._sqls_by_table(session)["TableSizeV"]
+        assert "TableSizeV" in size_query, f"Expected size query on DBC.TableSizeV, got: {size_query}"
+        assert "RowCount" not in size_query, f"TableSizeV has no RowCount column, got: {size_query}"
+        assert "CurrentPerm" in size_query, f"Size must come from CurrentPerm, got: {size_query}"
 
     def test_row_count_query_targets_table_stats_v(self):
         session = _build_mock_session()
@@ -434,8 +521,26 @@ class TestTeradataTableMetricComputer:
         ]
         computer = _build_computer(session, TeradataTableMetricComputer)
         computer.compute()
-        stats_sql = str(session.execute.call_args_list[0][0][0])
-        assert "TableStatsV" in stats_sql, f"Expected row count query on DBC.TableStatsV, got: {stats_sql}"
+        stats_query = self._sqls_by_table(session)["TableStatsV"]
+        assert "TableStatsV" in stats_query, f"Expected row count query on DBC.TableStatsV, got: {stats_query}"
+
+    def test_stats_query_filters_on_schema_and_table_name(self):
+        """Without the WHERE filters, MAX(RowCount) would return an arbitrary
+        table's count from the whole DBC statistics view."""
+        session = _build_mock_session()
+        session.execute.side_effect = [
+            self._exec_result(row_count=7500, size_in_bytes=12345),
+            self._exec_result(size_in_bytes=12345),
+        ]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        computer.compute()
+        stats_query = session.execute.call_args_list[0][0][0]
+        sql = str(stats_query.compile())
+        params = stats_query.compile().params
+        assert 'trim("DatabaseName")' in sql, f"Stats query must filter on DatabaseName, got: {sql}"
+        assert 'trim("TableName")' in sql, f"Stats query must filter on TableName, got: {sql}"
+        assert "test_schema" in params.values(), f"Stats query must look up test_schema, got: {params}"
+        assert "test_table" in params.values(), f"Stats query must look up test_table, got: {params}"
 
     def test_compute_returns_result_from_stats_and_size(self):
         session = _build_mock_session()
@@ -509,80 +614,6 @@ class TestTeradataTableMetricComputer:
         result = computer.compute()
         assert result.rowCount == 7500
         assert result.sizeInBytes is None
-
-    def test_compute_uppercases_schema_and_table_in_where_clause(self):
-        """MockModel has lowercase schema='test_schema' and table='test_table'.
-        HANA catalog stores identifiers in uppercase — WHERE must use .upper()."""
-        session = _build_mock_session()
-        mock_result = MagicMock()
-        mock_result.rowCount = 10
-        session.execute.return_value.first.return_value = mock_result
-        computer = _build_computer(session, SAPHanaTableMetricComputer)
-        computer.compute()
-        sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
-        assert "TEST_SCHEMA" in sql, f"WHERE clause must use uppercased schema name, got: {sql}"
-        assert "TEST_TABLE" in sql, f"WHERE clause must use uppercased table name, got: {sql}"
-        assert "test_schema" not in sql.split("FROM")[1] if "FROM" in sql else True, (
-            "Lowercase schema name must not appear in WHERE clauses"
-        )
-
-    def test_compute_returns_result_when_create_time_is_none(self):
-        """LEFT JOIN means CREATE_TIME can be NULL (table in M_TABLES but not TABLES).
-        Should still return result — not fall back to base compute."""
-        session = _build_mock_session()
-        mock_result = MagicMock()
-        mock_result.rowCount = 50
-        mock_result.createDateTime = None
-        session.execute.return_value.first.return_value = mock_result
-        computer = _build_computer(session, SAPHanaTableMetricComputer)
-        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as base_compute:
-            result = computer.compute()
-            assert result is mock_result
-            base_compute.assert_not_called()
-
-    def test_compute_uses_two_ctes_with_left_join(self):
-        """Query must have two CTEs (M_TABLES + TABLES) joined with LEFT OUTER JOIN."""
-        session = _build_mock_session()
-        mock_result = MagicMock()
-        mock_result.rowCount = 10
-        session.execute.return_value.first.return_value = mock_result
-        computer = _build_computer(session, SAPHanaTableMetricComputer)
-        computer.compute()
-        sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
-        sql_upper = sql.upper()
-        normalized_sql = " ".join(sql_upper.split())
-        sql_without_quotes = normalized_sql.replace('"', "")
-        assert "WITH " in normalized_sql, f"Expected WITH clause in query, got: {sql}"
-        assert sql_without_quotes.count(" AS (") >= 2, f"Expected two CTE definitions in query, got: {sql}"
-        assert "FROM SYS.M_TABLES" in sql_without_quotes, f"Expected M_TABLES source in query, got: {sql}"
-        assert "FROM SYS.TABLES" in sql_without_quotes, f"Expected TABLES source in query, got: {sql}"
-        assert "LEFT OUTER JOIN" in normalized_sql or "LEFT JOIN" in normalized_sql, (
-            f"TABLES CTE must be LEFT JOINed, got: {sql}"
-        )
-
-    def test_compute_returns_none_for_nonexistent_table(self):
-        """When table absent from HANA system views, compute returns None and
-        still queries using uppercased identifiers expected by the catalog."""
-        session = _build_mock_session()
-        session.execute.return_value.first.return_value = None
-        computer = _build_computer(session, SAPHanaTableMetricComputer)
-        result = computer.compute()
-        sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
-        assert result is None
-        assert "TEST_SCHEMA" in sql, f"Nonexistent-table lookup must use uppercased schema, got: {sql}"
-        assert "TEST_TABLE" in sql, f"Nonexistent-table lookup must use uppercased table, got: {sql}"
-
-    def test_compute_includes_column_count_and_names(self):
-        """Result query must include columnCount and columnNames labels."""
-        session = _build_mock_session()
-        mock_result = MagicMock()
-        mock_result.rowCount = 10
-        session.execute.return_value.first.return_value = mock_result
-        computer = _build_computer(session, SAPHanaTableMetricComputer)
-        computer.compute()
-        sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
-        assert "columnCount" in sql, f"Query must select columnCount, got: {sql}"
-        assert "columnNames" in sql, f"Query must select columnNames, got: {sql}"
 
 
 class TestTrinoTableMetricComputer:
