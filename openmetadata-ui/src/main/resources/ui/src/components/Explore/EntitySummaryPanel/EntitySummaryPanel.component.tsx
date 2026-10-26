@@ -1178,6 +1178,7 @@ export default function EntitySummaryPanel({
             entityLink={entityLink}
             entityType={entityType}
             hasEditPermission={canEditDisplayName}
+            plain={panelPath === 'lineage'}
             testId="entity-header-title"
             tooltipPlacement="bottom left"
             onDisplayNameUpdate={handleDisplayNameUpdate}

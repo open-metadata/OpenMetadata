@@ -118,6 +118,7 @@ import {
   getConnectedFieldLineagePathHighlight,
   getConnectedLineagePathHighlight,
   getDrillBand,
+  getDrilledRootBreadcrumb,
   getLensRootLabelKey,
   getLineageMapEmptyState,
   getParentSceneRequest,
@@ -896,6 +897,41 @@ const LineageMapBreadcrumbs = ({
         }}
       />
     </Panel>
+  );
+};
+
+// A drilled-in scene with nothing in it replaces the canvas, breadcrumb
+// included, so the empty state carries the way back to the root.
+const LineageMapEmptyPlaceholder = ({
+  scene,
+  onBack,
+}: {
+  scene?: LineageScene;
+  onBack: (breadcrumb: LineageSceneBreadcrumb) => void;
+}) => {
+  const { t } = useTranslation();
+  const rootBreadcrumb = getDrilledRootBreadcrumb(scene);
+
+  return (
+    <NoDataPlaceholder
+      actions={
+        rootBreadcrumb && scene
+          ? [
+              {
+                key: 'back-to-root',
+                label: t('label.back-to-entity', {
+                  entity: t(getLensRootLabelKey(scene.lens)),
+                }),
+                color: 'secondary',
+                iconLeading: Home02,
+                onPress: () => onBack(rootBreadcrumb),
+              },
+            ]
+          : undefined
+      }
+      icon={<PlatformLineage />}
+      title={t('message.no-lineage-data-available')}
+    />
   );
 };
 
@@ -1908,9 +1944,9 @@ const LineageMapCanvas = ({
         />
       ),
       empty: (
-        <NoDataPlaceholder
-          icon={<PlatformLineage />}
-          title={t('message.no-lineage-data-available')}
+        <LineageMapEmptyPlaceholder
+          scene={scene}
+          onBack={handleBreadcrumbFocus}
         />
       ),
     };

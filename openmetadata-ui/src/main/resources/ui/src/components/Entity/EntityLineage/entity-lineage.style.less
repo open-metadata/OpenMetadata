@@ -188,11 +188,18 @@
     &.right {
       right: 8px;
     }
+
+    // Same corner inset as the Layers panel and the level rail.
+    &.bottom.right {
+      right: calc(var(--tw-spacing) * 6);
+      bottom: calc(var(--tw-spacing) * 6);
+    }
   }
 
+  // Stacked above the zoom bar.
   .react-flow__minimap {
     &.bottom.right {
-      bottom: 60px;
+      bottom: calc(var(--tw-spacing) * 19);
     }
   }
 }
@@ -210,14 +217,14 @@
 }
 
 // The level rail (138px tall) is centred, but never lower than the controls
-// stacked in the bottom-right corner: the zoom bar, and the minimap (60px up,
+// stacked in the bottom-right corner: the zoom bar, and the minimap (76px up,
 // 150px tall) above it when shown.
 .lineage-map-rail {
   // Escaped so LESS leaves min() to the browser.
-  top: ~'min(50%, calc(100% - 68px - 69px))';
+  top: ~'min(50%, calc(100% - 84px - 69px))';
 
   &.with-minimap {
-    top: ~'min(50%, calc(100% - 226px - 69px))';
+    top: ~'min(50%, calc(100% - 242px - 69px))';
   }
 }
 

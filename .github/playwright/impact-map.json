@@ -119,7 +119,9 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/**",
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityLineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/LineageTable/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/PlatformLineage/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityLineage*",
         "openmetadata-ui/src/main/resources/ui/src/utils/Lineage/**",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useLineageStore.ts"
