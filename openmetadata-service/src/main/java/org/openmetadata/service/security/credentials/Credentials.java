@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.util.PostCommitActionQueue;
@@ -34,7 +35,12 @@ import org.openmetadata.service.util.PostCommitActionQueue;
  */
 @Slf4j
 public final class Credentials {
+  /** Waits that may run at once in this process, so they cannot hold every request slot. */
+  static final int MAX_CONCURRENT_PROPAGATION_WAITS = 8;
+
   private static final Duration PROPAGATION_MARGIN = Duration.ofMillis(50);
+  private static final Semaphore PROPAGATION_WAITS =
+      new Semaphore(MAX_CONCURRENT_PROPAGATION_WAITS);
   private static final CredentialVerifier UNINSTALLED =
       new CredentialVerifier(
           CredentialVerificationConfig.defaults(),
@@ -91,13 +97,28 @@ public final class Credentials {
    * returns no server accepts it for a new request.
    *
    * <p>It throws {@link CredentialUnavailableException}, answered with 503, when it cannot wait the
-   * bound out. That happens when no verifier is installed, so the bound is unknown, and when the
-   * thread is interrupted, in which case it restores the flag. The write has committed by then and
-   * repeating it is harmless, so the 503 asks the client to repeat the call, and the repeat waits
-   * the whole bound again.
+   * bound out. That happens when no verifier is installed, so the bound is unknown, when {@value
+   * #MAX_CONCURRENT_PROPAGATION_WAITS} waits already run in this process, and when the thread is
+   * interrupted, in which case it restores the flag. The write has committed by then and repeating
+   * it is harmless, so the 503 asks the client to repeat the call, and the repeat waits the whole
+   * bound again.
    */
   public static void awaitPropagation() {
     CredentialVerifier verifier = requireInstalled();
+    if (!PROPAGATION_WAITS.tryAcquire()) {
+      throw new CredentialUnavailableException(
+          "Too many revocations are already waiting to propagate",
+          verifier.retryAfterSeconds(),
+          null);
+    }
+    try {
+      waitOutBound(verifier);
+    } finally {
+      PROPAGATION_WAITS.release();
+    }
+  }
+
+  private static void waitOutBound(CredentialVerifier verifier) {
     long deadline = System.nanoTime() + verifier.maxStaleness().plus(PROPAGATION_MARGIN).toNanos();
     try {
       sleepUntil(deadline);

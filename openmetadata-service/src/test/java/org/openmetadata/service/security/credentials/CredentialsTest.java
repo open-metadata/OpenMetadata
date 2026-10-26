@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.util.Duration;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -182,6 +183,38 @@ class CredentialsTest {
 
     assertEquals(3, unfinished.get(10, TimeUnit.SECONDS).retryAfterSeconds());
     assertTrue(flagRestored.get(), "the interrupt flag was restored");
+  }
+
+  @Test
+  void aWaitBeyondTheProcessLimitAnswersUnavailableWithoutWaiting() throws Exception {
+    Credentials.install(verifier(configWith(Duration.minutes(1), Duration.seconds(3))));
+    List<CompletableFuture<CredentialUnavailableException>> unfinished = new ArrayList<>();
+    List<Thread> waiters = new ArrayList<>();
+    for (int i = 0; i < Credentials.MAX_CONCURRENT_PROPAGATION_WAITS; i++) {
+      CompletableFuture<CredentialUnavailableException> outcome = new CompletableFuture<>();
+      unfinished.add(outcome);
+      waiters.add(
+          Thread.ofPlatform()
+              .daemon()
+              .start(() -> awaitPropagationInto(outcome, new AtomicBoolean())));
+    }
+    Awaitility.await()
+        .until(
+            () ->
+                waiters.stream().allMatch(w -> w.getState() == Thread.State.TIMED_WAITING)
+                    || unfinished.stream().anyMatch(CompletableFuture::isDone));
+
+    CredentialUnavailableException refused =
+        assertThrows(CredentialUnavailableException.class, Credentials::awaitPropagation);
+
+    assertEquals(3, refused.retryAfterSeconds());
+    waiters.forEach(Thread::interrupt);
+    for (CompletableFuture<CredentialUnavailableException> outcome : unfinished) {
+      assertEquals(3, outcome.get(10, TimeUnit.SECONDS).retryAfterSeconds());
+    }
+    Credentials.install(
+        verifier(configWith(Duration.milliseconds(200), Duration.milliseconds(100))));
+    assertDoesNotThrow(Credentials::awaitPropagation);
   }
 
   @Test
