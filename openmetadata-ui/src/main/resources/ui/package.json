@@ -73,7 +73,7 @@
     "ui-checkstyle:playwright:changed": "bash scripts/ui-checkstyle-playwright-changed.sh",
     "test:ui": "vitest --config vitest.browser.config.ts",
     "test:ui:run": "vitest run --config vitest.browser.config.ts",
-    "test:ui:coverage": "vitest run --config vitest.browser.config.ts --coverage --testTimeout=30000"
+    "test:ui:coverage": "vitest run --config vitest.browser.config.ts --coverage --testTimeout=45000"
   },
   "dependencies": {
     "@analytics/session-utils": "^0.2.4",

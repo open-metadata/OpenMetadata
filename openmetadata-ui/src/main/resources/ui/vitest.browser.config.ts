@@ -79,9 +79,10 @@ export default defineConfig(async (env) => {
         name: 'ui-integration',
         include: ['src/**/*.browser.test.{ts,tsx}'],
         setupFiles: ['src/test/browser/setup.ts'],
-        // test:ui:coverage raises this to 30 s: istanbul instrumentation slows
-        // every test, and the strict limit belongs to the uninstrumented runs.
-        testTimeout: 15_000,
+        // With isolate:false the first test to open a page in a worker loads
+        // that page's module graph; on a busy CI runner that alone has taken
+        // >15 s. test:ui:coverage raises this to 45 s for istanbul's overhead.
+        testTimeout: 30_000,
         // Reuse each worker's page across files: the app's module graph loads
         // once per worker instead of once per file (~10 s each). Tests stay
         // independent through setup.ts (unmount, handler reset, URL and
