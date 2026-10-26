@@ -1314,7 +1314,6 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/ProductTourClassBase.ts",
         "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/ProductTourPagesClassBase.ts",
         "openmetadata-ui/src/main/resources/ui/src/@types/regenerator-runtime.d.ts",
-        "openmetadata-ui/src/main/resources/ui/scripts/product-tour/**",
         "openmetadata-ui/src/main/resources/ui/playwright/constant/productTour.ts",
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/TopicsSectionHeader.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/ExploreV1/ExploreV1.component.tsx",

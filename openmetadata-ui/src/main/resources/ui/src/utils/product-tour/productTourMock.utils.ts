@@ -73,8 +73,7 @@ export const toTourRequestBody = (data: unknown): string | undefined => {
 
 /**
  * The request as it goes on the wire: the URL with its query already
- * serialised, by the client or as the browser sent it. The recorder and the
- * tour read requests the same way, so a recorded request matches the live one
+ * serialised by the client, so a recorded request matches the live one
  * however its parameters were serialised. A repeated key keeps every value.
  */
 export const toTourRequest = (

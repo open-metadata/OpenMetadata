@@ -217,14 +217,6 @@ describe('useProductTourStore', () => {
     expect(persisted.state).not.toHaveProperty('lastPath');
   });
 
-  it('serves the server data while the fixture recorder runs the tour', () => {
-    sessionStorage.setItem('omProductTourRecord', 'true');
-
-    getState().start('default');
-
-    expect(isTourMockActive()).toBe(false);
-  });
-
   it('serves the fixtures again after a reload mid-tour', async () => {
     getState().start('default');
     getState().goToStep(3);

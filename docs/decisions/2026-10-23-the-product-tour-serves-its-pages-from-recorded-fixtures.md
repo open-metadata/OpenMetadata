@@ -1,7 +1,7 @@
 # The product tour walks the real pages and serves them from recorded fixtures
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial)
+- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (no recorder or seed script in the repo)
 - **Deciders:** UI team
 - **Guard:** `openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ProductTour.spec.ts` (no tour page request reaches the server),
   `openmetadata-ui/src/main/resources/ui/src/utils/product-tour/productTourMock.utils.test.ts`
@@ -28,13 +28,12 @@ page it visits, and would break the same way each time a page changes.
   - Anything else, such as the signed-in user (by name or by id, with their follows and
     preferences), their permissions and the app config, goes to the server. A user by id is only
     ever the signed-in one, and ids differ per instance, so a recorded one could never match.
-- Fixtures are recorded from a sample-data instance by the recorder script. They are not written
-  by hand. A distribution records its own tours with the same script, pointed at its app
-  (`PLAYWRIGHT_TEST_BASE_URL`) and the tour's mode (`TOUR_APP_MODE`), so it never copies the
-  recorder. Re-record them when a page or its API changes. Content that sample data does not
-  ingest but a step shows (a glossary with related terms, Context Center articles and memories,
-  data quality tests and results) is created first by the seed script, so no step records an
-  empty state.
+- Fixtures are real API responses captured from a clean sample-data instance, not written by
+  hand, so they match what the pages request and render. The repo keeps no recorder or seed
+  script for this: the fixtures change rarely, and a script that runs a few times a year is not
+  worth maintaining. Re-capture them when a page or its API changes. Content that sample data does
+  not ingest but a step shows (a glossary with related terms, Context Center articles and
+  memories) is created on that instance first, so no step is captured as an empty state.
 - Ending the tour reloads the page, so nothing the fixtures put into in-memory caches or stores
   outlives it. Code that writes fixture-derived data to persistent storage (localStorage) checks
   `isTourMockActive()` and skips the write, as pruning dismissed announcements does.
@@ -45,10 +44,10 @@ page it visits, and would break the same way each time a page changes.
 
 ## Consequences
 The tour shows the same content on every instance. A page needs no tour-specific code to take
-part, so adding a step costs a selector, copy and a fixture recording. The old record rejected an
+part, so adding a step costs a selector, copy and its captured fixtures. The old record rejected an
 interceptor because a blanket *block* would turn every leak into a component error. This one
 *serves* recorded responses. A request without a fixture still reaches the server, and the
 Playwright spec fails on any such request from a tour page that is not on the pass-through list.
-The cost is recording: fixtures drift from the API as it changes, and a stale fixture shows wrong or
-missing data in the tour. Re-recording is the remedy, and the spec catches requests that go
+The cost is capturing: fixtures drift from the API as it changes, and a stale fixture shows wrong or
+missing data in the tour. Re-capturing them is the remedy, and the spec catches requests that go
 unserved.

@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-// This file has no imports, so the fixture recorder can read it outside the app.
-
 export const PRODUCT_TOUR_STORAGE_KEY = 'omProductTour';
-
-// Set in sessionStorage by the fixture recorder: the tour runs on the server's
-// data so its responses can be recorded.
-export const PRODUCT_TOUR_RECORD_KEY = 'omProductTourRecord';
 
 export const REQUIRED_STABLE_LAYOUT_FRAMES = 3;
 export const TARGET_WAIT_TIMEOUT_MS = 8000;
@@ -59,6 +53,6 @@ export const TOUR_PASS_THROUGH_PATHS = [
 // value or its body (a dashboard's time window inside a search filter).
 export const TOUR_VOLATILE_TIMESTAMP_PATTERN = /\b1\d{12}\b/g;
 
-// Updates and deletes; the tour drops them and the recorder never records them.
+// Updates and deletes; the tour drops them.
 // POST also reads (searches, aggregations, report batches), so it is not one.
 export const TOUR_WRITE_METHODS = ['put', 'patch', 'delete'] as const;

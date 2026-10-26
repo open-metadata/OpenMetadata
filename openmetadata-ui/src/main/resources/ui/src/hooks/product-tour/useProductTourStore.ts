@@ -17,10 +17,7 @@ import {
   APP_MODE_SESSION_KEY,
 } from '../../constants/appMode.constants';
 import { ROUTES } from '../../constants/constants';
-import {
-  PRODUCT_TOUR_RECORD_KEY,
-  PRODUCT_TOUR_STORAGE_KEY,
-} from '../../constants/product-tour/productTour.constants';
+import { PRODUCT_TOUR_STORAGE_KEY } from '../../constants/product-tour/productTour.constants';
 import {
   activateTourMock,
   deactivateTourMock,
@@ -93,12 +90,8 @@ interface ProductTourStore {
   isBeforeTour: () => boolean;
 }
 
-// The fixture recorder runs the tour on the server's data to record it.
-const isRecordingFixtures = () =>
-  readStorageItem(getSessionStorage, PRODUCT_TOUR_RECORD_KEY) === 'true';
-
 const activateMockFor = (tourMode?: string) => {
-  if (tourMode && !isRecordingFixtures()) {
+  if (tourMode) {
     activateTourMock(productTourClassBase.getTour(tourMode).loadFixtures);
   }
 };
@@ -248,10 +241,7 @@ export const useProductTourStore = create<ProductTourStore>()(
   )
 );
 
-/**
- * Whether a tour is on screen, also while the fixture recorder runs it with
- * the mock off.
- */
+/** Whether a tour is on screen, its end modal included. */
 export const isProductTourRunning = () => {
   const { isActive, isEndModalOpen } = useProductTourStore.getState();
 
