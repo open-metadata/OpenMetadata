@@ -487,7 +487,7 @@ public final class CredentialVerifier implements Managed {
     long stamp = ticker.read();
     Map<CredentialSubject, SourceFingerprint> fingerprints = source.fingerprints(batch);
     metrics.recordSweepQuery(SweepQuery.FINGERPRINT);
-    List<CredentialSubject> changed = restamp(batch, fingerprints, stamp);
+    List<CredentialSubject> changed = confirm(batch, fingerprints, stamp);
     metrics.recordSweepChanged(changed.size());
     if (!changed.isEmpty()) {
       reread(changed, ReadReason.SWEEP, cachedRecords(changed), false);
@@ -496,22 +496,21 @@ public final class CredentialVerifier implements Managed {
   }
 
   /**
-   * Moves the stamp of each entry whose own fingerprint the later query returned and lists the
-   * cached subjects whose fingerprint differs. An entry that idled out meanwhile stays absent.
+   * Moves the trust stamp of each entry whose own fingerprint the later query returned and lists
+   * the cached subjects whose fingerprint differs. The entries are read quietly and confirmed in
+   * place, so a reconfirmation is neither a cache write nor an access: a confirmation that lands on
+   * an entry a newer read has replaced meanwhile changes nothing the cache holds, and an entry that
+   * idled out stays absent.
    */
-  private List<CredentialSubject> restamp(
+  private List<CredentialSubject> confirm(
       List<CredentialSubject> batch,
       Map<CredentialSubject, SourceFingerprint> fingerprints,
       long stamp) {
     List<CredentialSubject> changed = new ArrayList<>();
     for (CredentialSubject subject : batch) {
       SourceFingerprint fingerprint = fingerprints.getOrDefault(subject, SourceFingerprint.ABSENT);
-      VerifiedCredentials entry =
-          entries
-              .asMap()
-              .computeIfPresent(
-                  subject, (key, current) -> current.reconfirmedAt(fingerprint, stamp));
-      if (entry != null && !fingerprint.equals(entry.record().fingerprint())) {
+      VerifiedCredentials entry = entries.policy().getIfPresentQuietly(subject);
+      if (entry != null && !entry.confirm(fingerprint, stamp)) {
         changed.add(subject);
       }
     }

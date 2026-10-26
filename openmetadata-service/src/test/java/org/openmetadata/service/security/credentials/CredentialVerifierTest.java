@@ -470,6 +470,48 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void sweepsDoNotChangeWhichSubjectsTheCacheKeeps() {
+    assertEquals(newcomerReadsAfterResidents(0), newcomerReadsAfterResidents(30));
+  }
+
+  /**
+   * Ten residents fill a cache of ten, optionally reconfirmed by {@code sweeps} sweeps, then three
+   * newcomers check twenty times each with a maintenance pass after every check. Returns the full
+   * reads the newcomers cost; a sweep that counted as a cache write would raise the residents'
+   * frequency and make the newcomers lose admission.
+   */
+  private static int newcomerReadsAfterResidents(int sweeps) {
+    FakeCredentialSource isolatedSource = new FakeCredentialSource();
+    FakeTicker isolatedTicker = new FakeTicker();
+    CredentialVerifier isolated =
+        new CredentialVerifier(
+            new CredentialVerificationConfig(null, null, null, null, null, null, 10, 10, null),
+            isolatedSource,
+            isolatedTicker,
+            new CredentialMetrics(new SimpleMeterRegistry()),
+            List.of());
+    IntStream.range(0, 10).forEach(i -> isolatedSource.withPats("resident-" + i, "token-" + i));
+    IntStream.range(0, 3).forEach(i -> isolatedSource.withPats("newcomer-" + i, "new-" + i));
+    IntStream.range(0, 10)
+        .forEach(
+            i ->
+                assertDoesNotThrow(
+                    () -> isolated.require(stored("resident-" + i), "token-" + i, REJECTED)));
+    for (int sweep = 0; sweep < sweeps; sweep++) {
+      isolatedTicker.advanceNanos(2 * SECOND);
+      isolated.sweepOnce();
+    }
+    int readsBefore = isolatedSource.fullReads();
+    for (int check = 0; check < 60; check++) {
+      int newcomer = check % 3;
+      assertDoesNotThrow(
+          () -> isolated.require(stored("newcomer-" + newcomer), "new-" + newcomer, REJECTED));
+      isolated.cachedSubjects();
+    }
+    return isolatedSource.fullReads() - readsBefore;
+  }
+
+  @Test
   void sweepsDoNotKeepIdleSubjectsAlive() {
     source.withPats(ALICE, TOKEN_A);
     verifier(

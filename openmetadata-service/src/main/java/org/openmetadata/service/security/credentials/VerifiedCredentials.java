@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.security.credentials;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 /**
  * One cache entry: a {@link CredentialRecord} plus two moments on this server's monotonic clock.
  * {@code verifiedAtNanos} is the trust stamp, the instant at which the read that produced or last
@@ -28,14 +31,49 @@ package org.openmetadata.service.security.credentials;
  * which such a token is answered without a read is measured from {@code fullReadAtNanos}: a
  * reconfirmation proves the record current but reads nothing new.
  *
- * <p>The stamps travel with the value, so a slow load that finishes after a newer read cannot
- * extend trust: it carries its own older stamp and {@link #newer} keeps the later read.
+ * <p>The trust stamp moves forward in place, never backwards, so a reconfirmation is not a cache
+ * write and leaves the cache's frequency, recency and idle expiry to requests alone. The stamps
+ * travel with the value, so a slow load that finishes after a newer read cannot extend trust: it
+ * carries its own older stamp and {@link #newer} keeps the later read.
  */
-record VerifiedCredentials(CredentialRecord record, long verifiedAtNanos, long fullReadAtNanos) {
+final class VerifiedCredentials {
+  private static final VarHandle VERIFIED_AT;
+
+  static {
+    try {
+      VERIFIED_AT =
+          MethodHandles.lookup()
+              .findVarHandle(VerifiedCredentials.class, "verifiedAtNanos", long.class);
+    } catch (ReflectiveOperationException impossible) {
+      throw new ExceptionInInitializerError(impossible);
+    }
+  }
+
+  private final CredentialRecord record;
+  private final long fullReadAtNanos;
+  private volatile long verifiedAtNanos;
 
   /** The entry a full read produces: both stamps are the read's own. */
   VerifiedCredentials(CredentialRecord record, long readStampNanos) {
     this(record, readStampNanos, readStampNanos);
+  }
+
+  VerifiedCredentials(CredentialRecord record, long verifiedAtNanos, long fullReadAtNanos) {
+    this.record = record;
+    this.verifiedAtNanos = verifiedAtNanos;
+    this.fullReadAtNanos = fullReadAtNanos;
+  }
+
+  CredentialRecord record() {
+    return record;
+  }
+
+  long verifiedAtNanos() {
+    return verifiedAtNanos;
+  }
+
+  long fullReadAtNanos() {
+    return fullReadAtNanos;
   }
 
   long ageNanos(long nowNanos) {
@@ -47,15 +85,17 @@ record VerifiedCredentials(CredentialRecord record, long verifiedAtNanos, long f
   }
 
   /**
-   * The sweep found the stored inputs unchanged at a read stamped {@code stampNanos}: the same
-   * record now reflects every commit before that later stamp. Any other fingerprint or an older
-   * stamp leaves the entry as it is.
+   * The sweep found the stored inputs at a read stamped {@code stampNanos}. When they are this
+   * record's own, the record reflects every commit before that later stamp and the trust stamp
+   * moves to it, unless it is already later. Returns whether the fingerprint matched; a mismatch
+   * means the record is out of date and the caller re-reads it.
    */
-  VerifiedCredentials reconfirmedAt(SourceFingerprint fingerprint, long stampNanos) {
+  boolean confirm(SourceFingerprint fingerprint, long stampNanos) {
     boolean unchanged = fingerprint.equals(record.fingerprint());
-    return unchanged && isLater(stampNanos, verifiedAtNanos)
-        ? new VerifiedCredentials(record, stampNanos, fullReadAtNanos)
-        : this;
+    if (unchanged) {
+      advanceTrustTo(stampNanos);
+    }
+    return unchanged;
   }
 
   /**
@@ -64,6 +104,13 @@ record VerifiedCredentials(CredentialRecord record, long verifiedAtNanos, long f
    */
   static VerifiedCredentials newer(VerifiedCredentials existing, VerifiedCredentials candidate) {
     return isLater(candidate.verifiedAtNanos, existing.verifiedAtNanos) ? candidate : existing;
+  }
+
+  private void advanceTrustTo(long stampNanos) {
+    long current = verifiedAtNanos;
+    while (isLater(stampNanos, current) && !VERIFIED_AT.compareAndSet(this, current, stampNanos)) {
+      current = verifiedAtNanos;
+    }
   }
 
   /**

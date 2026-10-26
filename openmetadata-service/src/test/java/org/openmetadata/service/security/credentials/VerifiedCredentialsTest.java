@@ -14,10 +14,18 @@
 package org.openmetadata.service.security.credentials;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class VerifiedCredentialsTest {
@@ -53,33 +61,59 @@ class VerifiedCredentialsTest {
   }
 
   @Test
-  void reconfirmMovesTheStampOnlyForAnEqualFingerprintAndALaterStamp() {
+  void confirmMovesTheStampOnlyForAnEqualFingerprintAndALaterStamp() {
     VerifiedCredentials entry = entryAt(100L);
 
-    assertEquals(200L, entry.reconfirmedAt(SourceFingerprint.of("a"), 200L).verifiedAtNanos());
-    assertSame(entry, entry.reconfirmedAt(SourceFingerprint.of("b"), 200L));
-    assertSame(entry, entry.reconfirmedAt(SourceFingerprint.ABSENT, 200L));
-    assertSame(entry, entry.reconfirmedAt(FINGERPRINT, 100L));
-    assertSame(entry, entry.reconfirmedAt(FINGERPRINT, 50L));
+    assertTrue(entry.confirm(SourceFingerprint.of("a"), 200L));
+    assertEquals(200L, entry.verifiedAtNanos());
+    assertFalse(entry.confirm(SourceFingerprint.of("b"), 300L));
+    assertFalse(entry.confirm(SourceFingerprint.ABSENT, 300L));
+    assertEquals(200L, entry.verifiedAtNanos());
+    assertTrue(entry.confirm(FINGERPRINT, 200L));
+    assertTrue(entry.confirm(FINGERPRINT, 50L));
+    assertEquals(200L, entry.verifiedAtNanos());
   }
 
   @Test
-  void reconfirmKeepsTheFullReadStamp() {
-    VerifiedCredentials reconfirmed = entryAt(100L).reconfirmedAt(FINGERPRINT, 200L);
+  void confirmKeepsTheFullReadStampAndTheRecord() {
+    VerifiedCredentials entry = entryAt(100L);
+    entry.confirm(FINGERPRINT, 200L);
 
-    assertEquals(100L, reconfirmed.fullReadAtNanos());
-    assertEquals(200L, reconfirmed.verifiedAtNanos());
-    assertEquals(150L, reconfirmed.fullReadAgeNanos(250L));
-    assertEquals(50L, reconfirmed.ageNanos(250L));
+    assertEquals(100L, entry.fullReadAtNanos());
+    assertEquals(200L, entry.verifiedAtNanos());
+    assertEquals(150L, entry.fullReadAgeNanos(250L));
+    assertEquals(50L, entry.ageNanos(250L));
+    assertSame(RECORD, entry.record());
   }
 
   @Test
   void newerComparesTheTrustStampNotTheFullReadStamp() {
-    VerifiedCredentials reconfirmed = entryAt(100L).reconfirmedAt(FINGERPRINT, 300L);
+    VerifiedCredentials reconfirmed = entryAt(100L);
+    reconfirmed.confirm(FINGERPRINT, 300L);
     VerifiedCredentials fullRead = entryAt(200L);
 
     assertSame(reconfirmed, VerifiedCredentials.newer(reconfirmed, fullRead));
     assertSame(reconfirmed, VerifiedCredentials.newer(fullRead, reconfirmed));
+  }
+
+  @Test
+  void concurrentConfirmationsLeaveTheLatestStamp() throws Exception {
+    VerifiedCredentials entry = entryAt(0L);
+    List<Callable<Boolean>> confirmations =
+        IntStream.rangeClosed(1, 2_000)
+            .mapToObj(stamp -> (Callable<Boolean>) () -> entry.confirm(FINGERPRINT, stamp))
+            .toList();
+    ExecutorService threads = Executors.newFixedThreadPool(8);
+    try {
+      for (Future<Boolean> confirmed : threads.invokeAll(confirmations)) {
+        assertTrue(confirmed.get());
+      }
+    } finally {
+      threads.shutdownNow();
+      assertTrue(threads.awaitTermination(10, TimeUnit.SECONDS));
+    }
+
+    assertEquals(2_000L, entry.verifiedAtNanos());
   }
 
   @Test
@@ -92,15 +126,12 @@ class VerifiedCredentialsTest {
 
     assertSame(late, VerifiedCredentials.newer(early, late));
     assertSame(late, VerifiedCredentials.newer(late, early));
-    assertEquals(afterWrap, early.reconfirmedAt(FINGERPRINT, afterWrap).verifiedAtNanos());
-    assertSame(late, late.reconfirmedAt(FINGERPRINT, beforeWrap));
     assertEquals(20L, early.ageNanos(afterWrap));
-    assertEquals(20L, early.reconfirmedAt(FINGERPRINT, afterWrap).fullReadAgeNanos(afterWrap));
-  }
-
-  @Test
-  void reconfirmKeepsTheSameRecord() {
-    assertSame(RECORD, entryAt(100L).reconfirmedAt(FINGERPRINT, 200L).record());
+    assertTrue(late.confirm(FINGERPRINT, beforeWrap));
+    assertEquals(afterWrap, late.verifiedAtNanos());
+    assertTrue(early.confirm(FINGERPRINT, afterWrap));
+    assertEquals(afterWrap, early.verifiedAtNanos());
+    assertEquals(20L, early.fullReadAgeNanos(afterWrap));
   }
 
   @Test
