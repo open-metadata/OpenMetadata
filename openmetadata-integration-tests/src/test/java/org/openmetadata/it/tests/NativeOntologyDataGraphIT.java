@@ -30,6 +30,7 @@ import static org.openmetadata.it.tests.OntologyBindingFixtures.topicAsset;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -144,6 +145,28 @@ class NativeOntologyDataGraphIT extends BaseOntologyApprovalIT {
     assertStatus(400, () -> graph(admin(), ontology, "?limit=13"));
     assertStatus(400, () -> graph(admin(), ontology, "?assetsPerConcept=5"));
     assertStatus(400, () -> graph(admin(), ontology, "?offset=-1"));
+  }
+
+  @Test
+  void aLineageEdgeBetweenPreviewAssetsSurvivesEarlierEdgesToUnboundAssets(final TestNamespace ns) {
+    final var ontology = createOntology(ns, "lineageLimit");
+    final var customer = declareClass(ontology, "Customer", CUSTOMER);
+    final var schema = DatabaseSchemaTestFactory.createSimple(ns).getFullyQualifiedName();
+    final var chain =
+        tables(ns, schema, 12).stream()
+            .sorted(Comparator.comparing(table -> table.getId().toString()))
+            .toList();
+    final var source = chain.getFirst();
+    final var target = chain.getLast();
+    bind(customer, source, List.of(), 0L);
+    bind(customer, target, List.of(), 1L);
+    chain.subList(1, chain.size() - 1).forEach(unbound -> lineage(source, unbound));
+    lineage(source, target);
+
+    final var graph = graph(admin(), ontology, "?lineageEdgeLimit=1");
+    assertEquals(
+        List.of(new Edge().withFromEntity(source.getId()).withToEntity(target.getId())),
+        graph.getLineageEdges());
   }
 
   @Test
