@@ -32,6 +32,7 @@ import {
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+import { migratedTo } from '../../constant/migration';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -122,291 +123,303 @@ test.describe('Data Product Domain Migration', () => {
     await redirectToHomePage(page);
   });
 
-  test('Changing data product domain via API migrates assets to new domain', async ({
-    page,
-  }) => {
-    test.slow();
+  test(
+    'Changing data product domain via API migrates assets to new domain',
+    migratedTo.javaIT(
+      'DataProductResourceIT#test_changeDataProductDomain_withAssetMigration'
+    ),
+    async ({ page }) => {
+      test.slow();
 
-    const { apiContext, afterAction } = await getApiContext(page);
-    try {
-      await redirectToHomePage(page);
+      const { apiContext, afterAction } = await getApiContext(page);
+      try {
+        await redirectToHomePage(page);
 
-      // STEP 1: Verify initial state - assets should be under source domain
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await verifyAssetsInDomain(
-        page,
-        sourceDomain.data,
-        [table1, table2],
-        true
-      );
-      await checkAssetsCount(page, 2);
+        // STEP 1: Verify initial state - assets should be under source domain
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await verifyAssetsInDomain(
+          page,
+          sourceDomain.data,
+          [table1, table2],
+          true
+        );
+        await checkAssetsCount(page, 2);
 
-      // Verify target domain has no assets initially
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await goToAssetsTab(page, targetDomain.data);
-      await checkAssetsCount(page, 0);
+        // Verify target domain has no assets initially
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await goToAssetsTab(page, targetDomain.data);
+        await checkAssetsCount(page, 0);
 
-      // STEP 2: Navigate to data product and verify it's in source domain
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, dataProduct.data);
+        // STEP 2: Navigate to data product and verify it's in source domain
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
 
-      await expect(
-        page.locator('[data-testid="entity-header-name"]')
-      ).toContainText(dataProduct.responseData.name);
+        await expect(
+          page.locator('[data-testid="entity-header-name"]')
+        ).toContainText(dataProduct.responseData.name);
 
-      await expect(page.getByTestId('domain-link').first()).toContainText(
-        sourceDomain.data.displayName
-      );
+        await expect(page.getByTestId('domain-link').first()).toContainText(
+          sourceDomain.data.displayName
+        );
 
-      // Verify assets are in the data product
-      await page.getByTestId('assets').click();
-      await checkAssetsCount(page, 2);
+        // Verify assets are in the data product
+        await page.getByTestId('assets').click();
+        await checkAssetsCount(page, 2);
 
-      // STEP 3: Change domain via API (bypassing complex UI multi-select tree)
-      const patchResponse = await apiContext.patch(
-        `/api/v1/dataProducts/${dataProduct.responseData.id}`,
-        {
-          data: [
-            {
-              op: 'replace',
-              path: '/domains',
-              value: [
-                {
-                  id: targetDomain.responseData.id,
-                  type: 'domain',
-                },
-              ],
+        // STEP 3: Change domain via API (bypassing complex UI multi-select tree)
+        const patchResponse = await apiContext.patch(
+          `/api/v1/dataProducts/${dataProduct.responseData.id}`,
+          {
+            data: [
+              {
+                op: 'replace',
+                path: '/domains',
+                value: [
+                  {
+                    id: targetDomain.responseData.id,
+                    type: 'domain',
+                  },
+                ],
+              },
+            ],
+            headers: {
+              'Content-Type': 'application/json-patch+json',
             },
-          ],
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      );
+          }
+        );
 
-      expect(patchResponse.ok()).toBeTruthy();
+        expect(patchResponse.ok()).toBeTruthy();
 
-      // STEP 4: Verify data product now shows target domain
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, dataProduct.data);
+        // STEP 4: Verify data product now shows target domain
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
 
-      await expect(page.getByTestId('domain-link').first()).toContainText(
-        targetDomain.data.displayName
-      );
+        await expect(page.getByTestId('domain-link').first()).toContainText(
+          targetDomain.data.displayName
+        );
 
-      // Verify assets are still in the data product
-      await page.getByTestId('assets').click();
-      await checkAssetsCount(page, 2);
+        // Verify assets are still in the data product
+        await page.getByTestId('assets').click();
+        await checkAssetsCount(page, 2);
 
-      // STEP 5: THE KEY VERIFICATION - assets should now appear under TARGET domain
-      // This is the actual bug we're testing - assets must be migrated to the new domain
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await verifyAssetsInDomain(
-        page,
-        targetDomain.data,
-        [table1, table2],
-        true
-      );
-      await checkAssetsCount(page, 2);
+        // STEP 5: THE KEY VERIFICATION - assets should now appear under TARGET domain
+        // This is the actual bug we're testing - assets must be migrated to the new domain
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await verifyAssetsInDomain(
+          page,
+          targetDomain.data,
+          [table1, table2],
+          true
+        );
+        await checkAssetsCount(page, 2);
 
-      // STEP 6: Verify assets are no longer under source domain
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await goToAssetsTab(page, sourceDomain.data);
-      await checkAssetsCount(page, 0);
-    } finally {
-      await afterAction();
+        // STEP 6: Verify assets are no longer under source domain
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await goToAssetsTab(page, sourceDomain.data);
+        await checkAssetsCount(page, 0);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 
-  test('Data product with no assets can change domain without confirmation', async ({
-    page,
-  }) => {
-    test.slow();
+  test(
+    'Data product with no assets can change domain without confirmation',
+    migratedTo.javaIT(
+      'DataProductResourceIT#test_changeDataProductDomain_noAssets'
+    ),
+    async ({ page }) => {
+      test.slow();
 
-    const { apiContext, afterAction } = await getApiContext(page);
+      const { apiContext, afterAction } = await getApiContext(page);
 
-    // Create a data product with no assets for this test
-    const noAssetsDomain = new Domain({
-      name: `no_assets_domain_${shortId}`,
-      displayName: `No Assets Domain ${shortId}`,
-      description: 'Domain for no assets test',
-      domainType: 'Aggregate',
-      fullyQualifiedName: `no_assets_domain_${shortId}`,
-    });
-    const noAssetsDomain2 = new Domain({
-      name: `no_assets_domain2_${shortId}`,
-      displayName: `No Assets Domain 2 ${shortId}`,
-      description: 'Domain for no assets test',
-      domainType: 'Aggregate',
-      fullyQualifiedName: `no_assets_domain2_${shortId}`,
-    });
-    const noAssetsDataProduct = new DataProduct(
-      [noAssetsDomain],
-      `no_assets_dp_${shortId}`
-    );
-
-    await noAssetsDomain.create(apiContext);
-    await noAssetsDomain2.create(apiContext);
-    await noAssetsDataProduct.create(apiContext);
-
-    try {
-      await redirectToHomePage(page);
-
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, noAssetsDataProduct.data);
-
-      // Verify we're on the data product page
-      await expect(
-        page.locator('[data-testid="entity-header-name"]')
-      ).toContainText(noAssetsDataProduct.responseData.name);
-
-      // Verify data product is in original domain
-      await expect(page.getByTestId('domain-link').first()).toContainText(
-        noAssetsDomain.data.displayName
+      // Create a data product with no assets for this test
+      const noAssetsDomain = new Domain({
+        name: `no_assets_domain_${shortId}`,
+        displayName: `No Assets Domain ${shortId}`,
+        description: 'Domain for no assets test',
+        domainType: 'Aggregate',
+        fullyQualifiedName: `no_assets_domain_${shortId}`,
+      });
+      const noAssetsDomain2 = new Domain({
+        name: `no_assets_domain2_${shortId}`,
+        displayName: `No Assets Domain 2 ${shortId}`,
+        description: 'Domain for no assets test',
+        domainType: 'Aggregate',
+        fullyQualifiedName: `no_assets_domain2_${shortId}`,
+      });
+      const noAssetsDataProduct = new DataProduct(
+        [noAssetsDomain],
+        `no_assets_dp_${shortId}`
       );
 
-      // Change domain via API
-      const patchResponse = await apiContext.patch(
-        `/api/v1/dataProducts/${noAssetsDataProduct.responseData.id}`,
-        {
-          data: [
-            {
-              op: 'replace',
-              path: '/domains',
-              value: [
-                {
-                  id: noAssetsDomain2.responseData.id,
-                  type: 'domain',
-                },
-              ],
+      await noAssetsDomain.create(apiContext);
+      await noAssetsDomain2.create(apiContext);
+      await noAssetsDataProduct.create(apiContext);
+
+      try {
+        await redirectToHomePage(page);
+
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, noAssetsDataProduct.data);
+
+        // Verify we're on the data product page
+        await expect(
+          page.locator('[data-testid="entity-header-name"]')
+        ).toContainText(noAssetsDataProduct.responseData.name);
+
+        // Verify data product is in original domain
+        await expect(page.getByTestId('domain-link').first()).toContainText(
+          noAssetsDomain.data.displayName
+        );
+
+        // Change domain via API
+        const patchResponse = await apiContext.patch(
+          `/api/v1/dataProducts/${noAssetsDataProduct.responseData.id}`,
+          {
+            data: [
+              {
+                op: 'replace',
+                path: '/domains',
+                value: [
+                  {
+                    id: noAssetsDomain2.responseData.id,
+                    type: 'domain',
+                  },
+                ],
+              },
+            ],
+            headers: {
+              'Content-Type': 'application/json-patch+json',
             },
-          ],
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
+          }
+        );
+
+        // Verify patch succeeded
+        expect(patchResponse.ok()).toBeTruthy();
+
+        // Refresh page to see updated domain
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForAllLoadersToDisappear(page);
+
+        // Verify domain changed
+        await expect(page.getByTestId('domain-link').first()).toContainText(
+          noAssetsDomain2.data.displayName
+        );
+
+        // Verify no assets
+        await page.getByTestId('assets').click();
+        await checkAssetsCount(page, 0);
+      } finally {
+        await afterAction();
+      }
+
+      const { apiContext: cleanupContext, afterAction: cleanupAfter } =
+        await getApiContext(page);
+      try {
+        await noAssetsDataProduct.delete(cleanupContext);
+      } catch {
+        // Ignore
+      }
+      try {
+        await noAssetsDomain.delete(cleanupContext);
+      } catch {
+        // Ignore
+      }
+      try {
+        await noAssetsDomain2.delete(cleanupContext);
+      } catch {
+        // Ignore
+      }
+      await cleanupAfter();
+    }
+  );
+
+  test(
+    'Data product remains visible after moving domains and deleting the original domain',
+    migratedTo.javaIT(
+      'DataProductResourceIT#test_changeDataProductDomain_thenDeleteOriginalDomain_preservesDataProduct'
+    ),
+    async ({ page }) => {
+      test.slow();
+
+      const testId = uuid();
+      const originalDomain = new Domain({
+        name: `original_domain_${testId}`,
+        displayName: `Original Domain ${testId}`,
+        description: 'Original domain for data product visibility test',
+        domainType: 'Aggregate',
+        fullyQualifiedName: `original_domain_${testId}`,
+      });
+      const vehicleDomain = new Domain({
+        name: `vehicle_domain_${testId}`,
+        displayName: `Vehicle Domain ${testId}`,
+        description: 'Vehicle domain for data product visibility test',
+        domainType: 'Aggregate',
+        fullyQualifiedName: `vehicle_domain_${testId}`,
+      });
+      const movedDataProduct = new DataProduct(
+        [originalDomain],
+        `dp_visibility_${testId}`
       );
+      const { apiContext, afterAction } = await getApiContext(page);
 
-      // Verify patch succeeded
-      expect(patchResponse.ok()).toBeTruthy();
+      try {
+        await originalDomain.create(apiContext);
+        await vehicleDomain.create(apiContext);
+        await movedDataProduct.create(apiContext);
 
-      // Refresh page to see updated domain
-      await page.reload({ waitUntil: 'domcontentloaded' });
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify domain changed
-      await expect(page.getByTestId('domain-link').first()).toContainText(
-        noAssetsDomain2.data.displayName
-      );
-
-      // Verify no assets
-      await page.getByTestId('assets').click();
-      await checkAssetsCount(page, 0);
-    } finally {
-      await afterAction();
-    }
-
-    const { apiContext: cleanupContext, afterAction: cleanupAfter } =
-      await getApiContext(page);
-    try {
-      await noAssetsDataProduct.delete(cleanupContext);
-    } catch {
-      // Ignore
-    }
-    try {
-      await noAssetsDomain.delete(cleanupContext);
-    } catch {
-      // Ignore
-    }
-    try {
-      await noAssetsDomain2.delete(cleanupContext);
-    } catch {
-      // Ignore
-    }
-    await cleanupAfter();
-  });
-
-  test('Data product remains visible after moving domains and deleting the original domain', async ({
-    page,
-  }) => {
-    test.slow();
-
-    const testId = uuid();
-    const originalDomain = new Domain({
-      name: `original_domain_${testId}`,
-      displayName: `Original Domain ${testId}`,
-      description: 'Original domain for data product visibility test',
-      domainType: 'Aggregate',
-      fullyQualifiedName: `original_domain_${testId}`,
-    });
-    const vehicleDomain = new Domain({
-      name: `vehicle_domain_${testId}`,
-      displayName: `Vehicle Domain ${testId}`,
-      description: 'Vehicle domain for data product visibility test',
-      domainType: 'Aggregate',
-      fullyQualifiedName: `vehicle_domain_${testId}`,
-    });
-    const movedDataProduct = new DataProduct(
-      [originalDomain],
-      `dp_visibility_${testId}`
-    );
-    const { apiContext, afterAction } = await getApiContext(page);
-
-    try {
-      await originalDomain.create(apiContext);
-      await vehicleDomain.create(apiContext);
-      await movedDataProduct.create(apiContext);
-
-      const patchResponse = await apiContext.patch(
-        `/api/v1/dataProducts/${movedDataProduct.responseData.id}`,
-        {
-          data: [
-            {
-              op: 'replace',
-              path: '/domains',
-              value: [
-                {
-                  id: vehicleDomain.responseData.id,
-                  type: 'domain',
-                },
-              ],
+        const patchResponse = await apiContext.patch(
+          `/api/v1/dataProducts/${movedDataProduct.responseData.id}`,
+          {
+            data: [
+              {
+                op: 'replace',
+                path: '/domains',
+                value: [
+                  {
+                    id: vehicleDomain.responseData.id,
+                    type: 'domain',
+                  },
+                ],
+              },
+            ],
+            headers: {
+              'Content-Type': 'application/json-patch+json',
             },
-          ],
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      );
-      expect(patchResponse.ok()).toBeTruthy();
+          }
+        );
+        expect(patchResponse.ok()).toBeTruthy();
 
-      const deleteOriginalDomainResponse = await apiContext.delete(
-        `/api/v1/domains/${originalDomain.responseData.id}?recursive=true&hardDelete=true`
-      );
-      expect(deleteOriginalDomainResponse.ok()).toBeTruthy();
+        const deleteOriginalDomainResponse = await apiContext.delete(
+          `/api/v1/domains/${originalDomain.responseData.id}?recursive=true&hardDelete=true`
+        );
+        expect(deleteOriginalDomainResponse.ok()).toBeTruthy();
 
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, movedDataProduct.data);
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, movedDataProduct.data);
 
-      await expect(page.getByTestId('entity-header-name')).toContainText(
-        movedDataProduct.responseData.name
-      );
-      await expect(page.getByTestId('domain-link').first()).toContainText(
-        vehicleDomain.data.displayName
-      );
+        await expect(page.getByTestId('entity-header-name')).toContainText(
+          movedDataProduct.responseData.name
+        );
+        await expect(page.getByTestId('domain-link').first()).toContainText(
+          vehicleDomain.data.displayName
+        );
 
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDomain(page, vehicleDomain.data);
-      await selectDataProductFromTab(page, movedDataProduct.data);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, vehicleDomain.data);
+        await selectDataProductFromTab(page, movedDataProduct.data);
 
-      await expect(page.getByTestId('entity-header-name')).toContainText(
-        movedDataProduct.responseData.name
-      );
-    } finally {
-      await movedDataProduct.delete(apiContext);
-      await originalDomain.delete(apiContext);
-      await vehicleDomain.delete(apiContext);
-      await afterAction();
+        await expect(page.getByTestId('entity-header-name')).toContainText(
+          movedDataProduct.responseData.name
+        );
+      } finally {
+        await movedDataProduct.delete(apiContext);
+        await originalDomain.delete(apiContext);
+        await vehicleDomain.delete(apiContext);
+        await afterAction();
+      }
     }
-  });
+  );
 });

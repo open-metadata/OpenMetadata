@@ -12,6 +12,7 @@
  */
 
 import { APIRequestContext } from '@playwright/test';
+import { migratedTo } from '../../../constant/migration';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
@@ -56,12 +57,20 @@ interface EntityLike {
   delete(apiContext: APIRequestContext): Promise<unknown>;
 }
 
+type TaskType =
+  | 'DescriptionUpdate'
+  | 'OwnershipUpdate'
+  | 'TierUpdate'
+  | 'DomainUpdate';
+
 interface TaskEntityConfig {
   name: string;
   entityType: string;
   endpoint: string;
   tierFQN?: string;
   supportsDomain?: boolean;
+  /** Java IT (`Class#method`) asserting the same resolution, per task type. */
+  javaIT?: Partial<Record<TaskType, string>>;
   build: (domain: Domain) => {
     entity: EntityLike;
     getData: () => TaskResponseData;
@@ -130,6 +139,15 @@ async function createAndResolveTask(
 const TASK_ENTITY_CONFIGS: TaskEntityConfig[] = [
   {
     name: 'Table',
+    javaIT: {
+      DescriptionUpdate:
+        'TaskResourceIT#testResolveDescriptionUpdateTaskAppliesDescription',
+      OwnershipUpdate:
+        'TaskResourceIT#testResolveOwnershipUpdateTaskAppliesOwners',
+      TierUpdate:
+        'TaskResourceIT#testResolveTierUpdateTaskReplacesTierAndRecordsChange',
+      DomainUpdate: 'TaskResourceIT#testResolveDomainUpdateTaskAppliesDomain',
+    },
     entityType: 'table',
     endpoint: 'tables',
     tierFQN: 'Tier.Tier1',
@@ -144,6 +162,9 @@ const TASK_ENTITY_CONFIGS: TaskEntityConfig[] = [
   },
   {
     name: 'Topic',
+    javaIT: {
+      DescriptionUpdate: 'TaskResourceIT#testResolveTopicDescriptionUpdateTask',
+    },
     entityType: 'topic',
     endpoint: 'topics',
     tierFQN: 'Tier.Tier2',
@@ -158,6 +179,10 @@ const TASK_ENTITY_CONFIGS: TaskEntityConfig[] = [
   },
   {
     name: 'Dashboard',
+    javaIT: {
+      DescriptionUpdate:
+        'TaskResourceIT#testResolveDashboardDescriptionUpdateTask',
+    },
     entityType: 'dashboard',
     endpoint: 'dashboards',
     tierFQN: 'Tier.Tier3',
@@ -172,6 +197,10 @@ const TASK_ENTITY_CONFIGS: TaskEntityConfig[] = [
   },
   {
     name: 'Pipeline',
+    javaIT: {
+      DescriptionUpdate:
+        'TaskResourceIT#testResolvePipelineDescriptionUpdateTask',
+    },
     entityType: 'pipeline',
     endpoint: 'pipelines',
     tierFQN: 'Tier.Tier4',
@@ -186,6 +215,10 @@ const TASK_ENTITY_CONFIGS: TaskEntityConfig[] = [
   },
   {
     name: 'Container',
+    javaIT: {
+      DescriptionUpdate:
+        'TaskResourceIT#testResolveContainerDescriptionUpdateTask',
+    },
     entityType: 'container',
     endpoint: 'containers',
     tierFQN: 'Tier.Tier5',
@@ -322,6 +355,12 @@ const TASK_ENTITY_CONFIGS: TaskEntityConfig[] = [
   },
 ];
 
+const migrationDetails = (config: TaskEntityConfig, taskType: TaskType) => {
+  const testRef = config.javaIT?.[taskType];
+
+  return testRef ? migratedTo.javaIT(testRef) : {};
+};
+
 function runTaskSuite(config: TaskEntityConfig) {
   test.describe(`Task Resolution - ${config.name} Entity (All Task Types)`, () => {
     test.describe.configure({ mode: 'default' });
@@ -387,61 +426,40 @@ function runTaskSuite(config: TaskEntityConfig) {
       }
     });
 
-    test(`DescriptionUpdate task for ${config.name}`, async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      const newDescription = `Updated ${config.name} description via task`;
+    test(
+      `DescriptionUpdate task for ${config.name}`,
+      migrationDetails(config, 'DescriptionUpdate'),
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const newDescription = `Updated ${config.name} description via task`;
 
-      try {
-        const data = getData();
-        await createAndResolveTask(
-          apiContext,
-          config.entityType,
-          data.fullyQualifiedName,
-          'DescriptionUpdate',
-          ownerUser.responseData.name,
-          { newDescription: newDescription },
-          'description'
-        );
+        try {
+          const data = getData();
+          await createAndResolveTask(
+            apiContext,
+            config.entityType,
+            data.fullyQualifiedName,
+            'DescriptionUpdate',
+            ownerUser.responseData.name,
+            { newDescription: newDescription },
+            'description'
+          );
 
-        const response = await apiContext.get(
-          `/api/v1/${config.endpoint}/${data.id}`
-        );
-        const updated = await response.json();
-        expect(updated.description).toBe(newDescription);
-      } finally {
-        await afterAction();
+          const response = await apiContext.get(
+            `/api/v1/${config.endpoint}/${data.id}`
+          );
+          const updated = await response.json();
+          expect(updated.description).toBe(newDescription);
+        } finally {
+          await afterAction();
+        }
       }
-    });
+    );
 
-    test(`OwnershipUpdate task for ${config.name}`, async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        const data = getData();
-        await createAndResolveTask(
-          apiContext,
-          config.entityType,
-          data.fullyQualifiedName,
-          'OwnershipUpdate',
-          ownerUser.responseData.name,
-          {
-            currentOwners: [{ id: ownerUser.responseData.id, type: 'user' }],
-            newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
-          }
-        );
-
-        const response = await apiContext.get(
-          `/api/v1/${config.endpoint}/${data.id}?fields=owners`
-        );
-        const updated = await response.json();
-        expect(updated.owners[0].id).toBe(newOwner.responseData.id);
-      } finally {
-        await afterAction();
-      }
-    });
-
-    if (config.tierFQN) {
-      test(`TierUpdate task for ${config.name}`, async ({ browser }) => {
+    test(
+      `OwnershipUpdate task for ${config.name}`,
+      migrationDetails(config, 'OwnershipUpdate'),
+      async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
 
         try {
@@ -450,63 +468,100 @@ function runTaskSuite(config: TaskEntityConfig) {
             apiContext,
             config.entityType,
             data.fullyQualifiedName,
-            'TierUpdate',
+            'OwnershipUpdate',
             ownerUser.responseData.name,
             {
-              newTier: {
-                tagFQN: config.tierFQN,
-                source: 'Classification',
-                labelType: 'Manual',
-                state: 'Confirmed',
-              },
+              currentOwners: [{ id: ownerUser.responseData.id, type: 'user' }],
+              newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
             }
           );
 
           const response = await apiContext.get(
-            `/api/v1/${config.endpoint}/${data.id}?fields=tags`
+            `/api/v1/${config.endpoint}/${data.id}?fields=owners`
           );
           const updated = await response.json();
-          const hasTier = updated.tags?.some(
-            (t: { tagFQN: string }) => t.tagFQN === config.tierFQN
-          );
-          expect(hasTier).toBe(true);
+          expect(updated.owners[0].id).toBe(newOwner.responseData.id);
         } finally {
           await afterAction();
         }
-      });
+      }
+    );
+
+    if (config.tierFQN) {
+      test(
+        `TierUpdate task for ${config.name}`,
+        migrationDetails(config, 'TierUpdate'),
+        async ({ browser }) => {
+          const { apiContext, afterAction } = await performAdminLogin(browser);
+
+          try {
+            const data = getData();
+            await createAndResolveTask(
+              apiContext,
+              config.entityType,
+              data.fullyQualifiedName,
+              'TierUpdate',
+              ownerUser.responseData.name,
+              {
+                newTier: {
+                  tagFQN: config.tierFQN,
+                  source: 'Classification',
+                  labelType: 'Manual',
+                  state: 'Confirmed',
+                },
+              }
+            );
+
+            const response = await apiContext.get(
+              `/api/v1/${config.endpoint}/${data.id}?fields=tags`
+            );
+            const updated = await response.json();
+            const hasTier = updated.tags?.some(
+              (t: { tagFQN: string }) => t.tagFQN === config.tierFQN
+            );
+            expect(hasTier).toBe(true);
+          } finally {
+            await afterAction();
+          }
+        }
+      );
     }
 
     if (config.supportsDomain !== false) {
-      test(`DomainUpdate task for ${config.name}`, async ({ browser }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+      test(
+        `DomainUpdate task for ${config.name}`,
+        migrationDetails(config, 'DomainUpdate'),
+        async ({ browser }) => {
+          const { apiContext, afterAction } = await performAdminLogin(browser);
 
-        try {
-          const data = getData();
-          await createAndResolveTask(
-            apiContext,
-            config.entityType,
-            data.fullyQualifiedName,
-            'DomainUpdate',
-            ownerUser.responseData.name,
-            {
-              newDomain: {
-                id: domain.responseData.id,
-                type: 'domain',
-                fullyQualifiedName: domain.responseData.fullyQualifiedName,
-              },
-            }
-          );
+          try {
+            const data = getData();
+            await createAndResolveTask(
+              apiContext,
+              config.entityType,
+              data.fullyQualifiedName,
+              'DomainUpdate',
+              ownerUser.responseData.name,
+              {
+                newDomain: {
+                  id: domain.responseData.id,
+                  type: 'domain',
+                  fullyQualifiedName: domain.responseData.fullyQualifiedName,
+                },
+              }
+            );
 
-          const response = await apiContext.get(
-            `/api/v1/${config.endpoint}/${data.id}?fields=domains`
-          );
-          const updated = await response.json();
-          expect(updated.domains?.length).toBeGreaterThan(0);
-          expect(updated.domains[0].id).toBe(domain.responseData.id);
-        } finally {
-          await afterAction();
+            const response = await apiContext.get(
+              `/api/v1/${config.endpoint}/${data.id}?fields=domains`
+            );
+            const updated = await response.json();
+            expect(updated.domains?.length).toBeGreaterThan(0);
+            expect(updated.domains[0].id).toBe(domain.responseData.id);
+          } finally {
+            await afterAction();
+          }
         }
-      });
+      );
     }
   });
 }

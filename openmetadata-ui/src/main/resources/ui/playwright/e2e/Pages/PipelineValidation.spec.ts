@@ -14,6 +14,7 @@
 import { type APIRequestContext } from '@playwright/test';
 import { expect, test } from '../../support/fixtures/base';
 import { getDefaultAdminAPIContext, uuid } from '../../utils/common';
+import { migratedTo } from '../../constant/migration';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -75,15 +76,21 @@ test.describe('Pipeline entity name validation', () => {
     expect(response.status()).toBe(400);
   });
 
-  test('should reject pipeline creation when task name contains reserved FQN characters', async () => {
-    const response = await apiContext.post('/api/v1/pipelines', {
-      data: {
-        name: `pw-pipeline-invalid-task-${uuid()}`,
-        service: serviceFqn,
-        tasks: [{ name: 'task>invalid' }],
-      },
-    });
+  test(
+    'should reject pipeline creation when task name contains reserved FQN characters',
+    migratedTo.javaIT(
+      'PipelineResourceIT#post_pipelineWithInvalidTaskName_4xx'
+    ),
+    async () => {
+      const response = await apiContext.post('/api/v1/pipelines', {
+        data: {
+          name: `pw-pipeline-invalid-task-${uuid()}`,
+          service: serviceFqn,
+          tasks: [{ name: 'task>invalid' }],
+        },
+      });
 
-    expect(response.status()).toBe(400);
-  });
+      expect(response.status()).toBe(400);
+    }
+  );
 });

@@ -29,90 +29,96 @@ import test, { expect } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage, uuid } from '../../../utils/common';
+import { migratedTo } from '../../../constant/migration';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test('domain prefix rename keeps linked asset domain reference consistent', async ({
-  browser,
-}) => {
-  test.setTimeout(180_000);
-  const { apiContext, afterAction } = await createNewPage(browser);
+test(
+  'domain prefix rename keeps linked asset domain reference consistent',
+  migratedTo.javaIT(
+    'DomainResourceIT#test_renameDomainPrefixExtension_keepsAssetSubdomainAndSiblingFqnInSearch'
+  ),
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
-  const table = new TableClass();
-  const id = uuid();
-  // Dot-free name so the FQN is unquoted and the new FQN startsWith the old one.
-  const domain = new Domain({
-    name: `pw_dom_${id}`,
-    displayName: `PW Domain ${id}`,
-    description: 'prefix-rename domain search regression (#28696)',
-    domainType: 'Aggregate',
-    fullyQualifiedName: `pw_dom_${id}`,
-  });
-
-  try {
-    await domain.create(apiContext);
-    await table.create(apiContext);
-
-    const originalDomainFqn = domain.responseData.fullyQualifiedName as string;
-    const tableFqn = table.entityResponseData.fullyQualifiedName as string;
-
-    await table.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/domains',
-          value: [
-            {
-              id: domain.responseData.id,
-              type: 'domain',
-              name: domain.responseData.name,
-              fullyQualifiedName: originalDomainFqn,
-            },
-          ],
-        },
-      ],
+    const table = new TableClass();
+    const id = uuid();
+    // Dot-free name so the FQN is unquoted and the new FQN startsWith the old one.
+    const domain = new Domain({
+      name: `pw_dom_${id}`,
+      displayName: `PW Domain ${id}`,
+      description: 'prefix-rename domain search regression (#28696)',
+      domainType: 'Aggregate',
+      fullyQualifiedName: `pw_dom_${id}`,
     });
 
-    await assertAssetDomain({
-      apiContext,
-      tableFqn,
-      expectedDomainFqn: originalDomainFqn,
-      label: 'pre-rename',
-    });
+    try {
+      await domain.create(apiContext);
+      await table.create(apiContext);
 
-    await domain.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'replace',
-          path: '/name',
-          value: `${domain.responseData.name} Renamed`,
-        },
-        {
-          op: 'replace',
-          path: '/displayName',
-          value: 'Customer Domain Renamed',
-        },
-      ],
-    });
+      const originalDomainFqn = domain.responseData
+        .fullyQualifiedName as string;
+      const tableFqn = table.entityResponseData.fullyQualifiedName as string;
 
-    const newDomainFqn = domain.responseData.fullyQualifiedName as string;
-    expect(newDomainFqn).not.toBe(originalDomainFqn);
-    expect(newDomainFqn.startsWith(originalDomainFqn)).toBe(true);
+      await table.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+                name: domain.responseData.name,
+                fullyQualifiedName: originalDomainFqn,
+              },
+            ],
+          },
+        ],
+      });
 
-    await assertAssetDomain({
-      apiContext,
-      tableFqn,
-      expectedDomainFqn: newDomainFqn,
-      label: 'post-prefix-rename',
-    });
-  } finally {
-    await table.delete(apiContext);
-    await domain.delete(apiContext);
-    await afterAction();
+      await assertAssetDomain({
+        apiContext,
+        tableFqn,
+        expectedDomainFqn: originalDomainFqn,
+        label: 'pre-rename',
+      });
+
+      await domain.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'replace',
+            path: '/name',
+            value: `${domain.responseData.name} Renamed`,
+          },
+          {
+            op: 'replace',
+            path: '/displayName',
+            value: 'Customer Domain Renamed',
+          },
+        ],
+      });
+
+      const newDomainFqn = domain.responseData.fullyQualifiedName as string;
+      expect(newDomainFqn).not.toBe(originalDomainFqn);
+      expect(newDomainFqn.startsWith(originalDomainFqn)).toBe(true);
+
+      await assertAssetDomain({
+        apiContext,
+        tableFqn,
+        expectedDomainFqn: newDomainFqn,
+        label: 'post-prefix-rename',
+      });
+    } finally {
+      await table.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
+    }
   }
-});
+);
 
 async function assertAssetDomain(opts: {
   apiContext: import('@playwright/test').APIRequestContext;

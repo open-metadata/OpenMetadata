@@ -16,6 +16,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { migratedTo } from '../../../constant/migration';
 
 /**
  * Task Entity Resolution Tests
@@ -76,111 +77,126 @@ test.describe('Task Resolution - OwnershipUpdate', () => {
     }
   });
 
-  test('should create and approve OwnershipUpdate task', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create and approve OwnershipUpdate task',
+    migratedTo.javaIT(
+      'TaskResourceIT#testResolveOwnershipUpdateTaskAppliesOwners'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create OwnershipUpdate task via API
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'OwnershipUpdate',
-          category: 'MetadataUpdate',
-          assignees: [currentOwner.responseData.name],
-          payload: {
-            currentOwners: [{ id: currentOwner.responseData.id, type: 'user' }],
-            newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
-            reason: 'Transferring ownership to new team member',
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('OwnershipUpdate');
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
+      try {
+        // Create OwnershipUpdate task via API
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
-            resolutionType: 'Approved',
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+            type: 'OwnershipUpdate',
+            category: 'MetadataUpdate',
+            assignees: [currentOwner.responseData.name],
+            payload: {
+              currentOwners: [
+                { id: currentOwner.responseData.id, type: 'user' },
+              ],
+              newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
+              reason: 'Transferring ownership to new team member',
+            },
           },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('OwnershipUpdate');
 
-      // Verify entity ownership changed
-      const tableResponse = await apiContext.get(
-        `/api/v1/tables/${table.entityResponseData?.id}?fields=owners`
-      );
-      const updatedTable = await tableResponse.json();
-
-      expect(updatedTable.owners).toBeDefined();
-      expect(updatedTable.owners.length).toBeGreaterThan(0);
-      expect(updatedTable.owners[0].id).toBe(newOwner.responseData.id);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('rejected OwnershipUpdate should NOT change ownership', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      // First set owner back to currentOwner
-      await apiContext.patch(`/api/v1/tables/${table.entityResponseData?.id}`, {
-        data: [
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
           {
-            op: 'replace',
-            path: '/owners',
-            value: [{ id: currentOwner.responseData.id, type: 'user' }],
-          },
-        ],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      });
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      // Create OwnershipUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'OwnershipUpdate',
-          category: 'MetadataUpdate',
-          assignees: [currentOwner.responseData.name],
-          payload: {
-            currentOwners: [{ id: currentOwner.responseData.id, type: 'user' }],
-            newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
-          },
-        },
-      });
-      const task = await taskResponse.json();
+        // Verify entity ownership changed
+        const tableResponse = await apiContext.get(
+          `/api/v1/tables/${table.entityResponseData?.id}?fields=owners`
+        );
+        const updatedTable = await tableResponse.json();
 
-      // Reject task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Rejected',
-            comment: 'Rejecting via automated test',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
-
-      // Verify entity ownership NOT changed
-      const tableResponse = await apiContext.get(
-        `/api/v1/tables/${table.entityResponseData?.id}?fields=owners`
-      );
-      const updatedTable = await tableResponse.json();
-
-      expect(updatedTable.owners[0].id).toBe(currentOwner.responseData.id);
-    } finally {
-      await afterAction();
+        expect(updatedTable.owners).toBeDefined();
+        expect(updatedTable.owners.length).toBeGreaterThan(0);
+        expect(updatedTable.owners[0].id).toBe(newOwner.responseData.id);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
+
+  test(
+    'rejected OwnershipUpdate should NOT change ownership',
+    migratedTo.javaIT(
+      'TaskResourceIT#testRejectOwnershipUpdateTaskDoesNotApplyChanges'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      try {
+        // First set owner back to currentOwner
+        await apiContext.patch(
+          `/api/v1/tables/${table.entityResponseData?.id}`,
+          {
+            data: [
+              {
+                op: 'replace',
+                path: '/owners',
+                value: [{ id: currentOwner.responseData.id, type: 'user' }],
+              },
+            ],
+            headers: { 'Content-Type': 'application/json-patch+json' },
+          }
+        );
+
+        // Create OwnershipUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+            type: 'OwnershipUpdate',
+            category: 'MetadataUpdate',
+            assignees: [currentOwner.responseData.name],
+            payload: {
+              currentOwners: [
+                { id: currentOwner.responseData.id, type: 'user' },
+              ],
+              newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
+            },
+          },
+        });
+        const task = await taskResponse.json();
+
+        // Reject task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Rejected',
+              comment: 'Rejecting via automated test',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
+
+        // Verify entity ownership NOT changed
+        const tableResponse = await apiContext.get(
+          `/api/v1/tables/${table.entityResponseData?.id}?fields=owners`
+        );
+        const updatedTable = await tableResponse.json();
+
+        expect(updatedTable.owners[0].id).toBe(currentOwner.responseData.id);
+      } finally {
+        await afterAction();
+      }
+    }
+  );
 });
 
 test.describe('Task Resolution - TierUpdate', () => {
@@ -224,57 +240,63 @@ test.describe('Task Resolution - TierUpdate', () => {
     }
   });
 
-  test('should create and approve TierUpdate task', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create and approve TierUpdate task',
+    migratedTo.javaIT(
+      'TaskResourceIT#testResolveTierUpdateTaskReplacesTierAndRecordsChange'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create TierUpdate task via API
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'TierUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            newTier: {
-              tagFQN: 'Tier.Tier1',
-              source: 'Classification',
-              labelType: 'Manual',
-              state: 'Confirmed',
-            },
-            reason: 'Critical business data',
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('TierUpdate');
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
+      try {
+        // Create TierUpdate task via API
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
-            resolutionType: 'Approved',
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+            type: 'TierUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              newTier: {
+                tagFQN: 'Tier.Tier1',
+                source: 'Classification',
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+              reason: 'Critical business data',
+            },
           },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('TierUpdate');
 
-      // Verify tier was applied
-      const tableResponse = await apiContext.get(
-        `/api/v1/tables/${table.entityResponseData?.id}?fields=tags`
-      );
-      const updatedTable = await tableResponse.json();
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      const hasTier = updatedTable.tags?.some(
-        (tag: { tagFQN: string }) => tag.tagFQN === 'Tier.Tier1'
-      );
-      expect(hasTier).toBe(true);
-    } finally {
-      await afterAction();
+        // Verify tier was applied
+        const tableResponse = await apiContext.get(
+          `/api/v1/tables/${table.entityResponseData?.id}?fields=tags`
+        );
+        const updatedTable = await tableResponse.json();
+
+        const hasTier = updatedTable.tags?.some(
+          (tag: { tagFQN: string }) => tag.tagFQN === 'Tier.Tier1'
+        );
+        expect(hasTier).toBe(true);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 
   test('rejected TierUpdate should NOT apply tier', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -371,55 +393,61 @@ test.describe('Task Resolution - DomainUpdate', () => {
     }
   });
 
-  test('should create and approve DomainUpdate task', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create and approve DomainUpdate task',
+    migratedTo.javaIT(
+      'TaskResourceIT#testResolveDomainUpdateTaskAppliesDomain'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create DomainUpdate task via API
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DomainUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            newDomain: {
-              id: domain.responseData.id,
-              type: 'domain',
-              fullyQualifiedName: domain.responseData.fullyQualifiedName,
-            },
-            reason: 'Moving to correct data domain',
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('DomainUpdate');
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
+      try {
+        // Create DomainUpdate task via API
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
-            resolutionType: 'Approved',
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DomainUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              newDomain: {
+                id: domain.responseData.id,
+                type: 'domain',
+                fullyQualifiedName: domain.responseData.fullyQualifiedName,
+              },
+              reason: 'Moving to correct data domain',
+            },
           },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('DomainUpdate');
 
-      // Verify domain was applied
-      const tableResponse = await apiContext.get(
-        `/api/v1/tables/${table.entityResponseData?.id}?fields=domains`
-      );
-      const updatedTable = await tableResponse.json();
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      expect(updatedTable.domains).toBeDefined();
-      expect(updatedTable.domains.length).toBeGreaterThan(0);
-      expect(updatedTable.domains[0].id).toBe(domain.responseData.id);
-    } finally {
-      await afterAction();
+        // Verify domain was applied
+        const tableResponse = await apiContext.get(
+          `/api/v1/tables/${table.entityResponseData?.id}?fields=domains`
+        );
+        const updatedTable = await tableResponse.json();
+
+        expect(updatedTable.domains).toBeDefined();
+        expect(updatedTable.domains.length).toBeGreaterThan(0);
+        expect(updatedTable.domains[0].id).toBe(domain.responseData.id);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 });
 
 test.describe('Task Resolution - DescriptionUpdate at Entity Level', () => {
@@ -463,53 +491,57 @@ test.describe('Task Resolution - DescriptionUpdate at Entity Level', () => {
     }
   });
 
-  test('should approve description update task and apply to entity', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should approve description update task and apply to entity',
+    migratedTo.javaIT(
+      'TaskResourceIT#testResolveDescriptionUpdateTaskAppliesDescription'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    const newDescription = 'Updated description from approved task';
+      const newDescription = 'Updated description from approved task';
 
-    try {
-      // Create DescriptionUpdate task via API
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            fieldPath: 'description',
-            newDescription: newDescription,
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-
-      // Resolve task with the suggested value
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
+      try {
+        // Create DescriptionUpdate task via API
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
-            resolutionType: 'Approved',
-            newValue: newDescription,
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DescriptionUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              fieldPath: 'description',
+              newDescription: newDescription,
+            },
           },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
 
-      // Verify description was updated
-      const tableResponse = await apiContext.get(
-        `/api/v1/tables/${table.entityResponseData?.id}`
-      );
-      const updatedTable = await tableResponse.json();
+        // Resolve task with the suggested value
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+              newValue: newDescription,
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      expect(updatedTable.description).toBe(newDescription);
-    } finally {
-      await afterAction();
+        // Verify description was updated
+        const tableResponse = await apiContext.get(
+          `/api/v1/tables/${table.entityResponseData?.id}`
+        );
+        const updatedTable = await tableResponse.json();
+
+        expect(updatedTable.description).toBe(newDescription);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 });
 
 test.describe('Task Resolution - Column Level Description', () => {
@@ -553,64 +585,70 @@ test.describe('Task Resolution - Column Level Description', () => {
     }
   });
 
-  test('should approve column description update task', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should approve column description update task',
+    migratedTo.javaIT(
+      'TaskResourceIT#testResolveColumnDescriptionUpdateTaskAppliesDescription'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Get table to find column name
-      const tableResponse = await apiContext.get(
-        `/api/v1/tables/${table.entityResponseData?.id}?fields=columns`
-      );
-      const tableData = await tableResponse.json();
-      const columnName = tableData.columns?.[0]?.name;
+      try {
+        // Get table to find column name
+        const tableResponse = await apiContext.get(
+          `/api/v1/tables/${table.entityResponseData?.id}?fields=columns`
+        );
+        const tableData = await tableResponse.json();
+        const columnName = tableData.columns?.[0]?.name;
 
-      if (!columnName) {
-        console.log('No columns in table, skipping test');
-        return;
-      }
-
-      const newColumnDescription = 'Updated column description from task';
-
-      // Create DescriptionUpdate task for column
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            fieldPath: `columns::${columnName}::description`,
-            newDescription: newColumnDescription,
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-            newValue: newColumnDescription,
-          },
+        if (!columnName) {
+          console.log('No columns in table, skipping test');
+          return;
         }
-      );
-      expect(resolveResponse.ok()).toBe(true);
 
-      // Verify column description was updated
-      const updatedTableResponse = await apiContext.get(
-        `/api/v1/tables/${table.entityResponseData?.id}?fields=columns`
-      );
-      const updatedTable = await updatedTableResponse.json();
+        const newColumnDescription = 'Updated column description from task';
 
-      const updatedColumn = updatedTable.columns?.find(
-        (col: { name: string }) => col.name === columnName
-      );
-      expect(updatedColumn?.description).toBe(newColumnDescription);
-    } finally {
-      await afterAction();
+        // Create DescriptionUpdate task for column
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DescriptionUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              fieldPath: `columns::${columnName}::description`,
+              newDescription: newColumnDescription,
+            },
+          },
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+              newValue: newColumnDescription,
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
+
+        // Verify column description was updated
+        const updatedTableResponse = await apiContext.get(
+          `/api/v1/tables/${table.entityResponseData?.id}?fields=columns`
+        );
+        const updatedTable = await updatedTableResponse.json();
+
+        const updatedColumn = updatedTable.columns?.find(
+          (col: { name: string }) => col.name === columnName
+        );
+        expect(updatedColumn?.description).toBe(newColumnDescription);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 });

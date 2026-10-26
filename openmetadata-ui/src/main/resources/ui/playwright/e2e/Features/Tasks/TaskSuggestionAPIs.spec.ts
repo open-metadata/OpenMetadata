@@ -15,6 +15,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { migratedTo } from '../../../constant/migration';
 
 /**
  * Task Suggestion API Tests
@@ -66,54 +67,58 @@ test.describe('Task Suggestion APIs', () => {
     }
   });
 
-  test('should apply suggestion via PUT /api/v1/tasks/{id}/suggestion/apply', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should apply suggestion via PUT /api/v1/tasks/{id}/suggestion/apply',
+    migratedTo.javaIT(
+      'TaskResourceIT#testApplySuggestionEndpointUsesSuggestionSpecificSchemaResolution'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    const suggestedDescription = 'AI-generated description for table';
+      const suggestedDescription = 'AI-generated description for table';
 
-    try {
-      // Create a Suggestion task with SuggestionPayload
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'Suggestion',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            suggestionType: 'Description',
-            fieldPath: 'description',
-            suggestedValue: suggestedDescription,
-            source: 'Agent',
-            confidence: 85,
-            reasoning: 'Generated from column statistics',
+      try {
+        // Create a Suggestion task with SuggestionPayload
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+            type: 'Suggestion',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              suggestionType: 'Description',
+              fieldPath: 'description',
+              suggestedValue: suggestedDescription,
+              source: 'Agent',
+              confidence: 85,
+              reasoning: 'Generated from column statistics',
+            },
           },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('Suggestion');
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('Suggestion');
 
-      // Apply the suggestion using the new endpoint
-      const applyResponse = await apiContext.put(
-        `/api/v1/tasks/${task.id}/suggestion/apply?comment=Looks good`
-      );
-      expect(applyResponse.ok()).toBe(true);
+        // Apply the suggestion using the new endpoint
+        const applyResponse = await apiContext.put(
+          `/api/v1/tasks/${task.id}/suggestion/apply?comment=Looks good`
+        );
+        expect(applyResponse.ok()).toBe(true);
 
-      const appliedTask = await applyResponse.json();
-      expect(appliedTask.status).toBe('Approved');
+        const appliedTask = await applyResponse.json();
+        expect(appliedTask.status).toBe('Approved');
 
-      // Verify the description was applied to the table
-      const tableResponse = await apiContext.get(
-        `/api/v1/tables/${table.entityResponseData?.id}`
-      );
-      const updatedTable = await tableResponse.json();
-      expect(updatedTable.description).toBe(suggestedDescription);
-    } finally {
-      await afterAction();
+        // Verify the description was applied to the table
+        const tableResponse = await apiContext.get(
+          `/api/v1/tables/${table.entityResponseData?.id}`
+        );
+        const updatedTable = await tableResponse.json();
+        expect(updatedTable.description).toBe(suggestedDescription);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 
   test('should reject non-suggestion task via apply endpoint', async ({
     browser,
@@ -147,140 +152,152 @@ test.describe('Task Suggestion APIs', () => {
     }
   });
 
-  test('should perform bulk approve on multiple tasks', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should perform bulk approve on multiple tasks',
+    migratedTo.javaIT(
+      'TaskResourceIT#testBulkApproveSuggestionTasksHandlesGenericPayloads'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create multiple suggestion tasks
-      const task1Response = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'Suggestion',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            suggestionType: 'Description',
-            fieldPath: `columns::${table.entityResponseData?.columns?.[0]?.name}::description`,
-            suggestedValue: 'Column 1 description',
-            source: 'Agent',
-            confidence: 90,
+      try {
+        // Create multiple suggestion tasks
+        const task1Response = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+            type: 'Suggestion',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              suggestionType: 'Description',
+              fieldPath: `columns::${table.entityResponseData?.columns?.[0]?.name}::description`,
+              suggestedValue: 'Column 1 description',
+              source: 'Agent',
+              confidence: 90,
+            },
           },
-        },
-      });
-      const task1 = await task1Response.json();
+        });
+        const task1 = await task1Response.json();
 
-      const task2Response = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'Suggestion',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            suggestionType: 'Description',
-            fieldPath: `columns::${table.entityResponseData?.columns?.[1]?.name}::description`,
-            suggestedValue: 'Column 2 description',
-            source: 'Agent',
-            confidence: 88,
+        const task2Response = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+            type: 'Suggestion',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              suggestionType: 'Description',
+              fieldPath: `columns::${table.entityResponseData?.columns?.[1]?.name}::description`,
+              suggestedValue: 'Column 2 description',
+              source: 'Agent',
+              confidence: 88,
+            },
           },
-        },
-      });
-      const task2 = await task2Response.json();
+        });
+        const task2 = await task2Response.json();
 
-      // Bulk approve both tasks
-      const bulkResponse = await apiContext.post('/api/v1/tasks/bulk', {
-        data: {
-          taskIds: [task1.id, task2.id],
-          operation: 'Approve',
-          params: {
-            comment: 'Bulk approving suggestions',
+        // Bulk approve both tasks
+        const bulkResponse = await apiContext.post('/api/v1/tasks/bulk', {
+          data: {
+            taskIds: [task1.id, task2.id],
+            operation: 'Approve',
+            params: {
+              comment: 'Bulk approving suggestions',
+            },
           },
-        },
-      });
-      expect(bulkResponse.ok()).toBe(true);
+        });
+        expect(bulkResponse.ok()).toBe(true);
 
-      const bulkResult = await bulkResponse.json();
-      expect(bulkResult.totalRequested).toBe(2);
-      expect(bulkResult.successful).toBe(2);
-      expect(bulkResult.failed).toBe(0);
-      expect(bulkResult.results).toHaveLength(2);
-      expect(bulkResult.results[0].status).toBe('success');
-      expect(bulkResult.results[1].status).toBe('success');
+        const bulkResult = await bulkResponse.json();
+        expect(bulkResult.totalRequested).toBe(2);
+        expect(bulkResult.successful).toBe(2);
+        expect(bulkResult.failed).toBe(0);
+        expect(bulkResult.results).toHaveLength(2);
+        expect(bulkResult.results[0].status).toBe('success');
+        expect(bulkResult.results[1].status).toBe('success');
 
-      // Verify tasks were approved
-      const verifyTask1 = await apiContext.get(`/api/v1/tasks/${task1.id}`);
-      const task1Data = await verifyTask1.json();
-      expect(task1Data.status).toBe('Approved');
+        // Verify tasks were approved
+        const verifyTask1 = await apiContext.get(`/api/v1/tasks/${task1.id}`);
+        const task1Data = await verifyTask1.json();
+        expect(task1Data.status).toBe('Approved');
 
-      const verifyTask2 = await apiContext.get(`/api/v1/tasks/${task2.id}`);
-      const task2Data = await verifyTask2.json();
-      expect(task2Data.status).toBe('Approved');
-    } finally {
-      await afterAction();
+        const verifyTask2 = await apiContext.get(`/api/v1/tasks/${task2.id}`);
+        const task2Data = await verifyTask2.json();
+        expect(task2Data.status).toBe('Approved');
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 
-  test('should perform bulk reject on multiple tasks', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should perform bulk reject on multiple tasks',
+    migratedTo.javaIT(
+      'TaskResourceIT#testBulkRejectSuggestionTasksHandlesGenericPayloads'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create multiple suggestion tasks
-      const task1Response = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'Suggestion',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            suggestionType: 'Description',
-            fieldPath: 'description',
-            suggestedValue: 'Bad suggestion 1',
-            source: 'Agent',
-            confidence: 30,
+      try {
+        // Create multiple suggestion tasks
+        const task1Response = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+            type: 'Suggestion',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              suggestionType: 'Description',
+              fieldPath: 'description',
+              suggestedValue: 'Bad suggestion 1',
+              source: 'Agent',
+              confidence: 30,
+            },
           },
-        },
-      });
-      const task1 = await task1Response.json();
+        });
+        const task1 = await task1Response.json();
 
-      const task2Response = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'Suggestion',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            suggestionType: 'Description',
-            fieldPath: 'description',
-            suggestedValue: 'Bad suggestion 2',
-            source: 'Agent',
-            confidence: 25,
+        const task2Response = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+            type: 'Suggestion',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              suggestionType: 'Description',
+              fieldPath: 'description',
+              suggestedValue: 'Bad suggestion 2',
+              source: 'Agent',
+              confidence: 25,
+            },
           },
-        },
-      });
-      const task2 = await task2Response.json();
+        });
+        const task2 = await task2Response.json();
 
-      // Bulk reject both tasks
-      const bulkResponse = await apiContext.post('/api/v1/tasks/bulk', {
-        data: {
-          taskIds: [task1.id, task2.id],
-          operation: 'Reject',
-          params: {
-            comment: 'Low confidence suggestions - rejecting',
+        // Bulk reject both tasks
+        const bulkResponse = await apiContext.post('/api/v1/tasks/bulk', {
+          data: {
+            taskIds: [task1.id, task2.id],
+            operation: 'Reject',
+            params: {
+              comment: 'Low confidence suggestions - rejecting',
+            },
           },
-        },
-      });
-      expect(bulkResponse.ok()).toBe(true);
+        });
+        expect(bulkResponse.ok()).toBe(true);
 
-      const bulkResult = await bulkResponse.json();
-      expect(bulkResult.successful).toBe(2);
+        const bulkResult = await bulkResponse.json();
+        expect(bulkResult.successful).toBe(2);
 
-      // Verify tasks were rejected
-      const verifyTask1 = await apiContext.get(`/api/v1/tasks/${task1.id}`);
-      const task1Data = await verifyTask1.json();
-      expect(task1Data.status).toBe('Rejected');
-    } finally {
-      await afterAction();
+        // Verify tasks were rejected
+        const verifyTask1 = await apiContext.get(`/api/v1/tasks/${task1.id}`);
+        const task1Data = await verifyTask1.json();
+        expect(task1Data.status).toBe('Rejected');
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 
   test('should perform bulk assign operation', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -339,44 +356,48 @@ test.describe('Task Suggestion APIs', () => {
     }
   });
 
-  test('should perform bulk cancel operation', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should perform bulk cancel operation',
+    migratedTo.javaIT('TaskChangeEventIT#bulkOperationsRecordOneEventPerTask'),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create tasks
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            suggestedValue: 'Description to cancel',
+      try {
+        // Create tasks
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DescriptionUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              suggestedValue: 'Description to cancel',
+            },
           },
-        },
-      });
-      const task = await taskResponse.json();
+        });
+        const task = await taskResponse.json();
 
-      // Bulk cancel
-      const bulkResponse = await apiContext.post('/api/v1/tasks/bulk', {
-        data: {
-          taskIds: [task.id],
-          operation: 'Cancel',
-          params: {
-            comment: 'No longer needed',
+        // Bulk cancel
+        const bulkResponse = await apiContext.post('/api/v1/tasks/bulk', {
+          data: {
+            taskIds: [task.id],
+            operation: 'Cancel',
+            params: {
+              comment: 'No longer needed',
+            },
           },
-        },
-      });
-      expect(bulkResponse.ok()).toBe(true);
+        });
+        expect(bulkResponse.ok()).toBe(true);
 
-      // Verify task was cancelled
-      const verifyTask = await apiContext.get(`/api/v1/tasks/${task.id}`);
-      const taskData = await verifyTask.json();
-      expect(taskData.status).toBe('Cancelled');
-    } finally {
-      await afterAction();
+        // Verify task was cancelled
+        const verifyTask = await apiContext.get(`/api/v1/tasks/${task.id}`);
+        const taskData = await verifyTask.json();
+        expect(taskData.status).toBe('Cancelled');
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 
   test('should handle partial failures in bulk operations', async ({
     browser,

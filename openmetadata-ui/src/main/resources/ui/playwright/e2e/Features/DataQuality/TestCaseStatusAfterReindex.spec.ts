@@ -28,96 +28,103 @@ import test, { expect } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../../../constant/common';
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage } from '../../../utils/common';
+import { migratedTo } from '../../../constant/migration';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const TEST_CASE_STATUS = 'Failed' as const;
 
-test('Test case status survives a full entity reindex', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
+test(
+  'Test case status survives a full entity reindex',
+  migratedTo.javaIT(
+    'ReindexDocSurvivalIT#testCaseResultStatusSurvivesRecreateReindex'
+  ),
+  async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
 
-  const table = new TableClass();
+    const table = new TableClass();
 
-  try {
-    await table.create(apiContext);
+    try {
+      await table.create(apiContext);
 
-    const testCase = await table.createTestCase(apiContext);
-    const testCaseFqn = testCase.fullyQualifiedName as string;
-    const testCaseId = testCase.id as string;
+      const testCase = await table.createTestCase(apiContext);
+      const testCaseFqn = testCase.fullyQualifiedName as string;
+      const testCaseId = testCase.id as string;
 
-    await table.addTestCaseResult(apiContext, testCaseFqn, {
-      result: 'Reindex regression check',
-      testCaseStatus: TEST_CASE_STATUS,
-      timestamp: Date.now(),
-    });
+      await table.addTestCaseResult(apiContext, testCaseFqn, {
+        result: 'Reindex regression check',
+        testCaseStatus: TEST_CASE_STATUS,
+        timestamp: Date.now(),
+      });
 
-    // Wait for the search doc to settle and assert the status is indexed.
-    await expect
-      .poll(
-        async () => {
-          const res = await apiContext.get(
-            `/api/v1/search/query?q=fullyQualifiedName:%22${encodeURIComponent(
-              testCaseFqn
-            )}%22&index=test_case_search_index`
-          );
-          if (res.status() !== 200) {
-            return undefined;
-          }
-          const body = await res.json();
-          const hits = body?.hits?.hits ?? [];
-          return hits[0]?._source?.testCaseResult?.testCaseStatus;
-        },
-        {
-          message:
-            'pre-reindex: test case search doc must include testCaseResult.testCaseStatus',
-          timeout: ACTION_TIMEOUT,
-        }
-      )
-      .toBe(TEST_CASE_STATUS);
-
-    // Force a recreate-style reindex of the test case — this is the exact
-    // path that drops the status before the fix.
-    const reindexRes = await apiContext.post(
-      '/api/v1/search/reindexEntities?recreate=true',
-      {
-        data: [
-          {
-            id: testCaseId,
-            type: 'testCase',
-            fullyQualifiedName: testCaseFqn,
+      // Wait for the search doc to settle and assert the status is indexed.
+      await expect
+        .poll(
+          async () => {
+            const res = await apiContext.get(
+              `/api/v1/search/query?q=fullyQualifiedName:%22${encodeURIComponent(
+                testCaseFqn
+              )}%22&index=test_case_search_index`
+            );
+            if (res.status() !== 200) {
+              return undefined;
+            }
+            const body = await res.json();
+            const hits = body?.hits?.hits ?? [];
+            return hits[0]?._source?.testCaseResult?.testCaseStatus;
           },
-        ],
-      }
-    );
-
-    expect(reindexRes.status()).toBeLessThan(400);
-
-    // Assert the status is still there after reindex. Before the fix, the
-    // recreated doc had no testCaseResult and this poll would time out.
-    await expect
-      .poll(
-        async () => {
-          const res = await apiContext.get(
-            `/api/v1/search/query?q=fullyQualifiedName:%22${encodeURIComponent(
-              testCaseFqn
-            )}%22&index=test_case_search_index`
-          );
-          if (res.status() !== 200) {
-            return undefined;
+          {
+            message:
+              'pre-reindex: test case search doc must include testCaseResult.testCaseStatus',
+            timeout: ACTION_TIMEOUT,
           }
-          const body = await res.json();
-          const hits = body?.hits?.hits ?? [];
-          return hits[0]?._source?.testCaseResult?.testCaseStatus;
-        },
+        )
+        .toBe(TEST_CASE_STATUS);
+
+      // Force a recreate-style reindex of the test case — this is the exact
+      // path that drops the status before the fix.
+      const reindexRes = await apiContext.post(
+        '/api/v1/search/reindexEntities?recreate=true',
         {
-          message:
-            'post-reindex: test case search doc must still include testCaseResult.testCaseStatus',
-          timeout: ACTION_TIMEOUT,
+          data: [
+            {
+              id: testCaseId,
+              type: 'testCase',
+              fullyQualifiedName: testCaseFqn,
+            },
+          ],
         }
-      )
-      .toBe(TEST_CASE_STATUS);
-  } finally {
-    await table.delete(apiContext);
-    await afterAction();
+      );
+
+      expect(reindexRes.status()).toBeLessThan(400);
+
+      // Assert the status is still there after reindex. Before the fix, the
+      // recreated doc had no testCaseResult and this poll would time out.
+      await expect
+        .poll(
+          async () => {
+            const res = await apiContext.get(
+              `/api/v1/search/query?q=fullyQualifiedName:%22${encodeURIComponent(
+                testCaseFqn
+              )}%22&index=test_case_search_index`
+            );
+            if (res.status() !== 200) {
+              return undefined;
+            }
+            const body = await res.json();
+            const hits = body?.hits?.hits ?? [];
+            return hits[0]?._source?.testCaseResult?.testCaseStatus;
+          },
+          {
+            message:
+              'post-reindex: test case search doc must still include testCaseResult.testCaseStatus',
+            timeout: ACTION_TIMEOUT,
+          }
+        )
+        .toBe(TEST_CASE_STATUS);
+    } finally {
+      await table.delete(apiContext);
+      await afterAction();
+    }
   }
-});
+);

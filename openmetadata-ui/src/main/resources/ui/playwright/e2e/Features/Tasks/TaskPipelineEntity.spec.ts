@@ -16,6 +16,7 @@ import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { migratedTo } from '../../../constant/migration';
 
 /**
  * Task Tests for Pipeline Entities
@@ -77,118 +78,127 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
     }
   });
 
-  test('should create and approve entity-level description task for Pipeline', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create and approve entity-level description task for Pipeline',
+    migratedTo.javaIT(
+      'TaskResourceIT#testResolvePipelineDescriptionUpdateTask'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    const newDescription = 'Updated Pipeline description from task';
+      const newDescription = 'Updated Pipeline description from task';
 
-    try {
-      // Create DescriptionUpdate task for entity level
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            fieldPath: 'description',
-            newDescription: newDescription,
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
+      try {
+        // Create DescriptionUpdate task for entity level
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
-            resolutionType: 'Approved',
-            newValue: newDescription,
+            about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DescriptionUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              fieldPath: 'description',
+              newDescription: newDescription,
+            },
           },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
 
-      // Verify description was updated
-      const pipelineResponse = await apiContext.get(
-        `/api/v1/pipelines/${pipeline.entityResponseData?.id}`
-      );
-      const updatedPipeline = await pipelineResponse.json();
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+              newValue: newDescription,
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      expect(updatedPipeline.description).toBe(newDescription);
-    } finally {
-      await afterAction();
-    }
-  });
+        // Verify description was updated
+        const pipelineResponse = await apiContext.get(
+          `/api/v1/pipelines/${pipeline.entityResponseData?.id}`
+        );
+        const updatedPipeline = await pipelineResponse.json();
 
-  test('should create and approve pipeline task description update', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      // Get pipeline to find task name
-      const pipelineResponse = await apiContext.get(
-        `/api/v1/pipelines/${pipeline.entityResponseData?.id}?fields=tasks`
-      );
-      const pipelineData = await pipelineResponse.json();
-
-      const pipelineTasks = pipelineData.tasks;
-      if (!pipelineTasks || pipelineTasks.length === 0) {
-        console.log('No pipeline tasks, skipping test');
-        return;
+        expect(updatedPipeline.description).toBe(newDescription);
+      } finally {
+        await afterAction();
       }
-
-      const pipelineTaskName = pipelineTasks[0].name;
-      const newTaskDescription = 'Updated pipeline task description from task';
-
-      // Create DescriptionUpdate task for pipeline task
-      // Format: tasks::taskName::description
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            fieldPath: `tasks::${pipelineTaskName}::description`,
-            newDescription: newTaskDescription,
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-            newValue: newTaskDescription,
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
-
-      // Verify pipeline task description was updated
-      const updatedPipelineResponse = await apiContext.get(
-        `/api/v1/pipelines/${pipeline.entityResponseData?.id}?fields=tasks`
-      );
-      const updatedPipeline = await updatedPipelineResponse.json();
-
-      const updatedTask = updatedPipeline.tasks?.find(
-        (t: { name: string }) => t.name === pipelineTaskName
-      );
-      expect(updatedTask?.description).toBe(newTaskDescription);
-    } finally {
-      await afterAction();
     }
-  });
+  );
+
+  test(
+    'should create and approve pipeline task description update',
+    migratedTo.javaIT(
+      'TaskResourceIT#testResolvePipelineTaskDescriptionUpdate'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      try {
+        // Get pipeline to find task name
+        const pipelineResponse = await apiContext.get(
+          `/api/v1/pipelines/${pipeline.entityResponseData?.id}?fields=tasks`
+        );
+        const pipelineData = await pipelineResponse.json();
+
+        const pipelineTasks = pipelineData.tasks;
+        if (!pipelineTasks || pipelineTasks.length === 0) {
+          console.log('No pipeline tasks, skipping test');
+          return;
+        }
+
+        const pipelineTaskName = pipelineTasks[0].name;
+        const newTaskDescription =
+          'Updated pipeline task description from task';
+
+        // Create DescriptionUpdate task for pipeline task
+        // Format: tasks::taskName::description
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DescriptionUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              fieldPath: `tasks::${pipelineTaskName}::description`,
+              newDescription: newTaskDescription,
+            },
+          },
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+              newValue: newTaskDescription,
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
+
+        // Verify pipeline task description was updated
+        const updatedPipelineResponse = await apiContext.get(
+          `/api/v1/pipelines/${pipeline.entityResponseData?.id}?fields=tasks`
+        );
+        const updatedPipeline = await updatedPipelineResponse.json();
+
+        const updatedTask = updatedPipeline.tasks?.find(
+          (t: { name: string }) => t.name === pipelineTaskName
+        );
+        expect(updatedTask?.description).toBe(newTaskDescription);
+      } finally {
+        await afterAction();
+      }
+    }
+  );
 
   test('should create OwnershipUpdate task for Pipeline', async ({
     browser,

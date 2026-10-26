@@ -22,6 +22,7 @@ import {
   navigateToPersonaWithPagination,
 } from '../../utils/persona';
 import { test } from '../fixtures/pages';
+import { migratedTo } from '../../constant/migration';
 
 const PERSONA_DETAILS = {
   name: `test-persona-${uuid()}`,
@@ -66,101 +67,109 @@ test.describe.serial('User profile works after persona deletion', () => {
     await afterAction();
   });
 
-  test('User profile loads correctly before and after persona deletion', async ({
-    page,
-  }) => {
-    await test.step('Verify persona with user', async () => {
-      await navigateToPersonaSettings(page);
-      await waitForAllLoadersToDisappear(page);
-      await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, false);
+  test(
+    'User profile loads correctly before and after persona deletion',
+    migratedTo.javaIT(
+      'UserResourceIT#test_personaDeletion_cleansUpAllRelationships'
+    ),
+    async ({ page }) => {
+      await test.step('Verify persona with user', async () => {
+        await navigateToPersonaSettings(page);
+        await waitForAllLoadersToDisappear(page);
+        await navigateToPersonaWithPagination(
+          page,
+          PERSONA_DETAILS.name,
+          false
+        );
 
-      await expect(
-        page.getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-      ).toBeVisible();
-    });
-
-    // Step 2: Navigate directly to user profile and verify persona is shown
-    await test.step('Verify persona appears on user profile', async () => {
-      await visitUserProfileDirectly(page, user.responseData.name);
-
-      // Check if persona appears on the user profile
-      const personaCard = page.getByTestId('persona-details-card');
-
-      await expect(personaCard).toBeVisible();
-
-      // Check if the persona display name is shown
-      const personaElement = personaCard.getByTestId(
-        `${PERSONA_DETAILS.name}-link`
-      );
-      await expect(personaElement).toBeVisible();
-
-      // If it shows "No persona assigned", the test should fail
-      await expect(
-        personaCard.getByText('No persona assigned')
-      ).not.toBeVisible();
-    });
-
-    // Step 3: Delete the persona
-    await test.step('Delete the persona', async () => {
-      await navigateToPersonaSettings(page);
-
-      await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name);
-      await waitForAllLoadersToDisappear(page);
-
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('delete-button-title').click();
-
-      const confirmButton = page.getByTestId('confirm-button');
-
-      const deleteResponse = page.waitForResponse(
-        `/api/v1/personas/*?hardDelete=true&recursive=false`
-      );
-
-      await confirmButton.click();
-      expect((await deleteResponse).ok()).toBeTruthy();
-      personaDeleted = true;
-
-      await page.waitForURL('**/settings/persona', {
-        waitUntil: 'domcontentloaded',
+        await expect(
+          page.getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
+        ).toBeVisible();
       });
-    });
 
-    // Step 4: Go back to user profile and verify it still loads
-    await test.step('Verify user profile still loads after persona deletion', async () => {
-      await visitUserProfileDirectly(page, user.responseData.name);
+      // Step 2: Navigate directly to user profile and verify persona is shown
+      await test.step('Verify persona appears on user profile', async () => {
+        await visitUserProfileDirectly(page, user.responseData.name);
 
-      // User profile should load without errors
-      // Check if the user name is displayed (this means the page loaded)
-      const userName = page.getByTestId('nav-user-name');
-      await expect(userName).toBeVisible();
+        // Check if persona appears on the user profile
+        const personaCard = page.getByTestId('persona-details-card');
 
-      // Verify the persona card shows "No persona assigned" now
-      const personaCard = page.getByTestId('persona-details-card');
-      await expect(personaCard).toBeVisible();
+        await expect(personaCard).toBeVisible();
 
-      // Check if deleted persona still appears (this would be the bug)
-      // Retry up to 3 times with page reload to handle eventual consistency
-      const deletedPersonaLink = page.getByTestId(
-        `${PERSONA_DETAILS.name}-link`
-      );
-      const noPersonaText = personaCard.getByText('No persona assigned');
+        // Check if the persona display name is shown
+        const personaElement = personaCard.getByTestId(
+          `${PERSONA_DETAILS.name}-link`
+        );
+        await expect(personaElement).toBeVisible();
 
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        if (
-          !(await deletedPersonaLink.isVisible()) &&
-          (await noPersonaText.isVisible())
-        ) {
-          break;
+        // If it shows "No persona assigned", the test should fail
+        await expect(
+          personaCard.getByText('No persona assigned')
+        ).not.toBeVisible();
+      });
+
+      // Step 3: Delete the persona
+      await test.step('Delete the persona', async () => {
+        await navigateToPersonaSettings(page);
+
+        await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name);
+        await waitForAllLoadersToDisappear(page);
+
+        await page.getByTestId('manage-button').click();
+        await page.getByTestId('delete-button-title').click();
+
+        const confirmButton = page.getByTestId('confirm-button');
+
+        const deleteResponse = page.waitForResponse(
+          `/api/v1/personas/*?hardDelete=true&recursive=false`
+        );
+
+        await confirmButton.click();
+        expect((await deleteResponse).ok()).toBeTruthy();
+        personaDeleted = true;
+
+        await page.waitForURL('**/settings/persona', {
+          waitUntil: 'domcontentloaded',
+        });
+      });
+
+      // Step 4: Go back to user profile and verify it still loads
+      await test.step('Verify user profile still loads after persona deletion', async () => {
+        await visitUserProfileDirectly(page, user.responseData.name);
+
+        // User profile should load without errors
+        // Check if the user name is displayed (this means the page loaded)
+        const userName = page.getByTestId('nav-user-name');
+        await expect(userName).toBeVisible();
+
+        // Verify the persona card shows "No persona assigned" now
+        const personaCard = page.getByTestId('persona-details-card');
+        await expect(personaCard).toBeVisible();
+
+        // Check if deleted persona still appears (this would be the bug)
+        // Retry up to 3 times with page reload to handle eventual consistency
+        const deletedPersonaLink = page.getByTestId(
+          `${PERSONA_DETAILS.name}-link`
+        );
+        const noPersonaText = personaCard.getByText('No persona assigned');
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          if (
+            !(await deletedPersonaLink.isVisible()) &&
+            (await noPersonaText.isVisible())
+          ) {
+            break;
+          }
+
+          if (attempt < 3) {
+            await page.reload({ waitUntil: 'domcontentloaded' });
+            await waitForAllLoadersToDisappear(page);
+          }
         }
 
-        if (attempt < 3) {
-          await page.reload({ waitUntil: 'domcontentloaded' });
-          await waitForAllLoadersToDisappear(page);
-        }
-      }
-
-      await expect(deletedPersonaLink).not.toBeVisible();
-      await expect(noPersonaText).toBeVisible();
-    });
-  });
+        await expect(deletedPersonaLink).not.toBeVisible();
+        await expect(noPersonaText).toBeVisible();
+      });
+    }
+  );
 });
