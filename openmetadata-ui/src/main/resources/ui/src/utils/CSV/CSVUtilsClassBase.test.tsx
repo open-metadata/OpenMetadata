@@ -22,6 +22,7 @@ import userEvent from '@testing-library/user-event';
 import { FC } from 'react';
 import { RenderEditCellProps } from 'react-data-grid';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
+import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DataAssetOption } from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -1908,6 +1909,40 @@ describe('CSV utils ClassBase', () => {
       );
       expect(onClose).toHaveBeenCalledWith(true);
     });
+
+    it.each(['owner', 'reviewers'])(
+      'should preselect no %s when the cell is missing or empty',
+      (column) => {
+        const editor = csvUtils.getEditor(
+          column,
+          EntityType.GLOSSARY_TERM,
+          multipleOwner
+        );
+
+        if (!editor) {
+          throw new Error(`Expected ${column} editor to be defined`);
+        }
+
+        for (const row of [{}, { [column]: '' }]) {
+          (UserTeamSelectableList as jest.Mock).mockClear();
+          render(
+            <>
+              {editor({
+                row,
+                column: { key: column },
+                onRowChange: jest.fn(),
+                onClose: jest.fn(),
+              } as unknown as Parameters<typeof editor>[0])}
+            </>
+          );
+
+          expect(UserTeamSelectableList).toHaveBeenCalledWith(
+            expect.objectContaining({ owner: [] }),
+            expect.anything()
+          );
+        }
+      }
+    );
 
     it('should handle different entity types', () => {
       const tableEditor = csvUtils.getEditor(

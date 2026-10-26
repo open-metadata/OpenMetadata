@@ -2160,7 +2160,7 @@ const getCsvOwnerEditor: CSVEditorFactory = ({
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const value = String(row[column.key] ?? '');
-    const owners = value?.split(';') ?? [];
+    const owners = value.split(';').filter(Boolean);
     const ownerEntityRef = owners.map((owner: string) => {
       const [type, user] = owner.split(':');
 
@@ -2645,7 +2645,7 @@ const getCsvReviewersEditor: CSVEditorFactory = ({ entityType, options }) => {
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const value = String(row[column.key] ?? '');
-    const reviewers = value?.split(';') ?? [];
+    const reviewers = value.split(';').filter(Boolean);
     const reviewersEntityRef = reviewers.map((reviewer: string) => {
       const [type, user] = reviewer.split(':');
 
