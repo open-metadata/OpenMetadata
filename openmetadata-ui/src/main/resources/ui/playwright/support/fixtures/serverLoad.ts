@@ -116,9 +116,9 @@ type CacheEntry = {
 };
 
 // One entry per (path + query). The key is the URL alone (see cacheKey), so the
-// space is the six cacheable paths plus any query variants — bounded and small.
+// space is the cacheable paths plus any query variants — bounded and small.
 // The cap stays as a guard against an unforeseen query-string explosion; at its
-// six-entry steady state it never trips, so eviction (LRU, see serveBootConfig)
+// steady state of one entry per path it never trips, so eviction (LRU, see serveBootConfig)
 // is now belt-and-braces rather than load-bearing.
 const MAX_CACHED_RESPONSES = 64;
 const bootCache = new Map<string, CacheEntry>();

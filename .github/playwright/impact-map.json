@@ -79,6 +79,7 @@
     "docker/run_local_docker_common.sh",
     "openmetadata-ui/src/main/resources/ui/playwright.config.ts",
     "openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts",
+    "openmetadata-ui/src/main/resources/ui/playwright/e2e/lineage-data.helper.ts",
     "openmetadata-ui/src/main/resources/ui/playwright/fixtures/**",
     "openmetadata-ui/src/main/resources/ui/playwright/reporters/**",
     "openmetadata-ui/src/main/resources/ui/playwright/support/user/**",
@@ -1454,18 +1455,12 @@
       "specs": ["playwright/e2e/Flow/Navbar.spec.ts"]
     },
     {
-      "_comment": "The lineage and SharedInfra seed, run from entity-data.setup.ts. LineageFilters.spec.ts reads the LineageDataClass entities and edges; the other four read shared-infra.json, which the helper also writes.",
+      "_comment": "The lineage seed behind LineageDataClass: LineageFilters.spec.ts reads its entities and edges. The helper also writes shared-infra.json, which most specs read through ParentResolver, so it is listed under sharedInfrastructure as well.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/e2e/lineage-data.helper.ts"
       ],
       "projects": ["chromium"],
-      "specs": [
-        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
-        "playwright/e2e/Features/DataProductRename.spec.ts",
-        "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
-        "playwright/e2e/Pages/DomainAdvanced.spec.ts",
-        "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts"
-      ]
+      "specs": ["playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"]
     },
     {
       "_comment": "Browser helper tests run under playwright/browser-helper-tests.config.ts, not in any e2e project, so no change to them can alter a spec outcome. Mapped to no specs rather than left unmapped, so a change does not escalate to a full-suite run.",
