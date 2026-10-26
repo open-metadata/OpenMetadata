@@ -71,7 +71,9 @@ import org.openmetadata.service.security.credentials.CredentialMetrics.Unavailab
  * behind, the next check starts or joins one single-flight read of its principal on a small read
  * pool and waits for it within {@code loadTimeout}; when that read fails, does not finish in time
  * or gets no slot, the check throws {@link CredentialUnavailableException} ("cannot confirm"),
- * which is not {@link AuthenticationException} ("confirmed not current").
+ * which is not {@link AuthenticationException} ("confirmed not current"). For missRefreshMinAge
+ * after a read of a principal that produced no record, such a check answers the same without a
+ * read.
  *
  * <p>All state is per instance. Every stamp is a {@link Ticker} reading compared by difference.
  */
@@ -94,6 +96,7 @@ public final class CredentialVerifier implements Managed {
   private final List<RevocationListener> revocationListeners;
   private final Cache<CredentialSubject, VerifiedCredentials> entries;
   private final ConcurrentMap<CredentialSubject, InFlightRead> inFlight = new ConcurrentHashMap<>();
+  private final ReadBackoff backoff;
   private final ThreadPoolExecutor requestReads;
   private final Set<CredentialSubject> nudged = ConcurrentHashMap.newKeySet();
   private final AtomicLong lastCompleteSweepStartNanos;
@@ -148,9 +151,13 @@ public final class CredentialVerifier implements Managed {
       }
     }
 
-    /** No slot, at once or within the budget of a waiter: every waiter answers NO_PERMIT. */
+    /**
+     * No slot, at once or within the budget of a waiter: every waiter answers NO_PERMIT, and the
+     * subject backs off as after any read that produced no record.
+     */
     private void reject(RejectedExecutionException why) {
       metrics.recordRead(reason, ReadOutcome.NO_PERMIT, ticker.read() - stampNanos);
+      backoff.recordFailure(subject, stampNanos);
       fail(subject, read, why);
     }
   }
@@ -217,6 +224,7 @@ public final class CredentialVerifier implements Managed {
     this.metrics = metrics;
     this.policy = config.policy();
     this.revocationListeners = List.copyOf(revocationListeners);
+    this.backoff = new ReadBackoff(ticker, config.missRefreshMinAgeNanos(), config.maxSubjects());
     this.requestReads = readPool(config.maxConcurrentRequestReads(), readThreads);
     this.entries =
         Caffeine.newBuilder()
@@ -380,10 +388,12 @@ public final class CredentialVerifier implements Managed {
    * cannot show a token created since, so the check then joins or starts one newer read within the
    * same budget. That read was registered after this check joined the first one, so after this
    * check began, and is stamped later still. A check therefore waits for at most two reads and
-   * never answers "not current" from a read too old to decide.
+   * never answers "not current" from a read too old to decide. A subject in backoff answers "cannot
+   * confirm" at once, without a read.
    */
   private VerifiedCredentials loadForCheck(
       CredentialSubject subject, TokenDigest digest, long checkStartNanos, ReadReason reason) {
+    refuseDuringBackoff(subject, checkStartNanos);
     long deadlineNanos = checkStartNanos + config.loadTimeoutNanos();
     VerifiedCredentials loaded =
         awaitRead(subject, joinOrStart(subject, digest, reason), deadlineNanos);
@@ -394,6 +404,17 @@ public final class CredentialVerifier implements Managed {
       loaded = awaitRead(subject, joinOrStart(subject, digest, reason), deadlineNanos);
     }
     return loaded;
+  }
+
+  private void refuseDuringBackoff(CredentialSubject subject, long nowNanos) {
+    if (backoff.isBackingOff(subject, nowNanos)) {
+      throw unavailable(
+          UnavailableCause.BACKOFF,
+          "The last read of "
+              + subject.principal()
+              + " produced no record within missRefreshMinAge",
+          null);
+    }
   }
 
   /**
@@ -515,7 +536,7 @@ public final class CredentialVerifier implements Managed {
       Map<CredentialSubject, InFlightRead> reads, long stampNanos, ReadReason reason) {
     try {
       Map<CredentialSubject, CredentialRecord> records =
-          timedRead(reads.keySet(), cachedRecords(reads.keySet()), reason);
+          timedRead(reads.keySet(), cachedRecords(reads.keySet()), reason, stampNanos);
       reads.forEach(
           (subject, read) ->
               finish(subject, read, installRead(subject, read, records.get(subject), stampNanos)));
@@ -546,24 +567,52 @@ public final class CredentialVerifier implements Managed {
 
   /**
    * The only call into the source for full reads. Records the read, whatever it ends in, and the
-   * subjects it left out; a failure propagates as is.
+   * subjects it left out; a failure propagates as is. Each subject's outcome ends or opens its
+   * backoff from {@code stampNanos}, the read's stamp, so every read path counts.
    */
   private Map<CredentialSubject, CredentialRecord> timedRead(
       Collection<CredentialSubject> subjects,
       Map<CredentialSubject, CredentialRecord> previous,
-      ReadReason reason) {
+      ReadReason reason,
+      long stampNanos) {
     long started = ticker.read();
     try {
       Map<CredentialSubject, CredentialRecord> records = source.read(subjects, previous);
       metrics.recordRead(reason, ReadOutcome.OK, ticker.read() - started);
-      long unreadable = subjects.stream().filter(subject -> !records.containsKey(subject)).count();
-      if (unreadable > 0) {
-        metrics.recordUnreadableSubjects(unreadable);
-      }
+      recordConversions(subjects, records, stampNanos);
       return records;
     } catch (RuntimeException | Error failure) {
       metrics.recordRead(reason, ReadOutcome.ERROR, ticker.read() - started);
+      subjects.forEach(subject -> backoff.recordFailure(subject, stampNanos));
       throw failure;
+    }
+  }
+
+  private void recordConversions(
+      Collection<CredentialSubject> subjects,
+      Map<CredentialSubject, CredentialRecord> records,
+      long stampNanos) {
+    long leftOut = 0;
+    for (CredentialSubject subject : subjects) {
+      if (records.containsKey(subject)) {
+        backoff.recordSuccess(subject, stampNanos);
+      } else {
+        leftOut++;
+        recordLeftOut(subject, stampNanos);
+      }
+    }
+    if (leftOut > 0) {
+      metrics.recordUnreadableSubjects(leftOut);
+    }
+  }
+
+  /** Warns once per backoff window, however many reads leave the subject out within it. */
+  private void recordLeftOut(CredentialSubject subject, long stampNanos) {
+    if (backoff.recordFailure(subject, stampNanos)) {
+      LOG.warn(
+          "The stored credentials of {} could not be converted, so checks that need a read of it"
+              + " answer unavailable until a read converts them; the cause is logged at DEBUG",
+          subject.principal());
     }
   }
 
@@ -705,7 +754,7 @@ public final class CredentialVerifier implements Managed {
       ReadReason reason,
       Map<CredentialSubject, CredentialRecord> previous) {
     long stamp = ticker.read();
-    Map<CredentialSubject, CredentialRecord> records = timedRead(subjects, previous, reason);
+    Map<CredentialSubject, CredentialRecord> records = timedRead(subjects, previous, reason, stamp);
     for (CredentialSubject subject : subjects) {
       CredentialRecord record = records.get(subject);
       if (record != null) {

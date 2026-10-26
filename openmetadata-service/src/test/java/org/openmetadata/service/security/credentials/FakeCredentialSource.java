@@ -177,6 +177,11 @@ final class FakeCredentialSource implements CredentialSource {
     unconvertible.add(key(principal));
   }
 
+  /** Full reads convert {@code principal} again, as after a write that repairs its rows. */
+  void restoreConversionOf(String principal) {
+    unconvertible.remove(key(principal));
+  }
+
   /** Every full read whose subjects include {@code principal} throws, as a statement failure does. */
   void poisonReadsOf(String principal) {
     poison.add(key(principal));

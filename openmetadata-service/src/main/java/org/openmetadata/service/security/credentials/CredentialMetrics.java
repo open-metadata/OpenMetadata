@@ -63,7 +63,9 @@ final class CredentialMetrics {
     /** The statement ran, but this subject's rows could not be converted, so nothing confirms it. */
     SUBJECT_READ_FAILED,
     TIMEOUT,
-    NO_PERMIT
+    NO_PERMIT,
+    /** A read of the subject produced no record within missRefreshMinAge, so none was started. */
+    BACKOFF
   }
 
   enum SweepQuery {

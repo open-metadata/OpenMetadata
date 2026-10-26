@@ -31,9 +31,8 @@ interface CredentialSource {
    * Full: the current token digests and the fingerprint, from one statement. The result holds an
    * entry for every requested subject whose rows were converted: its record, or
    * {@link CredentialRecord#ABSENT} when no user row matches. A subject whose rows cannot be
-   * converted, because a decrypt or a stored JSON value fails, is left out, logged once with its
-   * principal, and does not fail the others. The caller treats a missing subject as unconfirmed,
-   * never as absent.
+   * converted, because a decrypt or a stored JSON value fails, is left out and does not fail the
+   * others. The caller treats a missing subject as unconfirmed, never as absent, and reports it.
    *
    * <p>A JWT-type {@code authenticationMechanism} is decrypted through the secrets manager, unless
    * {@code previous} holds a record for the subject whose {@code mechanismVersion} (md5 and

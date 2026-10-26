@@ -94,8 +94,9 @@ final class JdbiCredentialSource implements CredentialSource {
 
   /**
    * Converts each subject on its own. A subject whose rows cannot be converted, because a decrypt
-   * or a stored JSON value fails, is logged once with its principal and left out, so the other
-   * subjects of the statement still confirm. The caller treats a missing subject as unconfirmed.
+   * or a stored JSON value fails, is left out with its cause logged at DEBUG, so the other
+   * subjects of the statement still confirm. The caller treats a missing subject as unconfirmed
+   * and warns about it once per backoff window, since this runs on every read of the subject.
    */
   static Map<CredentialSubject, CredentialRecord> convert(
       Map<CredentialSubject, String> hashes,
@@ -109,9 +110,8 @@ final class JdbiCredentialSource implements CredentialSource {
             List<FullRow> rows = rowsByHash.getOrDefault(hash, List.of());
             result.put(subject, toRecord(rows, previous.get(subject), decrypt));
           } catch (RuntimeException failure) {
-            LOG.warn(
-                "The stored credentials of {} could not be converted; its tokens stay unconfirmed"
-                    + " until a later read succeeds",
+            LOG.debug(
+                "The stored credentials of {} could not be converted",
                 subject.principal(),
                 failure);
           }

@@ -36,9 +36,11 @@ enum CheckDecision {
   LOAD_STALE,
   /**
    * A fresh entry lacks the digest and its last full read is at least missRefreshMinAge old: the
-   * token may have been created on a peer after this server last read the subject. The age floor
-   * caps these reloads at about one per missRefreshMinAge per subject, because every reload is a
-   * full read, so retries of a revoked token cannot become database load.
+   * token may have been created on a peer after this server last read the subject. These reloads
+   * come at most about once per missRefreshMinAge per subject, so retries of a revoked token
+   * cannot become database load: a reload that produces a record moves the last full read, and
+   * one that produces none, because the read failed or left the subject out, starts a backoff of
+   * the same length in the verifier.
    */
   LOAD_UNKNOWN_TOKEN;
 

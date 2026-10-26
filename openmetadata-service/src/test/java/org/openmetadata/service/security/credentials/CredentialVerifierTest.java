@@ -21,6 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.github.benmanes.caffeine.cache.Ticker;
 import io.dropwizard.util.Duration;
 import io.micrometer.core.instrument.Counter;
@@ -47,6 +51,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.service.security.AuthenticationException;
+import org.slf4j.LoggerFactory;
 
 /**
  * A real verifier over an in-memory source and a hand-moved clock. Assertions are on
@@ -61,6 +66,7 @@ class CredentialVerifierTest {
   private static final long MILLISECOND = TimeUnit.MILLISECONDS.toNanos(1);
   private static final long MINUTE = TimeUnit.MINUTES.toNanos(1);
   private static final long MAX_STALENESS_NANOS = 5 * SECOND;
+  private static final long MISS_REFRESH_MIN_AGE = 500 * MILLISECOND;
   private static final long DEEP_VERIFY_INTERVAL_NANOS = 10 * TimeUnit.MINUTES.toNanos(1);
   private static final String ALICE = "alice";
   private static final String BOB = "bob";
@@ -348,6 +354,7 @@ class CredentialVerifierTest {
     assertEquals(0, verifier.cachedSubjects());
 
     source.heal();
+    ticker.advanceNanos(MISS_REFRESH_MIN_AGE);
     assertAccepted(ALICE, TOKEN_A);
     assertEquals(1.0, counter("om.credential.unavailable", "cause", "read_failed"));
     assertEquals(1.0, counter("om.credential.reads", "reason", "miss", "outcome", "error"));
@@ -373,6 +380,7 @@ class CredentialVerifierTest {
     assertEquals(1.0, counter("om.credential.unavailable", "cause", "timeout"));
     source.releaseReads();
     await().atMost(10, TimeUnit.SECONDS).until(() -> verifier.cachedSubjects() == 1);
+    ticker.advanceNanos(MISS_REFRESH_MIN_AGE);
     assertAccepted(BOB, TOKEN_B);
   }
 
@@ -569,6 +577,133 @@ class CredentialVerifierTest {
     assertEquals(0, verifier.cachedSubjects());
     assertEquals(1, source.fullReads());
     assertEquals(1.0, counter("om.credential.unavailable", "cause", "subject_read_failed"));
+  }
+
+  @Test
+  void aSubjectTheSourceLeavesOutIsReadOncePerMissRefreshMinAgeHoweverOftenItIsChecked() {
+    source.withJwtMechanism(BOB, JWT_OLD);
+    verifier(DEFAULTS);
+    assertAccepted(BOB, JWT_OLD);
+    source.failConversionOf(BOB);
+
+    checkEveryMillisecond(2000, BOB, NEVER_ISSUED);
+
+    assertEquals(5, source.fullReadsOf(BOB));
+    assertEquals(499.0, counter("om.credential.checks", "decision", "reject"));
+    assertEquals(4.0, counter("om.credential.unavailable", "cause", "subject_read_failed"));
+    assertEquals(1497.0, counter("om.credential.unavailable", "cause", "backoff"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(ReadFailure.class)
+  void aSubjectWhoseReadsThrowIsReadOncePerMissRefreshMinAgeHoweverOftenItIsChecked(
+      ReadFailure failure) {
+    source.withJwtMechanism(BOB, JWT_OLD);
+    verifier(DEFAULTS);
+    assertAccepted(BOB, JWT_OLD);
+    failure.injectInto(source, BOB);
+
+    checkEveryMillisecond(2000, BOB, NEVER_ISSUED);
+
+    assertEquals(5, source.fullReadsOf(BOB));
+    assertEquals(4.0, counter("om.credential.unavailable", "cause", "read_failed"));
+    assertEquals(1497.0, counter("om.credential.unavailable", "cause", "backoff"));
+  }
+
+  /**
+   * The failed read is stamped at 0, alice becomes readable at T = 1 ns while that read is in
+   * flight, and the read returns 100 ms after T. The backoff runs from the stamp, so a check at T +
+   * missRefreshMinAge reads alice again.
+   */
+  @Test
+  void aSubjectMadeReadableAfterAFailedReadIsAcceptedMissRefreshMinAgeAfterTheWrite() {
+    source.withPats(ALICE, TOKEN_A);
+    source.failConversionOf(ALICE);
+    verifier(DEFAULTS);
+    source.duringNextRead(
+        () -> {
+          ticker.advanceNanos(1);
+          source.restoreConversionOf(ALICE);
+          ticker.advanceNanos(100 * MILLISECOND);
+        });
+    assertUnavailable(ALICE, TOKEN_A);
+
+    ticker.advanceNanos(300 * MILLISECOND);
+    assertUnavailable(ALICE, TOKEN_A);
+    ticker.advanceNanos(100 * MILLISECOND);
+    assertAccepted(ALICE, TOKEN_A);
+
+    assertEquals(2, source.fullReads());
+    assertEquals(1.0, counter("om.credential.unavailable", "cause", "subject_read_failed"));
+    assertEquals(1.0, counter("om.credential.unavailable", "cause", "backoff"));
+  }
+
+  @Test
+  void aFreshEntryIsStillAcceptedWhileItsSubjectBacksOff() {
+    source.withJwtMechanism(BOB, JWT_OLD);
+    verifier(DEFAULTS);
+    assertAccepted(BOB, JWT_OLD);
+    source.failConversionOf(BOB);
+    ticker.advanceNanos(MISS_REFRESH_MIN_AGE);
+    assertUnavailable(BOB, NEVER_ISSUED);
+
+    assertAccepted(BOB, JWT_OLD);
+    assertUnavailable(BOB, NEVER_ISSUED);
+
+    assertEquals(2, source.fullReadsOf(BOB));
+    assertEquals(1.0, counter("om.credential.unavailable", "cause", "backoff"));
+  }
+
+  /**
+   * A sweep re-read leaves alice out at 100 ms. The next one, stamped at 200 ms, converts her, but
+   * her entry idles out while it runs, so it installs nothing; it still ends her backoff.
+   */
+  @Test
+  void aReadThatConvertsTheSubjectEndsItsBackoffEvenWhenItInstallsNothing() {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(
+        new CredentialVerificationConfig(
+            null, null, null, null, null, Duration.milliseconds(300), null, null, null));
+    assertAccepted(ALICE, TOKEN_A);
+    source.failConversionOf(ALICE);
+    source.addPat(ALICE, TOKEN_B);
+    ticker.advanceNanos(100 * MILLISECOND);
+    verifier.sweepOnce();
+    source.restoreConversionOf(ALICE);
+    source.duringNextRead(() -> ticker.advanceNanos(250 * MILLISECOND));
+    ticker.advanceNanos(100 * MILLISECOND);
+    verifier.sweepOnce();
+
+    assertEquals(0, verifier.cachedSubjects());
+    assertAccepted(ALICE, TOKEN_B);
+    assertEquals(4, source.fullReadsOf(ALICE));
+  }
+
+  @Test
+  void aSubjectLeftOutAgainWithinItsBackoffIsWarnedAboutOnce() {
+    Logger logger = (Logger) LoggerFactory.getLogger(CredentialVerifier.class);
+    ListAppender<ILoggingEvent> events = new ListAppender<>();
+    events.start();
+    logger.addAppender(events);
+    try {
+      source.withPats(ALICE, TOKEN_A);
+      verifier(DEFAULTS);
+      assertAccepted(ALICE, TOKEN_A);
+      source.failConversionOf(ALICE);
+      source.addPat(ALICE, TOKEN_B);
+
+      sweepAfterInterval();
+      ticker.advanceNanos(100 * MILLISECOND);
+      verifier.refreshNow(subject(ALICE));
+      ticker.advanceNanos(MISS_REFRESH_MIN_AGE);
+      verifier.refreshNow(subject(ALICE));
+
+      assertEquals(4, source.fullReadsOf(ALICE));
+      assertEquals(2, conversionWarningsAbout(events, ALICE));
+    } finally {
+      logger.detachAppender(events);
+      events.stop();
+    }
   }
 
   @Test
@@ -1240,6 +1375,22 @@ class CredentialVerifierTest {
   private void sweepAfterInterval() {
     ticker.advanceNanos(2 * SECOND);
     verifier.sweepOnce();
+  }
+
+  /** Sequential checks one millisecond apart; the meters record what each one answered. */
+  private void checkEveryMillisecond(int checks, String principal, String token) {
+    for (int check = 0; check < checks; check++) {
+      ticker.advanceNanos(MILLISECOND);
+      checkOutcome(principal, token);
+    }
+  }
+
+  private static long conversionWarningsAbout(
+      ListAppender<ILoggingEvent> events, String principal) {
+    return events.list.stream()
+        .filter(event -> event.getLevel() == Level.WARN)
+        .filter(event -> event.getFormattedMessage().contains("credentials of " + principal))
+        .count();
   }
 
   /** One pass the way the scheduler runs it, which drops what escapes; returned here instead. */
