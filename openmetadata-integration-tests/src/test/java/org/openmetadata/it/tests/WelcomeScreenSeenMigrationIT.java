@@ -1,121 +1,135 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.openmetadata.it.tests.MetricMigrationSqlFixture.currentConnectionType;
-import static org.openmetadata.it.tests.MetricMigrationSqlFixture.readMigrationScripts;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.v210.WelcomeScreenSeenMigration;
 
 /**
- * The 2.1.0 migration marks the first-login welcome screen as seen for every user who signed in or
- * was active before the upgrade. Runs the shipped statement against a copy of the user table, twice,
- * to prove it backfills the right users and is idempotent.
+ * Exercises the 2.1.0 backfill that marks the first-login welcome screen as seen for users who
+ * signed in or were active before the upgrade, against the real database.
  */
-@Isolated("executes the shipped 2.1.0 migration statement against the shared database")
+// The backfill rewrites every user_entity row it matches, so these tests must not interleave.
+@Execution(ExecutionMode.SAME_THREAD)
+@ExtendWith(TestNamespaceExtension.class)
 class WelcomeScreenSeenMigrationIT {
-  private static final String USER_TABLE = "user_entity";
+
   private static final String FIELD = "welcomeScreenSeenAt";
 
   @Test
-  void migrationMarksReturningUsersAsHavingSeenTheWelcomeScreen() throws Exception {
-    ConnectionType connectionType = currentConnectionType();
-    List<String> statements = welcomeScreenStatements(connectionType);
-    assertEquals(1, statements.size(), "one user-table backfill");
-    String userTable =
-        "it_welcome_seen_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-    Jdbi jdbi = TestSuiteBootstrap.getJdbi();
-    try {
-      jdbi.useHandle(
-          handle -> {
-            createFixture(handle, userTable, connectionType);
-            String fixtureStatement =
-                statements.getFirst().replace("UPDATE " + USER_TABLE, "UPDATE " + userTable);
-            handle.execute(fixtureStatement);
-            handle.execute(fixtureStatement);
-            assertUsers(readJson(handle, userTable));
-          });
-    } finally {
-      jdbi.useHandle(handle -> handle.execute("DROP TABLE IF EXISTS " + userTable));
-    }
+  void backfillUsesTheLoginTimeAndFallsBackToActivity(TestNamespace ns) {
+    UUID loggedIn = createUser(ns, "loggedin");
+    UUID activeOnly = createUser(ns, "activeonly");
+    UUID both = createUser(ns, "both");
+    setField(loggedIn, "lastLoginTime", 100L);
+    setField(activeOnly, "lastActivityTime", 200L);
+    setField(both, "lastLoginTime", 300L);
+    setField(both, "lastActivityTime", 400L);
+
+    runBackfill();
+
+    assertEquals(100L, readField(loggedIn));
+    assertEquals(200L, readField(activeOnly), "SSO and token users set only lastActivityTime");
+    assertEquals(300L, readField(both), "the login time wins over activity");
   }
 
-  private static List<String> welcomeScreenStatements(ConnectionType connectionType)
-      throws Exception {
-    return readMigrationScripts(connectionType).postStatements().stream()
-        .filter(statement -> statement.contains("UPDATE " + USER_TABLE))
-        .filter(statement -> statement.contains(FIELD))
-        .toList();
+  @Test
+  void backfillLeavesNewAndAlreadyMarkedUsersAloneAndIsIdempotent(TestNamespace ns) {
+    UUID neverSignedIn = createUser(ns, "never");
+    UUID alreadySeen = createUser(ns, "seen");
+    setField(neverSignedIn, "lastLoginTime", null);
+    setField(neverSignedIn, "lastActivityTime", null);
+    setField(alreadySeen, "lastLoginTime", 500L);
+    setField(alreadySeen, FIELD, 7L);
+
+    runBackfill();
+    runBackfill();
+
+    assertNull(readField(neverSignedIn), "a user who never signed in still sees the screen");
+    assertEquals(7L, readField(alreadySeen), "an existing value is left alone");
   }
 
-  private static void createFixture(Handle handle, String table, ConnectionType connectionType) {
-    handle.execute(
-        connectionType == ConnectionType.MYSQL
-            ? "CREATE TABLE "
-                + table
-                + " (id VARCHAR(36) PRIMARY KEY, json JSON,"
-                + " lastLoginTime BIGINT UNSIGNED GENERATED ALWAYS AS"
-                + " (json_unquote(json_extract(json, '$.lastLoginTime'))) VIRTUAL,"
-                + " lastActivityTime BIGINT UNSIGNED GENERATED ALWAYS AS"
-                + " (json_unquote(json_extract(json, '$.lastActivityTime'))) VIRTUAL)"
-            : "CREATE TABLE "
-                + table
-                + " (id VARCHAR(36) PRIMARY KEY, json JSONB,"
-                + " lastLoginTime BIGINT GENERATED ALWAYS AS"
-                + " ((json->>'lastLoginTime')::bigint) STORED,"
-                + " lastActivityTime BIGINT GENERATED ALWAYS AS"
-                + " ((json->>'lastActivityTime')::bigint) STORED)");
-    insert(handle, table, connectionType, "loggedIn", "{\"lastLoginTime\":100}");
-    insert(handle, table, connectionType, "activeOnly", "{\"lastActivityTime\":200}");
-    insert(
-        handle, table, connectionType, "both", "{\"lastLoginTime\":300,\"lastActivityTime\":400}");
-    insert(handle, table, connectionType, "neverSeen", "{\"name\":\"neverSeen\"}");
-    insert(
-        handle,
-        table,
-        connectionType,
-        "alreadySeen",
-        "{\"lastLoginTime\":500,\"" + FIELD + "\":7}");
+  private UUID createUser(TestNamespace ns, String prefix) {
+    String name = ns.prefix(prefix).toLowerCase().replaceAll("[^a-z0-9]", "");
+    User user =
+        SdkClients.adminClient()
+            .users()
+            .create(new CreateUser().withName(name).withEmail(name + "@test.openmetadata.org"));
+    return user.getId();
   }
 
-  private static void insert(
-      Handle handle, String table, ConnectionType connectionType, String id, String json) {
-    String jsonValue = connectionType == ConnectionType.MYSQL ? ":json" : "CAST(:json AS JSONB)";
-    handle
-        .createUpdate("INSERT INTO " + table + " (id, json) VALUES (:id, " + jsonValue + ")")
-        .bind("id", id)
-        .bind("json", json)
-        .execute();
+  private void runBackfill() {
+    jdbi()
+        .useHandle(
+            handle -> WelcomeScreenSeenMigration.backfillWelcomeScreenSeen(handle, dialect()));
   }
 
-  private static Map<String, JsonNode> readJson(Handle handle, String table) {
-    return handle.createQuery("SELECT id, json FROM " + table).mapToMap().list().stream()
-        .collect(
-            Collectors.toMap(
-                row -> row.get("id").toString(),
-                row -> JsonUtils.readTree(row.get("json").toString())));
+  /** Writes the field straight into the stored row; {@code null} removes it. */
+  private void setField(UUID id, String field, Long value) {
+    String sql =
+        switch (dialect()) {
+          case MYSQL -> value == null
+              ? "UPDATE user_entity SET json = JSON_REMOVE(json, '$." + field + "') WHERE id = :id"
+              : "UPDATE user_entity SET json = JSON_SET(json, '$."
+                  + field
+                  + "', :value)"
+                  + " WHERE id = :id";
+          case POSTGRES -> value == null
+              ? "UPDATE user_entity SET json = json - '" + field + "' WHERE id = :id"
+              : "UPDATE user_entity SET json = jsonb_set(json, '{"
+                  + field
+                  + "}',"
+                  + " to_jsonb(CAST(:value AS bigint))) WHERE id = :id";
+        };
+    jdbi()
+        .useHandle(
+            handle -> {
+              var update = handle.createUpdate(sql).bind("id", id.toString());
+              if (value != null) {
+                update.bind("value", value);
+              }
+              update.execute();
+            });
   }
 
-  private static void assertUsers(Map<String, JsonNode> users) {
-    assertEquals(100, seenAt(users, "loggedIn"));
-    assertEquals(200, seenAt(users, "activeOnly"), "an SSO user with only activity is backfilled");
-    assertEquals(300, seenAt(users, "both"), "the login time wins over activity");
-    assertFalse(users.get("neverSeen").has(FIELD), "a user who never signed in still sees it");
-    assertEquals(7, seenAt(users, "alreadySeen"), "an existing value is left alone");
+  private Long readField(UUID id) {
+    String projection =
+        dialect() == ConnectionType.MYSQL
+            ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$." + FIELD + "'))"
+            : "json ->> '" + FIELD + "'";
+    String raw =
+        jdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery("SELECT " + projection + " FROM user_entity WHERE id = :id")
+                        .bind("id", id.toString())
+                        .mapTo(String.class)
+                        .findOne()
+                        .orElse(null));
+    return raw == null || "null".equals(raw) ? null : Long.valueOf(raw);
   }
 
-  private static long seenAt(Map<String, JsonNode> users, String id) {
-    return users.get(id).path(FIELD).asLong();
+  private Jdbi jdbi() {
+    return TestSuiteBootstrap.getJdbi();
+  }
+
+  private ConnectionType dialect() {
+    return "mysql".equalsIgnoreCase(System.getProperty("databaseType", "postgres"))
+        ? ConnectionType.MYSQL
+        : ConnectionType.POSTGRES;
   }
 }

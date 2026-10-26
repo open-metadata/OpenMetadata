@@ -680,10 +680,3 @@ WHERE name = 'columnValuesToBeInSet'
 UPDATE test_definition
 SET json = jsonb_set(json, '{description}', to_jsonb('Checks column values against an allowed set according to the matchEnum mode.'::text))
 WHERE name = 'columnValuesToBeInSet';
-
--- Users already seen signing in or active are not first-time users: mark the first-login welcome
--- screen as seen for them. Public-client SSO and token sessions set only lastActivityTime.
-UPDATE user_entity
-SET json = jsonb_set(json, '{welcomeScreenSeenAt}', to_jsonb(COALESCE(lastLoginTime, lastActivityTime)))
-WHERE COALESCE(lastLoginTime, lastActivityTime) IS NOT NULL
-  AND json->'welcomeScreenSeenAt' IS NULL;

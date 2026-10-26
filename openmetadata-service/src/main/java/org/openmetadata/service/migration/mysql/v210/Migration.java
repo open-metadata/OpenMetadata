@@ -48,6 +48,7 @@ import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigr
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.WelcomeScreenSeenMigration;
 
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
@@ -114,6 +115,11 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         LifeCycleCreatedSentinelMigration.STEP_NAME,
         () -> removeCreatedSentinel(handle, MYSQL));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WelcomeScreenSeenMigration.STEP_NAME,
+        () -> WelcomeScreenSeenMigration.backfillWelcomeScreenSeen(handle, MYSQL));
     // Alerts the previous release stopped sending, because it could not build one of their
     // destinations, send again from this release; they start from the upgrade, not their backlog.
     runOnce(
