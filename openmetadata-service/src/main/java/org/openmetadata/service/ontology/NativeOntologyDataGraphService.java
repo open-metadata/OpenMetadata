@@ -15,6 +15,7 @@ package org.openmetadata.service.ontology;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.jdbi3.OntologyConceptBindingStore.SCAN_PAGE_SIZE;
 
 import jakarta.ws.rs.ServiceUnavailableException;
 import java.net.URI;
@@ -45,7 +46,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingPosition;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.ConceptAssetCount;
@@ -68,7 +68,6 @@ import org.openmetadata.service.util.RestUtil;
  */
 public final class NativeOntologyDataGraphService {
   private static final String PROPERTY_TABLE = "ontology_property_entity";
-  private static final int BINDING_SCAN_PAGE_SIZE = 500;
   private static final int AXIOM_SCAN_PAGE_SIZE = 500;
 
   public record Query(
@@ -81,10 +80,11 @@ public final class NativeOntologyDataGraphService {
 
   public NativeOntologyDataGraphService(
       final CollectionDAO dao,
+      final OntologyConceptBindingStore store,
       final OntologyConceptRepository concepts,
       final Authorizer authorizer) {
     this.dao = dao;
-    this.store = new OntologyConceptBindingStore(dao);
+    this.store = store;
     this.concepts = concepts;
     this.visibility = new ViewPermissionFilter(authorizer);
   }
@@ -145,10 +145,10 @@ public final class NativeOntologyDataGraphService {
 
   private BindingPosition scanBindingPage(
       final Access access, final Map<UUID, VisibleSummary> summaries, final BindingPosition after) {
-    final var rows = store.page(summaries.keySet(), after, BINDING_SCAN_PAGE_SIZE);
+    final var rows = store.page(summaries.keySet(), after, SCAN_PAGE_SIZE);
     final var visible = visibleAssets(access, rows);
     rows.forEach(row -> summaries.get(row.conceptId()).add(row, visible.get(row.assetId())));
-    return rows.size() == BINDING_SCAN_PAGE_SIZE
+    return rows.size() == SCAN_PAGE_SIZE
         ? new BindingPosition(rows.getLast().conceptId(), rows.getLast().assetId())
         : null;
   }
@@ -335,18 +335,7 @@ public final class NativeOntologyDataGraphService {
     if (iris.isEmpty()) {
       return Map.of();
     }
-    final List<OntologyProperty> declared =
-        dao
-            .ontologyPropertyDAO()
-            .findDeclarations(
-                PROPERTY_TABLE,
-                ontologyId,
-                iris.stream().map(DigestUtils::md5Hex).toList(),
-                iris.size(),
-                "")
-            .stream()
-            .map(json -> JsonUtils.readValue(json, OntologyProperty.class))
-            .toList();
+    final var declared = declaredProperties(ontologyId, iris);
     final var viewable =
         viewableIds(access, declared.stream().map(OntologyProperty::getEntityReference).toList());
     final Map<String, OntologyProperty> properties = new HashMap<>();
@@ -356,29 +345,42 @@ public final class NativeOntologyDataGraphService {
     return properties;
   }
 
+  private List<OntologyProperty> declaredProperties(final UUID ontologyId, final Set<String> iris) {
+    return dao
+        .ontologyPropertyDAO()
+        .findDeclarations(
+            PROPERTY_TABLE,
+            ontologyId,
+            iris.stream().map(DigestUtils::md5Hex).toList(),
+            iris.size(),
+            "")
+        .stream()
+        .map(json -> JsonUtils.readValue(json, OntologyProperty.class))
+        .toList();
+  }
+
   private List<Edge> lineage(final List<Cluster> clusters, final int lineageEdgeLimit) {
-    final List<String> assetIds =
-        clusters.stream()
-            .flatMap(cluster -> cluster.response().getAssets().stream())
-            .map(asset -> asset.getAsset().getId().toString())
-            .distinct()
-            .toList();
+    final var assetIds = previewAssetIds(clusters);
     if (assetIds.isEmpty()) {
       return List.of();
     }
     return dao
         .ontologyDAO()
-        .listLineageEdges(
-            assetIds,
-            Relationship.UPSTREAM.ordinal(),
-            GlossaryTermRepository.ontologyRelationCandidateLimit(lineageEdgeLimit),
-            lineageEdgeLimit)
+        .listLineageEdgesBetween(assetIds, Relationship.UPSTREAM.ordinal(), lineageEdgeLimit)
         .stream()
         .map(
             row ->
                 new Edge()
                     .withFromEntity(UUID.fromString(row.fromId()))
                     .withToEntity(UUID.fromString(row.toId())))
+        .toList();
+  }
+
+  private static List<String> previewAssetIds(final List<Cluster> clusters) {
+    return clusters.stream()
+        .flatMap(cluster -> cluster.response().getAssets().stream())
+        .map(asset -> asset.getAsset().getId().toString())
+        .distinct()
         .toList();
   }
 

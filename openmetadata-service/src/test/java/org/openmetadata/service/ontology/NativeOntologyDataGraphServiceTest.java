@@ -164,22 +164,23 @@ class NativeOntologyDataGraphServiceTest {
     assertEquals(List.of(), summary.preview());
   }
 
-  private static BindingRow binding(UUID conceptId, long assetId) {
+  private static BindingRow binding(final UUID conceptId, final long assetId) {
     return new BindingRow(
         conceptId, new UUID(0, assetId), OntologyBindingAssetType.TOPIC, "hash", List.of());
   }
 
-  private static EntityReference reference(BindingRow row) {
+  private static EntityReference reference(final BindingRow row) {
     return new EntityReference().withId(row.assetId()).withType(row.assetType().value());
   }
 
-  private static OntologyExpression named(URI classIri) {
+  private static OntologyExpression named(final URI classIri) {
     return new OntologyExpression()
         .withKind(OntologyExpressionKind.NAMED_CLASS)
         .withClassIri(classIri);
   }
 
-  private static OntologyExpression restriction(URI propertyIri, OntologyExpression filler) {
+  private static OntologyExpression restriction(
+      final URI propertyIri, final OntologyExpression filler) {
     return new OntologyExpression()
         .withKind(OntologyExpressionKind.RESTRICTION)
         .withPropertyIri(propertyIri)
@@ -187,13 +188,13 @@ class NativeOntologyDataGraphServiceTest {
         .withFiller(filler);
   }
 
-  private static OntologyExpression intersection(OntologyExpression... operands) {
+  private static OntologyExpression intersection(final OntologyExpression... operands) {
     return new OntologyExpression()
         .withKind(OntologyExpressionKind.INTERSECTION)
         .withOperands(List.of(operands));
   }
 
-  private static OntologyExpression union(OntologyExpression... operands) {
+  private static OntologyExpression union(final OntologyExpression... operands) {
     return new OntologyExpression()
         .withKind(OntologyExpressionKind.UNION)
         .withOperands(List.of(operands));

@@ -88,12 +88,12 @@ class OntologyConceptBindingMigrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
-  void copiesEveryDocumentIntoOneRowPerBindingAndASecondRunChangesNothing(String dialect) {
+  void copiesEveryDocumentIntoOneRowPerBindingAndASecondRunChangesNothing(final String dialect) {
     try (Handle handle = open(dialect)) {
-      ConnectionType connectionType = connectionType(dialect);
+      final ConnectionType connectionType = connectionType(dialect);
       createTables(handle, dialect);
       assertBindingKeys(handle);
-      List<OntologyColumnBinding> columns =
+      final List<OntologyColumnBinding> columns =
           List.of(
               new OntologyColumnBinding()
                   .withPropertyId(PROPERTY)
@@ -101,7 +101,8 @@ class OntologyConceptBindingMigrationTest {
               new OntologyColumnBinding()
                   .withPropertyId(PROPERTY)
                   .withColumnPath(List.of("address", "street")));
-      List<UUID> wideTopics = IntStream.range(0, WIDE_TOPICS).mapToObj(i -> id("f" + i)).toList();
+      final List<UUID> wideTopics =
+          IntStream.range(0, WIDE_TOPICS).mapToObj(i -> id("f" + i)).toList();
       seedEntity(handle, "table_entity", ADDRESSES, "hash-addresses");
       seedEntity(handle, "topic_entity", EVENTS, "hash-events");
       wideTopics.forEach(topic -> seedEntity(handle, "topic_entity", topic, "hash-" + topic));
@@ -135,7 +136,7 @@ class OntologyConceptBindingMigrationTest {
 
       OntologyConceptBindingMigration.copyConceptBindingsToRows(
           handle, connectionType, TABLES::get);
-      Map<String, Row> rows = rows(handle, dialect);
+      final Map<String, Row> rows = rows(handle, dialect);
 
       assertEquals(2 + 1 + WIDE_TOPICS, rows.size());
       assertEquals(
@@ -162,9 +163,9 @@ class OntologyConceptBindingMigrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
-  void aRerunLeavesRowsEditedSinceTheFirstRunAlone(String dialect) {
+  void aRerunLeavesRowsEditedSinceTheFirstRunAlone(final String dialect) {
     try (Handle handle = open(dialect)) {
-      ConnectionType connectionType = connectionType(dialect);
+      final ConnectionType connectionType = connectionType(dialect);
       createTables(handle, dialect);
       seedEntity(handle, "table_entity", ADDRESSES, "hash-addresses");
       seedEntity(handle, "topic_entity", EVENTS, "hash-events");
@@ -199,12 +200,12 @@ class OntologyConceptBindingMigrationTest {
           .bind("conceptId", CUSTOMER.toString())
           .bind("assetId", EVENTS.toString())
           .execute();
-      Map<String, Row> edited = rows(handle, dialect);
+      final Map<String, Row> edited = rows(handle, dialect);
 
       OntologyConceptBindingMigration.copyConceptBindingsToRows(
           handle, connectionType, TABLES::get);
 
-      Map<String, Row> rerun = rows(handle, dialect);
+      final Map<String, Row> rerun = rows(handle, dialect);
       assertEquals(edited.get(key(CUSTOMER, ADDRESSES)), rerun.get(key(CUSTOMER, ADDRESSES)));
       assertEquals(JsonUtils.readTree("[]"), rerun.get(key(CUSTOMER, ADDRESSES)).columns());
       assertEquals(
@@ -216,7 +217,7 @@ class OntologyConceptBindingMigrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
-  void unreadableDocumentsDoNotPreventCopyingValidBindings(String dialect) {
+  void unreadableDocumentsDoNotPreventCopyingValidBindings(final String dialect) {
     try (Handle handle = open(dialect)) {
       createTables(handle, dialect);
       seedEntity(handle, "topic_entity", EVENTS, "hash-events");
@@ -224,7 +225,7 @@ class OntologyConceptBindingMigrationTest {
       seedDocument(handle, dialect, EMPTY, 7, List.of());
       seedDocument(
           handle, dialect, ORDER, 1, List.of(asset(OntologyBindingAssetType.TOPIC, EVENTS)));
-      for (var document :
+      for (final var document :
           Map.of(CUSTOMER, "{\"revision\":3,\"assets\":\"unreadable\"}", EMPTY, "null")
               .entrySet()) {
         handle
@@ -254,8 +255,8 @@ class OntologyConceptBindingMigrationTest {
     }
   }
 
-  private static void createTables(Handle handle, String dialect) {
-    String json = POSTGRES_DIALECT.equals(dialect) ? "JSONB" : "JSON";
+  private static void createTables(final Handle handle, final String dialect) {
+    final String json = POSTGRES_DIALECT.equals(dialect) ? "JSONB" : "JSON";
     handle.execute("DROP TABLE IF EXISTS entity_extension");
     handle.execute("DROP TABLE IF EXISTS table_entity");
     handle.execute("DROP TABLE IF EXISTS topic_entity");
@@ -265,13 +266,13 @@ class OntologyConceptBindingMigrationTest {
             + " jsonSchema VARCHAR(256) NOT NULL, json "
             + json
             + " NOT NULL, PRIMARY KEY (id, extension))");
-    for (String table : TABLES.values()) {
+    for (final String table : TABLES.values()) {
       handle.execute(
           "CREATE TABLE "
               + table
               + " (id VARCHAR(36) NOT NULL PRIMARY KEY, fqnHash VARCHAR(768) NOT NULL)");
     }
-    List<String> shipped =
+    final List<String> shipped =
         MigrationFile.parseSQLFile(migrationFile(dialect).toFile(), connectionType(dialect))
             .stream()
             .filter(sql -> sql.contains(BINDING_TABLE))
@@ -280,13 +281,13 @@ class OntologyConceptBindingMigrationTest {
     shipped.forEach(handle::execute);
   }
 
-  private static void assertBindingKeys(Handle handle) {
+  private static void assertBindingKeys(final Handle handle) {
     try {
-      var connection = handle.getConnection();
-      DatabaseMetaData metadata = connection.getMetaData();
-      String catalog = connection.getCatalog();
-      String schema = connection.getSchema();
-      List<Map.Entry<Integer, String>> primaryKeys = new ArrayList<>();
+      final var connection = handle.getConnection();
+      final DatabaseMetaData metadata = connection.getMetaData();
+      final String catalog = connection.getCatalog();
+      final String schema = connection.getSchema();
+      final List<Map.Entry<Integer, String>> primaryKeys = new ArrayList<>();
       try (ResultSet keys = metadata.getPrimaryKeys(catalog, schema, BINDING_TABLE)) {
         while (keys.next()) {
           primaryKeys.add(
@@ -301,11 +302,11 @@ class OntologyConceptBindingMigrationTest {
               .map(Map.Entry::getValue)
               .toList());
 
-      Map<String, Map<Integer, String>> indexes = new TreeMap<>();
+      final Map<String, Map<Integer, String>> indexes = new TreeMap<>();
       try (ResultSet rows = metadata.getIndexInfo(catalog, schema, BINDING_TABLE, false, false)) {
         while (rows.next()) {
-          String name = rows.getString("INDEX_NAME");
-          String column = rows.getString("COLUMN_NAME");
+          final String name = rows.getString("INDEX_NAME");
+          final String column = rows.getString("COLUMN_NAME");
           if (rows.getShort("TYPE") != DatabaseMetaData.tableIndexStatistic
               && name != null
               && column != null) {
@@ -318,12 +319,13 @@ class OntologyConceptBindingMigrationTest {
       assertTrue(
           indexes.values().stream().anyMatch(columns -> "assetid".equals(columns.get(1))),
           "assetId must lead an index for asset-side lookup: " + indexes);
-    } catch (SQLException exception) {
+    } catch (final SQLException exception) {
       throw new IllegalStateException("Could not inspect binding table metadata", exception);
     }
   }
 
-  private static void seedEntity(Handle handle, String table, UUID id, String fqnHash) {
+  private static void seedEntity(
+      final Handle handle, final String table, final UUID id, final String fqnHash) {
     handle
         .createUpdate("INSERT INTO " + table + " (id, fqnHash) VALUES (:id, :fqnHash)")
         .bind("id", id.toString())
@@ -332,11 +334,11 @@ class OntologyConceptBindingMigrationTest {
   }
 
   private static void seedDocument(
-      Handle handle,
-      String dialect,
-      UUID conceptId,
-      long revision,
-      List<OntologyAssetBinding> assets) {
+      final Handle handle,
+      final String dialect,
+      final UUID conceptId,
+      final long revision,
+      final List<OntologyAssetBinding> assets) {
     handle
         .createUpdate(
             "INSERT INTO entity_extension(id, extension, jsonSchema, json) "
@@ -352,16 +354,16 @@ class OntologyConceptBindingMigrationTest {
         .execute();
   }
 
-  private static OntologyAssetBinding asset(OntologyBindingAssetType type, UUID id) {
+  private static OntologyAssetBinding asset(final OntologyBindingAssetType type, final UUID id) {
     return new OntologyAssetBinding().withAssetType(type).withAssetId(id);
   }
 
   private static Map<String, Row> rows(Handle handle, String dialect) {
-    String columns =
+    final String columns =
         POSTGRES_DIALECT.equals(dialect)
             ? "CAST(columnBindings AS TEXT)"
             : "CAST(columnBindings AS CHAR)";
-    Map<String, Row> rows = new TreeMap<>();
+    final Map<String, Row> rows = new TreeMap<>();
     handle
         .createQuery(
             "SELECT conceptId, assetId, assetType, assetFqnHash, "
@@ -380,7 +382,7 @@ class OntologyConceptBindingMigrationTest {
     return rows;
   }
 
-  private static int documentCount(Handle handle) {
+  private static int documentCount(final Handle handle) {
     return handle
         .createQuery("SELECT COUNT(*) FROM entity_extension WHERE extension = :extension")
         .bind("extension", OntologyConceptBindingStore.EXTENSION)
@@ -388,24 +390,24 @@ class OntologyConceptBindingMigrationTest {
         .one();
   }
 
-  private static String key(UUID conceptId, UUID assetId) {
+  private static String key(final UUID conceptId, final UUID assetId) {
     return conceptId + ":" + assetId;
   }
 
-  private static String json(String dialect) {
+  private static String json(final String dialect) {
     return POSTGRES_DIALECT.equals(dialect) ? "CAST(:json AS JSONB)" : ":json";
   }
 
-  private static ConnectionType connectionType(String dialect) {
+  private static ConnectionType connectionType(final String dialect) {
     return POSTGRES_DIALECT.equals(dialect) ? ConnectionType.POSTGRES : ConnectionType.MYSQL;
   }
 
-  private static UUID id(String suffix) {
-    String padded = "0".repeat(12 - suffix.length()) + suffix;
+  private static UUID id(final String suffix) {
+    final String padded = "0".repeat(12 - suffix.length()) + suffix;
     return UUID.fromString("00000000-0000-0000-0000-" + padded);
   }
 
-  private static Handle open(String dialect) {
+  private static Handle open(final String dialect) {
     return MYSQL_DIALECT.equals(dialect)
         ? Jdbi.create(
                 "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
@@ -421,7 +423,7 @@ class OntologyConceptBindingMigrationTest {
             .open();
   }
 
-  private static Path migrationFile(String dialect) {
+  private static Path migrationFile(final String dialect) {
     Path current = Path.of("").toAbsolutePath();
     while (current != null && !Files.isDirectory(current.resolve("bootstrap/sql/migrations"))) {
       current = current.getParent();

@@ -1,6 +1,7 @@
 package org.openmetadata.service.ontology;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.jdbi3.OntologyConceptBindingStore.SCAN_PAGE_SIZE;
 
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -111,7 +112,7 @@ public final class OntologyConceptBindingService {
             return current;
           }
           final long next = OntologyBindingRules.nextRevision(current, expectedRevision);
-          prune(locked, lockedConcept.getId());
+          prune(locked, lockedConcept.getId(), assetId);
           locked.remove(lockedConcept.getId(), assetId);
           return next;
         });
@@ -136,12 +137,7 @@ public final class OntologyConceptBindingService {
       return current;
     }
     final long next = OntologyBindingRules.nextRevision(current, request.getExpectedRevision());
-    final var live = prune(locked, concept.getId());
-    final int retained =
-        live.stream()
-            .filter(row -> !row.assetId().equals(asset.getAssetId()))
-            .mapToInt(row -> row.columns().size())
-            .sum();
+    final int retained = prune(locked, concept.getId(), asset.getAssetId());
     OntologyBindingRules.requireColumnCapacity(retained + listOrEmpty(asset.getColumns()).size());
     validateColumns(
         access, concept, existing == null ? List.of() : existing.columns(), asset, target);
@@ -150,13 +146,38 @@ public final class OntologyConceptBindingService {
     return next;
   }
 
-  private List<BindingRow> prune(final OntologyConceptBindingStore locked, final UUID conceptId) {
-    final var rows = locked.rows(conceptId);
+  /**
+   * Deletes the rows whose assets are gone one page at a time, so a write holds one page however
+   * many assets the concept binds, and returns the column assignments the surviving rows hold on
+   * assets other than {@code written}. Pages are keyed by asset id, so deleting rows already
+   * examined never moves the cursor.
+   */
+  private static int prune(
+      final OntologyConceptBindingStore locked, final UUID conceptId, final UUID written) {
+    int retained = 0;
+    UUID after = null;
+    List<BindingRow> rows;
+    do {
+      rows = locked.page(conceptId, after, SCAN_PAGE_SIZE);
+      retained += retainLive(locked, conceptId, rows, written);
+      after = rows.isEmpty() ? null : rows.getLast().assetId();
+    } while (rows.size() == SCAN_PAGE_SIZE);
+    return retained;
+  }
+
+  private static int retainLive(
+      final OntologyConceptBindingStore locked,
+      final UUID conceptId,
+      final List<BindingRow> rows,
+      final UUID written) {
     final var live = locked.liveAssets(rows).keySet();
     locked.remove(
         conceptId,
         rows.stream().map(BindingRow::assetId).filter(assetId -> !live.contains(assetId)).toList());
-    return rows.stream().filter(row -> live.contains(row.assetId())).toList();
+    return rows.stream()
+        .filter(row -> live.contains(row.assetId()) && !row.assetId().equals(written))
+        .mapToInt(row -> row.columns().size())
+        .sum();
   }
 
   private void validateColumns(
