@@ -7026,6 +7026,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Database/TableQueries/TableQueries.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/IncidentManagerSqlQuery.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts"
