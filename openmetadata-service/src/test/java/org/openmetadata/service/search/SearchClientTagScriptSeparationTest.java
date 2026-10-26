@@ -14,8 +14,11 @@ package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -185,6 +188,55 @@ class SearchClientTagScriptSeparationTest {
             "Concatenating two tag-mutating scripts redeclares "
                 + duplicated
                 + " at the top level; painless rejects the program.");
+  }
+
+  @Test
+  void updateFqnPrefixScriptDoesNotRedeclareAVariableInScope() {
+    // UPDATE_FQN_PREFIX_SCRIPT declares its own variable for the document FQN and then appends the
+    // tag fragment, which declares currentFQN inside the tags loop. Painless rejects a declaration
+    // whose name is already visible in an enclosing scope, so reusing currentFQN for the outer
+    // variable fails the whole script to compile ("variable [currentFQN] is already defined"); the
+    // rename/move still succeeds but the exception is caught and queued, so search FQNs silently
+    // keep
+    // their old values. Give the outer variable a distinct name (docFQN).
+    List<String> redeclared = redeclaredWhileInScope(SearchClient.UPDATE_FQN_PREFIX_SCRIPT);
+    assertTrue(
+        redeclared.isEmpty(),
+        () ->
+            "UPDATE_FQN_PREFIX_SCRIPT redeclares "
+                + redeclared
+                + " while an enclosing declaration of the same name is still in scope; painless"
+                + " rejects the program. Rename the outer variable so names do not collide.");
+  }
+
+  /**
+   * Names declared while a declaration of the same name is still in scope - the current block or any
+   * enclosing one - which is exactly what painless rejects.
+   */
+  private static List<String> redeclaredWhileInScope(String script) {
+    List<String> offenders = new ArrayList<>();
+    Deque<Set<String>> scopes = new ArrayDeque<>();
+    scopes.push(new HashSet<>());
+    Matcher matcher = DECLARATION.matcher(script);
+    int cursor = 0;
+    while (matcher.find()) {
+      for (int i = cursor; i < matcher.start(); i++) {
+        char c = script.charAt(i);
+        if (c == '{') {
+          scopes.push(new HashSet<>());
+        } else if (c == '}' && scopes.size() > 1) {
+          scopes.pop();
+        }
+      }
+      cursor = matcher.start();
+      String name = matcher.group(2);
+      if (scopes.stream().anyMatch(scope -> scope.contains(name))) {
+        offenders.add(name);
+      } else {
+        scopes.peek().add(name);
+      }
+    }
+    return offenders;
   }
 
   /** Names declared with {@code def}/{@code boolean}/{@code int} at brace depth 0. */

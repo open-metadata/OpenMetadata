@@ -444,24 +444,23 @@ public class JwtFilter implements ContainerRequestFilter {
 
   /**
    * The legacy claim flow names the user after a claim's local part, so a provider token for any
-   * address with that local part would resolve to the account of that name. A provider-issued token
-   * must therefore carry an email in the allowed domains when {@code allowedEmailDomains} is set,
-   * and the email it carries must be the one stored on the account it resolves to.
+   * address with that local part would resolve to the account of that name. When {@code
+   * allowedEmailDomains} is set, a provider-issued token that carries an email must carry one in an
+   * allowed domain. A token that carries no email is left to the legacy resolution, which builds the
+   * address as {@code claim@principalDomain} - and {@code principalDomain} is itself one of the
+   * allowed domains - so there is no caller-supplied domain to reject and nothing to lock out.
    */
   private void validateLegacyProviderIdentity(Map<String, Claim> claims, String userName) {
     String claimedEmail = claimedEmail(claims);
     if (!nullOrEmpty(allowedEmailDomains)) {
-      if (claimedEmail == null) {
-        throw new AuthenticationException(
-            "Authentication failed: the token carries no email to check against the allowed email"
-                + " domains");
+      if (claimedEmail != null) {
+        validateConfiguredEmailDomain(
+            claimedEmail,
+            allowedEmailDomains,
+            principalDomain,
+            allowedDomains,
+            enforcePrincipalDomain);
       }
-      validateConfiguredEmailDomain(
-          claimedEmail,
-          allowedEmailDomains,
-          principalDomain,
-          allowedDomains,
-          enforcePrincipalDomain);
     } else if (enforcePrincipalDomain) {
       validateDomainEnforcement(
           jwtPrincipalClaimsMapping,
@@ -471,8 +470,25 @@ public class JwtFilter implements ContainerRequestFilter {
           allowedDomains,
           enforcePrincipalDomain);
     }
+    // Only a token that carries an email can name a bot account by its email's local part; a bare
+    // principal claim resolves through the sign-up path and never loads an account here.
     if (claimedEmail != null) {
-      requireAccountOwnsEmail(userName, claimedEmail);
+      rejectProviderTokenForBotAccount(userName);
+    }
+  }
+
+  /**
+   * A provider token names the user after a claim's local part, so one whose local part matches a bot
+   * account's name would otherwise sign in as that bot. Bots authenticate with their own issued
+   * tokens, never through the provider flow, so a provider token must never resolve to a bot account.
+   */
+  private static void rejectProviderTokenForBotAccount(String userName) {
+    User account =
+        Entity.getUserRepository()
+            .findByNameOrNull(EntityInterfaceUtil.quoteName(userName), Include.NON_DELETED);
+    if (account != null && Boolean.TRUE.equals(account.getIsBot())) {
+      throw new AuthenticationException(
+          "Authentication failed: a provider token cannot sign in to a bot account");
     }
   }
 
@@ -484,24 +500,6 @@ public class JwtFilter implements ContainerRequestFilter {
             : SecurityUtil.getClaimOrObject(
                 claims.get(jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY)));
     return value != null && value.contains("@") ? value : null;
-  }
-
-  /**
-   * An account that already exists answers to its own email only, and a provider token never acts
-   * as a bot. A name no account holds yet is a first login and is left to the sign-up checks.
-   */
-  private static void requireAccountOwnsEmail(String userName, String claimedEmail) {
-    User account =
-        Entity.getUserRepository()
-            .findByNameOrNull(EntityInterfaceUtil.quoteName(userName), Include.NON_DELETED);
-    if (account == null) {
-      return;
-    }
-    if (Boolean.TRUE.equals(account.getIsBot())
-        || !SecurityUtil.sameIdentifier(account.getEmail(), claimedEmail)) {
-      throw new AuthenticationException(
-          "Authentication failed: the token's email does not belong to the account it signs in to");
-    }
   }
 
   public void checkValidationsForToken(

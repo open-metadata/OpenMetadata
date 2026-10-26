@@ -345,19 +345,22 @@ class JwtFilterTest {
     assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
   }
 
-  /** The legacy flow names the user after the local part; another address must not reach them. */
+  /**
+   * The legacy flow resolves the account by the claim's local part. A stored email that differs from
+   * the token's - set by an admin, by CSV import or SCIM, or after an IdP domain change - must still
+   * sign in, not be logged out on every request.
+   */
   @Test
-  void aProviderTokenForAnotherAddressDoesNotSignInToTheAccountOfThatName() {
+  void aLegacyProviderTokenSignsInWhenTheStoredEmailDiffers() {
     ContainerRequestContext context =
         createRequestContextWithJwt(legacyProviderJwt("sam@other.example"));
     UserRepository users = repositoryWith(new User().withName("sam").withEmail("sam@gmail.com"));
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getUserRepository).thenReturn(users);
-
-      assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+      jwtFilter.filter(context);
     }
-    verify(context, never()).setSecurityContext(any());
+    verify(context, times(1)).setSecurityContext(any());
   }
 
   @Test
@@ -404,17 +407,24 @@ class JwtFilterTest {
             null,
             List.of("openmetadata.org"));
 
+    // A token that carries an email outside the allowed domains is rejected.
     ContainerRequestContext outsider =
         createRequestContextWithJwt(legacyProviderJwt("sam@gmail.com"));
     assertThrows(AuthenticationException.class, () -> legacyWithAllowList.filter(outsider));
 
+    // A token that carries no email is left alone: the legacy flow builds sam@openmetadata.org,
+    // whose
+    // domain is allowed, so a deployment whose first principal claim is a bare username keeps
+    // working
+    // instead of being locked out on upgrade.
     String subjectOnly =
         JWT.create()
             .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
             .withClaim("sub", "sam")
             .sign(algorithm);
     ContainerRequestContext noEmail = createRequestContextWithJwt(subjectOnly);
-    assertThrows(AuthenticationException.class, () -> legacyWithAllowList.filter(noEmail));
+    legacyWithAllowList.filter(noEmail);
+    verify(noEmail, times(1)).setSecurityContext(any());
   }
 
   @Test

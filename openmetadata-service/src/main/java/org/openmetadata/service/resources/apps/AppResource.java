@@ -1358,6 +1358,25 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return Response.status(Response.Status.OK).entity("App has been configured.").build();
   }
 
+  /**
+   * Whether the trigger payload changes or removes a value the app's configuration already sets.
+   * Supplying a value for a key the configuration leaves null or absent — a runtime parameter such as
+   * AutoPilot's {@code entityLink} — is part of a normal Trigger, not a configuration override.
+   */
+  static boolean overridesConfiguredValue(App app, Map<String, Object> configPayload) {
+    if (configPayload == null || configPayload.isEmpty()) {
+      return false;
+    }
+    Map<String, Object> configured = JsonUtils.getMap(app.getAppConfiguration());
+    for (Map.Entry<String, Object> entry : configPayload.entrySet()) {
+      Object current = configured.get(entry.getKey());
+      if (current != null && !current.equals(entry.getValue())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
   @Path("/trigger/{name}")
@@ -1389,10 +1408,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     authorizeAppOperation(securityContext, name, MetadataOperation.TRIGGER);
-    // An override payload changes the configuration the run uses — a DataRetention run with
-    // auditLogRetentionPeriod:1 would wipe the audit log — so sending one needs EditAll, not the
-    // Trigger permission that runs the app as it is configured.
-    if (configPayload != null && !configPayload.isEmpty()) {
+    // Overriding a configured setting changes the configuration the run uses — a DataRetention run
+    // with auditLogRetentionPeriod:1 would wipe the audit log — so that needs EditAll. Supplying a
+    // value for a runtime parameter the configuration leaves unset (AutoPilot's entityLink) is part
+    // of a normal Trigger, so it must not demand EditAll.
+    if (overridesConfiguredValue(app, configPayload)) {
       authorizeAppOperation(securityContext, name, MetadataOperation.EDIT_ALL);
     }
     if (Boolean.FALSE.equals(ApplicationHandler.getInstance().isEnabled(name))) {

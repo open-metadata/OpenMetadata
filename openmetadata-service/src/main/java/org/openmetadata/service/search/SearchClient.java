@@ -363,12 +363,14 @@ public interface SearchClient
   // The selecting query is a prefix match, so it also picks up a sibling whose FQN merely starts
   // with the same text (moving "Plan" would otherwise rewrite "Planning"). Rewrite only an FQN that
   // equals the old parent or sits under it at a real "." boundary, so those siblings are a no-op.
+  // The outer variable is docFQN, not currentFQN: the tag fragment appended below declares its own
+  // currentFQN, and Painless rejects a redeclaration — reusing the name fails the whole script.
   String UPDATE_FQN_PREFIX_SCRIPT =
       """
-                  String currentFQN = ctx._source.fullyQualifiedName;
-                  if (currentFQN != null &&
-                      (currentFQN.equals(params.oldParentFQN) || currentFQN.startsWith(params.oldParentFQN + '.'))) {
-                  String updatedFQN = params.newParentFQN + currentFQN.substring(params.oldParentFQN.length());
+                  String docFQN = ctx._source.fullyQualifiedName;
+                  if (docFQN != null &&
+                      (docFQN.equals(params.oldParentFQN) || docFQN.startsWith(params.oldParentFQN + '.'))) {
+                  String updatedFQN = params.newParentFQN + docFQN.substring(params.oldParentFQN.length());
                   ctx._source.fullyQualifiedName = updatedFQN;
                   ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
                   if (ctx._source.containsKey('parent')) {
