@@ -31,11 +31,14 @@ import { build as viteBuild } from 'vite';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const fixture = join(root, 'src/native-build-check.fixture.ts');
 const newFixture = join(root, 'src/native-new-build.fixture.ts');
+const standaloneFixture = join(root, 'src/native-standalone-build.fixture.ts');
 const invalid = 'export const nativeBuildCheck: number = "invalid";\n';
 const valid = 'export const nativeBuildCheck: number = 1;\n';
 const vite = join(root, 'node_modules/vite/bin/vite.js');
 assert.ok(
-  !existsSync(fixture) && !existsSync(newFixture),
+  !existsSync(fixture) &&
+    !existsSync(newFixture) &&
+    !existsSync(standaloneFixture),
   'Fixtures must not overwrite existing source'
 );
 let watcher;
@@ -174,6 +177,16 @@ try {
   );
   writeFileSync(fixture, valid);
   await nextBuild(false);
+  const beforeStandalone = artifacts();
+  writeFileSync(standaloneFixture, invalid);
+  await nextBuild(true);
+  assert.equal(
+    artifacts(),
+    beforeStandalone,
+    'New invalid unimported source must preserve artifacts'
+  );
+  writeFileSync(standaloneFixture, valid);
+  await nextBuild(false);
   const beforeNewFile = artifacts();
   writeFileSync(newFixture, invalid);
   writeFileSync(
@@ -199,5 +212,6 @@ try {
   if (watcher) await watcher.close();
   rmSync(fixture, { force: true });
   rmSync(newFixture, { force: true });
+  rmSync(standaloneFixture, { force: true });
   validBuild();
 }
