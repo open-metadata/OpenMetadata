@@ -63,11 +63,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../Entity/EntityLineage/EntityLineageSidebar.component', () => ({
-  __esModule: true,
-  default: () => <div data-testid="entity-lineage-sidebar" />,
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => {
   type ChildrenProps = { children?: ReactNode };
 
@@ -438,6 +433,35 @@ describe('Lineage integration', () => {
     upstreamEdges: {},
   };
 
+  it('fetches the lineage once when the same config is re-applied mid-request', async () => {
+    let resolveFetch: (value: typeof emptyLineageResponse) => void = jest.fn();
+    (getLineageDataByFQN as jest.Mock).mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      })
+    );
+
+    renderMounted();
+
+    await waitFor(() => expect(getLineageDataByFQN).toHaveBeenCalledTimes(1));
+
+    // Lineage settings load after mount and re-apply an equal config object,
+    // which re-runs the fetch effect for the same graph.
+    act(() => {
+      useLineageStore
+        .getState()
+        .setLineageConfig({ ...useLineageStore.getState().lineageConfig });
+    });
+    await act(async () => {
+      resolveFetch(emptyLineageResponse);
+    });
+    await waitFor(() => expect(useLineageStore.getState().init).toBe(true));
+
+    // A duplicate response landing after the user switched layers would
+    // redraw with the layers captured at its call and drop the column rows.
+    expect(getLineageDataByFQN).toHaveBeenCalledTimes(1);
+  });
+
   it('seeds the store time filter from the URL and fetches with it', async () => {
     mockLocation.search = '?lineageStartTime=100&lineageEndTime=200';
     (getLineageDataByFQN as jest.Mock).mockResolvedValue(emptyLineageResponse);
@@ -496,6 +520,106 @@ describe('Lineage integration', () => {
 
       expect(lastCall.queryFilter).toContain('alice');
     });
+  });
+
+  it('does not request the same lineage again while the first request is in flight', async () => {
+    const pending: Array<(response: unknown) => void> = [];
+    (getLineageDataByFQN as jest.Mock).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          pending.push(resolve);
+        })
+    );
+
+    renderMounted();
+
+    await waitFor(() => expect(getLineageDataByFQN).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      const { lineageConfig, setLineageConfig } = useLineageStore.getState();
+      setLineageConfig({ ...lineageConfig });
+    });
+
+    await act(async () => {
+      pending[0](emptyLineageResponse);
+    });
+
+    await waitFor(() => {
+      expect(useLineageStore.getState().loading).toBe(false);
+    });
+
+    expect(getLineageDataByFQN).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the latest requested lineage when an earlier response arrives last', async () => {
+    const pending: Array<(response: unknown) => void> = [];
+    (getLineageDataByFQN as jest.Mock).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          pending.push(resolve);
+        })
+    );
+    const tableNode = (fqn: string, nodeDepth: number) => ({
+      entity: {
+        id: fqn,
+        name: fqn,
+        fullyQualifiedName: fqn,
+        type: EntityType.TABLE,
+        entityType: EntityType.TABLE,
+        columns: [],
+      },
+      nodeDepth,
+    });
+    const responseWith = (downstreamFqn: string) => ({
+      nodes: {
+        'svc.db.s.t1': tableNode('svc.db.s.t1', 0),
+        [downstreamFqn]: tableNode(downstreamFqn, 1),
+      },
+      downstreamEdges: {
+        [downstreamFqn]: {
+          fromEntity: {
+            id: 'svc.db.s.t1',
+            type: EntityType.TABLE,
+            fullyQualifiedName: 'svc.db.s.t1',
+          },
+          toEntity: {
+            id: downstreamFqn,
+            type: EntityType.TABLE,
+            fullyQualifiedName: downstreamFqn,
+          },
+        },
+      },
+      upstreamEdges: {},
+    });
+
+    renderMounted();
+
+    await waitFor(() => expect(getLineageDataByFQN).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      const { lineageConfig, setLineageConfig } = useLineageStore.getState();
+      setLineageConfig({ ...lineageConfig, upstreamDepth: 1 });
+    });
+
+    await waitFor(() => expect(getLineageDataByFQN).toHaveBeenCalledTimes(2));
+
+    const shownFqns = () =>
+      useLineageStore
+        .getState()
+        .entityLineage.nodes?.map((node) => node.fullyQualifiedName);
+
+    await act(async () => {
+      pending[1](responseWith('latest.table'));
+    });
+
+    await waitFor(() => expect(shownFqns()).toContain('latest.table'));
+
+    await act(async () => {
+      pending[0](responseWith('stale.table'));
+    });
+
+    expect(shownFqns()).toContain('latest.table');
+    expect(shownFqns()).not.toContain('stale.table');
   });
 
   it('publishes data-quality lineage to the store', async () => {

@@ -15,11 +15,14 @@ package org.openmetadata.service.migration.mysql.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
+import static org.openmetadata.service.migration.utils.v206.MigrationUtil.ACTIVITY_FEED_ALERT_STEP;
+import static org.openmetadata.service.migration.utils.v206.MigrationUtil.addContractAndStatusToActivityFeedAlert;
 import static org.openmetadata.service.migration.utils.v210.AlertBacklogMigration.skipBacklogOfAlertsThePreviousReleaseCouldNotSend;
 import static org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets;
 import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.backfillCreationAudit;
 import static org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration.rebuildDataContractEntityReferences;
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
+import static org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration.retireDeltaLakeServices;
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
 import static org.openmetadata.service.migration.utils.v210.FlowableCharsetMigration.alignFlowableTableCharsets;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
@@ -42,6 +45,7 @@ import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
@@ -52,6 +56,9 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    // First, so no later step loads an entity still typed DeltaLake:
+    // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
+    retireDeltaLakeServices(handle, MYSQL, getPipelineServiceClient());
     alignFlowableTableCharsets(handle);
     ConversationMigration.migrate(handle, MYSQL);
     ConversationReferenceMigration.migrate(handle, MYSQL);
@@ -120,5 +127,22 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ConsumerIdMigration.STEP_NAME,
         () -> ConsumerIdMigration.storeConsumerIds(collectionDAO));
+    // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
+    // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
+    // harmless.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ACTIVITY_FEED_ALERT_STEP,
+        () -> addContractAndStatusToActivityFeedAlert(handle));
+    // `migrate` runs data migrations before it starts Flowable, and this step deploys a workflow.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        GlossaryAutomationReviewMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
+        });
   }
 }

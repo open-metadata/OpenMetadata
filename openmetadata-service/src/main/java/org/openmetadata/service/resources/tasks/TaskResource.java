@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -59,6 +60,7 @@ import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.tasks.CreateTaskComment;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.tasks.TaskCount;
+import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.BulkTaskOperationParams;
@@ -85,6 +87,7 @@ import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
+import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -132,6 +135,16 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   static final String SERVER_OPENED_REVIEW =
       "Memory conflict reviews are opened and kept by the server: record the conflict as disputes"
           + " on the memory instead";
+
+  static final String SERVER_OPENED_COMPLETION =
+      "Metadata completion tasks are opened and kept by lifecycle workflows: fill in the asset's"
+          + " missing fields instead";
+
+  /** Task types only the server opens and edits, with why a client may not. */
+  private static final Map<TaskEntityType, String> SERVER_OPENED_TYPES =
+      Map.of(
+          TaskEntityType.MemoryConflictReview, SERVER_OPENED_REVIEW,
+          TaskEntityType.MetadataCompletion, SERVER_OPENED_COMPLETION);
 
   private static final String TASK_SEARCH_DESCRIPTION =
       "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
@@ -231,6 +244,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           UUID createdById,
       @Parameter(description = "Filter by entity FQN the task is about") @QueryParam("aboutEntity")
           String aboutEntity,
+      @Parameter(
+              description =
+                  "Comma-separated entity UUIDs; matches those entities exactly, excluding descendants")
+          @QueryParam("aboutEntityIds")
+          String aboutEntityIds,
       @Parameter(description = "Filter by parent service FQN of the entity the task is about")
           @QueryParam("aboutService")
           String aboutService,
@@ -291,6 +309,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     if (aboutEntity != null) {
       filter.addQueryParam("aboutEntity", aboutEntity);
+    }
+    if (aboutEntityIds != null) {
+      filter.addQueryParam(
+          "aboutEntityIds",
+          Arrays.stream(aboutEntityIds.split(","))
+              .map(String::trim)
+              .map(UUID::fromString)
+              .map(UUID::toString)
+              .collect(Collectors.joining(",")));
     }
     if (aboutService != null) {
       filter.addQueryParam("aboutService", aboutService);
@@ -1010,7 +1037,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
    */
   private static void requireCreatableThroughApi(CreateTask create) {
     if (isServerOpenedType(create.getType())) {
-      throw BadRequestException.of(SERVER_OPENED_REVIEW);
+      throw BadRequestException.of(SERVER_OPENED_TYPES.get(create.getType()));
     }
   }
 
@@ -1032,6 +1059,17 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     OperationContext operationContext =
         new OperationContext(aboutRef.getType(), MetadataOperation.CREATE_TASK);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (OntologyApprovalWorkflow.isReview(task)) {
+      EntityReference target = aboutRef;
+      if (Entity.ONTOLOGY_RELEASE.equals(aboutRef.getType())) {
+        OntologyRelease release = Entity.getEntity(aboutRef, "", Include.NON_DELETED);
+        target = release.getOntology();
+      }
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(target.getType(), MetadataOperation.EDIT_ALL),
+          new ResourceContext<>(target.getType(), target.getId(), null));
+    }
   }
 
   private void authorizeViewOnAboutEntity(
@@ -1225,15 +1263,18 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
    * and its assignees are who may decide, so no PATCH edits one, and no task becomes one.
    */
   private static void rejectServerOpenedTaskEdit(Task original, Task patched) {
-    if (isServerOpenedType(original.getType()) || isServerOpenedType(patched.getType())) {
-      throw BadRequestException.of(SERVER_OPENED_REVIEW);
+    if (isServerOpenedType(original.getType())) {
+      throw BadRequestException.of(SERVER_OPENED_TYPES.get(original.getType()));
+    }
+    if (isServerOpenedType(patched.getType())) {
+      throw BadRequestException.of(SERVER_OPENED_TYPES.get(patched.getType()));
     }
   }
 
   /** Bulk edits reach a task the way PATCH does, so a memory conflict review refuses them too. */
   private static void requireEditableThroughApi(Task task) {
     if (isServerOpenedType(task.getType())) {
-      throw BadRequestException.of(SERVER_OPENED_REVIEW);
+      throw BadRequestException.of(SERVER_OPENED_TYPES.get(task.getType()));
     }
   }
 
@@ -1248,7 +1289,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   }
 
   private static boolean isServerOpenedType(TaskEntityType type) {
-    return type == TaskEntityType.MemoryConflictReview;
+    return type != null && SERVER_OPENED_TYPES.containsKey(type);
   }
 
   private void rejectForgeAttributionEdits(Task original, Task patched) {

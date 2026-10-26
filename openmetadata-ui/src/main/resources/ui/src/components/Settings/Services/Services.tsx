@@ -16,7 +16,6 @@ import {
   Button,
   Button as CoreButton,
   Card,
-  EmptyPlaceholder,
   Grid,
   Tooltip,
   Typography,
@@ -41,7 +40,6 @@ import { OPEN_METADATA } from '../../../constants/Services.constant';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Include } from '../../../generated/type/include';
@@ -72,7 +70,7 @@ import {
 } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainFilterChip } from '../../common/DomainFilterChip/DomainFilterChip.component';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { ListView } from '../../common/ListView/ListView.component';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -291,10 +289,9 @@ const Services = ({ serviceName }: ServicesProps) => {
     // the category has any.
     if (!isEmpty(searchTerm) || serviceQueryFilter || deleted) {
       return (
-        <ErrorPlaceHolder
-          className="mt-24 border-none"
-          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder data-testid="no-data-placeholder" />
+        </div>
       );
     }
 
@@ -309,7 +306,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       <div
         className="tw:relative tw:min-h-[400px]"
         data-testid="services-empty-placeholder">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           description={t(descriptionKey)}
           // `footer` rather than `actions` so the button keeps the same LimitWrapper the header
           // button has — service creation is limit-gated wherever the action appears.
@@ -330,7 +327,6 @@ const Services = ({ serviceName }: ServicesProps) => {
           }
           icon={<EmptyStateIcon className={SERVICE_EMPTY_STATE_ICON_CLASS} />}
           title={t(titleKey)}
-          variant="blank"
         />
       </div>
     );

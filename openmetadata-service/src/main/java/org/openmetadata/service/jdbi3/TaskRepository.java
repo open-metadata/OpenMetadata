@@ -66,6 +66,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
+import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -77,6 +78,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.tasks.TaskFieldValidator;
@@ -113,6 +115,7 @@ public class TaskRepository extends EntityRepository<Task> {
   // Stage a workflow-managed task holds after being persisted but before its Flowable instance
   // starts.
   public static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
+  public static final String WORKFLOW_START_FAILED_STAGE_ID = "workflow-start-failed";
 
   private static final Set<TaskEntityStatus> ALREADY_OPEN_STATUSES =
       Set.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress);
@@ -388,6 +391,7 @@ public class TaskRepository extends EntityRepository<Task> {
     computeAboutFqnHash(task);
 
     initializeWorkflowManagedTask(task, update);
+    OntologyApprovalWorkflow.prepare(task, update);
 
     // Task domains MUST be inherited from the target entity (about field)
     // This ensures tasks follow domain-based data isolation policies
@@ -455,8 +459,9 @@ public class TaskRepository extends EntityRepository<Task> {
    * If no assignees are specified and the target entity has owners, set the entity owners as default
    * assignees. This ensures tasks about owned entities are automatically routed to the right people.
    */
-  private void setDefaultAssigneesFromEntityOwners(Task task) {
-    if (!nullOrEmpty(task.getAssignees())) {
+  void setDefaultAssigneesFromEntityOwners(Task task) {
+    if (!nullOrEmpty(task.getAssignees())
+        || Boolean.FALSE.equals(task.getUseEntityOwnerFallback())) {
       return;
     }
 
@@ -519,6 +524,12 @@ public class TaskRepository extends EntityRepository<Task> {
     Map<UUID, EntityReference> byId = new LinkedHashMap<>();
     refs.forEach(ref -> byId.putIfAbsent(ref.getId(), ref));
     return new ArrayList<>(byId.values());
+  }
+
+  /** A task takes its domains from the entity it is about on every write, never from its author. */
+  @Override
+  protected boolean authorDecidesDomains() {
+    return false;
   }
 
   /**
@@ -586,7 +597,15 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of(FIELD_ABOUT, FIELD_CREATED_BY, FIELD_ASSIGNEES, FIELD_WATCHERS);
+  }
+
+  @Override
   public void storeEntity(Task task, boolean update) {
+    if (!update && OntologyApprovalWorkflow.isReview(task)) {
+      OntologyApprovalWorkflow.lockTarget(task);
+    }
     List<EntityReference> domains = task.getDomains();
     EntityReference about = task.getAbout();
     EntityReference createdBy = task.getCreatedBy();
@@ -655,6 +674,12 @@ public class TaskRepository extends EntityRepository<Task> {
           Entity.TASK,
           Relationship.MENTIONED_IN);
     }
+    OntologyApprovalWorkflow.start(task);
+  }
+
+  @Override
+  protected void preDelete(Task task, String deletedBy) {
+    OntologyApprovalWorkflow.requireDeletable(task);
   }
 
   private void storeAssignees(Task task) {
@@ -1060,8 +1085,31 @@ public class TaskRepository extends EntityRepository<Task> {
       validateUnderlyingEntityPermission(authorizer, securityContext, task);
     }
 
-    if (!closeTask) {
+    if (!closeTask && isWorkflowApproval(task)) {
+      requireAssigneeForWorkflowApproval(task, securityContext);
+    } else if (!closeTask) {
       enforceReviewerForApprovalStatusTask(task, securityContext);
+    }
+  }
+
+  /** A stage move or held change that a workflow asks its assignees to decide. */
+  private static boolean isWorkflowApproval(Task task) {
+    return task.getWorkflowInstanceId() != null
+        && (task.getType() == TaskEntityType.RequestApproval
+            || ChangeRequestTasks.reviewsChangeRequest(task));
+  }
+
+  /**
+   * A workflow's approval is decided by its assignees and only by them: an admin or owner who is not
+   * assigned cannot decide it, and an assignee can, whether or not the asset also has reviewers. The
+   * workflow already chose who decides (reviewers, owners or named users), and its own status write
+   * is exempt from the reviewer rule. Bots keep access; the engine resolves tasks on its own path.
+   */
+  private void requireAssigneeForWorkflowApproval(Task task, SecurityContext securityContext) {
+    final String userName = securityContext.getUserPrincipal().getName();
+    final SubjectContext subject = SubjectContext.getSubjectContext(userName);
+    if (!subject.isBot() && !subject.isOwner(task.getAssignees())) {
+      throw new AuthorizationException(CatalogExceptionMessage.notTaskAssignee(userName));
     }
   }
 
@@ -1314,6 +1362,11 @@ public class TaskRepository extends EntityRepository<Task> {
       throw new IllegalArgumentException("Resolution cannot be null");
     }
     Task original = get(null, task.getId(), getFields("*"));
+    if (OntologyApprovalWorkflow.isReview(original)
+        && original.getStatus() == TaskEntityStatus.Cancelled
+        && resolution.getType() == TaskResolutionType.Cancelled) {
+      return original;
+    }
     Task updated = JsonUtils.deepCopy(original, Task.class);
     updated.setStatus(mapResolutionToStatus(resolution.getType()));
     updated.setResolution(resolution);
@@ -1412,6 +1465,18 @@ public class TaskRepository extends EntityRepository<Task> {
 
   public Task findOpenTaskByEntityAndType(String entityFqn, TaskEntityType taskType) {
     return findTaskByEntityTypeAndStatuses(entityFqn, taskType, OPEN_TASK_STATUSES);
+  }
+
+  /** The entity's open tasks of a type, newest first, at most {@code limit} of them. */
+  public List<Task> listOpenTasksByEntityAndType(
+      String entityFqn, TaskEntityType taskType, int limit) {
+    List<String> statusValues = OPEN_TASK_STATUSES.stream().map(TaskEntityStatus::value).toList();
+    return daoCollection
+        .taskDAO()
+        .listByAboutAndTypeAndStatuses(entityFqn, taskType.value(), statusValues, limit)
+        .stream()
+        .map(json -> hydrateStoredTask(JsonUtils.readValue(json, Task.class)))
+        .toList();
   }
 
   public Task findTaskByEntityTypeAndStatus(
@@ -1529,6 +1594,19 @@ public class TaskRepository extends EntityRepository<Task> {
     IncidentTcrsSyncHandler.sync(updated);
   }
 
+  @Override
+  protected void flushInOneTransaction(final List<Task> tasks, final Runnable work) {
+    if (tasks.stream().anyMatch(OntologyApprovalWorkflow::isReview)) {
+      executeInTransaction(
+          () -> {
+            work.run();
+            return null;
+          });
+    } else {
+      super.flushInOneTransaction(tasks, work);
+    }
+  }
+
   private void initializeWorkflowManagedTask(Task task, boolean update) {
     if (update || !shouldCreateWorkflowManagedTask(task)) {
       return;
@@ -1616,7 +1694,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
   private void markWorkflowTriggerFailure(Task task) {
     try {
-      task.setWorkflowStageId("workflow-start-failed");
+      task.setWorkflowStageId(WORKFLOW_START_FAILED_STAGE_ID);
       task.setWorkflowStageDisplayName("Workflow start failed");
       task.setUpdatedAt(System.currentTimeMillis());
       storeEntity(task, true);
@@ -1722,10 +1800,13 @@ public class TaskRepository extends EntityRepository<Task> {
         Operation operation,
         org.openmetadata.schema.type.change.ChangeSource changeSource) {
       super(original, updated, operation, changeSource);
+      setUseOptimisticLocking(OntologyApprovalWorkflow.isReview(original));
     }
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      OntologyApprovalWorkflow.requireUnchangedTarget(original, updated);
+      OntologyApprovalWorkflow.cancel(updated);
       preserveComments();
       updateAssignees();
       updateTaskReviewers();

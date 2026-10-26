@@ -41,6 +41,7 @@ import React, {
 } from 'react';
 import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { PersonalAccessToken } from '../../../../../generated/auth/personalAccessToken';
 import { JWTTokenExpiry } from '../../../../../generated/entity/teams/user';
 import APIClient from '../../../../../rest/axiosClient';
@@ -72,12 +73,26 @@ const AccessTokenLoadingSkeleton = () => (
   </Card>
 );
 
+const TokenLimitHint = ({
+  t,
+}: {
+  t: ReturnType<typeof useTranslation>['t'];
+}) => (
+  <Typography
+    className="tw:text-tertiary"
+    data-testid="token-limit-reached"
+    size="text-sm">
+    {t('message.access-token-limit-reached')}
+  </Typography>
+);
+
 const AccessTokenEmptyState = ({
   t,
   expiryOptions,
   expiry,
   setExpiry,
   isLoading,
+  isLimitReached,
   handleGenerate,
 }: {
   t: ReturnType<typeof useTranslation>['t'];
@@ -85,6 +100,7 @@ const AccessTokenEmptyState = ({
   expiry: JWTTokenExpiry;
   setExpiry: Dispatch<SetStateAction<JWTTokenExpiry>>;
   isLoading: boolean;
+  isLimitReached: boolean;
   handleGenerate: () => void;
 }) => (
   <Card
@@ -128,12 +144,14 @@ const AccessTokenEmptyState = ({
           color="primary"
           data-testid="generate-token"
           icon={Plus}
+          isDisabled={isLimitReached}
           isLoading={isLoading}
           size="sm"
           onClick={handleGenerate}>
           {t('label.generate-token')}
         </Button>
       </Box>
+      {isLimitReached && <TokenLimitHint t={t} />}
     </Card.Content>
   </Card>
 );
@@ -149,6 +167,7 @@ const AccessTokenDetails = ({
   canReveal,
   handleCopy,
   isLoading,
+  isLimitReached,
   handleRegenerate,
   handleRevoke,
 }: {
@@ -162,6 +181,7 @@ const AccessTokenDetails = ({
   canReveal: boolean;
   handleCopy: () => void;
   isLoading: boolean;
+  isLimitReached: boolean;
   handleRegenerate: () => void;
   handleRevoke: () => void;
 }) => (
@@ -250,6 +270,7 @@ const AccessTokenDetails = ({
         color="secondary"
         data-testid="regenerate-token"
         iconLeading={<RefreshCcw02 height={12} width={12} />}
+        isDisabled={isLimitReached}
         isLoading={isLoading}
         size="sm"
         onClick={handleRegenerate}>
@@ -264,6 +285,7 @@ const AccessTokenDetails = ({
         onClick={handleRevoke}>
         {t('label.revoke')}
       </Button>
+      {isLimitReached && <TokenLimitHint t={t} />}
     </Box>
   </Card>
 );
@@ -275,6 +297,23 @@ const AccessTokenRow: React.FC = () => {
   const [isFetching, setIsFetching] = useState(true);
   const [reveal, setReveal] = useState(false);
   const [expiry, setExpiry] = useState<JWTTokenExpiry>(JWTTokenExpiry.OneHour);
+  const { getResourceLimit } = useLimitStore();
+  // Legacy parity: the user limit can switch off personal access tokens.
+  const [isLimitReached, setIsLimitReached] = useState(false);
+
+  useEffect(() => {
+    getResourceLimit('user', false)
+      .then((limit) =>
+        setIsLimitReached(
+          Boolean(
+            limit?.configuredLimit?.disabledFields?.includes(
+              'personalAccessToken'
+            )
+          )
+        )
+      )
+      .catch(() => setIsLimitReached(false));
+  }, [getResourceLimit]);
 
   const expiryOptions = useMemo(
     () => [
@@ -395,6 +434,7 @@ const AccessTokenRow: React.FC = () => {
         expiry={expiry}
         expiryOptions={expiryOptions}
         handleGenerate={handleGenerate}
+        isLimitReached={isLimitReached}
         isLoading={isLoading}
         setExpiry={setExpiry}
         t={t}
@@ -419,6 +459,7 @@ const AccessTokenRow: React.FC = () => {
       handleCopy={handleCopy}
       handleRegenerate={handleRegenerate}
       handleRevoke={handleRevoke}
+      isLimitReached={isLimitReached}
       isLoading={isLoading}
       isTokenExpired={isTokenExpired}
       reveal={reveal}

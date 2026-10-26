@@ -29,7 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../../components/common/Table/Table.interface';
 import Table from '../../../components/common/Table/TableV2';
@@ -46,7 +46,6 @@ import {
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -117,7 +116,7 @@ const RolesListPage = () => {
         GlobalSettingsMenuCategory.ACCESS,
         t('label.role-plural').toString()
       ),
-    []
+    [t]
   );
 
   const columns: ColumnsType<Role> = useMemo(() => {
@@ -186,7 +185,7 @@ const RolesListPage = () => {
                   </AriaButton>
                   <Popover
                     arrow
-                    containerClassName="tw:w-40 tw:px-4 tw:py-3 tw:text-center"
+                    containerClassName="tw:w-40 tw:px-4 tw:py-3"
                     placement="bottom">
                     <Box
                       inline
@@ -256,27 +255,30 @@ const RolesListPage = () => {
         },
       },
     ];
-  }, []);
+  }, [deleteRolePermission, t, viewPolicyPermission]);
 
-  const fetchRoles = async (paging?: Partial<Paging>) => {
-    setIsLoading(true);
-    try {
-      const data = await getRoles(
-        'policies',
-        paging?.after,
-        paging?.before,
-        undefined,
-        pageSize
-      );
+  const fetchRoles = useCallback(
+    async (paging?: Partial<Paging>) => {
+      setIsLoading(true);
+      try {
+        const data = await getRoles(
+          'policies',
+          paging?.after,
+          paging?.before,
+          undefined,
+          pageSize
+        );
 
-      setRoles(data.data || []);
-      handlePagingChange(data.paging);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        setRoles(data.data || []);
+        handlePagingChange(data.paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [handlePagingChange, pageSize]
+  );
 
   const handleAfterDeleteAction = useCallback(() => {
     fetchRoles();
@@ -322,7 +324,7 @@ const RolesListPage = () => {
     } else {
       fetchRoles();
     }
-  }, [pageSize, pagingCursor]);
+  }, [fetchRoles, pagingCursor]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.role-plural').toString()}>
@@ -377,16 +379,19 @@ const RolesListPage = () => {
             loading={isLoading}
             locale={{
               emptyText: (
-                <ErrorPlaceHolder
-                  className="border-none"
-                  heading={t('label.role').toString()}
-                  permission={addRolePermission}
-                  permissionValue={t('label.create-entity', {
-                    entity: t('label.role'),
-                  })}
-                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={handleAddRole}
-                />
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  <CreatePlaceholder
+                    data-testid={`create-error-placeholder-${t(
+                      'label.role'
+                    ).toString()}`}
+                    heading={t('label.role').toString()}
+                    permission={addRolePermission}
+                    permissionValue={t('label.create-entity', {
+                      entity: t('label.role'),
+                    })}
+                    onCreate={handleAddRole}
+                  />
+                </div>
               ),
             }}
             pagination={false}

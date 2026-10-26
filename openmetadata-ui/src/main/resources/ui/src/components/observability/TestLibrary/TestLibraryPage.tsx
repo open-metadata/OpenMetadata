@@ -14,10 +14,9 @@ import { Button, PageLayout } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import TestDefinitionForm from '../../TestLibrary/TestDefinitionForm/TestDefinitionForm.component';
@@ -70,12 +69,14 @@ const TestLibraryPage = () => {
 
   if (!viewPermission) {
     return (
-      <ErrorPlaceHolder
-        permissionValue={t('label.view-entity', {
-          entity: t('label.test-definition'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.test-definition'),
+          })}
+        />
+      </div>
     );
   }
 

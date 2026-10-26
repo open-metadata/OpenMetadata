@@ -80,6 +80,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.seeding.EssentialSeeds;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.ClasspathScanIndex;
@@ -113,6 +114,10 @@ public final class Entity {
   @Getter @Setter private static AuditLogRepository auditLogRepository;
   @Getter @Setter private static TypeRepository typeRepository;
   @Getter @Setter private static EntityRelationshipRepository entityRelationshipRepository;
+
+  /** The configured authorizer, for checks that run where a write is stored. Null outside the server. */
+  @Getter @Setter private static Authorizer authorizer;
+
   // List of all the entities
   private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
@@ -214,6 +219,10 @@ public final class Entity {
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
   public static final String RELATIONSHIP_TYPE = "relationshipType";
+  public static final String ONTOLOGY = "ontology";
+  public static final String ONTOLOGY_CONCEPT = "ontologyConcept";
+  public static final String ONTOLOGY_PROPERTY = "ontologyProperty";
+  public static final String ONTOLOGY_RELEASE = "ontologyRelease";
   public static final String ONTOLOGY_AXIOM = "ontologyAxiom";
   public static final String ONTOLOGY_CHANGE_SET = "ontologyChangeSet";
   public static final String TAG = "tag";
@@ -451,6 +460,7 @@ public final class Entity {
     jobDAO = null;
     searchRepository = null;
     entityRelationshipRepository = null;
+    authorizer = null;
     ENTITY_REPOSITORY_MAP.clear();
     SeedDataGate.getInstance().reset();
     EssentialSeeds.getInstance().reset();

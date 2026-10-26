@@ -10,9 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Card, Divider } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Card,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import '../../../styles/variables.less';
 import '../OverviewSection/OverviewSection.less';
 import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
@@ -101,7 +107,9 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
       onEdit={onEdit}>
       {totalTests === 0 ? (
         <div className="data-quality-section">
-          <span className="no-data-placeholder">{t('label.no-tests-run')}</span>
+          <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
+            {t('label.no-tests-run')}
+          </Typography>
         </div>
       ) : (
         <div className="data-quality-content">

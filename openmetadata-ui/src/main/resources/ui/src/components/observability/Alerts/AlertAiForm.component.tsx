@@ -11,18 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  HookForm,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, HookForm, Typography } from '@openmetadata/ui-core-components';
 import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { FormEvent, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ModifiedCreateEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import AlertAiFormFields from './AlertAiFormFields.component';
 import {
   AlertAiFormProps,
@@ -95,7 +91,7 @@ function AlertAiForm(props: Readonly<AlertAiFormProps>) {
         // width="100%" is required: EmptyPlaceholder's 300px default is wider
         // than the hint column's 260px minimum and would overflow when it
         // shrinks.
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           description={t('message.form-hint-empty-state')}
           icon={Lightbulb05}
           title={t('label.no-entity-selected', { entity: t('label.field') })}
@@ -118,7 +114,13 @@ function AlertAiForm(props: Readonly<AlertAiFormProps>) {
       // `relative` makes the scrolling form the containing block of the
       // visually hidden inputs react-aria renders for toggles and checkboxes.
       // Without it they overflow into the drawer, which then scrolls as well.
-      formClassName="tw:relative tw:px-7 tw:pt-6 tw:pb-7"
+      // In view mode the form sits under the description card on the details
+      // page, so it aligns with that card instead of carrying modal padding.
+      formClassName={
+        isViewMode
+          ? 'tw:relative tw:pb-6'
+          : 'tw:relative tw:px-7 tw:pt-6 tw:pb-7'
+      }
       id={formId}
       renderFieldDoc={(markdown) => (
         // form-hint-doc carries the hint panel's typography (12.5px / 1.55 /

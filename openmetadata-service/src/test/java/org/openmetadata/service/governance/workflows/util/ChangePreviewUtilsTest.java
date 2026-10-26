@@ -559,4 +559,61 @@ class ChangePreviewUtilsTest {
     assertTrue(result instanceof Map<?, ?>);
     assertTrue(!((Map<?, ?>) result).containsKey("proposedChanges"));
   }
+
+  @Test
+  void buildProposedChangesPayload_newTermMovedToInReview_hasNoProposedChanges() {
+    EntityInterface<?> entity =
+        new GlossaryTerm()
+            .withName("t")
+            .withIncrementalChangeDescription(
+                new ChangeDescription().withFieldsUpdated(List.of(statusChange())));
+
+    Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, null);
+
+    assertTrue(ChangePreviewUtils.extractProposedChanges(result).isEmpty());
+  }
+
+  @Test
+  void buildProposedChangesPayload_editAlongsideStatusMove_keepsOnlyTheEdit() {
+    EntityInterface<?> entity =
+        new GlossaryTerm()
+            .withName("t")
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsAdded(
+                        List.of(
+                            new FieldChange()
+                                .withName("tags")
+                                .withNewValue("[{\"tagFQN\":\"PII.Sensitive\"}]")))
+                    .withFieldsUpdated(List.of(statusChange())));
+    Map<String, Object> priorPayload = new LinkedHashMap<>();
+    priorPayload.put(
+        "proposedChanges",
+        Map.of("entityStatus", Map.of("added", List.of("In Review"), "removed", List.of("Draft"))));
+
+    Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, priorPayload);
+    Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+
+    assertEquals(List.of("tags"), List.copyOf(proposed.keySet()));
+    assertEquals(List.of("PII.Sensitive"), proposed.get("tags").added());
+  }
+
+  @Test
+  void buildProposedChangesPayload_changeRequestStatusEdit_isKept() {
+    EntityInterface<?> entity = new GlossaryTerm().withName("t");
+    ChangeDescription pending = new ChangeDescription().withFieldsUpdated(List.of(statusChange()));
+
+    Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, null, pending);
+    Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+
+    assertEquals(List.of("In Review"), proposed.get("entityStatus").added());
+    assertEquals(List.of("Draft"), proposed.get("entityStatus").removed());
+  }
+
+  private static FieldChange statusChange() {
+    return new FieldChange()
+        .withName("entityStatus")
+        .withOldValue("Draft")
+        .withNewValue("In Review");
+  }
 }

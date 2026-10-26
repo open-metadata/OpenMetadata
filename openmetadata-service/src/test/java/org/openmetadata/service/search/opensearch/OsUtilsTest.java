@@ -818,6 +818,8 @@ class OsUtilsTest {
 
       assertTrue(root.path("settings").path("index").path("knn").asBoolean());
       assertEquals(
+          "false", root.path("settings").path("index").path("knn.derived_source.enabled").asText());
+      assertEquals(
           1536,
           root.path("mappings").path("properties").path("embedding").path("dimension").asInt());
       assertEquals(

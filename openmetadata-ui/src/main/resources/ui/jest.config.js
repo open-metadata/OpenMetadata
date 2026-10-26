@@ -47,13 +47,24 @@ module.exports = {
     '<rootDir>/src/enums/*',
   ],
 
-  // Transforms for Jest 29+
+  // SWC only transpiles TS/TSX, as ts-jest already did under tsconfig's
+  // isolatedModules, but faster. Jest never type-checks: `yarn tsc:check` does.
   transform: {
     '^.+\\.(ts|tsx)$': [
-      'ts-jest',
+      '@swc/jest',
       {
-        tsconfig: 'tsconfig.json',
-        useESM: true,
+        jsc: {
+          parser: { syntax: 'typescript', tsx: true },
+          target: 'es2020',
+          transform: {
+            react: { runtime: 'automatic' },
+            // tsconfig targets es6, where TypeScript assigns class fields in
+            // the constructor; keep that so *ClassBase overrides behave as
+            // they do in the app.
+            useDefineForClassFields: false,
+          },
+        },
+        module: { type: 'commonjs' },
       },
     ],
     '^.+\\.(js|jsx)$': 'babel-jest',
@@ -63,7 +74,7 @@ module.exports = {
   clearMocks: true,
   moduleNameMapper: {
     // Mock `*.assets.ts` wrappers around `import.meta.glob(...)` — Vite-only
-    // syntax that ts-jest cannot parse. The stub returns `{}` for empty-map
+    // syntax the CJS Jest transform cannot parse. The stub returns `{}` for empty-map
     // consumers; `applicationSchemaLoaders` gets real loaders backed by
     // `require()` so ApplicationsClassBase tests see the on-disk JSON.
     '\\.assets$': '<rootDir>/src/test/unit/mocks/glob.mock.js',
@@ -107,7 +118,7 @@ module.exports = {
     '^.*/AppRouter/withSuspenseFallback$':
       '<rootDir>/src/test/unit/mocks/withSuspenseFallback.mock.tsx',
     // `src/utils/isPlaywrightBuild.ts` reads `import.meta.env.PW_E2E_BUILD`,
-    // which ts-jest cannot parse under the default CJS transform. Redirect
+    // which the CJS Jest transform cannot parse. Redirect
     // every consumer through the stub so the syntax stays out of the tree
     // Jest walks. See the stub for how to flip the flag per-test.
     '^.*/utils/isPlaywrightBuild$':
@@ -126,12 +137,6 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!(@azure/msal-react|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd/invariant|@react-dnd/asap|@react-dnd/shallowequal|@melloware/react-logviewer|@openmetadata/ui-core-components|nanoid|@rjsf/core|@rjsf/utils|@rjsf/validator-ajv8|uuid|elkjs|react-markdown|remark-.*|rehype-.*|unified|unist-util-.*|vfile.*|mdast-util-.*|micromark.*|hast-util-.*|property-information|space-separated-tokens|comma-separated-tokens|style-to-.*|html-url-attributes|decode-named-character-reference|character-entities.*|bail|is-plain-obj|trough|devlop|trim-lines|ccount|longest-streak|zwitch|markdown-table|escape-string-regexp|estree-util-is-identifier-name))',
   ],
-
-  // TypeScript
-  preset: 'ts-jest',
-
-  // ESM support
-  extensionsToTreatAsEsm: ['.ts', '.tsx'],
 
   // Test Environment
   testEnvironment: 'jsdom',

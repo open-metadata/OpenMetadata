@@ -357,4 +357,22 @@ describe('buildWorkflowForSave', () => {
       })
     );
   });
+
+  it('keeps the lifecycle metadata of a workflow saved from the canvas', async () => {
+    const lifecycle = {
+      version: 1,
+      entityType: 'dataProduct',
+      gates: [{ stage: 'Draft', checks: [{ field: 'description' }] }],
+    };
+    const workflow = await buildWorkflowForSave(
+      [createStartNode(), SET_ATTRIBUTE_NODE, END_NODE],
+      buildEdges('set'),
+      {
+        ...STORED_EVENT_DEFINITION,
+        config: { storeStageStatus: true, lifecycle },
+      } as unknown as WorkflowDefinition
+    );
+
+    expect(workflow.config).toEqual({ storeStageStatus: true, lifecycle });
+  });
 });

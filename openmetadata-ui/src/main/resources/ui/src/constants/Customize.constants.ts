@@ -27,6 +27,7 @@ export const TAB_LABEL_MAP = {
   [EntityTabs.ACTIVITY_FEED]: 'label.activity-feed-and-task-plural',
   [EntityTabs.CUSTOM_PROPERTIES]: 'label.custom-property-plural',
   [EntityTabs.TERMS]: 'label.term-plural',
+  [EntityTabs.REVIEW]: 'label.review',
   [EntityTabs.SCHEMA]: 'label.schema',
   [EntityTabs.SAMPLE_DATA]: 'label.sample-data',
   [EntityTabs.TABLE_QUERIES]: 'label.query-plural',

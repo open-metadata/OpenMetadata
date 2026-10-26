@@ -13,6 +13,7 @@
 import { Teams as TeamsIcon } from '../../../icons/Teams';
 import type { ReactNode } from 'react';
 import {
+  Link as AriaLink,
   Tooltip as AriaTooltip,
   TooltipTrigger as AriaTooltipTrigger,
 } from 'react-aria-components';
@@ -125,14 +126,14 @@ export const AvatarGroup = ({
     const href = resolveOwnerHref(owner);
 
     const chip = href ? (
-      <a
+      <AriaLink
         aria-label={nameStr}
         className="tw:block"
         data-testid="owner-link"
         href={href}
         key={owner.id}>
         {nameNode}
-      </a>
+      </AriaLink>
     ) : (
       <span className="tw:block" data-testid="owner-link" key={owner.id}>
         {nameNode}

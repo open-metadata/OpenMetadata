@@ -14,11 +14,12 @@ import { ComponentType, FC } from 'react';
 import PageLayoutV1 from '../components/PageLayoutV1/PageLayoutV1';
 
 export const withPageLayout = <P extends { pageTitle: string }>(
-  Component: ComponentType<P>
+  Component: ComponentType<P>,
+  { fullHeight }: { fullHeight?: boolean } = {}
 ) => {
   const WrappedComponent: FC<Exclude<P, 'pageTitle'>> = (props) => {
     return (
-      <PageLayoutV1 pageTitle={props.pageTitle}>
+      <PageLayoutV1 fullHeight={fullHeight} pageTitle={props.pageTitle}>
         <Component {...props} />
       </PageLayoutV1>
     );

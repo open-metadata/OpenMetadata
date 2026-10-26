@@ -13,8 +13,10 @@
 import {
   Alert,
   Autocomplete,
+  Button,
   SelectItemType,
 } from '@openmetadata/ui-core-components';
+import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -46,42 +48,43 @@ const toItem = (option: SourceOption): SelectItemType => ({
 });
 
 /**
- * Several sources for one alert, grouped by kind. A source that would break a rule is shown disabled with the
- * reason beside it, rather than failing on save. A selected source that can never produce a match
- * with what has been chosen so far gets a warning, and the alert can still be saved.
+ * Several sources for one alert, grouped by kind. The server lists them. A source that would break
+ * a rule is shown disabled with the reason beside it, rather than failing on save. A selected
+ * source that can never produce a match with what has been chosen so far gets a warning, and the
+ * alert can still be saved. When the server could not answer, it says so and offers to ask again.
  */
 function AlertSourcePicker({
-  sources,
   value = [],
   onChange,
-  selection,
+  capabilities,
   isDisabled = false,
+  isRequired,
+  isInvalid,
+  hint,
 }: Readonly<AlertSourcePickerProps>) {
   const { t } = useTranslation();
 
+  const { selection, knownSources, loading, settled, retry } = capabilities;
   const sourceOptions = useMemo(
-    () => getSourceOptions(sources, value, selection),
-    [sources, value, selection]
+    () => getSourceOptions(value, selection, knownSources),
+    [value, selection, knownSources]
   );
+  const hasFailed = settled && !loading && !selection;
 
   const groups = useMemo(
     () => groupSourcesByKind(sourceOptions),
     [sourceOptions]
   );
 
-  // A group's header comes first; sources whose kind is not known yet have none.
+  // A group's header comes first.
   const items = useMemo<SelectItemType[]>(
     () =>
       groups.flatMap(({ kind, sources: members }) => [
-        ...(kind
-          ? [
-              {
-                id: `header-${kind}`,
-                label: getSourceKindLabel(kind),
-                isDisabled: true,
-              },
-            ]
-          : []),
+        {
+          id: `header-${kind}`,
+          label: getSourceKindLabel(kind),
+          isDisabled: true,
+        },
         ...members.map(toItem),
       ]),
     [groups]
@@ -90,12 +93,10 @@ function AlertSourcePicker({
   const membersOfHeader = useMemo(
     () =>
       new Map(
-        groups
-          .filter(({ kind }) => kind)
-          .map(({ kind, sources: members }) => [
-            `header-${kind}`,
-            members.map((member) => member.name),
-          ])
+        groups.map(({ kind, sources: members }) => [
+          `header-${kind}`,
+          members.map((member) => member.name),
+        ])
       ),
     [groups]
   );
@@ -133,18 +134,30 @@ function AlertSourcePicker({
     [sourceOptions]
   );
 
+  // Once a source is chosen the empty input invites another, so the picker reads as one that takes several.
+  const placeholder = useMemo(() => {
+    if (isEmpty(value)) {
+      return t('label.select-field', { field: t('label.source-plural') });
+    }
+
+    return isDisabled ? '' : t('label.add-another');
+  }, [isDisabled, t, value]);
+
   return (
     <div className="tw:flex tw:w-full tw:flex-col tw:gap-2">
       <Autocomplete
         multiple
+        aria-label={t('label.source-plural')}
         data-testid="source-select"
         filterOption={isShown}
+        hint={hint}
         isDisabled={isDisabled}
+        isInvalid={isInvalid}
+        isRequired={isRequired}
         items={items}
-        placeholder={t('label.select-field', {
-          field: t('label.data-asset-plural'),
-        })}
+        placeholder={placeholder}
         selectedItems={selectedItems}
+        validationBehavior="aria"
         onItemCleared={(key) =>
           onChange?.(
             value.filter((name) => name !== String(key)),
@@ -165,6 +178,24 @@ function AlertSourcePicker({
           />
         )}
       </Autocomplete>
+      {hasFailed && (
+        <Alert
+          data-testid="source-select-error"
+          rightContent={
+            <Button
+              color="link-color"
+              data-testid="source-select-retry"
+              size="sm"
+              onPress={retry}>
+              {t('label.retry')}
+            </Button>
+          }
+          title={t('server.entity-fetch-error', {
+            entity: t('label.source-plural'),
+          })}
+          variant="error"
+        />
+      )}
       {warnings.map((option) => (
         <Alert
           data-testid={`${option.name}-warning`}

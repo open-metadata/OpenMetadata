@@ -60,4 +60,8 @@ export interface BulkEditEntityProps {
   ) => Record<string, string>;
   pushToUndoStack: (dataSource: Record<string, string>[]) => void;
   handleOnRowsChange: (updatedRows: Record<string, string>[]) => void;
+  searchText: string;
+  /** dataSource filtered by searchText; the rows the grid renders. */
+  visibleRows: Record<string, string>[];
+  onSearchTextChange: (searchText: string) => void;
 }

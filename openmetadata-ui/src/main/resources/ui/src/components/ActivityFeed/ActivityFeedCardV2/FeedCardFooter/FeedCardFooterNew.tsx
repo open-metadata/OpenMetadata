@@ -11,13 +11,21 @@
  *  limitations under the License.
  */
 
-import { AvatarStack, Box, Button } from '@openmetadata/ui-core-components';
+import {
+  AvatarStack,
+  Box,
+  ButtonUtility,
+} from '@openmetadata/ui-core-components';
+import { Comment } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
-import { PressEvent } from 'react-aria-components';
+import {
+  ButtonProps as AriaButtonProps,
+  PressEvent,
+} from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
+import { FEED_FOOTER_AVATAR_SIZE } from '../../../../constants/Feeds.constants';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -27,7 +35,6 @@ import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
 
 const MAX_VISIBLE_AVATARS = 3;
-const AVATAR_SIZE = 20;
 
 function FeedCardFooterNew({
   conversation,
@@ -90,6 +97,12 @@ function FeedCardFooterNew({
     },
     [isForFeedTab, showReplies]
   );
+  // ButtonUtility forwards its props to a react-aria Button but does not declare
+  // onPress, and onClick would not let the click bubble, so the press handler is
+  // passed as typed react-aria props.
+  const repliesPressProps: Pick<AriaButtonProps, 'onPress'> = {
+    onPress: handleRepliesPress,
+  };
 
   return (
     <Box align="start" className={classNames({ 'm-y-md': isReply })}>
@@ -98,21 +111,27 @@ function FeedCardFooterNew({
         data-testid="feed-card-footer"
         direction="col">
         <div>
-          <Box align="center" className="w-full rounded-8" gap={2}>
+          <Box align="center" className="w-full rounded-8" gap={1}>
             {postLength > 0 && !isReply && (
               <AvatarStack
-                avatarSize={AVATAR_SIZE}
+                avatarSize={FEED_FOOTER_AVATAR_SIZE}
+                // The avatar fills its button while the icons sit inside padding, so the
+                // stack takes extra space to match the icons' visible gap.
+                className="tw:mr-0.75"
                 items={repliedUsers.map((user) => (
-                  <Button
-                    noTextPadding
-                    className="p-0 tw:h-10! tw:border tw:border-transparent"
+                  <ButtonUtility
+                    aria-label={t('label.view-replies-by-user', { user })}
+                    className="tw:align-top"
                     color="tertiary"
+                    icon={
+                      <UserPopOverCard userName={user}>
+                        <ProfilePicture name={user} size="xs" />
+                      </UserPopOverCard>
+                    }
                     key={user}
-                    onPress={handleRepliesPress}>
-                    <UserPopOverCard userName={user}>
-                      <ProfilePicture name={user} width="20" />
-                    </UserPopOverCard>
-                  </Button>
+                    size="xs"
+                    {...repliesPressProps}
+                  />
                 ))}
                 maxCount={MAX_VISIBLE_AVATARS}
                 onOverflowClick={isForFeedTab ? showReplies : undefined}
@@ -120,19 +139,13 @@ function FeedCardFooterNew({
             )}
 
             {!isReply && (
-              <Button
+              <ButtonUtility
                 aria-label={t('label.reply')}
-                className="p-0 flex-center tw:h-10! tw:border tw:border-transparent"
                 color="tertiary"
                 data-testid="reply-button"
-                iconLeading={
-                  <ThreadIcon
-                    data-testid="reply-count"
-                    height={18}
-                    width={18}
-                  />
-                }
-                onPress={handleRepliesPress}
+                icon={Comment}
+                size="sm"
+                {...repliesPressProps}
               />
             )}
             <Reactions

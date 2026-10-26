@@ -29,6 +29,7 @@ import {
   MarkdownToHTMLConverter,
 } from '../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -194,7 +195,7 @@ const CommentCard = ({
               <UserPopOverCard userName={authorName}>
                 <Link
                   className="reply-card-user-name"
-                  to={getUserPath(authorName)}>
+                  to={getSettingsLink(getUserPath(authorName))}>
                   {getEntityName(user)}
                 </Link>
               </UserPopOverCard>
