@@ -45,6 +45,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.service.security.AuthenticationException;
 
 /**
@@ -110,6 +111,24 @@ class CredentialVerifierTest {
     };
 
     abstract Future<?> start(CredentialVerifierTest test);
+  }
+
+  /** How a full read that includes the failing subject ends. */
+  enum ReadFailure {
+    EXCEPTION {
+      @Override
+      void injectInto(FakeCredentialSource source, String principal) {
+        source.poisonReadsOf(principal);
+      }
+    },
+    ERROR {
+      @Override
+      void injectInto(FakeCredentialSource source, String principal) {
+        source.failReadsOfWithError(principal);
+      }
+    };
+
+    abstract void injectInto(FakeCredentialSource source, String principal);
   }
 
   private final FakeCredentialSource source = new FakeCredentialSource();
@@ -599,6 +618,44 @@ class CredentialVerifierTest {
     users.forEach(user -> assertAccepted(user, "jwt-" + user));
   }
 
+  /** Each user takes a turn, so the batch the cache lists first holds the failing one in a case. */
+  @ParameterizedTest
+  @ValueSource(strings = {"u1", "u2", "u3", "u4", "u5", "u6"})
+  void anErrorInOneDeepReadLeavesEveryBatchReconfirmedAndThePassComplete(String failing) {
+    List<String> users = List.of("u1", "u2", "u3", "u4", "u5", "u6");
+    users.forEach(user -> source.withJwtMechanism(user, "jwt-" + user));
+    verifier(new CredentialVerificationConfig(null, null, null, null, null, null, 6, 2, null));
+    users.forEach(user -> assertAccepted(user, "jwt-" + user));
+    source.failReadsOfWithError(failing);
+
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    Throwable escaped = sweepAsScheduled();
+
+    assertEquals(3, source.fingerprintReads());
+    assertEquals(0.0, gauge("om.credential.sweep.last.complete.age.seconds"));
+    assertEquals(2.0, counter("om.credential.reads", "reason", "deep", "outcome", "ok"));
+    assertNull(escaped);
+  }
+
+  @ParameterizedTest
+  @EnumSource(ReadFailure.class)
+  void aFailedDeepPassIsRetriedAMinuteLaterWhateverItsReadThrew(ReadFailure failure) {
+    List<String> users = List.of("u1", "u2", "u3", "u4");
+    users.forEach(user -> source.withJwtMechanism(user, "jwt-" + user));
+    verifier(new CredentialVerificationConfig(null, null, null, null, null, null, 4, 2, null));
+    users.forEach(user -> assertAccepted(user, "jwt-" + user));
+    failure.injectInto(source, "u4");
+
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    for (int sweep = 0; sweep < 30; sweep++) {
+      sweepAsScheduled();
+      ticker.advanceNanos(2 * SECOND);
+    }
+    assertEquals(6, source.decrypts(), "the healthy batch is deep-read once in the first minute");
+    sweepAsScheduled();
+    assertEquals(8, source.decrypts(), "and once more by the retry a minute later");
+  }
+
   @Test
   void externalSecretsRotationIsSeenWithinTheBound() {
     source.withSecretReferenceMechanism(BOB, JWT_OLD);
@@ -822,6 +879,28 @@ class CredentialVerifierTest {
     verifier.sweepOnce();
     assertEquals(0.0, gauge("om.credential.sweep.last.complete.age.seconds"));
     users.forEach(user -> assertRejected(user, "token-" + user));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"u1", "u2", "u3", "u4", "u5", "u6"})
+  void anErrorInOneSweepRereadLeavesEveryOtherBatchReconfirmed(String failing) {
+    List<String> users = List.of("u1", "u2", "u3", "u4", "u5", "u6");
+    users.forEach(user -> source.withJwtMechanism(user, "jwt-" + user));
+    verifier(new CredentialVerificationConfig(null, null, null, null, null, null, 6, 2, null));
+    users.forEach(user -> assertAccepted(user, "jwt-" + user));
+    source.withJwtMechanism(failing, "jwt-rotated");
+    source.failReadsOfWithError(failing);
+
+    ticker.advanceNanos(2 * SECOND);
+    Throwable escaped = sweepAsScheduled();
+    ticker.advanceNanos(4 * SECOND);
+
+    assertEquals(3, source.fingerprintReads());
+    users.stream()
+        .filter(user -> !user.equals(failing))
+        .forEach(user -> assertAccepted(user, "jwt-" + user));
+    assertEquals(7, source.fullReads());
+    assertNull(escaped);
   }
 
   @Test
@@ -1093,6 +1172,24 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void anErrorInANudgeReadDoesNotEndTheSweepPass() {
+    source.withPats(ALICE, TOKEN_A).withPats(BOB, TOKEN_B);
+    verifier(DEFAULTS);
+    assertAccepted(ALICE, TOKEN_A);
+    assertAccepted(BOB, TOKEN_B);
+    source.failReadsOfWithError(ALICE);
+    verifier.nudge(subject(ALICE));
+
+    ticker.advanceNanos(2 * SECOND);
+    Throwable escaped = sweepAsScheduled();
+
+    assertEquals(1, source.fingerprintReads());
+    assertEquals(0.0, gauge("om.credential.sweep.last.complete.age.seconds"));
+    assertEquals(1.0, counter("om.credential.reads", "reason", "nudge", "outcome", "error"));
+    assertNull(escaped);
+  }
+
+  @Test
   void nudgesBeyondTheCapAreDropped() {
     verifier(new CredentialVerificationConfig(null, null, null, null, null, null, 10, 10, null));
 
@@ -1143,6 +1240,16 @@ class CredentialVerifierTest {
   private void sweepAfterInterval() {
     ticker.advanceNanos(2 * SECOND);
     verifier.sweepOnce();
+  }
+
+  /** One pass the way the scheduler runs it, which drops what escapes; returned here instead. */
+  private Throwable sweepAsScheduled() {
+    try {
+      verifier.sweepOnce();
+      return null;
+    } catch (Throwable escaped) {
+      return escaped;
+    }
   }
 
   private static CredentialSubject subject(String principal) {

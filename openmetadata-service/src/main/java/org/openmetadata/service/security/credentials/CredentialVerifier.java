@@ -315,10 +315,11 @@ public final class CredentialVerifier implements Managed {
 
   /**
    * One pass: drain nudges, then re-confirm every cached subject in batches. The stamp is read
-   * before each query. A batch failure leaves its entries to age out and does not stop the others;
-   * the sweep-age gauge restarts only when every batch was reconfirmed. When the deep verify is
-   * due, each batch is reconfirmed first and then read in full with every decrypt forced. A deep
-   * read that fails leaves its entries trusted by their fingerprints and the pass still complete.
+   * before each query. A batch failure of any kind, an {@link Error} included, leaves its entries
+   * to age out and does not stop the others; the sweep-age gauge restarts only when every batch was
+   * reconfirmed. When the deep verify is due, each batch is reconfirmed first and then read in full
+   * with every decrypt forced. A deep read that fails leaves its entries trusted by their
+   * fingerprints and the pass still complete.
    * The deep pass is then retried after {@code min(deepVerifyInterval, 1 min)}: a batch fails only
    * on a statement failure, since the source converts subjects on their own, so the whole pass is
    * what to retry, and one stamp holds that decision.
@@ -636,7 +637,7 @@ public final class CredentialVerifier implements Managed {
     try {
       reconfirm(batch);
       succeeded = true;
-    } catch (RuntimeException failure) {
+    } catch (Throwable failure) {
       LOG.warn(
           "Credential sweep batch of {} subjects failed; their entries age out until a pass succeeds",
           batch.size(),
@@ -652,7 +653,7 @@ public final class CredentialVerifier implements Managed {
       reread(batch, ReadReason.DEEP, Map.of());
       metrics.recordSweepQuery(SweepQuery.FULL);
       succeeded = true;
-    } catch (RuntimeException failure) {
+    } catch (Throwable failure) {
       LOG.warn(
           "Deep credential verification of {} subjects failed; they stay trusted by fingerprint and"
               + " the pass is retried in {} ms",
@@ -717,23 +718,21 @@ public final class CredentialVerifier implements Managed {
    * A refresh or nudge read. It registers for each subject, superseding the read in flight, and is
    * stamped after that, so a check that begins later joins it and no read registered earlier can
    * create the subject's entry from then on. A throwable of any kind fails every read it has
-   * registered, so no check is left joining a read that never runs.
+   * registered, so no check is left joining a read that never runs, and is logged, so a nudge
+   * drained at the start of a sweep pass cannot end the pass.
    */
   private void rereadQuietly(List<CredentialSubject> subjects, ReadReason reason) {
     Map<CredentialSubject, InFlightRead> reads = new HashMap<>();
     try {
       subjects.forEach(subject -> supersede(subject, reads));
       readAndInstall(reads, ticker.read(), reason);
-    } catch (RuntimeException failure) {
+    } catch (Throwable failure) {
       reads.forEach((subject, read) -> fail(subject, read, failure));
       LOG.warn(
           "Could not re-read {} credential subjects after a {}; the sweep converges within the bound",
           subjects.size(),
           reason,
           failure);
-    } catch (Error failure) {
-      reads.forEach((subject, read) -> fail(subject, read, failure));
-      throw failure;
     }
   }
 

@@ -76,6 +76,7 @@ final class FakeCredentialSource implements CredentialSource {
   private final AtomicReference<Runnable> duringNextRead = new AtomicReference<>();
   private final Set<String> unconvertible = ConcurrentHashMap.newKeySet();
   private final Set<String> poison = ConcurrentHashMap.newKeySet();
+  private final Set<String> poisonWithError = ConcurrentHashMap.newKeySet();
   private volatile CountDownLatch readStarted = new CountDownLatch(1);
   private volatile CountDownLatch release = new CountDownLatch(1);
 
@@ -182,6 +183,14 @@ final class FakeCredentialSource implements CredentialSource {
   }
 
   /**
+   * As {@link #poisonReadsOf}, at the same point and so before any decrypt, but the read throws an
+   * {@link Error}, as a stack overflow inside that subject's decrypt would.
+   */
+  void failReadsOfWithError(String principal) {
+    poisonWithError.add(key(principal));
+  }
+
+  /**
    * Every full read ends by throwing an {@link Error}, after any requested block: the shape of a
    * failure that is not an exception, such as a stack overflow inside a decrypt.
    */
@@ -280,6 +289,9 @@ final class FakeCredentialSource implements CredentialSource {
       if (poison.contains(subject.principal())) {
         throw new IllegalStateException(
             "injected statement failure for a batch holding " + subject.principal());
+      }
+      if (poisonWithError.contains(subject.principal())) {
+        throw new StackOverflowError("injected overflow in the decrypt of " + subject.principal());
       }
     }
   }
