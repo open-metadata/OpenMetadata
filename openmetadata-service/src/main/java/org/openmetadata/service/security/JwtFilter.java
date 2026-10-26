@@ -59,6 +59,7 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -81,9 +82,11 @@ import org.openmetadata.service.cache.Invalidatable;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.OAuthDAOs;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
-import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
-import org.openmetadata.service.security.auth.UserTokenCache;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
+import org.openmetadata.service.security.credentials.CredentialVerifier;
+import org.openmetadata.service.security.credentials.Credentials;
+import org.openmetadata.service.security.credentials.OmCredential;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
@@ -113,6 +116,12 @@ public class JwtFilter implements ContainerRequestFilter {
   // The path segment after the tenant in a v2 endpoint authority, as in .../{tenant}/v2.0.
   private static final String AUTHORITY_VERSION_SEGMENT = "v2.0";
   private static final String EMAIL_SEPARATOR = "@";
+
+  // Integration tests match the first two word for word.
+  private static final String BOT_TOKEN_MISMATCH =
+      "The given token does not match the current bot's token!";
+  private static final String INVALID_PERSONAL_ACCESS_TOKEN = "Invalid personal access token!";
+  private static final String UNRECOGNIZED_TOKEN = "Unrecognized token type!";
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   @Getter private String jwtTeamClaimMapping;
@@ -126,6 +135,9 @@ public class JwtFilter implements ContainerRequestFilter {
   private OidcClientConfig serverSideOidcClient;
   private ProviderTokenValidator providerTokenValidator =
       ProviderTokenValidator.acceptingAnyProviderToken();
+
+  /** Looked up per check: the server installs its verifier after the first filter is built. */
+  private final Supplier<CredentialVerifier> credentialVerifier;
 
   private String emailClaim;
   private String displayNameClaim;
@@ -171,6 +183,10 @@ public class JwtFilter implements ContainerRequestFilter {
 
   private record ResolvedIdentity(String userName, String email, boolean usedEmailFirstFlow) {}
 
+  /** A token that passed {@link #authenticate}, with the identity it was minted for. */
+  private record AuthenticatedToken(
+      DecodedJWT jwt, Map<String, Claim> claims, ResolvedIdentity identity, boolean isBot) {}
+
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
           "v1/system/config/jwks",
@@ -204,12 +220,15 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   @SuppressWarnings("unused")
-  private JwtFilter() {}
+  private JwtFilter() {
+    this.credentialVerifier = Credentials::verifier;
+  }
 
   @SneakyThrows
   public JwtFilter(
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizerConfiguration authorizerConfiguration) {
+    this.credentialVerifier = Credentials::verifier;
     this.providerType = authenticationConfiguration.getProvider();
     // Cannot remove  Principal Claims listing since that is , breaking change for existing users
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
@@ -284,8 +303,15 @@ public class JwtFilter implements ContainerRequestFilter {
       JwkProvider jwkProvider,
       List<String> jwtPrincipalClaims,
       String principalDomain,
-      boolean enforcePrincipalDomain) {
-    this(jwkProvider, jwtPrincipalClaims, principalDomain, enforcePrincipalDomain, null);
+      boolean enforcePrincipalDomain,
+      Supplier<CredentialVerifier> credentialVerifier) {
+    this(
+        jwkProvider,
+        jwtPrincipalClaims,
+        principalDomain,
+        enforcePrincipalDomain,
+        null,
+        credentialVerifier);
   }
 
   @VisibleForTesting
@@ -294,7 +320,9 @@ public class JwtFilter implements ContainerRequestFilter {
       List<String> jwtPrincipalClaims,
       String principalDomain,
       boolean enforcePrincipalDomain,
-      AuthProvider providerType) {
+      AuthProvider providerType,
+      Supplier<CredentialVerifier> credentialVerifier) {
+    this.credentialVerifier = credentialVerifier;
     this.jwkProvider = jwkProvider;
     this.jwtPrincipalClaims = jwtPrincipalClaims;
     this.principalDomain = principalDomain;
@@ -308,8 +336,9 @@ public class JwtFilter implements ContainerRequestFilter {
       JwkProvider jwkProvider,
       List<String> jwtPrincipalClaims,
       String principalDomain,
-      ProviderTokenValidator providerTokenValidator) {
-    this(jwkProvider, jwtPrincipalClaims, principalDomain, false);
+      ProviderTokenValidator providerTokenValidator,
+      Supplier<CredentialVerifier> credentialVerifier) {
+    this(jwkProvider, jwtPrincipalClaims, principalDomain, false, credentialVerifier);
     this.providerTokenValidator = providerTokenValidator;
   }
 
@@ -318,7 +347,9 @@ public class JwtFilter implements ContainerRequestFilter {
       JwkProvider jwkProvider,
       String emailClaim,
       String displayNameClaim,
-      List<String> allowedEmailDomains) {
+      List<String> allowedEmailDomains,
+      Supplier<CredentialVerifier> credentialVerifier) {
+    this.credentialVerifier = credentialVerifier;
     this.jwkProvider = jwkProvider;
     this.emailClaim = emailClaim;
     this.displayNameClaim = displayNameClaim;
@@ -336,8 +367,14 @@ public class JwtFilter implements ContainerRequestFilter {
       boolean enforcePrincipalDomain,
       String emailClaim,
       String displayNameClaim,
-      List<String> allowedEmailDomains) {
-    this(jwkProvider, jwtPrincipalClaims, principalDomain, enforcePrincipalDomain);
+      List<String> allowedEmailDomains,
+      Supplier<CredentialVerifier> credentialVerifier) {
+    this(
+        jwkProvider,
+        jwtPrincipalClaims,
+        principalDomain,
+        enforcePrincipalDomain,
+        credentialVerifier);
     this.emailClaim = emailClaim;
     this.displayNameClaim = displayNameClaim;
     this.allowedEmailDomains = allowedEmailDomains;
@@ -358,11 +395,11 @@ public class JwtFilter implements ContainerRequestFilter {
     try {
       String tokenFromHeader = extractToken(requestContext.getHeaders());
       LOG.debug("Authorization header present: {}", !nullOrEmpty(tokenFromHeader));
-      DecodedJWT decodedJwt = decodeAndVerify(tokenFromHeader);
-      String tokenKeyId = decodedJwt.getKeyId();
-      Map<String, Claim> claims = extractClaims(decodedJwt);
-      boolean isBotUser = isBot(claims);
-      ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBotUser);
+      AuthenticatedToken authenticated = authenticate(tokenFromHeader);
+      String tokenKeyId = authenticated.jwt().getKeyId();
+      Map<String, Claim> claims = authenticated.claims();
+      boolean isBotUser = authenticated.isBot();
+      ResolvedIdentity resolvedIdentity = authenticated.identity();
       String userName = resolvedIdentity.userName();
       String email = resolvedIdentity.email();
 
@@ -386,7 +423,6 @@ public class JwtFilter implements ContainerRequestFilter {
           tokenKeyId,
           userName,
           email,
-          impersonatedBy,
           resolvedIdentity.usedEmailFirstFlow());
 
       CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
@@ -513,6 +549,12 @@ public class JwtFilter implements ContainerRequestFilter {
     return value != null && value.contains(EMAIL_SEPARATOR) ? value : null;
   }
 
+  /**
+   * The checks that follow {@link #validateJwtAndGetClaims}: the logout denylist, the email and
+   * principal domain rules, and the session binding. The stored-credential check already ran
+   * there, against the token's own principal, so {@code impersonatedBy} is not consulted. The
+   * parameter stays because other distributions call this signature.
+   */
   public void checkValidationsForToken(
       Map<String, Claim> claims, String tokenFromHeader, String userName, String impersonatedBy) {
     String tokenKeyId = null;
@@ -528,7 +570,6 @@ public class JwtFilter implements ContainerRequestFilter {
         tokenKeyId,
         userName,
         resolvedIdentity.email(),
-        impersonatedBy,
         resolvedIdentity.usedEmailFirstFlow());
   }
 
@@ -538,7 +579,6 @@ public class JwtFilter implements ContainerRequestFilter {
       String tokenKeyId,
       String userName,
       String email,
-      String impersonatedBy,
       boolean usedEmailFirstFlow) {
     // the case where OMD generated the Token for the Client in case OM generated Token
     validateTokenIsNotUsedAfterLogout(tokenFromHeader);
@@ -561,19 +601,6 @@ public class JwtFilter implements ContainerRequestFilter {
     } else if (!isBot(claims) && !isInternallyIssuedToken(claims, tokenKeyId)) {
       validateLegacyProviderIdentity(claims, userName);
     }
-
-    // Validate Bot token matches what was created in OM. Under impersonation the presented token
-    // belongs to the impersonating bot (impersonatedBy), while userName is the target, so validate
-    // the bot's own token against its cache entry instead of skipping - otherwise a rotated (i.e.
-    // revoked) bot token keeps working as long as an X-Impersonate-User header is attached.
-    if (impersonatedBy != null) {
-      validateBotToken(tokenFromHeader, impersonatedBy);
-    } else if (isBot(claims)) {
-      validateBotToken(tokenFromHeader, userName);
-    }
-
-    // validate personal access token
-    validatePersonalAccessToken(claims, tokenFromHeader, userName);
 
     validateSessionBoundToken(claims, userName);
   }
@@ -638,9 +665,54 @@ public class JwtFilter implements ContainerRequestFilter {
     return new HashSet<>(getClaimAsList(claims.get(ROLES_CLAIM)));
   }
 
-  @SneakyThrows
+  /**
+   * Verifies the token and returns its claims. This includes the stored-credential check, so a bot
+   * JWT or a personal access token is accepted only while the database stores it.
+   *
+   * @throws AuthenticationException the token is invalid, expired, unrecognized or not current
+   * @throws CredentialUnavailableException the stored-credential check could not be confirmed
+   */
   public Map<String, Claim> validateJwtAndGetClaims(String token) {
+    return authenticate(token).claims();
+  }
+
+  /**
+   * Signature, expiry and issuer only, with no stored-credential check. For probes and dry runs
+   * that grant no access: anything that authenticates a request calls {@link
+   * #validateJwtAndGetClaims}.
+   */
+  public Map<String, Claim> verifySignatureOnly(String token) {
     return extractClaims(decodeAndVerify(token));
+  }
+
+  /**
+   * Signature, expiry and issuer, then the token's own identity, then the stored-credential check
+   * of that identity. A caller swaps to an impersonation target only afterwards, so a bot token is
+   * always checked against the bot.
+   */
+  private AuthenticatedToken authenticate(String token) {
+    DecodedJWT jwt = decodeAndVerify(token);
+    Map<String, Claim> claims = extractClaims(jwt);
+    boolean isBotUser = isBot(claims);
+    ResolvedIdentity identity = resolveIdentity(claims, isBotUser);
+    OmCredential credential =
+        OmCredential.classify(
+            isSignedWithOpenMetadataKey(jwt), isBotUser, tokenTypeOf(claims), identity.userName());
+    credentialVerifier.get().require(credential, token, rejectionMessage(credential, isBotUser));
+    return new AuthenticatedToken(jwt, claims, identity, isBotUser);
+  }
+
+  private static String rejectionMessage(OmCredential credential, boolean isBotUser) {
+    String message = isBotUser ? BOT_TOKEN_MISMATCH : INVALID_PERSONAL_ACCESS_TOKEN;
+    if (credential instanceof OmCredential.Unrecognized) {
+      message = UNRECOGNIZED_TOKEN;
+    }
+    return message;
+  }
+
+  private static String tokenTypeOf(Map<String, Claim> claims) {
+    Claim tokenType = claims.get(TOKEN_TYPE);
+    return tokenType == null ? null : tokenType.asString();
   }
 
   @SneakyThrows
@@ -782,28 +854,8 @@ public class JwtFilter implements ContainerRequestFilter {
     throw AuthenticationException.getTokenNotPresentException();
   }
 
-  private void validateBotToken(String tokenFromHeader, String userName) {
-    if (BotTokenCache.isTokenValid(userName, tokenFromHeader)) {
-      return;
-    }
-    throw AuthenticationException.getInvalidTokenException(
-        "The given token does not match the current bot's token!");
-  }
-
   private static boolean isPersonalAccessToken(Map<String, Claim> claims) {
-    Claim tokenTypeClaim = claims.get(TOKEN_TYPE);
-    return tokenTypeClaim != null
-        && ServiceTokenType.PERSONAL_ACCESS.value().equals(tokenTypeClaim.asString());
-  }
-
-  private void validatePersonalAccessToken(
-      Map<String, Claim> claims, String tokenFromHeader, String userName) {
-    if (isPersonalAccessToken(claims)) {
-      if (UserTokenCache.isTokenValid(userName, tokenFromHeader)) {
-        return;
-      }
-      throw AuthenticationException.getInvalidTokenException("Invalid personal access token!");
-    }
+    return ServiceTokenType.PERSONAL_ACCESS.value().equals(tokenTypeOf(claims));
   }
 
   private void validateTokenIsNotUsedAfterLogout(String authToken) {
@@ -902,15 +954,11 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   public CatalogSecurityContext getCatalogSecurityContext(String token, String activePersona) {
-    Map<String, Claim> claims = validateJwtAndGetClaims(token);
-    boolean isBotUser = isBot(claims);
-    ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBotUser);
-    String tokenKeyId = null;
-    try {
-      tokenKeyId = JWT.decode(token).getKeyId();
-    } catch (JWTDecodeException e) {
-      LOG.debug("Unable to read key id from token during OpenMetadata issuer check", e);
-    }
+    AuthenticatedToken authenticated = authenticate(token);
+    Map<String, Claim> claims = authenticated.claims();
+    boolean isBotUser = authenticated.isBot();
+    ResolvedIdentity resolvedIdentity = authenticated.identity();
+    String tokenKeyId = authenticated.jwt().getKeyId();
     if (resolvedIdentity.usedEmailFirstFlow() && !isInternallyIssuedToken(claims, tokenKeyId)) {
       validateConfiguredEmailDomain(
           resolvedIdentity.email(),

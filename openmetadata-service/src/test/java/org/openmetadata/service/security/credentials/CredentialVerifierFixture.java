@@ -47,6 +47,20 @@ public final class CredentialVerifierFixture implements AutoCloseable {
     return this;
   }
 
+  /**
+   * Removes every stored token of {@code principal}, then refreshes it as the post-commit {@link
+   * Credentials#changed} hint does, so this verifier's next check sees the change.
+   */
+  public void revoke(String principal) {
+    source.revokeAll(principal);
+    verifier.refreshNow(CredentialSubject.of(principal));
+  }
+
+  /** From now on every statement against the source throws, as an unreachable database does. */
+  public void failReads() {
+    source.failReads();
+  }
+
   public CredentialVerifier verifier() {
     return verifier;
   }
