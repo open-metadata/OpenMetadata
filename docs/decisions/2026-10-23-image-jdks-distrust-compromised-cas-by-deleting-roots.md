@@ -1,7 +1,7 @@
 # Image JDKs distrust a compromised CA by deleting its roots from cacerts, not by fingerprint-blocking its intermediates
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (CVE-2026-114820: three more roots)
+- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (three more roots that Oracle's JDK removes)
 - **Deciders:** @mohityadav766
 - **Guard:** the image build, which the step fails while any root in its list is still in the JDK's `cacerts`; `reviewer` for the rest
 - **Related:** #36087, #36088, open-metadata/openmetadata-collate#7792, open-metadata/openmetadata-collate#7816, open-metadata/ai-platform#1856, #36234, #36235
@@ -34,15 +34,12 @@ later, the step deletes nothing; it can then be dropped, or kept as the check th
 gone. A later CA compromise is handled the same way, by adding its roots' SHA-256 to the step.
 
 ## Amendment
-**v2, 2026-10-26.** CVE-2026-114820 follows up CVE-2026-91403. Oracle JDK 21.0.13.0.3 fixes it by
-removing four roots from `cacerts`: emSign Root CA - G1, emSign Root CA - G2,
-emSign ECC Root CA - G3 and Comodo's AAA Certificate Services. AAA issued Sectigo's cross-signs of
-the compromised intermediates. G1 and G2 are eMudhra roots that no known compromised chain uses;
-Oracle removes them as a precaution. The step now lists six roots: the three from v1 plus G1, G2
-and AAA.
+**v2, 2026-10-26.** Oracle JDK 21.0.13.0.3 removes four roots from `cacerts`:
+emSign Root CA - G1, emSign Root CA - G2, emSign ECC Root CA - G3 and Comodo's AAA Certificate
+Services. The step now lists six roots: the three from v1 plus G1, G2 and AAA.
 
-- A root that a vendor's fix for the compromise removes is deleted too, even when no compromised
-  chain we can see ends at it.
+- A root that a JDK vendor removes from `cacerts` after the compromise is deleted too, even when
+  no compromised chain we can see ends at it.
 - A root is listed even when no base ships it today (G2 and AAA), so the build fails if a base
   later brings it in.
 - This replaces the v1 consequence that the step deletes nothing once every base is on Temurin

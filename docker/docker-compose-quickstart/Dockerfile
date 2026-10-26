@@ -61,11 +61,10 @@ RUN jlink \
       --compress=zip-6 \
       --output /javaruntime
 
-# CVE-2026-91403 and CVE-2026-114820
-# (ADR:2026-10-23-image-jdks-distrust-compromised-cas-by-deleting-roots):
-# eMudhra's compromised intermediates chain to three emSign roots (ECC G3, ECC C3, C1), and
-# Oracle JDK 21.0.13.0.3 removes four roots from cacerts: emSign G1, G2, ECC G3 and Comodo's
-# AAA Certificate Services.
+# CVE-2026-91403 (ADR:2026-10-23-image-jdks-distrust-compromised-cas-by-deleting-roots):
+# eMudhra's compromised intermediates chain to three emSign roots (ECC G3, ECC C3, C1). Oracle JDK
+# 21.0.13.0.3 also removes emSign G1, G2 and Comodo's AAA Certificate Services from cacerts, so
+# this step drops those too.
 # Until eclipse-temurin:21-jdk ships none of them, drop them here by SHA-256 and fail
 # the build if any is still trusted. Once the base no longer ships them nothing is deleted.
 # Roots, not the advisory's intermediate fingerprints in blocked.certs: an ECDSA signature
@@ -78,7 +77,7 @@ RUN set -eu; \
       | while IFS= read -r alias; do keytool -delete -keystore /javaruntime/lib/security/cacerts -storepass changeit -alias "$alias"; done; \
     certs=$(keytool -list -v -keystore /javaruntime/lib/security/cacerts -storepass changeit); \
     if printf '%s\n' "$certs" | tr -d ':' | grep -qE "$(echo $roots | tr ' ' '|')"; then \
-      echo "CVE-2026-91403, CVE-2026-114820: a distrusted root CA is still trusted" >&2; exit 1; \
+      echo "a root CA this step removes is still trusted" >&2; exit 1; \
     fi
 
 # ALL-MODULE-PATH also ships javac, jshell, jrunscript and jwebserver. Keep the
