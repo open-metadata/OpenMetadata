@@ -51,11 +51,11 @@ def _filter(filter_pattern: FilterPattern | None, name: str | None) -> bool:
     :param name: table or schema name
     :return: True for filtering, False otherwise
     """
-    if not filter_pattern:
-        # No filter pattern, nothing to filter
+    if not filter_pattern_enabled(filter_pattern):
+        # No filter pattern, or one without includes/excludes: nothing to filter
         return False
 
-    if filter_pattern and not name:
+    if not name:
         # Filter pattern is present but not the name so we'll filter it out
         return True
 

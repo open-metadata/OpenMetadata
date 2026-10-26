@@ -22,6 +22,7 @@ from metadata.utils.filters import (
     filter_by_classifications,
     filter_by_dashboard,
     filter_by_fqn,
+    filter_by_project,
     filter_pattern_enabled,
     validate_regex,
 )
@@ -44,6 +45,19 @@ def test_filter():
     # If we have both includes and excludes, we will check both "include" and "exclude"
     # This was not filter if we only check includes, but is filtered if we check both
     assert _filter(filter_pattern_both, "potato_tomato")
+
+
+def test_filter_without_configured_pattern_keeps_nameless_entities():
+    """An empty pattern filters nothing, also when the entity has no name"""
+    assert not _filter(None, None)
+    # What the UI saves for "scan all": a pattern with empty includes and excludes
+    assert not _filter(FilterPattern(includes=[], excludes=[]), None)
+    assert not _filter(FilterPattern(), None)
+    assert not _filter(FilterPattern(), "potato")
+    # A real pattern still filters out an entity without a name
+    assert _filter(FilterPattern(includes=["^potato$"]), None)
+    assert _filter(FilterPattern(excludes=["^tomato$"]), "")
+    assert not filter_by_project(FilterPattern(includes=[], excludes=[]), None)
 
 
 def test_filter_pattern_enabled():
