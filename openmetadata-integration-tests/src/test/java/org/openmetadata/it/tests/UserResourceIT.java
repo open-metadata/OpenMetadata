@@ -86,6 +86,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.credentials.CredentialSourceTestSupport;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.TokenUtil;
 
@@ -3012,6 +3013,41 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_revokeToken_waitForPropagation(TestNamespace ns) {
+    User botUser = createBotUser(ns, "waitrevokebot");
+    OpenMetadataClient botClient = clientWithToken(generateBotToken(botUser, JWTTokenExpiry.Seven));
+    assertEquals(botUser.getId(), getLoggedInUser(botClient).getId());
+    String adminToken = SdkClients.getAdminToken();
+    String request = "{\"id\":\"" + botUser.getId() + "\"}";
+
+    TimedResponse revoke = timedPut(WAITING_BOT_REVOKE, adminToken, request);
+
+    assertWaitedForPropagation(revoke);
+    User revoked = JsonUtils.readValue(revoke.response().body(), User.class);
+    assertEquals(botUser.getId(), revoked.getId());
+    assertUnauthorized(botClient);
+    assertWaitedForPropagation(timedPut(WAITING_BOT_REVOKE, adminToken, request));
+  }
+
+  @Test
+  void test_revokePersonalAccessToken_waitForPropagation(TestNamespace ns) {
+    User owner = createRegularUser(ns, "patwait");
+    PersonalAccessToken pat = createPersonalAccessToken(clientFor(owner), ns.prefix("pat"));
+    OpenMetadataClient patClient = clientWithToken(pat.getJwtToken());
+    assertEquals(owner.getId(), getLoggedInUser(patClient).getId());
+    String ownerToken = CredentialFixtures.loginToken(owner);
+    String request = "{\"tokenIds\":[\"" + pat.getToken() + "\"]}";
+
+    TimedResponse revoke = timedPut(WAITING_PAT_REVOKE, ownerToken, request);
+
+    assertWaitedForPropagation(revoke);
+    String remaining = revoke.response().body();
+    assertEquals(0, JsonUtils.readTree(remaining).get("data").size(), remaining);
+    assertUnauthorized(patClient);
+    assertWaitedForPropagation(timedPut(WAITING_PAT_REVOKE, ownerToken, request));
+  }
+
+  @Test
   void test_sameSecondPats_independent(TestNamespace ns) {
     OpenMetadataClient owner = clientFor(createRegularUser(ns, "patsamesec"));
     PersonalAccessToken first = createPersonalAccessToken(owner, ns.prefix("pat1"));
@@ -3275,6 +3311,31 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     OpenMetadataException exception =
         assertThrows(OpenMetadataException.class, () -> getLoggedInUser(client));
     assertEquals(401, exception.getStatusCode(), exception.getMessage());
+  }
+
+  private static final String WAITING_BOT_REVOKE =
+      "/api/v1/users/revokeToken?waitForPropagation=true";
+  private static final String WAITING_PAT_REVOKE =
+      "/api/v1/users/security/token/revoke?waitForPropagation=true";
+
+  private record TimedResponse(HttpResponse<String> response, Duration took) {}
+
+  private static TimedResponse timedPut(String path, String bearerToken, String body) {
+    long started = System.nanoTime();
+    HttpResponse<String> response = CredentialFixtures.put(path, bearerToken, body);
+    return new TimedResponse(response, Duration.ofNanos(System.nanoTime() - started));
+  }
+
+  /** Asserts a lower bound only, as load can stretch the call but never cut the wait short. */
+  private static void assertWaitedForPropagation(TimedResponse revoke) {
+    Duration maxStaleness = CredentialSourceTestSupport.serverMaxStaleness();
+    assertEquals(200, revoke.response().statusCode(), revoke.response().body());
+    assertTrue(
+        revoke.took().compareTo(maxStaleness) >= 0,
+        "the revoke took "
+            + revoke.took().toMillis()
+            + " ms, less than maxStaleness "
+            + maxStaleness);
   }
 
   private static final HttpClient MCP_HTTP_CLIENT = HttpClient.newHttpClient();

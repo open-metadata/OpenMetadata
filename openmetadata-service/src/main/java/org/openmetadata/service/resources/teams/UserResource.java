@@ -164,6 +164,7 @@ import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.credentials.Credentials;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -197,6 +198,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
   static final String BOT_TOKENS_ONLY =
       "This endpoint can only generate tokens for bot users. "
           + "Use PUT /users/security/token to create a personal access token.";
+  private static final String WAIT_FOR_PROPAGATION_DESCRIPTION =
+      "Respond only once every server rejects the revoked tokens. Adds about"
+          + " `credentialVerification.maxStaleness` (5 seconds by default) to the call."
+          + " (Default = `false`)";
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;
   private final RoleRepository roleRepository;
@@ -1017,6 +1022,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response revokeToken(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = WAIT_FOR_PROPAGATION_DESCRIPTION)
+          @QueryParam("waitForPropagation")
+          @DefaultValue("false")
+          boolean waitForPropagation,
       @Valid RevokeTokenRequest revokeTokenRequest) {
     authorizer.authorizeAdmin(securityContext);
     User user =
@@ -1030,6 +1039,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     user.setAuthenticationMechanism(authenticationMechanism);
     PutResponse<User> response =
         repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+    if (waitForPropagation) {
+      Credentials.awaitPropagation();
+    }
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -1971,6 +1983,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("removeAll")
           @DefaultValue("false")
           boolean removeAll,
+      @Parameter(description = WAIT_FOR_PROPAGATION_DESCRIPTION)
+          @QueryParam("waitForPropagation")
+          @DefaultValue("false")
+          boolean waitForPropagation,
       @Valid RevokePersonalTokenRequest request) {
     if (!CommonUtil.nullOrEmpty(userName)) {
       authorizer.authorizeAdmin(securityContext);
@@ -1983,6 +1999,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else {
       tokenRepository.revokePersonalAccessTokens(
           user.getName(), user.getId(), request.getTokenIds());
+    }
+    if (waitForPropagation) {
+      Credentials.awaitPropagation();
     }
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
