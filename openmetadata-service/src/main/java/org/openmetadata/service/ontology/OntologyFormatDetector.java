@@ -18,7 +18,7 @@ public final class OntologyFormatDetector {
   public static final int WINDOW = 65_536;
 
   private static final String BOM = "﻿";
-  private static final Pattern JSON_LD = Pattern.compile("(?s)^(\\{|\\[\\s*[\\{\\]]).*");
+  private static final Pattern JSON_LD = Pattern.compile("(?s)^(\\{|\\[\\s*\\{|\\[\\s*\\]\\s*$).*");
   private static final Pattern RDF_XML =
       Pattern.compile(
           "(?s)^(<\\?xml\\b|<!--|<[A-Za-z_][\\w.-]*(:[A-Za-z_][\\w.-]*)?(?:\\s|/>)|<[A-Za-z_][\\w.-]*>).*");

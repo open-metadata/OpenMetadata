@@ -82,6 +82,7 @@ export type NativeImportAction =
   | { type: 'fileChosen'; token: number; fileName: string }
   | { type: 'detected'; fileId: number; format?: NativeImportFormat }
   | { type: 'detectionFailed'; fileId: number; message: string }
+  | { type: 'fileRejected'; token: number; message: string }
   | { type: 'parseStarted'; token: number }
   | {
       type: 'parsed';
@@ -102,7 +103,7 @@ export const INITIAL_NATIVE_IMPORT_STATE: NativeImportState = {
 
 type FileAction = Extract<
   NativeImportAction,
-  { type: 'fileChosen' | 'detected' | 'detectionFailed' }
+  { type: 'fileChosen' | 'detected' | 'detectionFailed' | 'fileRejected' }
 >;
 
 const reduceFile = (
@@ -116,6 +117,16 @@ const reduceFile = (
       parseId: action.token,
       fileName: action.fileName,
       detection: { kind: 'pending' },
+      parse: { kind: 'idle' },
+    };
+  }
+  if (action.type === 'fileRejected') {
+    return {
+      ...state,
+      fileId: action.token,
+      parseId: action.token,
+      fileName: undefined,
+      detection: { kind: 'failed', message: action.message },
       parse: { kind: 'idle' },
     };
   }
@@ -166,6 +177,16 @@ const reduceParse = (
   }
 };
 
+const FILE_ACTIONS: ReadonlySet<string> = new Set([
+  'fileChosen',
+  'fileRejected',
+  'detected',
+  'detectionFailed',
+]);
+
+const isFileAction = (action: NativeImportAction): action is FileAction =>
+  FILE_ACTIONS.has(action.type);
+
 /**
  * Every request takes a fresh token from the caller. A detection answer is
  * kept only for the file that asked, and a parse answer only for the latest
@@ -176,11 +197,7 @@ export const nativeImportReducer = (
   state: NativeImportState,
   action: NativeImportAction
 ): NativeImportState =>
-  action.type === 'fileChosen' ||
-  action.type === 'detected' ||
-  action.type === 'detectionFailed'
-    ? reduceFile(state, action)
-    : reduceParse(state, action);
+  isFileAction(action) ? reduceFile(state, action) : reduceParse(state, action);
 
 export const hasImportableChanges = (summary: NativeOntologyImportSummary) => {
   const { counts } = summary;

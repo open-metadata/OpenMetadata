@@ -7,6 +7,7 @@ import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -179,7 +180,7 @@ final class NativeOntologyCsvReader {
 
   private void property(final Row row) {
     final URI iri = definitionIri(row, propertyRows);
-    properties.add(
+    final OntologyProperty property =
         new OntologyProperty()
             .withIri(iri)
             .withKind(
@@ -205,7 +206,45 @@ final class NativeOntologyCsvReader {
             .withReplacedBy(
                 row.filled(Column.REPLACED_BY)
                     ? NativeOntologyCsvCells.iri(row.cell(Column.REPLACED_BY))
-                    : null));
+                    : null);
+    requireApplicableToKind(row, property);
+    properties.add(property);
+  }
+
+  /** Mirrors the kind rules of {@code OntologyPropertyRepository} so a preview never over-counts. */
+  private static void requireApplicableToKind(final Row row, final OntologyProperty property) {
+    final OntologyPropertyKind kind = property.getKind();
+    final boolean data = kind == OntologyPropertyKind.DATA;
+    final boolean object = kind == OntologyPropertyKind.OBJECT;
+    requireKind(row, Column.UNIT, data, "a DATA property can define a unit");
+    requireKind(row, Column.ENUM_VALUES, data, "a DATA property can define enum values");
+    requireKind(row, Column.IDENTIFIER, data, "a DATA property can be an identifier");
+    requireKind(row, Column.INVERSE, object, "an OBJECT property can have an inverse");
+    requireKind(row, Column.PROPERTY_CHAIN, object, "an OBJECT property can have a property chain");
+    requireKind(
+        row,
+        Column.DISJOINT_WITH,
+        kind != OntologyPropertyKind.ANNOTATION,
+        "an ANNOTATION property cannot declare disjointness");
+    final Set<RelationshipCharacteristic> allowed =
+        switch (kind) {
+          case OBJECT -> EnumSet.allOf(RelationshipCharacteristic.class);
+          case DATA -> EnumSet.of(RelationshipCharacteristic.FUNCTIONAL);
+          case ANNOTATION -> EnumSet.noneOf(RelationshipCharacteristic.class);
+        };
+    for (final RelationshipCharacteristic characteristic : property.getCharacteristics()) {
+      if (!allowed.contains(characteristic)) {
+        throw row.cell(Column.CHARACTERISTICS)
+            .invalid(characteristic + " is not allowed on a " + kind + " property");
+      }
+    }
+  }
+
+  private static void requireKind(
+      final Row row, final Column column, final boolean applicable, final String rule) {
+    if (!applicable && row.filled(column)) {
+      throw row.cell(column).invalid("only " + rule);
+    }
   }
 
   private List<OntologyLiteral> enumValues(final Row row) {
