@@ -46,21 +46,32 @@ const WebSocketProvider: FC<Props> = ({ children }: Props) => {
     // Browsers cannot set headers on the WebSocket upgrade, so the token rides the handshake
     // query — the filter validates it when the session cookie is absent (public-client SSO).
     const token = await getOidcToken();
-
-    setSocket(
-      io({
-        path: socketPath,
-        reconnectionAttempts: 3,
-        query: {
-          token,
-          userId: currentUser?.id,
-        },
-        // Since we have load balancer in our application
-        // We need to enforce transports to be websocket only
-        // Refer: https://socket.io/docs/v3/using-multiple-nodes/
-        transports: ['websocket'],
-      })
-    );
+    const newSocket = io({
+      path: socketPath,
+      reconnectionAttempts: 3,
+      query: {
+        token,
+        userId: currentUser?.id,
+      },
+      // Since we have load balancer in our application
+      // We need to enforce transports to be websocket only
+      // Refer: https://socket.io/docs/v3/using-multiple-nodes/
+      transports: ['websocket'],
+    });
+    const manager = newSocket.io;
+    if (manager) {
+      // The handshake query is baked into the manager and re-sent on every automatic
+      // reconnect; refresh the token before each attempt so an expired initial token
+      // cannot exhaust the reconnection budget.
+      manager.on('reconnect_attempt', () => {
+        void getOidcToken().then((freshToken) => {
+          if (manager.opts.query) {
+            manager.opts.query.token = freshToken;
+          }
+        });
+      });
+    }
+    setSocket(newSocket);
   }, [currentUser]);
 
   useEffect(() => {
