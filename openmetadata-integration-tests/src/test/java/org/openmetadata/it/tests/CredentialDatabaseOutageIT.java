@@ -21,6 +21,7 @@ import static org.openmetadata.it.tests.CredentialFixtures.PIPELINE_CONFIG;
 import com.github.dockerjava.api.DockerClient;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -36,9 +37,9 @@ import org.openmetadata.service.security.credentials.Credentials;
 import org.testcontainers.DockerClientFactory;
 
 /**
- * While the database is unreachable the server cannot confirm a bot or PAT token, so it answers 503
- * with {@code Retry-After} rather than accepting from a snapshot, and it accepts again once the
- * database is back.
+ * While the database is unreachable the server cannot confirm a bot or PAT token, so REST and the
+ * MCP transport answer 503 with {@code Retry-After}, and the server accepts the token again once
+ * the database is back.
  *
  * <p>Pausing the shared database breaks any request running meanwhile, so the class is {@link
  * Isolated} and is listed with the other global-state classes in {@code pom.xml}.
@@ -67,6 +68,8 @@ class CredentialDatabaseOutageIT {
           awaitUnavailable(principals.patToken());
           assertRetryAfter(CredentialFixtures.get(PIPELINE_CONFIG, principals.botToken()));
           assertRetryAfter(CredentialFixtures.get(PIPELINE_CONFIG, principals.patToken()));
+          assertMcpAsksToRetry(principals.botToken());
+          assertMcpAsksToRetry(principals.patToken());
           assertEquals(
               200,
               CredentialFixtures.status(PIPELINE_CONFIG, principals.sessionToken()),
@@ -136,6 +139,13 @@ class CredentialDatabaseOutageIT {
         String.valueOf(Credentials.verifier().retryAfterSeconds()),
         response.headers().firstValue("Retry-After").orElse(null),
         "Retry-After is the sweep interval rounded up");
+  }
+
+  /** A challenge would tell an MCP client its token is invalid, so it would drop a valid token. */
+  private static void assertMcpAsksToRetry(String token) {
+    HttpResponse<String> response = CredentialFixtures.mcpInitialize(token);
+    assertRetryAfter(response);
+    assertEquals(Optional.empty(), response.headers().firstValue("WWW-Authenticate"));
   }
 
   private static void withDatabasePaused(Runnable whilePaused) {

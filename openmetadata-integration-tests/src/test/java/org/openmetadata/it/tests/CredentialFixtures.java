@@ -24,6 +24,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.tests.mcp.McpTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -50,6 +51,8 @@ public final class CredentialFixtures {
 
   /** Authenticated and answered from memory: the handler reads nothing from the database. */
   public static final String PIPELINE_CONFIG = "/api/v1/system/config/pipeline-service-client";
+
+  public static final String MCP = "/mcp";
 
   private static final long LOGIN_TOKEN_TTL_SECONDS = 3600;
   private static final HttpClient HTTP =
@@ -150,6 +153,21 @@ public final class CredentialFixtures {
             .PUT(HttpRequest.BodyPublishers.ofString(body))
             .build();
     return send(request, path);
+  }
+
+  /** An MCP {@code initialize}; the transport checks the bearer token before it reads the body. */
+  public static HttpResponse<String> mcpInitialize(String bearerToken) {
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(TestSuiteBootstrap.getBaseUrl() + MCP))
+            .header("Authorization", "Bearer " + bearerToken)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json, text/event-stream")
+            .timeout(Duration.ofSeconds(20))
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    JsonUtils.pojoToJson(McpTestUtils.createInitializeRequest())))
+            .build();
+    return send(request, MCP);
   }
 
   private static HttpResponse<String> send(HttpRequest request, String path) {
