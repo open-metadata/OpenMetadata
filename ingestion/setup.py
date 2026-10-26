@@ -59,22 +59,25 @@ VERSIONS = {
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc~=5.3.0",
     "numpy": "numpy>=2,<3",
+    "opentelemetry-exporter-otlp": "opentelemetry-exporter-otlp==1.45.1",
     "scikit-learn": "scikit-learn>=1.4.2,<2",
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "databricks-sdk": "databricks-sdk~=0.20.0",
-    "databricks-sql-connector": "databricks-sql-connector>=4.0.0",
+    "databricks-sql-connector": "databricks-sql-connector>=4.7.0",
     "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy>=3.8.2,<3.9",
+    "preshed": "preshed<3.0.14",  # 3.0.14 rejects unsigned 64-bit spaCy tokenizer hashes.
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
-    "mongo": "pymongo~=4.3",
+    "thrift": "thrift>=0.25.0,<1",  # CVE-2026-66858 / CVE-2026-85494: protocol recursion and size limits
+    "mongo": "pymongo>=4.18.2,<5",  # CVE-2026-96747/96748/96749: endpoint redirection and BSON buffer overflow
     "simple-salesforce": "simple_salesforce~=1.11",
-    "snowflake": "snowflake-sqlalchemy>=1.8.0",  # <1.8 caps snowflake-connector-python at <4, but we need 4.x for pyOpenSSL 26 (CVE-2026-27459)
+    "snowflake": "snowflake-sqlalchemy>=1.11.0",  # CVE-2026-15736 SQL/DDL injection; <1.8 also caps the connector below pyOpenSSL 26 support (CVE-2026-27459)
     "elasticsearch": "elasticsearch>=8.19.3,<9",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
@@ -99,7 +102,8 @@ VERSIONS = {
     "griffe2md": "griffe2md~=1.2",
     "factory-boy": "factory-boy~=3.3.3",
     "rarfile": "rarfile~=4.2",
-    "py7zr": "py7zr~=1.1.0",
+    "py7zr": "py7zr~=1.1.3",
+    "brotli": "Brotli>=1.2.1",  # CVE-2026-111497; py7zr only requires >=1.2.0
 }
 
 COMMONS = {
@@ -108,6 +112,7 @@ COMMONS = {
         VERSIONS["pyarrow"],
         VERSIONS["rarfile"],
         VERSIONS["py7zr"],
+        VERSIONS["brotli"],
     },
     "datalake": {
         VERSIONS["asammdf"],
@@ -127,6 +132,7 @@ COMMONS = {
         "pure-transport==0.2.0",
         "presto-types-parser>=0.0.2",
         VERSIONS["pyhive"],
+        VERSIONS["thrift"],
     },
     "kafka": {
         VERSIONS["avro"],
@@ -188,6 +194,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
+    "certifi>=2026.10.19",
     "cryptography>=48.0.1",  # GHSA-537c-gmf6-5ccf bundled OpenSSL vuln in wheels <48.0.1
     "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
@@ -200,16 +207,16 @@ base_requirements = {
     "lxml>=6.1.0",  # CVE-2026-41066 iterparse/ETCompatXMLParser XXE
     "Mako>=1.3.12",  # CVE-2026-44307 TemplateLookup path traversal
     "memory-profiler",
-    "mistune>=3.3.0",  # CVE-2026-49851 ReDoS in parse_link_text
+    "mistune>=3.3.3",  # CVE-2026-49851 link parsing ReDoS; CVE-2026-76098 emphasis recursion DoS
     "mypy_extensions>=0.4.3",
-    "PyJWT>=2.13.0",  # CVE-2026-48522/48523/48525/48526 SSRF + DoS + algorithm-confusion
+    "PyJWT>=2.15.0",  # CVE-2026-48522/48523/48525/48526; CVE-2026-101918/102275 payload recursion and JWK key confusion
     VERSIONS["pydantic"],
     VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
     "python-dotenv>=0.19.0",  # For environment variable support in dbt ingestion
     "PyYAML~=6.0",
-    "requests>=2.32.4",
+    "requests>=2.33.0",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     # snowflake-sqlalchemy subclasses sqlalchemy.orm.context.ORMSelectCompileState, which is
     # private in SQLAlchemy 2.1 — importing the Snowflake dialect raises AttributeError there.
@@ -220,7 +227,7 @@ base_requirements = {
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
-    "setuptools>=78.1.1",
+    "setuptools>=83",  # CVE-2026-59890: MANIFEST.in exclusion bypass through Unicode normalization
     "shapely",
     "collate-data-diff>=0.11.18",  # get_stats_dict(sample_size=...) and UTC on every pooled connection
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
@@ -230,11 +237,12 @@ base_requirements = {
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     "jaraco.context>=6.1.0",
     "httpx~=0.28.0",
+    "urllib3>=2.8.0",  # CVE-2026-97687/97688/97689: proxy TLS configuration and streaming DoS
 }
 
 plugins: dict[str, set[str]] = {
     "airflow": {
-        "opentelemetry-exporter-otlp==1.37.0",
+        VERSIONS["opentelemetry-exporter-otlp"],
         "attrs",
         VERSIONS["airflow"],
         VERSIONS["pygtrie"],
@@ -242,7 +250,7 @@ plugins: dict[str, set[str]] = {
         "apache-airflow-providers-http>=6.0.0",  # CVE-2025-69219 unsafe pickle RCE
         "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
         "apache-airflow-providers-elasticsearch>=6.5.3",  # CVE-2026-41018 credential leak
-        "tornado>=6.5.7",  # CVE-2026-49853/49854/49855 header leak + OOB read + gzip bomb + GHSA-pw6j-qg29-8w7f curl credential leak
+        "tornado>=6.5.9",  # CVE-2026-49853/49854/49855, GHSA-pw6j-qg29-8w7f; CVE-2026-103261/103262/103263 query/curl DoS and symlink traversal
         "Werkzeug>=3.0.6",  # CVE-2024-34069 debugger RCE
         "starlette>=0.49.1",  # CVE-2025-62727 O(n^2) DoS; Airflow 3.2.1 lifts the fastapi<0.118 cap
         "python-multipart>=0.0.31",  # CVE-2026-53537/53538/53539 param smuggling + querystring DoS + CVE-2026-53540 negative Content-Length OOM
@@ -309,6 +317,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["databricks-sqlalchemy"],
         VERSIONS["databricks-sdk"],
         VERSIONS["databricks-sql-connector"],
+        VERSIONS["thrift"],
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL>=26.0.0",  # CVE-2026-27459 DTLS cookie callback BoF
         "pyasn1>=0.6.3",  # CVE-2026-30922 DoS via unbounded recursion
@@ -355,15 +364,7 @@ plugins: dict[str, set[str]] = {
     },
     "hive": {
         *COMMONS["hive"],
-        # CVE-2026-66053 (improper certificate validation) + CVE-2026-41608 / CVE-2026-48586
-        # (data amplification): thrift <0.24.0 is vulnerable. impyla hard-pinned thrift==0.16.0
-        # from 0.18.0 through 0.23.0 and only relaxed it to >=0.23.0 in 0.24.0, so the driver
-        # has to move for this floor to be satisfiable.
-        # CVE-2026-66858 + CVE-2026-85494 need >=0.25.0 and are NOT fixed here: the latest
-        # databricks-sql-connector (4.6.0) requires thrift<0.25.0, and the "all" extra installs
-        # both, so raising this floor makes "all" unresolvable. Revisit when Databricks relaxes
-        # its ceiling.
-        "thrift>=0.24.0,<1",
+        # impyla >=0.24.0 accepts the security-fixed Thrift releases.
         # Replacing sasl with pure-sasl based on https://github.com/cloudera/python-sasl/issues/30 for py 3.11
         "pure-sasl",
         "thrift-sasl~=0.4",
@@ -376,11 +377,8 @@ plugins: dict[str, set[str]] = {
     },
     "impala": {
         "presto-types-parser>=0.0.2",
-        # See the hive extra: impyla <0.24.0 hard-pins thrift==0.16.0, which is what holds
-        # thrift below the fixed 0.24.0, and why CVE-2026-66858 / CVE-2026-85494 cannot be
-        # cleared here either.
         "impyla[kerberos]~=0.24.0",
-        "thrift>=0.24.0,<1",
+        VERSIONS["thrift"],
         "pure-sasl",
         "thrift-sasl~=0.4",
     },
@@ -392,7 +390,7 @@ plugins: dict[str, set[str]] = {
     "looker": {
         VERSIONS["looker-sdk"],
         VERSIONS["lkml"],
-        "gitpython>=3.1.50",
+        "gitpython>=3.2.1",  # CVE-2026-114145: submodule clone path validation before filesystem writes
         VERSIONS["giturlparse"],
         "python-liquid",
     },
@@ -455,6 +453,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
         VERSIONS["spacy"],
+        VERSIONS["preshed"],
         VERSIONS["presidio-analyzer"],
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
@@ -462,7 +461,11 @@ plugins: dict[str, set[str]] = {
     "sftp": {"paramiko>=3.5,<6"},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
-    "snowflake": {VERSIONS["snowflake"], DATA_DIFF["snowflake"]},
+    "snowflake": {
+        VERSIONS["snowflake"],
+        "snowflake-connector-python>=4.7.3,<5",  # CVE-2026-86597 sensitive data in logs
+        DATA_DIFF["snowflake"],
+    },
     "ssrs": {"requests-ntlm"},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
@@ -480,11 +483,12 @@ plugins: dict[str, set[str]] = {
     "pyarrow": {VERSIONS["pyarrow"]},
     "pii-processor": {
         VERSIONS["spacy"],
+        VERSIONS["preshed"],
         VERSIONS["pandas"],
         VERSIONS["numpy"],
         VERSIONS["presidio-analyzer"],
     },
-    "presidio-analyzer": {VERSIONS["presidio-analyzer"]},
+    "presidio-analyzer": {VERSIONS["presidio-analyzer"], VERSIONS["preshed"]},
 }
 
 dev = {
@@ -531,7 +535,7 @@ exasol_test = {
 
 test = {
     # Install Airflow as it's not part of `all` plugin
-    "opentelemetry-exporter-otlp==1.37.0",
+    VERSIONS["opentelemetry-exporter-otlp"],
     VERSIONS["airflow"],
     VERSIONS["pygtrie"],
     "boto3-stubs",
@@ -578,9 +582,9 @@ test = {
     "skops",  # mlflow 3.14 switched the mlflow.sklearn serialization default to skops, which mlflow-skinny does not pull in
     *plugins["datalake-s3"],
     *plugins["kafka"],
-    "kafka-python==2.0.2",
+    "kafka-python==2.3.2",
     *plugins["pii-processor"],
-    "requests>=2.32.4,<3",
+    "requests>=2.33.0,<3",
     f"{DATA_DIFF['mysql']}",
     *plugins["datalake-gcs"],
     *plugins["pgspider"],

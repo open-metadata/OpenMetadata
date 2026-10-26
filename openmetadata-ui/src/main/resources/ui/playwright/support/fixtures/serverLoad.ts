@@ -31,6 +31,14 @@ import { guardStorageStateBoot } from '../../utils/storageStateRecovery';
 const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
 
 /**
+ * The tracking pixel in `index.html` is a document subresource, so the `load`
+ * event — what `page.goto`/`reload` wait for by default — waits on an internet
+ * host. When it stalls, a fully rendered page times out its navigation (seen in
+ * OntologyReview.spec.ts: Studio on screen, `page.goto` timed out on "load").
+ */
+const SCARF_PIXEL = 'https://static.scarf.sh/**';
+
+/**
  * Boot endpoints safe to serve from the per-worker cache.
  *
  * Three things have to hold for a path to be listed here. It must have no
@@ -461,6 +469,10 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
   // page that is already going away.
   await context.route(ANALYTICS_COLLECT, (route) =>
     ignoreClosedTarget(route, () => route.fulfill({ status: 200, body: '' }))
+  );
+
+  await context.route(SCARF_PIXEL, (route) =>
+    ignoreClosedTarget(route, () => route.fulfill({ status: 204 }))
   );
 
   await context.route(CACHEABLE_BOOT_PATTERN, (route) =>

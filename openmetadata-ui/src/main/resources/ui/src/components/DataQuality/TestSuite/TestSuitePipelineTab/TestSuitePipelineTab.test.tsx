@@ -22,7 +22,9 @@ import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { Table } from '../../../../generated/entity/data/table';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
+import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import TestSuitePipelineTab from './TestSuitePipelineTab.component';
 
 const mockTestSuite = {
@@ -289,18 +291,13 @@ jest.mock('../../../common/DeleteModal/DeleteModal', () =>
   jest.fn().mockImplementation(() => null)
 );
 
-jest.mock(
-  '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="error-placeholder-ingestion">
-          Airflow not available
-        </div>
-      ));
-  }
-);
+jest.mock('../../../common/AirflowSetupGuide/AirflowSetupGuide', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="error-placeholder-ingestion">Airflow not available</div>
+    ));
+});
 
 describe('TestSuite Pipeline component', () => {
   beforeEach(() => {
@@ -376,6 +373,32 @@ describe('TestSuite Pipeline component', () => {
     );
   });
 
+  // Ingestion pipelines page by cursor, and only a cursor pager hands the handler a cursorType.
+  it('should fetch the next cursor page when the real pager Next is pressed', async () => {
+    const { default: ActualNextPrevious } = jest.requireActual(
+      '../../../common/NextPrevious/NextPrevious'
+    );
+    const mockedNextPrevious = NextPrevious as jest.Mock;
+    const mockPager = mockedNextPrevious.getMockImplementation();
+    mockedNextPrevious.mockImplementation(ActualNextPrevious);
+
+    try {
+      await act(async () => {
+        render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('next'));
+      });
+
+      expect(getIngestionPipelines).toHaveBeenLastCalledWith(
+        expect.objectContaining({ paging: { after: 'after-id' } })
+      );
+    } finally {
+      mockedNextPrevious.mockImplementation(mockPager);
+    }
+  });
+
   it('should render pipeline rows', async () => {
     await act(async () => {
       render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
@@ -383,6 +406,32 @@ describe('TestSuite Pipeline component', () => {
 
     expect(screen.getByText('pipeline1')).toBeInTheDocument();
     expect(screen.getByText('pipeline2')).toBeInTheDocument();
+  });
+
+  it('should render pagination when there are pipelines', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    expect(screen.getByText('Next Page')).toBeInTheDocument();
+  });
+
+  it('should hide pagination when there are no pipelines, even with showPagination', async () => {
+    const pagingState = usePaging();
+    (usePaging as jest.Mock).mockReturnValue({
+      ...pagingState,
+      paging: { total: 0 },
+    });
+
+    try {
+      await act(async () => {
+        render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+      });
+
+      expect(screen.queryByText('Next Page')).not.toBeInTheDocument();
+    } finally {
+      (usePaging as jest.Mock).mockReturnValue(pagingState);
+    }
   });
 
   it('should show error placeholder when airflow is not available', async () => {

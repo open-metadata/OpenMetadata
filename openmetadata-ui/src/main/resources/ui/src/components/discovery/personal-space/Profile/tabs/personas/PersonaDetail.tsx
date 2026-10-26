@@ -62,6 +62,7 @@ import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/Rich
 import SubCategoryGrid from './customize/SubCategoryGrid';
 import PersonaCustomizeGrid from './PersonaCustomizeGrid';
 import type { PersonaDetailTab } from './Personas.types';
+import { viewToSubPath } from './Personas.utils';
 import PersonaUsersTab from './PersonaUsersTab';
 
 interface PersonaDetailProps {
@@ -117,7 +118,9 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
 
   // Deep link that reopens this persona in the personal-space modal.
   const { onCopyToClipBoard, hasCopied } = useClipboard(
-    `${globalThis.location.origin}${globalThis.location.pathname}#personas/${fqn}`
+    `${globalThis.location.origin}${
+      globalThis.location.pathname
+    }#personas/${viewToSubPath({ type: 'detail', fqn, name: fqn })}`
   );
 
   const fetchPersona = useCallback(async () => {

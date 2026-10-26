@@ -14,7 +14,6 @@
 import { performAdminLogin } from '../../../utils/admin';
 import {
   navigateToMembersPanel,
-  openAiProfile,
   openOnlineUsersPanel,
 } from '../../../utils/aiProfile';
 import { expect, test } from '../../fixtures/pages';
@@ -72,13 +71,18 @@ test.describe('AI Profile Online Users', () => {
     );
   });
 
-  test('Non-admin users cannot access the Members surface', async ({
+  // As in classic: Members opens to anyone who may view teams or users, but
+  // Online users stays admin-only.
+  test('Non-admin users see Members without the Online users section', async ({
     dataConsumerPage,
   }) => {
-    await openAiProfile(dataConsumerPage);
+    await navigateToMembersPanel(dataConsumerPage);
 
     await expect(
-      dataConsumerPage.getByTestId('profile-nav-members')
+      dataConsumerPage.getByTestId('members-card-users')
+    ).toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('members-card-online-users')
     ).toBeHidden();
   });
 });

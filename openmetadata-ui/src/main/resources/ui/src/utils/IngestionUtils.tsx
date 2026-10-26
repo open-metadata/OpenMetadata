@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Code01 } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
+import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   LogViewerModalProps,
   LogViewerStatusTone,
@@ -129,7 +130,7 @@ export const getErrorPlaceHolder = (
 ) => {
   if (ingestionDataLength === 0) {
     return (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         className={className}
         description={getPipelineExtraInfo(
           isPlatFormDisabled,
@@ -138,7 +139,6 @@ export const getErrorPlaceHolder = (
         )}
         icon={<Code01 className="tw:text-fg-brand-primary" />}
         title={t('message.no-agents-set-up-yet') as string}
-        variant="blank"
       />
     );
   }

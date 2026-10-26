@@ -29,7 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../../components/common/Table/Table.interface';
 import Table from '../../../components/common/Table/TableV2';
@@ -46,7 +46,6 @@ import {
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation, Policy } from '../../../generated/entity/policies/policy';
@@ -116,7 +115,7 @@ const PoliciesListPage = () => {
         GlobalSettingsMenuCategory.ACCESS,
         t('label.policy-plural')
       ),
-    []
+    [t]
   );
 
   const columns: ColumnsType<Policy> = useMemo(() => {
@@ -189,7 +188,7 @@ const PoliciesListPage = () => {
                   </AriaButton>
                   <Popover
                     arrow
-                    containerClassName="tw:w-40 tw:px-4 tw:py-3 tw:text-center"
+                    containerClassName="tw:w-40 tw:px-4 tw:py-3"
                     placement="bottom">
                     <Box
                       inline
@@ -259,26 +258,29 @@ const PoliciesListPage = () => {
         },
       },
     ];
-  }, []);
+  }, [deletePolicyPermission, t, viewRolePermission]);
 
-  const fetchPolicies = async (paging?: Partial<Paging>) => {
-    setIsLoading(true);
-    try {
-      const data = await getPolicies(
-        'roles',
-        paging?.after,
-        paging?.before,
-        pageSize
-      );
+  const fetchPolicies = useCallback(
+    async (paging?: Partial<Paging>) => {
+      setIsLoading(true);
+      try {
+        const data = await getPolicies(
+          'roles',
+          paging?.after,
+          paging?.before,
+          pageSize
+        );
 
-      setPolicies(data.data || []);
-      handlePagingChange(data.paging);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        setPolicies(data.data || []);
+        handlePagingChange(data.paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [handlePagingChange, pageSize]
+  );
 
   const handleAfterDeleteAction = useCallback(() => {
     fetchPolicies();
@@ -324,7 +326,7 @@ const PoliciesListPage = () => {
     } else {
       fetchPolicies();
     }
-  }, [pageSize, pagingCursor]);
+  }, [fetchPolicies, pagingCursor]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.policy-plural')}>
@@ -379,16 +381,19 @@ const PoliciesListPage = () => {
             loading={isLoading}
             locale={{
               emptyText: (
-                <ErrorPlaceHolder
-                  className="border-none"
-                  heading={t('label.policy')}
-                  permission={addPolicyPermission}
-                  permissionValue={t('label.create-entity', {
-                    entity: t('label.policy'),
-                  })}
-                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={handleAddPolicy}
-                />
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  <CreatePlaceholder
+                    data-testid={`create-error-placeholder-${t(
+                      'label.policy'
+                    )}`}
+                    heading={t('label.policy')}
+                    permission={addPolicyPermission}
+                    permissionValue={t('label.create-entity', {
+                      entity: t('label.policy'),
+                    })}
+                    onCreate={handleAddPolicy}
+                  />
+                </div>
               ),
             }}
             pagination={false}

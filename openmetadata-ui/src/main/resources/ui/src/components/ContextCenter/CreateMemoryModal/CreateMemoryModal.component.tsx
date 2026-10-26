@@ -72,9 +72,7 @@ import {
   MEMORY_TYPE_OPTIONS,
   VISIBILITY_OPTIONS,
 } from '../../../constants/ContextCenter.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
-import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   ContextMemory,
@@ -84,8 +82,6 @@ import {
   ShareVisibility,
   TagLabel,
 } from '../../../generated/entity/context/contextMemory';
-import { Operation } from '../../../generated/entity/policies/policy';
-import { useMemoryOntologyProposals } from '../../../hooks/discovery/context-center/useMemoryOntologyProposals';
 import { queryClient } from '../../../queryClient';
 import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -93,13 +89,11 @@ import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextC
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { checkPermission } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
-import MemoryDerivedOntology from '../../discovery/context-center/MemoryDerivedOntology/MemoryDerivedOntology';
-import { canProposeFromMemory } from '../../discovery/context-center/MemoryDerivedOntology/MemoryDerivedOntology.utils';
+import MemoryDerivedTerm from '../../discovery/context-center/MemoryDerivedTerm/MemoryDerivedTerm';
 import TagSelector from '../../Tag/TagSelector/TagSelector';
 import {
   CreateMemoryModalProps,
@@ -156,7 +150,9 @@ const LinkedAssetCard: FC<{
         align="center"
         className="tw:flex-1 tw:min-w-0 tw:gap-2.5"
         justify="between">
-        <div className="tw:min-w-0 tw:flex-1 tw:pr-2 tw:[&_.prose]:leading-tight">
+        <Box
+          className="tw:min-w-0 tw:flex-1 tw:pr-2 tw:[&_.prose]:leading-tight"
+          direction="col">
           <Typography
             ellipsis
             className="tw:leading-tight"
@@ -170,7 +166,7 @@ const LinkedAssetCard: FC<{
             size="text-xs">
             {asset.reference?.fullyQualifiedName ?? ''}
           </Typography>
-        </div>
+        </Box>
         <div className="tw:flex tw:items-center tw:gap-2.5 tw:shrink-0">
           {asset.reference?.type && (
             <Badge
@@ -920,19 +916,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     [memoryToEdit, currentUserName]
   );
 
-  const ontologyProposals = useMemoryOntologyProposals(
-    memoryToEdit?.id,
-    isOpen
-  );
-  const { permissions } = usePermissionProvider();
-  const canCreateOntologyDrafts =
-    Boolean(isAdminUser) ||
-    checkPermission(
-      Operation.Create,
-      ResourceEntity.ONTOLOGY_CHANGE_SET,
-      permissions
-    );
-
   const { showEditButton, showSubmitButton } = useMemo(() => {
     const canEditMemory = (isOwner || isAdminUser) && canEdit;
     const showEditButton = isViewOnly && canEditMemory;
@@ -1276,22 +1259,10 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                 />
 
                 {memoryToEdit && (
-                  <MemoryDerivedOntology
-                    canPropose={canProposeFromMemory(
-                      memoryToEdit,
-                      ontologyProposals.status,
-                      {
-                        isOwner,
-                        canCreateDrafts: canCreateOntologyDrafts,
-                        isViewOnly,
-                      }
-                    )}
-                    isProposing={ontologyProposals.isProposing}
+                  <MemoryDerivedTerm
+                    isViewOnly={isViewOnly}
                     memory={memoryToEdit}
-                    proposeError={ontologyProposals.proposeError}
-                    status={ontologyProposals.status}
                     onNavigate={handleClose}
-                    onPropose={ontologyProposals.propose}
                   />
                 )}
               </div>

@@ -75,7 +75,7 @@ const SectionWithEdit: React.FC<SectionWithEditProps> = ({
       </div>
       <div
         className={classNames(
-          'tw:leading-normal tw:text-(color:--om-legacy-color-595959)',
+          'tw:leading-normal tw:text-tertiary',
           contentClassName
         )}
         data-testid="section-content">

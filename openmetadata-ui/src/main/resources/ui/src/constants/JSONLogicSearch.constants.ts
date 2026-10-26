@@ -16,6 +16,7 @@ export const GLOSSARY_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.REVIEWERS,
   EntityReferenceFields.SYNONYMS,
   EntityReferenceFields.RELATED_TERMS,
+  EntityReferenceFields.PROVIDER,
 ];
 
 export const TABLE_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [

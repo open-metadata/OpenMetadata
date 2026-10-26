@@ -16,7 +16,6 @@ import {
   Button,
   Card,
   Dropdown,
-  EmptyPlaceholder,
   PageLayout,
 } from '@openmetadata/ui-core-components';
 import {
@@ -35,6 +34,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ArticleDetailHeader from '../../../components/ContextCenter/ArticleDetailHeader/ArticleDetailHeader.component';
 import ArticlesListToolbar from '../../../components/ContextCenter/ArticlesListToolbar/ArticlesListToolbar';
@@ -492,7 +492,7 @@ const ContextCenterArticlesPage = () => {
 
   const renderArticlesEmptyState = () => (
     <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         actions={
           permissions?.Create
             ? [
@@ -534,7 +534,6 @@ const ContextCenterArticlesPage = () => {
           },
         ]}
         title={t('label.write-it-once-let-ai-answer-it-forever')}
-        variant="features"
       />
     </div>
   );
@@ -639,7 +638,9 @@ const ContextCenterArticlesPage = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full ${contextCenterClassBase.getPageContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-articles-page">
       <PageLayout
         className={pageLayoutClassNames.root}

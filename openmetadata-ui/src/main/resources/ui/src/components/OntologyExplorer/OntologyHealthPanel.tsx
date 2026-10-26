@@ -50,6 +50,7 @@ interface OntologyHealthPanelProps {
   readonly isRaised?: boolean;
   readonly health: OntologyHealthSummary;
   readonly isolatedTermCount?: number;
+  readonly placement?: 'floating' | 'sidebar';
   readonly onConnect: (node: OntologyNode) => void;
 }
 
@@ -59,22 +60,45 @@ const PANEL_POSITION_CLASS = 'tw:absolute tw:bottom-4 tw:right-4 tw:z-6';
 // Clears the AI proposal bar centred along the canvas bottom on narrower screens.
 const RAISED_PANEL_CLASS = 'tw:max-2xl:bottom-18';
 
+function getHealthPanelLayout(
+  placement: NonNullable<OntologyHealthPanelProps['placement']>,
+  isRaised: boolean,
+  view: HealthPanelView
+) {
+  const isSidebar = placement === 'sidebar';
+  const positionClass = isSidebar
+    ? 'tw:relative tw:h-full tw:shrink-0'
+    : classNames(PANEL_POSITION_CLASS, isRaised && RAISED_PANEL_CLASS);
+
+  return {
+    cardClass: classNames(
+      positionClass,
+      'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden',
+      isSidebar
+        ? 'tw:max-h-full tw:max-w-none tw:rounded-none tw:border-y-0 tw:border-r-0 tw:shadow-none!'
+        : 'tw:max-h-[calc(100%-2rem)] tw:max-w-[calc(100%-2rem)]'
+    ),
+    isMinimized: !isSidebar && view === 'minimized',
+    isOpen: isSidebar || view === 'open',
+    isSidebar,
+    positionClass,
+  };
+}
+
 const OntologyHealthPanel = ({
   aiProposals,
   isRaised = false,
   health,
   isolatedTermCount,
+  placement = 'floating',
   onConnect,
 }: OntologyHealthPanelProps) => {
   const { t } = useTranslation();
   const [view, setView] = useState<HealthPanelView>('summary');
-  const positionClass = classNames(
-    PANEL_POSITION_CLASS,
-    isRaised && RAISED_PANEL_CLASS
-  );
+  const { cardClass, isMinimized, isOpen, isSidebar, positionClass } =
+    getHealthPanelLayout(placement, isRaised, view);
   const isolatedCount = isolatedTermCount ?? health.isolatedTerms.length;
   const hasIsolated = isolatedCount > 0;
-  const isOpen = view === 'open';
   const isolatedLabel = `${isolatedCount} ${t(
     'label.isolated'
   ).toLocaleLowerCase()}`;
@@ -135,21 +159,25 @@ const OntologyHealthPanel = ({
         type="pill-color">
         {t(hasIsolated ? 'label.attention' : 'label.healthy')}
       </Badge>
-      <span className="tw:flex-1" />
-      <ButtonUtility
-        color="tertiary"
-        icon={Minus}
-        size="xs"
-        tooltip={t('label.minimize')}
-        onClick={() => setView('minimized')}
-      />
-      <ButtonUtility
-        color="tertiary"
-        icon={isOpen ? ChevronDown : ChevronUp}
-        size="xs"
-        tooltip={t(isOpen ? 'label.collapse' : 'label.expand')}
-        onClick={() => setView(isOpen ? 'summary' : 'open')}
-      />
+      {isSidebar ? null : (
+        <>
+          <span className="tw:flex-1" />
+          <ButtonUtility
+            color="tertiary"
+            icon={Minus}
+            size="xs"
+            tooltip={t('label.minimize')}
+            onClick={() => setView('minimized')}
+          />
+          <ButtonUtility
+            color="tertiary"
+            icon={isOpen ? ChevronDown : ChevronUp}
+            size="xs"
+            tooltip={t(isOpen ? 'label.collapse' : 'label.expand')}
+            onClick={() => setView(isOpen ? 'summary' : 'open')}
+          />
+        </>
+      )}
     </div>
   );
 
@@ -236,13 +264,13 @@ const OntologyHealthPanel = ({
     </>
   );
 
-  if (view === 'minimized') {
+  if (isMinimized) {
     return renderMinimized();
   }
 
   return (
     <Card
-      className={`${positionClass} tw:flex tw:max-h-[calc(100%-2rem)] tw:w-75 tw:max-w-[calc(100%-2rem)] tw:flex-col tw:overflow-hidden`}
+      className={cardClass}
       data-testid="ontology-health-panel"
       variant="elevated">
       <div className="tw:flex tw:shrink-0 tw:flex-col tw:gap-3 tw:p-4">

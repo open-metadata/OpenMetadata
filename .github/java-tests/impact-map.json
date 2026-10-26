@@ -705,6 +705,7 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Ontology*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/RelationshipType*",
         "openmetadata-spec/src/main/resources/json/schema/entity/data/ontology*.json",
+        "openmetadata-spec/src/main/resources/json/schema/type/ontology*.json",
         "openmetadata-service/src/main/resources/json/data/ontology/**",
         "openmetadata-spec/src/main/resources/json/schema/api/data/*Ontology*",
         "openmetadata-spec/src/main/resources/json/schema/api/data/ontology*",
@@ -1246,6 +1247,7 @@
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/bench/**",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/search/**",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/service/search/vector/**",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/sso/**",
         "openmetadata-integration-tests/src/test/resources/**"
       ],
       "tests": [

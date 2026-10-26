@@ -17,33 +17,24 @@ import React from 'react';
 interface FieldRowProps {
   title: string;
   description?: string;
-  // A short value (a word, a toggle) yields its width to the title and description.
-  isValueCompact?: boolean;
   children: React.ReactNode;
 }
 
 /**
- * The shared two-column field layout: title + description pinned on the left,
- * the value (or edit control) on the right. Used by both the read-only rows and
- * `InlineEditCard`, so editable and read-only fields align identically. It has
- * no padding of its own — the caller (a padded card or wrapper) provides it.
+ * The shared two-column field layout: title + description on the left (3/4),
+ * the value (or edit control) right-aligned on the right (1/4). Used by both the
+ * read-only rows and `InlineEditCard`, so editable and read-only fields align
+ * identically. Each `fr` track keeps its content's minimum width, so a wide edit
+ * control takes the room it needs instead of overflowing. It has no padding of
+ * its own — the caller (a padded card or wrapper) provides it.
  */
 const FieldRow: React.FC<FieldRowProps> = ({
   title,
   description,
-  isValueCompact = false,
   children,
 }) => (
-  <Box
-    className={
-      isValueCompact
-        ? 'tw:grid tw:[grid-template-columns:1fr_auto]'
-        : 'tw:grid tw:[grid-template-columns:minmax(220px,1fr)_2fr]'
-    }
-    gap={8}>
-    <Box
-      className={isValueCompact ? 'tw:gap-0.5' : 'tw:max-w-[320px] tw:gap-0.5'}
-      direction="col">
+  <Box className="tw:grid tw:grid-cols-[3fr_1fr]" gap={8}>
+    <Box className="tw:gap-0.5" direction="col">
       <Typography className="tw:text-primary" size="text-sm" weight="medium">
         {title}
       </Typography>
