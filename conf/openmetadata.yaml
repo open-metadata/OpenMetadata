@@ -1037,6 +1037,10 @@ cache:
 # maxStaleness the entries of the batches that were not re-confirmed are too old to answer from, so
 # their checks read the database on the request thread, and answer 503 when that read fails or
 # exceeds loadTimeout. Also watch om_credential_unavailable_total.
+# waitForPropagation on the token revoke endpoints waits for the writing server's maxStaleness, so
+# it holds for the cluster only when every server runs the same credentialVerification settings.
+# During a rollout that changes maxStaleness, the larger value applies until every server runs the
+# new one.
 credentialVerification:
   # Oldest database read a token check may be answered from.
   maxStaleness: ${CREDENTIAL_VERIFICATION_MAX_STALENESS:-5s}

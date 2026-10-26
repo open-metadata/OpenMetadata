@@ -200,7 +200,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
           + "Use PUT /users/security/token to create a personal access token.";
   private static final String WAIT_FOR_PROPAGATION_DESCRIPTION =
       "Respond only once every server rejects the revoked tokens. Adds about"
-          + " `credentialVerification.maxStaleness` (5 seconds by default) to the call."
+          + " `credentialVerification.maxStaleness` (5 seconds by default) to the call. The wait"
+          + " uses the receiving server's setting, so it holds for the cluster only when every"
+          + " server runs the same `credentialVerification` settings; during a rollout that"
+          + " changes `maxStaleness`, the larger value applies until every server runs the new"
+          + " one."
           + " (Default = `false`)";
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;

@@ -23,10 +23,38 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
 - A sweep every 2 s fingerprints each cached principal's rows and re-reads the ones that changed.
   Servers converge on database state and share no credential state, so every committed write is
   seen, whoever made it.
-- Every entry point (`JwtFilter.filter`, the WebSocket handshake, the MCP transport and its tool and
-  prompt callbacks) goes through `JwtFilter.authenticate`, which classifies the token with
-  `OmCredential.classify` and calls `require`. An OpenMetadata-signed claim combination that matches
-  no issued kind is rejected. The probes that grant no access call `verifySignatureOnly`.
+- Every entry point classifies the token with `OmCredential.classify` and calls
+  `CredentialVerifier.require`, through `JwtFilter.requireCurrentCredential`. Which method each one
+  calls:
+  - `JwtFilter.filter` (REST) calls `authenticate`.
+  - `JwtFilter.getCatalogSecurityContext` calls `authenticate`. The MCP tool callbacks
+    (`McpServer.executeTool`) and prompt callbacks (`DefaultPromptsContext.callPrompt`) use it.
+  - `JwtFilter.validateJwtAndGetClaims` calls `requireCurrentCredential` directly and resolves the
+    principal only for a stored kind. `SocketAddressFilter.validatePrefixedTokenRequest` calls it, for
+    the WebSocket handshake and for the MCP HTTP transport.
+  - `JwtFilter.verifySignatureOnly` classifies nothing and calls no `require`. The probes that grant
+    no access use it (`BotTokenCheck`, `TestLoginService`, `SystemRepository`).
+
+  An OpenMetadata-signed claim combination that matches no issued kind is rejected as unrecognized.
+  So is a token that OpenMetadata's key did not sign and that claims `isBot=true` or
+  `tokenType=PERSONAL_ACCESS`. Such a token has no stored value to confirm and matches no issued
+  kind.
+- A principal whose latest check read produced no record, because the read failed, got no slot or
+  left the principal out, is not read again on a check's behalf for `missRefreshMinAge` (500 ms by
+  default, less than `maxStaleness`). Its checks answer 503 without a read in that window. A token
+  that a fresh entry lacks triggers a read only when the entry's last full read is older than
+  `missRefreshMinAge`, and the check rejects it otherwise. So a principal's unknown or failing
+  tokens cost at most about two reads per second per server.
+- Check reads run on a pool of `min(maxConcurrentRequestReads, databasePool / 2)` platform threads
+  (16 by default, at least 1), so they cannot fill a small database pool. A request thread waits for
+  its read within `loadTimeout`. The pool queues 16 reads per thread (`QUEUED_READS_PER_THREAD`, a
+  constant, not a setting) and sheds the rest, which answer 503 (`NO_PERMIT`).
+- An entry leaves the cache after `idleExpiry` (15 min by default) without a check. A sweep or a
+  re-read does not extend it. Every `deepVerifyInterval` (10 min by default) the sweep re-reads the
+  cached principals in full with every decrypt forced, which sees edits that fingerprints cannot,
+  such as a secret changed inside an external secrets manager. A deep pass that throws, or that
+  leaves a principal out because its rows could not be converted, is retried after
+  `min(deepVerifyInterval, 1 min)`, and the principals stay trusted by fingerprint until then.
 - When the verifier cannot confirm within `loadTimeout` (2 s), the request gets 503 with
   `Retry-After` (the sweep interval, rounded up), and an MCP tool or prompt call gets JSON-RPC
   error -32003. It never gets 401, and it is never accepted unconfirmed.
@@ -43,14 +71,19 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   the wait cannot finish, because the call is interrupted or no permit is free, the call answers 503
   with `Retry-After`. `REVIEW.md` asks that an `InterruptedException` never map to a retryable
   status. Here the write has committed, both endpoints converge on a repeat, and a repeat waits
-  again, so the 503 is a request to repeat the call and not an unfinished operation.
+  again, so the 503 is a request to repeat the call and not an unfinished operation. The wait uses
+  the writing server's `maxStaleness`, so it holds for the cluster only when every server runs the
+  same `credentialVerification` settings. During a rollout that changes `maxStaleness`, the larger
+  value applies until every server runs the new one, and a revoke that waits on a server with the
+  smaller value can return before a server with the larger one stops accepting the token.
 
 ## Consequences
 - While any principal is cached, each server sends one fingerprint statement per 500 cached
   principals every 2 s, whether or not requests arrive. The load scales with cached principals
   (4000 at most), not with request rate.
 - While the database is unreachable, bot and PAT requests answer 503 once their entries are older
-  than `maxStaleness`. Session and identity-provider tokens are not affected.
+  than `maxStaleness`. Session tokens and identity-provider tokens that claim neither `isBot=true` nor
+  `tokenType=PERSONAL_ACCESS` are not affected.
 - Operators alert when `om.credential.sweep.last.complete.age.seconds` (Prometheus name
   `om_credential_sweep_last_complete_age_seconds`) exceeds `maxStaleness`, and watch
   `om.credential.unavailable`. The gauge is the age of the last sweep that re-confirmed every cached
