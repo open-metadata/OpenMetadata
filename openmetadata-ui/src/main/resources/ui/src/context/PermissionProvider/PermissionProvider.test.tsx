@@ -47,7 +47,7 @@ jest.mock('../../rest/permissionAPI', () => ({
     .mockImplementation(() => Promise.resolve({})),
 }));
 
-let currentUser: { id: string; name: string } | null = {
+let currentUser: { id: string; name: string; teams?: [] } | null = {
   id: '123',
   name: 'Test User',
 };
@@ -123,6 +123,73 @@ describe('PermissionProvider', () => {
 
     expect(screen.queryByText('Loader')).not.toBeInTheDocument();
     expect(await screen.findByTestId('children')).toBeInTheDocument();
+  });
+
+  describe('isPermissionsLoading', () => {
+    const Probe = () => {
+      const { permissions, isPermissionsLoading } = usePermissionProvider();
+
+      return (
+        <p data-testid="probe">
+          {`${isPermissionsLoading}:${Object.keys(permissions).length}`}
+        </p>
+      );
+    };
+
+    // A failed request still ends the load: consumers must read the flag, not
+    // an empty map, or they wait forever.
+    it('turns false with empty permissions when the request fails', async () => {
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      (getLoggedInUserPermissions as jest.Mock).mockRejectedValueOnce(
+        new Error('boom')
+      );
+      render(
+        <PermissionProvider>
+          <Probe />
+        </PermissionProvider>,
+        { wrapper: BrowserRouter }
+      );
+
+      expect(await screen.findByTestId('probe')).toHaveTextContent('false:0');
+    });
+
+    // Children stay mounted when the user arrives after the first render, so
+    // the full-screen loader no longer covers the fetch; the flag does.
+    it('is true while a fetch runs after children mounted', async () => {
+      currentUser = null;
+      let resolvePermissions!: (value: { data: [] }) => void;
+      const pendingPermissions = new Promise<{ data: [] }>((resolve) => {
+        resolvePermissions = resolve;
+      });
+      (getLoggedInUserPermissions as jest.Mock).mockReturnValueOnce(
+        pendingPermissions
+      );
+      const { rerender } = render(
+        <PermissionProvider>
+          <Probe />
+        </PermissionProvider>,
+        { wrapper: BrowserRouter }
+      );
+
+      expect(screen.getByTestId('probe')).toHaveTextContent('false:0');
+
+      // The provider refetches when the user's teams or roles change.
+      currentUser = { id: '123', name: 'Test User', teams: [] };
+      rerender(
+        <PermissionProvider>
+          <Probe />
+        </PermissionProvider>
+      );
+
+      expect(screen.getByTestId('probe')).toHaveTextContent('true:0');
+
+      await act(async () => {
+        resolvePermissions({ data: [] });
+        await pendingPermissions;
+      });
+
+      expect(screen.getByTestId('probe')).toHaveTextContent('false:0');
+    });
   });
 
   it('preserves the current graph view when permissions replay its pathname', async () => {

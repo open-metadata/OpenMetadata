@@ -357,7 +357,7 @@ def test_empty_environment_bootstraps_pinned_uv_without_uv_on_path(nox_repo: Pat
     assert_success(run(sys.executable, "scripts/python_environment.py", "--profile", "test", cwd=nox_repo))
     result = run(str(nox_repo / "env/bin/uv"), "--version", cwd=nox_repo)
     assert_success(result)
-    assert result.stdout.startswith("uv 0.11.7 ")
+    assert result.stdout.startswith("uv 0.13.4 ")
     assert_success(
         run(
             str(nox_repo / "env/bin/python"),

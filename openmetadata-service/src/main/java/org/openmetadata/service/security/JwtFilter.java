@@ -83,6 +83,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.security.session.SessionProviders;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
@@ -100,8 +101,6 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   public static final String IMPERSONATE_USER_HEADER = "X-Impersonate-User";
   public static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
-  private static final Set<String> NATIVE_PASSWORD_PROVIDER_VALUES =
-      Set.of(AuthProvider.BASIC.value(), AuthProvider.OPENMETADATA.value());
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   @Getter private String jwtTeamClaimMapping;
@@ -732,7 +731,7 @@ public class JwtFilter implements ContainerRequestFilter {
     if (nullOrEmpty(sessionProvider) || providerType == null) {
       return;
     }
-    if (!isSameProvider(sessionProvider, providerType.value())) {
+    if (!SessionProviders.isSameProvider(sessionProvider, providerType.value())) {
       LOG.warn(
           "Rejecting session {} issued by provider {} — the configured provider is now {}",
           SessionService.truncateId(session.getId()),
@@ -741,22 +740,6 @@ public class JwtFilter implements ContainerRequestFilter {
       throw AuthenticationException.getInvalidTokenException(
           "Session was issued by a provider that is no longer configured.");
     }
-  }
-
-  /**
-   * {@code basic} and {@code openmetadata} are two historical names for the same native-password
-   * authenticator — {@code SecurityConfigurationManager.isNativePasswordProvider} treats them
-   * interchangeably and one servlet handler serves both. Renaming one to the other is not a provider
-   * swap and must not log the whole deployment out.
-   */
-  private static boolean isSameProvider(String sessionProvider, String configuredProvider) {
-    return sessionProvider.equalsIgnoreCase(configuredProvider)
-        || (isNativePasswordProviderValue(sessionProvider)
-            && isNativePasswordProviderValue(configuredProvider));
-  }
-
-  private static boolean isNativePasswordProviderValue(String provider) {
-    return NATIVE_PASSWORD_PROVIDER_VALUES.contains(provider.toLowerCase(Locale.ROOT));
   }
 
   public CatalogSecurityContext getCatalogSecurityContext(String token) {

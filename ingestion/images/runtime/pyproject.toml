@@ -12,10 +12,9 @@ dependencies = [
     "aiomysql>=0.3.2",
     "asyncpg>=0.31.0",
     "psycopg2==2.9.13",
-    "mysqlclient==2.1.1",
-    "pip>=26.2,<27",
+    "pip>=26.2.2,<27",
     "setuptools>=83",
-    "uv==0.11.7",
+    "uv==0.13.4",
     "sqlalchemy-ibmi==0.9.3"
 ]
 
@@ -53,7 +52,7 @@ dependencies = [
 "doris" = ["openmetadata-ingestion[doris]"]
 "druid" = ["openmetadata-ingestion[druid]"]
 "dynamodb" = ["openmetadata-ingestion[dynamodb]"]
-"e2e_test" = ["openmetadata-ingestion[e2e_test]"]
+"e2e-test" = ["openmetadata-ingestion[e2e-test]"]
 "elasticsearch" = ["openmetadata-ingestion[elasticsearch]"]
 "exasol" = ["openmetadata-ingestion[exasol]"]
 "exasol-test" = ["openmetadata-ingestion[exasol-test]"]
@@ -121,10 +120,10 @@ dependencies = [
 "vertica" = ["openmetadata-ingestion[vertica]"]
 
 [dependency-groups]
-managed-api = ["openmetadata-managed-apis", "py-spy"]
+managed-api = ["openmetadata-managed-apis", "py-spy", "virtualenv>=21.14.12", "mysqlclient==2.1.1"]
 
 [tool.uv]
-required-version = "==0.11.7"
+required-version = "==0.13.4"
 package = false
 default-groups = []
 environments = ["sys_platform == 'linux'"]
@@ -139,3 +138,8 @@ openmetadata-managed-apis = {path = "../../../openmetadata-airflow-apis"}
 name = "sqlalchemy-ibmi"
 version = "0.9.3"
 requires-dist = ["pyodbc>=4.0", "sqlalchemy>=2.0,<2.1"]
+
+[[tool.uv.dependency-metadata]]
+name = "pydoris"
+version = "1.2.0"
+requires-dist = ["sqlalchemy>=1.4", "sqlalchemy-utils>=0.38.3", "requests", "pymysql~=1.0"]

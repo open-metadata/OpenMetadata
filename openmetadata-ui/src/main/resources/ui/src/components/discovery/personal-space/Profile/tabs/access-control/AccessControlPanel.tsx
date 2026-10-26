@@ -12,9 +12,10 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { Button } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import {
   AuditLogs as AuditLogsIcon,
+  Lock01,
   PermissionDebugger as AccessControlIcon,
   Policy as PoliciesIcon,
   Role as RolesIcon,
@@ -26,13 +27,16 @@ import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { AccessControlView } from './AccessControl.types';
 import {
   getDetailHeaderNames,
   hashSubPathToView,
+  isAccessControlViewAllowed,
   viewToSubPath,
 } from './AccessControl.utils';
 import AccessControlAddPolicyForm from './AccessControlAddPolicyForm';
@@ -78,6 +82,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
+  const { isAdminUser } = useAuth();
   const { state: hashState, setHash } = useSettingsHash();
 
   const view = useMemo<AccessControlView>(
@@ -339,6 +344,21 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
     detailHeaderTitleSuffix,
     resolvedDetailName,
   ]);
+
+  // A deep link a non-admin audit-log reader may not follow.
+  if (!isAccessControlViewAllowed(view.type, Boolean(isAdminUser))) {
+    return (
+      <Box
+        className="tw:relative tw:h-full"
+        data-testid="permission-error-placeholder">
+        <PermissionPlaceholder
+          description={t('message.no-permission-for-action')}
+          icon={<Lock01 />}
+          title={t('label.no-access')}
+        />
+      </Box>
+    );
+  }
 
   // Audit logs manages its own height/scroll and injects its own header actions.
   if (isAuditLogsView) {

@@ -46,7 +46,7 @@ def prepare_locked_tooling(root, monkeypatch):
     }
     config.write_text(
         '''[build-system]
-requires = ["setuptools==70.3.0"]
+requires = ["setuptools==83.0.0"]
 build-backend = "setuptools.build_meta"
 [project]
 name = "python-tooling-fixture"
@@ -55,10 +55,10 @@ requires-python = ">=3.10"
 [tool.setuptools.packages.find]
 where = ["src"]
 [tool.uv]
-required-version = "==0.11.7"
+required-version = "==0.13.4"
 default-groups = []
 [dependency-groups]
-environment-check = ["packaging", "pip", "uv==0.11.7", "tomli>=2; python_version < '3.11'"]
+environment-check = ["packaging", "pip", "uv==0.13.4", "tomli>=2; python_version < '3.11'"]
 generation = [{include-group = "environment-check"}]
 style = [{include-group = "environment-check"}, "'''
         + requirements["ruff"]

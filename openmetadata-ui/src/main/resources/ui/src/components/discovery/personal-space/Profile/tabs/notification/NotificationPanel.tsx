@@ -15,7 +15,6 @@ import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -38,6 +37,8 @@ import {
   NotificationSectionContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
@@ -72,12 +73,15 @@ const NotificationSectionPlaceholder: FC<{
     return <Loader />;
   }
 
+  const EmptyStatePlaceholder = isDenied
+    ? PermissionPlaceholder
+    : NoDataPlaceholder;
+
   return (
     <Box className="tw:relative tw:min-h-60">
-      <EmptyPlaceholder
-        icon={isDenied ? <Lock className="tw:text-secondary" /> : undefined}
+      <EmptyStatePlaceholder
+        icon={isDenied ? <Lock /> : undefined}
         title={t(isDenied ? 'label.access-denied' : 'label.no-data')}
-        variant="blank"
       />
     </Box>
   );
@@ -486,10 +490,9 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       if (!canEditAlert) {
         return (
           <Box className="tw:relative tw:min-h-60">
-            <EmptyPlaceholder
-              icon={<Lock className="tw:text-secondary" />}
+            <PermissionPlaceholder
+              icon={<Lock />}
               title={t('label.access-denied')}
-              variant="blank"
             />
           </Box>
         );

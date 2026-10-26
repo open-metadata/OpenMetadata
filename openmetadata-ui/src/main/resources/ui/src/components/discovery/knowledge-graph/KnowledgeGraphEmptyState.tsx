@@ -41,7 +41,7 @@ const KnowledgeGraphEmptyState = ({
   }
 
   return (
-    <div className="kg-empty-hint">
+    <div className="tw:absolute tw:top-4 tw:right-4 tw:left-4 tw:flex tw:flex-wrap tw:items-center tw:gap-2">
       <Typography size="text-sm">{t(message)}</Typography>
       {mode === 'ontology' && level < 3 && !hasFilters && (
         <Button color="link-color" size="sm" onPress={onExtend}>

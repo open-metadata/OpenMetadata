@@ -14,7 +14,6 @@ import {
   Badge,
   Box,
   Button,
-  ButtonUtility,
   Divider,
   Dropdown,
   NavItemBase,
@@ -63,7 +62,8 @@ const LeftSidebar = () => {
     () =>
       getSidebarActiveKeys(
         getSidebarPathname(location.pathname, location.state),
-        leftSidebarClassBase.getSidebarNestedKeys()
+        leftSidebarClassBase.getSidebarNestedKeys(),
+        leftSidebarClassBase.getSidebarPathAliases()
       ),
     [location.pathname, location.state]
   );
@@ -112,19 +112,8 @@ const LeftSidebar = () => {
       }
     };
 
-    if (isSidebarCollapsed && !item.redirect_url) {
-      return (
-        <Button
-          aria-label={t(item.title)}
-          color="tertiary"
-          data-testid={item.dataTestId}
-          iconLeading={item.icon}
-          size="md"
-          onPress={handleSelect}
-        />
-      );
-    }
-
+    // Every collapsed rail item is the same NavItemButton, so links, actions and group triggers
+    // share one size and the expanded sidebar's solid look.
     if (isSidebarCollapsed) {
       return (
         <span
@@ -135,7 +124,9 @@ const LeftSidebar = () => {
             href={item.redirect_url}
             icon={item.icon}
             label={t(item.title)}
-            onClick={() => navigateToItem(item, parentKey)}
+            size="xl"
+            variant="solid"
+            onPress={handleSelect}
           />
         </span>
       );
@@ -143,13 +134,6 @@ const LeftSidebar = () => {
 
     return (
       <NavItemBase
-        badge={
-          item.isBeta ? (
-            <Badge color="brand" size="xs">
-              {t('label.beta')}
-            </Badge>
-          ) : undefined
-        }
         current={selectedKeys.includes(item.key)}
         dataTestId={item.dataTestId}
         href={item.redirect_url}
@@ -159,7 +143,17 @@ const LeftSidebar = () => {
         type={parentKey ? 'collapsible-child' : 'link'}
         variant="solid"
         onClick={handleSelect}>
-        {t(item.title)}
+        {item.isBeta ? (
+          // The badge sits right after the label rather than at the row's far edge.
+          <span className="tw:inline-flex tw:items-center tw:gap-2">
+            {t(item.title)}
+            <Badge color="brand" size="xs" type="color">
+              {t('label.beta')}
+            </Badge>
+          </span>
+        ) : (
+          t(item.title)
+        )}
       </NavItemBase>
     );
   };
@@ -173,7 +167,8 @@ const LeftSidebar = () => {
             setCollapsedMenuKey(isOpen ? item.key : undefined)
           }>
           <span
-            className="tw:flex tw:h-10 tw:items-center tw:justify-center"
+            className="tw:flex tw:items-center tw:justify-center"
+            data-testid={item.dataTestId}
             role="presentation"
             onMouseEnter={() => {
               cancelHoverClose();
@@ -190,16 +185,15 @@ const LeftSidebar = () => {
                 }
               }, 150);
             }}>
-            <ButtonUtility
-              aria-label={t(item.title)}
-              color={
-                item.children?.some((child) => selectedKeys.includes(child.key))
-                  ? 'secondary'
-                  : 'tertiary'
-              }
-              data-testid={item.dataTestId}
+            <NavItemButton
+              current={item.children?.some((child) =>
+                selectedKeys.includes(child.key)
+              )}
               icon={item.icon}
-              size="sm"
+              label={t(item.title)}
+              open={collapsedMenuKey === item.key}
+              size="xl"
+              variant="solid"
               // Hover has already opened the group before a pointer press reaches its trigger.
               onPress={() => setCollapsedMenuKey(item.key)}
             />
@@ -207,6 +201,7 @@ const LeftSidebar = () => {
           {/* Hover menus must leave their triggers and neighbouring groups interactive. */}
           <Dropdown.Popover
             isNonModal
+            className="tw:w-auto tw:min-w-56"
             placement={isDirectionRTL ? 'left top' : 'right top'}>
             <div
               ref={collapsedPopover}
@@ -224,6 +219,7 @@ const LeftSidebar = () => {
                     id={child.key}
                     key={child.key}
                     label={t(child.title)}
+                    size="lg"
                     onAction={() => navigateToItem(child, item.key)}
                   />
                 ))}
@@ -286,7 +282,9 @@ const LeftSidebar = () => {
       <div className="left-sidebar-layout">
         <Box className="menu-container" direction="col">
           <nav aria-label={t('label.navigation')} className="top-menu">
-            <ul className="left-sidebar-menu tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:py-0 tw:ps-4 tw:pe-0">
+            <ul
+              // Collapsed and expanded share one inset, so the 56px items keep their place.
+              className="left-sidebar-menu tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:py-0 tw:ps-4 tw:pe-0">
               {sideBarItems.map((item) => (
                 <li data-testid={`side-bar-${item.dataTestId}`} key={item.key}>
                   {item.children?.length ? renderGroup(item) : renderLeaf(item)}
@@ -297,7 +295,7 @@ const LeftSidebar = () => {
           <nav
             aria-label={t('label.setting-plural')}
             className="bottom-menu tw:ps-4">
-            <Divider className="tw:my-2" />
+            <Divider className="tw:mt-4 tw:mb-2" />
             <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
               {[SETTING_ITEM, LOGOUT_ITEM].map((item) => (
                 <li key={item.key}>{renderLeaf(item)}</li>

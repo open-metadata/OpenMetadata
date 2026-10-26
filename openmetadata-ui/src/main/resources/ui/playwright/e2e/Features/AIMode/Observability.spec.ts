@@ -66,7 +66,7 @@ test.describe('AI mode Observability', () => {
       {
         name: 'Test Library',
         path: '/observability/test-library',
-        expectedText: 'Data Quality Rules',
+        expectedText: 'Test Library',
       },
     ];
 

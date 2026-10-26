@@ -44,7 +44,6 @@ import {
   IMPACT_ANALYSIS_STATIC_COLUMNS,
 } from '../../constants/Lineage.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
-import { SIZE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../generated/tests/testCase';
@@ -83,7 +82,7 @@ import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
-import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
 import { ColumnsType } from '../common/Table/Table.interface';
@@ -98,6 +97,7 @@ import {
   SourceType,
 } from '../SearchedData/SearchedData.interface';
 import { EImpactLevel } from './LineageTable.interface';
+import LineageTableDescription from './LineageTableDescription';
 import { useLineageTableState } from './useLineageTableState';
 
 const LINEAGE_IMPACT_OPTION_ICONS: Record<
@@ -755,8 +755,19 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        ellipsis: true,
-        render: (text: string) => <span>{isEmpty(text) ? NO_DATA : text}</span>,
+        render: (text: string, record: SearchSourceAlias) =>
+          isEmpty(text) ? (
+            NO_DATA
+          ) : (
+            <LineageTableDescription
+              description={text}
+              entityPath={getEntityLinkFromType(
+                record.fullyQualifiedName ?? '',
+                record.entityType as EntityType,
+                record
+              )}
+            />
+          ),
       },
       {
         title: t('label.domain-plural'),
@@ -1024,6 +1035,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         <TableV2
           className="h-full"
           columns={columns}
+          containerClassName="tw:rounded-xl"
           customPaginationProps={pagingProps}
           dataSource={dataSource}
           defaultVisibleColumns={IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS}
@@ -1032,7 +1044,11 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           key={`lineage-table-${impactLevel}-${lineageDirection}-${nodeDepth}`}
           loading={loading}
           locale={{
-            emptyText: <NoDataPlaceholder size={SIZE.LARGE} />,
+            emptyText: (
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoDataPlaceholder data-testid="no-data-placeholder" />
+              </div>
+            ),
           }}
           pagination={false}
           rowKey={

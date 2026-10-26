@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { Grid } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -21,7 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import CustomizeMyData from '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import {
@@ -29,7 +31,6 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
@@ -220,7 +221,13 @@ const getCustomizePageContent = (
 
   const renderer = getOwnHandler(renderers, pageFqn);
 
-  return renderer ? renderer() : <ErrorPlaceHolder />;
+  return renderer ? (
+    renderer()
+  ) : (
+    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <NoDataPlaceholder data-testid="no-data-placeholder" />
+    </div>
+  );
 };
 
 const CustomizablePageContent = () => {
@@ -513,27 +520,31 @@ const CustomizablePageContent = () => {
     return (
       <Grid className="layout-row layout-grid bg-white h-full">
         <Grid.Item className="layout-column" span={24}>
-          <ErrorPlaceHolder
-            className="m-t-lg"
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography as="p" className="w-max-500">
-              <Transi18next
-                i18nKey="message.no-persona-message"
-                renderElement={
-                  <Link
-                    style={{ color: theme.primaryColor }}
-                    to={getSettingPath(
-                      GlobalSettingsMenuCategory.MEMBERS,
-                      GlobalSettingOptions.PERSONA
-                    )}
-                  />
-                }
-                values={{
-                  link: t('label.here-lowercase'),
-                }}
-              />
-            </Typography>
-          </ErrorPlaceHolder>
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoDataPlaceholder
+              data-testid="no-data-placeholder"
+              description={
+                <Transi18next
+                  i18nKey="message.no-persona-message"
+                  renderElement={
+                    <Link
+                      style={{ color: theme.primaryColor }}
+                      to={getSettingsLink(
+                        getSettingPath(
+                          GlobalSettingsMenuCategory.MEMBERS,
+                          GlobalSettingOptions.PERSONA
+                        )
+                      )}
+                    />
+                  }
+                  values={{
+                    link: t('label.here-lowercase'),
+                  }}
+                />
+              }
+              icon={<Database01 />}
+            />
+          </div>
         </Grid.Item>
       </Grid>
     );

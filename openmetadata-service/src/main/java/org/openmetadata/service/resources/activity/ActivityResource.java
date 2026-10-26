@@ -45,6 +45,7 @@ import java.util.UUID;
 import org.openmetadata.schema.api.feed.CreatePost;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.ConversationReply;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -54,6 +55,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ActivityStreamRepository;
+import org.openmetadata.service.jdbi3.ActivityStreamRepository.FeedWindow;
 import org.openmetadata.service.jdbi3.ConversationRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -158,6 +160,27 @@ public class ActivityResource {
     authorizeTargetView(
         securityContext,
         new ResourceContext<>(target.getType(), target.getId(), null, Include.ALL));
+  }
+
+  /**
+   * The user a personal feed is computed for: the caller, or {@code userId} when another user's
+   * feed is requested. Reading someone else's feed needs the same ViewBasic as reading that user;
+   * the events themselves are still filtered to what the caller may view.
+   */
+  private User feedSubject(SecurityContext securityContext, UUID userId) {
+    String callerName = securityContext.getUserPrincipal().getName();
+    // A requested user may be soft-deleted: their profile (and its Activity tab) stays readable
+    // until restored or purged, as /activity/user/{userId} already allows.
+    User subject =
+        userId == null
+            ? Entity.getEntityByName(Entity.USER, callerName, "teams", Include.NON_DELETED)
+            : Entity.getEntity(Entity.USER, userId, "teams", Include.ALL);
+    // The principal name comes from the token unmodified while user names are stored lower case.
+    if (!subject.getName().equalsIgnoreCase(callerName)) {
+      authorizeTargetView(
+          securityContext, new ResourceContext<>(Entity.USER, subject.getId(), null, Include.ALL));
+    }
+    return subject;
   }
 
   @GET
@@ -366,6 +389,12 @@ public class ActivityResource {
       })
   public ResultList<ActivityEvent> getMyFeed(
       @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Compute the feed for this user instead of the caller. Requires ViewBasic on"
+                      + " that user.")
+          @QueryParam("userId")
+          UUID userId,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Number of days to look back")
           @DefaultValue("7")
@@ -382,7 +411,10 @@ public class ActivityResource {
           int limit) {
     return viewableOnly(
         securityContext,
-        activityStreamRepository.getMyFeed(securityContext, domain, days, startTs, limit));
+        activityStreamRepository.getMyFeed(
+            securityContext,
+            feedSubject(securityContext, userId),
+            new FeedWindow(domain, days, startTs, limit)));
   }
 
   @GET
@@ -402,6 +434,12 @@ public class ActivityResource {
       })
   public ResultList<ActivityEvent> getFollowingFeed(
       @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Compute the feed for this user instead of the caller. Requires ViewBasic on"
+                      + " that user.")
+          @QueryParam("userId")
+          UUID userId,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Number of days to look back")
           @DefaultValue("7")
@@ -418,7 +456,10 @@ public class ActivityResource {
           int limit) {
     return viewableOnly(
         securityContext,
-        activityStreamRepository.getFollowingFeed(securityContext, domain, days, startTs, limit));
+        activityStreamRepository.getFollowingFeed(
+            securityContext,
+            feedSubject(securityContext, userId),
+            new FeedWindow(domain, days, startTs, limit)));
   }
 
   @GET
@@ -440,6 +481,12 @@ public class ActivityResource {
       })
   public ResultList<ActivityEvent> getMentionsFeed(
       @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Compute the feed for this user instead of the caller. Requires ViewBasic on"
+                      + " that user.")
+          @QueryParam("userId")
+          UUID userId,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Only activity about this entity (EntityLink string)")
           @QueryParam("entityLink")
@@ -466,7 +513,10 @@ public class ActivityResource {
     return viewableOnly(
         securityContext,
         activityStreamRepository.getMentionsFeed(
-            securityContext, domain, entityLink, days, startTs, limit));
+            securityContext,
+            feedSubject(securityContext, userId),
+            entityLink,
+            new FeedWindow(domain, days, startTs, limit)));
   }
 
   @GET

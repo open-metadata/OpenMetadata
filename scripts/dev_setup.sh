@@ -34,6 +34,8 @@ cd "$REPO_ROOT"
 # ---------------------------------------------------------------------------
 JAVA_VERSION=21
 NODE_VERSION=22
+# The UI's engines floor; an older 22.x passes the major check but fails `yarn install`.
+NODE_MIN="$(sed 's/^v//' "$REPO_ROOT/openmetadata-ui/src/main/resources/ui/.nvmrc")"
 PYTHON_PREFERRED="3.11"
 PYTHON_MIN="3.10"
 # The package metadata intentionally has no Python ceiling, but the current dev
@@ -475,19 +477,38 @@ node_major() {
   node --version | sed 's/^v//' | cut -d. -f1
 }
 
-ensure_node() {
-  local major found_display
-  major="$(node_major || true)"
-  if [ "$major" = "$NODE_VERSION" ]; then
+node_at_least_min() {
+  version_ge "$(node --version | sed 's/^v//')" "$NODE_MIN"
+}
+
+# nvm/mise resolve "22" to the newest 22.x, which clears the .nvmrc floor.
+node_meets_min() {
+  NODE_BIN_DIR="$(dirname "$(command -v node)")"
+  if ! node_at_least_min && [ "$DO_TOOLS" -eq 1 ] && [ "$CHECK_ONLY" -eq 0 ]; then
+    info "Node $(node --version) is older than v$NODE_MIN (.nvmrc); upgrading."
+    install_node_via_version_manager || true
+  fi
+  if node_at_least_min; then
     NODE_BIN_DIR="$(dirname "$(command -v node)")"
     ok "Node $(node --version)"
     return 0
   fi
+  warn "Node $(node --version) is older than v$NODE_MIN (.nvmrc); yarn install will reject it. Run: nvm install $NODE_MIN"
+  return 1
+}
+
+ensure_node() {
+  local major found_display
+  major="$(node_major || true)"
+  if [ "$major" = "$NODE_VERSION" ]; then
+    node_meets_min
+    return
+  fi
   [ -n "$major" ] && info "Found Node v$major; the current UI dependency tree requires Node $NODE_VERSION."
 
   if activate_installed_node; then
-    ok "Node $(node --version)"
-    return 0
+    node_meets_min
+    return
   fi
 
   if [ "$DO_TOOLS" -eq 0 ] || [ "$CHECK_ONLY" -eq 1 ]; then
@@ -517,8 +538,7 @@ ensure_node() {
 
   major="$(node_major || true)"
   if [ "$major" = "$NODE_VERSION" ]; then
-    NODE_BIN_DIR="$(dirname "$(command -v node)")"
-    ok "Node $(node --version)"
+    node_meets_min
   else
     fail "Could not provision Node $NODE_VERSION; install it manually (https://nodejs.org)."
   fi
@@ -880,8 +900,8 @@ generate_models() {
 }
 
 install_ui_deps() {
-  if [ "$(node_major || true)" != "$NODE_VERSION" ]; then
-    fail "Refusing to run Yarn with $(node --version 2>/dev/null || echo no Node); the current UI dependencies require Node $NODE_VERSION."
+  if [ "$(node_major || true)" != "$NODE_VERSION" ] || ! node_at_least_min; then
+    fail "Refusing to run Yarn with $(node --version 2>/dev/null || echo no Node); the current UI dependencies require Node $NODE_VERSION (>= v$NODE_MIN)."
   fi
   run make -C "$REPO_ROOT" yarn_install_cache
   ok "UI dependencies installed"

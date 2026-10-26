@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Box,
-  Button,
-  EmptyPlaceholder,
-  Toggle,
-} from '@openmetadata/ui-core-components';
+import { Badge, Box, Button, Toggle } from '@openmetadata/ui-core-components';
 import { Edit01, Mail01, Plus } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +19,7 @@ import { EMAIL_CONFIG_FORM_FIELDS } from '../../../../../../constants/EmailConfi
 import { SMTPSettings } from '../../../../../../generated/email/smtpSettings';
 import { SettingType } from '../../../../../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../../../../../rest/settingConfigAPI';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import SettingsSection, { ReadOnlyRow } from '../../components/SettingsSection';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
@@ -123,9 +118,9 @@ const EmailSettings = ({
         {sourceBanner}
         {/* The placeholder centres itself in its nearest positioned ancestor. */}
         <div className="tw:relative tw:min-h-90">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="email-config-empty"
-            icon={<Mail01 className="tw:text-quaternary" />}
+            icon={<Mail01 />}
             title={t('label.no-entity', {
               entity: t('label.email-configuration'),
             })}

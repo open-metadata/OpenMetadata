@@ -45,6 +45,12 @@ def check_metadata(policy):
             ):
                 continue
             name = canonicalize_name(requirement.name)
+            if owner == "pydoris" and name == "mysqlclient" and policy.get("kind") == "operator":
+                if installed[owner].version != "1.2.0" or str(requirement.specifier) != "<3,>=2.1.0":
+                    errors.append("pydoris metadata exception drifted")
+                    continue
+                requirement = Requirement("pymysql~=1.0")
+                name = "pymysql"
             if owner == "sqlalchemy-ibmi" and name == "sqlalchemy":
                 if installed[owner].version != "0.9.3" or str(requirement.specifier) != "<2.0,>=1.3.0":
                     errors.append("sqlalchemy-ibmi metadata exception drifted")
@@ -61,7 +67,7 @@ def check_metadata(policy):
                     continue
             if name not in installed or not requirement.specifier.contains(installed[name].version, prereleases=True):
                 errors.append(
-                    f"{owner} requires {value}; installed {installed[name].version if name in installed else 'missing'}"
+                    f"{owner} requires {requirement}; installed {installed[name].version if name in installed else 'missing'}"
                 )
                 continue
             selected = extras.setdefault(name, set())
@@ -70,6 +76,8 @@ def check_metadata(policy):
             changed = changed or bool(new)
         if not changed:
             break
+    if policy.get("kind") == "operator" and "mysqlclient" in installed:
+        errors.append("Operator image contains unused mysqlclient")
     if errors:
         raise ValueError("\n".join(sorted(set(errors))))
 

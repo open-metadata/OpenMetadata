@@ -14,17 +14,6 @@
 @import (reference) '../../../../styles/variables.less';
 
 .customise-home-modal {
-  position: relative;
-
-  .customise-home-modal-header {
-    border-radius: @border-rad-sm @border-rad-sm 0 0;
-    background: linear-gradient(91.17deg, @blue-31 0%, @blue-32 100%);
-
-    .add-icon {
-      font-size: var(--om-font-size-32);
-    }
-  }
-
   .customise-home-modal-body {
     .sidebar {
       flex: 1 1 250px;
@@ -33,46 +22,10 @@
 
       .sidebar-option {
         padding: var(--om-space-10) @padding-md;
-
-        &.active {
-          font-weight: @font-semibold;
-        }
       }
 
       .sidebar-widget-item {
-        align-items: flex-start;
-        font-weight: @font-regular;
         padding: @padding-xs @padding-md @padding-xs @padding-lg;
-
-        &.selected {
-          color: @primary-7;
-        }
-      }
-
-      .sidebar-widget-icon {
-        padding: var(--om-space-2);
-        margin-right: @padding-xs;
-
-        svg {
-          width: @size-mlg;
-          height: @size-mlg;
-          fill: none;
-        }
-      }
-
-      .sidebar-widget-item.selected .sidebar-widget-icon svg {
-        color: @primary-7;
-      }
-
-      .selected-widget-icon {
-        margin-left: @size-xxs;
-        padding: 0 var(--om-space-2) var(--om-space-2) var(--om-space-2);
-
-        svg {
-          width: 14px;
-          height: 14px;
-          fill: @primary-7;
-        }
       }
     }
 
@@ -83,6 +36,3 @@
   }
 }
 
-.widget-count {
-  padding: var(--om-space-2) @padding-xs;
-}

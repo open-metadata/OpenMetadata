@@ -42,10 +42,9 @@ DEPENDENCIES = [
     "aiomysql>=0.3.2",
     "asyncpg>=0.31.0",
     "psycopg2==2.9.13",
-    "mysqlclient==2.1.1",
-    "pip>=26.2,<27",
+    "pip>=26.2.2,<27",
     "setuptools>=83",
-    "uv==0.11.7",
+    "uv==0.13.4",
 ]
 
 
@@ -79,7 +78,7 @@ def manifest(extras):
     lines += [
         "",
         "[dependency-groups]",
-        'managed-api = ["openmetadata-managed-apis", "py-spy"]',
+        'managed-api = ["openmetadata-managed-apis", "py-spy", "virtualenv>=21.14.12", "mysqlclient==2.1.1"]',
         "",
         "[tool.uv]",
         f'required-version = "=={uv_version()}"',
@@ -93,7 +92,20 @@ def manifest(extras):
         'openmetadata-ingestion = {path = "../.."}',
         'openmetadata-managed-apis = {path = "../../../openmetadata-airflow-apis"}',
     ]
-    for entry in application["tool"]["uv"]["dependency-metadata"]:
+    # The Doris PyMySQL adapter replaces mysqlclient only in the image environment.
+    for entry in [
+        *application["tool"]["uv"]["dependency-metadata"],
+        {
+            "name": "pydoris",
+            "version": "1.2.0",
+            "requires-dist": [
+                "sqlalchemy>=1.4",
+                "sqlalchemy-utils>=0.38.3",
+                "requests",
+                "pymysql~=1.0",
+            ],
+        },
+    ]:
         lines += ["", "[[tool.uv.dependency-metadata]]"]
         lines += [f"{name} = {json.dumps(value)}" for name, value in entry.items()]
     return "\n".join(lines) + "\n"
