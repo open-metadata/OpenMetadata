@@ -20,6 +20,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
+  clickIgnoringToasts,
   clickOutside,
   createNewPage,
   fillDescriptionBox,
@@ -414,9 +415,7 @@ test('Classification Page', async ({ page }) => {
 
     const acceptSuggestion = waitForTaskResolveResponse(page);
 
-    const acceptButton = page.getByTestId('approve-button').first();
-    await acceptButton.waitFor({ state: 'visible' });
-    await acceptButton.click();
+    await clickIgnoringToasts(page.getByTestId('approve-button').first());
     await acceptSuggestion;
     await page.click('[data-testid="table"]');
 
