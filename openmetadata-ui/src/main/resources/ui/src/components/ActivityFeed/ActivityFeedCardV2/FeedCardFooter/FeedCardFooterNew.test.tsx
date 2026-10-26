@@ -134,4 +134,45 @@ describe('FeedCardFooterNew', () => {
       screen.queryByRole('button', { name: 'label.view-replies-by-user' })
     ).not.toBeInTheDocument();
   });
+
+  describe('in an activity thread panel', () => {
+    it('hands Reply to the caller instead of opening the drawer', async () => {
+      const onReplyPress = jest.fn();
+      await renderFooter({ isForFeedTab: true, onReplyPress });
+
+      fireEvent.click(screen.getByTestId('reply-button'));
+
+      expect(onReplyPress).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId('replies-drawer')).not.toBeInTheDocument();
+    });
+
+    it.each([
+      [0, 'label.reply'],
+      [1, 'label.one-reply'],
+      [3, 'label.number-reply-plural'],
+    ])(
+      'labels %i replies on the reply button and drops the replier avatars',
+      async (replyCount, label) => {
+        await renderFooter({
+          showReplyCount: true,
+          conversation: { ...conversation, replyCount },
+        });
+
+        expect(screen.getByTestId('reply-button')).toHaveTextContent(label);
+        expect(
+          screen.queryByRole('button', { name: 'label.view-replies-by-user' })
+        ).not.toBeInTheDocument();
+      }
+    );
+
+    it('drops the reply button where the conversation is already open', async () => {
+      await renderFooter({
+        showReplyCount: true,
+        componentsVisibility: { showThreadIcon: false },
+      });
+
+      expect(screen.queryByTestId('reply-button')).not.toBeInTheDocument();
+      expect(screen.getByTestId('feed-reaction-container')).toBeInTheDocument();
+    });
+  });
 });
