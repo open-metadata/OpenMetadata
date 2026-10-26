@@ -111,7 +111,9 @@ public final class CredentialVerifier implements Managed {
    * subject join it instead of reading again. Its future completes with the entry to decide on,
    * with null when the source left the subject out, or exceptionally with whatever the read threw.
    * A refresh or nudge supersedes the read it finds registered: no check can join that read any
-   * more, and it never creates an entry, though it may still replace an older one.
+   * more, and it never creates an entry, though it may still replace an older one. Once the
+   * superseding read has finished, a check that needs a load can start one more pool read of the
+   * subject while the superseded one still runs, so the write rate bounds these extra reads.
    */
   private static final class InFlightRead {
     private final CompletableFuture<VerifiedCredentials> result = new CompletableFuture<>();
@@ -826,7 +828,10 @@ public final class CredentialVerifier implements Managed {
     }
   }
 
-  /** At most one drain waits on the sweep thread, however many nudges arrive meanwhile. */
+  /**
+   * At most two drains wait on the sweep thread, however many nudges arrive meanwhile: one queued
+   * before a sweep pass, and one queued after that pass's own drain cleared the pending flag.
+   */
   private void scheduleDrain() {
     ScheduledExecutorService running = sweeper.get();
     if (running != null && drainScheduled.compareAndSet(false, true)) {

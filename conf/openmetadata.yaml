@@ -1041,7 +1041,8 @@ credentialVerification:
   missRefreshMinAge: ${CREDENTIAL_VERIFICATION_MISS_REFRESH_MIN_AGE:-500ms}
   # Longest a request waits for a credential read before answering 503. Less than maxStaleness.
   loadTimeout: ${CREDENTIAL_VERIFICATION_LOAD_TIMEOUT:-2s}
-  # Credential reads that request threads may run at once; lowered to half the database pool when that is smaller.
+  # Threads that run credential reads for checks, so at most this many such reads run at once; a
+  # request thread only waits for its read. Lowered to half the database pool when that is smaller.
   maxConcurrentRequestReads: ${CREDENTIAL_VERIFICATION_MAX_CONCURRENT_REQUEST_READS:-16}
   # A principal that presents no token for this long leaves the cache.
   idleExpiry: ${CREDENTIAL_VERIFICATION_IDLE_EXPIRY:-15m}
