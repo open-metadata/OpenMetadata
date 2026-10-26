@@ -39,7 +39,31 @@ EXPOSE 8585 8586
 # auto-installs with busybox + libssl3, so a plain `apk del` leaves it in place.
 RUN adduser -D openmetadata && apk update && \
     apk upgrade && \
-    apk add --update --no-cache bash openjdk21-jre '!ssl_client'
+    apk add --update --no-cache bash openjdk21-jre-headless lcms2 libjpeg-turbo freetype '!ssl_client'
+
+# alsa-lib (1 High, no Alpine fix): Alpine's openjdk21-jre is the headless JRE plus seven desktop
+# libraries, and its sound library needs alsa-lib (its window ones need X11). A server uses
+# neither, so install the headless JRE and copy in only the three desktop libraries that work
+# without a display, from openjdk21-jre of the same build: liblcms (colour profiles, such
+# as the ones PNG images carry), libfontmanager (text layout) and libjavajpeg (JPEG). lcms2,
+# libjpeg-turbo and freetype are what those three link against. The build fails if alsa-lib is
+# ever pulled back in.
+RUN set -eu; \
+    jre=$(apk info -ev openjdk21-jre-headless); \
+    apk="openjdk21-jre-${jre#openjdk21-jre-headless-}.apk"; \
+    cd /tmp; \
+    apk fetch --no-cache openjdk21-jre; \
+    if [ ! -f "$apk" ]; then \
+      echo "openjdk21-jre is not the same build as $jre" >&2; exit 1; \
+    fi; \
+    tar -xzf "$apk" -C / \
+      usr/lib/jvm/java-21-openjdk/lib/liblcms.so \
+      usr/lib/jvm/java-21-openjdk/lib/libfontmanager.so \
+      usr/lib/jvm/java-21-openjdk/lib/libjavajpeg.so; \
+    rm "$apk"; \
+    if apk info -e alsa-lib >/dev/null; then \
+      echo "alsa-lib is installed again" >&2; exit 1; \
+    fi
 
 # CVE-2026-91403: eMudhra's compromised intermediates chain to three emSign roots
 # (ECC G3, ECC C3, C1). Alpine's current ca-certificates (20261020) already leaves them out of
