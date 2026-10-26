@@ -59,6 +59,8 @@ interface SettingsFormLayoutProps<T extends FieldValues> {
   isSaveDisabled?: boolean;
   onCancel: () => void;
   onSubmit: (values: T) => void | Promise<void>;
+  /** Width/alignment of the field column; defaults to a left-aligned max width. */
+  contentClassName?: string;
   children: ReactNode;
 }
 
@@ -70,6 +72,7 @@ const SettingsFormLayout = <T extends FieldValues>({
   isSaveDisabled = false,
   onCancel,
   onSubmit,
+  contentClassName = 'tw:max-w-240',
   children,
 }: SettingsFormLayoutProps<T>) => {
   const { t } = useTranslation();
@@ -88,7 +91,7 @@ const SettingsFormLayout = <T extends FieldValues>({
       showFieldDocs={showHint}
       onSubmit={form.handleSubmit(onSubmit)}>
       <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0">
-        <Box className="tw:max-w-240" direction="col" gap={8}>
+        <Box className={contentClassName} direction="col" gap={8}>
           {children}
         </Box>
       </div>

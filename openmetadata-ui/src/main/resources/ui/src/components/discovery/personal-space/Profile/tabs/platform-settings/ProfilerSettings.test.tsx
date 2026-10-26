@@ -46,11 +46,13 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 }));
 
 const mockSparkConfig = jest.fn();
+const mockSparkConfigForm = jest.fn();
 
 jest.mock(
   '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase',
   () => ({
     getSparkAgentConfigComponent: () => mockSparkConfig(),
+    getSparkAgentConfigForm: () => mockSparkConfigForm(),
   })
 );
 
@@ -76,6 +78,7 @@ describe('Profiler configuration settings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSparkConfig.mockReturnValue(undefined);
+    mockSparkConfigForm.mockReturnValue(undefined);
     (updateSettingsConfig as jest.Mock).mockResolvedValue({ data: {} });
   });
 
@@ -119,6 +122,36 @@ describe('Profiler configuration settings', () => {
       'label.enabled'
     );
     expect(screen.getByTestId('spark-config')).toBeInTheDocument();
+  });
+
+  it('form hands an item id to the contributed Spark form, with the same props', async () => {
+    const SparkForm = jest.fn(() => <div data-testid="spark-config-form" />);
+    mockSparkConfigForm.mockReturnValue(SparkForm);
+    render(
+      <ProfilerSettingsForm
+        itemId="spark"
+        showHint={false}
+        onNavigate={onNavigate}
+      />
+    );
+
+    expect(screen.getByTestId('spark-config-form')).toBeInTheDocument();
+    expect(SparkForm).toHaveBeenCalledWith(
+      { itemId: 'spark', showHint: false, onNavigate },
+      expect.anything()
+    );
+    expect(getSettingsConfigFromConfigType).not.toHaveBeenCalled();
+  });
+
+  it('form without an item id stays the profiler form even with a Spark form contributed', async () => {
+    mockStored(STORED);
+    mockSparkConfigForm.mockReturnValue(() => (
+      <div data-testid="spark-config-form" />
+    ));
+    render(<ProfilerSettingsForm showHint={false} onNavigate={onNavigate} />);
+
+    expect(await screen.findByTestId('metric-row-1')).toBeInTheDocument();
+    expect(screen.queryByTestId('spark-config-form')).not.toBeInTheDocument();
   });
 
   it('form saves rows, expanding "All" to every metric, and returns to the view', async () => {

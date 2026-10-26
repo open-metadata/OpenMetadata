@@ -31,6 +31,8 @@ import {
 import { startCase } from 'lodash';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { DefaultTimeFormat } from '../../../../../../generated/api/configuration/appConfiguration';
+// eslint-disable-next-line openmetadata-imports/no-lower-layer-page-imports -- Spark extension point lives there
+import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { isLoginConfigurationApplicable } from '../../../../../../utils/AuthProvider.util';
 import type { PlatformSettingsPage } from './PlatformSettings.types';
 
@@ -78,6 +80,14 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     descriptionKey: 'message.page-sub-header-for-profiler-configuration',
     hasEditView: true,
     hasFieldHints: false,
+    // An item id is a contributed Spark agent sub-page, titled by its owner.
+    getEditTitle: (t, itemId) =>
+      (itemId &&
+        profilerConfigurationClassBase.getSparkAgentConfigFormTitle(
+          t,
+          itemId
+        )) ||
+      t('label.edit-entity', { entity: t('label.profiler-configuration') }),
   },
   {
     id: 'data-quality',
