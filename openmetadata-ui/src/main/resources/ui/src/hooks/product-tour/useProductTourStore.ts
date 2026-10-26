@@ -18,11 +18,11 @@ import {
 } from '../../constants/appMode.constants';
 import { ROUTES } from '../../constants/constants';
 import { PRODUCT_TOUR_STORAGE_KEY } from '../../constants/product-tour/productTour.constants';
+import { queryClient } from '../../queryClient';
 import {
   activateTourMock,
   deactivateTourMock,
 } from '../../rest/product-tour/productTourMock';
-import { queryClient } from '../../queryClient';
 import productTourClassBase from '../../utils/ProductTourClassBase';
 import { useAppModeStore, writeAppMode } from '../useAppMode';
 import { useExploreCache } from '../useExploreCache';
