@@ -13,9 +13,13 @@
 
 package org.openmetadata.service.migration.mysql.v207;
 
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
+
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v207.MigrationUtil;
+import org.openmetadata.service.migration.utils.v207.UserSecretsHistoryRemoval;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -26,5 +30,11 @@ public class Migration extends MigrationProcessImpl {
   @Override
   public void runDataMigration() {
     MigrationUtil.addWorkflowRunEntityLinkIndexOnMySql(handle);
+    // Password hashes and bot tokens leave the stored change events and user versions.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        UserSecretsHistoryRemoval.STEP_NAME,
+        () -> UserSecretsHistoryRemoval.removeUserSecretsFromHistory(handle, MYSQL));
   }
 }
