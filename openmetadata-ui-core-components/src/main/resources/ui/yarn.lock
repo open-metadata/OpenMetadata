@@ -2660,6 +2660,31 @@
   resolved "https://registry.yarnpkg.com/@testing-library/user-event/-/user-event-14.6.1.tgz#13e09a32d7a8b7060fe38304788ebf4197cd2149"
   integrity sha512-vq7fv0rnt+QTXgPxr5Hjc210p6YKq2kmdziLgnsZGgLJ9e6VAShx1pACLuRjd/AS/sr7phAR58OIIpf0LlmQNw==
 
+"@tsrs/darwin-arm64@0.18.0-ts7.1.0-dev.20260929":
+  version "0.18.0-ts7.1.0-dev.20260929"
+  resolved "https://registry.yarnpkg.com/@tsrs/darwin-arm64/-/darwin-arm64-0.18.0-ts7.1.0-dev.20260929.tgz#aea6ff21de408beec3ee0ceb257546d174c48a8f"
+  integrity sha512-sAirMpaGA9uRQm2W+t4zC7PjnijNuFa4PCSIfLKKo0JyAUCRfnMeev0UGBQ9F3g+9Nz187tvikUs5Irh5+eajA==
+
+"@tsrs/linux-arm64-gnu@0.18.0-ts7.1.0-dev.20260929":
+  version "0.18.0-ts7.1.0-dev.20260929"
+  resolved "https://registry.yarnpkg.com/@tsrs/linux-arm64-gnu/-/linux-arm64-gnu-0.18.0-ts7.1.0-dev.20260929.tgz#b40b2fe88d56d4d7d91ec9f2f36303a37c9d197f"
+  integrity sha512-zm9/z9yylig68JiZF4Aq0Cm26n09KEU8YoQRlG7tdDWTBNAIViYw8knxnWYsjMWVZ2XiU4mYq1xdrOKuOgABHg==
+
+"@tsrs/linux-arm64-musl@0.18.0-ts7.1.0-dev.20260929":
+  version "0.18.0-ts7.1.0-dev.20260929"
+  resolved "https://registry.yarnpkg.com/@tsrs/linux-arm64-musl/-/linux-arm64-musl-0.18.0-ts7.1.0-dev.20260929.tgz#8a197db2d9eadb4f8d72eb98f5aeb46f1fde023d"
+  integrity sha512-Lw7VVU/YQ9JcarODICEiwzMLdFqZprqh5RGTgbS5Uc6I95P635/g5xA1pOC8RVs4efBvAR30J54iDG3l5JEYiw==
+
+"@tsrs/linux-x64-gnu@0.18.0-ts7.1.0-dev.20260929":
+  version "0.18.0-ts7.1.0-dev.20260929"
+  resolved "https://registry.yarnpkg.com/@tsrs/linux-x64-gnu/-/linux-x64-gnu-0.18.0-ts7.1.0-dev.20260929.tgz#67d15cd06d005d8ffbe8a0a28796871a4aca6110"
+  integrity sha512-EdBwBgNICGu1r1h23ixdcKwsMo6E9ll7ZsY3mNERNYqE1Pwdtcat99d5E7zB1J+oy/Xk6YqiizaB6nolIjpDTw==
+
+"@tsrs/linux-x64-musl@0.18.0-ts7.1.0-dev.20260929":
+  version "0.18.0-ts7.1.0-dev.20260929"
+  resolved "https://registry.yarnpkg.com/@tsrs/linux-x64-musl/-/linux-x64-musl-0.18.0-ts7.1.0-dev.20260929.tgz#d7a42594eae2565fd9ae1e463b17c2307c6fa9df"
+  integrity sha512-LHk+AOAtXuTlhJhOJ2+elriEIX17ycXljojeNxrrzckOipTG1LksoVWuCSas2nu00EnWAzrdKpt9oqPylUKZfQ==
+
 "@tybys/wasm-util@^0.10.1":
   version "0.10.1"
   resolved "https://registry.yarnpkg.com/@tybys/wasm-util/-/wasm-util-0.10.1.tgz#ecddd3205cf1e2d5274649ff0eedd2991ed7f414"
@@ -7042,6 +7067,17 @@ tslib@^2.0.1, tslib@^2.0.3, tslib@^2.4.0, tslib@^2.8.0, tslib@^2.8.1:
   version "2.8.1"
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.8.1.tgz#612efe4ed235d567e8aba5f2a5fab70280ade83f"
   integrity sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==
+
+tsrs@0.18.0-ts7.1.0-dev.20260929:
+  version "0.18.0-ts7.1.0-dev.20260929"
+  resolved "https://registry.yarnpkg.com/tsrs/-/tsrs-0.18.0-ts7.1.0-dev.20260929.tgz#00ee3936f3bbbf126ee8a6419c2b15ce3420bf9d"
+  integrity sha512-9T0b4Uam/yMFIK16GUx0fUrJqYZnJ/gvSmV9JB8NTyDePvwCI45WFWxyEV/UMV3KfdNRJG/PBsm3fSIB9WmWsA==
+  optionalDependencies:
+    "@tsrs/darwin-arm64" "0.18.0-ts7.1.0-dev.20260929"
+    "@tsrs/linux-arm64-gnu" "0.18.0-ts7.1.0-dev.20260929"
+    "@tsrs/linux-arm64-musl" "0.18.0-ts7.1.0-dev.20260929"
+    "@tsrs/linux-x64-gnu" "0.18.0-ts7.1.0-dev.20260929"
+    "@tsrs/linux-x64-musl" "0.18.0-ts7.1.0-dev.20260929"
 
 type-check@^0.4.0, type-check@~0.4.0:
   version "0.4.0"

@@ -368,4 +368,19 @@ Usage guidance:
 
 ---
 
+## Optional tsrs checks
+
+For faster development feedback, run `yarn tsc:check:tsrs` for the app or
+`yarn tsc:playwright:tsrs` for Playwright. These commands use the pinned experimental
+Rust compiler with separate incremental caches. Its TypeScript 7.1 development
+snapshot can report different diagnostics from the default TypeScript 7.0 compiler.
+Use `yarn tsc:check` and `yarn tsc:playwright` as the authoritative checks.
+
+The pinned tsrs package provides binaries for Apple Silicon and Linux on x64 or
+ARM64, with GNU or musl. On Windows or Intel Macs, use the default commands.
+Core-components provides `yarn type-check:tsrs`; core builds retain the Microsoft
+native compiler gate. See ADR:2026-10-25-native-typescript-ui-checking.
+
+---
+
 This handbook ensures a clean, scalable, and consistent codebase for all developers.
