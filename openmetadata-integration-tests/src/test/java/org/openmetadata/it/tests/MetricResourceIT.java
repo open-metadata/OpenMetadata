@@ -55,6 +55,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -2131,7 +2132,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
         .create(
             new CreateEventSubscription()
                 .withName(ns.prefix("metric_approval_notification"))
-                .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+                .withAlertType(AlertType.NOTIFICATION)
                 .withResources(List.of("task"))
                 .withEnabled(true)
                 .withBatchSize(10)
