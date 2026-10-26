@@ -1,7 +1,7 @@
 # Use native TypeScript for UI validation and retain the JavaScript API for tooling
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-25 (initial) · v2 2026-10-25 (optional tsrs checks)
+- **Revisions:** v1 2026-10-25 (initial) · v2 2026-10-25 (optional tsrs checks) · v3 2026-10-26 (type compatibility cleanup)
 - **Deciders:** UI maintainers
 - **Guard:** UI compiler scripts and core yarn test:native-build
 - **Related:** [Microsoft TypeScript](https://github.com/microsoft/typescript-go)
@@ -64,3 +64,20 @@ Its pinned package provides binaries for Apple Silicon and Linux x64/ARM64 with
 GNU or musl, but not Windows or Intel Macs. The default compiler commands and the
 core build gate therefore retain Microsoft TypeScript. No check runs both compilers
 automatically, and no compiler failure falls back to a successful result.
+
+## Amendment: type compatibility cleanup
+
+The application and Playwright diagnostic backlogs described above are cleared for
+both compiler commands. Source roots and strictness remain unchanged; shared API
+contracts, callers, fixtures and dependency declarations now agree. Application
+bundling still runs separately from application checking.
+
+Both TypeScript generation entry points normalize quicktype interfaces that combine
+optional properties with an index signature into intersection types. This preserves
+optional workflow filters and string-only map values without changing JSON Schemas.
+The generator regression compiles accepted and rejected values from the real schemas.
+
+Core builds use i18next 25 declarations to match react-i18next. The public
+translation initializer requires only the resource-registration methods it uses,
+with no dependency on their version-specific return value. Its peer range continues
+to support i18next 21 hosts such as Collate, alongside i18next 25.

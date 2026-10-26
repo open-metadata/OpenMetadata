@@ -25,6 +25,7 @@ import {
   FilterPatternConfig,
   FilterSchemaProperty,
   FilterSectionState,
+  IconComponent,
 } from './FiltersConfigForm.types';
 
 export const escapeRegex = (value: string) =>
@@ -262,7 +263,7 @@ export const singularizeFallback = (label: string) => {
   return label;
 };
 
-export const getSectionIcon = (fieldName: string) =>
+export const getSectionIcon = (fieldName: string): IconComponent =>
   FILTER_ICONS[fieldName as ServiceConnectionFilterPatternFields] ?? Table;
 
 export const getOrderedFilterEntries = (
