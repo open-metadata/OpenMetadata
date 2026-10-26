@@ -49,6 +49,7 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.vertica.metadata import (
     get_columns,
+    get_view_definition,
     supports_column_comments,
 )
 
@@ -251,6 +252,45 @@ class TestVerticaGetColumnsFallback:
         executed = [str(call.args[0]) for call in connection.execute.call_args_list]
         columns_statement = next(statement for statement in executed if "v_catalog.columns" in statement)
         assert "child_object" not in columns_statement
+
+
+class TestVerticaGetViewDefinition:
+    """``v_catalog.views.table_name`` keeps the case the view was created with,
+    and ``=`` compares it case-sensitively. The name is lowercased before it is
+    bound, so the lookup has to lowercase the column too or a view such as
+    ``MyView`` comes back empty and Process View Lineage skips it.
+    """
+
+    @pytest.fixture(name="views_connection")
+    def views_connection_fixture(self):
+        engine = create_engine("sqlite://", poolclass=StaticPool)
+        with engine.connect() as connection:
+            connection.execute(text("ATTACH DATABASE ':memory:' AS v_catalog"))
+            connection.execute(
+                text("CREATE TABLE v_catalog.views (table_schema TEXT, table_name TEXT, view_definition TEXT)")
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO v_catalog.views VALUES "
+                    "('public', 'MyView', 'SELECT * FROM public.source_table'), "
+                    "('public', 'plain_view', 'SELECT 1')"
+                )
+            )
+            yield connection
+
+    @pytest.mark.parametrize("view_name", ["MyView", "myview", "MYVIEW"])
+    def test_mixed_case_view_definition_is_found(self, views_connection, view_name):
+        definition = get_view_definition(VerticaDialect(), views_connection, view_name, schema="PUBLIC")
+
+        assert definition == f"CREATE VIEW {view_name} AS SELECT * FROM public.source_table"
+
+    def test_lowercase_view_definition_is_still_found(self, views_connection):
+        definition = get_view_definition(VerticaDialect(), views_connection, "plain_view", schema="public")
+
+        assert definition == "CREATE VIEW plain_view AS SELECT 1"
+
+    def test_unknown_view_has_no_definition(self, views_connection):
+        assert get_view_definition(VerticaDialect(), views_connection, "missing", schema="public") is None
 
 
 class TestVerticaBatchedReflectionDelegates:
