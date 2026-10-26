@@ -15,6 +15,7 @@ package org.openmetadata.service.security.credentials;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,6 +27,7 @@ import java.util.function.BiFunction;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType;
+import org.openmetadata.service.security.credentials.CredentialMetrics.DecryptOutcome;
 import org.openmetadata.service.security.credentials.CredentialRecord.MechanismVersion;
 import org.openmetadata.service.security.credentials.CredentialSourceDAO.FullRow;
 
@@ -157,6 +159,20 @@ class JdbiCredentialSourceTest {
     CredentialRecord reread = JdbiCredentialSource.toRecord(botWithTwoPats(), previous, decrypt);
     assertEquals(previous.digests(), reread.digests());
     assertEquals(0, decrypts.get());
+  }
+
+  @Test
+  void aRecordSaysWhetherItsMechanismDigestWasDecryptedOrReused() {
+    CredentialRecord first = JdbiCredentialSource.toRecord(botWithTwoPats(), null, decrypt);
+    CredentialRecord reused = JdbiCredentialSource.toRecord(botWithTwoPats(), first, decrypt);
+    List<FullRow> rotated = List.of(row(false, 10, "md5-b", null, JWT_USER, null));
+    CredentialRecord redone = JdbiCredentialSource.toRecord(rotated, first, decrypt);
+    List<FullRow> basic = List.of(row(false, 10, "m", T1, BASIC_USER, pat(T1, "pat-one")));
+
+    assertEquals(DecryptOutcome.PERFORMED, first.mechanismDigestOrigin());
+    assertEquals(DecryptOutcome.SKIPPED_UNCHANGED, reused.mechanismDigestOrigin());
+    assertEquals(DecryptOutcome.PERFORMED, redone.mechanismDigestOrigin());
+    assertNull(JdbiCredentialSource.toRecord(basic, null, decrypt).mechanismDigestOrigin());
   }
 
   @Test

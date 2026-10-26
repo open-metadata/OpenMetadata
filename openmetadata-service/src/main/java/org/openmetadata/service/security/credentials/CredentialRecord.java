@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.credentials;
 
 import java.util.Set;
+import org.openmetadata.service.security.credentials.CredentialMetrics.DecryptOutcome;
 
 /**
  * What the database said about one principal at one read: the OpenMetadata-signed tokens currently
@@ -29,6 +30,10 @@ import java.util.Set;
  * digest was decrypted from, so a later full read of an unchanged mechanism skips the
  * secrets-manager call. Both are null when the mechanism is not a JWT (or the user is absent).
  *
+ * <p>{@code mechanismDigestOrigin} says how this read obtained {@code mechanismDigest}: decrypted,
+ * or reused from the previous record. The verifier counts it when it installs the read. Null when
+ * the record holds no mechanism digest.
+ *
  * <p>Invariant the source must keep: equal fingerprints imply equal digest sets, except for edits
  * the fingerprint cannot see (a secret edited inside an external secrets manager, a PAT row's
  * JSON edited in place by direct SQL). The deep verify exists for exactly those.
@@ -37,12 +42,21 @@ record CredentialRecord(
     SourceFingerprint fingerprint,
     Set<TokenDigest> digests,
     MechanismVersion mechanismVersion,
-    TokenDigest mechanismDigest) {
+    TokenDigest mechanismDigest,
+    DecryptOutcome mechanismDigestOrigin) {
   static final CredentialRecord ABSENT =
       new CredentialRecord(SourceFingerprint.ABSENT, Set.of(), null, null);
 
   CredentialRecord {
     digests = Set.copyOf(digests);
+  }
+
+  CredentialRecord(
+      SourceFingerprint fingerprint,
+      Set<TokenDigest> digests,
+      MechanismVersion mechanismVersion,
+      TokenDigest mechanismDigest) {
+    this(fingerprint, digests, mechanismVersion, mechanismDigest, null);
   }
 
   boolean holds(TokenDigest digest) {

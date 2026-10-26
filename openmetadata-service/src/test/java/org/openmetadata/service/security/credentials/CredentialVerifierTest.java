@@ -960,6 +960,25 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void aDeepPassCountsOneDecryptPerBotAndAnUnchangedSweepRereadCountsAReuse() {
+    List<String> bots = List.of("u1", "u2", "u3");
+    bots.forEach(bot -> source.withJwtMechanism(bot, "jwt-" + bot));
+    verifier(DEFAULTS);
+    bots.forEach(bot -> assertAccepted(bot, "jwt-" + bot));
+    assertEquals(3.0, counter("om.credential.decrypts", "outcome", "performed"));
+    assertEquals(0.0, counter("om.credential.decrypts", "outcome", "skipped_unchanged"));
+
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    verifier.sweepOnce();
+    assertEquals(6.0, counter("om.credential.decrypts", "outcome", "performed"));
+
+    source.addPat("u1", TOKEN_A);
+    sweepAfterInterval();
+    assertEquals(6.0, counter("om.credential.decrypts", "outcome", "performed"));
+    assertEquals(1.0, counter("om.credential.decrypts", "outcome", "skipped_unchanged"));
+  }
+
+  @Test
   void externalSecretsRotationIsSeenWithinTheBound() {
     source.withSecretReferenceMechanism(BOB, JWT_OLD);
     verifier(DEFAULTS);

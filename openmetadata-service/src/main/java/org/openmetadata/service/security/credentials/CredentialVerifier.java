@@ -588,6 +588,7 @@ public final class CredentialVerifier implements Managed {
           source.read(subjects, previous, unconverted);
       metrics.recordRead(reason, ReadOutcome.OK, ticker.read() - started);
       recordConversions(subjects, records, unconverted, reason, stampNanos);
+      recordDecrypts(records.values());
       return records;
     } catch (RuntimeException | Error failure) {
       metrics.recordRead(reason, ReadOutcome.ERROR, ticker.read() - started);
@@ -595,6 +596,14 @@ public final class CredentialVerifier implements Managed {
         subjects.forEach(subject -> backoff.recordCheckFailure(subject, stampNanos));
       }
       throw failure;
+    }
+  }
+
+  private void recordDecrypts(Collection<CredentialRecord> records) {
+    for (CredentialRecord record : records) {
+      if (record.mechanismDigestOrigin() != null) {
+        metrics.recordDecrypt(record.mechanismDigestOrigin());
+      }
     }
   }
 

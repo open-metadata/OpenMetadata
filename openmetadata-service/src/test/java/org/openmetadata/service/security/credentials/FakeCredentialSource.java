@@ -14,6 +14,8 @@
 package org.openmetadata.service.security.credentials;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.security.credentials.CredentialMetrics.DecryptOutcome.PERFORMED;
+import static org.openmetadata.service.security.credentials.CredentialMetrics.DecryptOutcome.SKIPPED_UNCHANGED;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.openmetadata.service.security.credentials.CredentialMetrics.DecryptOutcome;
 import org.openmetadata.service.security.credentials.CredentialRecord.MechanismVersion;
 
 /**
@@ -357,23 +360,24 @@ final class FakeCredentialSource implements CredentialSource {
     row.pats().forEach(pat -> digests.add(TokenDigest.of(pat.token())));
     MechanismVersion version =
         row.hasJwtMechanism() ? new MechanismVersion(row.storedMechanism(), row.updatedAt()) : null;
-    TokenDigest mechanismDigest = version == null ? null : mechanismDigest(row, version, previous);
+    boolean reuse = version != null && reusable(version, previous);
+    TokenDigest mechanismDigest =
+        version == null ? null : reuse ? previous.mechanismDigest() : decryptDigest(row);
     if (mechanismDigest != null) {
       digests.add(mechanismDigest);
     }
-    return new CredentialRecord(fingerprintOf(row), digests, version, mechanismDigest);
+    DecryptOutcome origin = version == null ? null : reuse ? SKIPPED_UNCHANGED : PERFORMED;
+    return new CredentialRecord(fingerprintOf(row), digests, version, mechanismDigest, origin);
   }
 
   /** The contract's reuse rule: the cached digest only when md5 and updatedAt both match. */
-  private TokenDigest mechanismDigest(
-      Row row, MechanismVersion version, CredentialRecord previous) {
-    boolean reusable =
-        previous != null
-            && version.equals(previous.mechanismVersion())
-            && previous.mechanismDigest() != null;
-    if (reusable) {
-      return previous.mechanismDigest();
-    }
+  private static boolean reusable(MechanismVersion version, CredentialRecord previous) {
+    return previous != null
+        && version.equals(previous.mechanismVersion())
+        && previous.mechanismDigest() != null;
+  }
+
+  private TokenDigest decryptDigest(Row row) {
     decrypts.incrementAndGet();
     return TokenDigest.of(decrypt(row.storedMechanism()));
   }

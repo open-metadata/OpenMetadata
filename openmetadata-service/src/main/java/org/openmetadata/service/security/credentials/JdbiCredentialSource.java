@@ -15,6 +15,8 @@ package org.openmetadata.service.security.credentials;
 
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.joining;
+import static org.openmetadata.service.security.credentials.CredentialMetrics.DecryptOutcome.PERFORMED;
+import static org.openmetadata.service.security.credentials.CredentialMetrics.DecryptOutcome.SKIPPED_UNCHANGED;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -36,6 +38,7 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.security.credentials.CredentialMetrics.DecryptOutcome;
 import org.openmetadata.service.security.credentials.CredentialRecord.MechanismVersion;
 import org.openmetadata.service.security.credentials.CredentialSourceDAO.FingerprintInputs;
 import org.openmetadata.service.security.credentials.CredentialSourceDAO.FullRow;
@@ -184,20 +187,30 @@ final class JdbiCredentialSource implements CredentialSource {
         isJwt(user.getAuthenticationMechanism())
             ? new MechanismVersion(first.mechanismMd5(), first.updatedAt())
             : null;
-    TokenDigest digest = version == null ? null : mechanismDigest(user, version, previous, decrypt);
-    if (digest != null) {
-      digests.add(digest);
+    MechanismDigest mechanism = mechanismDigest(user, version, previous, decrypt);
+    if (mechanism.digest() != null) {
+      digests.add(mechanism.digest());
     }
-    return new CredentialRecord(fingerprint, digests, version, digest);
+    return new CredentialRecord(
+        fingerprint, digests, version, mechanism.digest(), mechanism.origin());
   }
 
-  private static TokenDigest mechanismDigest(
+  private record MechanismDigest(TokenDigest digest, DecryptOutcome origin) {}
+
+  /** The reuse decision: a digest decrypted for the same stored mechanism version is kept. */
+  private static MechanismDigest mechanismDigest(
       User user,
       MechanismVersion version,
       CredentialRecord previous,
       BiFunction<String, AuthenticationMechanism, AuthenticationMechanism> decrypt) {
-    boolean unchanged = previous != null && version.equals(previous.mechanismVersion());
-    return unchanged ? previous.mechanismDigest() : decryptedDigest(user, decrypt);
+    MechanismDigest result = new MechanismDigest(null, null);
+    if (version != null) {
+      result =
+          previous != null && version.equals(previous.mechanismVersion())
+              ? new MechanismDigest(previous.mechanismDigest(), SKIPPED_UNCHANGED)
+              : new MechanismDigest(decryptedDigest(user, decrypt), PERFORMED);
+    }
+    return result;
   }
 
   private static boolean isJwt(AuthenticationMechanism mechanism) {
