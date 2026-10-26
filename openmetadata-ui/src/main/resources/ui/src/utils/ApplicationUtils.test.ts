@@ -12,10 +12,7 @@
  */
 
 import { EntityStats } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
-import {
-  App,
-  ScheduleTimeline,
-} from '../generated/entity/applications/app';
+import { App, ScheduleTimeline } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import {
   getAppCronExpression,
