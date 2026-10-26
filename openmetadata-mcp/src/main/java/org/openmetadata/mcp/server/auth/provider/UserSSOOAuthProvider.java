@@ -977,7 +977,11 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       // Generate cryptographically secure new refresh token (32 bytes = 256 bits)
       String newRefreshTokenValue = generateSecureToken(32);
-      long newRefreshExpiresAt = System.currentTimeMillis() + (REFRESH_TOKEN_EXPIRY_SECONDS * 1000);
+      // Rotation never moves the end of the grant: only a new sign-in starts a new lifetime, as for
+      // web sessions (SessionService.completeRefresh). Otherwise a client that keeps refreshing is
+      // never sent back to the identity provider, whatever happened to the user there.
+      // ADR:2026-10-26-an-mcp-oauth-grant-ends-30-days-after-sign-in
+      long newRefreshExpiresAt = tokenRecord.getExpiresAt();
 
       RefreshToken newRefreshToken =
           new RefreshToken(
@@ -993,11 +997,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         throw new TokenException("invalid_grant", "Refresh token has already been used");
       }
       LOG.debug("Refresh token rotated for user: {}", userName);
-
-      LOG.debug(
-          "New refresh token generated for user: {} (expires in {} days)",
-          userName,
-          REFRESH_TOKEN_EXPIRY_DAYS);
 
       JWTAuthMechanism jwtAuth =
           jwtGenerator.generateJWTToken(
