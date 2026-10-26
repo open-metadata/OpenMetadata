@@ -9,6 +9,12 @@ import org.openmetadata.schema.entity.events.EventSubscription;
  */
 public final class AlertLimits {
 
+  /** The most rows one alert event listing answers, the same bound as the change event list. */
+  public static final int MAX_LISTING_ROWS = 1000;
+
+  public static final String MAX_LISTING_ROWS_MESSAGE =
+      "must be less than or equal to " + MAX_LISTING_ROWS;
+
   /** The most change events an alert may ask to read at a time. */
   public static final int MAX_BATCH_SIZE = 1000;
 
