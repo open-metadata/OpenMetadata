@@ -151,12 +151,12 @@ def test_nox_integration_owned_options_reset_coverage(nox_repo: Path, workers: s
 
 
 @pytest.mark.parametrize("directory", [".", "ingestion"])
-def test_pytest_exclusions_match_from_both_entry_points(nox_repo: Path, directory: str) -> None:
+def test_pytest_collects_mlflow_from_both_entry_points(nox_repo: Path, directory: str) -> None:
     (nox_repo / "ingestion/tests/unit/test_active.py").write_text("def test_active():\n    pass\n")
-    excluded = nox_repo / "ingestion/tests/integration/sources/mlmodels/mlflow/test_mlflow.py"
-    excluded.parent.mkdir(parents=True)
-    excluded.write_text("raise AssertionError('Excluded test was imported')\n")
-    (excluded.parent / "test_mlflow_neighbor.py").write_text("def test_neighbor():\n    pass\n")
+    mlflow_test = nox_repo / "ingestion/tests/integration/sources/mlmodels/mlflow/test_mlflow.py"
+    mlflow_test.parent.mkdir(parents=True)
+    mlflow_test.write_text("def test_mlflow():\n    pass\n")
+    (mlflow_test.parent / "test_mlflow_neighbor.py").write_text("def test_neighbor():\n    pass\n")
     prefix = "ingestion/" if directory == "." else ""
     result = run(
         sys.executable,
@@ -177,6 +177,7 @@ def test_pytest_exclusions_match_from_both_entry_points(nox_repo: Path, director
         "test_active",
         "test_integration_rejected",
         "test_integration_selected",
+        "test_mlflow",
         "test_neighbor",
         "test_unit_rejected",
         "test_unit_selected",
