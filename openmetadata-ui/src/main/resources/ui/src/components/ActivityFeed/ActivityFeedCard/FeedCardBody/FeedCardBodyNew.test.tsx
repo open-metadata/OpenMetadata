@@ -73,9 +73,10 @@ describe('FeedCardBodyNew message preview', () => {
 
     renderBody();
 
+    // The message text stays readable while the preview is still loading.
     expect(
       await screen.findByTestId('feed-message-skeleton')
-    ).toBeInTheDocument();
+    ).toHaveTextContent('Description');
 
     await act(async () => {
       jest.advanceTimersByTime(100);

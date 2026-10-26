@@ -23,6 +23,7 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtilsPure';
+import { stripMarkdown } from '../../../../utils/RichTextStringUtils';
 import DeferredWidget from '../../../common/DeferredWidget/DeferredWidget.component';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
@@ -59,16 +60,25 @@ const RichTextEditorPreviewerNew = withSuspenseFallback(
   lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewNew'))
 );
 
-const FeedMessageSkeleton = () => (
+// The message's plain text stays in the DOM while its preview is deferred, so screen
+// readers, find-in-page and text lookups see it before the editor mounts.
+const FeedMessageSkeleton = ({ text }: { text: string }) => (
   <Box data-testid="feed-message-skeleton" direction="col" gap={2}>
-    <Skeleton height={14} variant="text" width="100%" />
-    <Skeleton height={14} variant="text" width="60%" />
+    <span className="tw:sr-only">{text}</span>
+    <Skeleton aria-hidden height={14} variant="text" width="100%" />
+    <Skeleton aria-hidden height={14} variant="text" width="60%" />
   </Box>
 );
 
 // The previewer and its editor both load lazily and the editor first renders empty, so
 // the skeleton stays until the hidden preview has rendered content; the field is never blank.
-const FeedMessagePreviewContent = ({ markdown }: { markdown: string }) => {
+const FeedMessagePreviewContent = ({
+  markdown,
+  plainText,
+}: {
+  markdown: string;
+  plainText: string;
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isRendered, setIsRendered] = useState(false);
 
@@ -98,7 +108,7 @@ const FeedMessagePreviewContent = ({ markdown }: { markdown: string }) => {
 
   return (
     <>
-      {isRendered ? null : <FeedMessageSkeleton />}
+      {isRendered ? null : <FeedMessageSkeleton text={plainText} />}
       <div className={isRendered ? undefined : 'tw:hidden'} ref={containerRef}>
         <RichTextEditorPreviewerNew
           clampByLines
@@ -112,11 +122,15 @@ const FeedMessagePreviewContent = ({ markdown }: { markdown: string }) => {
 
 // Each preview mounts a read-only rich-text editor; a long feed mounting them all at
 // once blocks the main thread for tens of seconds, so only cards near the viewport do.
-const FeedMessagePreview = ({ markdown }: { markdown: string }) => (
-  <DeferredWidget placeholder={<FeedMessageSkeleton />}>
-    <FeedMessagePreviewContent markdown={markdown} />
-  </DeferredWidget>
-);
+const FeedMessagePreview = ({ markdown }: { markdown: string }) => {
+  const plainText = useMemo(() => stripMarkdown(markdown), [markdown]);
+
+  return (
+    <DeferredWidget placeholder={<FeedMessageSkeleton text={plainText} />}>
+      <FeedMessagePreviewContent markdown={markdown} plainText={plainText} />
+    </DeferredWidget>
+  );
+};
 
 const FeedCardBodyNew = ({
   feed,
