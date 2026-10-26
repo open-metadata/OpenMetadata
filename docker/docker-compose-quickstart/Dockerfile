@@ -65,13 +65,13 @@ RUN set -eu; \
       echo "alsa-lib is installed again" >&2; exit 1; \
     fi
 
-# CVE-2026-91403 and CVE-2026-114820:
-# eMudhra's compromised intermediates chain to three emSign roots (ECC G3, ECC C3, C1), and
-# Oracle JDK 21.0.13.0.3 removes four roots from cacerts: emSign G1, G2, ECC G3 and Comodo's
-# AAA Certificate Services.
-# Alpine's ca-certificates (20261020) still puts emSign G1 in the Java trust store it generates,
-# so delete them all here by SHA-256; the check fails the build if any is still trusted, which
-# also keeps a stale cached apk layer from shipping them.
+# CVE-2026-91403:
+# eMudhra's compromised intermediates chain to three emSign roots (ECC G3, ECC C3, C1). Oracle JDK
+# 21.0.13.0.3 also removes emSign G1, G2 and Comodo's AAA Certificate Services from cacerts, so
+# this step drops those too.
+# Delete them all here by SHA-256, whatever Alpine's ca-certificates puts in the Java trust store
+# it generates; the check fails the build if any is still trusted, which also keeps a stale
+# cached apk layer from shipping them.
 # Roots, not the advisory's intermediate fingerprints in blocked.certs: an ECDSA signature
 # re-encoded as (r, n-s) gives an intermediate a new fingerprint that still verifies.
 RUN set -eu; \
@@ -82,7 +82,7 @@ RUN set -eu; \
       | while IFS= read -r alias; do keytool -delete -cacerts -storepass changeit -alias "$alias"; done; \
     certs=$(keytool -list -v -cacerts -storepass changeit); \
     if printf '%s\n' "$certs" | tr -d ':' | grep -qE "$(echo $roots | tr ' ' '|')"; then \
-      echo "CVE-2026-91403, CVE-2026-114820: a distrusted root CA is still trusted" >&2; exit 1; \
+      echo "a root CA this step removes is still trusted" >&2; exit 1; \
     fi
 
 COPY --chown=openmetadata:openmetadata --from=build /opt/openmetadata /opt/openmetadata
