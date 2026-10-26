@@ -64,8 +64,8 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
 
   private static final List<String> SAMPLE_MESSAGES =
       List.of(
-          "{\"publicId\":1,\"payload\":{\"contact\":{\"details\":{\"email\":\"COL7795_SECRET_A\"}}}}",
-          "opaque COL7795_SECRET_B");
+          "{\"publicId\":1,\"payload\":{\"contact\":{\"details\":{\"email\":\"SAMPLE_SECRET_A\"}}}}",
+          "opaque SAMPLE_SECRET_B");
 
   private enum SampleTagLocation {
     ENTITY,
@@ -1122,6 +1122,7 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     SearchIndex fetched = getEntityWithFields(index.getId().toString(), "owners");
     fetched.setOwners(List.of());
     patchEntity(index.getId().toString(), fetched);
+    assertTrue(getEntityWithFields(index.getId().toString(), "owners").getOwners().isEmpty());
     assertSampleDataDenied(userClient(denied), index);
     assertSampleMessages(SdkClients.adminClient(), index, SAMPLE_MESSAGES);
   }
@@ -1235,8 +1236,8 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     OpenMetadataException denied =
         assertThrows(OpenMetadataException.class, () -> getSampleData(client, index));
     assertEquals(403, denied.getStatusCode());
-    assertFalse(denied.toString().contains("COL7795_SECRET_A"));
-    assertFalse(denied.toString().contains("COL7795_SECRET_B"));
+    assertFalse(denied.toString().contains("SAMPLE_SECRET_A"));
+    assertFalse(denied.toString().contains("SAMPLE_SECRET_B"));
   }
 
   private static User createSampleDeniedUser(TestNamespace ns) {
