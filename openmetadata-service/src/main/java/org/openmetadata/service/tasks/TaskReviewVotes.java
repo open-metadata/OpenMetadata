@@ -17,7 +17,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
-/** Counted votes on a multi-reviewer task: one per voter, each covering one assignee entry. */
+/**
+ * Counted votes on a multi-reviewer task: one per voter in each workflow stage, each covering one
+ * assignee entry.
+ */
 public final class TaskReviewVotes {
   private TaskReviewVotes() {}
 
@@ -43,10 +46,16 @@ public final class TaskReviewVotes {
         .anyMatch(vote -> vote.getVoter() != null && voter.equals(vote.getVoter().getName()));
   }
 
-  /** The votes with {@code vote} appended, unless its voter already appears. */
+  /** The votes with {@code vote} appended, unless its voter already voted in the same stage. */
   public static List<TaskReviewVote> record(
       final List<TaskReviewVote> votes, final TaskReviewVote vote) {
-    if (hasVoted(votes, vote.getVoter().getName())) {
+    final boolean recordedInStage =
+        listOrEmpty(votes).stream()
+            .anyMatch(
+                earlier ->
+                    sameEntity(earlier.getVoter(), vote.getVoter())
+                        && Objects.equals(earlier.getStage(), vote.getStage()));
+    if (recordedInStage) {
       return listOrEmpty(votes);
     }
     final List<TaskReviewVote> recorded = new ArrayList<>(listOrEmpty(votes));
@@ -90,6 +99,7 @@ public final class TaskReviewVotes {
         .withAssignee(entry == null ? voter : entry)
         .withDecision(decision)
         .withComment(comment)
+        .withStage(task.getWorkflowStageId())
         .withTimestamp(timestamp);
   }
 

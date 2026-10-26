@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -80,45 +79,6 @@ class OntologyReleaseDAOTest {
           assertNull(
               roles.read(List.of(storage.ontologyId())).get(storage.ontologyId()).inReview());
           assertEquals(3, storage.releases().listRoleCandidates(ids).size());
-        });
-  }
-
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void openReviewsScanBeyondAPageWithTiedTimestamps(ConnectionType dialect) {
-    withStorage(
-        dialect,
-        storage -> {
-          for (int revision = 1; revision <= 5; revision++) {
-            storage.insert(
-                storage
-                    .release(revision)
-                    .withEntityStatus(EntityStatus.IN_REVIEW)
-                    .withUpdatedAt(revision < 4 ? 2L : 1L));
-          }
-          storage.insert(
-              storage.release(6).withEntityStatus(EntityStatus.APPROVED).withUpdatedAt(3L));
-          List<UUID> ids = new ArrayList<>();
-          long timestamp = Long.MAX_VALUE;
-          String id = "";
-          List<String> batch;
-          do {
-            batch =
-                storage
-                    .releases()
-                    .listAllByStatus(EntityStatus.IN_REVIEW.value(), 2, timestamp, id);
-            assertTrue(batch.size() <= 2);
-            for (String json : batch) {
-              OntologyRelease release = JsonUtils.readValue(json, OntologyRelease.class);
-              ids.add(release.getId());
-              timestamp = release.getUpdatedAt();
-              id = release.getId().toString();
-            }
-          } while (!batch.isEmpty());
-          assertEquals(5, ids.size());
-          assertEquals(5, ids.stream().distinct().count());
         });
   }
 

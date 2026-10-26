@@ -208,6 +208,10 @@
           "description": "Comment given with the vote, kept verbatim.",
           "type": "string"
         },
+        "stage": {
+          "description": "Workflow stage the task was in when the vote was counted. A voter is recorded once per stage, so a task that moves through several approval stages keeps every stage's vote.",
+          "type": "string"
+        },
         "timestamp": {
           "description": "When the vote was counted.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
@@ -505,7 +509,7 @@
       "$ref": "../../type/ontologyReviewTarget.json"
     },
     "reviewVotes": {
-      "description": "Counted votes on a workflow approval task, one per voter, including the deciding vote. Server-managed.",
+      "description": "Counted votes on a workflow approval task, one per voter in each workflow stage, including the deciding vote. Server-managed.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/taskReviewVote"
