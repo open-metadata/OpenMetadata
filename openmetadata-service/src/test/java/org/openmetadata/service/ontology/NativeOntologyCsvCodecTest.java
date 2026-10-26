@@ -406,6 +406,79 @@ class NativeOntologyCsvCodecTest {
   }
 
   @Test
+  void rejectsPropertyMetadataThatTheKindCannotCarryNamingTheColumn() {
+    assertEquals(
+        "CSV row 2, column unit: only a DATA property can define a unit",
+        errorOf(
+            csv(
+                row(
+                    "KIND",
+                    "PROPERTY",
+                    "IRI",
+                    EX + "p",
+                    "PROPERTY_KIND",
+                    "OBJECT",
+                    "UNIT",
+                    "kg"))));
+    assertEquals(
+        "CSV row 2, column inverse: only an OBJECT property can have an inverse",
+        errorOf(
+            csv(
+                row(
+                    "KIND",
+                    "PROPERTY",
+                    "IRI",
+                    EX + "p",
+                    "PROPERTY_KIND",
+                    "DATA",
+                    "INVERSE",
+                    EX + "q"))));
+    assertEquals(
+        "CSV row 2, column identifier: only a DATA property can be an identifier",
+        errorOf(
+            csv(
+                row(
+                    "KIND",
+                    "PROPERTY",
+                    "IRI",
+                    EX + "p",
+                    "PROPERTY_KIND",
+                    "ANNOTATION",
+                    "IDENTIFIER",
+                    "true"))));
+    assertEquals(
+        "CSV row 2, column characteristics: TRANSITIVE is not allowed on a DATA property",
+        errorOf(
+            csv(
+                row(
+                    "KIND",
+                    "PROPERTY",
+                    "IRI",
+                    EX + "p",
+                    "PROPERTY_KIND",
+                    "DATA",
+                    "CHARACTERISTICS",
+                    "TRANSITIVE"))));
+  }
+
+  @Test
+  void rejectsExpressionCellsWithTextAfterTheJsonValue() {
+    assertTrue(
+        errorOf(
+                csv(
+                    row(
+                        "KIND",
+                        "AXIOM",
+                        "IRI",
+                        EX + "A",
+                        "AXIOM_TYPE",
+                        "SUBCLASS_OF",
+                        "EXPRESSIONS",
+                        "[] []")))
+            .startsWith("CSV row 2, column expressions: malformed JSON: Trailing token"));
+  }
+
+  @Test
   void rejectsEveryMalformedInputWithTheRowAndColumnAtFault() {
     final String thing = "http://www.w3.org/2002/07/owl#Thing";
     assertEquals(

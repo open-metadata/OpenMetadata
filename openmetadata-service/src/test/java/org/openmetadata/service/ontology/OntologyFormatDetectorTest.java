@@ -42,6 +42,16 @@ class OntologyFormatDetectorTest {
   }
 
   @Test
+  void aTurtleFileThatStartsWithABlankNodeIsNotJsonLd() {
+    final String blankNode = "[] a <http://www.w3.org/2002/07/owl#Ontology> .\n";
+    assertEquals(Optional.of(NativeOntologyImportFormat.TURTLE), detect(blankNode, "o.ttl"));
+    assertEquals(Optional.of(NativeOntologyImportFormat.TURTLE), detect(blankNode, null));
+    assertEquals(
+        Optional.of(NativeOntologyImportFormat.JSONLD), detect("[ {\"@id\": \"x\"} ]", null));
+    assertEquals(Optional.of(NativeOntologyImportFormat.JSONLD), detect("[]", null));
+  }
+
+  @Test
   void contentBeatsAMisleadingFileName() {
     assertEquals(Optional.of(NativeOntologyImportFormat.RDFXML), detect(RDF_XML, "ontology.ttl"));
     assertEquals(Optional.of(NativeOntologyImportFormat.RDFXML), detect("<rdf:RDF/>", null));
