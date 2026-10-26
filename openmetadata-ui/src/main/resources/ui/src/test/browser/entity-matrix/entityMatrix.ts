@@ -438,17 +438,23 @@ export const openOwnerPicker = async (tab: 'Users' | 'Teams') => {
 /** Every search the mounted page sent; see `mountEntityPage`. */
 let searches: URLSearchParams[] = [];
 
-/** Polls until a search sent after `from` matches `index` and contains `term`. */
+/**
+ * Polls until a search sent after `from` matches `index` and contains `term`.
+ * The pickers debounce their search, so allow for a slow runner rather than
+ * expect.poll's 1 s default; a search that never fires still fails.
+ */
 const searchLanded = (from: number, index: string, term: string) =>
   expect
-    .poll(() =>
-      searches
-        .slice(from)
-        .some(
-          (q) =>
-            q.get('index') === index &&
-            (q.get('q') ?? '').toLowerCase().includes(term.toLowerCase())
-        )
+    .poll(
+      () =>
+        searches
+          .slice(from)
+          .some(
+            (q) =>
+              q.get('index') === index &&
+              (q.get('q') ?? '').toLowerCase().includes(term.toLowerCase())
+          ),
+      { timeout: 10_000 }
     )
     .toBe(true);
 
@@ -627,8 +633,16 @@ const setSelected = (option: Locator, selected: boolean) =>
     )
     .toBe(selected);
 
-/** Toggles `fqn` in the classification tag picker `trigger` opens, and applies. */
-export const pickTag = async (trigger: Locator, fqn: string) => {
+/**
+ * Toggles `fqn` in the classification tag picker `trigger` opens, and applies.
+ * Pass `select` when the caller knows the outcome it wants; reading it from the
+ * tree races the tree's hydration of the current selection.
+ */
+export const pickTag = async (
+  trigger: Locator,
+  fqn: string,
+  select?: boolean
+) => {
   await userEvent.click(trigger);
   const from = searches.length;
   await userEvent.fill(
@@ -649,14 +663,14 @@ export const pickTag = async (trigger: Locator, fqn: string) => {
 
   await expect.element(node).toBeVisible();
 
-  await setSelected(node, !isSelected(node));
+  await setSelected(node, select ?? !isSelected(node));
   await userEvent.click(page.getByTestId('update-btn'));
 
   await expect.element(page.getByTestId('update-btn')).not.toBeInTheDocument();
 };
 
 /** Toggles one classification tag through the picker opened from `scope` and applies. */
-export const toggleTag = (scope: Scope, fqn: string) => {
+export const toggleTag = (scope: Scope, fqn: string, select?: boolean) => {
   const container = scope.getByTestId('tags-container');
 
   return pickTag(
@@ -664,7 +678,8 @@ export const toggleTag = (scope: Scope, fqn: string) => {
       .getByTestId('add-tag')
       .or(container.getByTestId('edit-button'))
       .first(),
-    fqn
+    fqn,
+    select
   );
 };
 
@@ -688,7 +703,7 @@ export const addUpdateRemoveTags = async (
   ];
 
   for (const [toggled, want] of steps) {
-    await toggleTag(scope(), toggled);
+    await toggleTag(scope(), toggled, want.includes(toggled));
 
     await expect.poll(() => labels().sort()).toEqual([...want].sort());
 
@@ -707,21 +722,36 @@ export const addUpdateRemoveTags = async (
     .toBeVisible();
 };
 
-/** Toggles `term` in the glossary term picker `trigger` opens, and applies. */
+/**
+ * Toggles `term` in the glossary term picker `trigger` opens, and applies.
+ * Like `pickTag`: wait for the picker's own search, and pass `select` when the
+ * wanted outcome is known.
+ */
 export const pickGlossaryTerm = async (
   trigger: Locator,
-  term: (typeof GLOSSARY_TERMS)[number]
+  term: (typeof GLOSSARY_TERMS)[number],
+  select?: boolean
 ) => {
   await userEvent.click(trigger);
   await userEvent.fill(
     page.getByPlaceholder('Search Glossary Terms'),
     term.displayName ?? ''
   );
+  // Let this search land before picking: its results re-render the tree, and
+  // the other terms leave it once it has (serveGlossary answers this search,
+  // so it never reaches the `searches` log).
+  for (const other of GLOSSARY_TERMS) {
+    if (other.fullyQualifiedName !== term.fullyQualifiedName) {
+      await expect
+        .element(page.getByTestId(`tree-node-${other.fullyQualifiedName}`))
+        .not.toBeInTheDocument();
+    }
+  }
   const node = page.getByTestId(`tree-node-${term.fullyQualifiedName}`);
 
   await expect.element(node).toBeVisible();
 
-  await setSelected(node, !isSelected(node));
+  await setSelected(node, select ?? !isSelected(node));
   await userEvent.click(page.getByTestId('update-btn'));
 
   await expect.element(page.getByTestId('update-btn')).not.toBeInTheDocument();
@@ -730,7 +760,8 @@ export const pickGlossaryTerm = async (
 /** Toggles one glossary term through the picker opened from `scope` and applies. */
 const toggleGlossaryTerm = (
   scope: Scope,
-  term: (typeof GLOSSARY_TERMS)[number]
+  term: (typeof GLOSSARY_TERMS)[number],
+  select?: boolean
 ) => {
   const container = scope.getByTestId('glossary-container');
 
@@ -739,7 +770,8 @@ const toggleGlossaryTerm = (
       .getByTestId('add-tag')
       .or(container.getByTestId('edit-button'))
       .first(),
-    term
+    term,
+    select
   );
 };
 
@@ -758,7 +790,7 @@ export const addUpdateRemoveGlossaryTerms = async (
   ];
 
   for (const [toggled, want] of steps) {
-    await toggleGlossaryTerm(scope(), toggled);
+    await toggleGlossaryTerm(scope(), toggled, want.includes(fqn(toggled)));
 
     await expect.poll(() => labels().sort()).toEqual([...want].sort());
 
