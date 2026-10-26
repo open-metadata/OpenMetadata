@@ -23,12 +23,12 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntPredicate;
 
@@ -47,6 +47,7 @@ import java.util.function.IntPredicate;
 public final class BenchSession {
   private static final ObjectMapper MAPPER =
       new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+  private static final long BARRIER_TIMEOUT_SECONDS = 120;
   private static volatile long sink;
 
   /** Samples are {@code opsPerSample} calls of the operation on every thread. */
@@ -70,6 +71,9 @@ public final class BenchSession {
       double opsPerSecond,
       double allocatedBytesPerOp,
       MachineState machine) {}
+
+  private record Document(
+      String run, double loadAtSessionStart, double loadAtSessionEnd, List<Result> cases) {}
 
   private final String runName;
   private final List<Result> results = new ArrayList<>();
@@ -97,11 +101,7 @@ public final class BenchSession {
     Path dir = Path.of("target", "credential-bench");
     Files.createDirectories(dir);
     String stamp = Instant.now().toString().replace(':', '-');
-    Map<String, Object> document = new LinkedHashMap<>();
-    document.put("run", runName);
-    document.put("loadAtSessionStart", loadAtStart);
-    document.put("loadAtSessionEnd", loadAverage());
-    document.put("cases", results);
+    Document document = new Document(runName, loadAtStart, loadAverage(), results);
     MAPPER.writeValue(dir.resolve(runName + "-" + stamp + ".json").toFile(), document);
     return markdown(results);
   }
@@ -253,7 +253,7 @@ public final class BenchSession {
       long threadId = Thread.currentThread().threadId();
       try {
         for (int s = 0; s < totalSamples(config); s++) {
-          barrier.await();
+          barrier.await(BARRIER_TIMEOUT_SECONDS, TimeUnit.SECONDS);
           sample(s, memory, threadId);
         }
       } catch (InterruptedException e) {
@@ -261,6 +261,10 @@ public final class BenchSession {
         failure.compareAndSet(null, e);
       } catch (BrokenBarrierException e) {
         failure.compareAndSet(null, e);
+      } catch (TimeoutException e) {
+        // A peer died after the others passed the barrier; fail the run rather than wait forever.
+        failure.compareAndSet(null, e);
+        barrier.reset();
       } catch (RuntimeException | Error e) {
         failure.compareAndSet(null, e);
         barrier.reset();
