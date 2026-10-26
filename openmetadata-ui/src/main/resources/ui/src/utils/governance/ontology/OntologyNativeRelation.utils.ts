@@ -272,6 +272,16 @@ export const buildNativeRelationGroups = (
     title: titles[group],
   }));
 
+/** The entry a typed label names, so the picker reuses a type instead of registering it twice. */
+export const findNativeRelationTypeByLabel = (
+  catalog: readonly NativeRelationType[],
+  label: string
+): NativeRelationType | undefined => {
+  const wanted = label.trim().toLowerCase();
+
+  return catalog.find((type) => type.label.toLowerCase() === wanted);
+};
+
 /** The other half of a reciprocal pair; a self-inverse type has none. */
 const otherSideOf = (type: NativeRelationType) =>
   type.inverse && type.inverse.id !== type.id ? type.inverse : undefined;
@@ -461,25 +471,21 @@ export const planRelationshipType = (
   };
 };
 
-/** The registry links only the side that names its inverse, so the inverse is pointed back by patch. */
+/** The registry links only the side that names its inverse, so the inverse just created is pointed back by patch. */
 export const buildInverseBackLink = (
-  inverse: RelationshipType,
   primary: RelationshipType
-): Operation[] =>
-  inverse.inverse?.id === primary.id
-    ? []
-    : [
-        {
-          op: inverse.inverse ? 'replace' : 'add',
-          path: '/inverse',
-          value: {
-            fullyQualifiedName: primary.fullyQualifiedName,
-            id: primary.id,
-            name: primary.name,
-            type: 'relationshipType',
-          },
-        },
-      ];
+): Operation[] => [
+  {
+    op: 'add',
+    path: '/inverse',
+    value: {
+      fullyQualifiedName: primary.fullyQualifiedName,
+      id: primary.id,
+      name: primary.name,
+      type: 'relationshipType',
+    },
+  },
+];
 
 /** How the target reads an incoming relation: through the property's inverse, when the ontology declares it. */
 export const getInverseRelationLabel = (

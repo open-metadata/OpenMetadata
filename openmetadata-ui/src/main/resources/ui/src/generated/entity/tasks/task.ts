@@ -126,8 +126,8 @@ export interface Task {
      */
     reviewers?: EntityReference[];
     /**
-     * Counted votes on a workflow approval task, one per voter, including the deciding vote.
-     * Server-managed.
+     * Counted votes on a workflow approval task, one per voter in each workflow stage,
+     * including the deciding vote. Server-managed.
      */
     reviewVotes?: TaskReviewVote[];
     status:       TaskStatus;
@@ -594,6 +594,11 @@ export interface TaskReviewVote {
      */
     comment?: string;
     decision: ReviewVoteDecision;
+    /**
+     * Workflow stage the task was in when the vote was counted. A voter is recorded once per
+     * stage, so a task that moves through several approval stages keeps every stage's vote.
+     */
+    stage?: string;
     /**
      * When the vote was counted.
      */

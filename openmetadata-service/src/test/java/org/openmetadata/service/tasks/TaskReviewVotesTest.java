@@ -84,6 +84,32 @@ class TaskReviewVotesTest {
   }
 
   @Test
+  void aVoterIsRecordedOnceInEachWorkflowStage() {
+    List<TaskReviewVote> votes =
+        TaskReviewVotes.record(
+            List.of(),
+            vote(alice, alice, TaskReviewVoteDecision.Approved, "Fine for marketing", 1L)
+                .withStage("managerApproval"));
+    votes =
+        TaskReviewVotes.record(
+            votes,
+            vote(alice, alice, TaskReviewVoteDecision.Rejected, "Not for finance", 2L)
+                .withStage("ownerApproval"));
+    List<TaskReviewVote> retried =
+        TaskReviewVotes.record(
+            votes,
+            vote(alice, alice, TaskReviewVoteDecision.Rejected, "Retry", 3L)
+                .withStage("ownerApproval"));
+
+    assertEquals(2, votes.size());
+    assertEquals("Fine for marketing", votes.getFirst().getComment());
+    assertEquals(TaskReviewVoteDecision.Rejected, votes.getLast().getDecision());
+    assertEquals("Not for finance", votes.getLast().getComment());
+    assertEquals("ownerApproval", votes.getLast().getStage());
+    assertSame(votes, retried);
+  }
+
+  @Test
   void voteCoversTheVotersOwnEntryBeforeATeamEntry() {
     List<EntityReference> entries = List.of(team, alice);
 
