@@ -115,7 +115,7 @@ const SystemAnnouncementForm = ({
     <Box className="tw:h-full tw:min-h-0" direction="col">
       <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto">
         <Box
-          className="tw:w-full tw:max-w-[50%] tw:px-6 tw:pb-6"
+          className="tw:w-full tw:max-w-[50%] tw:mx-auto tw:px-6 tw:pb-6"
           direction="col"
           gap={6}>
           <HookForm

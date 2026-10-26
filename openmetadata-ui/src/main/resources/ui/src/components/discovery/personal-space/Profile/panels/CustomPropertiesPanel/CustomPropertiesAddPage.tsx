@@ -106,7 +106,7 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
       data-testid="custom-properties-add-page"
       direction="col">
       <div className="tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0">
-        <Box className="tw:max-w-[50%]" direction="col">
+        <Box className="tw:max-w-[50%] tw:w-full tw:mx-auto" direction="col">
           <HookForm
             className="tw:flex tw:flex-col tw:gap-6"
             data-testid="custom-property-form"
