@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryDerivationIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tests that need the RDF store. The rdf lane runs them against a Fuseki the bootstrap
@@ -459,12 +459,15 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -515,6 +518,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -522,6 +526,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -603,12 +609,15 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -659,6 +668,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -666,6 +676,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -748,12 +760,15 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -805,6 +820,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -812,6 +828,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -894,12 +912,15 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -950,6 +971,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -957,6 +979,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1038,12 +1062,15 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1094,6 +1121,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1101,6 +1129,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1181,12 +1211,15 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1238,6 +1271,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1245,6 +1279,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1342,12 +1378,15 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1400,6 +1439,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1407,6 +1447,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1494,12 +1536,15 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1551,6 +1596,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1558,6 +1604,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>

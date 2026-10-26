@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
 import { AxiosError } from 'axios';
@@ -19,15 +20,15 @@ import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { EntityImport } from '../../../components/common/EntityImport/EntityImport.component';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { TeamImportResult } from '../../../components/Settings/Team/TeamImportResult/TeamImportResult.component';
 import { UserImportResult } from '../../../components/Settings/Team/UserImportResult/UserImportResult.component';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Team, TeamType } from '../../../generated/entity/teams/team';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
@@ -166,34 +167,41 @@ const ImportTeamsPage = () => {
   // it will fetch permission 1st, if its not allowed will show no permission placeholder
   if (!canCreate || !canEditAll) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.create-entity', {
-          entity: t('label.import-entity', {
-            entity:
-              type === ImportType.USERS
-                ? t('label.user-plural')
-                : t('label.team-plural'),
-          }),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.create-entity', {
+            entity: t('label.import-entity', {
+              entity:
+                type === ImportType.USERS
+                  ? t('label.user-plural')
+                  : t('label.team-plural'),
+            }),
+          })}
+        />
+      </div>
     );
   }
 
   if (isUndefined(team)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   if (team.teamType === TeamType.Group && type === ImportType.TEAMS) {
     return (
-      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <div className="m-t-sm text-center text-sm font-normal">
-          <Typography as="p" className="w-80">
-            {t('message.group-type-team-not-allowed-to-have-sub-team')}
-          </Typography>
-        </div>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={t(
+            'message.group-type-team-not-allowed-to-have-sub-team'
+          )}
+          icon={<Database01 />}
+        />
+      </div>
     );
   }
 

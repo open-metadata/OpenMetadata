@@ -32,7 +32,7 @@ import {
   getTableExpandableConfig,
   prepareConstraintIcon,
 } from '../../../utils/TableUtils';
-import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -361,7 +361,11 @@ function VersionTable<T extends Column | SearchIndexField>({
       }}
       loading={isLoading}
       locale={{
-        emptyText: <FilterTablePlaceHolder />,
+        emptyText: (
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+          </div>
+        ),
       }}
       pagination={false}
       rowKey="fullyQualifiedName"

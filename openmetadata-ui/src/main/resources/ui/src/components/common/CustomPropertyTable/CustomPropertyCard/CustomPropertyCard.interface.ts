@@ -33,6 +33,8 @@ export interface PropertyEditProps {
   value: unknown;
   isSaving: boolean;
   onSave: (value: unknown) => void;
+  /** Reports whether the draft differs from `value`, so callers can gate Save. */
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 export interface CustomPropertyRenderer {

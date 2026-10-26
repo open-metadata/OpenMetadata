@@ -15,7 +15,6 @@ import {
   Badge,
   Box,
   Card,
-  EmptyPlaceholder,
   PaginationCardWithControls,
   Skeleton,
   Typography,
@@ -36,6 +35,7 @@ import { getAllPersonas } from '../../../../../../rest/PersonaAPI';
 import { walkToAfterCursor } from '../../../../../../utils/CursorPaging.utils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { PersonaView } from './Personas.types';
 
@@ -205,7 +205,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
         className="tw:min-h-64 tw:px-8 tw:relative"
         data-testid="personas-landing-empty"
         justify="center">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           title={t('label.no-entity-found', {
             entity: t('label.persona-plural'),
           })}

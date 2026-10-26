@@ -305,6 +305,23 @@ export const getLensRootLabelKey = (lens: LineageLens) => {
   }
 };
 
+/**
+ * The root breadcrumb of a scene that has been drilled into, i.e. the way back
+ * to "All services" (or domains / data products). Undefined at the root itself.
+ */
+export const getDrilledRootBreadcrumb = (
+  scene?: Pick<LineageScene, 'breadcrumb' | 'band' | 'focusFqn'>
+): LineageSceneBreadcrumb | undefined => {
+  // An empty drilled scene comes back with only the root crumb, so whether it
+  // is drilled is read from its focus and band, not from the trail's length.
+  const isDrilled =
+    Boolean(scene?.focusFqn) || (scene && scene.band !== LineageBand.Layer);
+
+  return isDrilled
+    ? scene?.breadcrumb.find((breadcrumb) => !breadcrumb.fullyQualifiedName)
+    : undefined;
+};
+
 export const buildLineagePathHighlightIndex = (
   edges: LineagePathEdge[]
 ): LineagePathHighlightIndex => {
@@ -573,6 +590,28 @@ export const LINEAGE_MAP_RAIL_STOPS = [
   LineageBand.Field,
 ];
 
+export type LineageMapEmptyState = 'loading' | 'error' | 'empty';
+
+/** Which placeholder the map shows while it has no nodes to draw. */
+export const getLineageMapEmptyState = ({
+  scene,
+  loading,
+  hasError,
+}: {
+  scene?: LineageScene;
+  loading: boolean;
+  hasError: boolean;
+}): LineageMapEmptyState => {
+  if (scene) {
+    return 'empty';
+  }
+  if (loading) {
+    return 'loading';
+  }
+
+  return hasError ? 'error' : 'empty';
+};
+
 export const getRailStop = (scene: LineageScene): LineageBand => {
   if (scene.band === LineageBand.Field) {
     return LineageBand.Field;
@@ -602,6 +641,21 @@ export const getRailStopLabelKey = (stop: LineageBand, lens: LineageLens) => {
       return 'label.service-level-view';
   }
 };
+
+export const isSceneNodeDrillable = (
+  node?: LineageSceneNode
+): node is LineageSceneNode & {
+  fullyQualifiedName: string;
+  entityType: string;
+} => Boolean(node?.isExpandable && node.fullyQualifiedName && node.entityType);
+
+// The scene API marks every container expandable, even a service with no
+// assets left, so a blind rail drill prefers a node with children to land on.
+// The childrenCount check can go once the API stops marking empty containers.
+export const getRailDrillFallbackNode = (nodes: LineageSceneNode[]) =>
+  nodes.find(
+    (node) => isSceneNodeDrillable(node) && (node.childrenCount ?? 0) > 0
+  ) ?? nodes.find(isSceneNodeDrillable);
 
 export const getDrillBand = (node: LineageSceneNode) => {
   if (node.band === LineageBand.Layer) {

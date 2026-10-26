@@ -1101,6 +1101,12 @@ export interface Connection {
      */
     snowflakeSourceHost?: string;
     /**
+     * Number of tables whose DML history is read from QUERY_HISTORY with a single query when
+     * the profiler computes system metrics. Higher values issue fewer scans but hold more
+     * history in memory at once.
+     */
+    systemMetricsBatchSize?: number;
+    /**
      * Use Snowflake's ACCOUNT_USAGE.ACCESS_HISTORY view as the source of query lineage.
      * ACCESS_HISTORY provides Snowflake-computed table- and column-level lineage, including for
      * queries OpenMetadata cannot parse. Enabled by default; if the configured role cannot read

@@ -50,15 +50,20 @@ describe('Badge tooltip', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('renders a tooltip trigger when tooltip is passed', () => {
+  it('wraps the badge in a non-focusable, shrinkable trigger when tooltip is passed', () => {
     render(
       <Badge data-testid="badge" tooltip="Contains PII data">
         Active
       </Badge>
     );
 
-    expect(screen.getByRole('button')).toBeInTheDocument();
-    expect(screen.getByText('Active')).toBeInTheDocument();
+    const trigger = screen.getByTestId('badge').parentElement;
+
+    // No button, so a badge inside a clickable parent never nests one.
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(trigger?.tagName).toBe('SPAN');
+    expect(trigger).not.toHaveAttribute('tabindex');
+    expect(trigger).toHaveClass('tw:min-w-0', 'tw:max-w-full');
   });
 });
 

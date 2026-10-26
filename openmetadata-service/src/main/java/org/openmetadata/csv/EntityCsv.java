@@ -104,7 +104,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
@@ -113,6 +112,7 @@ import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
@@ -1422,16 +1422,21 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
         type, t -> !GovernanceApprovalRegistry.gatingRules(t).isEmpty());
   }
 
+  @SuppressWarnings({"unchecked", "rawtypes"})
   private Optional<StagedChange> admission(
-      String type, EntityInterface original, EntityInterface entity) {
+      final String type, final EntityInterface original, final EntityInterface entity) {
     Optional<StagedChange> staged = Optional.empty();
+    final EntityRepository repository = Entity.getEntityRepository(type);
+    final ChangeActor actor = ChangeActor.recorded(importedBy, null);
     if (original != null && isGated(type)) {
-      EntityRepository<?> repository = Entity.getEntityRepository(type);
-      EntityInterface hydrated =
+      final EntityInterface hydrated =
           repository.get(null, original.getId(), repository.getFields("*"), Include.ALL, false);
       // A row entity carries a fresh id until the write aligns it; compare it as the same asset.
       entity.setId(original.getId());
-      staged = ApprovalGate.admit(hydrated, entity, importedBy, null, Edit.importRow());
+      staged = repository.admit(hydrated, entity, actor, Edit.importRow());
+    } else if (original != null && Boolean.TRUE.equals(importResult.getDryRun())) {
+      // A dry run stores nothing, so the domain check the batched write makes runs here.
+      repository.authorizeImportedDomains(List.of(original), List.of(entity), actor);
     }
     return staged;
   }

@@ -25,12 +25,8 @@ import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
-import {
-  ERROR_PLACEHOLDER_TYPE,
-  SORT_ORDER,
-} from '../../../../enums/common.enum';
+import { SORT_ORDER } from '../../../../enums/common.enum';
 import { TestCaseType } from '../../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import {
@@ -46,12 +42,12 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getTableFQNFromColumnFQN } from '../../../../utils/FqnUtils';
-import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DataQualitySection from '../../../common/DataQualitySection/DataQualitySection';
-import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import PanelEmptyPlaceholder from '../../../common/EmptyPlaceholder/PanelEmptyPlaceholder';
+import PermissionPlaceholder from '../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import '../../../common/OverviewSection/OverviewSection.less';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
@@ -603,17 +599,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       );
     }
 
+    // The entity has tests here, so an empty list means the search or the
+    // status filter matched none of them.
     return (
-      <div className="no-test-cases tw:px-4 tw:py-8 tw:text-center">
-        <Typography
-          className="no-data-placeholder"
-          color="secondary"
-          size="text-xs">
-          {t('label.no-entity', {
-            entity: t('label.test-case-plural'),
-          })}
-        </Typography>
-      </div>
+      <PanelEmptyPlaceholder
+        searchText={searchText}
+        title={t('label.no-entity', {
+          entity: t('label.test-case-plural'),
+        })}
+      />
     );
   };
 
@@ -641,16 +635,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
 
     return (
-      <div className="no-incidents tw:p-6 tw:text-center">
-        <Typography color="secondary" size="text-sm">
-          {t('message.no-entity-found-for-name', {
-            entity: t('label.incident-plural'),
-            name: `${t('label.type-filed-name', {
-              fieldName: startCase(activeIncidentFilter),
-            })}`,
-          })}
-        </Typography>
-      </div>
+      <PanelEmptyPlaceholder
+        searchText={searchText}
+        title={t('message.no-entity-found-for-name', {
+          entity: t('label.incident-plural'),
+          name: `${t('label.type-filed-name', {
+            fieldName: startCase(activeIncidentFilter),
+          })}`,
+        })}
+      />
     );
   };
 
@@ -665,18 +658,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     if (statusCounts.total === 0) {
       return (
-        <ErrorPlaceHolderNew
-          className="text-grey-14 m-t-lg"
-          icon={<AddPlaceHolderIcon height={100} width={100} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography
-            as="div"
-            className="text-center p-x-md no-data-placeholder tw:mb-4"
-            color="secondary"
-            size="text-xs">
-            {t('message.no-data-quality-test-message')}
-          </Typography>
-        </ErrorPlaceHolderNew>
+        <PanelEmptyPlaceholder
+          description={t('message.no-data-quality-test-message')}
+        />
       );
     }
 
@@ -726,18 +710,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     if (incidentCounts.total === 0) {
       return (
         <div className="m-t-lg">
-          <ErrorPlaceHolderNew
-            className="text-grey-14"
-            icon={<AddPlaceHolderIcon height={100} width={100} />}
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography
-              as="div"
-              className="text-center p-x-md no-data-placeholder tw:mb-4"
-              color="secondary"
-              size="text-xs">
-              {t('message.no-data-quality-test-message')}
-            </Typography>
-          </ErrorPlaceHolderNew>
+          <PanelEmptyPlaceholder description={t('message.no-incident-found')} />
         </div>
       );
     }
@@ -844,19 +817,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   if (!hasViewTests) {
     return (
       <div className="lineage-items-list">
-        <ErrorPlaceHolderNew
-          className="text-grey-14 permission-error-placeholder"
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}>
-          <Transi18next
-            i18nKey="message.no-access-placeholder"
-            renderElement={<span />}
-            values={{
-              entity: t('label.view-entity', {
-                entity: t('label.data-quality'),
-              }),
-            }}
-          />
-        </ErrorPlaceHolderNew>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder data-testid="permission-error-placeholder" />
+        </div>
       </div>
     );
   }

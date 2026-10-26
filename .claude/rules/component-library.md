@@ -49,6 +49,14 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   line under the title, and the footer line appears only while `Dialog.Content` overflows. Do not
   draw your own `border-t`/`border-b` or `<Divider>` around a dialog's header or footer. The
   default (`always`) exists only for legacy modals. Spec: `specs/untitled/modal.md` → Dividers.
+- **Empty states: use the variants in `src/components/common/EmptyPlaceholder/`**, never the core
+  `EmptyPlaceholder` directly — `NoDataPlaceholder`, `CreatePlaceholder`, `PermissionPlaceholder`,
+  `NoSearchResultsPlaceholder`, `NoFilteredResultsPlaceholder`, `SomethingWentWrongPlaceholder`
+  carry the default icon and i18n copy; `FeaturesPlaceholder` has no defaults, so pass `title`,
+  `description` and `features` (ADR:2026-10-21-empty-states-render-through-the-placeholder-wrappers).
+  The host must be `tw:relative` (the placeholder is absolutely positioned). Keep the default icon
+  (no `assets/svg` icons) and never wrap `title`/`description` in a `Tooltip`: its trigger is
+  `w-max`, so the copy stops wrapping.
 - **Legacy**: Ant Design components remain in existing code but should be replaced with
   `openmetadata-ui-core-components` equivalents when refactoring. For forms, do not use the legacy
   Ant Design `getField`/`generateFormFields` (see `frontend-react.md` → Forms).

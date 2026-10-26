@@ -78,9 +78,6 @@ jest.mock('../../../Profiler/ProfilerLatestValue/ProfilerLatestValue', () => {
 jest.mock('../../../../common/DeleteWidget/DeleteEntityModal', () => {
   return jest.fn().mockImplementation(() => <div>DeleteEntityModal</div>);
 });
-jest.mock('../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
-});
 const mockOnCustomMetricDrawerOpen = jest.fn();
 jest.mock('../TableProfilerProvider', () => {
   return {
@@ -154,7 +151,9 @@ describe('CustomMetricGraphs', () => {
 
   it('should render no data placeholder, when there is no data', async () => {
     render(<CustomMetricGraphs {...mockProps} />);
-    const errorPlaceHolder = await screen.findByText('ErrorPlaceHolder');
+    const errorPlaceHolder = await screen.findByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+    );
 
     expect(errorPlaceHolder).toBeInTheDocument();
   });

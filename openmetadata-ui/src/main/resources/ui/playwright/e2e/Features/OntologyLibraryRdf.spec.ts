@@ -100,23 +100,23 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
       await page.getByTestId('ontology-pack-details-fibo').click();
       await expect(page.getByTestId('ontology-pack-detail')).toBeVisible();
       await expect(page.getByTestId('ontology-pack-concept-count')).toHaveText(
-        '8'
+        '8 Concepts'
       );
       await expect(
         page.getByTestId('ontology-pack-relationship-count')
-      ).toHaveText('6');
+      ).toHaveText('6 Relations');
 
       await page.getByTestId('ontology-module-foundations').click();
       await expect(page.getByTestId('ontology-pack-concept-count')).toHaveText(
-        '0'
+        '0 Concepts'
       );
       await page.getByTestId('ontology-module-business-entities').click();
       await expect(page.getByTestId('ontology-pack-concept-count')).toHaveText(
-        '8'
+        '8 Concepts'
       );
       await expect(
         page.getByTestId('ontology-pack-relationship-count')
-      ).toHaveText('6');
+      ).toHaveText('6 Relations');
 
       await page
         .getByTestId('ontology-pack-target-glossary')
@@ -175,7 +175,7 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
         'true'
       );
       await expect(
-        page.getByTestId('ontology-glossary-menu-trigger')
+        page.getByTestId('ontology-scope-menu-trigger')
       ).toContainText(TARGET_GLOSSARY);
       await expect(page.getByTestId('ontology-explorer')).toBeVisible();
     } finally {

@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { TeamType } from '../../generated/entity/teams/team';
@@ -67,21 +66,6 @@ jest.mock('../../components/Settings/Team/TeamDetails/TeamDetailsV1', () => {
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <p>Loader</p>);
 });
-
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(({ type }) => (
-        <p>
-          {type === ERROR_PLACEHOLDER_TYPE.PERMISSION
-            ? 'Permission_Error_Placeholder'
-            : 'No_Data_Error_Placeholder'}
-        </p>
-      ));
-  }
-);
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
@@ -192,7 +176,7 @@ describe('Test Teams Page', () => {
     });
 
     expect(
-      screen.getByText('Permission_Error_Placeholder')
+      screen.getByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
   });
 
@@ -280,7 +264,7 @@ describe('Test Teams Page', () => {
       render(<TeamsPage />);
     });
 
-    expect(screen.getByText('No_Data_Error_Placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
 
     (getTeamByName as jest.Mock).mockReset();
   });

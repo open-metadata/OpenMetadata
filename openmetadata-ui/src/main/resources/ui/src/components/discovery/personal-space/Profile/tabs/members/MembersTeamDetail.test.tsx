@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import React, { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
-import { getTeams, getTeamsAssetCounts } from '../../../../../../rest/teamsAPI';
+import {
+  getTeams,
+  getTeamsAssetCounts,
+  patchTeamDetail,
+} from '../../../../../../rest/teamsAPI';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 
 const renderWithRouter = (ui: ReactElement) =>
@@ -141,6 +145,35 @@ jest.mock('../../../../../common/Table/TableV2', () =>
   jest.fn(({ 'data-testid': testId }: { 'data-testid'?: string }) => (
     <div data-testid={testId ?? 'table'} />
   ))
+);
+
+// Stands in for the shared list: one button saves a changed extension and
+// echoes whether the save landed, as the list's editor would.
+jest.mock(
+  '../../customProperties/CustomPropertiesList',
+  () =>
+    ({
+      onUpdate,
+    }: {
+      onUpdate: (ext: Record<string, unknown>) => Promise<boolean>;
+    }) => {
+      const [result, setResult] = React.useState('');
+
+      return (
+        <div>
+          <button
+            aria-label="save-extension"
+            data-testid="save-extension"
+            onClick={async () =>
+              setResult(
+                String(await onUpdate({ costCenter: 'CC-2', region: 'EU' }))
+              )
+            }
+          />
+          <span data-testid="save-result">{result}</span>
+        </div>
+      );
+    }
 );
 
 import MembersTeamDetail from './MembersTeamDetail';
@@ -288,5 +321,125 @@ describe('MembersTeamDetail', () => {
 
     expect(await screen.findByTestId('plugin-tab-label')).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'sql-studio' })).toBeNull();
+  });
+
+  const openTeamCustomProperties = async () => {
+    mockGetTeamByName.mockResolvedValueOnce({
+      ...(await mockGetTeamByName()),
+      description: 'Untouched',
+      extension: { costCenter: 'CC-1', region: 'EU' },
+    });
+    renderWithRouter(
+      <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+    );
+    fireEvent.click(
+      await screen.findByRole('tab', { name: /custom-property/ })
+    );
+    fireEvent.click(await screen.findByTestId('save-extension'));
+  };
+
+  it('saves a team custom property with extension-only patch operations', async () => {
+    (patchTeamDetail as jest.Mock).mockResolvedValueOnce({ id: '1' });
+    await openTeamCustomProperties();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('save-result')).toHaveTextContent('true')
+    );
+
+    expect(patchTeamDetail).toHaveBeenCalledWith('1', [
+      { op: 'replace', path: '/extension/costCenter', value: 'CC-2' },
+    ]);
+  });
+
+  it('reports a failed team custom property save so the editor stays open', async () => {
+    (patchTeamDetail as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    await openTeamCustomProperties();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('save-result')).toHaveTextContent('false')
+    );
+  });
+
+  describe('opened with an activeTab hash param', () => {
+    afterEach(() => {
+      // Reset the shared settings-hash store while the hook is still mounted.
+      act(() => {
+        globalThis.location.hash = '';
+        globalThis.dispatchEvent(new PopStateEvent('popstate'));
+      });
+    });
+
+    it('opens on the contributed tab the hash names', async () => {
+      mockGetContributions.mockReturnValue([
+        {
+          key: 'sql-studio',
+          label: 'SQL Studio',
+          component: () => <div data-testid="plugin-tab" />,
+        },
+      ]);
+      globalThis.location.hash =
+        '#members/teams/engineering?activeTab=sql-studio';
+
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+
+      expect(await screen.findByTestId('plugin-tab')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'SQL Studio' })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
+    // A tab click records itself in the hash; otherwise following the same
+    // team link again leaves the hash unchanged and the link's tab is ignored.
+    it('applies the linked tab again after another tab was chosen', async () => {
+      mockGetContributions.mockReturnValue([
+        {
+          key: 'sql-studio',
+          label: 'SQL Studio',
+          component: () => <div data-testid="plugin-tab" />,
+        },
+      ]);
+      const link = '#members/teams/engineering?activeTab=sql-studio';
+      globalThis.location.hash = link;
+
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+      await screen.findByTestId('plugin-tab');
+
+      fireEvent.click(screen.getByRole('tab', { name: /label.team-plural/ }));
+
+      expect(screen.getByRole('tab', { name: 'SQL Studio' })).toHaveAttribute(
+        'aria-selected',
+        'false'
+      );
+
+      // Following the same link again (or Back to it) brings the hash back.
+      act(() => {
+        globalThis.location.hash = link;
+        globalThis.dispatchEvent(new PopStateEvent('popstate'));
+      });
+
+      expect(screen.getByRole('tab', { name: 'SQL Studio' })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
+    it('stays on the default tab when the hash names no such tab', async () => {
+      globalThis.location.hash = '#members/teams/engineering?activeTab=nope';
+
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+
+      await screen.findByTestId('team-detail');
+
+      expect(
+        screen.getByRole('tab', { name: /label.team-plural/ })
+      ).toHaveAttribute('aria-selected', 'true');
+    });
   });
 });

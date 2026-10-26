@@ -471,11 +471,20 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert "restore_playwright_fixture_result:" in workflow
 
     restore_job = workflow.split("  restore-playwright-fixture:", 1)[1].split("  prepare-playwright-fixture:", 1)[0]
-    prepare_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split("  playwright-ci:", 1)[0]
+    prepare_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split("  prepare-ingestion-image:", 1)[0]
+    ingestion_job = workflow.split("  prepare-ingestion-image:", 1)[1].split("  playwright-ci:", 1)[0]
     assert "if: ${{ steps.validate-fixture.outputs.usable == 'true' }}" in restore_job
-    assert "if: ${{ steps.validate-ingestion.outputs.usable == 'true' }}" in restore_job
     assert "if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}" in prepare_job
-    assert "needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true'" in prepare_job
+    # The ingestion image is restored or built once, alongside `build`, and the
+    # fixture rebuild loads it instead of building it again.
+    assert "ingestion" not in restore_job.lower()
+    assert "  prepare-ingestion-image:\n    needs: [cache-keys]\n" in workflow
+    assert "if: ${{ steps.validate-ingestion.outputs.usable != 'true' }}" in ingestion_job
+    assert "pack_playwright_ingestion_image.sh" in ingestion_job
+    assert 'echo "OM_INGESTION_IMAGE_PRELOADED=true" >> "$GITHUB_ENV"' in prepare_job
+    assert prepare_job.index("name: Load ingestion image") < prepare_job.index("name: Prepare seeded environment")
+    planner = workflow.split("  plan-playwright:", 1)[1].split("  restore-playwright-fixture:", 1)[0]
+    assert "    needs: [detect-changes]\n" in planner
     assert "${{ env.DISTRIBUTION_CACHE_DIR }}/openmetadata-*.tar.gz" in workflow
     assert workflow.count("npx playwright test --project=bundle-smoke --reporter=line") == 2
 

@@ -15,6 +15,7 @@ import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FreshReadScope;
 
 public final class BotTokenCache {
   public static final String EMPTY_STRING = "";
@@ -55,7 +56,9 @@ public final class BotTokenCache {
   }
 
   private static Set<String> loadTokens(String botName) {
-    try {
+    // Fresh read on any thread, also those PerRequestContextCleanupFilter does not wrap: a bot user
+    // left in the request cache would bring a revoked token back.
+    try (FreshReadScope.Handle freshRead = FreshReadScope.enter()) {
       return loadExistingTokens(botName);
     } catch (EntityNotFoundException ignored) {
       return Set.of();

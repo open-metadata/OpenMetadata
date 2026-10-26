@@ -14,8 +14,10 @@
 export { default as CreatePlaceholder } from './CreatePlaceholder';
 export * from './EmptyPlaceholder.interface';
 export * from './EmptyPlaceholder.utils';
+export { default as FeaturesPlaceholder } from './FeaturesPlaceholder';
 export { default as NoDataPlaceholder } from './NoDataPlaceholder';
 export { default as NoFilteredResultsPlaceholder } from './NoFilteredResultsPlaceholder';
 export { default as NoSearchResultsPlaceholder } from './NoSearchResultsPlaceholder';
+export { default as PanelEmptyPlaceholder } from './PanelEmptyPlaceholder';
 export { default as PermissionPlaceholder } from './PermissionPlaceholder';
 export { default as SomethingWentWrongPlaceholder } from './SomethingWentWrongPlaceholder';
