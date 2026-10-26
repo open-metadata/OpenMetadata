@@ -18,8 +18,8 @@ public class OAuthClientMetadata {
   /**
    * Most scopes one authorization or refresh request may name. The granted list is stored with the
    * code and refresh token, put in the JWT and compared on every refresh, so its length must not
-   * grow with the request body. A registration (scope capped at 255 characters) cannot name more than this.
-   * ADR:2026-10-26-mcp-oauth-requests-name-at-most-128-scopes
+   * grow with the request body. A registration (scope capped at 255 characters) cannot name more
+   * than this. ADR:2026-10-26-mcp-oauth-requests-name-at-most-128-scopes
    */
   public static final int MAX_REQUESTED_SCOPES = 128;
 
