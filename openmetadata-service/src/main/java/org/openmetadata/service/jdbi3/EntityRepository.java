@@ -7857,6 +7857,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       idsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
     }
     for (var entry : idsByType.entrySet()) {
+      // Time-series children (e.g. TestCase --PARENT_OF--> testCaseResolutionStatus) have no
+      // entity repository and no deleted flag, so they are skipped as in
+      // dispatchToContainedChildren.
+      if (Entity.isTimeSeriesEntity(entry.getKey())) {
+        continue;
+      }
       EntityRepository<?> repo = Entity.getEntityRepository(entry.getKey());
       repo.bulkRestoreSubtree(entry.getValue(), updatedBy);
     }

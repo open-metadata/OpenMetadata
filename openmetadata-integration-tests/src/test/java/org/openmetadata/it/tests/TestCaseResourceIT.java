@@ -790,6 +790,47 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertEquals(testCase.getName(), restored.getName());
   }
 
+  /**
+   * A failed result opens an incident, which links the test case to its time-series resolution
+   * status records. Restoring the test case must skip those records instead of looking up an
+   * entity repository for them.
+   */
+  @Test
+  void test_testCaseWithIncidentSoftDeleteAndRestore_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("soft_delete_incident_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult failedResult =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    failedResult.setTimestamp(System.currentTimeMillis());
+    failedResult.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed);
+    failedResult.setResult("Test failed - opens an incident");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
+    assertNotNull(
+        client.testCases().get(testCase.getId().toString(), "incidentId").getIncidentId(),
+        "A failed result should open an incident");
+
+    // The incident's resolution status records are children of the test case, so the soft
+    // delete has to be recursive.
+    String testCaseId = testCase.getId().toString();
+    client.testCases().delete(testCaseId, java.util.Map.of("recursive", "true"));
+    assertThrows(Exception.class, () -> getEntity(testCaseId), "Should not find deleted entity");
+
+    restoreEntity(testCaseId);
+
+    TestCase restored = getEntity(testCaseId);
+    assertEquals(testCase.getName(), restored.getName());
+    assertFalse(Boolean.TRUE.equals(restored.getDeleted()));
+  }
+
   @Test
   void test_testCaseHardDelete_200_OK(TestNamespace ns) {
     Table table = createTable(ns);
