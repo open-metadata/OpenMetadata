@@ -32,8 +32,8 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.entity.teams.User;
 
 /**
- * How long a token revoked through one server keeps working on another, measured from the moment the
- * client receives the revoke response. Each trial creates a bot, warms its token on server B so B
+ * How long after a revoke through one server another server starts rejecting the token, measured
+ * from the moment the client receives the revoke response. Each trial creates a bot, warms its token on server B so B
  * has it cached, revokes it through server A (the suite's server), and polls B every
  * {@value #POLL_MILLIS} ms until the first 401. Every status B returns is counted. A status other
  * than 200 or 401, or a trial that sees no 401 within the bound plus a grace period, voids the run.

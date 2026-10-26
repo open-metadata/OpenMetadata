@@ -744,8 +744,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   /**
-   * Shadow mode: the verifier runs and is health-checked, but requests are still authenticated by
-   * the legacy path. The ops CLI never reaches here, so it installs none.
+   * Builds this server's credential verifier, starts its sweep and installs it for every
+   * authentication entry point. The ops CLI never reaches here, so it installs none.
    */
   private void startCredentialVerifier(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
