@@ -18,8 +18,8 @@ import java.util.Map;
 
 /**
  * The authoritative store, seen as two batched questions, both by principal only. Implementations
- * do I/O and nothing else: no clocks, no caching, no swallowing. A failure throws; it is never
- * reported as "absent". A principal with no row maps to {@link CredentialRecord#ABSENT} /
+ * do I/O and nothing else: no clocks, no caching. A statement failure throws; it is never reported
+ * as "absent". A principal with no row maps to {@link CredentialRecord#ABSENT} /
  * {@link SourceFingerprint#ABSENT}.
  */
 interface CredentialSource {
@@ -28,12 +28,21 @@ interface CredentialSource {
   Map<CredentialSubject, SourceFingerprint> fingerprints(Collection<CredentialSubject> subjects);
 
   /**
-   * Full: the current token digests and the fingerprint, from one statement. A JWT-type
-   * {@code authenticationMechanism} is decrypted through the secrets manager, unless
+   * Full: the current token digests and the fingerprint, from one statement. The result holds an
+   * entry for every requested subject whose rows were converted: its record, or
+   * {@link CredentialRecord#ABSENT} when no user row matches. A subject whose rows cannot be
+   * converted, because a decrypt or a stored JSON value fails, is left out, logged once with its
+   * principal, and does not fail the others. The caller treats a missing subject as unconfirmed,
+   * never as absent.
+   *
+   * <p>A JWT-type {@code authenticationMechanism} is decrypted through the secrets manager, unless
    * {@code previous} holds a record for the subject whose {@code mechanismVersion} (md5 and
    * {@code updatedAt}) equals the row's: then {@code previous.mechanismDigest()} is reused. Pass an
    * empty map to force every decrypt, as the deep verify does so a secret edited inside the
-   * secrets manager is seen.
+   * secrets manager is seen. That {@code deepVerifyInterval} bound holds only while the secrets
+   * manager answers: a deep read that fails leaves the fingerprint-confirmed entry trusted, because
+   * turning secrets-manager throttling into a bot outage is worse than a later detection of an edit
+   * that no OpenMetadata code path makes.
    *
    * @param previous the cached records for these subjects, possibly missing some or empty
    */

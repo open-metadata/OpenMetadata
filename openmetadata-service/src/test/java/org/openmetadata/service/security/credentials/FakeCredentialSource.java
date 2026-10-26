@@ -70,6 +70,8 @@ final class FakeCredentialSource implements CredentialSource {
   private final AtomicBoolean failing = new AtomicBoolean();
   private final AtomicBoolean failNextFingerprints = new AtomicBoolean();
   private final AtomicBoolean blockNext = new AtomicBoolean();
+  private final Set<String> unconvertible = ConcurrentHashMap.newKeySet();
+  private final Set<String> poison = ConcurrentHashMap.newKeySet();
   private volatile CountDownLatch readStarted = new CountDownLatch(1);
   private volatile CountDownLatch release = new CountDownLatch(1);
 
@@ -162,6 +164,19 @@ final class FakeCredentialSource implements CredentialSource {
     failNextFingerprints.set(true);
   }
 
+  /**
+   * Full reads leave {@code principal} out of their result, as the database source does for a
+   * subject whose rows it cannot convert (a decrypt or a stored JSON value that fails).
+   */
+  void failConversionOf(String principal) {
+    unconvertible.add(key(principal));
+  }
+
+  /** Every full read whose subjects include {@code principal} throws, as a statement failure does. */
+  void poisonReadsOf(String principal) {
+    poison.add(key(principal));
+  }
+
   /** The next full read computes its result, then parks until {@link #releaseReads()}. */
   void blockNextRead() {
     readStarted = new CountDownLatch(1);
@@ -219,12 +234,24 @@ final class FakeCredentialSource implements CredentialSource {
           .incrementAndGet();
     }
     failIfDown();
+    failIfPoisoned(subjects);
     Map<CredentialSubject, CredentialRecord> records = new HashMap<>();
     for (CredentialSubject subject : subjects) {
-      records.put(subject, recordOf(rows.get(subject.principal()), previous.get(subject)));
+      if (!unconvertible.contains(subject.principal())) {
+        records.put(subject, recordOf(rows.get(subject.principal()), previous.get(subject)));
+      }
     }
     blockIfRequested();
     return records;
+  }
+
+  private void failIfPoisoned(Collection<CredentialSubject> subjects) {
+    for (CredentialSubject subject : subjects) {
+      if (poison.contains(subject.principal())) {
+        throw new IllegalStateException(
+            "injected statement failure for a batch holding " + subject.principal());
+      }
+    }
   }
 
   private void failIfDown() {

@@ -100,10 +100,11 @@ final class VerifiedCredentials {
 
   /**
    * Merge function for {@code asMap().merge/compute}: pure, no I/O. Keeps the read with the later
-   * trust stamp; on a tie the existing entry stays.
+   * trust stamp. On a tie the candidate wins: a confirmation can move the existing entry's stamp to
+   * the very instant of a full read, and the full read saw the rows.
    */
   static VerifiedCredentials newer(VerifiedCredentials existing, VerifiedCredentials candidate) {
-    return isLater(candidate.verifiedAtNanos, existing.verifiedAtNanos) ? candidate : existing;
+    return isLater(existing.verifiedAtNanos, candidate.verifiedAtNanos) ? existing : candidate;
   }
 
   private void advanceTrustTo(long stampNanos) {

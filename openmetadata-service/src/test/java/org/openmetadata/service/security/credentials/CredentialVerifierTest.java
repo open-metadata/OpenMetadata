@@ -298,6 +298,87 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void aSubjectWhoseRowsCannotBeConvertedLeavesTheRestOfItsBatchConfirmed() {
+    List<String> users = List.of("u1", "u2", "u3");
+    users.forEach(user -> source.withJwtMechanism(user, "jwt-" + user));
+    verifier(DEFAULTS);
+    users.forEach(user -> assertAccepted(user, "jwt-" + user));
+    users.forEach(user -> source.addPat(user, "pat-" + user));
+    source.failConversionOf("u2");
+
+    sweepAfterInterval();
+
+    assertAccepted("u1", "pat-u1");
+    assertAccepted("u3", "pat-u3");
+    assertEquals(4, source.fullReads());
+    assertAccepted("u2", "jwt-u2");
+    ticker.advanceNanos(MAX_STALENESS_NANOS + 1);
+    assertUnavailable("u2", "jwt-u2");
+    assertEquals(1.0, counter("om.credential.unavailable", "cause", "subject_read_failed"));
+    assertEquals(2.0, counter("om.credential.reads.unreadable.subjects"));
+  }
+
+  @Test
+  void aColdCheckOfASubjectWhoseRowsCannotBeConvertedCannotConfirm() {
+    source.withPats(ALICE, TOKEN_A);
+    source.failConversionOf(ALICE);
+    verifier(DEFAULTS);
+
+    assertUnavailable(ALICE, TOKEN_A);
+
+    assertEquals(0, verifier.cachedSubjects());
+    assertEquals(1, source.fullReads());
+    assertEquals(1.0, counter("om.credential.unavailable", "cause", "subject_read_failed"));
+  }
+
+  @Test
+  void aFailingDeepReadLeavesTheBatchReconfirmedAndHealthy() {
+    source.withJwtMechanism(ALICE, JWT_OLD).withJwtMechanism(BOB, JWT_NEW);
+    verifier(DEFAULTS);
+    assertAccepted(ALICE, JWT_OLD);
+    assertAccepted(BOB, JWT_NEW);
+    source.poisonReadsOf(BOB);
+
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    verifier.sweepOnce();
+
+    assertAccepted(ALICE, JWT_OLD);
+    assertAccepted(BOB, JWT_NEW);
+    assertEquals(1, source.fingerprintReads());
+    assertEquals(3, source.fullReads());
+    assertTrue(verifier.healthCheck().execute().isHealthy());
+    for (int sweep = 1; sweep <= 30; sweep++) {
+      sweepAfterInterval();
+      assertAccepted(ALICE, JWT_OLD);
+      assertAccepted(BOB, JWT_NEW);
+    }
+    assertEquals(31, source.fingerprintReads());
+    assertEquals(4, source.fullReads());
+    assertEquals(2, source.decrypts());
+    assertEquals(2.0, counter("om.credential.reads", "reason", "deep", "outcome", "error"));
+  }
+
+  @Test
+  void aFailedDeepPassCostsNoDecryptsOnTheFollowingSweeps() {
+    List<String> users = List.of("u1", "u2", "u3", "u4");
+    users.forEach(user -> source.withJwtMechanism(user, "jwt-" + user));
+    verifier(new CredentialVerificationConfig(null, null, null, null, null, null, 4, 2, null));
+    users.forEach(user -> assertAccepted(user, "jwt-" + user));
+    assertEquals(4, source.decrypts());
+    source.poisonReadsOf("u4");
+
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    verifier.sweepOnce();
+    for (int sweep = 0; sweep < 5; sweep++) {
+      sweepAfterInterval();
+    }
+
+    assertEquals(6, source.decrypts());
+    assertEquals(12, source.fingerprintReads());
+    users.forEach(user -> assertAccepted(user, "jwt-" + user));
+  }
+
+  @Test
   void externalSecretsRotationIsSeenWithinTheBound() {
     source.withSecretReferenceMechanism(BOB, JWT_OLD);
     verifier(DEFAULTS);
@@ -364,12 +445,13 @@ class CredentialVerifierTest {
     ticker.advanceNanos(2 * SECOND);
     verifier.sweepOnce();
     assertAccepted(ALICE, TOKEN_A);
-    assertRejected(ALICE, TOKEN_B);
+    assertEquals(1, source.fullReads());
 
     ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
     verifier.sweepOnce();
     assertRejected(ALICE, TOKEN_A);
     assertAccepted(ALICE, TOKEN_B);
+    assertEquals(2, source.fullReads());
   }
 
   @Test

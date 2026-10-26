@@ -175,6 +175,56 @@ class JdbiCredentialSourceTest {
   }
 
   @Test
+  void aSubjectWhoseDecryptFailsIsLeftOutWhileTheOthersConvert() {
+    CredentialSubject bot = CredentialSubject.of("ingestion-bot");
+    CredentialSubject bob = CredentialSubject.of("bob");
+    CredentialSubject ghost = CredentialSubject.of("ghost");
+    Map<CredentialSubject, String> hashes =
+        Map.of(bot, "hash-bot", bob, "hash-bob", ghost, "hash-ghost");
+    Map<String, List<FullRow>> rows =
+        Map.of(
+            "hash-bot",
+            List.of(new FullRow("hash-bot", "user-1", false, 10, "md5-a", null, JWT_USER, null)),
+            "hash-bob",
+            List.of(
+                new FullRow(
+                    "hash-bob", "user-2", false, 10, null, T1, PLAIN_USER, pat(T1, "pat-one"))));
+    BiFunction<String, AuthenticationMechanism, AuthenticationMechanism> deletedSecret =
+        (name, mechanism) -> {
+          throw new IllegalStateException("secret " + name + " is gone");
+        };
+
+    Map<CredentialSubject, CredentialRecord> result =
+        JdbiCredentialSource.convert(hashes, rows, Map.of(), deletedSecret);
+
+    assertEquals(Set.of(bob, ghost), result.keySet());
+    assertEquals(Set.of(TokenDigest.of("pat-one")), result.get(bob).digests());
+    assertEquals(CredentialRecord.ABSENT, result.get(ghost));
+  }
+
+  @Test
+  void aMalformedPatRowLeavesOnlyItsSubjectOut() {
+    CredentialSubject alice = CredentialSubject.of("alice");
+    CredentialSubject bob = CredentialSubject.of("bob");
+    Map<CredentialSubject, String> hashes = Map.of(alice, "hash-alice", bob, "hash-bob");
+    Map<String, List<FullRow>> rows =
+        Map.of(
+            "hash-alice",
+            List.of(
+                new FullRow(
+                    "hash-alice", "user-1", false, 10, "m", T1, BASIC_USER, pat(T1, "pat-one"))),
+            "hash-bob",
+            List.of(
+                new FullRow("hash-bob", "user-2", false, 10, null, T2, PLAIN_USER, "not json")));
+
+    Map<CredentialSubject, CredentialRecord> result =
+        JdbiCredentialSource.convert(hashes, rows, Map.of(), decrypt);
+
+    assertEquals(Set.of(alice), result.keySet());
+    assertEquals(Set.of(TokenDigest.of("pat-one")), result.get(alice).digests());
+  }
+
+  @Test
   void emptyPreviousAlwaysDecrypts() {
     JdbiCredentialSource.toRecord(botWithTwoPats(), null, decrypt);
     JdbiCredentialSource.toRecord(botWithTwoPats(), null, decrypt);

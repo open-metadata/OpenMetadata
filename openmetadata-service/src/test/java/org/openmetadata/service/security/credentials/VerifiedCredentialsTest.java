@@ -87,6 +87,15 @@ class VerifiedCredentialsTest {
   }
 
   @Test
+  void aFullReadWinsATieAgainstAConfirmationAtTheSameInstant() {
+    VerifiedCredentials confirmed = entryAt(100L);
+    confirmed.confirm(FINGERPRINT, 200L);
+    VerifiedCredentials fullRead = entryAt(200L);
+
+    assertSame(fullRead, VerifiedCredentials.newer(confirmed, fullRead));
+  }
+
+  @Test
   void newerComparesTheTrustStampNotTheFullReadStamp() {
     VerifiedCredentials reconfirmed = entryAt(100L);
     reconfirmed.confirm(FINGERPRINT, 300L);

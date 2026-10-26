@@ -60,6 +60,8 @@ final class CredentialMetrics {
 
   enum UnavailableCause {
     READ_FAILED,
+    /** The statement ran, but this subject's rows could not be converted, so nothing confirms it. */
+    SUBJECT_READ_FAILED,
     TIMEOUT,
     NO_PERMIT
   }
@@ -97,6 +99,7 @@ final class CredentialMetrics {
   private final Map<UnavailableCause, Counter> unavailable;
   private final Map<DecryptOutcome, Counter> decrypts;
   private final Counter revocationsObserved;
+  private final Counter unreadableSubjects;
 
   CredentialMetrics(MeterRegistry registry) {
     this.registry = registry;
@@ -137,6 +140,10 @@ final class CredentialMetrics {
             DecryptOutcome.class, outcome -> counter("om.credential.decrypts", "outcome", outcome));
     this.revocationsObserved =
         Counter.builder("om.credential.revocations.observed").register(registry);
+    this.unreadableSubjects =
+        Counter.builder("om.credential.reads.unreadable.subjects")
+            .description("Subjects whose stored credentials a full read could not convert")
+            .register(registry);
   }
 
   void registerGauges(
@@ -189,6 +196,10 @@ final class CredentialMetrics {
 
   void recordRevocationObserved() {
     revocationsObserved.increment();
+  }
+
+  void recordUnreadableSubjects(long subjects) {
+    unreadableSubjects.increment(subjects);
   }
 
   private Map<ReadOutcome, Counter> byOutcome(ReadReason reason) {

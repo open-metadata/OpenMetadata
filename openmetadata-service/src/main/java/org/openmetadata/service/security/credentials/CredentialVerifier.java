@@ -76,6 +76,7 @@ import org.openmetadata.service.security.credentials.CredentialMetrics.Unavailab
 public final class CredentialVerifier implements Managed {
   private static final String SWEEP_THREAD_NAME = "om-credential-verifier";
   private static final long NANOS_PER_SECOND = TimeUnit.SECONDS.toNanos(1);
+  private static final long DEEP_RETRY_CAP_NANOS = TimeUnit.MINUTES.toNanos(1);
 
   private final CredentialVerificationConfig config;
   private final CredentialSource source;
@@ -88,7 +89,8 @@ public final class CredentialVerifier implements Managed {
   private final Semaphore requestThreadReads;
   private final Set<CredentialSubject> nudged = ConcurrentHashMap.newKeySet();
   private final AtomicLong lastCompleteSweepStartNanos;
-  private final AtomicLong lastDeepVerifyNanos;
+  private final AtomicLong nextDeepVerifyNanos;
+  private final long deepRetryIntervalNanos;
   private final AtomicBoolean started = new AtomicBoolean();
   private volatile ScheduledExecutorService sweeper;
 
@@ -157,7 +159,8 @@ public final class CredentialVerifier implements Managed {
             .build();
     long now = ticker.read();
     this.lastCompleteSweepStartNanos = new AtomicLong(now);
-    this.lastDeepVerifyNanos = new AtomicLong(now);
+    this.nextDeepVerifyNanos = new AtomicLong(now + config.deepVerifyIntervalNanos());
+    this.deepRetryIntervalNanos = Math.min(config.deepVerifyIntervalNanos(), DEEP_RETRY_CAP_NANOS);
     metrics.registerGauges(this::cachedSubjects, this::lastCompleteSweepAgeSeconds);
   }
 
@@ -258,19 +261,28 @@ public final class CredentialVerifier implements Managed {
   /**
    * One pass: drain nudges, then re-confirm every cached subject in batches. The stamp is read
    * before each query. A batch failure leaves its entries to age out and does not stop the others;
-   * the health and deep-verify stamps move only when every batch succeeded.
+   * the health stamp moves only when every batch was reconfirmed. When the deep verify is due, each
+   * batch is reconfirmed first and then read in full with every decrypt forced. A deep read that
+   * fails leaves its entries trusted by their fingerprints and health untouched, and the pass is
+   * retried after {@code min(deepVerifyInterval, 1 min)}: a batch fails only on a statement
+   * failure, since the source converts subjects on their own, so the whole pass is what to retry,
+   * and one stamp holds that decision.
    */
   void sweepOnce() {
     long sweepStart = ticker.read();
     drainNudges();
-    boolean deep = sweepStart - lastDeepVerifyNanos.get() >= config.deepVerifyIntervalNanos();
+    boolean deep = sweepStart - nextDeepVerifyNanos.get() >= 0;
     boolean complete = true;
+    boolean deepVerified = true;
     List<CredentialSubject> subjects = List.copyOf(entries.asMap().keySet());
     for (List<CredentialSubject> batch : Lists.partition(subjects, config.batchSize())) {
-      complete &= sweepBatch(batch, deep);
+      BatchOutcome outcome = sweepBatch(batch, deep);
+      complete &= outcome.reconfirmed();
+      deepVerified &= outcome.deepVerified();
     }
-    if (complete && deep) {
-      lastDeepVerifyNanos.set(sweepStart);
+    if (deep) {
+      long interval = deepVerified ? config.deepVerifyIntervalNanos() : deepRetryIntervalNanos;
+      nextDeepVerifyNanos.set(sweepStart + interval);
     }
     if (complete) {
       lastCompleteSweepStartNanos.set(sweepStart);
@@ -388,20 +400,32 @@ public final class CredentialVerifier implements Managed {
     }
   }
 
+  /** A subject the source left out of its result is unconfirmed, which a check cannot act on. */
   private CredentialRecord readOne(CredentialSubject subject, ReadReason reason) {
     List<CredentialSubject> one = List.of(subject);
+    Map<CredentialSubject, CredentialRecord> records;
     try {
-      return timedRead(one, cachedRecords(one), reason)
-          .getOrDefault(subject, CredentialRecord.ABSENT);
+      records = timedRead(one, cachedRecords(one), reason);
     } catch (RuntimeException failure) {
       throw unavailable(
           UnavailableCause.READ_FAILED,
           "Could not read the stored credentials of " + subject.principal(),
           failure);
     }
+    CredentialRecord record = records.get(subject);
+    if (record == null) {
+      throw unavailable(
+          UnavailableCause.SUBJECT_READ_FAILED,
+          "The stored credentials of " + subject.principal() + " could not be converted",
+          null);
+    }
+    return record;
   }
 
-  /** The only call into the source for full reads. Records the read; a failure propagates as is. */
+  /**
+   * The only call into the source for full reads. Records the read and the subjects it left out; a
+   * failure propagates as is.
+   */
   private Map<CredentialSubject, CredentialRecord> timedRead(
       Collection<CredentialSubject> subjects,
       Map<CredentialSubject, CredentialRecord> previous,
@@ -410,6 +434,10 @@ public final class CredentialVerifier implements Managed {
     try {
       Map<CredentialSubject, CredentialRecord> records = source.read(subjects, previous);
       metrics.recordRead(reason, ReadOutcome.OK, ticker.read() - started);
+      long unreadable = subjects.stream().filter(subject -> !records.containsKey(subject)).count();
+      if (unreadable > 0) {
+        metrics.recordUnreadableSubjects(unreadable);
+      }
       return records;
     } catch (RuntimeException failure) {
       metrics.recordRead(reason, ReadOutcome.ERROR, ticker.read() - started);
@@ -463,20 +491,41 @@ public final class CredentialVerifier implements Managed {
     }
   }
 
-  private boolean sweepBatch(List<CredentialSubject> batch, boolean deep) {
+  private record BatchOutcome(boolean reconfirmed, boolean deepVerified) {}
+
+  private BatchOutcome sweepBatch(List<CredentialSubject> batch, boolean deep) {
+    boolean reconfirmed = reconfirmQuietly(batch);
+    boolean deepVerified = !deep || (reconfirmed && deepReadQuietly(batch));
+    return new BatchOutcome(reconfirmed, deepVerified);
+  }
+
+  private boolean reconfirmQuietly(List<CredentialSubject> batch) {
     boolean succeeded = false;
     try {
-      if (deep) {
-        reread(batch, ReadReason.DEEP, Map.of(), false);
-        metrics.recordSweepQuery(SweepQuery.FULL);
-      } else {
-        reconfirm(batch);
-      }
+      reconfirm(batch);
       succeeded = true;
     } catch (RuntimeException failure) {
       LOG.warn(
           "Credential sweep batch of {} subjects failed; their entries age out until a pass succeeds",
           batch.size(),
+          failure);
+    }
+    return succeeded;
+  }
+
+  /** The deep verify: every decrypt forced, so a secret edited inside the secrets manager is seen. */
+  private boolean deepReadQuietly(List<CredentialSubject> batch) {
+    boolean succeeded = false;
+    try {
+      reread(batch, ReadReason.DEEP, Map.of(), false);
+      metrics.recordSweepQuery(SweepQuery.FULL);
+      succeeded = true;
+    } catch (RuntimeException failure) {
+      LOG.warn(
+          "Deep credential verification of {} subjects failed; they stay trusted by fingerprint and"
+              + " the pass is retried in {} ms",
+          batch.size(),
+          TimeUnit.NANOSECONDS.toMillis(deepRetryIntervalNanos),
           failure);
     }
     return succeeded;
@@ -525,8 +574,10 @@ public final class CredentialVerifier implements Managed {
     long stamp = ticker.read();
     Map<CredentialSubject, CredentialRecord> records = timedRead(subjects, previous, reason);
     for (CredentialSubject subject : subjects) {
-      CredentialRecord record = records.getOrDefault(subject, CredentialRecord.ABSENT);
-      install(subject, new VerifiedCredentials(record, stamp), createIfAbsent);
+      CredentialRecord record = records.get(subject);
+      if (record != null) {
+        install(subject, new VerifiedCredentials(record, stamp), createIfAbsent);
+      }
     }
   }
 

@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlStatements;
@@ -43,8 +44,10 @@ import org.openmetadata.service.security.credentials.CredentialSourceDAO.FullRow
 /**
  * {@link CredentialSource} over the live tables. Owns three pieces of knowledge: row to
  * fingerprint (one function for both reads), row to token digests, and when a decrypt can be
- * skipped. Failures propagate, because a failed read must never look like an absent credential.
+ * skipped. A statement failure propagates, because a failed read must never look like an absent
+ * credential; a subject whose rows cannot be converted is left out of the result on its own.
  */
+@Slf4j
 final class JdbiCredentialSource implements CredentialSource {
 
   private final Jdbi jdbi;
@@ -84,11 +87,35 @@ final class JdbiCredentialSource implements CredentialSource {
               .collect(groupingBy(FullRow::nameHash));
       BiFunction<String, AuthenticationMechanism, AuthenticationMechanism> decrypt =
           (name, mechanism) -> secretsManager.get().decryptAuthenticationMechanism(name, mechanism);
-      hashes.forEach(
-          (s, hash) ->
-              result.put(
-                  s, toRecord(rows.getOrDefault(hash, List.of()), previous.get(s), decrypt)));
+      result = convert(hashes, rows, previous, decrypt);
     }
+    return result;
+  }
+
+  /**
+   * Converts each subject on its own. A subject whose rows cannot be converted, because a decrypt
+   * or a stored JSON value fails, is logged once with its principal and left out, so the other
+   * subjects of the statement still confirm. The caller treats a missing subject as unconfirmed.
+   */
+  static Map<CredentialSubject, CredentialRecord> convert(
+      Map<CredentialSubject, String> hashes,
+      Map<String, List<FullRow>> rowsByHash,
+      Map<CredentialSubject, CredentialRecord> previous,
+      BiFunction<String, AuthenticationMechanism, AuthenticationMechanism> decrypt) {
+    Map<CredentialSubject, CredentialRecord> result = new HashMap<>();
+    hashes.forEach(
+        (subject, hash) -> {
+          try {
+            List<FullRow> rows = rowsByHash.getOrDefault(hash, List.of());
+            result.put(subject, toRecord(rows, previous.get(subject), decrypt));
+          } catch (RuntimeException failure) {
+            LOG.warn(
+                "The stored credentials of {} could not be converted; its tokens stay unconfirmed"
+                    + " until a later read succeeds",
+                subject.principal(),
+                failure);
+          }
+        });
     return result;
   }
 
