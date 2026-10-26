@@ -1,12 +1,11 @@
 package org.openmetadata.service.events.consumer.ledger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -25,23 +24,57 @@ import org.openmetadata.service.util.PerRequestContextCleaner;
 class DiagnosticsTest {
 
   @Test
-  void unprocessedEventsAreReadInPages() {
+  void aSmallBacklogIsCountedExactly() {
     ChangeEventDAO changeEvents = mock(ChangeEventDAO.class);
-    when(changeEvents.listWithOffset(UnprocessedEvents.PAGE_SIZE, 10L))
-        .thenReturn(rows(11, UnprocessedEvents.PAGE_SIZE));
-    when(changeEvents.listWithOffset(UnprocessedEvents.PAGE_SIZE, 510L)).thenReturn(rows(511, 3));
-    when(changeEvents.listWithOffset(UnprocessedEvents.PAGE_SIZE, 513L)).thenReturn(List.of());
-    CollectionDAO dao = mock(CollectionDAO.class);
-    when(dao.changeEventDAO()).thenReturn(changeEvents);
+    when(changeEvents.listWithOffset(UnprocessedEvents.MAX_EVALUATED, 10L)).thenReturn(rows(11, 3));
 
-    long counted;
+    PendingCount counted = countWith(changeEvents, 10L, 13L);
+
+    assertEquals(new PendingCount(3, false), counted);
+  }
+
+  // Each unread event is evaluated against the alert's rules, so a request evaluates a bounded
+  // number of them and says the count is a lower bound when more are unread.
+  @Test
+  void aLargeBacklogIsCountedUpToTheCapInOneRead() {
+    ChangeEventDAO changeEvents = mock(ChangeEventDAO.class);
+    when(changeEvents.listWithOffset(UnprocessedEvents.MAX_EVALUATED, 10L))
+        .thenReturn(rows(11, UnprocessedEvents.MAX_EVALUATED));
+
+    PendingCount counted = countWith(changeEvents, 10L, 100_000L);
+
+    assertEquals(new PendingCount(UnprocessedEvents.MAX_EVALUATED, true), counted);
+    verify(changeEvents, times(1)).listWithOffset(UnprocessedEvents.MAX_EVALUATED, 10L);
+    verifyNoMoreInteractions(changeEvents);
+  }
+
+  @Test
+  void onlyEventsTheRulesLetThroughAreCounted() {
+    ChangeEventDAO changeEvents = mock(ChangeEventDAO.class);
+    when(changeEvents.listWithOffset(UnprocessedEvents.MAX_EVALUATED, 10L)).thenReturn(rows(11, 4));
+
+    CollectionDAO dao = daoWith(changeEvents);
+    PendingCount counted;
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getCollectionDAO).thenReturn(dao);
-      counted = UnprocessedEvents.countMatching(10L, event -> true);
+      counted = UnprocessedEvents.countMatching(10L, 14L, event -> false);
     }
 
-    assertEquals(UnprocessedEvents.PAGE_SIZE + 3, counted, "the count stays exact across pages");
-    verify(changeEvents, times(3)).listWithOffset(anyInt(), anyLong());
+    assertEquals(new PendingCount(0, false), counted);
+  }
+
+  private static PendingCount countWith(ChangeEventDAO changeEvents, long after, long latest) {
+    CollectionDAO dao = daoWith(changeEvents);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(dao);
+      return UnprocessedEvents.countMatching(after, latest, event -> true);
+    }
+  }
+
+  private static CollectionDAO daoWith(ChangeEventDAO changeEvents) {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    when(dao.changeEventDAO()).thenReturn(changeEvents);
+    return dao;
   }
 
   // One row, so the evaluation stays on this thread, where the static mock can see it.

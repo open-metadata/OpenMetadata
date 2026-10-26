@@ -28,6 +28,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.alerting.channel.Channel;
 import org.openmetadata.service.alerting.channel.Channels;
+import org.openmetadata.service.alerting.channel.DestinationValidation;
 import org.openmetadata.service.alerting.channel.builtin.BuiltInChannels;
 import org.openmetadata.service.alerting.channel.email.EmailMessage;
 import org.openmetadata.service.alerting.content.HandlebarsNotificationMessageEngine;
@@ -146,6 +147,7 @@ public final class TemplatePreview {
     }
 
     validateExternalDestinations(request.getDestinations());
+    request.getDestinations().forEach(DestinationValidation::validate);
 
     ChangeEvent mockEvent =
         mockChangeEventFactory.create(renderRequest.getResource(), renderRequest.getEventType());
@@ -163,20 +165,41 @@ public final class TemplatePreview {
             .withName("test-notification")
             .withDisplayName("Test Notification Template");
 
-    for (SubscriptionDestination dest : request.getDestinations()) {
-      try {
-        sendToDestination(mockEvent, testSubscription, dest, testTemplate);
-        LOG.info("Successfully sent test notification to {} destination", dest.getType());
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to send test notification to {} destination: {}",
-            dest.getType(),
-            e.getMessage(),
-            e);
-      }
-    }
+    TestSends.toEach(
+        request.getDestinations(),
+        dest -> sendAndLog(mockEvent, testSubscription, dest, testTemplate),
+        TemplatePreview::logTimedOut);
 
     return validation;
+  }
+
+  // Delivery errors are logged only, as before: the response carries the template's validation.
+  private Boolean sendAndLog(
+      ChangeEvent event,
+      EventSubscription subscription,
+      SubscriptionDestination dest,
+      NotificationTemplate template) {
+    boolean sent = false;
+    try {
+      sendToDestination(event, subscription, dest, template);
+      LOG.info("Successfully sent test notification to {} destination", dest.getType());
+      sent = true;
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to send test notification to {} destination: {}",
+          dest.getType(),
+          e.getMessage(),
+          e);
+    }
+    return sent;
+  }
+
+  private static Boolean logTimedOut(SubscriptionDestination dest) {
+    LOG.error(
+        "Test notification to {} destination timed out after {} s",
+        dest.getType(),
+        TestSends.DEADLINE.toSeconds());
+    return false;
   }
 
   private void validateExternalDestinations(List<SubscriptionDestination> destinations) {
