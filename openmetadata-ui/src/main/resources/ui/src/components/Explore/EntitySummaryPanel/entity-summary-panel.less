@@ -18,11 +18,12 @@
   width: 100%;
   background: var(--tw-background-color-canvas);
 
-  &.explore {
+  // Drawers take the core slideout's own surface.
+  &.explore,
+  &.lineage {
     background: transparent;
   }
 
-  &.lineage,
   &.glossary-term-assets-tab,
   &.ontology-explorer {
     background: var(--tw-background-color-canvas);

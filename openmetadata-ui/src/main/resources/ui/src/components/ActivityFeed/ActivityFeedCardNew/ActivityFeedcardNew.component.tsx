@@ -70,8 +70,15 @@ const POST_SKELETON_KEYS = ['first', 'second', 'third'];
 
 // Each child of the antd Space this markup replaced sat in its own block
 // wrapper, which sets the line box the header text and avatars align in;
-// keep that wrapper, and hide it when empty as antd's did.
-const SPACE_ITEM_CLASS_NAME = 'tw:empty:hidden';
+// keep that wrapper, and hide it when empty as antd's did. min-w-0 lets the
+// entity link truncate (otherwise a long name pushed the field path past the
+// card edge); first:shrink-0 keeps the verb whole.
+const SPACE_ITEM_CLASS_NAME = 'tw:empty:hidden tw:min-w-0 tw:first:shrink-0';
+// The verb/entity row: the verb may wrap too, for cards narrower than it. In
+// list cards the entity item (last) takes the rest of the verb's line (basis
+// 0) and wraps under the verb only below min-w-24 (icon plus a few characters).
+const HEADER_ITEM_CLASS_NAME = 'tw:empty:hidden tw:min-w-0';
+const LIST_HEADER_ITEM_CLASS_NAME = `${HEADER_ITEM_CLASS_NAME} tw:last:min-w-24 tw:last:flex-1 tw:last:basis-0`;
 
 interface ActivityFeedCardNewProps {
   feed?: Conversation;
@@ -105,16 +112,24 @@ const getFeedCardWrapperClassName = (
     { 'active-card is-active': isActive }
   );
 
-const getHeaderTagsClassName = (
-  showThread: boolean | undefined,
-  entityRefType?: string
-): string =>
+const getHeaderTagsClassName = (showThread: boolean | undefined): string =>
   classNames('d-flex', {
     'header-container-card': !showThread,
-    'flex-wrap': showThread && entityRefType !== EntityType.CONTAINER,
-    'items-start': showThread && entityRefType === EntityType.CONTAINER,
-    'items-center': !showThread || entityRefType !== EntityType.CONTAINER,
+    // Both wrap: when the verb leaves the entity less than its minimum, the
+    // entity moves to the next line instead of running past the card edge.
+    // List cards align to the first line; the thread panel always puts the
+    // entity under the verb (as in 1.13).
+    'flex-wrap': true,
+    'items-start': !showThread,
+    'items-center': showThread,
   });
+
+// The side panel (a thread, or an activity opened from the list) has room for
+// the full entity name; list cards truncate it.
+const isSidePanelLayout = (
+  showThread: boolean | undefined,
+  isOpenInDrawer: boolean | undefined
+): boolean => Boolean(showThread || isOpenInDrawer);
 
 const computeFeedId = (feed?: Conversation, activity?: ActivityEvent): string =>
   feed?.id ?? activity?.id ?? '';
@@ -149,6 +164,7 @@ const ActivityFeedCardNew = ({
   onActivityClick,
 }: ActivityFeedCardNewProps) => {
   const isActivityEvent = !isUndefined(activity);
+  const isPanelLayout = isSidePanelLayout(showThread, isOpenInDrawer);
   const timeFormat = useActiveTimeFormat();
 
   const entityRef = feed?.entityRef ?? activity?.entity;
@@ -252,7 +268,7 @@ const ActivityFeedCardNew = ({
             to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
             <span
               className={classNames('text-sm', {
-                'max-one-line': !showThread,
+                'tw:block tw:truncate': !isPanelLayout,
               })}>
               {entityRef
                 ? getEntityName(entityRef)
@@ -263,35 +279,55 @@ const ActivityFeedCardNew = ({
       );
     } else {
       return (
-        <Box inline align="center" className="tw:min-w-0 tw:gap-1.5">
-          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-            <Box
-              align="center"
-              className="tw:min-w-0 text-sm"
-              gap={1}
-              justify="center">
-              {searchClassBase.getEntityIcon(entityType ?? '') && (
-                <Box inline align="center">
-                  {searchClassBase.getEntityIcon(
-                    entityType ?? '',
-                    'tw:h-4 tw:w-4'
-                  )}
-                </Box>
-              )}
-              <Link
-                className={classNames('break-word text-sm header-link', {
-                  'max-one-line': !showThread,
-                })}
-                data-testid="entity-link"
-                to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
-                <span>
-                  {entityRef
-                    ? getEntityName(entityRef)
-                    : entityDisplayName(entityType, entityFQN)}
-                </span>
-              </Link>
-            </Box>
-          </EntityPopOverCard>
+        // List cards: take the rest of the verb's line (basis 0) so the link
+        // truncates there. Thread panel: natural width, wrapping under the verb.
+        <Box
+          align="center"
+          className={classNames('tw:min-w-0 tw:gap-x-1.5 tw:gap-y-0.5', {
+            'tw:max-w-full': isPanelLayout,
+          })}
+          wrap="wrap">
+          {/* List cards: the link takes what the path leaves (basis 0), so
+              "› Field" stays on the same line and the link truncates; the
+              path wraps only when even a short link no longer fits. */}
+          <Box
+            className={
+              isPanelLayout ? 'tw:min-w-0' : 'tw:min-w-12 tw:flex-1 tw:basis-0'
+            }>
+            <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+              <Box
+                align={isPanelLayout ? 'start' : 'center'}
+                className="tw:min-w-0 text-sm"
+                gap={1}
+                justify="start">
+                {searchClassBase.getEntityIcon(entityType ?? '') && (
+                  // h-5 = the text-sm line height, so the icon centres on the
+                  // link's first line.
+                  <Box inline align="center" className="tw:h-5 tw:shrink-0">
+                    {searchClassBase.getEntityIcon(
+                      entityType ?? '',
+                      'tw:h-4 tw:w-4'
+                    )}
+                  </Box>
+                )}
+                <Link
+                  className={classNames('text-sm header-link', {
+                    // Ellipsis, not a word-wrapped one-line clamp: in a narrow
+                    // card the clamp showed only the start of the first word.
+                    'tw:block tw:min-w-0 tw:truncate': !isPanelLayout,
+                    'tw:min-w-0 tw:wrap-break-word': isPanelLayout,
+                  })}
+                  data-testid="entity-link"
+                  to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+                  <span>
+                    {entityRef
+                      ? getEntityName(entityRef)
+                      : entityDisplayName(entityType, entityFQN)}
+                  </span>
+                </Link>
+              </Box>
+            </EntityPopOverCard>
+          </Box>
           <FeedFieldPath
             about={about}
             entityType={entityType}
@@ -308,7 +344,7 @@ const ActivityFeedCardNew = ({
     isUserOrTeam,
     entityRef,
     createdBy,
-    showThread,
+    isPanelLayout,
   ]);
 
   const feedHeaderText = useMemo(() => {
@@ -443,9 +479,11 @@ const ActivityFeedCardNew = ({
   const headerTags = useMemo(
     () => (
       <Box
-        className={getHeaderTagsClassName(showThread, entityRef?.type)}
+        className={getHeaderTagsClassName(isPanelLayout)}
         gap={2}
-        itemClassName={SPACE_ITEM_CLASS_NAME}>
+        itemClassName={
+          isPanelLayout ? HEADER_ITEM_CLASS_NAME : LIST_HEADER_ITEM_CLASS_NAME
+        }>
         <Typography
           className="card-style-feed-header"
           data-testid="headerText"
@@ -456,7 +494,7 @@ const ActivityFeedCardNew = ({
         {renderEntityLink}
       </Box>
     ),
-    [showThread, entityRef?.type, feedHeaderText, renderEntityLink]
+    [isPanelLayout, feedHeaderText, renderEntityLink]
   );
 
   const renderWidgetCard = () => (
@@ -641,8 +679,9 @@ const ActivityFeedCardNew = ({
       <Card.Content className="activity-feed-card-new-body tw:p-0">
         <Box direction="col" gap={2}>
           <div className={SPACE_ITEM_CLASS_NAME}>
+            {/* Block, not inline: an inline row sizes to its content, so a
+                one-line (truncating) header would push past the card. */}
             <Box
-              inline
               align={isContainerThread ? 'start' : 'center'}
               gap={2}
               itemClassName={SPACE_ITEM_CLASS_NAME}
@@ -657,7 +696,7 @@ const ActivityFeedCardNew = ({
                 </Box>
               </UserPopOverCard>
 
-              <Box align="start" direction="col">
+              <Box align="stretch" direction="col">
                 <div className={SPACE_ITEM_CLASS_NAME}>
                   <Box
                     align="center"
@@ -730,7 +769,7 @@ const ActivityFeedCardNew = ({
             </div>
           )}
         </Box>
-        {(showThread || isOpenInDrawer) && renderCommentsSection()}
+        {isPanelLayout && renderCommentsSection()}
         {feedActions}
       </Card.Content>
     </Card>
