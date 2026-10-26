@@ -18,6 +18,7 @@ import {
   EXTENDED_TEST_TIMEOUT,
   KEY_PROFILE_METRICS,
 } from '../../constant/common';
+import { migratedTo } from '../../constant/migration';
 import { DATA_CONSUMER_RULES } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -74,6 +75,42 @@ import {
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
+
+const BROWSER_TESTS = 'src/test/browser/entity-matrix';
+const ADMIN_TESTS = `${BROWSER_TESTS}/EntityAdmin.*.browser.test.tsx`;
+const PANEL_TESTS = `${BROWSER_TESTS}/EntityColumnPanel.*.browser.test.tsx`;
+const ADMIN_FLOWS = migratedTo.browser(ADMIN_TESTS);
+// Flows identical to EntityDataSteward.spec.ts's are tested once, as a steward.
+const STEWARD_FLOWS = migratedTo.browser(
+  `${BROWSER_TESTS}/EntityDataSteward.*.browser.test.tsx`
+);
+const PANEL_FLOWS = migratedTo.browser(PANEL_TESTS);
+// The row edits as a steward; the column detail panel steps in the panel tests.
+const STEWARD_AND_PANEL_FLOWS = migratedTo.browser(
+  `${BROWSER_TESTS}/Entity{DataSteward,ColumnPanel}.*.browser.test.tsx`
+);
+const TABLE_TAB_FLOWS = migratedTo.browser(
+  `${BROWSER_TESTS}/EntityTableTabs.browser.test.tsx`
+);
+// A table filters its columns on the server.
+const TABLE_COLUMN_TAG_FILTER_IT =
+  'TableResourceIT#searchColumns_tagFilterReturnsMatchesAcrossPages';
+
+/**
+ * Where each delete's server half is asserted (soft delete, then restore; the
+ * hard delete is BaseEntityIT#delete_entityAsAdmin_hardDelete_200). Table
+ * stays the real-server delete flow; the other types have no restore IT yet
+ * (BaseEntityIT#delete_restore_entity_200 never restores).
+ */
+const DELETE_ITS: Record<string, string> = {
+  Dashboard: 'DashboardResourceIT#test_dashboardSoftDeleteAndRestore',
+  Pipeline: 'PipelineResourceIT#test_pipelineSoftDeleteRestore',
+  Topic: 'TopicResourceIT#test_topicSoftDeleteAndRestore',
+  'Ml Model': 'MlModelResourceIT#test_mlModelSoftDeleteAndRestore',
+  'Search Index': 'SearchIndexResourceIT#test_deleteAndRestoreSearchIndex',
+  Chart: 'ChartResourceIT#test_chartSoftDeleteAndRestore',
+  Worksheet: 'WorksheetResourceIT#test_worksheetSoftDeleteRestore',
+};
 
 const entities = {
   'Api Endpoint': ApiEndpointClass,
@@ -179,7 +216,7 @@ pickEntityMatrix(
      * Tests domain management on entities
      * @description Tests adding a domain to an entity, updating it to a different domain, and removing the domain
      */
-    test('Domain Add, Update and Remove', async ({ page }) => {
+    test('Domain Add, Update and Remove', ADMIN_FLOWS, async ({ page }) => {
       test.slow(true);
 
       await entity.domain(
@@ -199,31 +236,39 @@ pickEntityMatrix(
      * Tests user ownership management on entities
      * @description Tests adding users as owners, updating owner list, and removing owners from an entity
      */
-    test('User as Owner Add, Update and Remove', async ({ page }) => {
-      test.slow(true);
+    test(
+      'User as Owner Add, Update and Remove',
+      STEWARD_FLOWS,
+      async ({ page }) => {
+        test.slow(true);
 
-      const OWNER1 = EntityDataClass.user1.getUserDisplayName();
-      const OWNER2 = EntityDataClass.user2.getUserDisplayName();
-      const OWNER3 = EntityDataClass.user3.getUserDisplayName();
-      await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
-    });
+        const OWNER1 = EntityDataClass.user1.getUserDisplayName();
+        const OWNER2 = EntityDataClass.user2.getUserDisplayName();
+        const OWNER3 = EntityDataClass.user3.getUserDisplayName();
+        await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
+      }
+    );
 
     /**
      * Tests team ownership management on entities
      * @description Tests adding teams as owners, updating team owner list, and removing teams from an entity
      */
-    test('Team as Owner Add, Update and Remove', async ({ page }) => {
-      const OWNER1 = EntityDataClass.team1.responseData.displayName;
-      const OWNER2 = EntityDataClass.team2.responseData.displayName;
-      await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
-    });
+    test(
+      'Team as Owner Add, Update and Remove',
+      STEWARD_FLOWS,
+      async ({ page }) => {
+        const OWNER1 = EntityDataClass.team1.responseData.displayName;
+        const OWNER2 = EntityDataClass.team2.responseData.displayName;
+        await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
+      }
+    );
 
     /**
      * Tests multi-user ownership with unsorted owner list
      * @description Tests adding multiple owners in different order, removing individual owners,
      * and verifying the owner list maintains proper state
      */
-    test('User as Owner with unsorted list', async ({ page }) => {
+    test('User as Owner with unsorted list', ADMIN_FLOWS, async ({ page }) => {
       // Cap at 120s instead of test.slow()'s 180s — see rationale on the
       // Roles spec: hitting the slow ceiling on a hung wait burns 3
       // minutes before retry kicks in. The warmup below eliminates the
@@ -342,20 +387,22 @@ pickEntityMatrix(
        * Tests project name visibility on Dashboard and DashboardDataModel pages
        * @description Verifies that the project name is displayed on Dashboard and DashboardDataModel entity pages
        */
-      test(`${entityName} page should show the project name`, async ({
-        page,
-      }) => {
-        await expect(
-          page.getByText((entity.entity as { project: string }).project)
-        ).toBeVisible();
-      });
+      test(
+        `${entityName} page should show the project name`,
+        ADMIN_FLOWS,
+        async ({ page }) => {
+          await expect(
+            page.getByText((entity.entity as { project: string }).project)
+          ).toBeVisible();
+        }
+      );
     }
 
     /**
      * Tests description update functionality
      * @description Tests adding and updating entity description
      */
-    test('Update description', async ({ page }) => {
+    test('Update description', STEWARD_FLOWS, async ({ page }) => {
       await entity.descriptionUpdate(page);
     });
 
@@ -404,61 +451,63 @@ pickEntityMatrix(
        * Tests tag and glossary selector mutual exclusivity
        * @description Verifies that opening the tag selector closes the glossary selector and vice versa
        */
-      test('Tag and Glossary Selector should close vice versa', async ({
-        page,
-      }) => {
-        test.slow(true);
+      test(
+        'Tag and Glossary Selector should close vice versa',
+        isUndefined(entity.childrenTabId) ? {} : PANEL_FLOWS,
+        async ({ page }) => {
+          test.slow(true);
 
-        const isMlModel = entity.type === 'MlModel';
-        const tagRow = page.locator(
-          `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
-        );
-        const glossaryRow = page.locator(
-          `[${rowSelector}="${
-            isMlModel
-              ? entity.childrenSelectorId2
-              : entity.childrenSelectorId ?? ''
-          }"]`
-        );
+          const isMlModel = entity.type === 'MlModel';
+          const tagRow = page.locator(
+            `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
+          );
+          const glossaryRow = page.locator(
+            `[${rowSelector}="${
+              isMlModel
+                ? entity.childrenSelectorId2
+                : entity.childrenSelectorId ?? ''
+            }"]`
+          );
 
-        // Open Tag Selector
-        await openClassificationTagPicker(
-          page,
-          tagRow.getByTestId('tags-container').getByTestId('add-tag')
-        );
+          // Open Tag Selector
+          await openClassificationTagPicker(
+            page,
+            tagRow.getByTestId('tags-container').getByTestId('add-tag')
+          );
 
-        await expect(
-          page.getByTestId('classification-tag-picker-popover')
-        ).toBeVisible();
-        await expect(
-          page.getByTestId('glossary-term-picker-popover')
-        ).not.toBeAttached();
+          await expect(
+            page.getByTestId('classification-tag-picker-popover')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('glossary-term-picker-popover')
+          ).not.toBeAttached();
 
-        // Open Glossary Selector — should close Tag Selector.
-        // Uses the helper so the trigger click retries on slow CI, matching every
-        // other glossary flow migrated in the picker refactor.
-        await openGlossaryPicker(
-          page,
-          glossaryRow.getByTestId('glossary-container').getByTestId('add-tag')
-        );
+          // Open Glossary Selector — should close Tag Selector.
+          // Uses the helper so the trigger click retries on slow CI, matching every
+          // other glossary flow migrated in the picker refactor.
+          await openGlossaryPicker(
+            page,
+            glossaryRow.getByTestId('glossary-container').getByTestId('add-tag')
+          );
 
-        await expect(
-          page.getByTestId('classification-tag-picker-popover')
-        ).not.toBeVisible();
+          await expect(
+            page.getByTestId('classification-tag-picker-popover')
+          ).not.toBeVisible();
 
-        // Re-open Tag Selector — should close Glossary Selector
-        await openClassificationTagPicker(
-          page,
-          tagRow.getByTestId('tags-container').getByTestId('add-tag')
-        );
+          // Re-open Tag Selector — should close Glossary Selector
+          await openClassificationTagPicker(
+            page,
+            tagRow.getByTestId('tags-container').getByTestId('add-tag')
+          );
 
-        await expect(
-          page.getByTestId('classification-tag-picker-popover')
-        ).toBeVisible();
-        await expect(
-          page.getByTestId('glossary-term-picker-popover')
-        ).not.toBeAttached();
-      });
+          await expect(
+            page.getByTestId('classification-tag-picker-popover')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('glossary-term-picker-popover')
+          ).not.toBeAttached();
+        }
+      );
     }
 
     /**
@@ -467,568 +516,528 @@ pickEntityMatrix(
      */
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
-      test('Tag Add, Update and Remove for child entities', async ({
-        page,
-      }) => {
-        test.slow(true);
-
-        await page.getByTestId(entity.childrenTabId ?? '').click();
-
-        await entity.tagChildren({
-          page: page,
-          tag1: 'PersonalData.Personal',
-          tag2: 'PII.None',
-          rowId: entity.childrenSelectorId ?? '',
-          rowSelector,
-          entityEndpoint: entity.endpoint,
-        });
-
-        await test.step('Add and remove tags via column detail panel', async () => {
-          const columnNameTestId =
-            entity.type === 'Pipeline' ? 'task-name' : 'column-name';
-
-          const panelContainer = await openColumnDetailPanel({
-            page,
-            rowSelector,
-            columnId: entity.childrenSelectorId ?? '',
-            columnNameTestId,
-            entityType: entity.type as EntityType,
-          });
-
-          // Add tag via panel
-          await openClassificationTagPicker(
-            page,
-            panelContainer.getByTestId('edit-icon-tags')
-          );
-
-          const tagOption = await searchClassificationTagPicker(
-            page,
-            'PersonalData.SpecialCategory'
-          );
-          await expect(tagOption).toBeVisible();
-          await tagOption.click();
-
-          const updateResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/columns/name/') ||
-              response.url().includes(`/api/v1/${entity.endpoint}/`)
-          );
-          await page.getByTestId('update-btn').click();
-          await updateResponse;
-          await waitForAllLoadersToDisappear(page);
-
-          await expect(
-            page
-              .getByTestId('tags-section-container')
-              .getByTestId('tag-PersonalData.SpecialCategory')
-          ).toBeVisible();
-
-          await closeColumnDetailPanel(page);
-
-          // Verify tag is visible in the main table row
-          await expect(
-            page
-              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId('tag-PersonalData.SpecialCategory')
-          ).toBeVisible();
-
-          // Cleanup: remove tag via panel
-          const cleanupPanelContainer = await openColumnDetailPanel({
-            page,
-            rowSelector,
-            columnId: entity.childrenSelectorId ?? '',
-            columnNameTestId,
-            entityType: entity.type as EntityType,
-          });
-          await openClassificationTagPicker(
-            page,
-            cleanupPanelContainer.getByTestId('edit-icon-tags')
-          );
-
-          const cleanupTagOption = await searchClassificationTagPicker(
-            page,
-            'PersonalData.SpecialCategory'
-          );
-          await expect(cleanupTagOption).toBeVisible();
-          await cleanupTagOption.click();
-
-          const removeResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/columns/name/') ||
-              response.url().includes(`/api/v1/${entity.endpoint}/`)
-          );
-          await page.getByTestId('update-btn').click();
-          await removeResponse;
-          await waitForAllLoadersToDisappear(page);
-
-          await expect(
-            cleanupPanelContainer
-              .getByTestId('tags-section-container')
-              .getByTestId('tag-PersonalData.SpecialCategory')
-          ).toBeHidden();
-
-          await closeColumnDetailPanel(page);
-        });
-      });
-    }
-
-    // Run only if entity has children
-    if (!isUndefined(entity.childrenTabId)) {
-      test('Tag and Glossary Term preservation in column detail panel', async ({
-        page,
-      }) => {
-        test.slow(true);
-
-        await page.getByTestId(entity.childrenTabId ?? '').click();
-
-        // Test that updating tags preserves glossary terms and vice versa
-        await test.step('Verify tag updates preserve glossary terms', async () => {
-          const columnNameTestId =
-            entity.type === 'Pipeline' ? 'task-name' : 'column-name';
-
-          const panelContainer = await openColumnDetailPanel({
-            page,
-            rowSelector,
-            columnId: entity.childrenSelectorId ?? '',
-            columnNameTestId,
-            entityType: entity.type as EntityType,
-          });
-          await waitForAllLoadersToDisappear(page);
-          // Step 1: Add a glossary term first
-          await openGlossaryPicker(
-            page,
-            panelContainer.getByTestId('edit-glossary-terms')
-          );
-
-          await toggleGlossaryTermInPicker(page, {
-            name: EntityDataClass.glossaryTerm1.responseData.name,
-            displayName: EntityDataClass.glossaryTerm1.responseData.displayName,
-            fullyQualifiedName:
-              EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName,
-          });
-
-          await applyGlossaryPicker(page, (response) =>
-            Boolean(
-              response.url().includes('/api/v1/columns/name/') ||
-                response.url().includes(`/api/v1/${entity.endpoint}/`)
-            )
-          );
-
-          // CRITICAL: Wait for UI to update after API response
-          await waitForAllLoadersToDisappear(page);
-
-          // Verify glossary term is added
-          await expect(
-            panelContainer.getByTestId(
-              `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
-            )
-          ).toBeVisible();
-
-          // Step 2: Add a classification tag (should preserve glossary term)
-          await openClassificationTagPicker(
-            page,
-            panelContainer.getByTestId('edit-icon-tags')
-          );
-
-          const tagOption = await searchClassificationTagPicker(
-            page,
-            'PII.Sensitive'
-          );
-          await expect(tagOption).toBeVisible();
-          await tagOption.click();
-
-          // Wait for both API response AND UI update
-          const tagUpdateResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/columns/name/') ||
-              response.url().includes(`/api/v1/${entity.endpoint}/`)
-          );
-          const tagUpdateButton = page.getByTestId('update-btn');
-          await expect(tagUpdateButton).toBeVisible();
-          await expect(tagUpdateButton).toBeEnabled();
-          await tagUpdateButton.click();
-          await tagUpdateResponse;
-
-          // Verify both tag and glossary term are still present in the panel
-          // Use panelContainer scope to avoid ambiguity with multiple tags-list elements across table rows
-          await expect(
-            panelContainer.getByTestId('tag-PII.Sensitive')
-          ).toBeVisible();
-          await expect(
-            panelContainer.getByTestId(
-              `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
-            )
-          ).toBeVisible();
-
-          await closeColumnDetailPanel(page);
-
-          // Verify both tag and glossary term are visible in the main table row
-          const rowLocator = page.locator(
-            `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
-          );
-          await expect(
-            rowLocator.getByTestId('tag-PII.Sensitive')
-          ).toBeVisible();
-          await expect(
-            rowLocator.getByTestId(
-              `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
-            )
-          ).toBeVisible();
-
-          // Cleanup: remove both tag and glossary term from column detail panel
-          const cleanupPanel = await openColumnDetailPanel({
-            page,
-            rowSelector,
-            columnId: entity.childrenSelectorId ?? '',
-            columnNameTestId,
-            entityType: entity.type as EntityType,
-            entityEndpoint:
-              entity.type === 'Table' ? entity.endpoint : undefined,
-          });
-
-          await waitForAllLoadersToDisappear(page);
-          // Remove glossary term
-          await openGlossaryPicker(
-            page,
-            cleanupPanel.getByTestId('edit-glossary-terms')
-          );
-
-          await toggleGlossaryTermInPicker(page, {
-            name: EntityDataClass.glossaryTerm1.responseData.name,
-            displayName: EntityDataClass.glossaryTerm1.responseData.displayName,
-            fullyQualifiedName:
-              EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName,
-          });
-          await applyGlossaryPicker(page, (response) =>
-            Boolean(
-              response.url().includes('/api/v1/columns/name/') ||
-                response.url().includes(`/api/v1/${entity.endpoint}/`)
-            )
-          );
-          await waitForAllLoadersToDisappear(page);
-
-          // Remove tag
-          await openClassificationTagPicker(
-            page,
-            cleanupPanel.getByTestId('edit-icon-tags')
-          );
-
-          const cleanupTagOption = await searchClassificationTagPicker(
-            page,
-            'PII.Sensitive'
-          );
-          await expect(cleanupTagOption).toBeVisible();
-          await cleanupTagOption.click();
-
-          const tagCleanupResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/columns/name/') ||
-              response.url().includes(`/api/v1/${entity.endpoint}/`)
-          );
-          await page.getByTestId('update-btn').click();
-          await tagCleanupResponse;
-          await waitForAllLoadersToDisappear(page);
-
-          await closeColumnDetailPanel(page);
-        });
-      });
-
-      test('Column detail panel data type display and nested column navigation', async ({
-        page,
-      }) => {
-        test.slow(true);
-
-        await page.getByTestId(entity.childrenTabId ?? '').click();
-
-        await test.step('Verify data type display and nested column counting', async () => {
-          // Open column detail panel
-          const columnNameTestId =
-            entity.type === 'Pipeline' ? 'task-name' : 'column-name';
-          const panelContainer = await openColumnDetailPanel({
-            page,
-            rowSelector,
-            columnId: entity.childrenSelectorId ?? '',
-            columnNameTestId,
-            entityType: entity.type as EntityType,
-          });
-
-          // Verify data type is displayed (if available)
-          if (entity.type !== 'Pipeline') {
-            const dataTypeChip = panelContainer.locator('.data-type-chip');
-            const hasDataType = (await dataTypeChip.count()) > 0;
-
-            if (hasDataType) {
-              // If data type chip exists, it should have content
-              await expect(dataTypeChip).not.toHaveText('');
-            }
-          }
-          // Verify pagination shows correct count (including nested columns)
-          const paginationText = panelContainer.locator(
-            '.pagination-header-text'
-          );
-          const paginationContent = await paginationText.textContent();
-
-          // Should match format: "X of Y columns"
-          expect(paginationContent).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
-
-          // Extract numbers from pagination text
-          const match = paginationContent?.match(/(\d+)\s+of\s+(\d+)/i);
-          if (match) {
-            const currentIndex = parseInt(match[1], 10);
-            const totalCount = parseInt(match[2], 10);
-
-            expect(currentIndex).toBeGreaterThan(0);
-            expect(totalCount).toBeGreaterThanOrEqual(currentIndex);
-
-            // If there are multiple columns, test navigation
-            if (totalCount > 1) {
-              const nextButton = panelContainer
-                .locator('.navigation-container')
-                .locator('button')
-                .nth(1);
-
-              if (await nextButton.isEnabled()) {
-                // Navigate to next column
-                await nextButton.click();
-
-                // Verify pagination updated
-                const updatedPagination = await paginationText.textContent();
-                const updatedMatch =
-                  updatedPagination?.match(/(\d+)\s+of\s+(\d+)/i);
-
-                if (updatedMatch) {
-                  const newIndex = parseInt(updatedMatch[1], 10);
-
-                  expect(newIndex).toBe(currentIndex + 1);
-                  expect(parseInt(updatedMatch[2], 10)).toBe(totalCount);
-                }
-
-                // Navigate back
-                const prevButton = panelContainer
-                  .locator('.navigation-container')
-                  .locator('button')
-                  .nth(0);
-
-                await prevButton.click();
-
-                // Verify we're back
-                await expect(paginationText).toHaveText(
-                  paginationContent ?? ''
-                );
-              }
-            }
-          }
-
-          // Close panel
-          await panelContainer.getByTestId('close-button').click();
-
-          await expect(page.locator('.column-detail-panel')).not.toBeVisible();
-        });
-      });
-
-      if (entity.type === 'Table') {
-        test('Complex nested column structures - comprehensive validation', async ({
-          page,
-        }) => {
+      test(
+        'Tag Add, Update and Remove for child entities',
+        STEWARD_AND_PANEL_FLOWS,
+        async ({ page }) => {
           test.slow(true);
 
           await page.getByTestId(entity.childrenTabId ?? '').click();
 
-          await test.step('Verify nested column has expand icon in main table', async () => {
-            // Get the third column which is the nested parent column (name column)
-            // From TableClass: columnsName[2] has children at index 3 and 4
-            const tableFQN = entity.entityResponseData?.['fullyQualifiedName'];
-            const nestedParentColName = (entity as TableClass).columnsName[2];
-            const nestedParentFQN = `${tableFQN}.${nestedParentColName}`;
-
-            const nestedColumnRow = page.locator(
-              `[data-row-key="${nestedParentFQN}"]`
-            );
-
-            // Scroll to the row to ensure it's visible
-            await nestedColumnRow.scrollIntoViewIfNeeded();
-
-            // Verify expand icon is visible for nested column
-            await expect(
-              nestedColumnRow.getByTestId('expand-icon')
-            ).toBeVisible();
-
-            // Verify non-nested columns don't have expand icons
-            const simpleColumnFQN = `${tableFQN}.${
-              (entity as TableClass).columnsName[0]
-            }`;
-
-            await expect(
-              page
-                .locator(`[data-row-key="${simpleColumnFQN}"]`)
-                .getByTestId('expand-icon')
-            ).not.toBeVisible();
+          await entity.tagChildren({
+            page: page,
+            tag1: 'PersonalData.Personal',
+            tag2: 'PII.None',
+            rowId: entity.childrenSelectorId ?? '',
+            rowSelector,
+            entityEndpoint: entity.endpoint,
           });
 
-          await test.step('Open column detail panel for nested column', async () => {
-            // Click on the parent nested column name to open detail panel
-            const nestedParentFQN = `${
-              entity.entityResponseData?.['fullyQualifiedName']
-            }.${(entity as TableClass).columnsName[2]}`;
+          await test.step('Add and remove tags via column detail panel', async () => {
+            const columnNameTestId =
+              entity.type === 'Pipeline' ? 'task-name' : 'column-name';
 
-            await openColumnDetailPanel({
+            const panelContainer = await openColumnDetailPanel({
               page,
-              rowSelector: 'data-row-key',
-              columnId: nestedParentFQN,
-              columnNameTestId: 'column-name',
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
               entityType: entity.type as EntityType,
             });
 
-            // Wait for any loaders to disappear
-            await waitForAllLoadersToDisappear(page);
-          });
-
-          await test.step('Verify NestedColumnsSection renders with correct structure', async () => {
-            const panelContainer = page.locator('.column-detail-panel');
-
-            // Wait for nested columns section to load by checking visibility
-
-            // Verify section title is present (using translated text key)
-            const nestedColumnLinks = panelContainer.locator(
-              '.nested-column-name'
+            // Add tag via panel
+            await openClassificationTagPicker(
+              page,
+              panelContainer.getByTestId('edit-icon-tags')
             );
 
-            // Should have at least one nested column link
+            const tagOption = await searchClassificationTagPicker(
+              page,
+              'PersonalData.SpecialCategory'
+            );
+            await expect(tagOption).toBeVisible();
+            await tagOption.click();
+
+            const updateResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/columns/name/') ||
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            );
+            await page.getByTestId('update-btn').click();
+            await updateResponse;
+            await waitForAllLoadersToDisappear(page);
+
             await expect(
-              nestedColumnLinks.filter({ visible: true })
-            ).not.toHaveCount(0, {
-              timeout: 5000,
+              page
+                .getByTestId('tags-section-container')
+                .getByTestId('tag-PersonalData.SpecialCategory')
+            ).toBeVisible();
+
+            await closeColumnDetailPanel(page);
+
+            // Verify tag is visible in the main table row
+            await expect(
+              page
+                .locator(
+                  `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
+                )
+                .getByTestId('tag-PersonalData.SpecialCategory')
+            ).toBeVisible();
+
+            // Cleanup: remove tag via panel
+            const cleanupPanelContainer = await openColumnDetailPanel({
+              page,
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
+              entityType: entity.type as EntityType,
+            });
+            await openClassificationTagPicker(
+              page,
+              cleanupPanelContainer.getByTestId('edit-icon-tags')
+            );
+
+            const cleanupTagOption = await searchClassificationTagPicker(
+              page,
+              'PersonalData.SpecialCategory'
+            );
+            await expect(cleanupTagOption).toBeVisible();
+            await cleanupTagOption.click();
+
+            const removeResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/columns/name/') ||
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            );
+            await page.getByTestId('update-btn').click();
+            await removeResponse;
+            await waitForAllLoadersToDisappear(page);
+
+            await expect(
+              cleanupPanelContainer
+                .getByTestId('tags-section-container')
+                .getByTestId('tag-PersonalData.SpecialCategory')
+            ).toBeHidden();
+
+            await closeColumnDetailPanel(page);
+          });
+        }
+      );
+    }
+
+    // Run only if entity has children
+    if (!isUndefined(entity.childrenTabId)) {
+      test(
+        'Tag and Glossary Term preservation in column detail panel',
+        PANEL_FLOWS,
+        async ({ page }) => {
+          test.slow(true);
+
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+
+          // Test that updating tags preserves glossary terms and vice versa
+          await test.step('Verify tag updates preserve glossary terms', async () => {
+            const columnNameTestId =
+              entity.type === 'Pipeline' ? 'task-name' : 'column-name';
+
+            const panelContainer = await openColumnDetailPanel({
+              page,
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
+              entityType: entity.type as EntityType,
+            });
+            await waitForAllLoadersToDisappear(page);
+            // Step 1: Add a glossary term first
+            await openGlossaryPicker(
+              page,
+              panelContainer.getByTestId('edit-glossary-terms')
+            );
+
+            await toggleGlossaryTermInPicker(page, {
+              name: EntityDataClass.glossaryTerm1.responseData.name,
+              displayName:
+                EntityDataClass.glossaryTerm1.responseData.displayName,
+              fullyQualifiedName:
+                EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName,
             });
 
-            const linkCount = await nestedColumnLinks.count();
+            await applyGlossaryPicker(page, (response) =>
+              Boolean(
+                response.url().includes('/api/v1/columns/name/') ||
+                  response.url().includes(`/api/v1/${entity.endpoint}/`)
+              )
+            );
 
-            expect(linkCount).toBeGreaterThan(0);
+            // CRITICAL: Wait for UI to update after API response
+            await waitForAllLoadersToDisappear(page);
+
+            // Verify glossary term is added
+            await expect(
+              panelContainer.getByTestId(
+                `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
+              )
+            ).toBeVisible();
+
+            // Step 2: Add a classification tag (should preserve glossary term)
+            await openClassificationTagPicker(
+              page,
+              panelContainer.getByTestId('edit-icon-tags')
+            );
+
+            const tagOption = await searchClassificationTagPicker(
+              page,
+              'PII.Sensitive'
+            );
+            await expect(tagOption).toBeVisible();
+            await tagOption.click();
+
+            // Wait for both API response AND UI update
+            const tagUpdateResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/columns/name/') ||
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            );
+            const tagUpdateButton = page.getByTestId('update-btn');
+            await expect(tagUpdateButton).toBeVisible();
+            await expect(tagUpdateButton).toBeEnabled();
+            await tagUpdateButton.click();
+            await tagUpdateResponse;
+
+            // Verify both tag and glossary term are still present in the panel
+            // Use panelContainer scope to avoid ambiguity with multiple tags-list elements across table rows
+            await expect(
+              panelContainer.getByTestId('tag-PII.Sensitive')
+            ).toBeVisible();
+            await expect(
+              panelContainer.getByTestId(
+                `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
+              )
+            ).toBeVisible();
+
+            await closeColumnDetailPanel(page);
+
+            // Verify both tag and glossary term are visible in the main table row
+            const rowLocator = page.locator(
+              `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
+            );
+            await expect(
+              rowLocator.getByTestId('tag-PII.Sensitive')
+            ).toBeVisible();
+            await expect(
+              rowLocator.getByTestId(
+                `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
+              )
+            ).toBeVisible();
+
+            // Cleanup: remove both tag and glossary term from column detail panel
+            const cleanupPanel = await openColumnDetailPanel({
+              page,
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
+              entityType: entity.type as EntityType,
+              entityEndpoint:
+                entity.type === 'Table' ? entity.endpoint : undefined,
+            });
+
+            await waitForAllLoadersToDisappear(page);
+            // Remove glossary term
+            await openGlossaryPicker(
+              page,
+              cleanupPanel.getByTestId('edit-glossary-terms')
+            );
+
+            await toggleGlossaryTermInPicker(page, {
+              name: EntityDataClass.glossaryTerm1.responseData.name,
+              displayName:
+                EntityDataClass.glossaryTerm1.responseData.displayName,
+              fullyQualifiedName:
+                EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName,
+            });
+            await applyGlossaryPicker(page, (response) =>
+              Boolean(
+                response.url().includes('/api/v1/columns/name/') ||
+                  response.url().includes(`/api/v1/${entity.endpoint}/`)
+              )
+            );
+            await waitForAllLoadersToDisappear(page);
+
+            // Remove tag
+            await openClassificationTagPicker(
+              page,
+              cleanupPanel.getByTestId('edit-icon-tags')
+            );
+
+            const cleanupTagOption = await searchClassificationTagPicker(
+              page,
+              'PII.Sensitive'
+            );
+            await expect(cleanupTagOption).toBeVisible();
+            await cleanupTagOption.click();
+
+            const tagCleanupResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/columns/name/') ||
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            );
+            await page.getByTestId('update-btn').click();
+            await tagCleanupResponse;
+            await waitForAllLoadersToDisappear(page);
+
+            await closeColumnDetailPanel(page);
           });
+        }
+      );
 
-          await test.step('Verify count badge shows only top-level columns', async () => {
-            const panelContainer = page.locator('.column-detail-panel');
+      test(
+        'Column detail panel data type display and nested column navigation',
+        PANEL_FLOWS,
+        async ({ page }) => {
+          test.slow(true);
 
-            // Find count badge - it's a Box with Typography.Text containing just a number
-            const countBadge = panelContainer
-              .locator('text=/^\\d+$/')
-              .filter({ hasNot: page.locator('.nested-column-name') })
-              .first();
+          await page.getByTestId(entity.childrenTabId ?? '').click();
 
-            const badgeText = await countBadge.textContent();
+          await test.step('Verify data type display and nested column counting', async () => {
+            // Open column detail panel
+            const columnNameTestId =
+              entity.type === 'Pipeline' ? 'task-name' : 'column-name';
+            const panelContainer = await openColumnDetailPanel({
+              page,
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
+              entityType: entity.type as EntityType,
+            });
 
-            if (badgeText) {
-              const count = parseInt(badgeText, 10);
+            // Verify data type is displayed (if available)
+            if (entity.type !== 'Pipeline') {
+              const dataTypeChip = panelContainer.locator('.data-type-chip');
+              const hasDataType = (await dataTypeChip.count()) > 0;
 
-              expect(count).toBeGreaterThan(0);
+              if (hasDataType) {
+                // If data type chip exists, it should have content
+                await expect(dataTypeChip).not.toHaveText('');
+              }
+            }
+            // Verify pagination shows correct count (including nested columns)
+            const paginationText = panelContainer.locator(
+              '.pagination-header-text'
+            );
+            const paginationContent = await paginationText.textContent();
 
-              // Count should represent top-level children only
+            // Should match format: "X of Y columns"
+            expect(paginationContent).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
+
+            // Extract numbers from pagination text
+            const match = paginationContent?.match(/(\d+)\s+of\s+(\d+)/i);
+            if (match) {
+              const currentIndex = parseInt(match[1], 10);
+              const totalCount = parseInt(match[2], 10);
+
+              expect(currentIndex).toBeGreaterThan(0);
+              expect(totalCount).toBeGreaterThanOrEqual(currentIndex);
+
+              // If there are multiple columns, test navigation
+              if (totalCount > 1) {
+                const nextButton = panelContainer
+                  .locator('.navigation-container')
+                  .locator('button')
+                  .nth(1);
+
+                if (await nextButton.isEnabled()) {
+                  // Navigate to next column
+                  await nextButton.click();
+
+                  // Verify pagination updated
+                  const updatedPagination = await paginationText.textContent();
+                  const updatedMatch =
+                    updatedPagination?.match(/(\d+)\s+of\s+(\d+)/i);
+
+                  if (updatedMatch) {
+                    const newIndex = parseInt(updatedMatch[1], 10);
+
+                    expect(newIndex).toBe(currentIndex + 1);
+                    expect(parseInt(updatedMatch[2], 10)).toBe(totalCount);
+                  }
+
+                  // Navigate back
+                  const prevButton = panelContainer
+                    .locator('.navigation-container')
+                    .locator('button')
+                    .nth(0);
+
+                  await prevButton.click();
+
+                  // Verify we're back
+                  await expect(paginationText).toHaveText(
+                    paginationContent ?? ''
+                  );
+                }
+              }
+            }
+
+            // Close panel
+            await panelContainer.getByTestId('close-button').click();
+
+            await expect(
+              page.locator('.column-detail-panel')
+            ).not.toBeVisible();
+          });
+        }
+      );
+
+      if (entity.type === 'Table') {
+        test(
+          'Complex nested column structures - comprehensive validation',
+          PANEL_FLOWS,
+          async ({ page }) => {
+            test.slow(true);
+
+            await page.getByTestId(entity.childrenTabId ?? '').click();
+
+            await test.step('Verify nested column has expand icon in main table', async () => {
+              // Get the third column which is the nested parent column (name column)
+              // From TableClass: columnsName[2] has children at index 3 and 4
+              const tableFQN =
+                entity.entityResponseData?.['fullyQualifiedName'];
+              const nestedParentColName = (entity as TableClass).columnsName[2];
+              const nestedParentFQN = `${tableFQN}.${nestedParentColName}`;
+
+              const nestedColumnRow = page.locator(
+                `[data-row-key="${nestedParentFQN}"]`
+              );
+
+              // Scroll to the row to ensure it's visible
+              await nestedColumnRow.scrollIntoViewIfNeeded();
+
+              // Verify expand icon is visible for nested column
+              await expect(
+                nestedColumnRow.getByTestId('expand-icon')
+              ).toBeVisible();
+
+              // Verify non-nested columns don't have expand icons
+              const simpleColumnFQN = `${tableFQN}.${
+                (entity as TableClass).columnsName[0]
+              }`;
+
+              await expect(
+                page
+                  .locator(`[data-row-key="${simpleColumnFQN}"]`)
+                  .getByTestId('expand-icon')
+              ).not.toBeVisible();
+            });
+
+            await test.step('Open column detail panel for nested column', async () => {
+              // Click on the parent nested column name to open detail panel
+              const nestedParentFQN = `${
+                entity.entityResponseData?.['fullyQualifiedName']
+              }.${(entity as TableClass).columnsName[2]}`;
+
+              await openColumnDetailPanel({
+                page,
+                rowSelector: 'data-row-key',
+                columnId: nestedParentFQN,
+                columnNameTestId: 'column-name',
+                entityType: entity.type as EntityType,
+              });
+
+              // Wait for any loaders to disappear
+              await waitForAllLoadersToDisappear(page);
+            });
+
+            await test.step('Verify NestedColumnsSection renders with correct structure', async () => {
+              const panelContainer = page.locator('.column-detail-panel');
+
+              // Wait for nested columns section to load by checking visibility
+
+              // Verify section title is present (using translated text key)
               const nestedColumnLinks = panelContainer.locator(
                 '.nested-column-name'
               );
-              const totalLinks = await nestedColumnLinks.count();
 
-              // Count badge should be <= total links (since links include all nested levels)
-              expect(count).toBeLessThanOrEqual(totalLinks);
-            }
-          });
+              // Should have at least one nested column link
+              await expect(
+                nestedColumnLinks.filter({ visible: true })
+              ).not.toHaveCount(0, {
+                timeout: 5000,
+              });
 
-          await test.step('Verify proper indentation for nested levels', async () => {
-            const panelContainer = page.locator('.column-detail-panel');
-            const nestedColumnItems = panelContainer
-              .locator('.nested-column-name')
-              .locator('..');
+              const linkCount = await nestedColumnLinks.count();
 
-            // Get all nested column items and verify they have proper padding
-            const items = await nestedColumnItems.all();
+              expect(linkCount).toBeGreaterThan(0);
+            });
 
-            if (items.length > 1) {
-              // Verify at least one item has padding (indicating nested structure)
-              const hasIndentation = await Promise.all(
-                items.map(async (item) => {
-                  const paddingLeft = await item.evaluate((el) => {
-                    const style = window.getComputedStyle(el);
+            await test.step('Verify count badge shows only top-level columns', async () => {
+              const panelContainer = page.locator('.column-detail-panel');
 
-                    return style.paddingLeft;
-                  });
+              // Find count badge - it's a Box with Typography.Text containing just a number
+              const countBadge = panelContainer
+                .locator('text=/^\\d+$/')
+                .filter({ hasNot: page.locator('.nested-column-name') })
+                .first();
 
-                  return paddingLeft !== '0px';
-                })
+              const badgeText = await countBadge.textContent();
+
+              if (badgeText) {
+                const count = parseInt(badgeText, 10);
+
+                expect(count).toBeGreaterThan(0);
+
+                // Count should represent top-level children only
+                const nestedColumnLinks = panelContainer.locator(
+                  '.nested-column-name'
+                );
+                const totalLinks = await nestedColumnLinks.count();
+
+                // Count badge should be <= total links (since links include all nested levels)
+                expect(count).toBeLessThanOrEqual(totalLinks);
+              }
+            });
+
+            await test.step('Verify proper indentation for nested levels', async () => {
+              const panelContainer = page.locator('.column-detail-panel');
+              const nestedColumnItems = panelContainer
+                .locator('.nested-column-name')
+                .locator('..');
+
+              // Get all nested column items and verify they have proper padding
+              const items = await nestedColumnItems.all();
+
+              if (items.length > 1) {
+                // Verify at least one item has padding (indicating nested structure)
+                const hasIndentation = await Promise.all(
+                  items.map(async (item) => {
+                    const paddingLeft = await item.evaluate((el) => {
+                      const style = window.getComputedStyle(el);
+
+                      return style.paddingLeft;
+                    });
+
+                    return paddingLeft !== '0px';
+                  })
+                );
+
+                const hasAnyIndentation = hasIndentation.some(Boolean);
+
+                expect(hasAnyIndentation).toBeTruthy();
+              }
+            });
+
+            await test.step('Verify clicking on nested column navigates correctly', async () => {
+              const panelContainer = page.locator('.column-detail-panel');
+              const nestedColumnLinks = panelContainer.locator(
+                '.nested-column-name'
               );
 
-              const hasAnyIndentation = hasIndentation.some(Boolean);
+              const firstLink = nestedColumnLinks.first();
+              await firstLink.scrollIntoViewIfNeeded();
 
-              expect(hasAnyIndentation).toBeTruthy();
-            }
-          });
+              // Verify link is visible and clickable
+              await expect(firstLink).toBeVisible();
 
-          await test.step('Verify clicking on nested column navigates correctly', async () => {
-            const panelContainer = page.locator('.column-detail-panel');
-            const nestedColumnLinks = panelContainer.locator(
-              '.nested-column-name'
-            );
-
-            const firstLink = nestedColumnLinks.first();
-            await firstLink.scrollIntoViewIfNeeded();
-
-            // Verify link is visible and clickable
-            await expect(firstLink).toBeVisible();
-
-            // Click the link and verify API call or panel update
-            const clickResponse = page.waitForResponse(
-              (response) =>
-                response.url().includes('/api/v1/columns/name/') ||
-                (response.url().includes('/columns') &&
-                  response.url().includes('profile') &&
-                  response.request().method() === 'GET') ||
-                response.url().includes(`/api/v1/${entity.endpoint}/name/`),
-              { timeout: 150000 }
-            );
-
-            await firstLink.click();
-            await clickResponse;
-
-            // Wait for loader to disappear after navigation
-            await waitForAllLoadersToDisappear(page);
-
-            // Verify panel is still visible (navigated to nested column)
-            await expect(page.locator('.column-detail-panel')).toBeVisible();
-          });
-
-          await test.step('Verify clicking on intermediate nested levels (non-leaf nodes)', async () => {
-            const panelContainer = page.locator('.column-detail-panel');
-
-            // Navigate back to parent column first
-            const prevButton = panelContainer
-              .locator('.navigation-container')
-              .locator('button')
-              .nth(0);
-
-            // Only navigate back if we moved forward
-            if (await prevButton.isEnabled()) {
-              await prevButton.click();
-              // Wait for loader to disappear after navigation
-              await waitForAllLoadersToDisappear(page);
-            }
-
-            const allNestedLinks = panelContainer.locator(
-              '.nested-column-name'
-            );
-            const totalLinks = await allNestedLinks.count();
-
-            if (totalLinks > 1) {
-              // Click on an intermediate level (not the first, not the last if possible)
-              const middleIndex = Math.min(
-                Math.floor(totalLinks / 2),
-                totalLinks - 1
-              );
-              const intermediateLink = allNestedLinks.nth(middleIndex);
-
-              await intermediateLink.scrollIntoViewIfNeeded();
-
-              await expect(intermediateLink).toBeVisible();
-
-              // Click intermediate link
-              const intermediateClickResponse = page.waitForResponse(
+              // Click the link and verify API call or panel update
+              const clickResponse = page.waitForResponse(
                 (response) =>
                   response.url().includes('/api/v1/columns/name/') ||
                   (response.url().includes('/columns') &&
@@ -1038,238 +1047,301 @@ pickEntityMatrix(
                 { timeout: 150000 }
               );
 
-              await intermediateLink.click();
-              await intermediateClickResponse;
+              await firstLink.click();
+              await clickResponse;
 
               // Wait for loader to disappear after navigation
               await waitForAllLoadersToDisappear(page);
 
-              // Verify panel updated correctly
+              // Verify panel is still visible (navigated to nested column)
               await expect(page.locator('.column-detail-panel')).toBeVisible();
-            }
-          });
-
-          await test.step('Verify multiple sibling columns at same nesting level', async () => {
-            const panelContainer = page.locator('.column-detail-panel');
-            const nestedColumnLinks = panelContainer.locator(
-              '.nested-column-name'
-            );
-
-            const linkCount = await nestedColumnLinks.count();
-
-            if (linkCount > 1) {
-              // Get all link texts to verify siblings exist
-              const allLinks = await nestedColumnLinks.all();
-              const linkTexts = await Promise.all(
-                allLinks.map((link) => link.textContent())
-              );
-
-              // Should have multiple distinct column names
-              const uniqueNames = new Set(
-                linkTexts.filter((text) => text && text.trim().length > 0)
-              );
-
-              expect(uniqueNames.size).toBeGreaterThan(0);
-
-              // Verify that siblings are all visible
-              const visibleLinks = await Promise.all(
-                allLinks.map(async (link) => await link.isVisible())
-              );
-              const visibleCount = visibleLinks.filter(Boolean).length;
-
-              expect(visibleCount).toBeGreaterThan(0);
-            }
-          });
-
-          await test.step('Verify deep nesting (3+ levels) if available', async () => {
-            const panelContainer = page.locator('.column-detail-panel');
-            const nestedColumnLinks = panelContainer.locator(
-              '.nested-column-name'
-            );
-
-            // Check if we have multiple levels by examining padding
-            const allLinks = await nestedColumnLinks.all();
-
-            if (allLinks.length >= 3) {
-              // Get padding values to detect nesting depth
-              const paddingValues = await Promise.all(
-                allLinks.map(async (link) => {
-                  const parent = link.locator('..');
-
-                  return await parent.evaluate((el) => {
-                    const style = window.getComputedStyle(el);
-
-                    return parseFloat(style.paddingLeft);
-                  });
-                })
-              );
-
-              // Should have at least 2 different padding values (indicating multiple levels)
-              const uniquePaddings = new Set(paddingValues);
-
-              expect(uniquePaddings.size).toBeGreaterThan(0);
-            }
-          });
-
-          await test.step('Close panel', async () => {
-            const panelContainer = page.locator('.column-detail-panel');
-
-            await panelContainer.getByTestId('close-button').click();
-
-            await expect(
-              page.locator('.column-detail-panel')
-            ).not.toBeVisible();
-          });
-        });
-
-        test('Array type columns with nested structures in NestedColumnsSection', async ({
-          page,
-        }) => {
-          test.slow(true);
-
-          await page.getByTestId(entity.childrenTabId ?? '').click();
-
-          await test.step('Verify array column with nested children renders correctly', async () => {
-            const tableResponse = entity.entityResponseData as Table;
-            const columns = tableResponse?.columns || [];
-
-            const nestedParent = columns.find(
-              (col: Column) =>
-                col.name === (entity as TableClass).columnsName[2]
-            );
-
-            if (!nestedParent) {
-              throw new Error(
-                `Nested parent column not found: ${
-                  (entity as TableClass).columnsName[2]
-                }`
-              );
-            }
-
-            const nestedParentFQN = nestedParent.fullyQualifiedName;
-
-            const arrayColumn = nestedParent.children?.find(
-              (col: Column) =>
-                col.name === (entity as TableClass).columnsName[4]
-            );
-
-            if (!arrayColumn) {
-              throw new Error(
-                `Array column not found: ${
-                  (entity as TableClass).columnsName[4]
-                }`
-              );
-            }
-
-            const arrayColumnFQN = arrayColumn.fullyQualifiedName;
-
-            const parentRow = page.locator(
-              `[data-row-key="${nestedParentFQN}"]`
-            );
-
-            await parentRow.waitFor({ state: 'visible' });
-
-            const arrayColumnRow = page.locator(
-              `[data-row-key="${arrayColumnFQN}"]`
-            );
-
-            await arrayColumnRow.waitFor({ state: 'visible' });
-
-            const arrayColumnId = await arrayColumnRow.getAttribute(
-              'data-row-key'
-            );
-
-            const panelContainer = await openColumnDetailPanel({
-              page,
-              rowSelector: 'data-row-key',
-              columnId: arrayColumnId ?? '',
-              columnNameTestId: 'column-name',
-              entityType: entity.type as EntityType,
             });
 
-            const nestedColumnLinks = panelContainer.locator(
-              '.nested-column-name'
-            );
+            await test.step('Verify clicking on intermediate nested levels (non-leaf nodes)', async () => {
+              const panelContainer = page.locator('.column-detail-panel');
 
-            if ((await nestedColumnLinks.count()) > 0) {
-              await expect(
-                nestedColumnLinks.filter({ visible: true })
-              ).not.toHaveCount(0);
+              // Navigate back to parent column first
+              const prevButton = panelContainer
+                .locator('.navigation-container')
+                .locator('button')
+                .nth(0);
 
-              const linkCount = await nestedColumnLinks.count();
+              // Only navigate back if we moved forward
+              if (await prevButton.isEnabled()) {
+                await prevButton.click();
+                // Wait for loader to disappear after navigation
+                await waitForAllLoadersToDisappear(page);
+              }
 
-              expect(linkCount).toBeGreaterThan(0);
-
-              await panelContainer.getByTestId('close-button').click();
-            }
-          });
-        });
-
-        test('Mixed sibling columns (simple + nested) at same level', async ({
-          page,
-        }) => {
-          test.slow(true);
-
-          await page.getByTestId(entity.childrenTabId ?? '').click();
-
-          await test.step('Verify mixed siblings have consistent indentation', async () => {
-            // columnsName[2] has mixed children: columnsName[3] (STRUCT) and columnsName[4] (ARRAY with nested children)
-            const nestedParentFQN = `${
-              entity.entityResponseData?.['fullyQualifiedName']
-            }.${(entity as TableClass).columnsName[2]}`;
-
-            const nestedColumnRow = page.locator(
-              `[data-row-key="${nestedParentFQN}"]`
-            );
-
-            if (await nestedColumnRow.getByTestId('expand-icon').isVisible()) {
-              await nestedColumnRow.getByTestId('expand-icon').click();
-              // Wait for expansion to complete
-              await waitForAllLoadersToDisappear(page);
-
-              // Open detail panel
-              const nestedColumnId = await nestedColumnRow.getAttribute(
-                'data-row-key'
+              const allNestedLinks = panelContainer.locator(
+                '.nested-column-name'
               );
-              const panelContainer = await openColumnDetailPanel({
-                page,
-                rowSelector: 'data-row-key',
-                columnId: nestedColumnId ?? nestedParentFQN,
-                columnNameTestId: 'column-name',
-                entityType: entity.type as EntityType,
-              });
+              const totalLinks = await allNestedLinks.count();
+
+              if (totalLinks > 1) {
+                // Click on an intermediate level (not the first, not the last if possible)
+                const middleIndex = Math.min(
+                  Math.floor(totalLinks / 2),
+                  totalLinks - 1
+                );
+                const intermediateLink = allNestedLinks.nth(middleIndex);
+
+                await intermediateLink.scrollIntoViewIfNeeded();
+
+                await expect(intermediateLink).toBeVisible();
+
+                // Click intermediate link
+                const intermediateClickResponse = page.waitForResponse(
+                  (response) =>
+                    response.url().includes('/api/v1/columns/name/') ||
+                    (response.url().includes('/columns') &&
+                      response.url().includes('profile') &&
+                      response.request().method() === 'GET') ||
+                    response.url().includes(`/api/v1/${entity.endpoint}/name/`),
+                  { timeout: 150000 }
+                );
+
+                await intermediateLink.click();
+                await intermediateClickResponse;
+
+                // Wait for loader to disappear after navigation
+                await waitForAllLoadersToDisappear(page);
+
+                // Verify panel updated correctly
+                await expect(
+                  page.locator('.column-detail-panel')
+                ).toBeVisible();
+              }
+            });
+
+            await test.step('Verify multiple sibling columns at same nesting level', async () => {
+              const panelContainer = page.locator('.column-detail-panel');
               const nestedColumnLinks = panelContainer.locator(
                 '.nested-column-name'
               );
 
-              if ((await nestedColumnLinks.count()) > 1) {
-                // Get parent elements to check padding
-                const linkParents = await nestedColumnLinks.all();
+              const linkCount = await nestedColumnLinks.count();
+
+              if (linkCount > 1) {
+                // Get all link texts to verify siblings exist
+                const allLinks = await nestedColumnLinks.all();
+                const linkTexts = await Promise.all(
+                  allLinks.map((link) => link.textContent())
+                );
+
+                // Should have multiple distinct column names
+                const uniqueNames = new Set(
+                  linkTexts.filter((text) => text && text.trim().length > 0)
+                );
+
+                expect(uniqueNames.size).toBeGreaterThan(0);
+
+                // Verify that siblings are all visible
+                const visibleLinks = await Promise.all(
+                  allLinks.map(async (link) => await link.isVisible())
+                );
+                const visibleCount = visibleLinks.filter(Boolean).length;
+
+                expect(visibleCount).toBeGreaterThan(0);
+              }
+            });
+
+            await test.step('Verify deep nesting (3+ levels) if available', async () => {
+              const panelContainer = page.locator('.column-detail-panel');
+              const nestedColumnLinks = panelContainer.locator(
+                '.nested-column-name'
+              );
+
+              // Check if we have multiple levels by examining padding
+              const allLinks = await nestedColumnLinks.all();
+
+              if (allLinks.length >= 3) {
+                // Get padding values to detect nesting depth
                 const paddingValues = await Promise.all(
-                  linkParents.map(async (link) => {
+                  allLinks.map(async (link) => {
                     const parent = link.locator('..');
 
                     return await parent.evaluate((el) => {
-                      return window.getComputedStyle(el).paddingLeft;
+                      const style = window.getComputedStyle(el);
+
+                      return parseFloat(style.paddingLeft);
                     });
                   })
                 );
 
-                // Verify we have multiple padding values indicating nesting levels
-                if (paddingValues.length >= 2) {
-                  expect(paddingValues.length).toBeGreaterThan(0);
+                // Should have at least 2 different padding values (indicating multiple levels)
+                const uniquePaddings = new Set(paddingValues);
 
-                  // Should have different padding values for different nesting levels
-                  const uniquePaddings = new Set(paddingValues);
-
-                  expect(uniquePaddings.size).toBeGreaterThan(0);
-                }
+                expect(uniquePaddings.size).toBeGreaterThan(0);
               }
+            });
+
+            await test.step('Close panel', async () => {
+              const panelContainer = page.locator('.column-detail-panel');
 
               await panelContainer.getByTestId('close-button').click();
-            }
-          });
-        });
+
+              await expect(
+                page.locator('.column-detail-panel')
+              ).not.toBeVisible();
+            });
+          }
+        );
+
+        test(
+          'Array type columns with nested structures in NestedColumnsSection',
+          PANEL_FLOWS,
+          async ({ page }) => {
+            test.slow(true);
+
+            await page.getByTestId(entity.childrenTabId ?? '').click();
+
+            await test.step('Verify array column with nested children renders correctly', async () => {
+              const tableResponse = entity.entityResponseData as Table;
+              const columns = tableResponse?.columns || [];
+
+              const nestedParent = columns.find(
+                (col: Column) =>
+                  col.name === (entity as TableClass).columnsName[2]
+              );
+
+              if (!nestedParent) {
+                throw new Error(
+                  `Nested parent column not found: ${
+                    (entity as TableClass).columnsName[2]
+                  }`
+                );
+              }
+
+              const nestedParentFQN = nestedParent.fullyQualifiedName;
+
+              const arrayColumn = nestedParent.children?.find(
+                (col: Column) =>
+                  col.name === (entity as TableClass).columnsName[4]
+              );
+
+              if (!arrayColumn) {
+                throw new Error(
+                  `Array column not found: ${
+                    (entity as TableClass).columnsName[4]
+                  }`
+                );
+              }
+
+              const arrayColumnFQN = arrayColumn.fullyQualifiedName;
+
+              const parentRow = page.locator(
+                `[data-row-key="${nestedParentFQN}"]`
+              );
+
+              await parentRow.waitFor({ state: 'visible' });
+
+              const arrayColumnRow = page.locator(
+                `[data-row-key="${arrayColumnFQN}"]`
+              );
+
+              await arrayColumnRow.waitFor({ state: 'visible' });
+
+              const arrayColumnId = await arrayColumnRow.getAttribute(
+                'data-row-key'
+              );
+
+              const panelContainer = await openColumnDetailPanel({
+                page,
+                rowSelector: 'data-row-key',
+                columnId: arrayColumnId ?? '',
+                columnNameTestId: 'column-name',
+                entityType: entity.type as EntityType,
+              });
+
+              const nestedColumnLinks = panelContainer.locator(
+                '.nested-column-name'
+              );
+
+              if ((await nestedColumnLinks.count()) > 0) {
+                await expect(
+                  nestedColumnLinks.filter({ visible: true })
+                ).not.toHaveCount(0);
+
+                const linkCount = await nestedColumnLinks.count();
+
+                expect(linkCount).toBeGreaterThan(0);
+
+                await panelContainer.getByTestId('close-button').click();
+              }
+            });
+          }
+        );
+
+        test(
+          'Mixed sibling columns (simple + nested) at same level',
+          PANEL_FLOWS,
+          async ({ page }) => {
+            test.slow(true);
+
+            await page.getByTestId(entity.childrenTabId ?? '').click();
+
+            await test.step('Verify mixed siblings have consistent indentation', async () => {
+              // columnsName[2] has mixed children: columnsName[3] (STRUCT) and columnsName[4] (ARRAY with nested children)
+              const nestedParentFQN = `${
+                entity.entityResponseData?.['fullyQualifiedName']
+              }.${(entity as TableClass).columnsName[2]}`;
+
+              const nestedColumnRow = page.locator(
+                `[data-row-key="${nestedParentFQN}"]`
+              );
+
+              if (
+                await nestedColumnRow.getByTestId('expand-icon').isVisible()
+              ) {
+                await nestedColumnRow.getByTestId('expand-icon').click();
+                // Wait for expansion to complete
+                await waitForAllLoadersToDisappear(page);
+
+                // Open detail panel
+                const nestedColumnId = await nestedColumnRow.getAttribute(
+                  'data-row-key'
+                );
+                const panelContainer = await openColumnDetailPanel({
+                  page,
+                  rowSelector: 'data-row-key',
+                  columnId: nestedColumnId ?? nestedParentFQN,
+                  columnNameTestId: 'column-name',
+                  entityType: entity.type as EntityType,
+                });
+                const nestedColumnLinks = panelContainer.locator(
+                  '.nested-column-name'
+                );
+
+                if ((await nestedColumnLinks.count()) > 1) {
+                  // Get parent elements to check padding
+                  const linkParents = await nestedColumnLinks.all();
+                  const paddingValues = await Promise.all(
+                    linkParents.map(async (link) => {
+                      const parent = link.locator('..');
+
+                      return await parent.evaluate((el) => {
+                        return window.getComputedStyle(el).paddingLeft;
+                      });
+                    })
+                  );
+
+                  // Verify we have multiple padding values indicating nesting levels
+                  if (paddingValues.length >= 2) {
+                    expect(paddingValues.length).toBeGreaterThan(0);
+
+                    // Should have different padding values for different nesting levels
+                    const uniquePaddings = new Set(paddingValues);
+
+                    expect(uniquePaddings.size).toBeGreaterThan(0);
+                  }
+                }
+
+                await panelContainer.getByTestId('close-button').click();
+              }
+            });
+          }
+        );
       }
 
       // Entities whose child table exposes the Tags column header filter
@@ -1294,102 +1366,106 @@ pickEntityMatrix(
          * rows when a tag filter is applied (regression for the bug where every
          * row stayed visible).
          */
-        test('Filter columns by tag prunes non-matching rows', async ({
-          page,
-        }) => {
-          test.slow();
+        test(
+          'Filter columns by tag prunes non-matching rows',
+          entity.type === 'Table'
+            ? migratedTo.split(PANEL_TESTS, TABLE_COLUMN_TAG_FILTER_IT)
+            : PANEL_FLOWS,
+          async ({ page }) => {
+            test.slow();
 
-          const taggedKey = entity.childrenSelectorId ?? '';
-          const filterTag = 'PersonalData.Personal';
+            const taggedKey = entity.childrenSelectorId ?? '';
+            const filterTag = 'PersonalData.Personal';
 
-          await page.getByTestId(entity.childrenTabId ?? '').click();
-          await waitForAllLoadersToDisappear(page);
+            await page.getByTestId(entity.childrenTabId ?? '').click();
+            await waitForAllLoadersToDisappear(page);
 
-          const taggedRow = page.locator(`[${rowSelector}="${taggedKey}"]`);
-          // Match both engines without a positional pick: AntD rows live in
-          // a <table> nested inside .ant-table (excluded here, the wrapper
-          // matches instead); TableV2 renders one plain <table>.
-          const childTable = page
-            .locator('.ant-table, table:not(.ant-table table)')
-            .filter({ has: taggedRow });
-          const rows = childTable.locator(`[${rowSelector}]`);
+            const taggedRow = page.locator(`[${rowSelector}="${taggedKey}"]`);
+            // Match both engines without a positional pick: AntD rows live in
+            // a <table> nested inside .ant-table (excluded here, the wrapper
+            // matches instead); TableV2 renders one plain <table>.
+            const childTable = page
+              .locator('.ant-table, table:not(.ant-table table)')
+              .filter({ has: taggedRow });
+            const rows = childTable.locator(`[${rowSelector}]`);
 
-          await test.step('Tag a child row', async () => {
-            await taggedRow.scrollIntoViewIfNeeded();
-            await assignTagToChildren({
-              page,
-              tag: filterTag,
-              rowId: taggedKey,
-              rowSelector,
-              entityEndpoint: entity.endpoint,
+            await test.step('Tag a child row', async () => {
+              await taggedRow.scrollIntoViewIfNeeded();
+              await assignTagToChildren({
+                page,
+                tag: filterTag,
+                rowId: taggedKey,
+                rowSelector,
+                entityEndpoint: entity.endpoint,
+              });
             });
-          });
 
-          const rowKeys = await rows.evaluateAll((elements) =>
-            elements.map((element) => element.getAttribute('data-row-key'))
-          );
-          const nonMatchingKey = rowKeys.find(
-            (key) =>
-              key &&
-              key !== taggedKey &&
-              !key.startsWith(`${taggedKey}.`) &&
-              !taggedKey.startsWith(`${key}.`)
-          );
+            const rowKeys = await rows.evaluateAll((elements) =>
+              elements.map((element) => element.getAttribute('data-row-key'))
+            );
+            const nonMatchingKey = rowKeys.find(
+              (key) =>
+                key &&
+                key !== taggedKey &&
+                !key.startsWith(`${taggedKey}.`) &&
+                !taggedKey.startsWith(`${key}.`)
+            );
 
-          const toggleTagFilter = async () => {
-            // TableV2 folds the filter trigger's label into the header's
-            // accessible name ("Tags filter"), so an exact match only works
-            // for the AntD engine — anchor on the title prefix instead.
-            await page
-              .getByRole('columnheader', { name: /^Tags\b/ })
-              .getByTestId('filter-icon')
-              .click();
+            const toggleTagFilter = async () => {
+              // TableV2 folds the filter trigger's label into the header's
+              // accessible name ("Tags filter"), so an exact match only works
+              // for the AntD engine — anchor on the title prefix instead.
+              await page
+                .getByRole('columnheader', { name: /^Tags\b/ })
+                .getByTestId('filter-icon')
+                .click();
 
-            // TableV2 mounts ColumnFilter in `filter-dropdown`; its core
-            // checkboxes are labelled with the start-cased tag FQN.
-            const filterDropdown = page.getByTestId('filter-dropdown');
+              // TableV2 mounts ColumnFilter in `filter-dropdown`; its core
+              // checkboxes are labelled with the start-cased tag FQN.
+              const filterDropdown = page.getByTestId('filter-dropdown');
 
-            await expect(filterDropdown).toBeVisible();
+              await expect(filterDropdown).toBeVisible();
 
-            await filterDropdown
-              .getByText(startCase(filterTag), { exact: true })
-              .click();
+              await filterDropdown
+                .getByText(startCase(filterTag), { exact: true })
+                .click();
 
-            await expect(filterDropdown).toBeHidden();
-          };
+              await expect(filterDropdown).toBeHidden();
+            };
 
-          await test.step('Apply tag filter and verify pruning', async () => {
-            await toggleTagFilter();
+            await test.step('Apply tag filter and verify pruning', async () => {
+              await toggleTagFilter();
 
-            await expect(taggedRow).toBeVisible();
+              await expect(taggedRow).toBeVisible();
 
-            if (nonMatchingKey) {
-              await expect(
-                page.locator(`[${rowSelector}="${nonMatchingKey}"]`)
-              ).toBeHidden();
-            }
-          });
-
-          await test.step('Clear filter and verify rows return', async () => {
-            await toggleTagFilter();
-
-            if (nonMatchingKey) {
-              await expect(
-                page.locator(`[${rowSelector}="${nonMatchingKey}"]`)
-              ).toBeVisible();
-            }
-          });
-
-          await test.step('Cleanup tag', async () => {
-            await removeTagsFromChildren({
-              page,
-              tags: [filterTag],
-              rowId: taggedKey,
-              rowSelector,
-              entityEndpoint: entity.endpoint,
+              if (nonMatchingKey) {
+                await expect(
+                  page.locator(`[${rowSelector}="${nonMatchingKey}"]`)
+                ).toBeHidden();
+              }
             });
-          });
-        });
+
+            await test.step('Clear filter and verify rows return', async () => {
+              await toggleTagFilter();
+
+              if (nonMatchingKey) {
+                await expect(
+                  page.locator(`[${rowSelector}="${nonMatchingKey}"]`)
+                ).toBeVisible();
+              }
+            });
+
+            await test.step('Cleanup tag', async () => {
+              await removeTagsFromChildren({
+                page,
+                tags: [filterTag],
+                rowId: taggedKey,
+                rowSelector,
+                entityEndpoint: entity.endpoint,
+              });
+            });
+          }
+        );
       }
     }
 
@@ -1399,295 +1475,239 @@ pickEntityMatrix(
      */
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
-      test('Glossary Term Add, Update and Remove for child entities', async ({
-        page,
-      }) => {
-        test.slow(true);
-        await page.getByTestId(entity.childrenTabId ?? '').click();
+      test(
+        'Glossary Term Add, Update and Remove for child entities',
+        STEWARD_AND_PANEL_FLOWS,
+        async ({ page }) => {
+          test.slow(true);
+          await page.getByTestId(entity.childrenTabId ?? '').click();
 
-        await entity.glossaryTermChildren({
-          page: page,
-          glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
-          glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
-          rowId: entity.childrenSelectorId ?? '',
-          rowSelector,
-          entityEndpoint: entity.endpoint,
-        });
-
-        await test.step('Add and remove glossary terms via column detail panel', async () => {
-          const columnNameTestId =
-            entity.type === 'Pipeline' ? 'task-name' : 'column-name';
-
-          const panelContainer = await openColumnDetailPanel({
-            page,
+          await entity.glossaryTermChildren({
+            page: page,
+            glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
+            glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
+            rowId: entity.childrenSelectorId ?? '',
             rowSelector,
-            columnId: entity.childrenSelectorId ?? '',
-            columnNameTestId,
-            entityType: entity.type as EntityType,
-            entityEndpoint:
-              entity.type === 'Table' ? entity.endpoint : undefined,
+            entityEndpoint: entity.endpoint,
           });
 
-          await waitForAllLoadersToDisappear(page);
-          // Add glossary term via panel
-          await openGlossaryPicker(
-            page,
-            panelContainer.getByTestId('edit-glossary-terms')
-          );
+          await test.step('Add and remove glossary terms via column detail panel', async () => {
+            const columnNameTestId =
+              entity.type === 'Pipeline' ? 'task-name' : 'column-name';
 
-          await toggleGlossaryTermInPicker(page, {
-            name: EntityDataClass.glossaryTerm1.responseData.name,
-            displayName: EntityDataClass.glossaryTerm1.responseData.displayName,
-            fullyQualifiedName:
-              EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName,
+            const panelContainer = await openColumnDetailPanel({
+              page,
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
+              entityType: entity.type as EntityType,
+              entityEndpoint:
+                entity.type === 'Table' ? entity.endpoint : undefined,
+            });
+
+            await waitForAllLoadersToDisappear(page);
+            // Add glossary term via panel
+            await openGlossaryPicker(
+              page,
+              panelContainer.getByTestId('edit-glossary-terms')
+            );
+
+            await toggleGlossaryTermInPicker(page, {
+              name: EntityDataClass.glossaryTerm1.responseData.name,
+              displayName:
+                EntityDataClass.glossaryTerm1.responseData.displayName,
+              fullyQualifiedName:
+                EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName,
+            });
+
+            await applyGlossaryPicker(page, (response) =>
+              Boolean(
+                response.url().includes('/api/v1/columns/name/') ||
+                  response.url().includes(`/api/v1/${entity.endpoint}/`)
+              )
+            );
+
+            // CRITICAL: Wait for UI to update after API response
+            await waitForAllLoadersToDisappear(page);
+
+            await expect(
+              panelContainer.getByTestId(
+                `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
+              )
+            ).toBeVisible();
+
+            await closeColumnDetailPanel(page);
           });
-
-          await applyGlossaryPicker(page, (response) =>
-            Boolean(
-              response.url().includes('/api/v1/columns/name/') ||
-                response.url().includes(`/api/v1/${entity.endpoint}/`)
-            )
-          );
-
-          // CRITICAL: Wait for UI to update after API response
-          await waitForAllLoadersToDisappear(page);
-
-          await expect(
-            panelContainer.getByTestId(
-              `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
-            )
-          ).toBeVisible();
-
-          await closeColumnDetailPanel(page);
-        });
-      });
+        }
+      );
 
       /**
        * Tests display name management for child entities
        * @description Tests adding, updating, and removing display names on child entities
        */
       if (['Table', 'DashboardDataModel'].includes(entity.type)) {
-        test('DisplayName Add, Update and Remove for child entities', async ({
-          page,
-        }) => {
-          await page.getByTestId(entity.childrenTabId ?? '').click();
+        test(
+          'DisplayName Add, Update and Remove for child entities',
+          STEWARD_FLOWS,
+          async ({ page }) => {
+            await page.getByTestId(entity.childrenTabId ?? '').click();
 
-          await entity.displayNameChildren({
-            page: page,
-            columnName: entity.childrenSelectorId ?? '',
-            rowSelector,
-          });
-        });
+            await entity.displayNameChildren({
+              page: page,
+              columnName: entity.childrenSelectorId ?? '',
+              rowSelector,
+            });
+          }
+        );
       }
 
       /**
        * Tests description management for child entities
        * @description Tests adding, updating, and removing descriptions on child entities within a parent entity
        */
-      test('Description Add, Update and Remove for child entities', async ({
-        page,
-      }) => {
-        await page.getByTestId(entity.childrenTabId ?? '').click();
+      test(
+        'Description Add, Update and Remove for child entities',
+        STEWARD_AND_PANEL_FLOWS,
+        async ({ page }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
 
-        await entity.descriptionUpdateChildren(
-          page,
-          entity.childrenSelectorId ?? '',
-          rowSelector,
-          entity.endpoint
-        );
-
-        await test.step('Update description via column detail panel and test panel features', async () => {
-          // Open column detail panel
-          const columnNameTestId =
-            entity.type === 'Pipeline' ? 'task-name' : 'column-name';
-          const panelContainer = await openColumnDetailPanel({
+          await entity.descriptionUpdateChildren(
             page,
+            entity.childrenSelectorId ?? '',
             rowSelector,
-            columnId: entity.childrenSelectorId ?? '',
-            columnNameTestId,
-            entityType: entity.type as EntityType,
-          });
-
-          // Verify panel displays correct column information
-          await expect(page.getByTestId('entity-link')).toBeVisible();
-
-          if (entity.type !== 'Pipeline') {
-            // Verify data type chip exists (may not be visible if data type is not available)
-            const dataTypeChip = page.locator('.data-type-chip');
-
-            // Data type chip should be attached to DOM (may be empty for some entity types)
-            await expect(dataTypeChip.first()).toBeAttached();
-          }
-
-          // Verify Overview tab is active by default
-          await expect(page.getByTestId('overview-tab')).toHaveAttribute(
-            'aria-selected',
-            'true'
+            entity.endpoint
           );
 
-          // Update description via panel
-          const newDescription = `Updated description for column - ${uuid()}`;
-          const editDescriptionButton =
-            panelContainer.getByTestId('edit-description');
+          await test.step('Update description via column detail panel and test panel features', async () => {
+            // Open column detail panel
+            const columnNameTestId =
+              entity.type === 'Pipeline' ? 'task-name' : 'column-name';
+            const panelContainer = await openColumnDetailPanel({
+              page,
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
+              entityType: entity.type as EntityType,
+            });
 
-          if (await editDescriptionButton.isVisible()) {
-            await editDescriptionButton.click();
+            // Verify panel displays correct column information
+            await expect(page.getByTestId('entity-link')).toBeVisible();
 
-            // Wait for description box to be visible and ready
-            const descBox = await resolveDescriptionBox(page);
-            await descBox.clear();
-            await descBox.fill(newDescription);
+            if (entity.type !== 'Pipeline') {
+              // Verify data type chip exists (may not be visible if data type is not available)
+              const dataTypeChip = page.locator('.data-type-chip');
 
-            // Wait for API response on save
-            const saveResponse = page.waitForResponse(
-              (response) =>
-                response.url().includes('/api/v1/columns/name/') ||
-                response.url().includes(`/api/v1/${entity.endpoint}/`)
-            );
-            const saveButton = page.getByTestId('save');
-            await expect(saveButton).toBeVisible();
-            await expect(saveButton).toBeEnabled();
-            await saveButton.click();
-            await saveResponse;
-            await toastNotification(page, /Description updated successfully/i);
+              // Data type chip should be attached to DOM (may be empty for some entity types)
+              await expect(dataTypeChip.first()).toBeAttached();
+            }
 
-            await waitForAllLoadersToDisappear(page);
-
-            await expect(
-              panelContainer
-                .locator('[data-testid="viewer-container"]')
-                .getByText(newDescription)
-            ).toBeVisible();
-          }
-
-          if (entity.type === 'Table') {
-            await page.getByTestId('data-quality-tab').click();
-
-            await expect(page.getByTestId('data-quality-tab')).toHaveAttribute(
+            // Verify Overview tab is active by default
+            await expect(page.getByTestId('overview-tab')).toHaveAttribute(
               'aria-selected',
               'true'
             );
-          }
 
-          await page.getByTestId('overview-tab').click();
+            // Update description via panel
+            const newDescription = `Updated description for column - ${uuid()}`;
+            const editDescriptionButton =
+              panelContainer.getByTestId('edit-description');
 
-          await expect(page.getByTestId('overview-tab')).toHaveAttribute(
-            'aria-selected',
-            'true'
-          );
+            if (await editDescriptionButton.isVisible()) {
+              await editDescriptionButton.click();
 
-          // Test column navigation with arrow buttons and verify nested column counting
-          const paginationText = page.locator('.pagination-header-text');
-          await expect(paginationText).toBeVisible();
-          const initialText = await paginationText.textContent();
+              // Wait for description box to be visible and ready
+              const descBox = await resolveDescriptionBox(page);
+              await descBox.clear();
+              await descBox.fill(newDescription);
 
-          // Verify pagination text format: "X of Y columns" (includes nested columns)
-          expect(initialText).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
-
-          const nextButton = page
-            .locator('.navigation-container')
-            .locator('button')
-            .nth(1);
-
-          if (await nextButton.isEnabled()) {
-            // Wait for navigation API response
-
-            await nextButton.click();
-
-            // Wait for loader to disappear after navigation
-            await waitForAllLoadersToDisappear(page);
-
-            // Verify entity link is visible after navigation
-            await expect(page.getByTestId('entity-link')).toBeVisible();
-
-            const updatedText = await paginationText.textContent();
-
-            // eslint-disable-next-line playwright/prefer-web-first-assertions
-            expect(updatedText).not.toBe(initialText);
-            // Verify pagination still shows correct format after navigation
-            expect(updatedText).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
-
-            // Navigate back to previous column
-            const prevButton = page
-              .locator('.navigation-container')
-              .locator('button')
-              .nth(0);
-
-            await expect(prevButton).toBeEnabled();
-
-            await prevButton.click();
-
-            // Wait for loader to disappear after navigation
-            await waitForAllLoadersToDisappear(page);
-
-            await expect(page.getByTestId('entity-link')).toBeVisible();
-
-            // Verify we're back to the original column
-            await expect(paginationText).toHaveText(initialText ?? '');
-          }
-
-          // Close panel
-          await panelContainer.getByTestId('close-button').click();
-
-          await expect(page.locator('.column-detail-panel')).not.toBeVisible();
-        });
-      });
-
-      if (entity.type === 'Table') {
-        test('Column detail panel key profile metrics validation', async ({
-          page,
-        }) => {
-          test.slow(true);
-
-          await page.getByTestId(entity.childrenTabId ?? '').click();
-
-          await test.step('Verify key profile metrics are displayed in column detail panel', async () => {
-            // Open column detail panel and wait for profile API call
-            const columnNameTestId = 'column-name';
-            const columnName = page
-              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId(columnNameTestId)
-              .first();
-            await columnName.scrollIntoViewIfNeeded();
-
-            const profileResponse = page.waitForResponse(
-              (response) =>
-                response.url().includes('/api/v1/columns/name/') &&
-                response.url().includes('profile') &&
-                response.request().method() === 'GET'
-            );
-            await columnName.click();
-            await profileResponse;
-
-            await expect(page.locator('.column-detail-panel')).toBeVisible();
-
-            const panelContainer = page.locator('.column-detail-panel');
-
-            // Verify Key Profile Metrics section is visible
-            await expect(
-              panelContainer.getByText('Key Profile Metrics')
-            ).toBeVisible();
-
-            // Verify all four metric chips are present and visible using data-testid
-            const expectedMetrics = KEY_PROFILE_METRICS;
-
-            for (const metric of expectedMetrics) {
-              const metricChip = panelContainer.getByTestId(
-                `key-profile-metric-${metric}`
+              // Wait for API response on save
+              const saveResponse = page.waitForResponse(
+                (response) =>
+                  response.url().includes('/api/v1/columns/name/') ||
+                  response.url().includes(`/api/v1/${entity.endpoint}/`)
+              );
+              const saveButton = page.getByTestId('save');
+              await expect(saveButton).toBeVisible();
+              await expect(saveButton).toBeEnabled();
+              await saveButton.click();
+              await saveResponse;
+              await toastNotification(
+                page,
+                /Description updated successfully/i
               );
 
-              await expect(metricChip).toBeVisible();
+              await waitForAllLoadersToDisappear(page);
 
-              // Verify the metric label is visible
-              await expect(panelContainer.getByText(metric)).toBeVisible();
+              await expect(
+                panelContainer
+                  .locator('[data-testid="viewer-container"]')
+                  .getByText(newDescription)
+              ).toBeVisible();
+            }
 
-              // Verify that the chip has content (metric value)
-              const chipContent = await metricChip.textContent();
+            if (entity.type === 'Table') {
+              await page.getByTestId('data-quality-tab').click();
+
+              await expect(
+                page.getByTestId('data-quality-tab')
+              ).toHaveAttribute('aria-selected', 'true');
+            }
+
+            await page.getByTestId('overview-tab').click();
+
+            await expect(page.getByTestId('overview-tab')).toHaveAttribute(
+              'aria-selected',
+              'true'
+            );
+
+            // Test column navigation with arrow buttons and verify nested column counting
+            const paginationText = page.locator('.pagination-header-text');
+            await expect(paginationText).toBeVisible();
+            const initialText = await paginationText.textContent();
+
+            // Verify pagination text format: "X of Y columns" (includes nested columns)
+            expect(initialText).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
+
+            const nextButton = page
+              .locator('.navigation-container')
+              .locator('button')
+              .nth(1);
+
+            if (await nextButton.isEnabled()) {
+              // Wait for navigation API response
+
+              await nextButton.click();
+
+              // Wait for loader to disappear after navigation
+              await waitForAllLoadersToDisappear(page);
+
+              // Verify entity link is visible after navigation
+              await expect(page.getByTestId('entity-link')).toBeVisible();
+
+              const updatedText = await paginationText.textContent();
 
               // eslint-disable-next-line playwright/prefer-web-first-assertions
-              expect(chipContent).toBeTruthy();
-              // Value should match one of these patterns: percentage (e.g., "75%"), number (e.g., "1,000"), or placeholder ("--")
-              expect(chipContent).toMatch(/(\d+%|\d{1,3}(,\d{3})*|--)/);
+              expect(updatedText).not.toBe(initialText);
+              // Verify pagination still shows correct format after navigation
+              expect(updatedText).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
+
+              // Navigate back to previous column
+              const prevButton = page
+                .locator('.navigation-container')
+                .locator('button')
+                .nth(0);
+
+              await expect(prevButton).toBeEnabled();
+
+              await prevButton.click();
+
+              // Wait for loader to disappear after navigation
+              await waitForAllLoadersToDisappear(page);
+
+              await expect(page.getByTestId('entity-link')).toBeVisible();
+
+              // Verify we're back to the original column
+              await expect(paginationText).toHaveText(initialText ?? '');
             }
 
             // Close panel
@@ -1697,52 +1717,127 @@ pickEntityMatrix(
               page.locator('.column-detail-panel')
             ).not.toBeVisible();
           });
-        });
-      }
+        }
+      );
 
-      if (entity.type === 'DashboardDataModel') {
-        test('Column detail panel does not call /columns/name GET for DashboardDataModel', async ({
-          page,
-        }) => {
-          test.slow();
+      if (entity.type === 'Table') {
+        test(
+          'Column detail panel key profile metrics validation',
+          PANEL_FLOWS,
+          async ({ page }) => {
+            test.slow(true);
 
-          await page.getByTestId(entity.childrenTabId ?? '').click();
-          await waitForAllLoadersToDisappear(page);
+            await page.getByTestId(entity.childrenTabId ?? '').click();
 
-          const columnGetCalls: string[] = [];
-          const listener = (req: Request) => {
-            if (
-              req.url().includes('/api/v1/columns/name/') &&
-              req.method() === 'GET'
-            ) {
-              columnGetCalls.push(req.url());
-            }
-          };
+            await test.step('Verify key profile metrics are displayed in column detail panel', async () => {
+              // Open column detail panel and wait for profile API call
+              const columnNameTestId = 'column-name';
+              const columnName = page
+                .locator(
+                  `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
+                )
+                .getByTestId(columnNameTestId)
+                .first();
+              await columnName.scrollIntoViewIfNeeded();
 
-          await test.step('Open column detail panel and verify no /columns/name GET fires', async () => {
-            page.on('request', listener);
-
-            try {
-              await openColumnDetailPanel({
-                page,
-                rowSelector,
-                columnId: entity.childrenSelectorId ?? '',
-                columnNameTestId: 'column-name',
-                entityType: entity.type as EntityType,
-              });
-
-              await waitForAllLoadersToDisappear(page);
+              const profileResponse = page.waitForResponse(
+                (response) =>
+                  response.url().includes('/api/v1/columns/name/') &&
+                  response.url().includes('profile') &&
+                  response.request().method() === 'GET'
+              );
+              await columnName.click();
+              await profileResponse;
 
               await expect(page.locator('.column-detail-panel')).toBeVisible();
 
-              expect(columnGetCalls).toHaveLength(0);
+              const panelContainer = page.locator('.column-detail-panel');
 
-              await closeColumnDetailPanel(page);
-            } finally {
-              page.off('request', listener);
-            }
-          });
-        });
+              // Verify Key Profile Metrics section is visible
+              await expect(
+                panelContainer.getByText('Key Profile Metrics')
+              ).toBeVisible();
+
+              // Verify all four metric chips are present and visible using data-testid
+              const expectedMetrics = KEY_PROFILE_METRICS;
+
+              for (const metric of expectedMetrics) {
+                const metricChip = panelContainer.getByTestId(
+                  `key-profile-metric-${metric}`
+                );
+
+                await expect(metricChip).toBeVisible();
+
+                // Verify the metric label is visible
+                await expect(panelContainer.getByText(metric)).toBeVisible();
+
+                // Verify that the chip has content (metric value)
+                const chipContent = await metricChip.textContent();
+
+                // eslint-disable-next-line playwright/prefer-web-first-assertions
+                expect(chipContent).toBeTruthy();
+                // Value should match one of these patterns: percentage (e.g., "75%"), number (e.g., "1,000"), or placeholder ("--")
+                expect(chipContent).toMatch(/(\d+%|\d{1,3}(,\d{3})*|--)/);
+              }
+
+              // Close panel
+              await panelContainer.getByTestId('close-button').click();
+
+              await expect(
+                page.locator('.column-detail-panel')
+              ).not.toBeVisible();
+            });
+          }
+        );
+      }
+
+      if (entity.type === 'DashboardDataModel') {
+        test(
+          'Column detail panel does not call /columns/name GET for DashboardDataModel',
+          PANEL_FLOWS,
+          async ({ page }) => {
+            test.slow();
+
+            await page.getByTestId(entity.childrenTabId ?? '').click();
+            await waitForAllLoadersToDisappear(page);
+
+            const columnGetCalls: string[] = [];
+            const listener = (req: Request) => {
+              if (
+                req.url().includes('/api/v1/columns/name/') &&
+                req.method() === 'GET'
+              ) {
+                columnGetCalls.push(req.url());
+              }
+            };
+
+            await test.step('Open column detail panel and verify no /columns/name GET fires', async () => {
+              page.on('request', listener);
+
+              try {
+                await openColumnDetailPanel({
+                  page,
+                  rowSelector,
+                  columnId: entity.childrenSelectorId ?? '',
+                  columnNameTestId: 'column-name',
+                  entityType: entity.type as EntityType,
+                });
+
+                await waitForAllLoadersToDisappear(page);
+
+                await expect(
+                  page.locator('.column-detail-panel')
+                ).toBeVisible();
+
+                expect(columnGetCalls).toHaveLength(0);
+
+                await closeColumnDetailPanel(page);
+              } finally {
+                page.off('request', listener);
+              }
+            });
+          }
+        );
       }
 
       if (entity.type === 'Table') {
@@ -2021,27 +2116,35 @@ pickEntityMatrix(
      * Tests announcement lifecycle management
      * @description Tests creating an announcement on an entity, editing it, and deleting it
      */
-    test(`Announcement create, edit & delete`, async ({ page }) => {
-      test.slow();
+    test(
+      `Announcement create, edit & delete`,
+      ADMIN_FLOWS,
+      async ({ page }) => {
+        test.slow();
 
-      await entity.announcement(page);
-    });
+        await entity.announcement(page);
+      }
+    );
 
     /**
      * Tests inactive announcement management
      * @description Tests creating an inactive announcement and then deleting it
      */
-    test(`Inactive Announcement create & delete`, async ({ page }) => {
-      // used slow as test contain page reload which might lead to timeout
-      test.slow(true);
-      await entity.inactiveAnnouncement(page);
-    });
+    test(
+      `Inactive Announcement create & delete`,
+      ADMIN_FLOWS,
+      async ({ page }) => {
+        // used slow as test contain page reload which might lead to timeout
+        test.slow(true);
+        await entity.inactiveAnnouncement(page);
+      }
+    );
 
     /**
      * Tests entity voting functionality
      * @description Tests upvoting an entity and downvoting it, verifying vote state changes
      */
-    test(`UpVote & DownVote entity`, async ({ page }) => {
+    test(`UpVote & DownVote entity`, STEWARD_FLOWS, async ({ page }) => {
       await entity.upVote(page);
       await entity.downVote(page);
     });
@@ -2062,7 +2165,7 @@ pickEntityMatrix(
      * Tests copying the entity URL from the header
      * @description Tests that the header copy button copies the current entity page URL to the clipboard
      */
-    test(`Copy entity URL from header`, async ({ page }) => {
+    test(`Copy entity URL from header`, ADMIN_FLOWS, async ({ page }) => {
       const pageUrl = page.url();
       const copyButton = page.getByTestId('entity-header-copy-button');
       const clipboardText = await copyAndGetClipboardText(page, copyButton);
@@ -2074,7 +2177,7 @@ pickEntityMatrix(
      * Tests entity display name update
      * @description Tests renaming an entity by updating its display name
      */
-    test(`Update displayName`, async ({ page }) => {
+    test(`Update displayName`, STEWARD_FLOWS, async ({ page }) => {
       await entity.renameEntity(page, entity.entity.name);
     });
 
@@ -2121,17 +2224,19 @@ pickEntityMatrix(
         await afterAction();
       });
 
-      test('User should be denied access to edit description when deny policy rule is applied on an entity', async ({
-        dataConsumerPage,
-      }) => {
-        test.slow(true);
+      test(
+        'User should be denied access to edit description when deny policy rule is applied on an entity',
+        ADMIN_FLOWS,
+        async ({ dataConsumerPage }) => {
+          test.slow(true);
 
-        await entity.visitEntityPage(dataConsumerPage);
+          await entity.visitEntityPage(dataConsumerPage);
 
-        await expect(
-          dataConsumerPage.locator('[data-testid="edit-description"]')
-        ).not.toBeVisible();
-      });
+          await expect(
+            dataConsumerPage.locator('[data-testid="edit-description"]')
+          ).not.toBeVisible();
+        }
+      );
     });
 
     /**
@@ -2141,76 +2246,78 @@ pickEntityMatrix(
      */
     // Add the data consumer test only for Table entity
     if (entityName === 'Table') {
-      test('Switch from Data Observability tab to Activity Feed tab and verify data appears', async ({
-        page,
-      }) => {
-        test.slow();
+      test(
+        'Switch from Data Observability tab to Activity Feed tab and verify data appears',
+        TABLE_TAB_FLOWS,
+        async ({ page }) => {
+          test.slow();
 
-        // Create a test case to ensure there's data in the profiler tab
-        const { apiContext, afterAction } = await getApiContext(page);
-        await tableEntity.createTestCase(apiContext);
-        await afterAction();
+          // Create a test case to ensure there's data in the profiler tab
+          const { apiContext, afterAction } = await getApiContext(page);
+          await tableEntity.createTestCase(apiContext);
+          await afterAction();
 
-        // Navigate to the table entity page
-        await entity.visitEntityPage(page);
-        await waitForAllLoadersToDisappear(page);
-
-        // Step 1: Navigate to Data Observability tab and verify profiler tab is selected by default
-        await test.step('Navigate to Data Observability tab', async () => {
-          const profilerTab = page.getByTestId('profiler');
-
-          await expect(profilerTab).toBeVisible();
-
-          // Wait for profiler API call (profiler tab is selected by default, no need to click)
-          const profilerResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/tables/') &&
-              response.url().includes('/tableProfile')
-          );
-
-          await profilerTab.click();
-          await profilerResponse;
-
+          // Navigate to the table entity page
+          await entity.visitEntityPage(page);
           await waitForAllLoadersToDisappear(page);
-        });
 
-        // Step 2: Verify tabs UI component is rendered in Data Observability tab
-        await test.step('Verify tabs UI component is rendered in Data Observability tab', async () => {
-          // Verify that the profiler sub-tabs are visible
-          // (Table Profile, Column Profile, Data Quality, or Incidents)
-          await expect(page.getByTestId('table-profile')).toBeVisible();
-          await expect(page.getByTestId('column-profile')).toBeVisible();
-          await expect(page.getByTestId('data-quality')).toBeVisible();
-        });
+          // Step 1: Navigate to Data Observability tab and verify profiler tab is selected by default
+          await test.step('Navigate to Data Observability tab', async () => {
+            const profilerTab = page.getByTestId('profiler');
 
-        // Step 3: Switch to Activity Feed tab (all tab is selected by default)
-        await test.step('Switch to Activity Feed tab', async () => {
-          const activityFeedTab = page.getByTestId('activity_feed');
+            await expect(profilerTab).toBeVisible();
 
-          await expect(activityFeedTab).toBeVisible();
+            // Wait for profiler API call (profiler tab is selected by default, no need to click)
+            const profilerResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/tables/') &&
+                response.url().includes('/tableProfile')
+            );
 
-          // Wait for activity feed API call (all tab is selected by default)
-          const activityFeedResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/activity/') &&
-              response.url().includes('/name/')
-          );
+            await profilerTab.click();
+            await profilerResponse;
 
-          await activityFeedTab.click();
-          await activityFeedResponse;
+            await waitForAllLoadersToDisappear(page);
+          });
 
-          await waitForAllLoadersToDisappear(page);
-        });
+          // Step 2: Verify tabs UI component is rendered in Data Observability tab
+          await test.step('Verify tabs UI component is rendered in Data Observability tab', async () => {
+            // Verify that the profiler sub-tabs are visible
+            // (Table Profile, Column Profile, Data Quality, or Incidents)
+            await expect(page.getByTestId('table-profile')).toBeVisible();
+            await expect(page.getByTestId('column-profile')).toBeVisible();
+            await expect(page.getByTestId('data-quality')).toBeVisible();
+          });
 
-        // Step 4: Verify tabs or left component is rendered in Activity Feed tab
-        await test.step('Verify tabs or left component is rendered in Activity Feed tab', async () => {
-          // Verify that activity feed tabs are visible (All, Mentions, Tasks)
-          // Check for the left panel menu or the tab navigation
-          await expect(
-            page.locator('[data-testid="global-setting-left-panel"]')
-          ).toBeVisible();
-        });
-      });
+          // Step 3: Switch to Activity Feed tab (all tab is selected by default)
+          await test.step('Switch to Activity Feed tab', async () => {
+            const activityFeedTab = page.getByTestId('activity_feed');
+
+            await expect(activityFeedTab).toBeVisible();
+
+            // Wait for activity feed API call (all tab is selected by default)
+            const activityFeedResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/activity/') &&
+                response.url().includes('/name/')
+            );
+
+            await activityFeedTab.click();
+            await activityFeedResponse;
+
+            await waitForAllLoadersToDisappear(page);
+          });
+
+          // Step 4: Verify tabs or left component is rendered in Activity Feed tab
+          await test.step('Verify tabs or left component is rendered in Activity Feed tab', async () => {
+            // Verify that activity feed tabs are visible (All, Mentions, Tasks)
+            // Check for the left panel menu or the tab navigation
+            await expect(
+              page.locator('[data-testid="global-setting-left-panel"]')
+            ).toBeVisible();
+          });
+        }
+      );
 
       /**
        * Tests access control for table-level data access with deny policy
@@ -2256,35 +2363,39 @@ pickEntityMatrix(
           await afterAction();
         });
 
-        test('Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level', async ({
-          dataConsumerPage,
-        }) => {
-          test.slow(true);
+        test(
+          'Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level',
+          TABLE_TAB_FLOWS,
+          async ({ dataConsumerPage }) => {
+            test.slow(true);
 
-          await tableEntity.visitEntityPage(dataConsumerPage);
+            await tableEntity.visitEntityPage(dataConsumerPage);
 
-          await dataConsumerPage
-            .locator('[data-testid="table_queries"]')
-            .click();
+            await dataConsumerPage
+              .locator('[data-testid="table_queries"]')
+              .click();
 
-          await expect(
-            dataConsumerPage
-              .locator('[data-testid="permission-error-placeholder"]')
-              .getByText(
-                "You don't have necessary permissions. Please check with the admin to get the View Queries permission."
-              )
-          ).toBeVisible();
+            await expect(
+              dataConsumerPage
+                .locator('[data-testid="permission-error-placeholder"]')
+                .getByText(
+                  "You don't have necessary permissions. Please check with the admin to get the View Queries permission."
+                )
+            ).toBeVisible();
 
-          await dataConsumerPage.locator('[data-testid="sample_data"]').click();
+            await dataConsumerPage
+              .locator('[data-testid="sample_data"]')
+              .click();
 
-          await expect(
-            dataConsumerPage
-              .locator('[data-testid="permission-error-placeholder"]')
-              .getByText(
-                "You don't have necessary permissions. Please check with the admin to get the View Sample Data permission."
-              )
-          ).toBeVisible();
-        });
+            await expect(
+              dataConsumerPage
+                .locator('[data-testid="permission-error-placeholder"]')
+                .getByText(
+                  "You don't have necessary permissions. Please check with the admin to get the View Sample Data permission."
+                )
+            ).toBeVisible();
+          }
+        );
       });
 
       /**
@@ -2331,34 +2442,36 @@ pickEntityMatrix(
           await afterAction();
         });
 
-        test('Data Consumer should be denied edit access in column detail panel when deny policy rule is applied', async ({
-          dataConsumerPage,
-        }) => {
-          test.slow(true);
+        test(
+          'Data Consumer should be denied edit access in column detail panel when deny policy rule is applied',
+          PANEL_FLOWS,
+          async ({ dataConsumerPage }) => {
+            test.slow(true);
 
-          await tableEntity.visitEntityPage(dataConsumerPage);
+            await tableEntity.visitEntityPage(dataConsumerPage);
 
-          const columnNameTestId = 'column-name';
-          const panelContainer = await openColumnDetailPanel({
-            page: dataConsumerPage,
-            rowSelector: 'data-row-key',
-            columnId: tableEntity.childrenSelectorId ?? '',
-            columnNameTestId,
-            entityType: 'table',
-          });
+            const columnNameTestId = 'column-name';
+            const panelContainer = await openColumnDetailPanel({
+              page: dataConsumerPage,
+              rowSelector: 'data-row-key',
+              columnId: tableEntity.childrenSelectorId ?? '',
+              columnNameTestId,
+              entityType: 'table',
+            });
 
-          await expect(
-            panelContainer.getByTestId('edit-icon-tags')
-          ).not.toBeVisible();
-          await expect(
-            panelContainer.getByTestId('edit-glossary-terms')
-          ).not.toBeVisible();
-          await expect(
-            panelContainer.getByTestId('edit-description')
-          ).not.toBeVisible();
+            await expect(
+              panelContainer.getByTestId('edit-icon-tags')
+            ).not.toBeVisible();
+            await expect(
+              panelContainer.getByTestId('edit-glossary-terms')
+            ).not.toBeVisible();
+            await expect(
+              panelContainer.getByTestId('edit-description')
+            ).not.toBeVisible();
 
-          await panelContainer.getByTestId('close-button').click();
-        });
+            await panelContainer.getByTestId('close-button').click();
+          }
+        );
       });
     }
   });
@@ -2368,34 +2481,38 @@ pickEntityMatrix(
    * @description Tests soft deleting an entity and then hard deleting it to completely remove it from the system
 
    */
-  test(`Delete ${key}`, async ({ page }) => {
-    // increase timeout as it using single test for multiple steps
-    test.slow(true);
+  test(
+    `Delete ${key}`,
+    DELETE_ITS[key] ? migratedTo.split(ADMIN_TESTS, DELETE_ITS[key]) : {},
+    async ({ page }) => {
+      // increase timeout as it using single test for multiple steps
+      test.slow(true);
 
-    await redirectToHomePage(page);
-    // get the token
-    const token = await getToken(page);
+      await redirectToHomePage(page);
+      // get the token
+      const token = await getToken(page);
 
-    // create a new context with the token
-    const apiContext = await getAuthContext(token);
-    await deleteEntity.create(apiContext);
-    await redirectToHomePage(page);
-    await deleteEntity.visitEntityPage(page);
+      // create a new context with the token
+      const apiContext = await getAuthContext(token);
+      await deleteEntity.create(apiContext);
+      await redirectToHomePage(page);
+      await deleteEntity.visitEntityPage(page);
 
-    await test.step('Soft delete', async () => {
-      await deleteEntity.softDeleteEntity(
-        page,
-        deleteEntity.entity.name,
-        deleteEntity.entityResponseData?.['displayName']
-      );
-    });
+      await test.step('Soft delete', async () => {
+        await deleteEntity.softDeleteEntity(
+          page,
+          deleteEntity.entity.name,
+          deleteEntity.entityResponseData?.['displayName']
+        );
+      });
 
-    await test.step('Hard delete', async () => {
-      await deleteEntity.hardDeleteEntity(
-        page,
-        deleteEntity.entity.name,
-        deleteEntity.entityResponseData?.['displayName']
-      );
-    });
-  });
+      await test.step('Hard delete', async () => {
+        await deleteEntity.hardDeleteEntity(
+          page,
+          deleteEntity.entity.name,
+          deleteEntity.entityResponseData?.['displayName']
+        );
+      });
+    }
+  );
 });
