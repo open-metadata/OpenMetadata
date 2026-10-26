@@ -28,6 +28,7 @@ import org.openmetadata.it.tests.mcp.McpTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.GenerateTokenRequest;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -91,7 +92,8 @@ public final class CredentialFixtures {
             .executeForString(
                 HttpMethod.PUT,
                 "/v1/users/generateToken/" + bot.getId(),
-                "{\"JWTTokenExpiry\":\"Seven\"}");
+                JsonUtils.pojoToJson(
+                    new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven)));
     return JsonUtils.readValue(response, JWTAuthMechanism.class).getJWTToken();
   }
 
