@@ -372,8 +372,10 @@ plugins: dict[str, set[str]] = {
     },
     "iomete": {
         "iomete-sqlalchemy>=1.0.22",
-        "adbc-driver-flightsql>=1.13.0",
-        "adbc-driver-manager>=1.13.0",
+        "adbc-driver-flightsql==1.12.0; python_version < '3.11'",
+        "adbc-driver-flightsql>=1.13.0; python_version >= '3.11'",
+        "adbc-driver-manager==1.12.0; python_version < '3.11'",
+        "adbc-driver-manager>=1.13.0; python_version >= '3.11'",
     },
     "impala": {
         "presto-types-parser>=0.0.2",
