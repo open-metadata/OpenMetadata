@@ -166,16 +166,16 @@ public interface FeedDAOs {
         @Bind("oldFqnHash") String oldFqnHash, @Bind("newFqnHash") String newFqnHash);
 
     /**
-     * Swap the {@code oldFqnHash} prefix for {@code newFqnHash} on the tasks about an entity and
-     * everything nested under it. The hash is built per FQN level, so descendants share the prefix.
-     * Other entity types can share the same FQN (a domain and a glossary both named {@code X}), so
+     * Swap the {@code oldFqnHash} prefix for {@code newFqnHash} on the tasks whose hash matches
+     * {@code aboutFqnHashPattern}: the hash itself, or {@code hash.%} for the entities nested under
+     * it. Other entity types can share an FQN (a domain and a glossary both named {@code X}), so
      * only tasks whose {@code about} relationship comes from one of {@code entityTypes} move.
      */
     @ConnectionAwareSqlUpdate(
         value =
             "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', "
                 + "CONCAT(:newFqnHash, SUBSTRING(aboutFqnHash, CHAR_LENGTH(:oldFqnHash) + 1))) "
-                + "WHERE (aboutFqnHash = :oldFqnHash OR aboutFqnHash LIKE :oldFqnHashPrefix) "
+                + "WHERE aboutFqnHash LIKE :aboutFqnHashPattern "
                 + "AND EXISTS (SELECT 1 FROM entity_relationship er WHERE er.toId = task_entity.id "
                 + "AND er.toEntity = 'task' AND er.relation = :relation "
                 + "AND er.fromEntity IN (<entityTypes>))",
@@ -185,14 +185,14 @@ public interface FeedDAOs {
             "UPDATE task_entity SET json = jsonb_set(json, '{aboutFqnHash}', "
                 + "to_jsonb(:newFqnHash::text || "
                 + "substring(aboutfqnhash from char_length(:oldFqnHash::text) + 1))) "
-                + "WHERE (aboutfqnhash = :oldFqnHash OR aboutfqnhash LIKE :oldFqnHashPrefix) "
+                + "WHERE aboutfqnhash LIKE :aboutFqnHashPattern "
                 + "AND EXISTS (SELECT 1 FROM entity_relationship er WHERE er.toId = task_entity.id "
                 + "AND er.toEntity = 'task' AND er.relation = :relation "
                 + "AND er.fromEntity IN (<entityTypes>))",
         connectionType = POSTGRES)
-    int repointAboutFqnHashSubtree(
+    int repointAboutFqnHash(
         @Bind("oldFqnHash") String oldFqnHash,
-        @Bind("oldFqnHashPrefix") String oldFqnHashPrefix,
+        @Bind("aboutFqnHashPattern") String aboutFqnHashPattern,
         @Bind("newFqnHash") String newFqnHash,
         @Bind("relation") int relation,
         @BindList("entityTypes") List<String> entityTypes);

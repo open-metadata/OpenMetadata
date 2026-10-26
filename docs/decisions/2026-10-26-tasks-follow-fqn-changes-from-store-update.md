@@ -19,18 +19,20 @@ old FQN. The glossary rewrite also matched the hash alone, and two entity types 
 - `EntityUpdater.storeUpdate` and `storeUpdateWithOptimisticLocking` repoint tasks and workflow
   instances whenever the stored FQN differs from `originalFqn`, the FQN the request started from.
   Repositories do not repoint tasks themselves.
-- The task rewrite is one prefix update over the entity and its subtree
-  (`aboutFqnHash = old OR LIKE 'old.%'`). It moves only the tasks whose `about` relationship comes
-  from one of the types `getFqnSubtreeEntityTypes()` returns: the entity's own type by default.
-  A repository whose FQN prefixes another type's FQNs overrides it (classification → tag,
-  glossary → glossaryTerm).
-- A type goes in that set only when its FQNs really are nested under the parent's FQN. Data
-  products have single-level FQNs, so a domain's set holds only `domain`. Adding a type whose FQNs
-  can equal the parent's brings the collision back.
+- The entity's own tasks move on an exact hash match. Tasks of the types
+  `getNestedFqnEntityTypes()` returns move on the `hash.%` prefix. The default is none; a
+  repository whose FQN prefixes nested entities overrides it (domain → domain, tag → tag,
+  glossary → glossaryTerm, glossaryTerm → glossaryTerm, classification → tag, container →
+  container, page → page). Every rewrite only touches tasks whose `about` relationship comes from
+  the matched types.
+- A type is nested only when its FQNs are built from the parent's FQN. Metric, metric group and
+  data product FQNs are the bare name, so metric `X.Y` hashes under metric `X` without being in it;
+  giving them a prefix match would move an unrelated entity's tasks.
 
 ## Consequences
-New renamable or movable entities are covered without wiring. An entity whose rename cascades to
-another type's FQNs must override `getFqnSubtreeEntityTypes()`. The bulk
+The repoint runs only when the update was stored, so a rename the updater drops moves nothing.
+Every rename or move is covered without wiring; an entity whose FQN prefixes nested entities must
+override `getNestedFqnEntityTypes()`, or their tasks stay behind. The bulk
 `updateWithDeferredStore` path does not repoint; it serves ingestion, which does not rename.
 Reads by `aboutEntity` still match the hash without a type, so a listing for `X` also shows the
 tasks of another entity type named `X`; fixing that is a separate change.

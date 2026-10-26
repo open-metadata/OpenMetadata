@@ -631,8 +631,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  protected Set<String> getFqnSubtreeEntityTypes() {
-    return Set.of(GLOSSARY, GLOSSARY_TERM);
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(GLOSSARY_TERM);
   }
 
   private List<GlossaryTerm> getAllTerms(Glossary glossary) {

@@ -2866,50 +2866,62 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Entity types whose FQNs sit under this entity's FQN and change with it on a rename or move,
-   * including this entity's own type. See ADR:2026-10-26-tasks-follow-fqn-changes-from-store-update.
+   * Entity types whose FQNs nest under this entity's FQN and change with it on a rename or move.
+   * Empty when the FQN is the bare name: metric {@code X.Y} hashes under metric {@code X} without
+   * being nested in it. See ADR:2026-10-26-tasks-follow-fqn-changes-from-store-update.
    */
-  protected Set<String> getFqnSubtreeEntityTypes() {
-    return Set.of(entityType);
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of();
   }
 
   /**
-   * Carry the tasks and workflow instances that find an entity by FQN over to its new FQN, for the
-   * entity itself and everything nested under it.
+   * Carry the tasks and workflow instances that find an entity by FQN over to its new FQN: the
+   * entity itself by exact FQN, and the nested entity types under it by FQN prefix.
    */
   private void repointTasksAndWorkflowInstancesForFqnChange(String oldFqn, String newFqn) {
     String oldFqnHash = FullyQualifiedName.buildHash(oldFqn);
-    List<String> subtreeTypes = List.copyOf(getFqnSubtreeEntityTypes());
-    int tasks =
-        daoCollection
-            .taskDAO()
-            .repointAboutFqnHashSubtree(
-                oldFqnHash,
-                oldFqnHash + Entity.SEPARATOR + "%",
-                FullyQualifiedName.buildHash(newFqn),
-                Relationship.MENTIONED_IN.ordinal(),
-                subtreeTypes);
-    subtreeTypes.forEach(type -> repointWorkflowInstancesForFqnChange(type, oldFqn, newFqn));
+    String newFqnHash = FullyQualifiedName.buildHash(newFqn);
+    List<String> nestedTypes = List.copyOf(getNestedFqnEntityTypes());
+    int tasks = repointTasks(oldFqnHash, oldFqnHash, newFqnHash, List.of(entityType));
+    repointWorkflowInstancesForFqnChange(entityType, oldFqn, newFqn, false);
+    if (!nestedTypes.isEmpty()) {
+      String nestedPattern = oldFqnHash + Entity.SEPARATOR + "%";
+      tasks += repointTasks(oldFqnHash, nestedPattern, newFqnHash, nestedTypes);
+      nestedTypes.forEach(type -> repointWorkflowInstancesForFqnChange(type, oldFqn, newFqn, true));
+    }
     if (tasks > 0) {
       LOG.info("[fqn-change] repointed tasks {} -> {} rows={}", oldFqn, newFqn, tasks);
     }
   }
 
+  private int repointTasks(
+      String oldFqnHash, String aboutFqnHashPattern, String newFqnHash, List<String> types) {
+    return daoCollection
+        .taskDAO()
+        .repointAboutFqnHash(
+            oldFqnHash,
+            aboutFqnHashPattern,
+            newFqnHash,
+            Relationship.MENTIONED_IN.ordinal(),
+            types);
+  }
+
   /**
    * Repoint workflow-instance {@code relatedEntity} (the history-card filter key) for a moved or
-   * renamed subtree in a single set-based statement: the root entity itself (exact link) plus every
-   * descendant ({@code entityLink LIKE oldStem.%}). The workflow instance stores the FQN as a
-   * readable {@link MessageParser.EntityLink}, so unlike the opaque task hash the whole subtree is
-   * covered at once. The {@code .}-suffixed prefix is collision-safe (a move of {@code a.b} never
-   * touches sibling {@code a.bc}).
+   * renamed entity in a single set-based statement: the entity itself (exact link) plus, with
+   * {@code includeNested}, every descendant ({@code entityLink LIKE oldStem.%}). The
+   * {@code .}-suffixed prefix is collision-safe (a move of {@code a.b} never touches sibling
+   * {@code a.bc}).
    */
   protected void repointWorkflowInstancesForFqnChange(
-      String entityType, String oldFqn, String newFqn) {
+      String entityType, String oldFqn, String newFqn, boolean includeNested) {
     String oldLink = new MessageParser.EntityLink(entityType, oldFqn).getLinkString();
     String newLink = new MessageParser.EntityLink(entityType, newFqn).getLinkString();
     String oldStem = oldLink.substring(0, oldLink.length() - 1);
     String newStem = newLink.substring(0, newLink.length() - 1);
-    String oldChildPrefix = oldStem + Entity.SEPARATOR + "%";
+    // Without nested entities the "prefix" is the exact link, so a dotted sibling name never
+    // matches.
+    String oldChildPrefix = includeNested ? oldStem + Entity.SEPARATOR + "%" : oldLink;
     int instances =
         daoCollection
             .workflowInstanceTimeSeriesDAO()
@@ -12193,11 +12205,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     /**
      * {@code originalFqn} is the FQN the entity had when this request started, which is what its
      * tasks and workflow instances still point at; {@code original} may already be the rebased
-     * pre-session version by now.
+     * pre-session version by now. Nothing moves unless the update was stored: a dropped rename
+     * leaves the FQN in the database unchanged.
      */
     private void repointTasksAndWorkflowInstancesIfFqnChanged() {
       String newFqn = updated.getFullyQualifiedName();
-      if (originalFqn != null && newFqn != null && !originalFqn.equals(newFqn)) {
+      if (entityStored && originalFqn != null && newFqn != null && !originalFqn.equals(newFqn)) {
         repointTasksAndWorkflowInstancesForFqnChange(originalFqn, newFqn);
       }
     }

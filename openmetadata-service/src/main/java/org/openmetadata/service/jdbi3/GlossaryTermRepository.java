@@ -1699,6 +1699,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(GLOSSARY_TERM);
+  }
+
+  @Override
   public void setFullyQualifiedName(GlossaryTerm entity) {
     // Validate parent
     if (entity.getParent() == null) { // Glossary term at the root of the glossary

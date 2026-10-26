@@ -110,8 +110,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  protected Set<String> getFqnSubtreeEntityTypes() {
-    return Set.of(CLASSIFICATION, TAG);
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(TAG);
   }
 
   @Override
