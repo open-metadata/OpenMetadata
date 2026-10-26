@@ -476,7 +476,10 @@ export const setUserOwners = async (users: typeof USERS, clear = true) => {
     // The option may already be listed; wait for the debounced search too, so
     // it cannot fire after the test and land unmocked in the next one.
     await expect
-      .poll(() => searches.some((q) => q.get('q')?.includes(user.displayName)))
+      .poll(
+        () => searches.some((q) => q.get('q')?.includes(user.displayName)),
+        { timeout: 10_000 }
+      )
       .toBe(true);
 
     await userEvent.click(
@@ -634,6 +637,27 @@ const setSelected = (option: Locator, selected: boolean) =>
     .toBe(selected);
 
 /**
+ * Clicks `trigger` until the picker's `ready` element shows. A panel or header
+ * that re-renders under the click drops it, and the picker never opens (the
+ * Playwright helpers re-click for the same reason).
+ */
+const openPicker = (trigger: Locator, ready: Locator) =>
+  expect
+    .poll(
+      async () => {
+        if (!ready.query()) {
+          await userEvent.click(trigger, { timeout: 2_000 }).catch(() => {
+            // Detached by a re-render; the next poll clicks it again.
+          });
+        }
+
+        return ready.query() !== null;
+      },
+      { timeout: 15_000, interval: 500 }
+    )
+    .toBe(true);
+
+/**
  * Toggles `fqn` in the classification tag picker `trigger` opens, and applies.
  * Pass `select` when the caller knows the outcome it wants; reading it from the
  * tree races the tree's hydration of the current selection.
@@ -643,7 +667,10 @@ export const pickTag = async (
   fqn: string,
   select?: boolean
 ) => {
-  await userEvent.click(trigger);
+  await openPicker(
+    trigger,
+    page.getByTestId('classification-tag-picker-search')
+  );
   const from = searches.length;
   await userEvent.fill(
     page.getByTestId('classification-tag-picker-search'),
@@ -732,7 +759,7 @@ export const pickGlossaryTerm = async (
   term: (typeof GLOSSARY_TERMS)[number],
   select?: boolean
 ) => {
-  await userEvent.click(trigger);
+  await openPicker(trigger, page.getByPlaceholder('Search Glossary Terms'));
   await userEvent.fill(
     page.getByPlaceholder('Search Glossary Terms'),
     term.displayName ?? ''
