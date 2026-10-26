@@ -621,18 +621,16 @@ public class TagRepository extends EntityRepository<Tag> {
         classificationRefs.stream()
             .collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
 
-    // Map tags to their classifications
+    // A restore brings back a classification's tags before the classification itself, so a tag
+    // can still point at a deleted one here; toMap rejects the null that lookup returns.
     return records.stream()
+        .filter(r -> idToRefMap.containsKey(r.getFromId()))
         .collect(
             Collectors.toMap(
                 r -> UUID.fromString(r.getToId()),
                 r -> idToRefMap.get(r.getFromId()),
                 (existing, replacement) -> existing // In case of duplicates, keep first
-                ))
-        .entrySet()
-        .stream()
-        .filter(e -> e.getValue() != null)
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                ));
   }
 
   private Map<UUID, EntityReference> batchFetchParents(List<Tag> tags) {
