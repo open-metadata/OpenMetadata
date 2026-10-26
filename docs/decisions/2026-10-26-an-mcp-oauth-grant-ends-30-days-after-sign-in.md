@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-26 (initial)
 - **Deciders:** Vishnu Jain
-- **Guard:** `UserSSOOAuthProviderTest` (`exchangeRefreshToken_rotationKeepsTheEndOfTheGrant`)
+- **Guard:** `UserSSOOAuthProviderTest` (`exchangeRefreshToken_rotationKeepsTheEndOfTheGrant`,
+  `exchangeRefreshToken_afterTheEndOfTheGrant_mustSignInAgain`)
 
 ## Context
 

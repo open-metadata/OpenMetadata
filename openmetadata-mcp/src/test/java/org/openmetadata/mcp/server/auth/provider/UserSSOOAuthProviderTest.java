@@ -23,6 +23,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.RefreshToken;
+import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
@@ -390,6 +391,40 @@ class UserSSOOAuthProviderTest {
     verify(tokenRepo)
         .rotateRefreshToken(eq("old-token"), rotated.capture(), eq(CLIENT_ID), eq("alice"), any());
     assertThat(rotated.getValue().getExpiresAt()).isEqualTo(endOfGrant);
+  }
+
+  @Test
+  void exchangeRefreshToken_afterTheEndOfTheGrant_mustSignInAgain() throws Exception {
+    RefreshToken stored =
+        new RefreshToken("old-token", CLIENT_ID, List.of("openid"), System.currentTimeMillis() - 1);
+    stored.setUserName("alice");
+    OAuthTokenRepository tokenRepo = mock(OAuthTokenRepository.class);
+    when(tokenRepo.findRefreshToken("old-token")).thenReturn(stored);
+    JWTTokenGenerator jwtGenerator = mock(JWTTokenGenerator.class);
+    when(jwtGenerator.generateJWTToken(
+            anyString(), any(), anyBoolean(), any(), anyLong(), anyBoolean(), any(), any()))
+        .thenReturn(new JWTAuthMechanism().withJWTToken("jwt"));
+    UserSSOOAuthProvider provider = newProvider(null, null, ISSUER);
+    setField(provider, "tokenRepository", tokenRepo);
+    setField(provider, "jwtGenerator", jwtGenerator);
+    RefreshToken presented = new RefreshToken();
+    presented.setToken("old-token");
+
+    // A live user, so only the end of the grant can refuse this refresh.
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.USER), eq("alice"), anyString(), eq(Include.NON_DELETED)))
+          .thenReturn(new User().withName("alice").withEmail("alice@corp.example"));
+      TokenException refused =
+          assertThrows(
+              TokenException.class,
+              () -> provider.exchangeRefreshToken(registeredClient(), presented, null).join());
+
+      assertThat(refused.getError()).isEqualTo("invalid_grant");
+    }
   }
 
   // ── reflection helpers (mirror AuthenticationCodeFlowHandlerTest) ─────────

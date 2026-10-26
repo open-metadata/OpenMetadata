@@ -81,7 +81,7 @@ Five core OAuth tables with audit logging:
 
 - **oauth_clients** - Dynamically registered MCP clients via RFC 7591
 - **oauth_authorization_codes** - Short-lived codes (10 min TTL) with PKCE challenge
-- **oauth_access_tokens** - JWT access tokens (10 min TTL) with encryption
+- **oauth_access_tokens** - Not written today: access tokens are 10-minute JWTs returned to the client
 - **oauth_refresh_tokens** - Refresh tokens (30 days from sign-in) with automatic rotation that keeps that end
 - **mcp_pending_auth_requests** - OAuth state parameters for cross-domain redirects (10 min TTL)
 - **oauth_audit_log** - Comprehensive audit trail of all OAuth operations
