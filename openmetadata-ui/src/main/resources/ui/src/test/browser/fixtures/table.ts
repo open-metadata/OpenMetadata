@@ -82,21 +82,72 @@ export const pageOf = (
 /** The columns of one table/data model as the server holds them, and each column write. */
 export interface ColumnServer {
   current: () => Column[];
+  /** Each `GET /columns/name/{fqn}` the page sent (the column detail panel's read). */
+  reads: string[];
+  /** Each column search's query (`q`, `tags`, `glossaryTerms`, paging). */
+  searches: URLSearchParams[];
   /** Each `PUT /columns/name/{fqn}` the page sent, in order. */
   updates: { fqn: string; body: UpdateColumn }[];
 }
 
+/** Depth-first: a nested column is addressed by its own FQN too. */
+const flatten = (columns: Column[]): Column[] =>
+  columns.flatMap((column) => [column, ...flatten(column.children ?? [])]);
+
+/** A column or one of its descendants carries one of `fqns`. */
+const carries = (column: Column, fqns: string[]): boolean =>
+  flatten([column]).some((c) =>
+    (c.tags ?? []).some((tag) => fqns.includes(tag.tagFQN))
+  );
+
+/**
+ * TableRepository's column search: top-level columns whose name contains `q`
+ * and which (or whose descendants) carry one of `tags` and one of
+ * `glossaryTerms`; the total counts every match, not a page.
+ */
+const searchColumns = (columns: Column[], params: URLSearchParams) => {
+  const q = (params.get('q') ?? '').toLowerCase();
+  const filters = ['tags', 'glossaryTerms']
+    .map((key) => params.get(key)?.split(',').filter(Boolean) ?? [])
+    .filter((fqns) => fqns.length > 0);
+
+  return columns.filter(
+    (column) =>
+      column.name.toLowerCase().includes(q) &&
+      filters.every((fqns) => carries(column, fqns))
+  );
+};
+
+/** Where the columns live: their own list, or the entity that holds them. */
+export interface ColumnStore {
+  read: () => Column[];
+  write: (columns: Column[]) => void;
+}
+
+const ownStore = (columns: Column[]): ColumnStore => {
+  let stored = deepClone(columns) as Column[];
+
+  return { read: () => stored, write: (next) => (stored = next) };
+};
+
 /**
  * Serves `/api/v1/<parent>/name/:fqn/columns` (paged like ChildFieldPageReader)
- * and `PUT /api/v1/columns/name/:fqn`, which updates only the fields sent and
+ * and its `/search`, `GET /api/v1/columns/name/:fqn` (any column, nested ones included) and
+ * `PUT /api/v1/columns/name/:fqn`, which updates only the fields sent and
  * clears a blank displayName/description (ColumnRepository.updateColumn).
+ * Pass a `store` to keep the columns inside an entity the page also PATCHes.
  */
 export const serveColumns = (
   parent: string,
-  columns: Column[]
+  columns: Column[],
+  store: ColumnStore = ownStore(columns)
 ): ColumnServer => {
-  let stored = deepClone(columns) as Column[];
-  const server: ColumnServer = { current: () => stored, updates: [] };
+  const server: ColumnServer = {
+    current: store.read,
+    reads: [],
+    searches: [],
+    updates: [],
+  };
   const blankToUndefined = (value?: string) =>
     value === undefined || value.trim() ? value : undefined;
 
@@ -105,17 +156,39 @@ export const serveColumns = (
       const params = new URL(request.url).searchParams;
 
       return HttpResponse.json(
-        pageOf(stored, {
+        pageOf(store.read(), {
           offset: Number(params.get('offset') ?? 0),
           limit: Number(params.get('limit') ?? 50),
         })
       );
     }),
+    http.get(`/api/v1/${parent}/name/:fqn/columns/search`, ({ request }) => {
+      const params = new URL(request.url).searchParams;
+      server.searches.push(params);
+
+      return HttpResponse.json(
+        pageOf(searchColumns(store.read(), params), {
+          offset: Number(params.get('offset') ?? 0),
+          limit: Number(params.get('limit') ?? 50),
+        })
+      );
+    }),
+    http.get('/api/v1/columns/name/:fqn', ({ params }) => {
+      const fqn = String(params.fqn);
+      server.reads.push(fqn);
+      const column = flatten(store.read()).find(
+        (c) => c.fullyQualifiedName === fqn
+      );
+
+      return column
+        ? HttpResponse.json(column)
+        : HttpResponse.json({ code: 404 }, { status: 404 });
+    }),
     http.put('/api/v1/columns/name/:fqn', async ({ request, params }) => {
       const fqn = String(params.fqn);
       const body = (await request.json()) as UpdateColumn;
       server.updates.push({ fqn, body });
-      stored = stored.map((column) => {
+      const next = store.read().map((column) => {
         if (column.fullyQualifiedName !== fqn) {
           return column;
         }
@@ -132,9 +205,10 @@ export const serveColumns = (
 
         return updated;
       });
+      store.write(next);
 
       return HttpResponse.json(
-        stored.find((column) => column.fullyQualifiedName === fqn)
+        next.find((column) => column.fullyQualifiedName === fqn)
       );
     })
   );

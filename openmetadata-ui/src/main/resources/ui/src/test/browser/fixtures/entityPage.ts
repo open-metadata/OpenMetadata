@@ -84,6 +84,8 @@ export interface EntityServer<T> {
   unfollowed: string[];
   /** Each async DELETE's query string (`?hardDelete=…&recursive=…`), in order. */
   deletes: string[];
+  /** Replaces the stored entity, for a write that reaches it another way (e.g. `PUT /columns`). */
+  replace: (next: T) => void;
 }
 
 type Voted = {
@@ -141,6 +143,9 @@ export const serveEntity = <T extends { id: string }>(
     followed: [],
     unfollowed: [],
     deletes: [],
+    replace: (next) => {
+      stored = deepClone(next) as T & Voted;
+    },
   };
   let hardDeleted = false;
   const base = `/api/v1/${endpoint}`;

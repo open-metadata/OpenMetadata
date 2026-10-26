@@ -140,6 +140,10 @@ export interface ChildServer {
   current: () => Child;
   /** Every write that changed a child, wherever the page sent it. */
   writes: () => unknown[];
+  /** Each `GET /columns/name/{fqn}`; only table-like children are read that way. */
+  reads?: () => string[];
+  /** Each server-side column search (table-like children). */
+  searches?: () => URLSearchParams[];
 }
 
 export type EntityLabel =
@@ -197,7 +201,37 @@ const childOf = <T>(
 const columnOf = (parent: string, columns: Column[]): ChildServer => {
   const store = serveColumns(parent, columns);
 
-  return { current: () => store.current()[0], writes: () => store.updates };
+  return {
+    current: () => store.current()[0],
+    writes: () => store.updates,
+    reads: () => store.reads,
+    searches: () => store.searches,
+  };
+};
+
+/**
+ * Columns held inside the entity (a data model): the page edits a row with
+ * `PUT /columns/name/{fqn}` and the detail panel with a PATCH on the entity,
+ * and both land in the same columns, as on the server.
+ */
+const entityColumnsOf = (
+  parent: string,
+  server: EntityServer<EntityLike>
+): ChildServer => {
+  const columns = () =>
+    (server.current() as unknown as { columns: Column[] }).columns;
+  const store = serveColumns(parent, [], {
+    read: columns,
+    write: (next) =>
+      server.replace({ ...server.current(), columns: next } as EntityLike),
+  });
+
+  return {
+    current: () => columns()[0],
+    writes: () => [...store.updates, ...server.patches],
+    reads: () => store.reads,
+    searches: () => store.searches,
+  };
 };
 
 const at = (route: string, fqn?: string) =>
@@ -324,8 +358,7 @@ const ENTITIES: EntityConfig[] = [
     url: at('dashboardDataModel', makeDashboardDataModel().fullyQualifiedName),
     endpoint: 'dashboard/datamodels',
     make: makeDashboardDataModel,
-    serveExtras: () =>
-      columnOf('dashboard/datamodels', makeDashboardDataModel().columns),
+    serveExtras: (server) => entityColumnsOf('dashboard/datamodels', server),
     children: {
       tabId: 'model',
       rowId: makeDashboardDataModel().columns[0].fullyQualifiedName ?? '',
@@ -434,7 +467,7 @@ export const setUserOwners = async (users: typeof USERS, clear = true) => {
 };
 
 export const expectOwners = async (
-  server: EntityServer<{ id: string; owners?: { id: string }[] }>,
+  server: Pick<EntityServer<EntityLike>, 'current'>,
   users: { id: string; displayName: string }[]
 ) => {
   const want = users.map((u) => u.id).sort();
@@ -545,28 +578,61 @@ export const saveDescription = async (text: string) => {
 
 type Scope = ReturnType<typeof page.getByTestId>;
 
-/** Toggles one classification tag through the picker opened from `scope` and applies. */
-const toggleTag = async (scope: Scope, fqn: string) => {
-  const container = scope.getByTestId('tags-container');
-  const trigger = container
-    .getByTestId('add-tag')
-    .or(container.getByTestId('edit-button'));
-  await userEvent.click(trigger.first());
+const isSelected = (option: Locator) => {
+  const element = option.query();
+
+  return element
+    ? element.getAttribute('aria-checked') === 'true' ||
+        element.getAttribute('data-selected') === 'true'
+    : undefined;
+};
+
+/**
+ * Clicks `option` until the DOM shows it `selected`. A picker re-renders its
+ * options when a search lands, and a click inside that re-render is lost; the
+ * page would then save without it. Reading the option's own state (tree
+ * `data-selected`, menu `aria-checked`) makes each pick confirm itself.
+ */
+const setSelected = (option: Locator, selected: boolean) =>
+  expect
+    .poll(
+      async () => {
+        if (isSelected(option) === !selected) {
+          await userEvent.click(option, { timeout: 2_000 }).catch(() => {
+            // Detached by a re-render; the next poll reads it again.
+          });
+        }
+
+        return isSelected(option);
+      },
+      { timeout: 10_000, interval: 300 }
+    )
+    .toBe(selected);
+
+/** Polls until a search sent after `from` matches `index` and contains `term`. */
+const searchLanded = (from: number, index: string, term: string) =>
+  expect
+    .poll(() =>
+      searches
+        .slice(from)
+        .some(
+          (q) =>
+            q.get('index') === index &&
+            (q.get('q') ?? '').toLowerCase().includes(term.toLowerCase())
+        )
+    )
+    .toBe(true);
+
+/** Toggles `fqn` in the classification tag picker `trigger` opens, and applies. */
+export const pickTag = async (trigger: Locator, fqn: string) => {
+  await userEvent.click(trigger);
+  const from = searches.length;
   await userEvent.fill(
     page.getByTestId('classification-tag-picker-search'),
     fqn
   );
-  // Let the debounced search land before picking: its results re-render the
-  // tree, and a click on the unfiltered list can be lost in that re-render.
-  const name = fqn.split('.').pop() ?? fqn;
-
-  await expect
-    .poll(() =>
-      searches.some(
-        (q) => q.get('index') === 'tag' && q.get('q')?.includes(name)
-      )
-    )
-    .toBe(true);
+  // Let this search land before picking: its results re-render the tree.
+  await searchLanded(from, 'tag', fqn.split('.').pop() ?? fqn);
 
   for (const other of CLASSIFICATION_TAGS) {
     if (other.fullyQualifiedName !== fqn) {
@@ -575,10 +641,27 @@ const toggleTag = async (scope: Scope, fqn: string) => {
         .not.toBeInTheDocument();
     }
   }
-  await userEvent.click(page.getByTestId(`tree-node-${fqn}`));
+  const node = page.getByTestId(`tree-node-${fqn}`);
+
+  await expect.element(node).toBeVisible();
+
+  await setSelected(node, !isSelected(node));
   await userEvent.click(page.getByTestId('update-btn'));
 
   await expect.element(page.getByTestId('update-btn')).not.toBeInTheDocument();
+};
+
+/** Toggles one classification tag through the picker opened from `scope` and applies. */
+export const toggleTag = (scope: Scope, fqn: string) => {
+  const container = scope.getByTestId('tags-container');
+
+  return pickTag(
+    container
+      .getByTestId('add-tag')
+      .or(container.getByTestId('edit-button'))
+      .first(),
+    fqn
+  );
 };
 
 /**
@@ -620,28 +703,40 @@ export const addUpdateRemoveTags = async (
     .toBeVisible();
 };
 
-/** Toggles one glossary term through the picker opened from `scope` and applies. */
-const toggleGlossaryTerm = async (
-  scope: Scope,
+/** Toggles `term` in the glossary term picker `trigger` opens, and applies. */
+export const pickGlossaryTerm = async (
+  trigger: Locator,
   term: (typeof GLOSSARY_TERMS)[number]
 ) => {
-  const container = scope.getByTestId('glossary-container');
-  await userEvent.click(
-    container
-      .getByTestId('add-tag')
-      .or(container.getByTestId('edit-button'))
-      .first()
-  );
+  await userEvent.click(trigger);
   await userEvent.fill(
     page.getByPlaceholder('Search Glossary Terms'),
     term.displayName ?? ''
   );
-  await userEvent.click(
-    page.getByTestId(`tree-node-${term.fullyQualifiedName}`)
-  );
+  const node = page.getByTestId(`tree-node-${term.fullyQualifiedName}`);
+
+  await expect.element(node).toBeVisible();
+
+  await setSelected(node, !isSelected(node));
   await userEvent.click(page.getByTestId('update-btn'));
 
   await expect.element(page.getByTestId('update-btn')).not.toBeInTheDocument();
+};
+
+/** Toggles one glossary term through the picker opened from `scope` and applies. */
+const toggleGlossaryTerm = (
+  scope: Scope,
+  term: (typeof GLOSSARY_TERMS)[number]
+) => {
+  const container = scope.getByTestId('glossary-container');
+
+  return pickGlossaryTerm(
+    container
+      .getByTestId('add-tag')
+      .or(container.getByTestId('edit-button'))
+      .first(),
+    term
+  );
 };
 
 /** Adds term1, adds term2, removes both — the spec's add/update/remove. */
@@ -767,8 +862,16 @@ const toggleDomain = async (domain: (typeof DOMAINS)[number]) => {
 
 const dataProductsPanel = () => page.getByTestId('KnowledgePanel.DataProducts');
 
-/** Toggles `products` in the data product picker and saves. */
-const toggleDataProducts = async (products: typeof DATA_PRODUCTS) => {
+/**
+ * Toggles `products` in the data product picker (each confirmed in the menu)
+ * and saves, waiting for the PATCH.
+ */
+const toggleDataProducts = async (
+  server: EntityServer<EntityLike>,
+  products: typeof DATA_PRODUCTS
+) => {
+  const held = fqns(server.current().dataProducts);
+  const patches = server.patches.length;
   const container = dataProductsPanel().getByTestId('data-products-container');
   await userEvent.click(
     container
@@ -778,15 +881,23 @@ const toggleDataProducts = async (products: typeof DATA_PRODUCTS) => {
   );
   const picker = page.getByTestId('drop-down-menu');
   for (const product of products) {
+    const from = searches.length;
     await userEvent.fill(
       picker.getByTestId('search-input'),
       product.displayName ?? ''
     );
-    await userEvent.click(picker.getByTestId(product.fullyQualifiedName ?? ''));
+    await searchLanded(from, 'dataProduct', product.displayName ?? '');
+
+    const option = picker.getByTestId(product.fullyQualifiedName ?? '');
+
+    await expect.element(option).toBeVisible();
+
+    await setSelected(option, !held.includes(product.fullyQualifiedName));
   }
   await userEvent.click(picker.getByTestId('update-btn'));
 
   await expect.element(picker).not.toBeInTheDocument();
+  await expect.poll(() => server.patches.length).toBe(patches + 1);
 };
 
 /**
@@ -832,7 +943,7 @@ export const domainWithDataProducts = async (
     searches.splice(0);
     const added: typeof DATA_PRODUCTS = [];
     for (const products of additions) {
-      await toggleDataProducts(products);
+      await toggleDataProducts(server, products);
       added.push(...products);
       await expectDataProducts(added);
     }
@@ -845,7 +956,7 @@ export const domainWithDataProducts = async (
     }
 
     for (const product of [...added]) {
-      await toggleDataProducts([product]);
+      await toggleDataProducts(server, [product]);
       added.splice(added.indexOf(product), 1);
       await expectDataProducts(added);
     }

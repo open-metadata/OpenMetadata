@@ -86,6 +86,12 @@ export const makeApiEndpoint = (): APIEndpoint => {
           fullyQualifiedName: `${fqn}.order_id`,
           tags: [],
         },
+        {
+          name: 'customer_id',
+          dataType: ApiFieldType.String,
+          fullyQualifiedName: `${fqn}.customer_id`,
+          tags: [],
+        },
       ],
     },
   };
@@ -116,6 +122,11 @@ export const makePipeline = (): Pipeline => ({
       fullyQualifiedName: 'pw_pipeline_service.pw_pipeline.pw_task',
       tags: [],
     },
+    {
+      name: 'pw_task_2',
+      fullyQualifiedName: 'pw_pipeline_service.pw_pipeline.pw_task_2',
+      tags: [],
+    },
   ],
 });
 
@@ -131,6 +142,12 @@ export const makeTopic = (): Topic => ({
         fullyQualifiedName: 'pw_messaging_service.pw_topic.order_id',
         tags: [],
       },
+      {
+        name: 'customer_id',
+        dataType: DataTypeTopic.String,
+        fullyQualifiedName: 'pw_messaging_service.pw_topic.customer_id',
+        tags: [],
+      },
     ],
   },
 });
@@ -144,6 +161,12 @@ export const makeMlModel = (): Mlmodel => ({
       name: 'sales',
       dataType: FeatureType.Numerical,
       fullyQualifiedName: 'pw_mlmodel_service.pw_mlmodel.sales',
+      tags: [],
+    },
+    {
+      name: 'region',
+      dataType: FeatureType.Categorical,
+      fullyQualifiedName: 'pw_mlmodel_service.pw_mlmodel.region',
       tags: [],
     },
   ],
@@ -164,6 +187,12 @@ export const makeSearchIndex = (): SearchIndex => ({
       fullyQualifiedName: 'pw_search_service.pw_search_index.order_id',
       tags: [],
     },
+    {
+      name: 'customer_id',
+      dataType: SearchFieldType.Keyword,
+      fullyQualifiedName: 'pw_search_service.pw_search_index.customer_id',
+      tags: [],
+    },
   ],
 });
 
@@ -177,6 +206,13 @@ export const makeDashboardDataModel = (): DashboardDataModel => ({
       name: 'order_id',
       dataType: DataModelColumnType.String,
       fullyQualifiedName: 'pw_dashboard_service.model.pw_data_model.order_id',
+      tags: [],
+    },
+    {
+      name: 'customer_id',
+      dataType: DataModelColumnType.String,
+      fullyQualifiedName:
+        'pw_dashboard_service.model.pw_data_model.customer_id',
       tags: [],
     },
   ],
