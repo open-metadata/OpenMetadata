@@ -275,6 +275,12 @@ public class UserRepository extends EntityRepository<User> {
     return List.of("roles", "teams", "inheritedRoles", "inheritedPersonas", "defaultPersona");
   }
 
+  // A password hash or a bot token; anyone who may view a user may read the user's history.
+  @Override
+  protected List<String> getFieldsHiddenFromHistory() {
+    return List.of(AUTH_MECHANISM_FIELD);
+  }
+
   @Override
   public void storeEntity(User user, boolean update) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
