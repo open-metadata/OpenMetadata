@@ -100,6 +100,7 @@ public final class CredentialVerifier implements Managed {
   private final AtomicLong nextDeepVerifyNanos;
   private final long deepRetryIntervalNanos;
   private final AtomicBoolean started = new AtomicBoolean();
+  private final AtomicBoolean drainScheduled = new AtomicBoolean();
   private volatile ScheduledExecutorService sweeper;
 
   /**
@@ -737,7 +738,12 @@ public final class CredentialVerifier implements Managed {
     return mine;
   }
 
+  /**
+   * Clears the pending flag before it takes the queued subjects, so a nudge queued after it took
+   * them schedules the next drain.
+   */
   private void drainNudges() {
+    drainScheduled.set(false);
     List<CredentialSubject> subjects = new ArrayList<>();
     for (Iterator<CredentialSubject> queued = nudged.iterator(); queued.hasNext(); ) {
       subjects.add(queued.next());
@@ -749,12 +755,14 @@ public final class CredentialVerifier implements Managed {
     }
   }
 
+  /** At most one drain waits on the sweep thread, however many nudges arrive meanwhile. */
   private void scheduleDrain() {
     ScheduledExecutorService running = sweeper;
-    if (running != null) {
+    if (running != null && drainScheduled.compareAndSet(false, true)) {
       try {
         running.execute(this::drainNudges);
       } catch (RejectedExecutionException stopped) {
+        drainScheduled.set(false);
         LOG.debug("Nudge drain not scheduled; the verifier is stopped", stopped);
       }
     }
