@@ -33,9 +33,7 @@ it('shows the active version and locale date and opens release history', () => {
 
   expect(screen.getByText('v1.3.2 · Aug 14')).toBeVisible();
 
-  fireEvent.click(
-    screen.getByRole('button', { name: 'label.release-history' })
-  );
+  fireEvent.click(screen.getByRole('button', { name: 'v1.3.2 · Aug 14' }));
 
   expect(onPress).toHaveBeenCalledTimes(1);
 });

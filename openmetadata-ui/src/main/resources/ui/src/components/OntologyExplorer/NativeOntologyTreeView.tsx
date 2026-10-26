@@ -54,8 +54,15 @@ const NativeOntologyTreeView = ({
   const [state, setState] = useState<NativeTreeState>(() =>
     revealNativeTreeSelection(index, selectedNodeId)
   );
-  if (state.index !== index || state.selectedId !== selectedNodeId) {
+  const [syncedId, setSyncedId] = useState(selectedNodeId);
+  if (state.index !== index) {
+    setSyncedId(selectedNodeId);
     setState(revealNativeTreeSelection(index, selectedNodeId, state));
+  } else if (syncedId !== selectedNodeId) {
+    setSyncedId(selectedNodeId);
+    if (selectedNodeId !== state.selectedId) {
+      setState(revealNativeTreeSelection(index, selectedNodeId, state));
+    }
   }
   const page = useMemo(
     () =>
