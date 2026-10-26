@@ -12420,8 +12420,7 @@ public class WorkflowDefinitionResourceIT {
               .withDescription(
                   "Consumes EntityChange Events in order to trigger Workflows, if they exist.")
               .withAlertType(
-                  org.openmetadata.schema.api.events.CreateEventSubscription.AlertType
-                      .GOVERNANCE_WORKFLOW_CHANGE_EVENT)
+                  org.openmetadata.schema.entity.events.AlertType.GOVERNANCE_WORKFLOW_CHANGE_EVENT)
               .withResources(List.of("all"))
               .withProvider(org.openmetadata.schema.type.ProviderType.SYSTEM)
               .withPollInterval(10)

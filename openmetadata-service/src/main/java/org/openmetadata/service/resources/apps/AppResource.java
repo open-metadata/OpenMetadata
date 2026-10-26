@@ -1136,11 +1136,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
 
     ApplicationHandler.getInstance()
-        .performCleanup(
-            app,
-            Entity.getCollectionDAO(),
-            searchRepository,
-            securityContext.getUserPrincipal().getName());
+        .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
 
     limits.invalidateCache(entityType);
     // Remove from Pipeline Service
@@ -1178,11 +1174,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
 
     ApplicationHandler.getInstance()
-        .performCleanup(
-            app,
-            Entity.getCollectionDAO(),
-            searchRepository,
-            securityContext.getUserPrincipal().getName());
+        .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
 
     // Remove from Pipeline Service
     deleteApp(securityContext, app);
@@ -1739,7 +1731,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             () -> {
               try {
                 ApplicationHandler.getInstance()
-                    .performCleanup(app, Entity.getCollectionDAO(), searchRepository, userName);
+                    .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
 
                 // Remove from Pipeline Service
                 deleteApp(securityContext, app);

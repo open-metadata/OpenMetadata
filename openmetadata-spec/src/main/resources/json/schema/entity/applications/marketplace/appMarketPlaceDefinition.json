@@ -167,14 +167,6 @@
       "type": "boolean",
       "default": false
     },
-    "eventSubscriptions": {
-      "description": "Event subscriptions that will be created when the application is installed.",
-      "type": "array",
-      "default": [],
-      "items": {
-        "$ref": "../../../events/api/createEventSubscription.json"
-      }
-    },
     "supportsIngestionRunner": {
       "description": "If the app support execution through the external runner.",
       "type": "boolean",

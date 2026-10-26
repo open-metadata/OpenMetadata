@@ -90,10 +90,6 @@ export interface App {
      */
     enabled?: boolean;
     /**
-     * Event Subscriptions for the Application.
-     */
-    eventSubscriptions?: EntityReference[];
-    /**
      * Features of the Application.
      */
     features?: string;

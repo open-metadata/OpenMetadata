@@ -10,9 +10,10 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
-import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.service.alerting.matching.AlertMatching;
@@ -103,7 +104,7 @@ class SeveralSourcesTest {
                 List.of(
                     new ArgumentsInput()
                         .withName("GetTableSchemaChanges")
-                        .withEffect(ArgumentsInput.Effect.EXCLUDE)));
+                        .withEffect(Effect.EXCLUDE)));
 
     FilteringRules stored =
         build(AlertType.OBSERVABILITY, List.of("table", "topic"), schemaDidNotChange);
@@ -157,7 +158,7 @@ class SeveralSourcesTest {
   private static ArgumentsInput chosen(String name, String argument) {
     return new ArgumentsInput()
         .withName(name)
-        .withEffect(ArgumentsInput.Effect.INCLUDE)
+        .withEffect(Effect.INCLUDE)
         .withArguments(List.of(new Argument().withName(argument).withInput(List.of("fixture"))));
   }
 }

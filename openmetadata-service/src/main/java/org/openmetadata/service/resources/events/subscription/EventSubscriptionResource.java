@@ -14,7 +14,7 @@
 package org.openmetadata.service.resources.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
+import static org.openmetadata.schema.entity.events.AlertType.NOTIFICATION;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -64,6 +64,7 @@ import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestReques
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
 import org.openmetadata.schema.api.events.EventsRecord;
 import org.openmetadata.schema.api.events.TypedEvent;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -631,7 +632,7 @@ public class EventSubscriptionResource
       @Context HttpServletResponse response,
       @Parameter(description = "AlertType", schema = @Schema(type = "string"))
           @PathParam("alertType")
-          CreateEventSubscription.AlertType alertType) {
+          AlertType alertType) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
@@ -1504,7 +1505,7 @@ public class EventSubscriptionResource
   }
 
   public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors() {
-    return AlertCatalog.load().served(CreateEventSubscription.AlertType.NOTIFICATION);
+    return AlertCatalog.load().served(AlertType.NOTIFICATION);
   }
 
   private ResultList<TypedEvent> fetchEventRecords(
@@ -1576,6 +1577,6 @@ public class EventSubscriptionResource
   }
 
   public static List<FilterResourceDescriptor> getObservabilityFilterDescriptors() {
-    return AlertCatalog.load().served(CreateEventSubscription.AlertType.OBSERVABILITY);
+    return AlertCatalog.load().served(AlertType.OBSERVABILITY);
   }
 }

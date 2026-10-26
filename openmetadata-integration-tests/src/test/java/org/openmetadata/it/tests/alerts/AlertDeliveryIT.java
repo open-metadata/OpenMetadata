@@ -18,8 +18,10 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.AlertMetrics;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Conversation;
@@ -195,7 +197,7 @@ class AlertDeliveryIT {
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("worked_example"))
-            .withAlertType(CreateEventSubscription.AlertType.OBSERVABILITY)
+            .withAlertType(AlertType.OBSERVABILITY)
             .withResources(List.of("table", "topic", "pipeline"))
             .withInput(triggers)
             .withEnabled(true)
@@ -221,13 +223,13 @@ class AlertDeliveryIT {
     ArgumentsInput mentionsTheLiveUser =
         new ArgumentsInput()
             .withName("filterByMentionedName")
-            .withEffect(ArgumentsInput.Effect.INCLUDE)
+            .withEffect(Effect.INCLUDE)
             .withArguments(
                 List.of(new Argument().withName("userList").withInput(List.of(LIVE_USER))));
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("mention_alert"))
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of(Entity.CONVERSATION))
             .withInput(new AlertFilteringInput().withFilters(List.of(mentionsTheLiveUser)))
             .withEnabled(true)
