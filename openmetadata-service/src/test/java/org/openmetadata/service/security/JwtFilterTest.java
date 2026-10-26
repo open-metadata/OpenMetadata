@@ -796,6 +796,19 @@ class JwtFilterTest {
   }
 
   @Test
+  void providerTokenClaimingToBeAPersonalAccessTokenIsRejected() {
+    String jwt =
+        JWT.create()
+            .withExpiresAt(inOneDay())
+            .withClaim("sub", USER)
+            .withClaim(TOKEN_TYPE, ServiceTokenType.PERSONAL_ACCESS.value())
+            .sign(algorithm);
+
+    assertRejectedBy(jwtFilter, jwt, UNRECOGNIZED);
+    assertEquals(0, credentials.fullReads());
+  }
+
+  @Test
   void providerTokenReachesNoStoredCredentialRead() {
     String jwt = JWT.create().withExpiresAt(inOneDay()).withClaim("sub", USER).sign(algorithm);
 

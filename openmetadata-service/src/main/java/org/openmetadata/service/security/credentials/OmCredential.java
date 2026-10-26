@@ -74,7 +74,8 @@ public sealed interface OmCredential
    * <pre>
    *  OM key  isBot   tokenType                            result
    *  no      true    any                                  Unrecognized
-   *  no      false   any                                  NotStored
+   *  no      false   PERSONAL_ACCESS                      Unrecognized
+   *  no      false   ABSENT | BOT | OM_USER | UNKNOWN     NotStored
    *  yes     true    ABSENT | BOT                         Stored(principal)
    *  yes     true    OM_USER | PERSONAL_ACCESS | UNKNOWN  Unrecognized
    *  yes     false   PERSONAL_ACCESS                      Stored(principal)
@@ -96,8 +97,10 @@ public sealed interface OmCredential
     OmCredential credential;
     if (signedByOpenMetadata) {
       credential = classifyOpenMetadataSigned(isBotClaim, tokenType, tokenPrincipal);
+    } else if (isBotClaim || tokenType == TokenTypeClaim.PERSONAL_ACCESS) {
+      credential = unrecognized(false, isBotClaim, tokenType);
     } else {
-      credential = isBotClaim ? unrecognized(false, isBotClaim, tokenType) : new NotStored();
+      credential = new NotStored();
     }
     return credential;
   }

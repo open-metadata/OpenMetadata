@@ -44,7 +44,7 @@ class OmCredentialTest {
         Arguments.of(false, false, "", NOT_STORED),
         Arguments.of(false, false, "BOT", NOT_STORED),
         Arguments.of(false, false, "OM_USER", NOT_STORED),
-        Arguments.of(false, false, "PERSONAL_ACCESS", NOT_STORED),
+        Arguments.of(false, false, "PERSONAL_ACCESS", Unrecognized.class),
         Arguments.of(false, false, "REFRESH", NOT_STORED),
         Arguments.of(true, true, null, STORED),
         Arguments.of(true, true, "", STORED),
