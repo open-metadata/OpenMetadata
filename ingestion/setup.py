@@ -79,7 +79,7 @@ VERSIONS = {
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
-    "teradata": "teradatasqlalchemy==20.0.0.2",
+    "teradata": "teradatasqlalchemy==20.0.0.9",
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
@@ -361,8 +361,8 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "iomete": {
         "iomete-sqlalchemy>=1.0.22",
-        "adbc-driver-flightsql",
-        "adbc-driver-manager",
+        "adbc-driver-flightsql>=1.13.0",
+        "adbc-driver-manager>=1.13.0",
     },
     "impala": {
         "presto-types-parser>=0.0.2",
@@ -457,7 +457,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "ssrs": {"requests-ntlm"},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
-    "teradata": {VERSIONS["teradata"]},
+    "teradata": {VERSIONS["teradata"], "teradatasql>=20.0.0.72"},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5", DATA_DIFF["vertica"]},
     # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
