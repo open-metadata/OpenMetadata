@@ -1070,7 +1070,7 @@
     {
       "_comment": "Settings modal Custom Properties panel.",
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/panels/CustomPropertiesPanel/**"
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/**"
       ],
       "projects": ["chromium"],
       "specs": ["playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"]
