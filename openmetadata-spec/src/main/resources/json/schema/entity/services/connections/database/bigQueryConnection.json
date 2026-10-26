@@ -129,6 +129,10 @@
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     },
+    "supportsAutoPartitionDetection": {
+      "title": "Supports Auto Partition Detection",
+      "$ref": "../connectionBasicType.json#/definitions/supportsAutoPartitionDetection"
+    },
     "supportsDatabase": {
       "title": "Supports Database",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
@@ -140,10 +144,6 @@
     "supportsSystemProfile": {
       "title": "Supports System Profile",
       "$ref": "../connectionBasicType.json#/definitions/supportsSystemProfile"
-    },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     },
     "supportsDataDiff": {
       "title": "Supports Data Diff Extraction.",

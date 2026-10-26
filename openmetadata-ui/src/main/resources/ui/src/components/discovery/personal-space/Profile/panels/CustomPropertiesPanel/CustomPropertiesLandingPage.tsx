@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Card,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { groupBy } from 'lodash';
 import React, { KeyboardEvent, useCallback, useMemo, useState } from 'react';
@@ -31,6 +26,7 @@ import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClass
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   ENTITY_GROUP_MAP,
   GROUP_LABEL_KEYS,
@@ -98,10 +94,9 @@ const CustomPropertiesLandingPage: React.FC<
   if (items.length === 0) {
     return (
       <Box align="center" className="tw:h-full tw:w-full" justify="center">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           description={t('message.no-custom-properties-defined')}
           title={t('label.custom-property-plural')}
-          variant="blank"
         />
       </Box>
     );
@@ -149,6 +144,7 @@ const CustomPropertiesLandingPage: React.FC<
                   role="button"
                   size="md"
                   tabIndex={0}
+                  variant="muted"
                   onClick={() =>
                     !isCurrentLoading &&
                     handleCardClick(entityTypeName, item.key)
@@ -163,7 +159,7 @@ const CustomPropertiesLandingPage: React.FC<
                       )}
                       <Box className="tw:min-w-0" direction="col" gap={1}>
                         <Typography
-                          className="tw:text-primary-900"
+                          className="tw:text-primary"
                           size="text-sm"
                           weight="semibold">
                           {item.label}

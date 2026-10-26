@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   Skeleton,
   Table,
   Tooltip,
@@ -26,11 +25,12 @@ import {
   ChevronDown,
   DotsVertical,
   File02,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, sortBy, toLower } from 'lodash';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Selection, SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -55,9 +55,9 @@ import { queryClient } from '../../../../queryClient';
 import { deleteEntity } from '../../../../rest/miscAPI';
 import {
   removeTestCaseFromTestSuite,
+  removeTestCasesFromTestSuiteBulk,
   restoreTestCase,
 } from '../../../../rest/testAPI';
-import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
@@ -74,6 +74,8 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
@@ -162,13 +164,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   tableHeader,
   removeTableBorder = false,
   enableBulkActions = false,
-  editVariant = getDefaultTestCaseFormVariant(),
   hasActiveFilters = false,
   emptyStateAction,
   entityPermissions,
   deletionMode = TEST_CASE_DELETION_MODE.HARD,
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
+  const EmptyStatePlaceholder = hasActiveFilters
+    ? NoFilteredResultsPlaceholder
+    : NoDataPlaceholder;
   const navigate = useNavigate();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
   const [isStatusLoading, setIsStatusLoading] = useState(true);
@@ -177,6 +181,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   >([]);
   const [isTestCaseRemovalLoading, setIsTestCaseRemovalLoading] =
     useState(false);
+  const [isBulkRemoveModalOpen, setIsBulkRemoveModalOpen] = useState(false);
+  const [isBulkRemovalLoading, setIsBulkRemovalLoading] = useState(false);
   const [isDeletingTestCase, setIsDeletingTestCase] = useState(false);
   const [restoringTestCaseAction, setRestoringTestCaseAction] =
     useState<TestCaseAction>();
@@ -241,22 +247,46 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     return data;
   }, [testCases, sortDescriptor]);
 
-  const selectedTestCasesForBundle = useMemo(() => {
+  const isBulkRemoveAllowed = Boolean(removeFromTestSuite?.isAllowed);
+  const isSelectionEnabled = enableBulkActions || isBulkRemoveAllowed;
+
+  const selectedTestCases = useMemo(() => {
     if (selectedKeys === 'all') {
       return sortedData;
     }
     const keySet = selectedKeys as Set<string>;
 
-    return sortedData.filter((tc) => keySet.has(tc.id ?? ''));
+    return sortedData.filter((tc) => keySet.has(tc.id ?? tc.name ?? ''));
   }, [sortedData, selectedKeys]);
 
-  const hasSelection = useMemo(() => {
-    if (selectedKeys === 'all') {
-      return true;
-    }
+  const selectedTestCaseIds = useMemo(
+    () =>
+      selectedTestCases.flatMap((testCase) =>
+        testCase.id ? [testCase.id] : []
+      ),
+    [selectedTestCases]
+  );
 
-    return (selectedKeys as Set<string>).size > 0;
-  }, [selectedKeys]);
+  const hasSelection = selectedTestCases.length > 0;
+
+  const handleSelectionChange = useCallback(
+    (selection: Selection) => {
+      // Materialize react-aria's `all` sentinel so paging cannot silently
+      // transfer a destructive selection to a different set of rows.
+      setSelectedKeys(
+        selection === 'all'
+          ? new Set(
+              sortedData.flatMap((testCase) => {
+                const key = testCase.id ?? testCase.name;
+
+                return key ? [key] : [];
+              })
+            )
+          : selection
+      );
+    },
+    [sortedData]
+  );
 
   const handleCancel = () => {
     setSelectedTestCase(undefined);
@@ -293,6 +323,27 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       showErrorToast(error as AxiosError);
     } finally {
       setIsTestCaseRemovalLoading(false);
+    }
+  };
+
+  const handleBulkRemove = async () => {
+    const testSuiteId = removeFromTestSuite?.testSuite?.id;
+    if (!testSuiteId || selectedTestCaseIds.length === 0) {
+      setIsBulkRemoveModalOpen(false);
+
+      return;
+    }
+    setIsBulkRemovalLoading(true);
+    try {
+      await removeTestCasesFromTestSuiteBulk(testSuiteId, selectedTestCaseIds);
+      showSuccessToast(t('message.test-cases-removed-from-test-suite'));
+      setSelectedKeys(new Set<string>());
+      afterDeleteAction?.();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsBulkRemoveModalOpen(false);
+      setIsBulkRemovalLoading(false);
     }
   };
 
@@ -554,12 +605,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       // actually clip the cell height. Chromium/Firefox are unaffected.
       <div className="tw:max-h-11 tw:overflow-hidden">
         <Tooltip
-          containerClassName="tw:break-all"
+          containerClassName="tw:wrap-break-word"
           placement="top"
           title={result.result}>
           <TooltipTrigger>
             <Typography
-              className="tw:m-0 tw:max-w-54 tw:w-54 tw:line-clamp-2 tw:break-all tw:whitespace-normal"
+              className="tw:m-0 tw:max-w-54 tw:w-54 tw:line-clamp-2 tw:wrap-break-word tw:text-left tw:whitespace-normal"
               data-testid={`reason-text-${record.name}`}
               size="text-sm">
               {result.result}
@@ -744,6 +795,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
   const renderRow = (record: TestCase) => {
     const entityLink = record.entityLink ?? '';
+    const rowId = record.id ?? record.name ?? '';
     const tableFqn = getEntityFQN(entityLink);
     const isColumn = entityLink.includes('::columns::');
     const columnName = isColumn
@@ -751,10 +803,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       : null;
 
     return (
-      <Table.Row
-        className="tw:group"
-        id={record.id ?? record.name ?? ''}
-        key={record.id}>
+      <Table.Row className="tw:group" id={rowId} key={rowId}>
         <Table.Cell
           className="tw:whitespace-nowrap"
           style={getColumnLayoutStyle('status', 1)}>
@@ -803,7 +852,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}>
               <Link
-                className="break-word tw:min-w-0"
+                className="tw:block tw:min-w-0 tw:truncate"
                 data-testid="table-link"
                 title={tableFqn}
                 to={getEntityDetailsPath(
@@ -852,12 +901,148 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     );
   };
 
+  const renderBulkRemoveModal = () => {
+    if (!isBulkRemoveAllowed || !removeFromTestSuite) {
+      return null;
+    }
+
+    return (
+      <ConfirmationModal
+        isDestructive
+        bodyText={t(
+          'message.are-you-sure-you-want-to-remove-count-test-cases-from-parent',
+          {
+            count: selectedTestCaseIds.length,
+            parent: getEntityName(removeFromTestSuite.testSuite),
+          }
+        )}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.remove')}
+        header={t('label.remove-entity', {
+          entity: t('label.test-case-plural'),
+        })}
+        isLoading={isBulkRemovalLoading}
+        visible={isBulkRemoveModalOpen}
+        onCancel={() => setIsBulkRemoveModalOpen(false)}
+        onConfirm={handleBulkRemove}
+      />
+    );
+  };
+
+  const renderSelectionToolbar = (isInHeader: boolean) => {
+    if (!isSelectionEnabled || !hasSelection) {
+      return null;
+    }
+
+    return (
+      <Box
+        align="center"
+        className={classNames(
+          isInHeader
+            ? 'tw:shrink-0'
+            : 'tw:mb-3 tw:rounded-md tw:bg-(--color-bg-secondary) tw:px-4 tw:py-2'
+        )}
+        data-testid="bulk-selection-toolbar"
+        gap={3}
+        wrap={isInHeader ? 'nowrap' : 'wrap'}>
+        <Box align="center" gap={2}>
+          <Typography size="text-sm">
+            {t('label.bundle-test-case-selected-count', {
+              count: selectedTestCases.length,
+            })}
+          </Typography>
+          <Button
+            color="tertiary"
+            data-testid="bulk-clear-test-case-selection"
+            size="sm"
+            onClick={() => setSelectedKeys(new Set<string>())}>
+            {t('label.clear-selection')}
+          </Button>
+        </Box>
+        <Box
+          align="center"
+          className={classNames({ 'tw:ml-auto': !isInHeader })}
+          gap={3}>
+          {isBulkRemoveAllowed && (
+            <Button
+              color="primary-destructive"
+              data-testid="bulk-remove-test-cases"
+              iconLeading={Trash01}
+              size="sm"
+              onClick={() => setIsBulkRemoveModalOpen(true)}>
+              {t('label.remove')}
+            </Button>
+          )}
+          {enableBulkActions && (
+            <Dropdown.Root>
+              <Button
+                color="primary"
+                data-testid="add-selected-to-bundle-suite"
+                iconTrailing={ChevronDown}
+                size="sm">
+                {t('label.add-to-bundle-suite')}
+              </Button>
+              <Dropdown.Popover className="tw:min-w-65">
+                <Dropdown.Menu
+                  items={[
+                    {
+                      id: 'existing',
+                      label: t('label.add-to-existing-bundle-suite'),
+                      onAction: () => setIsAddToBundleSuiteModalOpen(true),
+                      testId: 'add-to-existing-bundle-suite',
+                    },
+                    {
+                      id: 'new',
+                      label: t('label.create-new-bundle-suite'),
+                      onAction: () =>
+                        handleOpenBundleSuiteForm(selectedTestCases),
+                      testId: 'create-new-bundle-suite',
+                    },
+                  ]}>
+                  {(item) => (
+                    <Dropdown.Item
+                      data-testid={item.testId}
+                      id={item.id}
+                      label={item.label}
+                      onAction={item.onAction}
+                    />
+                  )}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
+          )}
+        </Box>
+      </Box>
+    );
+  };
+
+  // On a bundle suite page the header row holds only the search box, so the bar
+  // fits beside it and selecting a row no longer pushes the table down. The test
+  // case list header carries a title and description that the bar would crush,
+  // so there it stays above the table.
+  const renderTableHeader = () => {
+    const isSelectionToolbarInHeader =
+      !isUndefined(tableHeader) && !isUndefined(removeFromTestSuite);
+
+    return (
+      <>
+        {tableHeader && (
+          <Box align="center" className="data-quality-table-header" gap={4}>
+            {isSelectionToolbarInHeader && renderSelectionToolbar(true)}
+            <div className="tw:min-w-0 tw:flex-1">{tableHeader}</div>
+          </Box>
+        )}
+        {!isSelectionToolbarInHeader && renderSelectionToolbar(false)}
+      </>
+    );
+  };
+
   const renderTestCaseModals = () => (
     <>
       {enableBulkActions && (
         <AddToBundleSuiteModal
           open={isAddToBundleSuiteModalOpen}
-          selectedTestCases={selectedTestCasesForBundle}
+          selectedTestCases={selectedTestCases}
           onAddedToExisting={handleAddedToExistingBundleSuite}
           onCancel={() => setIsAddToBundleSuiteModalOpen(false)}
         />
@@ -875,7 +1060,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <TestCaseFormDrawer
           open
           testCase={selectedTestCase?.data}
-          variant={editVariant}
           onClose={handleCancel}
           onUpdate={onTestUpdate}
         />
@@ -883,6 +1067,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
       {removeFromTestSuite && (
         <ConfirmationModal
+          isDestructive
           bodyText={t(
             'message.are-you-sure-you-want-to-remove-child-from-parent',
             {
@@ -899,10 +1084,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onConfirm={handleConfirmClick}
         />
       )}
+      {renderBulkRemoveModal()}
       {!removeFromTestSuite &&
         deletionMode === TEST_CASE_DELETION_MODE.SOFT && (
           <DeleteEntityModal
             allowSoftDelete
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             entityId={selectedTestCase?.data.id ?? ''}
             entityName={getEntityName(selectedTestCase?.data)}
@@ -944,70 +1131,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       className={classNames({
         'data-quality-tab-container': !isUndefined(tableHeader),
       })}>
-      {tableHeader && (
-        <div className="data-quality-table-header">{tableHeader}</div>
-      )}
-      {enableBulkActions && hasSelection && (
-        <Box
-          align="center"
-          className="tw:mb-3 tw:rounded-md tw:bg-(--color-bg-secondary) tw:px-4 tw:py-2"
-          gap={3}
-          wrap="wrap">
-          <Box>
-            <Typography size="text-sm">
-              {t('label.bundle-test-case-selected-count', {
-                count: selectedTestCasesForBundle.length,
-              })}
-            </Typography>
-            <Typography
-              as="a"
-              className="tw:ml-2"
-              data-testid="bulk-clear-test-case-selection"
-              size="text-sm"
-              onClick={() => setSelectedKeys(new Set<string>())}>
-              {t('label.clear-selection')}
-            </Typography>
-          </Box>
-          <Box align="center" className="tw:ml-auto" gap={3}>
-            <Dropdown.Root>
-              <Button
-                color="primary"
-                data-testid="add-selected-to-bundle-suite"
-                iconTrailing={ChevronDown}
-                size="sm">
-                {t('label.add-to-bundle-suite')}
-              </Button>
-              <Dropdown.Popover className="tw:min-w-65">
-                <Dropdown.Menu
-                  items={[
-                    {
-                      id: 'existing',
-                      label: t('label.add-to-existing-bundle-suite'),
-                      onAction: () => setIsAddToBundleSuiteModalOpen(true),
-                      testId: 'add-to-existing-bundle-suite',
-                    },
-                    {
-                      id: 'new',
-                      label: t('label.create-new-bundle-suite'),
-                      onAction: () =>
-                        handleOpenBundleSuiteForm(selectedTestCasesForBundle),
-                      testId: 'create-new-bundle-suite',
-                    },
-                  ]}>
-                  {(item) => (
-                    <Dropdown.Item
-                      data-testid={item.testId}
-                      id={item.id}
-                      label={item.label}
-                      onAction={item.onAction}
-                    />
-                  )}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-          </Box>
-        </Box>
-      )}
+      {renderTableHeader()}
       <div
         className={classNames('tw:overflow-x-auto', {
           'test-case-table-container': true,
@@ -1020,10 +1144,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           aria-label={t('label.test-case-plural')}
           data-testid="test-case-table"
           selectedKeys={selectedKeys}
-          selectionMode={enableBulkActions ? 'multiple' : 'none'}
+          selectionMode={isSelectionEnabled ? 'multiple' : 'none'}
           size="sm"
           sortDescriptor={sortDescriptor}
-          onSelectionChange={setSelectedKeys}
+          onSelectionChange={handleSelectionChange}
           onSortChange={handleSortChange}>
           <Table.Header columns={columnList}>
             {(col) => (
@@ -1068,7 +1192,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 </div>
               ) : (
                 <Box className="tw:relative tw:min-h-80 tw:w-full">
-                  <EmptyPlaceholder
+                  <EmptyStatePlaceholder
                     actions={
                       !hasActiveFilters && emptyStateAction
                         ? [emptyStateAction]
@@ -1085,7 +1209,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                         ? 'message.no-matching-test-cases'
                         : 'message.no-test-cases-yet'
                     )}
-                    variant="blank"
                   />
                 </Box>
               )
@@ -1094,7 +1217,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           </Table.Body>
         </Table>
       </div>
-      {pagingData && showPagination && <NextPrevious {...pagingData} />}
+      {pagingData && showPagination && pagingData.paging.total > 0 && (
+        <NextPrevious {...pagingData} />
+      )}
       {renderTestCaseModals()}
     </div>
   );

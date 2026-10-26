@@ -10,21 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExclamationCircleFilled } from '@ant-design/icons';
 import {
   Badge,
   Button,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  ExclamationCircleFilled,
+  LinkExternal01,
+  Star01,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
-import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -127,7 +129,10 @@ const EntityHeaderTitle = ({
         {deleted && (
           <div className="text-xs tw:flex-[0_0_100px]">
             <span className="deleted-badge-button" data-testid="deleted-badge">
-              <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+              <ExclamationCircleFilled
+                className="tw:mr-1 tw:shrink-0"
+                size={12}
+              />
               {t('label.deleted')}
             </span>
           </div>
@@ -194,7 +199,7 @@ const EntityHeaderTitle = ({
           color="tertiary"
           data-testid="entity-follow-button"
           iconLeading={
-            <StarFilledIcon className="tw:size-3.5 tw:text-utility-brand-600" />
+            <Star01 className="tw:text-utility-brand-600" size={14} />
           }
           isDisabled={deleted}
           isLoading={isFollowingLoading}
@@ -209,7 +214,8 @@ const EntityHeaderTitle = ({
   const renderContent = () => (
     <div
       className={classNames(
-        'entity-header-title tw:flex tw:flex-nowrap tw:items-center tw:gap-3',
+        // min-w-0 lets a long name shrink so its ellipsis applies instead of overlapping the header actions.
+        'entity-header-title tw:flex tw:min-w-0 tw:flex-nowrap tw:items-center tw:gap-3',
         className
       )}
       data-testid={`${serviceName}-${name}`}>
@@ -243,15 +249,12 @@ const EntityHeaderTitle = ({
               })}
               data-testid="entity-header-name">
               {entityName}
-              {openEntityInNewPage && (
-                <IconExternalLink
-                  className="anticon vertical-middle m-l-xss"
-                  height={14}
-                  width={14}
-                />
-              )}
             </Typography>
           </Tooltip>
+          {/* Outside the ellipsis so a long name can't truncate the icon away. */}
+          {openEntityInNewPage && (
+            <LinkExternal01 className="tw:text-fg-quaternary" size={14} />
+          )}
 
           <Tooltip
             placement="top right"
@@ -282,7 +285,7 @@ const EntityHeaderTitle = ({
 
   return link && !isTourRoute ? (
     <Link
-      className="no-underline d-inline-block w-max-full entity-header-title-link"
+      className="no-underline d-inline-block w-max-full tw:min-w-0 entity-header-title-link"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}

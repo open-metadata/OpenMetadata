@@ -19,6 +19,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +49,10 @@ import os.org.opensearch.client.opensearch.core.search.Hit;
 
 @Slf4j
 public class OsUtils {
+
+  // Keep vectors in _source to avoid prematurely closed readers (opensearch-project/k-NN#3138).
+  private static final String VECTOR_INDEX_MAPPING =
+      "/elasticsearch/opensearch_vector_index_mapping.json";
 
   private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
       new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
@@ -717,6 +722,17 @@ public class OsUtils {
     return rootNode.toString();
   }
 
+  public static ObjectNode loadVectorIndexMapping() {
+    try {
+      return mapper.readValue(
+          Objects.requireNonNull(
+              OsUtils.class.getResource(VECTOR_INDEX_MAPPING), VECTOR_INDEX_MAPPING),
+          ObjectNode.class);
+    } catch (IOException e) {
+      throw new IllegalStateException("Failed to read index mapping " + VECTOR_INDEX_MAPPING, e);
+    }
+  }
+
   /**
    * Adds OpenSearch-specific knn_vector field and index settings for indexes that support
    * embeddings. Detects embedding support by the presence of a "fingerprint" field in mappings.
@@ -766,7 +782,7 @@ public class OsUtils {
     JsonNode indexSettingsNode = rootNode.path("settings").path("index");
     if (!indexSettingsNode.isMissingNode() && indexSettingsNode.isObject()) {
       ObjectNode indexSettings = (ObjectNode) indexSettingsNode;
-      indexSettings.put("knn", true);
+      indexSettings.setAll((ObjectNode) loadVectorIndexMapping().path("settings").path("index"));
       indexSettings.put("knn.algo_param.ef_search", 1000);
       indexSettings.put("knn.advanced.filtered_exact_search_threshold", 0);
     }

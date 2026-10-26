@@ -16,52 +16,147 @@ import { MessageDotsCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import AgentBadge from '../../../../../components/common/AgentBadge/AgentBadge';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { Task } from '../../../../../generated/entity/tasks/task';
-import { formatInboxDate } from '../inbox.utils';
-import { formatEntityType } from '../taskList.utils';
-import { getTaskTitle } from '../taskTitle.utils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getProposingAgent, getTaskTypeBadge } from '../taskDetail.utils';
+import { TaskStatusBadge } from '../taskResolution.utils';
+import { getTaskTitleParts } from '../taskTitle.utils';
+import TaskTitle from './TaskTitle';
+import TaskTypeIcon from './TaskTypeIcon';
 
 export interface InboxTaskListItemProps {
   task: Task;
   isActive?: boolean;
+  // Shown at the row's end where no detail pane beside the list carries it.
+  statusBadge?: TaskStatusBadge;
   onClick: (task: Task) => void;
 }
 
-const Dot: React.FC = () => (
-  <span className="tw:h-1 tw:w-1 tw:shrink-0 tw:rounded-full tw:bg-utility-gray-blue-300" />
+// The list reads ids as a short reference ("#00357"); the detail header keeps
+// the full "TASK-00357".
+const TASK_ID_PREFIX = 'TASK-';
+
+/** Who raised the task: the AI agent that proposed its subject, else the person. */
+const TaskRequester: React.FC<{ task: Task }> = ({ task }) => {
+  const { t } = useTranslation();
+  const agent = getProposingAgent(task, t);
+  const requester = task.createdBy;
+  const requesterName = requester?.displayName ?? requester?.name;
+
+  if (agent) {
+    return <AgentBadge name={agent} />;
+  }
+
+  return requesterName ? (
+    <Box align="center" className="tw:gap-1.5">
+      <ProfilePicture
+        matchRingToFill
+        displayName={requesterName}
+        name={requester?.name ?? ''}
+        width="16"
+      />
+      <Typography className="tw:text-tertiary" size="text-xs">
+        {requesterName}
+      </Typography>
+    </Box>
+  ) : null;
+};
+
+/** The row's far end: the comment count, when there is one, and the status. */
+const TaskCardTrailing: React.FC<{
+  commentCount: number;
+  statusBadge?: TaskStatusBadge;
+}> = ({ commentCount, statusBadge }) => (
+  <Box align="center" className="tw:ml-auto tw:shrink-0 tw:gap-2">
+    {commentCount > 0 && (
+      <Box
+        align="center"
+        className="tw:gap-1"
+        data-testid="inbox-task-comment-count">
+        <MessageDotsCircle
+          className="tw:text-quaternary"
+          height={14}
+          width={14}
+        />
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {commentCount}
+        </Typography>
+      </Box>
+    )}
+    {statusBadge && (
+      <Badge
+        color={statusBadge.tone}
+        data-testid="inbox-task-status"
+        size="sm"
+        type="pill-color">
+        {statusBadge.label}
+      </Badge>
+    )}
+  </Box>
 );
 
 /**
- * Compact task card in the Inbox Tasks tab: the title + comment count on top,
- * then a single meta row of id · type · requester · date. Cards are spaced,
- * lightly bordered, and highlight when selected (matches the figma).
+ * The card's second line: task id, who raised it and the asset it concerns,
+ * with the comment count, when there is one, at the far end.
+ */
+const TaskCardMeta: React.FC<{
+  task: Task;
+  statusBadge?: TaskStatusBadge;
+}> = ({ task, statusBadge }) => {
+  const assetName = task.about ? getEntityName(task.about) : '';
+  const commentCount = task.commentCount ?? task.comments?.length ?? 0;
+  const shortId = (task.taskId ?? '').replace(TASK_ID_PREFIX, '');
+
+  return (
+    <Box align="center" className="tw:flex-wrap tw:gap-x-2 tw:gap-y-1">
+      <Typography
+        className="tw:font-mono tw:text-tertiary"
+        size="text-xs"
+        weight="medium">
+        {`#${shortId}`}
+      </Typography>
+      <TaskRequester task={task} />
+      {assetName && (
+        <Badge className="tw:max-w-40" size="sm" type="modern">
+          <span className="tw:truncate">{assetName}</span>
+        </Badge>
+      )}
+      <TaskCardTrailing commentCount={commentCount} statusBadge={statusBadge} />
+    </Box>
+  );
+};
+
+/**
+ * Compact task card in the Inbox Triage list: the type's tinted icon, the title,
+ * then a meta row of id · requester · the asset it concerns · comment count.
  */
 const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
   task,
   isActive,
+  statusBadge,
   onClick,
 }) => {
   const { t } = useTranslation();
-  const entityType = formatEntityType(task.about?.type);
-  const createdByName = task.createdBy?.displayName ?? task.createdBy?.name;
-  const commentCount = task.commentCount ?? task.comments?.length ?? 0;
   // Titleless tasks (governance workflows) carry the taskId as their name, so
-  // getTaskTitle composes a title from the task type and the entity it is about
+  // getTaskTitleParts composes a title from the task type and the entity it is about
   // instead of repeating the id shown in the meta row.
-  const taskTitle = getTaskTitle(task, t);
+  const { title: taskTitle, entityType } = getTaskTitleParts(task, t);
 
   return (
     <Box
+      align="start"
       className={classNames(
-        'tw:cursor-pointer tw:rounded-xl tw:border tw:px-4 tw:py-3 tw:transition',
+        'tw:cursor-pointer tw:rounded-xl tw:border tw:p-3 tw:transition',
+        // Hover on primary_hover, not bg-secondary: in dark mode the list
+        // itself sits on bg-secondary, so that hover never showed.
         isActive
-          ? 'tw:border-utility-brand-300 tw:bg-utility-brand-50'
-          : 'tw:border-utility-gray-blue-100 tw:hover:bg-utility-gray-blue-50'
+          ? 'tw:border-utility-blue-light-100 tw:bg-utility-blue-light-50'
+          : 'tw:border-transparent tw:hover:bg-primary_hover'
       )}
       data-testid={`inbox-task-${task.id}`}
-      direction="col"
-      gap={2}
+      gap={3}
       role="button"
       tabIndex={0}
       onClick={() => onClick(task)}
@@ -71,62 +166,19 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
           onClick(task);
         }
       }}>
-      <Box align="start" className="tw:justify-between tw:gap-2">
+      <TaskTypeIcon badge={getTaskTypeBadge(task, t)} />
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
         {taskTitle && (
-          <Typography
-            className="tw:text-left tw:text-primary-900"
-            ellipsis={{ rows: 1 }}
-            size="text-sm"
-            weight="medium">
-            {taskTitle}
-          </Typography>
-        )}
-        {/* ml-auto, not justify-between alone: a titleless card leaves this as
-        the row's only child, which justify-between would push to the start. */}
-        <Box align="center" className="tw:ml-auto tw:shrink-0 tw:gap-1">
-          <MessageDotsCircle
-            className="tw:text-secondary"
-            height={14}
-            width={14}
-          />
-          <Typography className="tw:text-secondary" size="text-xs">
-            {commentCount}
-          </Typography>
-        </Box>
-      </Box>
-
-      <Box align="center" className="tw:flex-wrap tw:gap-x-2 tw:gap-y-1">
-        <Typography
-          className="tw:text-utility-blue-dark-500"
-          size="text-xs"
-          weight="medium">
-          {`#${task.taskId ?? ''}`}
-        </Typography>
-        {entityType && (
-          <Badge className="tw:shrink-0" size="sm" type="modern">
-            {entityType}
-          </Badge>
-        )}
-        {createdByName && (
-          <>
-            <Dot />
-            <ProfilePicture
-              displayName={task.createdBy?.name}
-              name={task.createdBy?.name ?? ''}
-              width="18"
-            />
+          <TaskTitle entityType={entityType} size="text-sm" text={taskTitle}>
             <Typography
-              className="tw:text-secondary"
-              size="text-xs"
+              className="tw:text-primary"
+              size="text-sm"
               weight="medium">
-              {createdByName}
+              {taskTitle}
             </Typography>
-          </>
+          </TaskTitle>
         )}
-        <Dot />
-        <Typography className="tw:text-secondary" size="text-xs">
-          {formatInboxDate(task.createdAt)}
-        </Typography>
+        <TaskCardMeta statusBadge={statusBadge} task={task} />
       </Box>
     </Box>
   );

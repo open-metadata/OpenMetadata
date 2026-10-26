@@ -1,0 +1,146 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Badge,
+  Box,
+  Button,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { StatTile, TaskStatTilesProps } from '../taskDetail.types';
+import { getTaskStatTiles } from '../taskStatTiles.utils';
+
+const PLACEHOLDER_TILES = [0, 1, 2, 3];
+
+const TONE_CLASS: Record<NonNullable<StatTile['tone']>, string> = {
+  error: 'tw:text-error-primary',
+  warning: 'tw:text-warning-primary',
+};
+
+/** A tile's value as plain text, a link, or a coloured badge. */
+const TileValue: React.FC<{ tile: StatTile }> = ({ tile }) => {
+  if (tile.to) {
+    return (
+      <Button color="link-color" href={tile.to} size="sm">
+        {tile.value}
+      </Button>
+    );
+  }
+  if (tile.badgeColor) {
+    return (
+      <Badge color={tile.badgeColor} size="sm" type="color">
+        {tile.value}
+      </Badge>
+    );
+  }
+
+  return (
+    <Typography
+      className={classNames(tile.tone && TONE_CLASS[tile.tone])}
+      size={tile.layout === 'field' ? 'text-sm' : 'text-md'}
+      weight="semibold">
+      {tile.value}
+    </Typography>
+  );
+};
+
+export interface TaskStatTileGridProps {
+  tiles: StatTile[];
+  isLoading?: boolean;
+  /** Prefix for each tile's `data-testid`; the grid itself gets `-tiles`. */
+  testIdPrefix?: string;
+}
+
+/**
+ * The asset card's strip of stat tiles. Shared so a plugin supplying its own
+ * tiles for a task type renders them exactly as the inbox does. Every tile
+ * reads value first, label under it.
+ */
+export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
+  tiles,
+  isLoading = false,
+  testIdPrefix = 'task-stat',
+}) => {
+  if (isLoading) {
+    return (
+      <Box
+        className="tw:flex tw:flex-wrap tw:gap-px"
+        data-testid={`${testIdPrefix}-tiles-loading`}>
+        {PLACEHOLDER_TILES.map((index) => (
+          <Box className="tw:flex-1 tw:p-4" direction="col" gap={2} key={index}>
+            <Skeleton height={24} variant="rounded" width={48} />
+            <Skeleton height={14} width="70%" />
+          </Box>
+        ))}
+      </Box>
+    );
+  }
+
+  if (tiles.length === 0) {
+    return null;
+  }
+
+  // A wrapping row rather than equal columns: each tile grows from its content's
+  // width, so a long label ("Active access requests") takes the room it needs
+  // instead of wrapping, and a narrow pane wraps whole tiles, never words. The
+  // tiles always fill the row, so no empty cell shows the separator colour.
+  // In dark the subtle rule vanishes against the lifted tiles, so the gaps and
+  // the top edge take the stronger rule. The strip and its tiles are surfaces,
+  // not layout Boxes, so they are plain elements.
+  return (
+    <div
+      className="tw:flex tw:flex-wrap tw:gap-px tw:border-t tw:border-secondary tw:bg-border-secondary tw:dark:border-primary tw:dark:bg-border-primary"
+      data-testid={`${testIdPrefix}-tiles`}>
+      {tiles.map((tile) => (
+        // In dark the pane behind the card is bg-secondary, so the tiles lift to
+        // bg-surface to stay visible.
+        <div
+          className="tw:flex tw:flex-auto tw:flex-col tw:items-start tw:gap-1 tw:bg-secondary tw:px-4 tw:py-3 tw:dark:bg-surface"
+          data-testid={`${testIdPrefix}-${tile.key}`}
+          key={tile.key}>
+          <TileValue tile={tile} />
+          <Typography
+            className="tw:whitespace-nowrap tw:text-tertiary"
+            size="text-xs">
+            {tile.label}
+          </Typography>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/**
+ * The asset context strip inside the task's asset card, chosen by task type. A
+ * plugin can replace it for a type it owns (`InboxTaskPanelContribution.stats`).
+ */
+const TaskStatTiles: React.FC<TaskStatTilesProps> = ({
+  task,
+  about,
+  isLoading,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <TaskStatTileGrid
+      isLoading={isLoading}
+      tiles={about ? getTaskStatTiles(task, about, t) : []}
+    />
+  );
+};
+
+export default TaskStatTiles;

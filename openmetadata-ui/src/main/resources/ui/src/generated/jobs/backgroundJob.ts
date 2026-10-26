@@ -219,6 +219,7 @@ export enum JobType {
     CustomPropertyEnumCleanup = "CUSTOM_PROPERTY_ENUM_CLEANUP",
     DeleteEntity = "DELETE_ENTITY",
     DeleteToken = "DELETE_TOKEN",
+    MemoryGlossaryDerivation = "MEMORY_GLOSSARY_DERIVATION",
     OntologyBulk = "ONTOLOGY_BULK",
 }
 

@@ -20,7 +20,6 @@ import {
   DATA_ASSET_VERSION_HEADER,
   DATA_PRODUCT_CONTAINER,
   ENTITY_VERSION_TIMELINE,
-  ERROR_PLACEHOLDER,
   LOADER,
   MOCK_FQN,
   MOCK_PARAMS,
@@ -35,10 +34,6 @@ jest.mock(
       .fn()
       .mockImplementation(() => <div>{CUSTOM_PROPERTY_TABLE}</div>),
   })
-);
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>{ERROR_PLACEHOLDER}</div>)
 );
 
 jest.mock(
@@ -217,6 +212,10 @@ describe('DatabaseSchemaVersionPage', () => {
       render(<DatabaseSchemaVersionPage />);
     });
 
-    expect(screen.getByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 });

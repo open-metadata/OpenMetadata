@@ -11,32 +11,52 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Skeleton, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import ButtonSkeleton from '../../components/common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import SettingsSourceBanner from '../../components/platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import TestEmail from '../../components/Settings/Email/TestEmail/TestEmail.component';
 import { ROUTES } from '../../constants/constants';
-import { NOT_INCLUDE_EMAIL_CONFIG_VALUE } from '../../constants/EmailConfig.constants';
+import {
+  EMAIL_CONFIG_FORM_FIELDS,
+  NOT_INCLUDE_EMAIL_CONFIG_VALUE,
+} from '../../constants/EmailConfig.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { SettingType } from '../../generated/settings/settings';
 import { useAuth } from '../../hooks/authHooks';
+import { useSettingsSource } from '../../hooks/platform/useSettingsSource';
 import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEmailConfigFieldLabels } from '../../utils/EmailConfigUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import {
+  areAllPathsManaged,
+  findSettingSource,
+  toJsonPointer,
+} from '../../utils/platform/settingsSource.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
+
+const EMAIL_SETTING_TYPES = [SettingType.EmailConfiguration];
+const EMAIL_FORM_POINTERS = EMAIL_CONFIG_FORM_FIELDS.map((field) =>
+  toJsonPointer(field)
+);
 
 function EmailConfigSettingsPage() {
   const { t } = useTranslation();
@@ -45,6 +65,16 @@ function EmailConfigSettingsPage() {
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
   const [loading, setLoading] = useState<boolean>(false);
   const [isTeamEmailOpen, setIsTestEmailOpen] = useState<boolean>(false);
+  const {
+    sources,
+    isLoading: isSourceLoading,
+    refetch: refetchSources,
+  } = useSettingsSource(EMAIL_SETTING_TYPES);
+  // Editing is pointless when the deployment owns every field the form shows.
+  const isManagedByDeployment = areAllPathsManaged(
+    findSettingSource(sources, SettingType.EmailConfiguration),
+    EMAIL_FORM_POINTERS
+  );
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -103,20 +133,20 @@ function EmailConfigSettingsPage() {
             : emailConfigValue;
 
         return (
-          <Col key={title} span={12}>
-            <Row align="middle">
-              <Col span={24}>
-                <Typography.Text className="m-0 text-grey-muted">
+          <Grid.Item className="layout-column" key={title} span={12}>
+            <Grid className="layout-row layout-grid tw:items-center">
+              <Grid.Item className="layout-column" span={24}>
+                <Typography className="m-0" color="secondary">
                   {`${title}:`}
-                </Typography.Text>
-              </Col>
-              <Col span={24}>
-                <Typography.Text className="">
+                </Typography>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={24}>
+                <Typography className="">
                   {isEmpty(displayValue) ? '--' : displayValue}
-                </Typography.Text>
-              </Col>
-            </Row>
-          </Col>
+                </Typography>
+              </Grid.Item>
+            </Grid>
+          </Grid.Item>
         );
       });
   }, [emailConfigValues]);
@@ -124,25 +154,30 @@ function EmailConfigSettingsPage() {
   const configValuesContainer = useMemo(() => {
     if (isUndefined(emailConfigValues) && !loading) {
       return (
-        <ErrorPlaceHolder
-          className="mt-24"
-          heading={t('label.email-configuration-lowercase')}
-          permissionValue={t('label.create-entity', {
-            entity: t('label.email-configuration'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <CreatePlaceholder
+            data-testid={`create-error-placeholder-${t(
+              'label.email-configuration-lowercase'
+            )}`}
+            heading={t('label.email-configuration-lowercase')}
+            permissionValue={t('label.create-entity', {
+              entity: t('label.email-configuration'),
+            })}
+          />
+        </div>
       );
     }
 
     return (
       <>
         {loading ? (
-          <Skeleton title paragraph={{ rows: 8 }} />
+          <SkeletonParagraph animation={false} rows={8} />
         ) : (
-          <Row align="middle" gutter={[16, 16]}>
+          <Grid
+            className="layout-row layout-grid tw:items-center"
+            style={getLayoutGutter(16, 16)}>
             {configValues}
-          </Row>
+          </Grid>
         )}
       </>
     );
@@ -154,51 +189,66 @@ function EmailConfigSettingsPage() {
 
   return (
     <PageLayoutV1 pageTitle={t('label.email-configuration')}>
-      <Row
-        align="middle"
-        className="p-lg bg-white border-radius-sm"
-        gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid tw:items-center p-lg bg-white border-radius-sm"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Row align="top" justify="space-between">
-            <Col>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="start"
+            className="layout-row"
+            justify="between"
+            wrap="wrap">
+            <Box className="layout-column tw:block">
               <PageHeader
                 data={{
                   header: t('label.email'),
                   subHeader: t('message.email-configuration-message'),
                 }}
               />
-            </Col>
-            <Col className="d-flex">
+            </Box>
+            <Box className="layout-column d-flex">
               {isAdminUser && emailConfigValues?.senderMail && (
-                <Button type="primary" onClick={handleTestEmailModal}>
+                <Button color="primary" onClick={handleTestEmailModal}>
                   {t('label.test-email')}
                 </Button>
               )}
 
-              {loading ? (
+              {loading || isSourceLoading ? (
                 <ButtonSkeleton />
               ) : (
-                <Button
-                  className="m-l-md"
-                  icon={
-                    !isUndefined(emailConfigValues) && (
-                      <Icon component={IconEdit} size={12} />
-                    )
-                  }
-                  onClick={handleEditClick}>
-                  {isUndefined(emailConfigValues)
-                    ? t('label.add')
-                    : t('label.edit')}
-                </Button>
+                !isManagedByDeployment && (
+                  <Button
+                    className="tw:ml-4"
+                    color="secondary"
+                    data-testid="edit-email-configuration"
+                    iconLeading={
+                      !isUndefined(emailConfigValues) && (
+                        <IconEdit className="tw:size-3.5 tw:shrink-0 tw:mr-2" />
+                      )
+                    }
+                    onClick={handleEditClick}>
+                    {isUndefined(emailConfigValues)
+                      ? t('label.add')
+                      : t('label.edit')}
+                  </Button>
+                )
               )}
-            </Col>
-          </Row>
-        </Col>
-        <Col span={24}>{configValuesContainer}</Col>
-      </Row>
+            </Box>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <SettingsSourceBanner
+            className="tw:mb-4"
+            sources={sources}
+            onAdopted={fetchEmailConfigValues}
+            onRefetch={refetchSources}
+          />
+          {configValuesContainer}
+        </Grid.Item>
+      </Grid>
 
       {isTeamEmailOpen && <TestEmail onCancel={handleTestEmailModal} />}
     </PageLayoutV1>

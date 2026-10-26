@@ -175,7 +175,9 @@ const fetchTaskList = (
   const scoped = { statusGroup: taskStatusGroup, ...common };
 
   if (feedFilterType === FeedFilter.MENTIONS) {
-    return listTasks({ ...mentionedTaskParams(scope), ...common });
+    // `scoped`, not `common`: mentioned tasks are status-filtered like every
+    // other branch. mentionedTaskParams never sets statusGroup, so no collision.
+    return listTasks({ ...mentionedTaskParams(scope), ...scoped });
   }
 
   if (isOwnProfile(scope)) {
@@ -223,6 +225,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [entityPaging, setEntityPaging] = useState<Paging>({} as Paging);
   const [focusReplyEditor, setFocusReplyEditor] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
+  const [listError, setListError] = useState<AxiosError>();
   const [isPostsLoading, setIsPostsLoading] = useState(false);
   const [isTestCaseResolutionLoading, setIsTestCaseResolutionLoading] =
     useState(false);
@@ -338,6 +341,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       const requestId = ++listRequestSeq.current;
       try {
         setLoading(true);
+        setListError(undefined);
         if (!after) {
           // A first-page fetch replaces the result set. Dropping the rows and the
           // paging cursor now is what stops the previous query's list staying on
@@ -372,6 +376,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           return;
         }
 
+        setListError(err as AxiosError);
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
@@ -398,6 +403,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       const requestId = ++listRequestSeq.current;
       try {
         setLoading(true);
+        setListError(undefined);
         if (!after) {
           setEntityThread([]);
           setEntityPaging({} as Paging);
@@ -412,6 +418,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
         const { data, paging } = await listConversations({
           entityLink: getConversationsEntityLink(entityType, fqn),
+          includeFields: true,
           after,
           filterType: getConversationsFilterType(feedFilterType, userId),
           userId,
@@ -428,6 +435,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           return;
         }
 
+        setListError(err as AxiosError);
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
@@ -616,44 +624,51 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       reactionType: ReactionType,
       reactionOperation: ReactionOperation
     ) => {
-      if (isThread) {
-        const conversation =
+      try {
+        if (isThread) {
+          const conversation =
+            reactionOperation === ReactionOperation.ADD
+              ? await addConversationReaction(feedId, reactionType)
+              : await removeConversationReaction(feedId, reactionType);
+          setEntityThread((current) =>
+            current.map((item) => (item.id === feedId ? conversation : item))
+          );
+          setSelectedThread((current) =>
+            current?.id === feedId ? conversation : current
+          );
+
+          return;
+        }
+
+        const reply =
           reactionOperation === ReactionOperation.ADD
-            ? await addConversationReaction(feedId, reactionType)
-            : await removeConversationReaction(feedId, reactionType);
+            ? await addConversationReplyReaction(feedId, post.id, reactionType)
+            : await removeConversationReplyReaction(
+                feedId,
+                post.id,
+                reactionType
+              );
+        const updateReplies = (replies?: ConversationReply[]) =>
+          (replies ?? []).map((item) => (item.id === reply.id ? reply : item));
         setEntityThread((current) =>
-          current.map((item) => (item.id === feedId ? conversation : item))
+          current.map((conversation) =>
+            conversation.id === feedId
+              ? {
+                  ...conversation,
+                  replies: updateReplies(conversation.replies),
+                }
+              : conversation
+          )
         );
         setSelectedThread((current) =>
-          current?.id === feedId ? conversation : current
+          current?.id === feedId
+            ? { ...current, replies: updateReplies(current.replies) }
+            : current
         );
-
-        return;
+        setActivityReplies(updateReplies);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-
-      const reply =
-        reactionOperation === ReactionOperation.ADD
-          ? await addConversationReplyReaction(feedId, post.id, reactionType)
-          : await removeConversationReplyReaction(
-              feedId,
-              post.id,
-              reactionType
-            );
-      const updateReplies = (replies?: ConversationReply[]) =>
-        (replies ?? []).map((item) => (item.id === reply.id ? reply : item));
-      setEntityThread((current) =>
-        current.map((conversation) =>
-          conversation.id === feedId
-            ? { ...conversation, replies: updateReplies(conversation.replies) }
-            : conversation
-        )
-      );
-      setSelectedThread((current) =>
-        current?.id === feedId
-          ? { ...current, replies: updateReplies(current.replies) }
-          : current
-      );
-      setActivityReplies(updateReplies);
     },
     []
   );
@@ -910,6 +925,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       selectedTask,
       isDrawerOpen,
       loading,
+      listError,
       isActivityLoading,
       isPostsLoading,
       isTestCaseResolutionLoading,
@@ -954,6 +970,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     selectedTask,
     isDrawerOpen,
     loading,
+    listError,
     isActivityLoading,
     isPostsLoading,
     isTestCaseResolutionLoading,

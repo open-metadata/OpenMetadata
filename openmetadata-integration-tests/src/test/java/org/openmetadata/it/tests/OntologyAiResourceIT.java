@@ -19,10 +19,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -37,6 +39,11 @@ import org.openmetadata.sdk.network.HttpMethod;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class OntologyAiResourceIT {
+  @AfterEach
+  void cleanup(final TestNamespace namespace) {
+    NamespaceCleanup.deleteRoots(namespace.drainTrackedRoots());
+  }
+
   @Test
   void defaultDisabledCapabilityHidesEveryAiRoute(TestNamespace namespace) {
     final String glossary = namespace.prefix("AiDisabled");
@@ -82,7 +89,7 @@ public class OntologyAiResourceIT {
             .getHttpClient()
             .execute(HttpMethod.GET, "/v1/rdf/status", null, RdfStatus.class);
 
-    assertFalse(status.getAskCollateEnabled());
+    assertFalse(status.getAiEnabled());
   }
 
   private static void assertNotFound(final Runnable request) {

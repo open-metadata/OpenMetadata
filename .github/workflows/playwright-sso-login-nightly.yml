@@ -46,22 +46,9 @@ on:
       - 'openmetadata-ui/src/main/resources/ui/src/pages/ForgotPassword/**'
       - 'openmetadata-ui/src/main/resources/ui/src/pages/ResetPassword/**'
       - 'openmetadata-ui/src/main/resources/ui/src/components/common/LoginButton/**'
-      # Shared primitives that the auth screens render. The core-components
-      # migration in #33575 changed the DOM shape of Button (dropped the
-      # legacy `signin-button` class) and Input (react-aria wrapper puts
-      # the testid on a `<div data-input-wrapper>` instead of the actual
-      # `<input>`); catching that cross-package breakage on the ORIGINATING
-      # PR is the whole point of adding these paths. The `form/**` and
-      # `form-field/**` layers are here because the Basic and LDAP fixtures
-      # locate inputs via `getByLabel(/email/i)` / `getByLabel(/password/i)`,
-      # and `render-field-element.tsx` is what wires the label → input
-      # association plus forwards signup test IDs — the same class of
-      # cross-package regression as Button/Input would otherwise slip past
-      # the PR gate (greptile r4056182832).
-      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/base/buttons/**'
-      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/base/input/**'
-      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/base/form/**'
-      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/application/form-field/**'
+      # ui-core-components primitives (buttons/input/form/form-field) are
+      # intentionally NOT in this PR gate; drift is caught by the nightly run.
+      # ADR:2026-10-13-sso-pr-gate-covers-auth-owned-paths-only
       # Backend auth surface — narrow to the packages the SSO matrix
       # actually exercises (login/refresh, JWT filter, SAML handler,
       # OIDC/SAML code flow, LDAP/basic authenticators, the servlet
@@ -353,7 +340,18 @@ jobs:
       - name: Install dependencies
         if: env.SKIP_LEG != 'true'
         working-directory: openmetadata-ui/src/main/resources/ui/
-        run: yarn --ignore-scripts --frozen-lockfile
+        run: |
+          # Retry transient registry failures (5xx on tarball fetches) —
+          # yarn v1 does not retry HTTP errors on its own.
+          for attempt in 1 2 3; do
+            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
       - name: Install Playwright Browsers
         if: env.SKIP_LEG != 'true'

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Select, Space, Tooltip, Typography } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Box, Select, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -21,7 +20,6 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDownload } from '../../../assets/svg/ic-download.svg';
-import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
@@ -38,12 +36,16 @@ import {
   getSampleDataByTableId,
 } from '../../../rest/tableAPI';
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TableComponent from '../../common/Table/TableV2';
@@ -129,11 +131,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       rowLimit
     );
 
-    downloadFile(
-      csvContent,
-      `sample_data_${rowLimit}_rows.csv`,
-      'text/csv;charset=utf-8;'
-    );
+    downloadCsv(csvContent, `sample_data_${rowLimit}_rows.csv`);
   }, [sampleData, rowLimit]);
 
   const getSampleDataWithType = (entity: Table | Container) => {
@@ -148,14 +146,16 @@ const SampleDataTable: FC<SampleDataProps> = ({
       return {
         name: column,
         title: (
-          <div className="d-flex flex-column">
-            <Typography.Text> {column}</Typography.Text>
+          <Box className="tw:text-start tw:wrap-anywhere" direction="col">
+            <Typography> {column}</Typography>
             {matchedColumn?.dataType && (
-              <Typography.Text className="text-grey-muted text-xs font-normal">{`(${lowerCase(
+              <Typography
+                className="text-xs font-normal"
+                color="secondary">{`(${lowerCase(
                 matchedColumn?.dataType ?? ''
-              )})`}</Typography.Text>
+              )})`}</Typography>
             )}
-          </div>
+          </Box>
         ),
         dataIndex: columnKey,
         key: columnKey,
@@ -217,7 +217,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
     }
   };
 
-  const manageButtonContent: ItemType[] = [
+  const manageButtonContent: ManageMenuItem[] = [
     {
       label: (
         <ManageButtonItemLabel
@@ -230,8 +230,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
         />
       ),
       key: 'export-button',
-      onClick: (e: { domEvent: { stopPropagation: () => void } }) => {
-        e.domEvent.stopPropagation();
+      onClick: () => {
         setShowActions(false);
         exportToCSV();
       },
@@ -253,8 +252,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
               />
             ),
             key: 'delete-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
+            onClick: () => {
               setShowActions(false);
               handleDeleteModal();
             },
@@ -291,25 +289,28 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
-      <ErrorPlaceHolder className="error-placeholder">
-        <Typography.Paragraph>
-          <Transi18next
-            i18nKey="message.view-sample-data-entity"
-            renderElement={
-              <a
-                aria-label={t('label.auto-classification')}
-                href={AUTO_CLASSIFICATION_DOCS}
-                rel="noreferrer"
-                style={{ color: theme.primaryColor }}
-                target="_blank"
-              />
-            }
-            values={{
-              entity: t('label.auto-classification'),
-            }}
-          />
-        </Typography.Paragraph>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-[calc(100vh-255px)] tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:in-[.assistant-content]:min-h-60">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={
+            <Transi18next
+              i18nKey="message.view-sample-data-entity"
+              renderElement={
+                <a
+                  aria-label={t('label.auto-classification')}
+                  href={AUTO_CLASSIFICATION_DOCS}
+                  rel="noreferrer"
+                  style={{ color: theme.primaryColor }}
+                  target="_blank"
+                />
+              }
+              values={{
+                entity: t('label.auto-classification'),
+              }}
+            />
+          }
+        />
+      </div>
     );
   }
 
@@ -320,49 +321,47 @@ const SampleDataTable: FC<SampleDataProps> = ({
       })}
       data-testid="sample-data"
       id="sampleDataDetails">
-      <Space className="m-y-xss justify-between w-full">
-        <Space>
-          <Typography.Text className="text-grey-muted">
-            {t('label.row-limit')}:
-          </Typography.Text>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal m-y-xss justify-between w-full"
+        gap={2}
+        itemClassName="layout-space-item">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
+          <Typography color="secondary">{t('label.row-limit')}:</Typography>
           <Select
-            className="w-28"
+            aria-label={t('label.row-limit')}
+            className="tw:w-28"
             data-testid="row-limit-select"
-            value={rowLimit}
-            onChange={setRowLimit}>
+            selectedKey={String(rowLimit)}
+            onSelectionChange={(key) =>
+              key !== null && setRowLimit(Number(key))
+            }>
             {ROW_LIMIT_OPTIONS.map((limit) => (
-              <Select.Option
+              <Select.Item
                 data-testid={`row-limit-option-${limit}`}
+                id={String(limit)}
                 key={limit}
-                value={limit}>
-                {limit}
-              </Select.Option>
+                label={String(limit)}
+              />
             ))}
           </Select>
-        </Space>
-        <Dropdown
-          menu={{
-            items: manageButtonContent,
-          }}
-          open={showActions}
-          overlayClassName="manage-dropdown-list-container"
-          overlayStyle={{ width: '350px' }}
-          placement="bottomRight"
-          onOpenChange={setShowActions}>
-          <Tooltip
-            placement="topLeft"
-            title={t('label.manage-entity', {
-              entity: t('label.sample-data'),
-            })}>
-            <Button
-              className="flex-center px-1.5"
-              data-testid="sample-data-manage-button"
-              onClick={() => setShowActions(true)}>
-              <IconDropdown className="anticon self-center " />
-            </Button>
-          </Tooltip>
-        </Dropdown>
-      </Space>
+        </Box>
+        <ManageMenu
+          data-testid="sample-data-manage-button"
+          isOpen={showActions}
+          items={manageButtonContent}
+          label={t('label.manage-entity', {
+            entity: t('label.sample-data'),
+          })}
+          onOpenChange={setShowActions}
+        />
+      </Box>
 
       <TableComponent
         columns={sampleData?.columns}

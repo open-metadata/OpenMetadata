@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  ImmutableTree,
+  Utils as QbUtils,
+} from '@react-awesome-query-builder/ui';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { getEntityLifecycleStages } from '../rest/metadataTypeAPI';
+import { getAggregateFieldOptions } from '../rest/miscAPI';
+import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { JSONLogicSearchClassBase } from './JSONLogicSearchClassBase';
 
 // Define extended widget interface for testing widget properties
@@ -44,6 +51,57 @@ describe('JSONLogicSearchClassBase', () => {
 
   beforeEach(() => {
     jsonLogicSearchClassBase = new JSONLogicSearchClassBase();
+  });
+
+  describe('updatedBy field', () => {
+    it('should use the user name as the option value and display name as the label', async () => {
+      jest.useFakeTimers();
+      const autocomplete = advancedSearchClassBase.autocomplete as jest.Mock;
+      const mockedAutocomplete = autocomplete.getMockImplementation();
+      autocomplete.mockImplementation(
+        jest.requireActual('./AdvancedSearchClassBase').default.autocomplete
+      );
+      (getAggregateFieldOptions as jest.Mock).mockResolvedValueOnce({
+        data: {
+          aggregations: {
+            'sterms#displayName.keyword': {
+              buckets: [
+                {
+                  key: 'aaron johnson',
+                  doc_count: 1,
+                  'top_hits#top': {
+                    hits: {
+                      hits: [
+                        {
+                          _source: {
+                            displayName: 'aaron johnson',
+                            name: 'aaron_johnson0',
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      });
+
+      const field = jsonLogicSearchClassBase.mapFields[
+        EntityReferenceFields.UPDATED_BY
+      ] as { fieldSettings: { asyncFetch: (q: string) => Promise<unknown> } };
+      const result = field.fieldSettings.asyncFetch('aaron');
+      jest.runAllTimers();
+
+      await expect(result).resolves.toEqual({
+        values: [{ title: 'aaron johnson', value: 'aaron_johnson0' }],
+        hasMore: false,
+      });
+
+      autocomplete.mockImplementation(mockedAutocomplete);
+      jest.useRealTimers();
+    });
   });
 
   describe('configOperators', () => {
@@ -370,6 +428,47 @@ describe('JSONLogicSearchClassBase', () => {
         EntityReferenceFields.COLUMN_TAG
       );
     });
+
+    it('lets a status rule ask whether a stage is set', () => {
+      const config = jsonLogicSearchClassBase.getCommonConfig([
+        SearchIndex.TABLE,
+      ]);
+      const field = config[EntityReferenceFields.ENTITY_STATUS];
+
+      expect('operators' in field ? field.operators : []).toEqual(
+        expect.arrayContaining(['is_null', 'is_not_null'])
+      );
+    });
+
+    it.each(['Superseded', 'Invalidated'])(
+      'does not offer %s when filtering tables',
+      async (status) => {
+        const config = jsonLogicSearchClassBase.getCommonConfig([
+          SearchIndex.TABLE,
+        ]);
+        const field = config[EntityReferenceFields.ENTITY_STATUS];
+        if (!('fieldSettings' in field)) {
+          throw new Error('Status must be a selectable field');
+        }
+        const settings = field.fieldSettings;
+        const fetch =
+          settings && 'asyncFetch' in settings
+            ? settings.asyncFetch
+            : undefined;
+        if (typeof fetch !== 'function') {
+          throw new Error(
+            'Status options must resolve through lifecycle discovery'
+          );
+        }
+
+        await expect(fetch('', 0)).resolves.toMatchObject({
+          values: expect.arrayContaining([
+            expect.objectContaining({ value: 'Approved' }),
+          ]),
+        });
+        await expect(fetch(status, 0)).resolves.toMatchObject({ values: [] });
+      }
+    );
   });
 
   describe('getNegativeQueryForNotContainsReverserOperation', () => {
@@ -550,5 +649,72 @@ describe('JSONLogicSearchClassBase', () => {
       // carries a "Criteria:" prefix of its own.
       expect(props.valueLabel).toContain('label.value');
     });
+  });
+});
+
+jest.mock('../rest/metadataTypeAPI', () => ({
+  getEntityLifecycleStages: jest.fn(),
+}));
+
+beforeEach(() => {
+  (
+    getEntityLifecycleStages as jest.MockedFunction<
+      typeof getEntityLifecycleStages
+    >
+  ).mockResolvedValue({
+    stages: ['Approved', 'In Review', 'Superseded', 'Invalidated'],
+    entityTypes: [
+      {
+        entityType: 'table',
+        stages: ['Approved', 'In Review'],
+        transitions: [],
+        stageWorkflows: [],
+      },
+      {
+        entityType: 'contextMemory',
+        stages: ['Approved', 'Superseded', 'Invalidated'],
+        transitions: [],
+        stageWorkflows: [],
+      },
+    ],
+  });
+});
+
+describe('provider field for glossary terms', () => {
+  const automationProposal = {
+    and: [
+      { '==': [{ var: 'provider' }, 'automation'] },
+      { '!=': [{ var: 'entityStatus' }, 'Approved'] },
+    ],
+  };
+
+  it('offers the three providers a glossary term can have', () => {
+    const fields = new JSONLogicSearchClassBase().getQbConfigs([
+      SearchIndex.GLOSSARY_TERM,
+    ]).fields;
+
+    expect(
+      Object.keys(
+        (
+          fields[EntityReferenceFields.PROVIDER] as {
+            fieldSettings: { listValues: Record<string, string> };
+          }
+        ).fieldSettings.listValues
+      )
+    ).toEqual(['user', 'system', 'automation']);
+  });
+
+  it('keeps an automation proposal rule through a load and a save', () => {
+    const config = new JSONLogicSearchClassBase().getQbConfigs([
+      SearchIndex.GLOSSARY_TERM,
+    ]);
+    const tree = QbUtils.loadFromJsonLogic(
+      automationProposal,
+      config
+    ) as ImmutableTree;
+
+    expect(QbUtils.jsonLogicFormat(tree, config).logic).toEqual(
+      automationProposal
+    );
   });
 });

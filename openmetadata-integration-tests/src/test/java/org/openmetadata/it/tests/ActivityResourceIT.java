@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -23,16 +24,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.feed.CreatePost;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -42,7 +48,9 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ActivityEventType;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -387,6 +395,106 @@ public class ActivityResourceIT {
   }
 
   @Test
+  void test_mentionsFeedFollowsMentionsInActivityReplies(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "activity-reply-mentions");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    ConversationReply reply =
+        addActivityReply(
+            SdkClients.adminClient(),
+            activity.getId(),
+            "<#E::user::shared_user2> can you check this change?");
+
+    assertTrue(mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()));
+    assertFalse(
+        mentionedActivityIds(SdkClients.user1Client()).contains(activity.getId()),
+        "Only the mentioned user sees the activity");
+
+    patchConversationReply(
+        SdkClients.adminClient(), activity.getId(), reply.getId(), "No mention any more");
+    assertFalse(
+        mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()),
+        "Editing the mention out drops the activity");
+
+    patchConversationReply(
+        SdkClients.adminClient(), activity.getId(), reply.getId(), "<#E::user::shared_user2>");
+    deleteConversationReply(SdkClients.adminClient(), activity.getId(), reply.getId());
+    assertFalse(
+        mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()),
+        "Deleting the reply drops the activity");
+  }
+
+  @Test
+  void test_mentionsFeedSupportsDomainFilter(TestNamespace ns) throws Exception {
+    Domain allowedDomain = createDomain(ns, "mentions-allowed-domain");
+    Domain blockedDomain = createDomain(ns, "mentions-blocked-domain");
+    Table table = createTableInDomain(ns, "mentions-domain-table", allowedDomain);
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">", allowedDomain);
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::user::" + SharedEntities.get().USER2.getName() + "> please review");
+
+    assertTrue(
+        mentionedActivityIds(SdkClients.user2Client(), allowedDomain.getFullyQualifiedName())
+            .contains(activity.getId()),
+        "Mentions in the requested domain are returned");
+    assertFalse(
+        mentionedActivityIds(SdkClients.user2Client(), blockedDomain.getFullyQualifiedName())
+            .contains(activity.getId()),
+        "Mentions outside the requested domain are excluded");
+  }
+
+  @Test
+  void test_mentionsFeedIncludesTeamMentions(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "activity-team-mentions");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    // shared_user2 belongs to TEAM21; shared_user1 does not.
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::team::" + SharedEntities.get().TEAM21.getName() + "> please review");
+
+    assertTrue(
+        mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()),
+        "A member of the mentioned team sees the activity");
+    assertFalse(
+        mentionedActivityIds(SdkClients.user1Client()).contains(activity.getId()),
+        "A user outside the mentioned team does not");
+  }
+
+  @Test
+  void test_mentionsFeedFiltersByEntity(TestNamespace ns) throws Exception {
+    Table mentionedTable = createTestTable(ns, "mentions-entity-target");
+    Table otherTable = createTestTable(ns, "mentions-entity-other");
+    String mentionedLink = "<#E::table::" + mentionedTable.getFullyQualifiedName() + ">";
+    ActivityEvent onMentionedTable =
+        createTestActivityEventWithAbout(mentionedTable, mentionedLink);
+    ActivityEvent onOtherTable =
+        createTestActivityEventWithAbout(
+            otherTable, "<#E::table::" + otherTable.getFullyQualifiedName() + ">");
+    String mention = "<#E::user::" + SharedEntities.get().USER2.getName() + "> please review";
+    addActivityReply(SdkClients.adminClient(), onMentionedTable.getId(), mention);
+    addActivityReply(SdkClients.adminClient(), onOtherTable.getId(), mention);
+
+    List<UUID> aboutEntity = mentionedActivityIdsAbout(SdkClients.user2Client(), mentionedLink);
+
+    assertTrue(
+        aboutEntity.contains(onMentionedTable.getId()),
+        "Mentions on the requested entity are returned");
+    assertFalse(
+        aboutEntity.contains(onOtherTable.getId()), "Mentions on another entity are excluded");
+    assertTrue(
+        mentionedActivityIds(SdkClients.user2Client()).contains(onOtherTable.getId()),
+        "Without an entity the feed still has every mention");
+  }
+
+  @Test
   void test_activityRepliesRemainReadableButBecomeImmutableAfterTargetDeletion(TestNamespace ns)
       throws Exception {
     Table table = createTestTable(ns, "deleted-activity-target");
@@ -480,6 +588,98 @@ public class ActivityResourceIT {
     }
   }
 
+  // A window starting at the start of the day 30 days ago reaches up to ~24h past
+  // now - 30d, which `days=30` cannot express; startTs must fetch that gap.
+  @Test
+  void test_listActivityEvents_startTsOverridesDaysToFetchCalendarAlignedGap(TestNamespace ns)
+      throws Exception {
+    Table table = createTestTable(ns, "startts-gap");
+    User admin = getAdminUser();
+    // ~2h older than now - 30d => inside the gap that days=30 cannot reach.
+    long gapEventTs = System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L - 2 * 60 * 60 * 1000L;
+    // Window start just before the gap event, like the default preset's startOfDay.
+    long startTs = gapEventTs - 1;
+
+    ActivityEvent gapEvent =
+        insertActivityEvent(
+            SdkClients.adminClient(),
+            new ActivityEvent()
+                .withId(UUID.randomUUID())
+                .withEventType(ActivityEventType.ENTITY_CREATED)
+                .withEntity(
+                    new EntityReference()
+                        .withId(table.getId())
+                        .withType(Entity.TABLE)
+                        .withName(table.getName())
+                        .withFullyQualifiedName(table.getFullyQualifiedName()))
+                .withActor(
+                    new EntityReference()
+                        .withId(admin.getId())
+                        .withType(Entity.USER)
+                        .withName(admin.getName())
+                        .withFullyQualifiedName(admin.getFullyQualifiedName()))
+                .withTimestamp(gapEventTs)
+                .withSummary("Gap event older than now-30d, inside the calendar-aligned window"));
+
+    // With the absolute startTs, the gap event is fetched even though days=30
+    // alone would filter it out (timestamp < now-30d).
+    ActivityEventList withStartTs =
+        listActivityEventsWithStartTs(
+            SdkClients.adminClient(), "table", table.getId(), startTs, 200, 30);
+    assertTrue(
+        withStartTs.getData().stream().anyMatch(e -> gapEvent.getId().equals(e.getId())),
+        "startTs must fetch the calendar-aligned gap event that days=30 drops");
+
+    // Regression guard: days=30 alone still drops the gap event (the bug being
+    // fixed), confirming it is startTs — not some other change — that recovers it.
+    ActivityEventList daysOnly =
+        listActivityEventsWithEntityFilter(
+            SdkClients.adminClient(), "table", table.getId(), 200, 30);
+    assertFalse(
+        daysOnly.getData().stream().anyMatch(e -> gapEvent.getId().equals(e.getId())),
+        "days=30 alone must not reach the gap event older than now-30d");
+  }
+
+  // Mentions are bounded by when the mention was made, which the server stamps, so a
+  // mention cannot be placed in the past gap. Instead a startTs after the item must
+  // exclude it on each scoped feed, which fails if startTs is ignored for `days`.
+  @Test
+  void test_scopedFeedsUseStartTsAsLowerBound(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "start-ts-scoped-domain");
+    User admin = getAdminUser();
+    Table table =
+        createTableInDomain(
+            ns, "start-ts-scoped-table", domain, List.of(admin.getEntityReference()));
+    addTableFollower(table.getId(), admin.getId());
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">", domain);
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::user::" + SharedEntities.get().USER2.getName() + "> please review");
+
+    long hour = 60 * 60 * 1000L;
+    long before = System.currentTimeMillis() - hour;
+    long after = System.currentTimeMillis() + hour;
+    Map<String, OpenMetadataClient> feeds =
+        Map.of(
+            "/mentions", SdkClients.user2Client(),
+            "/my-feed", SdkClients.adminClient(),
+            "/following", SdkClients.adminClient());
+
+    for (Map.Entry<String, OpenMetadataClient> feed : feeds.entrySet()) {
+      assertTrue(
+          feedIds(feed.getValue(), feed.getKey(), Map.of("startTs", String.valueOf(before)))
+              .contains(activity.getId()),
+          feed.getKey() + " must return the item when startTs is before it");
+      assertFalse(
+          feedIds(feed.getValue(), feed.getKey(), Map.of("startTs", String.valueOf(after)))
+              .contains(activity.getId()),
+          feed.getKey() + " must drop the item when startTs is after it");
+    }
+  }
+
   // ==================== Entity Activity Tests ====================
 
   @Test
@@ -508,6 +708,35 @@ public class ActivityResourceIT {
         getEntityActivity(SdkClients.adminClient(), "table", table.getId(), 5, 30);
     assertNotNull(events);
     assertTrue(events.getData().size() <= 5, "Should respect limit parameter");
+  }
+
+  @Test
+  void test_getEntityActivity_includesItsDataContractActivity(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    DataContract contract =
+        SdkClients.adminClient()
+            .dataContracts()
+            .create(
+                new CreateDataContract()
+                    .withName(ns.prefix("contract"))
+                    .withEntity(table.getEntityReference()));
+    ActivityEvent contractEvent =
+        insertActivityEvent(
+            SdkClients.adminClient(),
+            new ActivityEvent()
+                .withId(UUID.randomUUID())
+                .withEventType(ActivityEventType.ENTITY_UPDATED)
+                .withEntity(contract.getEntityReference())
+                .withActor(getAdminUser().getEntityReference())
+                .withTimestamp(System.currentTimeMillis())
+                .withSummary("Updated data contract"));
+
+    ActivityEventList events =
+        getEntityActivity(SdkClients.adminClient(), "table", table.getId(), 50, 30);
+
+    assertTrue(
+        events.getData().stream().anyMatch(e -> contractEvent.getId().equals(e.getId())),
+        "A table's activity must include its data contract's activity");
   }
 
   // ==================== User Activity Tests ====================
@@ -1036,6 +1265,114 @@ public class ActivityResourceIT {
     assertNotNull(events.getData());
   }
 
+  private static final List<String> PERSONAL_FEEDS = List.of("/my-feed", "/following", "/mentions");
+
+  @Test
+  void test_personalFeedsCanBeScopedToAnotherUser(TestNamespace ns) throws Exception {
+    User member = UserTestFactory.createUser(ns, "scopedfeed");
+    ActivityEvent activity = seedPersonalFeedActivity(ns, member);
+
+    for (String feed : PERSONAL_FEEDS) {
+      assertTrue(
+          feedIds(SdkClients.adminClient(), feed, userIdParam(member.getId()))
+              .contains(activity.getId()),
+          feed + " scoped to the member must return the member's activity");
+      assertFalse(
+          feedIds(SdkClients.adminClient(), feed, Map.of()).contains(activity.getId()),
+          feed + " without userId must stay scoped to the caller");
+    }
+  }
+
+  @Test
+  void test_personalFeedsOfAnotherUserAreFilteredToWhatTheCallerMayView(TestNamespace ns)
+      throws Exception {
+    User member = UserTestFactory.createUser(ns, "viewfeed");
+    ActivityEvent activity = seedPersonalFeedActivity(ns, member);
+    OpenMetadataClient tableDenied =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("tableview"), Entity.TABLE, MetadataOperation.VIEW_BASIC);
+
+    for (String feed : PERSONAL_FEEDS) {
+      assertTrue(
+          feedIds(SdkClients.user2Client(), feed, userIdParam(member.getId()))
+              .contains(activity.getId()),
+          feed + " must show a non-admin caller the member's activity they may view");
+      assertFalse(
+          feedIds(tableDenied, feed, userIdParam(member.getId())).contains(activity.getId()),
+          feed + " must hide the member's activity on a table the caller may not view");
+    }
+  }
+
+  @Test
+  void test_personalFeedsForAnotherUserRequireViewOnThatUser(TestNamespace ns) throws Exception {
+    String prefix = ns.shortPrefix("feedview");
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDenied(prefix, Entity.USER, MetadataOperation.VIEW_BASIC);
+    UUID ownId = SdkClients.adminClient().users().getByName(prefix + "_user").getId();
+    UUID otherUserId = UserTestFactory.createUser(ns, "feedother").getId();
+
+    for (String feed : PERSONAL_FEEDS) {
+      assertThrows(
+          ForbiddenException.class,
+          () -> feedIds(denied, feed, userIdParam(otherUserId)),
+          feed + " for another user must need ViewBasic on that user");
+      assertDoesNotThrow(
+          () -> feedIds(denied, feed, Map.of()), feed + " for the caller needs no user grant");
+      assertDoesNotThrow(
+          () -> feedIds(denied, feed, userIdParam(ownId)),
+          feed + " for the caller's own id needs no user grant");
+    }
+  }
+
+  @Test
+  void test_personalFeedsOfSoftDeletedUserStayReadable(TestNamespace ns) throws Exception {
+    User member = UserTestFactory.createUser(ns, "deletedfeed");
+    Table table = createTestTable(ns, "deleted-user-feed-table");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::user::" + member.getName() + "> please review");
+    SdkClients.adminClient()
+        .users()
+        .delete(member.getId().toString(), Map.of("hardDelete", "false"));
+
+    // The user detail keeps a soft-deleted user's Activity tab, so their feeds must not 404.
+    assertTrue(
+        feedIds(SdkClients.adminClient(), "/mentions", userIdParam(member.getId()))
+            .contains(activity.getId()),
+        "/mentions for a soft-deleted user must still return their activity");
+    for (String feed : List.of("/my-feed", "/following")) {
+      assertDoesNotThrow(
+          () -> feedIds(SdkClients.adminClient(), feed, userIdParam(member.getId())),
+          feed + " for a soft-deleted user must not 404");
+    }
+  }
+
+  /** An admin-authored event on a table {@code member} owns, follows and is mentioned on. */
+  private ActivityEvent seedPersonalFeedActivity(TestNamespace ns, User member) throws Exception {
+    Table table = createTestTable(ns, "personal-feed-table");
+    Tables.findByName(table.getFullyQualifiedName())
+        .fetch()
+        .withOwners(List.of(member.getEntityReference()))
+        .save();
+    addTableFollower(table.getId(), member.getId());
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::user::" + member.getName() + "> please review");
+    return activity;
+  }
+
+  private static Map<String, String> userIdParam(UUID userId) {
+    return Map.of("userId", userId.toString());
+  }
+
   // ==================== EntityLink (About) Tests ====================
 
   @Test
@@ -1357,6 +1694,56 @@ public class ActivityResourceIT {
     return MAPPER.readValue(response, ActivityEventList.class);
   }
 
+  // Lists activity events with an absolute startTs lower bound that overrides
+  // the relative `days` bound (see test_listActivityEvents_startTsOverridesDays...).
+  private ActivityEventList listActivityEventsWithStartTs(
+      OpenMetadataClient client,
+      String entityType,
+      UUID entityId,
+      long startTs,
+      int limit,
+      int days)
+      throws Exception {
+    RequestOptions.Builder builder =
+        RequestOptions.builder()
+            .queryParam("limit", String.valueOf(limit))
+            .queryParam("days", String.valueOf(days))
+            .queryParam("startTs", String.valueOf(startTs));
+
+    if (entityType != null) {
+      builder.queryParam("entityType", entityType);
+    }
+    if (entityId != null) {
+      builder.queryParam("entityId", entityId.toString());
+    }
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, ACTIVITY_PATH, null, builder.build());
+    return MAPPER.readValue(response, ActivityEventList.class);
+  }
+
+  private List<UUID> feedIds(OpenMetadataClient client, String feed, Map<String, String> params)
+      throws Exception {
+    RequestOptions.Builder options =
+        RequestOptions.builder().queryParam("days", "30").queryParam("limit", "200");
+    params.forEach(options::queryParam);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, ACTIVITY_PATH + feed, null, options.build());
+    return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
+        .map(ActivityEvent::getId)
+        .toList();
+  }
+
+  private static void addTableFollower(UUID tableId, UUID userId) throws Exception {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/tables/" + tableId + "/followers", userId, ChangeEvent.class);
+  }
+
   private ActivityEventList listActivityEventsWithActorFilter(
       OpenMetadataClient client, UUID actorId, int limit, int days) throws Exception {
     RequestOptions options =
@@ -1541,6 +1928,42 @@ public class ActivityResourceIT {
                 null,
                 options.build());
     return MAPPER.readValue(response, ConversationReplyList.class);
+  }
+
+  private List<UUID> mentionedActivityIds(OpenMetadataClient client) throws Exception {
+    return mentionedActivityIds(client, null);
+  }
+
+  private List<UUID> mentionedActivityIds(OpenMetadataClient client, String domainFqn)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                ACTIVITY_PATH + "/mentions",
+                null,
+                buildActivityRequestOptions(200, 1, domainFqn));
+    return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
+        .map(ActivityEvent::getId)
+        .toList();
+  }
+
+  private List<UUID> mentionedActivityIdsAbout(OpenMetadataClient client, String entityLink)
+      throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("days", "1")
+            .queryParam("limit", "200")
+            .queryParam("entityLink", entityLink)
+            .build();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, ACTIVITY_PATH + "/mentions", null, options);
+    return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
+        .map(ActivityEvent::getId)
+        .toList();
   }
 
   private ActivityEventList getMyFeed(OpenMetadataClient client, int limit, int days)

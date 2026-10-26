@@ -10,17 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Box,
-  Typography as CoreTypography,
+  Divider,
+  Grid,
+  Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   FailedTests,
   MinusCircle,
   SuccessfulTests,
 } from '@openmetadata/ui-core-components/icons';
-import { Col, Divider, Tooltip, Typography } from 'antd';
 import { isEmpty, lowerCase } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -187,7 +188,14 @@ const ContractSLA: React.FC<{
   const renderOutcomeIcon = (key: string): ReactNode => {
     const outcomeOf = SLA_CHECK_OUTCOME[key];
     if (!slaValidation || !outcomeOf) {
-      return <Icon className="sla-icon" component={DefaultIcon} />;
+      return (
+        <DefaultIcon
+          className="sla-icon"
+          fill="currentColor"
+          height="1em"
+          width="1em"
+        />
+      );
     }
     const met = outcomeOf(slaValidation);
     if (met === true) {
@@ -230,26 +238,29 @@ const ContractSLA: React.FC<{
 
   const inheritedIcon = contract.sla?.inherited ? (
     <Tooltip
+      arrow
+      excludeTriggerFromTabOrder
       title={t('label.inherited-entity', {
         entity: t('label.service-level-agreement'),
-      })}>
-      <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+      })}
+      triggerClassName="tw:inline-flex">
+      <InheritIcon className="inherit-icon tw:cursor-pointer" width={14} />
     </Tooltip>
   ) : null;
 
   return (
-    <Col
-      className="contract-card-items"
+    <Grid.Item
+      className="layout-column contract-card-items"
       data-testid="contract-sla-card"
       span={24}>
       <div className="contract-card-header-container">
         <div className="d-flex items-center gap-1">
-          <Typography.Text className="contract-card-header">
+          <Typography className="contract-card-header">
             {t('label.service-level-agreement')}
-          </Typography.Text>
+          </Typography>
           {inheritedIcon}
         </div>
-        <Divider className="contract-dash-separator" />
+        <Divider dashed className="contract-dash-separator" />
       </div>
 
       <div className="sla-item-container">
@@ -269,11 +280,11 @@ const ContractSLA: React.FC<{
           gap={1}>
           {contractStatus && (
             <Box align="center" gap={2}>
-              <CoreTypography size="text-sm">
+              <Typography size="text-sm">
                 {`${t('label.entity-status', {
                   entity: t('label.service-level-agreement'),
                 })} :`}
-              </CoreTypography>
+              </Typography>
               <StatusBadgeV2
                 dataTestId="contract-status-card-item-sla-status"
                 label={contractStatus}
@@ -282,7 +293,7 @@ const ContractSLA: React.FC<{
             </Box>
           )}
           {slaValidation.lastRefreshedAt && slaValidation.refreshedAtSource && (
-            <CoreTypography
+            <Typography
               color="secondary"
               data-testid="sla-last-refreshed"
               size="text-sm">
@@ -292,19 +303,19 @@ const ContractSLA: React.FC<{
                   REFRESH_SOURCE_LABEL[slaValidation.refreshedAtSource]
                 ),
               })}
-            </CoreTypography>
+            </Typography>
           )}
           {slaValidation.message && (
-            <CoreTypography
+            <Typography
               color="secondary"
               data-testid="sla-validation-message"
               size="text-sm">
               {slaValidation.message}
-            </CoreTypography>
+            </Typography>
           )}
         </Box>
       )}
-    </Col>
+    </Grid.Item>
   );
 };
 

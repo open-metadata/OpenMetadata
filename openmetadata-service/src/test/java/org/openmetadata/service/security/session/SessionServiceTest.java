@@ -35,6 +35,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.fernet.Fernet;
 
 @ExtendWith(MockitoExtension.class)
@@ -119,10 +120,16 @@ class SessionServiceTest {
             eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt()))
         .thenReturn(List.of());
 
+    long renewalDueAt = now + 300_000;
     UserSession activated =
         sessionService
             .activatePendingSession(
-                request, response, pendingSession, user, "om-refresh", "provider-refresh")
+                request,
+                response,
+                pendingSession,
+                user,
+                "om-refresh",
+                new SessionService.ProviderTokenUpdate.Replaced("provider-refresh", renewalDueAt))
             .orElseThrow();
 
     assertEquals(SessionStatus.ACTIVE, activated.getStatus());
@@ -132,6 +139,7 @@ class SessionServiceTest {
     assertNotEquals("provider-refresh", activated.getProviderRefreshToken());
     assertEquals("om-refresh", sessionService.decryptOmRefreshToken(activated));
     assertEquals("provider-refresh", sessionService.decryptProviderRefreshToken(activated));
+    assertEquals(renewalDueAt, activated.getProviderRenewalDueAt());
   }
 
   @Test
@@ -161,7 +169,12 @@ class SessionServiceTest {
     UserSession activated =
         sessionService
             .activatePendingSession(
-                request, response, pendingSession, user, "om-refresh", "provider-refresh")
+                request,
+                response,
+                pendingSession,
+                user,
+                "om-refresh",
+                SessionService.ProviderTokenUpdate.NONE)
             .orElseThrow();
 
     // Session fixation defense: the activated session MUST have a different ID than the pending one
@@ -291,6 +304,54 @@ class SessionServiceTest {
   }
 
   @Test
+  void acquireRefreshLease_revokesASessionIssuedByAProviderNoLongerConfigured() {
+    String sessionId = validSessionId('x');
+    long now = System.currentTimeMillis();
+    UserSession oidcSession =
+        UserSession.builder()
+            .id(sessionId)
+            .provider(AuthProvider.CUSTOM_OIDC.value())
+            .status(SessionStatus.ACTIVE)
+            .version(2L)
+            .expiresAt(now + 60_000)
+            .idleExpiresAt(now + 60_000)
+            .build();
+    when(authConfig.getProvider()).thenReturn(AuthProvider.BASIC);
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OM_SESSION", sessionId)});
+    when(repository.findById(sessionId)).thenReturn(Optional.of(oidcSession));
+    when(repository.updateIfVersion(any(UserSession.class), eq(2L))).thenReturn(true);
+
+    assertTrue(sessionService.acquireRefreshLease(request, response).isEmpty());
+
+    ArgumentCaptor<UserSession> stored = ArgumentCaptor.forClass(UserSession.class);
+    verify(repository).updateIfVersion(stored.capture(), eq(2L));
+    assertEquals(SessionStatus.REVOKED, stored.getValue().getStatus());
+  }
+
+  @Test
+  void acquireRefreshLease_leasesANativePasswordSessionUnderEitherNativeProviderName() {
+    String sessionId = validSessionId('n');
+    long now = System.currentTimeMillis();
+    UserSession basicSession =
+        UserSession.builder()
+            .id(sessionId)
+            .provider(AuthProvider.OPENMETADATA.value())
+            .status(SessionStatus.ACTIVE)
+            .version(1L)
+            .expiresAt(now + 60_000)
+            .idleExpiresAt(now + 60_000)
+            .build();
+    when(authConfig.getProvider()).thenReturn(AuthProvider.BASIC);
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OM_SESSION", sessionId)});
+    when(repository.findById(sessionId)).thenReturn(Optional.of(basicSession));
+    when(repository.updateIfVersion(any(UserSession.class), eq(1L))).thenReturn(true);
+
+    UserSession leased = sessionService.acquireRefreshLease(request, response).orElseThrow();
+
+    assertEquals(SessionStatus.REFRESHING, leased.getStatus());
+  }
+
+  @Test
   void acquireRefreshLease_reclaimsStaleLease() {
     String sessionId = validSessionId('s');
     long now = System.currentTimeMillis();
@@ -394,15 +455,71 @@ class SessionServiceTest {
             .build();
     when(repository.updateIfVersion(any(UserSession.class), eq(1L))).thenReturn(true);
 
+    long renewalDueAt = now + 300_000;
     UserSession refreshed =
         sessionService
-            .completeRefresh(leasedSession, "rotated-om", "rotated-provider")
+            .completeRefresh(
+                leasedSession,
+                "rotated-om",
+                new SessionService.ProviderTokenUpdate.Replaced("rotated-provider", renewalDueAt))
             .orElseThrow();
 
     assertEquals(SessionStatus.ACTIVE, refreshed.getStatus());
     assertNull(refreshed.getRefreshLeaseUntil());
     assertEquals("rotated-om", sessionService.decryptOmRefreshToken(refreshed));
     assertEquals("rotated-provider", sessionService.decryptProviderRefreshToken(refreshed));
+    assertEquals(renewalDueAt, refreshed.getProviderRenewalDueAt());
+    // A renewed provider grant is no proof the provider's browser session is alive.
+    assertEquals(leasedSession.getExpiresAt(), refreshed.getExpiresAt());
+  }
+
+  @Test
+  void completeRefresh_withoutProviderTokens_keepsTheStoredProviderState() {
+    long now = System.currentTimeMillis();
+    UserSession leasedSession =
+        leasedProviderSession(now).providerRefreshToken("stored-encrypted").build();
+    when(repository.updateIfVersion(any(UserSession.class), eq(1L))).thenReturn(true);
+
+    UserSession refreshed =
+        sessionService
+            .completeRefresh(leasedSession, "rotated-om", SessionService.ProviderTokenUpdate.NONE)
+            .orElseThrow();
+
+    assertEquals("stored-encrypted", refreshed.getProviderRefreshToken());
+    assertEquals(leasedSession.getProviderRenewalDueAt(), refreshed.getProviderRenewalDueAt());
+    assertEquals(leasedSession.getExpiresAt(), refreshed.getExpiresAt());
+  }
+
+  @Test
+  void completeRefresh_retryScheduleOnly_keepsTheStoredProviderRefreshToken() {
+    // An identity provider that gave no verdict leaves its refresh token valid; only the next
+    // attempt is rescheduled.
+    long now = System.currentTimeMillis();
+    UserSession leasedSession =
+        leasedProviderSession(now).providerRefreshToken("stored-encrypted").build();
+    when(repository.updateIfVersion(any(UserSession.class), eq(1L))).thenReturn(true);
+
+    UserSession refreshed =
+        sessionService
+            .completeRefresh(
+                leasedSession,
+                "rotated-om",
+                new SessionService.ProviderTokenUpdate.Rescheduled(now + 300_000))
+            .orElseThrow();
+
+    assertEquals("stored-encrypted", refreshed.getProviderRefreshToken());
+    assertEquals(now + 300_000, refreshed.getProviderRenewalDueAt());
+  }
+
+  private static UserSession.UserSessionBuilder leasedProviderSession(long now) {
+    return UserSession.builder()
+        .id("leased-session")
+        .status(SessionStatus.REFRESHING)
+        .version(1L)
+        .refreshLeaseUntil(now + 5_000)
+        .providerRenewalDueAt(now - 1_000)
+        .expiresAt(now + 60_000)
+        .idleExpiresAt(now + 60_000);
   }
 
   @Test
@@ -464,6 +581,43 @@ class SessionServiceTest {
     sessionService.releaseRefreshLease(active);
 
     verify(repository, never()).updateIfVersion(any(UserSession.class), anyLong());
+  }
+
+  @Test
+  void describeMissingSession_revokedSession_saysSoSoTheBrowserSignsOut() {
+    // The per-user session cap revoked this session; signing it straight back in would evict
+    // another one.
+    String sessionId = validSessionId('v');
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OM_SESSION", sessionId)});
+    when(repository.findById(sessionId))
+        .thenReturn(
+            Optional.of(UserSession.builder().id(sessionId).status(SessionStatus.REVOKED).build()));
+
+    assertEquals(SessionService.SESSION_REVOKED, sessionService.describeMissingSession(request));
+  }
+
+  @Test
+  void describeMissingSession_endedOrUnknownSession_isNoActiveSession() {
+    String expiredId = validSessionId('x');
+    long now = System.currentTimeMillis();
+    when(repository.findById(expiredId))
+        .thenReturn(
+            Optional.of(
+                UserSession.builder()
+                    .id(expiredId)
+                    .status(SessionStatus.EXPIRED)
+                    .expiresAt(now - 1_000)
+                    .build()));
+
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OM_SESSION", expiredId)});
+    assertEquals(SessionService.NO_ACTIVE_SESSION, sessionService.describeMissingSession(request));
+
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie("OM_SESSION", validSessionId('u'))});
+    assertEquals(SessionService.NO_ACTIVE_SESSION, sessionService.describeMissingSession(request));
+
+    when(request.getCookies()).thenReturn(null);
+    assertEquals(SessionService.NO_ACTIVE_SESSION, sessionService.describeMissingSession(request));
   }
 
   @Test

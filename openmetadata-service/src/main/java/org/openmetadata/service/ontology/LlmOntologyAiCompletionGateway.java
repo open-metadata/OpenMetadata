@@ -34,7 +34,6 @@ public final class LlmOntologyAiCompletionGateway implements OntologyAiCompletio
       """
       Return only a JSON array of ontology concepts ordered parent before child. Each item must contain a unique machine-safe name, displayName, description, and optional parentName that exactly matches an earlier item. Do not return more concepts than requested.
       """;
-
   private final LLMCompletionClient client;
 
   public LlmOntologyAiCompletionGateway(final LLMCompletionClient client) {

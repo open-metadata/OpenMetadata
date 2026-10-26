@@ -70,6 +70,20 @@ describe('Test ProfilePicture component', () => {
     expect(profileImage).toBeInTheDocument();
   });
 
+  it('draws the themed team icon, not an image, for a team', async () => {
+    // useUserProfile hands teams the static icon URL; it must not become an <img>.
+    mockUseUserProfile.mockReturnValue(['/teams-grey.svg', false, {}]);
+
+    const { container, queryByTestId } = render(
+      <ProfilePicture {...mockData} isTeam width="36" />
+    );
+
+    const avatar = await findByTestId(container, 'profile-avatar');
+
+    expect(queryByTestId('profile-image')).not.toBeInTheDocument();
+    expect(avatar).toHaveClass('tw:text-fg-secondary');
+  });
+
   it('forwards a defined size straight to the Avatar', () => {
     mockUseUserProfile.mockReturnValue(['', false, {}]);
     (Avatar as jest.Mock).mockClear();
@@ -89,6 +103,59 @@ describe('Test ProfilePicture component', () => {
 
     expect((Avatar as jest.Mock).mock.calls[0][0]).toEqual(
       expect.objectContaining({ size: 'md' })
+    );
+  });
+
+  it('paints the ring in the fill hue only when asked to', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} matchRingToFill />);
+    render(<ProfilePicture {...mockData} />);
+
+    const [matched, plain] = (Avatar as jest.Mock).mock.calls.map(
+      ([props]) => props
+    );
+    const ringClass = 'tw:border-[hsl(var(--avatar-hue)_70%_80%)]';
+
+    expect(matched.className).toContain(ringClass);
+    expect(plain.className).not.toContain(ringClass);
+  });
+
+  it('carries the hue as a CSS variable so the tint can follow the theme', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.style).toEqual({
+      '--avatar-hue': expect.any(Number),
+    });
+    expect(props.className).toContain(
+      'tw:bg-[hsl(var(--avatar-hue)_100%_92%)]'
+    );
+    expect(props.className).toContain(
+      'tw:dark:bg-[hsl(var(--avatar-hue)_40%_22%)]'
+    );
+  });
+
+  it('draws no outline, ring or tinted border when borderless', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} borderless matchRingToFill />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.contrastBorder).toBe(false);
+    expect(props.colorVariant).toBe('neutral');
+    expect(props.className).not.toContain(
+      'tw:border-[hsl(var(--avatar-hue)_70%_80%)]'
+    );
+    expect(props.className).toContain(
+      'tw:bg-[hsl(var(--avatar-hue)_100%_92%)]'
     );
   });
 });

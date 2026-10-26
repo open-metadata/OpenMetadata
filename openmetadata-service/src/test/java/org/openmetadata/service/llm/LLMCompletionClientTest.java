@@ -2,9 +2,12 @@ package org.openmetadata.service.llm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class LLMCompletionClientTest {
 
@@ -66,6 +69,14 @@ class LLMCompletionClientTest {
   }
 
   @Test
+  void completeStructuredAcceptsSingleObject() {
+    String json = "{\"title\":\"T\",\"question\":\"Q\",\"answer\":\"A\"}";
+    List<PillLike> pills = new StubClient(json).completeStructured("sys", "user", PillLike.class);
+    assertEquals(1, pills.size());
+    assertEquals("Q", pills.getFirst().question());
+  }
+
+  @Test
   void rejectsNonPositiveConcurrency() {
     assertThrows(IllegalArgumentException.class, ZeroPermitClient::new);
   }
@@ -124,5 +135,31 @@ class LLMCompletionClientTest {
         LLMCompletionException.class,
         () ->
             GoogleCompletionClient.parseResult("{\"candidates\":[{\"finishReason\":\"SAFETY\"}]}"));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "eu.anthropic.claude-haiku-5-5, false",
+    "global.anthropic.claude-sonnet-5-5, false",
+    "claude-opus-5-5, false",
+    "us.anthropic.claude-opus-4-7, false",
+    "claude-fable-5-1, false",
+    "o3-mini, false",
+    "o1, false",
+    "openai.gpt-5.6, false",
+    "eu.anthropic.claude-haiku-4-5-20251001-v1:0, true",
+    "us.anthropic.claude-sonnet-4-5-20250929-v1:0, true",
+    "claude-opus-4-5, true",
+    "anthropic.claude-3-5-sonnet-20240620-v1:0, true",
+    "gpt-4o-mini, true",
+    "gemini-2.5-flash, true"
+  })
+  void supportsTemperatureFollowsModelId(String modelId, boolean expected) {
+    assertEquals(expected, LLMCompletionClient.supportsTemperature(modelId));
+  }
+
+  @Test
+  void supportsTemperatureWhenModelIdIsUnset() {
+    assertTrue(LLMCompletionClient.supportsTemperature(null));
   }
 }

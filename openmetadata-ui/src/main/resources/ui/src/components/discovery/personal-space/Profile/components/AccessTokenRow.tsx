@@ -15,6 +15,7 @@ import {
   BadgeWithDot,
   Box,
   Button,
+  Card,
   FeaturedIcon,
   Select,
   Skeleton,
@@ -40,6 +41,7 @@ import React, {
 } from 'react';
 import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { PersonalAccessToken } from '../../../../../generated/auth/personalAccessToken';
 import { JWTTokenExpiry } from '../../../../../generated/entity/teams/user';
 import APIClient from '../../../../../rest/axiosClient';
@@ -57,17 +59,31 @@ import {
 const AI_PROFILE_TOKEN_NAME = 'ai-profile-token';
 
 const AccessTokenLoadingSkeleton = () => (
-  <Box
-    className="ai-profile-page__edit-card tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-5 tw:py-4"
+  <Card
+    className="ai-profile-page__edit-card tw:w-full"
     data-testid="access-token-row"
-    direction="col"
-    gap={3}>
-    <Skeleton height={16} variant="text" width="60%" />
-    <Skeleton height={44} variant="rounded" width="100%" />
-    <Box justify="end">
-      <Skeleton height={36} variant="rounded" width={120} />
-    </Box>
-  </Box>
+    variant="muted">
+    <Card.Content className="tw:flex tw:flex-col tw:gap-3">
+      <Skeleton height={16} variant="text" width="60%" />
+      <Skeleton height={44} variant="rounded" width="100%" />
+      <Box justify="end">
+        <Skeleton height={36} variant="rounded" width={120} />
+      </Box>
+    </Card.Content>
+  </Card>
+);
+
+const TokenLimitHint = ({
+  t,
+}: {
+  t: ReturnType<typeof useTranslation>['t'];
+}) => (
+  <Typography
+    className="tw:text-tertiary"
+    data-testid="token-limit-reached"
+    size="text-sm">
+    {t('message.access-token-limit-reached')}
+  </Typography>
 );
 
 const AccessTokenEmptyState = ({
@@ -76,6 +92,7 @@ const AccessTokenEmptyState = ({
   expiry,
   setExpiry,
   isLoading,
+  isLimitReached,
   handleGenerate,
 }: {
   t: ReturnType<typeof useTranslation>['t'];
@@ -83,57 +100,60 @@ const AccessTokenEmptyState = ({
   expiry: JWTTokenExpiry;
   setExpiry: Dispatch<SetStateAction<JWTTokenExpiry>>;
   isLoading: boolean;
+  isLimitReached: boolean;
   handleGenerate: () => void;
 }) => (
-  <Box
-    align="center"
-    className="ai-profile-page__edit-card tw:w-full tw:items-center tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-6 tw:py-10 tw:text-center"
+  <Card
+    className="ai-profile-page__edit-card tw:w-full"
     data-testid="access-token-row"
-    direction="col"
-    gap={3}
-    justify="center">
-    <FeaturedIcon color="brand" icon={Key01} size="lg" theme="light" />
-    <Typography className="tw:text-primary-900" weight="semibold">
-      {t('message.no-access-token-title')}
-    </Typography>
-    <Typography
-      className="tw:max-w-md tw:text-tertiary"
-      size="text-sm"
-      weight="regular">
-      {t('message.no-access-token-subtitle')}
-    </Typography>
-    <Box align="center" className="tw:mt-3" direction="row" gap={3}>
-      <Box align="center" direction="row" gap={2}>
-        <Typography
-          className="tw:whitespace-nowrap tw:text-tertiary"
-          size="text-sm"
-          weight="regular">
-          {`${t('label.expires-in')}:`}
-        </Typography>
-        <Select
-          aria-label={t('label.token-expiration')}
-          className="tw:min-w-28"
-          data-testid="token-expiry-select"
-          items={expiryOptions}
-          selectedKey={expiry}
+    size="lg"
+    variant="muted">
+    <Card.Content className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-3 tw:text-center">
+      <FeaturedIcon color="brand" icon={Key01} size="lg" theme="light" />
+      <Typography className="tw:text-primary" weight="semibold">
+        {t('message.no-access-token-title')}
+      </Typography>
+      <Typography
+        className="tw:max-w-md tw:text-tertiary"
+        size="text-sm"
+        weight="regular">
+        {t('message.no-access-token-subtitle')}
+      </Typography>
+      <Box align="center" className="tw:mt-3" direction="row" gap={3}>
+        <Box align="center" direction="row" gap={2}>
+          <Typography
+            className="tw:whitespace-nowrap tw:text-tertiary"
+            size="text-sm"
+            weight="regular">
+            {`${t('label.expires-in')}:`}
+          </Typography>
+          <Select
+            aria-label={t('label.token-expiration')}
+            className="tw:min-w-28"
+            data-testid="token-expiry-select"
+            items={expiryOptions}
+            selectedKey={expiry}
+            size="sm"
+            onSelectionChange={(key: Key | null) =>
+              key && setExpiry(key as JWTTokenExpiry)
+            }>
+            {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+          </Select>
+        </Box>
+        <Button
+          color="primary"
+          data-testid="generate-token"
+          icon={Plus}
+          isDisabled={isLimitReached}
+          isLoading={isLoading}
           size="sm"
-          onSelectionChange={(key: Key | null) =>
-            key && setExpiry(key as JWTTokenExpiry)
-          }>
-          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-        </Select>
+          onClick={handleGenerate}>
+          {t('label.generate-token')}
+        </Button>
       </Box>
-      <Button
-        color="primary"
-        data-testid="generate-token"
-        icon={Plus}
-        isLoading={isLoading}
-        size="sm"
-        onClick={handleGenerate}>
-        {t('label.generate-token')}
-      </Button>
-    </Box>
-  </Box>
+      {isLimitReached && <TokenLimitHint t={t} />}
+    </Card.Content>
+  </Card>
 );
 
 const AccessTokenDetails = ({
@@ -147,6 +167,7 @@ const AccessTokenDetails = ({
   canReveal,
   handleCopy,
   isLoading,
+  isLimitReached,
   handleRegenerate,
   handleRevoke,
 }: {
@@ -160,13 +181,14 @@ const AccessTokenDetails = ({
   canReveal: boolean;
   handleCopy: () => void;
   isLoading: boolean;
+  isLimitReached: boolean;
   handleRegenerate: () => void;
   handleRevoke: () => void;
 }) => (
-  <Box
-    className="ai-profile-page__edit-card tw:w-full tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
+  <Card
+    className="tw:flex tw:flex-col ai-profile-page__edit-card tw:w-full"
     data-testid="access-token-row"
-    direction="col">
+    variant="muted">
     <Box
       align="center"
       className="tw:justify-between tw:border-b tw:border-secondary tw:px-4 tw:py-3.5"
@@ -174,7 +196,7 @@ const AccessTokenDetails = ({
       <Box align="center" gap={2}>
         <FeaturedIcon color="brand" icon={Key01} size="md" theme="light" />
         <Box direction="col">
-          <Typography className="tw:text-primary-900" weight="semibold">
+          <Typography className="tw:text-primary" weight="semibold">
             {t('label.collate-api-token')}
           </Typography>
           <Typography className="tw:text-tertiary" size="text-xs">
@@ -248,6 +270,7 @@ const AccessTokenDetails = ({
         color="secondary"
         data-testid="regenerate-token"
         iconLeading={<RefreshCcw02 height={12} width={12} />}
+        isDisabled={isLimitReached}
         isLoading={isLoading}
         size="sm"
         onClick={handleRegenerate}>
@@ -262,8 +285,9 @@ const AccessTokenDetails = ({
         onClick={handleRevoke}>
         {t('label.revoke')}
       </Button>
+      {isLimitReached && <TokenLimitHint t={t} />}
     </Box>
-  </Box>
+  </Card>
 );
 
 const AccessTokenRow: React.FC = () => {
@@ -273,6 +297,23 @@ const AccessTokenRow: React.FC = () => {
   const [isFetching, setIsFetching] = useState(true);
   const [reveal, setReveal] = useState(false);
   const [expiry, setExpiry] = useState<JWTTokenExpiry>(JWTTokenExpiry.OneHour);
+  const { getResourceLimit } = useLimitStore();
+  // Legacy parity: the user limit can switch off personal access tokens.
+  const [isLimitReached, setIsLimitReached] = useState(false);
+
+  useEffect(() => {
+    getResourceLimit('user', false)
+      .then((limit) =>
+        setIsLimitReached(
+          Boolean(
+            limit?.configuredLimit?.disabledFields?.includes(
+              'personalAccessToken'
+            )
+          )
+        )
+      )
+      .catch(() => setIsLimitReached(false));
+  }, [getResourceLimit]);
 
   const expiryOptions = useMemo(
     () => [
@@ -393,6 +434,7 @@ const AccessTokenRow: React.FC = () => {
         expiry={expiry}
         expiryOptions={expiryOptions}
         handleGenerate={handleGenerate}
+        isLimitReached={isLimitReached}
         isLoading={isLoading}
         setExpiry={setExpiry}
         t={t}
@@ -417,6 +459,7 @@ const AccessTokenRow: React.FC = () => {
       handleCopy={handleCopy}
       handleRegenerate={handleRegenerate}
       handleRevoke={handleRevoke}
+      isLimitReached={isLimitReached}
       isLoading={isLoading}
       isTokenExpired={isTokenExpired}
       reveal={reveal}

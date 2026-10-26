@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '@openmetadata/ui-core-components';
-import { Button, Modal, Typography } from 'antd';
+import {
+  SimpleModal,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -31,10 +34,7 @@ import { hardDeleteEntity } from '../../../../utils/DeleteWidget/DeleteWidgetUti
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
-import {
-  EntityName,
-  EntityNameValidationRule,
-} from '../../../Modals/EntityNameModal/EntityNameModal.interface';
+import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import DeleteModal from '../../DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../DeleteWidget/DeleteEntityModal';
 import { DeleteType } from '../../DeleteWidget/DeleteWidget.interface';
@@ -379,9 +379,7 @@ const ManageButton: FC<ManageButtonProps> = ({
       {onEditDisplayName && isDisplayNameEditing && (
         <EntityNameModal
           allowRename={allowRename}
-          displayNameValidationRules={
-            DISPLAY_NAME_FIELD_RULES as EntityNameValidationRule[]
-          }
+          displayNameValidationRules={DISPLAY_NAME_FIELD_RULES}
           entity={{
             name: entityName,
             displayName,
@@ -396,37 +394,27 @@ const ManageButton: FC<ManageButtonProps> = ({
       )}
 
       {showReactiveModal && (
-        // Used Button to stop click propagation event in the
-        // TeamDetailsV1 and User.component collapsible panel.
-        <Button
-          className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
-          <Modal
-            centered
-            cancelButtonProps={{
-              type: 'link',
-            }}
-            className="reactive-modal"
-            closable={false}
-            confirmLoading={isEntityRestoring}
+        // Stops click propagation (React bubbles through the modal portal) in
+        // the TeamDetailsV1 and User.component collapsible panels.
+        <div role="presentation" onClick={(e) => e.stopPropagation()}>
+          <SimpleModal
+            isOpen
             data-testid="restore-asset-modal"
-            maskClosable={false}
+            isDismissable={false}
+            isOkLoading={isEntityRestoring}
             okText={t('label.restore')}
-            open={showReactiveModal}
             title={t('label.restore-entity', {
               entity: entityType,
             })}
-            onCancel={() => {
-              setShowReactiveModal(false);
-            }}
+            onCancel={() => setShowReactiveModal(false)}
             onOk={handleRestore}>
-            <Typography.Text data-testid="restore-modal-body">
+            <Typography data-testid="restore-modal-body">
               {t('message.are-you-want-to-restore', {
                 entity: entityName,
               })}
-            </Typography.Text>
-          </Modal>
-        </Button>
+            </Typography>
+          </SimpleModal>
+        </div>
       )}
     </>
   );

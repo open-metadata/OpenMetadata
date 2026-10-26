@@ -348,6 +348,18 @@
                   "default": 10,
                   "minimum": 1,
                   "maximum": 1000
+                },
+                "maxSchemaInferenceDepth": {
+                  "title": "Max Schema Inference Depth",
+                  "description": "Maximum nesting depth of column children inferred from sampled JSON values. The direct children of a column are depth 1. Deeper children are not ingested, and a column at the limit keeps its data type without children. 0 keeps no inferred children. Leave empty for no limit.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "maxChildrenPerColumn": {
+                  "title": "Max Children Per Column",
+                  "description": "Maximum number of direct children kept for any column inferred from sampled JSON values, applied at every nesting level. When a column has more, the children whose names sort first are kept, so every run keeps the same children whatever the order of the sampled records. 0 keeps no inferred children. Leave empty for no limit.",
+                  "type": "integer",
+                  "minimum": 0
                 }
               },
               "additionalProperties": false
@@ -797,6 +809,7 @@
                   "type": "integer",
                   "default": 50,
                   "minimum": 1,
+                  "maximum": 1000,
                   "title": "Sample Data Count"
                 },
                 "classificationLanguage": {
@@ -1034,6 +1047,12 @@
                   "type": "boolean",
                   "default": false,
                   "title": "Use System Table Statistics"
+                },
+                "enableAutoPartitionDetection": {
+                  "description": "Use the partition metadata collected during metadata ingestion to only profile the most recent time or integer range partitions of tables without an explicit partition configuration. Tables with a partition configuration defined in their profiler settings are not affected.",
+                  "type": "boolean",
+                  "default": true,
+                  "title": "Enable Auto Partition Detection"
                 },
                 "profileSampleConfig": {
                   "title": "Profile Sample Config",
@@ -1310,6 +1329,7 @@
                   "type": "integer",
                   "default": 50,
                   "minimum": 1,
+                  "maximum": 1000,
                   "title": "Sample Data Rows Count"
                 },
                 "classificationLanguage": {
@@ -1692,6 +1712,12 @@
                   "uiFieldType": "code",
                   "format": "json",
                   "default": null
+                },
+                "maxSchemaInferenceDepth": {
+                  "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/0/properties/maxSchemaInferenceDepth"
+                },
+                "maxChildrenPerColumn": {
+                  "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/0/properties/maxChildrenPerColumn"
                 }
               },
               "additionalProperties": false
@@ -1762,6 +1788,7 @@
                   "type": "integer",
                   "default": 50,
                   "minimum": 1,
+                  "maximum": 1000,
                   "title": "Sample Data Rows Count"
                 },
                 "classificationLanguage": {
@@ -2086,7 +2113,8 @@
                     "EN",
                     "JP",
                     "ZH",
-                    "RU"
+                    "RU",
+                    "KO"
                   ],
                   "default": "EN"
                 },
@@ -2541,6 +2569,12 @@
                                       "description": "Google Cloud client certificate uri.",
                                       "type": "string",
                                       "format": "uri"
+                                    },
+                                    "universeDomain": {
+                                      "title": "Universe Domain",
+                                      "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                      "type": "string",
+                                      "default": "googleapis.com"
                                     }
                                   },
                                   "additionalProperties": false
@@ -2722,6 +2756,14 @@
                   "description": "Optional configuration to search across databases for tables or not",
                   "type": "boolean",
                   "default": false
+                },
+                "catalogMapping": {
+                  "title": "Catalog Mapping",
+                  "description": "Optional map from a database name in the dbt manifest to the database it is ingested under in OpenMetadata, for when the engine dbt runs on names it differently. For example, dbt-trino writes the Trino catalog name (bq_catalog) for tables that the BigQuery connector ingests under the GCP project id (my-gcp-project). Mapped tables are looked up in every database service.",
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
                 },
                 "dbtUpdateDescriptions": {
                   "title": "Update Descriptions",
@@ -4590,12 +4632,12 @@
                       "javaType": "org.openmetadata.schema.entity.applications.configuration.internal.RdfInferenceAppConfig",
                       "properties": {
                         "force": {
-                          "description": "Materialize every enabled rule even when its durable dirty flag is clear.",
+                          "description": "Recompute every rule even when no rule is dirty.",
                           "type": "boolean",
                           "default": false
                         },
                         "ruleName": {
-                          "description": "Optional rule name for an on-demand single-rule run.",
+                          "description": "Optional rule that must exist. The run still computes every rule, because rules read each other's conclusions.",
                           "type": "string",
                           "pattern": "^[a-z][a-z0-9-]{1,62}[a-z0-9]$"
                         }
@@ -4649,6 +4691,13 @@
                         "workflowRetentionPeriod": {
                           "title": "Automation Workflow Retention Period (days)",
                           "description": "Enter the retention period in days for automation Workflows: the short-lived records left behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them forever.",
+                          "type": "integer",
+                          "default": 30,
+                          "minimum": 0
+                        },
+                        "workflowInstanceRetentionPeriod": {
+                          "title": "Governance Workflow Run History Retention Period (days)",
+                          "description": "Enter the retention period in days for the run history of governance workflows. A finished run older than this is deleted with its stages, but the latest run of each workflow for every entity is always kept. Use 0 to retain the history forever.",
                           "type": "integer",
                           "default": 30,
                           "minimum": 0
@@ -5227,6 +5276,33 @@
                 },
                 "ingestionRunner": {
                   "description": "Optional value of the ingestion runner name responsible for running the workflow",
+                  "type": "string"
+                },
+                "updateDescriptions": {
+                  "description": "Reverse Metadata Agent: propagate description changes to the source.",
+                  "type": "boolean",
+                  "default": false
+                },
+                "updateOwners": {
+                  "description": "Reverse Metadata Agent: propagate owner changes to the source.",
+                  "type": "boolean",
+                  "default": false
+                },
+                "updateTags": {
+                  "description": "Reverse Metadata Agent: propagate tag changes to the source.",
+                  "type": "boolean",
+                  "default": false
+                },
+                "filter": {
+                  "description": "Reverse Metadata Agent: JSONLogic expression selecting the assets whose changes are propagated. Empty means all assets of the service.",
+                  "type": "string"
+                },
+                "SQLTemplate": {
+                  "description": "Reverse Metadata Agent: templated SQL command used instead of the default operations.",
+                  "type": "string"
+                },
+                "sinkService": {
+                  "description": "Reverse Metadata Agent: name of the security service (e.g. Ranger) the changes are applied to instead of this service.",
                   "type": "string"
                 }
               },
@@ -8182,6 +8258,12 @@
                           "type": "boolean",
                           "default": true
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                          "type": "boolean",
+                          "default": true
+                        },
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "description": "The source service supports the database concept in its hierarchy",
@@ -8199,68 +8281,6 @@
                           "description": "The source database supports system profiles for tables such as last update.",
                           "type": "boolean",
                           "default": false
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "description": "Storage config to store sample data",
-                          "type": "object",
-                          "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                          "properties": {
-                            "config": {
-                              "oneOf": [
-                                {
-                                  "title": "No Sample Data Storage Config",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "title": "Sample Data Storage Config",
-                                  "description": "Storage config to store sample data",
-                                  "type": "object",
-                                  "properties": {
-                                    "bucketName": {
-                                      "title": "Bucket Name",
-                                      "description": "Bucket Name",
-                                      "type": "string",
-                                      "default": ""
-                                    },
-                                    "prefix": {
-                                      "title": "Prefix",
-                                      "description": "Prefix of the data source.",
-                                      "type": "string",
-                                      "default": ""
-                                    },
-                                    "filePathPattern": {
-                                      "title": "File Path Pattern",
-                                      "description": "Provide the pattern of the path where the generated sample data file needs to be stored.",
-                                      "type": "string",
-                                      "default": "{service_name}/{database_name}/{database_schema_name}/{table_name}/sample_data.parquet"
-                                    },
-                                    "overwriteData": {
-                                      "title": "Overwrite Sample Data",
-                                      "description": "When this field enabled a single parquet file will be created to store sample data, otherwise we will create a new file per day",
-                                      "type": "boolean",
-                                      "default": true
-                                    },
-                                    "storageConfig": {
-                                      "oneOf": [
-                                        {
-                                          "title": "AWS S3 Storage Config",
-                                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/8/properties/config/oneOf/1/properties/authType/oneOf/1"
-                                        },
-                                        {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
-                                        }
-                                      ]
-                                    }
-                                  }
-                                }
-                              ]
-                            }
-                          },
-                          "additionalProperties": false
                         },
                         "supportsDataDiff": {
                           "title": "Supports Data Diff Extraction.",
@@ -8456,10 +8476,6 @@
                         "supportsDataDiff": {
                           "title": "Supports Data Diff Extraction.",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDataDiff"
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
                         }
                       },
                       "additionalProperties": false,
@@ -8615,10 +8631,6 @@
                           "title": "Supports Database",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDatabase"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
@@ -8757,10 +8769,6 @@
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
                         }
                       },
                       "additionalProperties": false,
@@ -9152,10 +9160,6 @@
                             }
                           },
                           "additionalProperties": false
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
                         }
                       },
                       "additionalProperties": false,
@@ -9163,6 +9167,115 @@
                         "hostPort",
                         "httpPath",
                         "authType"
+                      ]
+                    },
+                    {
+                      "title": "DatabendConnection",
+                      "description": "Databend Database Connection Config",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.services.connections.database.DatabendConnection",
+                      "definitions": {
+                        "databendType": {
+                          "description": "Service type.",
+                          "type": "string",
+                          "enum": [
+                            "Databend"
+                          ],
+                          "default": "Databend"
+                        },
+                        "databendScheme": {
+                          "description": "SQLAlchemy driver scheme options.",
+                          "type": "string",
+                          "enum": [
+                            "databend"
+                          ],
+                          "default": "databend"
+                        }
+                      },
+                      "properties": {
+                        "type": {
+                          "title": "Service Type",
+                          "description": "Service Type",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/definitions/databendType",
+                          "default": "Databend"
+                        },
+                        "scheme": {
+                          "title": "Connection Scheme",
+                          "description": "SQLAlchemy driver scheme options.",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/definitions/databendScheme",
+                          "default": "databend"
+                        },
+                        "username": {
+                          "title": "Username",
+                          "description": "Username to connect to Databend. The user must be able to read system and information_schema metadata.",
+                          "type": "string"
+                        },
+                        "password": {
+                          "title": "Password",
+                          "description": "Password to connect to Databend.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "hostPort": {
+                          "title": "Host and Port",
+                          "description": "Host and port of the Databend HTTP query service. The default self-hosted port is 8000.",
+                          "type": "string",
+                          "default": "localhost:8000"
+                        },
+                        "databaseSchema": {
+                          "title": "Database Schema",
+                          "description": "Optional Databend database to ingest. It is also used as the initial database of the connection. When omitted, the connection starts in the `default` database and all accessible Databend databases are scanned as OpenMetadata schemas.",
+                          "type": "string"
+                        },
+                        "connectionOptions": {
+                          "title": "Connection Options",
+                          "description": "Additional options appended to the Databend SQLAlchemy connection URL. For a non-TLS HTTP endpoint, such as the default self-hosted port 8000, set sslmode to disable. For a TLS endpoint, set sslmode to enable.",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/3/properties/connectionOptions"
+                        },
+                        "connectionArguments": {
+                          "title": "Connection Arguments",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/3/properties/connectionArguments"
+                        },
+                        "schemaFilterPattern": {
+                          "title": "Default Schema Filter Pattern",
+                          "description": "Regex to include or exclude Databend databases.",
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^system$",
+                              "^system_history$"
+                            ]
+                          }
+                        },
+                        "tableFilterPattern": {
+                          "title": "Default Table Filter Pattern",
+                          "description": "Regex to include or exclude tables and views.",
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                        },
+                        "databaseFilterPattern": {
+                          "title": "Default Database Filter Pattern",
+                          "description": "Regex to include or exclude Databend catalogs. Only the `default` catalog is currently ingested.",
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                        },
+                        "supportsMetadataExtraction": {
+                          "title": "Supports Metadata Extraction",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
+                        },
+                        "supportsLineageExtraction": {
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                        },
+                        "supportsProfiler": {
+                          "title": "Supports Profiler",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "password"
                       ]
                     },
                     {
@@ -9193,13 +9306,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/definitions/db2Type",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/definitions/db2Type",
                           "default": "Db2"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/definitions/db2Scheme",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/definitions/db2Scheme",
                           "default": "db2+ibm_db"
                         },
                         "username": {
@@ -9299,10 +9412,6 @@
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsViewLineageExtraction": {
                           "description": "Supports View Lineage Extraction.",
                           "type": "boolean",
@@ -9314,205 +9423,6 @@
                         "hostPort",
                         "username",
                         "database"
-                      ]
-                    },
-                    {
-                      "title": "DeltaLakeConnection",
-                      "description": "DeltaLake Database Connection Config",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.DeltaLakeConnection",
-                      "definitions": {
-                        "deltaLakeType": {
-                          "description": "Service type.",
-                          "type": "string",
-                          "enum": [
-                            "DeltaLake"
-                          ],
-                          "default": "DeltaLake"
-                        }
-                      },
-                      "properties": {
-                        "type": {
-                          "title": "Service Type",
-                          "description": "Service Type",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/definitions/deltaLakeType",
-                          "default": "DeltaLake"
-                        },
-                        "configSource": {
-                          "title": "DeltaLake Configuration Source",
-                          "description": "Available sources to fetch the metadata.",
-                          "oneOf": [
-                            {
-                              "title": "MetastoreConfig",
-                              "description": "Deltalake Metastore configuration.",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.deltalake.MetastoreConfig",
-                              "definitions": {
-                                "metastoreHostPortConnection": {
-                                  "title": "Hive Metastore Service",
-                                  "type": "object",
-                                  "properties": {
-                                    "metastoreHostPort": {
-                                      "title": "Hive Metastore Service",
-                                      "description": "Thrift connection to the metastore service. E.g., localhost:9083",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                },
-                                "metastoreDbConnection": {
-                                  "title": "Hive Metastore Database",
-                                  "type": "object",
-                                  "properties": {
-                                    "metastoreDb": {
-                                      "title": "Hive Metastore Database",
-                                      "description": "JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive",
-                                      "type": "string"
-                                    },
-                                    "username": {
-                                      "title": "Connection UserName",
-                                      "description": "Username to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.",
-                                      "type": "string"
-                                    },
-                                    "password": {
-                                      "title": "Connection Password",
-                                      "description": "Password to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.",
-                                      "type": "string",
-                                      "format": "password"
-                                    },
-                                    "driverName": {
-                                      "title": "Connection Driver Name",
-                                      "description": "Driver class name for JDBC metastore. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g., org.mariadb.jdbc.Driver",
-                                      "type": "string"
-                                    },
-                                    "jdbcDriverClassPath": {
-                                      "title": "JDBC Driver Class Path",
-                                      "description": "Class path to JDBC driver required for JDBC connection. The value will be mapped as spark.driver.extraClassPath sparks property.",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                },
-                                "metastoreFilePathConnection": {
-                                  "title": "Hive Metastore File Path",
-                                  "type": "object",
-                                  "properties": {
-                                    "metastoreFilePath": {
-                                      "title": "Hive Metastore File Path",
-                                      "description": "Local path for the local file with metastore data. E.g., /tmp/metastore.db",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                }
-                              },
-                              "properties": {
-                                "connection": {
-                                  "title": "Connection",
-                                  "description": "Metastore connection configuration, depending on your metastore type.",
-                                  "oneOf": [
-                                    {
-                                      "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/configSource/oneOf/0/definitions/metastoreHostPortConnection"
-                                    },
-                                    {
-                                      "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/configSource/oneOf/0/definitions/metastoreDbConnection"
-                                    },
-                                    {
-                                      "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/configSource/oneOf/0/definitions/metastoreFilePathConnection"
-                                    }
-                                  ]
-                                },
-                                "appName": {
-                                  "title": "Application Name",
-                                  "description": "pySpark App Name.",
-                                  "type": "string",
-                                  "default": "OpenMetadata"
-                                }
-                              },
-                              "additionalProperties": false,
-                              "required": [
-                                "connection"
-                              ]
-                            },
-                            {
-                              "title": "StorageConfig",
-                              "description": "DeltaLake Storage Connection Config",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.deltalake.StorageConfig",
-                              "definitions": {
-                                "localConfig": {
-                                  "title": "Local Config",
-                                  "description": "Local config source where no extra information needs to be sent.",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "properties": {
-                                "connection": {
-                                  "title": "DeltaLake Storage Configuration Source",
-                                  "description": "Available sources to fetch files.",
-                                  "oneOf": [
-                                    {
-                                      "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/31/properties/configSource/oneOf/3"
-                                    }
-                                  ]
-                                },
-                                "bucketName": {
-                                  "title": "Bucket Name",
-                                  "description": "Bucket Name of the data source.",
-                                  "type": "string",
-                                  "default": ""
-                                },
-                                "prefix": {
-                                  "title": "Prefix",
-                                  "description": "Prefix of the data source.",
-                                  "type": "string",
-                                  "default": ""
-                                }
-                              },
-                              "additionalProperties": false,
-                              "required": [
-                                "connection"
-                              ]
-                            }
-                          ]
-                        },
-                        "databaseName": {
-                          "title": "Database Name",
-                          "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
-                          "type": "string"
-                        },
-                        "connectionArguments": {
-                          "title": "Connection Arguments",
-                          "description": "If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/3/properties/connectionArguments"
-                        },
-                        "schemaFilterPattern": {
-                          "title": "Default Schema Filter Pattern",
-                          "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
-                        },
-                        "tableFilterPattern": {
-                          "title": "Default Table Filter Pattern",
-                          "description": "Regex to only include/exclude tables that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
-                        },
-                        "databaseFilterPattern": {
-                          "title": "Default Database Filter Pattern",
-                          "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
-                        },
-                        "supportsMetadataExtraction": {
-                          "title": "Supports Metadata Extraction",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
-                        },
-                        "supportsDBTExtraction": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDBTExtraction"
-                        }
-                      },
-                      "additionalProperties": false,
-                      "required": [
-                        "configSource"
                       ]
                     },
                     {
@@ -9612,12 +9522,8 @@
                         "supportsDBTExtraction": {
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDBTExtraction"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsViewLineageExtraction": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -9913,12 +9819,8 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsViewLineageExtraction": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -10051,12 +9953,8 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsViewLineageExtraction": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -10169,12 +10067,8 @@
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsViewLineageExtraction": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -10351,10 +10245,6 @@
                         "supportsLineageExtraction": {
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
@@ -10430,7 +10320,7 @@
                         },
                         "supportsViewLineageExtraction": {
                           "title": "Supports View Lineage Extraction",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -10611,10 +10501,6 @@
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsDataDiff": {
                           "title": "Supports Data Diff Extraction.",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDataDiff"
@@ -10744,12 +10630,8 @@
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsViewLineageExtraction": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
                         }
                       },
                       "additionalProperties": false
@@ -10888,6 +10770,12 @@
                           "description": "Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA privileges.",
                           "default": true
                         },
+                        "includeTemporaryTables": {
+                          "title": "Include Temporary Tables",
+                          "type": "boolean",
+                          "description": "Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped. When enabled, GTTs are ingested with TableType=Local so they can be distinguished from regular tables.",
+                          "default": false
+                        },
                         "connectionOptions": {
                           "title": "Connection Options",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/3/properties/connectionOptions"
@@ -10949,10 +10837,6 @@
                         "supportsDataDiff": {
                           "title": "Supports Data Diff Extraction.",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDataDiff"
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
                         }
                       },
                       "additionalProperties": false,
@@ -11069,7 +10953,7 @@
                           "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
                         },
                         "sslMode": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/sslMode"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/sslMode"
                         },
                         "sslConfig": {
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
@@ -11111,6 +10995,10 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDatabase"
@@ -11118,10 +11006,6 @@
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
                         },
                         "supportsDataDiff": {
                           "title": "Supports Data Diff Extraction.",
@@ -11238,7 +11122,7 @@
                           }
                         },
                         "sslMode": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/sslMode"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/sslMode"
                         },
                         "sslConfig": {
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
@@ -11280,6 +11164,10 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDatabase"
@@ -11287,10 +11175,6 @@
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
                         },
                         "supportsDataDiff": {
                           "title": "Supports Data Diff Extraction.",
@@ -11417,10 +11301,6 @@
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
                         }
                       },
                       "additionalProperties": false,
@@ -11548,7 +11428,7 @@
                           "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
                         },
                         "sslMode": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/sslMode"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/sslMode"
                         },
                         "sslConfig": {
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
@@ -11593,10 +11473,6 @@
                         "supportsSystemProfile": {
                           "title": "Supports System Profile",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsSystemProfile"
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
                         },
                         "supportsDataDiff": {
                           "title": "Supports Data Diff Extraction.",
@@ -11954,12 +11830,8 @@
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsViewLineageExtraction": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -12045,6 +11917,14 @@
                           "description": "Full name of the schema where the account usage data is stored.",
                           "type": "string",
                           "default": "SNOWFLAKE.ACCOUNT_USAGE"
+                        },
+                        "systemMetricsBatchSize": {
+                          "title": "System Metrics Batch Size",
+                          "description": "Number of tables whose DML history is read from QUERY_HISTORY with a single query when the profiler computes system metrics. Higher values issue fewer scans but hold more history in memory at once.",
+                          "type": "integer",
+                          "default": 50,
+                          "minimum": 1,
+                          "maximum": 500
                         },
                         "privateKey": {
                           "title": "Private Key",
@@ -12180,10 +12060,6 @@
                         "supportsSystemProfile": {
                           "title": "Supports System Profile",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsSystemProfile"
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
                         },
                         "supportsDataDiff": {
                           "title": "Supports Data Diff Extraction.",
@@ -12376,10 +12252,6 @@
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsDataDiff": {
                           "title": "Supports Data Diff Extraction.",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDataDiff"
@@ -12501,10 +12373,6 @@
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
                         }
                       },
                       "additionalProperties": false,
@@ -12615,12 +12483,8 @@
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsViewLineageExtraction": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -12752,10 +12616,6 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
                         },
                         "skipColdStorage": {
                           "title": "Skip Cold Storage",
@@ -13049,10 +12909,6 @@
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsDataDiff": {
                           "title": "Supports Data Diff Extraction.",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDataDiff"
@@ -13154,7 +13010,7 @@
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
                         "sslMode": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/sslMode"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/sslMode"
                         },
                         "sslConfig": {
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
@@ -13254,7 +13110,7 @@
                         },
                         "sslMode": {
                           "title": "SSL Mode",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/sslMode"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/sslMode"
                         },
                         "sslConfig": {
                           "title": "SSL Configuration",
@@ -13430,7 +13286,7 @@
                           "type": "string"
                         },
                         "sslMode": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/sslMode"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/sslMode"
                         },
                         "sslConfig": {
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
@@ -13475,6 +13331,10 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDatabase"
@@ -13483,12 +13343,8 @@
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsViewLineageExtraction": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -13599,13 +13455,17 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
                         "supportsViewLineageExtraction": {
                           "title": "Supports View Lineage",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -13715,6 +13575,10 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
@@ -13727,7 +13591,7 @@
                         },
                         "supportsViewLineageExtraction": {
                           "title": "Supports View Lineage",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -13892,10 +13756,6 @@
                             "supportsFullAccess": true,
                             "supportsMaskedAccess": false
                           }
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
                         },
                         "supportsIncrementalMetadataExtraction": {
                           "title": "Supports Incremental Metadata Extraction",
@@ -14160,12 +14020,14 @@
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsViewLineageExtraction": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
+                        },
+                        "supportsLineageExtraction": {
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                        },
+                        "supportsUsageExtraction": {
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsUsageExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -14428,10 +14290,6 @@
                         "supportsLineageExtraction": {
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
@@ -14625,7 +14483,7 @@
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
                         },
                         "sslMode": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/sslMode"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/sslMode"
                         },
                         "connectionOptions": {
                           "title": "Connection Options",
@@ -14657,6 +14515,10 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
                         }
                       },
                       "additionalProperties": false,
@@ -15047,16 +14909,77 @@
                           "description": "Azure Application (client) ID for Service Principal authentication.",
                           "type": "string"
                         },
-                        "clientSecret": {
-                          "title": "Client Secret",
-                          "description": "Azure Application client secret for Service Principal authentication.",
-                          "type": "string",
-                          "format": "password"
-                        },
                         "tenantId": {
                           "title": "Tenant ID",
                           "description": "Azure Directory (tenant) ID for Service Principal authentication.",
                           "type": "string"
+                        },
+                        "authType": {
+                          "title": "Authentication Type",
+                          "description": "Credential the service principal uses to obtain Microsoft Entra ID access tokens for the Fabric SQL endpoint.",
+                          "oneOf": [
+                            {
+                              "title": "Client Secret",
+                              "description": "Authenticate the service principal with a client secret of its Microsoft Entra ID application.",
+                              "javaType": "org.openmetadata.schema.services.connections.database.microsoftFabric.ClientSecretAuthentication",
+                              "type": "object",
+                              "properties": {
+                                "clientSecret": {
+                                  "title": "Client Secret",
+                                  "description": "Client secret value (not the secret ID) from the application's Certificates & secrets page in Microsoft Entra ID.",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "additionalProperties": false,
+                              "required": [
+                                "clientSecret"
+                              ]
+                            },
+                            {
+                              "title": "Certificate",
+                              "description": "Authenticate the service principal with an X.509 certificate registered on its Microsoft Entra ID application.",
+                              "javaType": "org.openmetadata.schema.services.connections.database.microsoftFabric.CertificateAuthentication",
+                              "type": "object",
+                              "properties": {
+                                "certificate": {
+                                  "title": "Certificate",
+                                  "description": "PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page in Microsoft Entra ID. It may be followed by its issuing certificate chain.",
+                                  "type": "string",
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".crt",
+                                    ".cer"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
+                                },
+                                "privateKey": {
+                                  "title": "Private Key",
+                                  "description": "PEM-encoded private key of the certificate, as PKCS#8 (`BEGIN PRIVATE KEY` or `BEGIN ENCRYPTED PRIVATE KEY`) or PKCS#1 (`BEGIN RSA PRIVATE KEY`). A single PEM file holding both the key and the certificate can be supplied in both fields.",
+                                  "type": "string",
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".key",
+                                    ".p8"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
+                                },
+                                "privateKeyPassphrase": {
+                                  "title": "Private Key Passphrase",
+                                  "description": "Passphrase of an encrypted private key. Leave empty when the private key is not encrypted.",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "additionalProperties": false,
+                              "required": [
+                                "certificate",
+                                "privateKey"
+                              ]
+                            }
+                          ]
                         },
                         "driver": {
                           "title": "Driver",
@@ -15118,18 +15041,14 @@
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDatabase"
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
                         }
                       },
                       "additionalProperties": false,
                       "required": [
                         "hostPort",
                         "clientId",
-                        "clientSecret",
-                        "tenantId"
+                        "tenantId",
+                        "authType"
                       ]
                     },
                     {
@@ -15285,7 +15204,7 @@
                         "sslMode": {
                           "title": "SSL Mode",
                           "description": "SSL Mode to connect to Informix. Use 'disable' for no SSL, 'require' for encrypted SSL without certificate verification, or 'verify-ca' to validate the server certificate against the provided CA certificate.",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/sslMode"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/sslMode"
                         },
                         "sslConfig": {
                           "title": "SSL Configuration",
@@ -15451,12 +15370,8 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
-                        },
                         "supportsViewLineageExtraction": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -15542,7 +15457,7 @@
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         },
                         "supportsViewLineageExtraction": {
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/7/properties/supportsViewLineageExtraction"
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -15687,6 +15602,101 @@
                         "supportsLineageExtraction": {
                           "title": "Supports Lineage Extraction",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "password"
+                      ]
+                    },
+                    {
+                      "title": "Neo4jConnection",
+                      "description": "Neo4j Connection Config",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.services.connections.database.Neo4jConnection",
+                      "definitions": {
+                        "neo4jType": {
+                          "description": "Service type.",
+                          "type": "string",
+                          "enum": [
+                            "Neo4j"
+                          ],
+                          "default": "Neo4j"
+                        },
+                        "neo4jScheme": {
+                          "description": "Neo4j driver URI scheme. `+s` encrypts with full certificate validation; `+ssc` encrypts and accepts self-signed certificates.",
+                          "type": "string",
+                          "enum": [
+                            "neo4j",
+                            "neo4j+s",
+                            "neo4j+ssc",
+                            "bolt",
+                            "bolt+s",
+                            "bolt+ssc"
+                          ],
+                          "default": "neo4j"
+                        }
+                      },
+                      "properties": {
+                        "type": {
+                          "title": "Service Type",
+                          "description": "Service Type",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/59/definitions/neo4jType",
+                          "default": "Neo4j"
+                        },
+                        "scheme": {
+                          "title": "Connection Scheme",
+                          "description": "Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/59/definitions/neo4jScheme",
+                          "default": "neo4j"
+                        },
+                        "hostPort": {
+                          "title": "Host and Port",
+                          "description": "Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use 7687.",
+                          "type": "string"
+                        },
+                        "username": {
+                          "title": "Username",
+                          "description": "Username to connect to Neo4j. The user needs read access to the graph schema of the database.",
+                          "type": "string"
+                        },
+                        "password": {
+                          "title": "Password",
+                          "description": "Password to connect to Neo4j.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "databaseName": {
+                          "title": "Database Name",
+                          "description": "Neo4j database to extract metadata from. If left blank, the user's home database is used.",
+                          "type": "string"
+                        },
+                        "includeRelationships": {
+                          "title": "Include Relationships",
+                          "description": "Also ingest relationship types as tables in the `relationships` schema, with their properties as columns.",
+                          "type": "boolean",
+                          "default": true
+                        },
+                        "propertyFilterPattern": {
+                          "title": "Property Filter Pattern",
+                          "description": "Regex to only include/exclude node and relationship properties (columns) that match the pattern, e.g. properties written back by graph algorithms.",
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                        },
+                        "schemaFilterPattern": {
+                          "title": "Default Schema Filter Pattern",
+                          "description": "Regex to only include/exclude schemas that matches the pattern.",
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                        },
+                        "tableFilterPattern": {
+                          "title": "Default Table Filter Pattern",
+                          "description": "Regex to only include/exclude tables that matches the pattern.",
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                        },
+                        "supportsMetadataExtraction": {
+                          "title": "Supports Metadata Extraction",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -17493,6 +17503,11 @@
                           "description": "Fivetran API Limit For Pagination.",
                           "type": "integer",
                           "default": 1000
+                        },
+                        "logSchema": {
+                          "title": "Fivetran Platform Connector Schema",
+                          "description": "Destination schema holding the Fivetran Platform Connector log table, used to extract per-phase run status. Leave empty to read the schema name from the Fivetran API.",
+                          "type": "string"
                         },
                         "pipelineFilterPattern": {
                           "description": "Regex exclude pipelines.",

@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip } from 'antd';
-import { FC, useCallback } from 'react';
+import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+
+import { FC, MouseEvent, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -44,27 +44,28 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
 
   return (
     <Tooltip
+      arrow
       placement="top"
       title={
         hasCopied
           ? t('message.link-copy-to-clipboard')
           : t('label.copy-item', { item: t('label.url-uppercase') })
       }>
-      <Button
-        className="cursor-pointer hover-cell-icon flex-center"
+      <ButtonUtility
+        className="hover-cell-icon"
+        color="tertiary"
         data-testid={testId}
-        disabled={!fieldFqn}
-        style={{
-          color: DE_ACTIVE_COLOR,
-          padding: 0,
-          border: 'none',
-          background: 'transparent',
-          width: '24px',
-          height: '24px',
+        icon={<ShareIcon height={16} width={16} />}
+        isDisabled={!fieldFqn}
+        size="xs"
+        onClick={(e: MouseEvent<HTMLButtonElement>) => {
+          // Rendered inside clickable rows/cells; copying must not trigger their click handlers.
+          e.stopPropagation();
+          if (fieldFqn) {
+            handleCopyFieldLink(fieldFqn);
+          }
         }}
-        onClick={() => fieldFqn && handleCopyFieldLink(fieldFqn)}>
-        <ShareIcon style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
-      </Button>
+      />
     </Tooltip>
   );
 };

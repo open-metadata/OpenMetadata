@@ -11,90 +11,57 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useMemo } from 'react';
+import { AlertType as CapabilitiesAlertType } from '../../../generated/events/api/alertCapabilitiesRequest';
 import { AlertType } from '../../../generated/events/eventSubscription';
-import { getResourceFunctions as getNotificationResourceFunctions } from '../../../rest/alertsAPI';
-import { getResourceFunctions as getObservabilityResourceFunctions } from '../../../rest/observabilityAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAlertSelection } from '../../../hooks/useAlertSelection';
 import {
-  ObservabilityFilterResourceDescriptor,
-  UseObservabilityAlertResourcesReturn,
-} from '../AddObservabilityPage.interface';
-import { toObservabilityFilterResourceDescriptor } from '../ObservabilityAlertForm.utils';
+  shouldShowRuleSection,
+  toCapabilitiesInput,
+} from '../../../utils/Alerts/AlertSelectionUtil';
+import { UseObservabilityAlertResourcesReturn } from '../AddObservabilityPage.interface';
 
-/** Loads the alert source catalogue and narrows it to the selected source, without a form. */
+// One array for "nothing selected", so what depends on the sources does not change every render.
+const NO_SOURCES: string[] = [];
+
+/**
+ * Asks the server what the chosen sources support, without a form. The caller passes the sources
+ * and the filters and triggers chosen so far.
+ */
 export function useAlertResources(
   alertType: AlertType = AlertType.Observability,
-  selectedTrigger?: string
+  sources: string[] = NO_SOURCES,
+  chosenSoFar?: Parameters<typeof toCapabilitiesInput>[0]
 ): UseObservabilityAlertResourcesReturn {
-  const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
-  const [filterResources, setFilterResources] = useState<
-    ObservabilityFilterResourceDescriptor[]
-  >([]);
-
-  const fetchFunctions = useCallback(async () => {
-    try {
-      setLoading(true);
-      const filterResources =
-        alertType === AlertType.Notification
-          ? await getNotificationResourceFunctions()
-          : await getObservabilityResourceFunctions();
-
-      setFilterResources(
-        filterResources.data.map(toObservabilityFilterResourceDescriptor)
-      );
-    } catch {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.config') })
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [alertType, t]);
-
-  useEffect(() => {
-    fetchFunctions();
-  }, [fetchFunctions]);
-
-  const selectedResource = useMemo(
-    () => filterResources.find((resource) => resource.name === selectedTrigger),
-    [filterResources, selectedTrigger]
+  const capabilitiesInput = useMemo(
+    () => toCapabilitiesInput(chosenSoFar),
+    [chosenSoFar]
   );
 
-  const supportedFilters = useMemo(
-    () => selectedResource?.supportedFilters,
-    [selectedResource]
-  );
-
-  const containerEntities = useMemo<
-    UseObservabilityAlertResourcesReturn['containerEntities']
-  >(() => selectedResource?.containerEntities, [selectedResource]);
-
-  const supportedTriggers = useMemo(
-    () => selectedResource?.supportedActions,
-    [selectedResource]
-  );
+  const selection = useAlertSelection({
+    alertType:
+      alertType === AlertType.Notification
+        ? CapabilitiesAlertType.Notification
+        : CapabilitiesAlertType.Observability,
+    sources,
+    input: capabilitiesInput,
+  });
+  const { hasFilters, hasTriggers } = selection.support;
 
   const shouldShowFiltersSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
-    [selectedTrigger, supportedFilters]
+    () => shouldShowRuleSection(sources, hasFilters, chosenSoFar?.filters),
+    [sources, hasFilters, chosenSoFar?.filters]
   );
 
   const shouldShowActionsSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedTriggers) : true),
-    [selectedTrigger, supportedTriggers]
+    () => shouldShowRuleSection(sources, hasTriggers, chosenSoFar?.actions),
+    [sources, hasTriggers, chosenSoFar?.actions]
   );
 
   return {
-    containerEntities,
-    filterResources,
-    loading,
+    loading: !selection.ready,
+    selection,
     shouldShowActionsSection,
     shouldShowFiltersSection,
-    supportedFilters,
-    supportedTriggers,
   };
 }

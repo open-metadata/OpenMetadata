@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.auth;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mockConstruction;
@@ -157,7 +158,8 @@ class LdapAuthServletHandlerTest {
         .thenReturn(Optional.of(leasedSession));
     when(sessionService.decryptOmRefreshToken(leasedSession)).thenReturn("current-refresh-token");
     when(authenticator.getNewAccessToken(any())).thenReturn(jwtResponse);
-    when(sessionService.completeRefresh(leasedSession, "rotated-refresh-token", null))
+    when(sessionService.completeRefresh(
+            leasedSession, "rotated-refresh-token", SessionService.ProviderTokenUpdate.NONE))
         .thenReturn(Optional.of(revokedSession));
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
@@ -169,5 +171,25 @@ class LdapAuthServletHandlerTest {
     verify(tokenRepository).deleteToken("rotated-refresh-token");
     verify(sessionService).revokeSession(request, response);
     verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+  }
+
+  @Test
+  void close_releasesTheAuthenticatorConnectionPool() {
+    handler.close();
+
+    verify(authenticator).close();
+  }
+
+  @Test
+  void handleRefresh_revokedSession_answersSessionRevoked() throws Exception {
+    // A tab that signed in through SSO before the provider switched signs out on this answer. Any
+    // other 401 sends it to re-authenticate at a login page this provider does not serve.
+    when(sessionService.acquireRefreshLease(request, response)).thenReturn(Optional.empty());
+    when(sessionService.describeMissingSession(request)).thenReturn(SessionService.SESSION_REVOKED);
+
+    handler.handleRefresh(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    verify(servletOutputStream).print(contains(SessionService.SESSION_REVOKED));
   }
 }

@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
+import { WidgetRequestButton } from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ENTITY_TASKS_TOOLTIP } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -82,26 +82,22 @@ const EntityTasks = ({
     const hasData = !isEmpty(data.field);
 
     return (
-      <Tooltip
-        destroyTooltipOnHide
-        overlayClassName="ant-popover-request-description"
+      <WidgetRequestButton
+        compact
+        className="hover-cell-icon"
+        data-testid="task-element"
         title={
           hasData
             ? t(ENTITY_TASKS_TOOLTIP[entityTaskType].update)
             : t(ENTITY_TASKS_TOOLTIP[entityTaskType].request)
-        }>
-        <IconRequest
-          className="table-action-icon hover-cell-icon"
-          data-testid="task-element"
-          name={t('label.request-tag-plural')}
-          onClick={() => handleTask(hasData)}
-        />
-      </Tooltip>
+        }
+        onClick={() => handleTask(hasData)}
+      />
     );
   }, [data.field]);
 
   return (
-    <Space data-testid="entity-task" size="middle">
+    <Box inline align="center" data-testid="entity-task" gap={2}>
       {/*  Request and Update Tasks */}
       {tagSource !== TagSource.Glossary && taskElement}
 
@@ -114,7 +110,7 @@ const EntityTasks = ({
         entityField,
         entityTaskType
       )}
-    </Space>
+    </Box>
   );
 };
 

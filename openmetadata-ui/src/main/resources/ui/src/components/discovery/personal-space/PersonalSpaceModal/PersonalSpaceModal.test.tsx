@@ -50,7 +50,29 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     ) : null,
   Modal: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  Dialog: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Dialog: ({
+    children,
+    title,
+    'aria-label': ariaLabel,
+  }: {
+    children?: ReactNode;
+    title?: string;
+    'aria-label'?: string;
+  }) => (
+    <div aria-label={ariaLabel} role="dialog">
+      {title && <h2 data-testid="dialog-title">{title}</h2>}
+      {children}
+    </div>
+  ),
+}));
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+jest.mock('../MyData/MyData', () => ({
+  __esModule: true,
+  default: () => <div data-testid="my-data-page" />,
 }));
 
 jest.mock('../PersonalSpaceGate/PersonalSpaceGate', () => ({
@@ -103,6 +125,27 @@ describe('PersonalSpaceModal', () => {
     renderInRouter();
 
     expect(screen.getByTestId('profile-page')).toBeInTheDocument();
+  });
+
+  // Profile draws its own header, so the dialog adds none.
+  it('gives the Profile panel no dialog title', () => {
+    mockActivePanel = 'profile';
+    renderInRouter();
+
+    expect(screen.queryByTestId('dialog-title')).not.toBeInTheDocument();
+  });
+
+  // My Data draws its own My Data | Following tab header instead of a title.
+  it('renders My Data untitled, named for assistive tech', async () => {
+    mockActivePanel = 'my-data';
+    renderInRouter();
+
+    expect(await screen.findByTestId('my-data-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('dialog-title')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'label.my-data-and-following' })
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('profile-page')).not.toBeInTheDocument();
   });
 
   it('closes when the overlay is dismissed', () => {

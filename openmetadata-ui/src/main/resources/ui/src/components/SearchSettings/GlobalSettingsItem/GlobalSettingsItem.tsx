@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Input, Typography } from 'antd';
-import { useState } from 'react';
+import {
+  ButtonUtility,
+  Input,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { clamp } from 'lodash';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import '../../../pages/SearchSettingsPage/search-settings.less';
 import InlineEdit from '../../common/InlineEdit/InlineEdit.component';
@@ -35,70 +40,112 @@ export const GlobalSettingItem = ({
   step,
   onUpdate,
 }: GlobalSettingItemProps) => {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [updatedValue, setUpdatedValue] = useState<number>(value);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const valueContainerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const restoreFocusRef = useRef(false);
+
+  // Opening the editor removes the focused edit button and closing it removes
+  // the focused input: move focus to the control that replaces each, instead
+  // of letting it fall to <body>.
+  const closeEditor = () => {
+    const focused = document.activeElement;
+    // Restore only if focus is still in this editor, or was dropped to <body>
+    // (the input disables while saving). A slow save must not pull focus back
+    // from an edit the user has started elsewhere in the meantime.
+    restoreFocusRef.current =
+      !focused ||
+      focused === document.body ||
+      Boolean(editorRef.current?.contains(focused));
+    setIsEditing(false);
+  };
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+    } else if (restoreFocusRef.current) {
+      restoreFocusRef.current = false;
+      valueContainerRef.current
+        ?.querySelector<HTMLButtonElement>('button')
+        ?.focus();
+    }
+  }, [isEditing]);
+
+  const handleCancel = () => {
+    setUpdatedValue(value);
+    closeEditor();
+  };
 
   const handleSave = async () => {
+    // A cleared input parses to NaN; treat it as a cancelled edit.
+    if (Number.isNaN(updatedValue)) {
+      handleCancel();
+
+      return;
+    }
+
     try {
       setIsUpdating(true);
-      await onUpdate(updatedValue);
+      // The core Input has no min/max, so the bounds are applied on save.
+      await onUpdate(clamp(updatedValue, min ?? -Infinity, max ?? Infinity));
     } catch (error) {
       setUpdatedValue(value);
 
       throw error;
     } finally {
       setIsUpdating(false);
-      setIsEditing(false);
+      closeEditor();
     }
-  };
-
-  const handleCancel = () => {
-    setUpdatedValue(value);
-    setIsEditing(false);
   };
 
   return (
     <div className="d-flex items-center justify-between p-y-xs global-settings-item">
-      <Typography.Text data-testid="global-setting-label">
-        {label}
-      </Typography.Text>
+      <Typography data-testid="global-setting-label">{label}</Typography>
 
       {isEditing ? (
-        <div className="m-l-md d-flex justify-end flex-wrap inline-edit-container">
+        <div
+          className="m-l-md d-flex justify-end flex-wrap inline-edit-container"
+          ref={editorRef}>
           <InlineEdit
             isLoading={isUpdating}
             onCancel={handleCancel}
             onSave={handleSave}>
             <Input
-              data-testid="value-input"
-              disabled={isUpdating}
+              aria-label={label}
               id="value"
-              max={max}
-              min={min}
-              placeholder="value"
+              inputDataTestId="value-input"
+              isDisabled={isUpdating}
+              placeholder={t('label.value')}
+              ref={inputRef}
               step={step}
               type="number"
-              value={updatedValue}
-              onChange={(e) =>
-                setUpdatedValue(
-                  step ? parseFloat(e.target.value) : parseInt(e.target.value)
-                )
+              value={Number.isNaN(updatedValue) ? '' : String(updatedValue)}
+              onChange={(value) =>
+                setUpdatedValue(step ? parseFloat(value) : parseInt(value))
               }
             />
           </InlineEdit>
         </div>
       ) : (
-        <div className="d-flex items-center justify-end flex-wrap value-container">
+        <div
+          className="d-flex items-center justify-end tw:shrink-0"
+          ref={valueContainerRef}>
           <span
-            className="m-l-xlg font-semibold p-x-xss global-settings-item-value"
+            className="m-l-md font-semibold p-x-xss global-settings-item-value"
             data-testid={`global-setting-value-${label}`}>
             {value}
           </span>
-          <Icon
-            className="m-l-sm flex-shrink"
-            component={EditIcon}
+          <ButtonUtility
+            className="tw:ml-1"
+            color="tertiary"
             data-testid={`global-setting-edit-icon-${label}`}
+            icon={<EditIcon className="tw:size-3.5" />}
+            size="xs"
+            tooltip={t('label.edit-entity', { entity: label })}
             onClick={() => setIsEditing(true)}
           />
         </div>

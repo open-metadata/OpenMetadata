@@ -52,7 +52,7 @@ const test = base.extend<{ adminPage: Page }>({
   adminPage: async ({ browser }, use) => {
     const admin = new AdminClass();
     const page = await browser.newPage();
-    await admin.login(page);
+    await admin.signIn(page);
     await use(page);
     await page.close();
   },
@@ -232,8 +232,10 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
         await expect(
-          comboboxField(page, 'advanced-search-field-select').first()
-        ).toBeVisible();
+          comboboxField(page, 'advanced-search-field-select').filter({
+            visible: true,
+          })
+        ).not.toHaveCount(0);
       });
 
       await test.step('click Save Rule — must be blocked', async () => {
@@ -278,8 +280,10 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
         await expect(
-          comboboxField(page, 'advanced-search-field-select').first()
-        ).toBeVisible();
+          comboboxField(page, 'advanced-search-field-select').filter({
+            visible: true,
+          })
+        ).not.toHaveCount(0);
       });
 
       await test.step('select the Description field (text type, no async fetch)', async () => {
@@ -342,8 +346,10 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
         await expect(
-          comboboxField(page, 'advanced-search-field-select').first()
-        ).toBeVisible();
+          comboboxField(page, 'advanced-search-field-select').filter({
+            visible: true,
+          })
+        ).not.toHaveCount(0);
         await page.getByRole('button', { name: 'Save Rule' }).click();
         await expect(
           page.getByTestId('context-rule-filter-error')

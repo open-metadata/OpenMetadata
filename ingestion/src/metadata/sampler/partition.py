@@ -12,6 +12,8 @@
 """Partition utility"""
 
 from metadata.generated.schema.entity.data.table import (
+    Column,
+    DataType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
     PartitionIntervalUnit,
@@ -23,6 +25,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.ingestion.ometa.utils import model_str
 from metadata.sampler.models import TableConfig
 from metadata.utils.logger import sampler_logger
 
@@ -64,11 +67,16 @@ def validate_athena_injected_partitioning(
 def get_partition_details(
     entity: Table,
     entity_config: TableConfig | None = None,
+    auto_detect_partition: bool | None = None,
 ) -> PartitionProfilerConfig | None:
     """Build PartitionProfilerConfig object from entity
 
     Args:
         entity (Table): entity table
+        entity_config (TableConfig): per-table partition config from the workflow, always takes priority
+        auto_detect_partition (bool | None): True infers the partition config from `tablePartition` for
+            any service, False never infers it. None keeps the BigQuery-only inference used by the
+            workflows that do not expose the setting (test suites, auto classification).
     Returns:
         PartitionProfilerConfig
     """
@@ -96,13 +104,25 @@ def get_partition_details(
         # if table has partitioning defined in the profiler config, return it
         return profiler_partitioning_config
 
-    if service_type == DatabaseServiceType.BigQuery:
-        return _handle_bigquery_partition(entity, table_partition)
+    if auto_detect_partition is None:
+        auto_detect_partition = service_type == DatabaseServiceType.BigQuery
 
-    return None
+    if not auto_detect_partition or not table_partition:
+        return None
+
+    partition_config = _infer_partition_config(entity, table_partition, service_type)
+    if partition_config:
+        logger.info(
+            "Auto-detected %s partitioning on column '%s' for table %s. "
+            "Define the partitioning in the table profiler config to override it.",
+            getattr(partition_config.partitionIntervalType, "value", None),
+            partition_config.partitionColumnName,
+            model_str(entity.fullyQualifiedName),
+        )
+    return partition_config
 
 
-_BIGQUERY_GRANULARITY_WINDOW: dict[str, tuple[PartitionIntervalUnit, int]] = {
+_GRANULARITY_WINDOW: dict[str, tuple[PartitionIntervalUnit, int]] = {
     # (unit, interval) pairs sized so even lagging tables yield non-empty samples.
     # HOUR: 24 h covers any table updated less frequently than once per hour.
     # DAY:  3 days covers common ~2-day ingestion delays (e.g. GA4 exports).
@@ -114,12 +134,108 @@ _BIGQUERY_GRANULARITY_WINDOW: dict[str, tuple[PartitionIntervalUnit, int]] = {
     "YEAR": (PartitionIntervalUnit.DAY, 370),
 }
 
+DEFAULT_INTEGER_RANGE_START = 1
+DEFAULT_INTEGER_RANGE_END = 10000
 
-def _bigquery_window_for_granularity(
+# Several sources report every partition key as TIME_UNIT (e.g. Postgres range partitions, Doris,
+# StarRocks) even when the key is an integer or a string. The date arithmetic filter only compiles
+# against temporal columns, so the column type is checked before trusting the reported interval type.
+_TIME_PARTITION_DATA_TYPES = frozenset({DataType.DATE, DataType.DATETIME, DataType.TIMESTAMP, DataType.TIMESTAMPZ})
+_INTEGER_PARTITION_DATA_TYPES = frozenset(
+    {
+        DataType.TINYINT,
+        DataType.SMALLINT,
+        DataType.INT,
+        DataType.BIGINT,
+        DataType.BYTEINT,
+        DataType.LONG,
+        DataType.NUMBER,
+        DataType.NUMERIC,
+        DataType.DECIMAL,
+    }
+)
+
+
+def _window_for_granularity(
     interval: str | None,
 ) -> tuple[PartitionIntervalUnit, int]:
     """Return (unit, count) for the default profiler window matching *interval*."""
-    return _BIGQUERY_GRANULARITY_WINDOW.get(interval or "", (PartitionIntervalUnit.DAY, 3))
+    return _GRANULARITY_WINDOW.get((interval or "").upper(), (PartitionIntervalUnit.DAY, 3))
+
+
+def _get_partition_column(entity: Table, column_name: str | None) -> Column | None:
+    if not column_name:
+        return None
+    for column in entity.columns or []:
+        if model_str(column.name) == column_name:
+            return column
+    # Quoted identifiers can differ only by case. A folded match is safe only when it is unique.
+    matches = [column for column in entity.columns or [] if model_str(column.name).lower() == column_name.lower()]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _infer_partition_config(
+    entity: Table,
+    table_partition: TablePartition,
+    service_type: DatabaseServiceType | None,
+) -> PartitionProfilerConfig | None:
+    """Infer the profiler partition config from the partition metadata collected during ingestion.
+    Only the first partition column is used, matching the BigQuery behavior.
+    """
+    if service_type == DatabaseServiceType.BigQuery:
+        return _handle_bigquery_partition(entity, table_partition)
+
+    if not table_partition.columns:
+        return None
+
+    partition = table_partition.columns[0]
+    column = _get_partition_column(entity, partition.columnName)
+    column_type = column.dataType if column else None
+
+    if (
+        column
+        and partition.intervalType == PartitionIntervalTypes.TIME_UNIT
+        and column_type in _TIME_PARTITION_DATA_TYPES
+    ):
+        interval_unit, interval = _window_for_granularity(partition.interval)
+        return PartitionProfilerConfig(
+            enablePartitioning=True,
+            partitionColumnName=model_str(column.name),
+            partitionIntervalUnit=interval_unit,
+            partitionInterval=interval,
+            partitionIntervalType=partition.intervalType,
+            partitionValues=None,
+            partitionIntegerRangeStart=None,
+            partitionIntegerRangeEnd=None,
+        )
+
+    if (
+        column
+        and partition.intervalType == PartitionIntervalTypes.INTEGER_RANGE
+        and column_type in _INTEGER_PARTITION_DATA_TYPES
+    ):
+        return PartitionProfilerConfig(
+            enablePartitioning=True,
+            partitionColumnName=model_str(column.name),
+            partitionIntervalUnit=None,
+            partitionInterval=None,
+            partitionIntervalType=partition.intervalType,
+            partitionValues=None,
+            partitionIntegerRangeStart=DEFAULT_INTEGER_RANGE_START,
+            partitionIntegerRangeEnd=DEFAULT_INTEGER_RANGE_END,
+        )
+
+    interval_type = partition.intervalType.value if partition.intervalType else None
+    logger.debug(
+        "Cannot auto-detect partitioning for table %s: partition column '%s' has interval type %s and "
+        "data type %s. Configure the partitioning in the table profiler config to profile a subset of "
+        "the partitions.",
+        model_str(entity.fullyQualifiedName),
+        partition.columnName,
+        interval_type,
+        column_type.value if column_type else None,
+    )
+    return None
 
 
 def _handle_bigquery_partition(entity: Table, table_partition: TablePartition) -> PartitionProfilerConfig | None:
@@ -132,7 +248,7 @@ def _handle_bigquery_partition(entity: Table, table_partition: TablePartition) -
         partition = column_partitions[0]
 
         if partition.intervalType == PartitionIntervalTypes.TIME_UNIT:
-            interval_unit, interval_days = _bigquery_window_for_granularity(partition.interval)
+            interval_unit, interval_days = _window_for_granularity(partition.interval)
             return PartitionProfilerConfig(
                 enablePartitioning=True,
                 partitionColumnName=partition.columnName,
@@ -144,7 +260,7 @@ def _handle_bigquery_partition(entity: Table, table_partition: TablePartition) -
                 partitionIntegerRangeEnd=None,
             )
         if partition.intervalType == PartitionIntervalTypes.INGESTION_TIME:
-            interval_unit, interval_days = _bigquery_window_for_granularity(partition.interval)
+            interval_unit, interval_days = _window_for_granularity(partition.interval)
             return PartitionProfilerConfig(
                 enablePartitioning=True,
                 partitionColumnName="_PARTITIONDATE" if partition.interval == "DAY" else "_PARTITIONTIME",
@@ -163,8 +279,8 @@ def _handle_bigquery_partition(entity: Table, table_partition: TablePartition) -
                 partitionInterval=None,
                 partitionIntervalType=partition.intervalType.value,
                 partitionValues=None,
-                partitionIntegerRangeStart=1,
-                partitionIntegerRangeEnd=10000,
+                partitionIntegerRangeStart=DEFAULT_INTEGER_RANGE_START,
+                partitionIntegerRangeEnd=DEFAULT_INTEGER_RANGE_END,
             )
         # TODO: Allow External Hive Partitioning for profiler
         logger.info(

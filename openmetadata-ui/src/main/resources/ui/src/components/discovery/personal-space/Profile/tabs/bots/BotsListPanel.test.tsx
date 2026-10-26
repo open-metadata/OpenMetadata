@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { ProviderType } from '../../../../../../generated/entity/bot';
 import { Include } from '../../../../../../generated/type/include';
@@ -344,6 +350,68 @@ describe('BotsListPanel', () => {
     await waitFor(() => expect(searchQuery).toHaveBeenCalled());
   });
 
+  it('should restore the bot list after clearing an in-flight search', async () => {
+    let resolveSearch: (value: unknown) => void = jest.fn();
+    (searchQuery as jest.Mock).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSearch = resolve;
+        })
+    );
+
+    renderPanel();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('bot-row-ingest')).toBeInTheDocument()
+    );
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'ingest' },
+    });
+
+    await waitFor(() =>
+      expect(screen.queryAllByTestId('skeleton').length).toBeGreaterThan(0)
+    );
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: '' },
+    });
+
+    await act(async () => {
+      resolveSearch({ hits: { hits: [] } });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('bot-row-ingest')).toBeInTheDocument()
+    );
+
+    expect(screen.queryAllByTestId('skeleton')).toHaveLength(0);
+  });
+
+  it('should restore the bot list after clearing a completed search', async () => {
+    renderPanel();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('bot-row-ingest')).toBeInTheDocument()
+    );
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'ingest' },
+    });
+
+    await waitFor(() => expect(searchQuery).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: '' },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('bot-row-ingest')).toBeInTheDocument()
+    );
+
+    expect(screen.queryAllByTestId('skeleton')).toHaveLength(0);
+  });
+
   it('should open the delete modal when delete is clicked', async () => {
     renderPanel();
 
@@ -370,5 +438,30 @@ describe('BotsListPanel', () => {
     fireEvent.click(screen.getByTestId('add-bot'));
 
     expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'add' });
+  });
+
+  it('clears a search with no results from the empty state', async () => {
+    (searchQuery as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
+    renderPanel();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('bot-row-ingest')).toBeInTheDocument()
+    );
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'missing' },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('clear-filters')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('clear-filters'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('bot-row-ingest')).toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('searchbar')).toHaveValue('');
   });
 });

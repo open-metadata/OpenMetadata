@@ -1,7 +1,18 @@
 FROM mysql:8.3 AS mysql
 
 FROM apache/airflow:3.3.2-python3.12
+# gRPC ships a separate CA bundle that can lag behind OS distrust updates.
+ENV GRPC_DEFAULT_SSL_ROOTS_FILE_PATH=/etc/ssl/certs/ca-certificates.crt
 USER root
+RUN apt-get -qq update \
+  && apt-get -qq install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=bind,source=ingestion/scripts/patch_python_seeds.py,target=/tmp/patch_python_seeds.py \
+    /usr/local/bin/python -m pip download --no-cache-dir --no-deps --dest /tmp/python-pip "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" \
+    && /usr/local/bin/python -m pip install --no-cache-dir --upgrade /tmp/python-pip/*.whl \
+    && /usr/local/bin/python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" "uv>=0.13.4" \
+    && /usr/local/bin/python /tmp/patch_python_seeds.py /tmp/python-pip/pip-26.2.2-py3-none-any.whl \
+    && rm -rf /tmp/python-pip
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
 
@@ -11,7 +22,6 @@ RUN dpkg --configure -a \
   && apt-get -qq install -y \
   build-essential \
   default-libmysqlclient-dev \
-  freetds-bin \
   freetds-dev \
   gcc \
   gnupg \
@@ -31,8 +41,6 @@ RUN dpkg --configure -a \
   openssl \
   # To ensure compatibility with unixodbc package
   odbcinst=2.3.11-2+deb12u1 \
-  postgresql \
-  postgresql-contrib \
   tdsodbc \
   unixodbc=2.3.11-2+deb12u1 \
   unixodbc-dev=2.3.11-2+deb12u1 \
@@ -60,8 +68,9 @@ RUN dpkg --configure -a \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
        perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev \
+  # DockerOperator uses docker-py; the Airflow base's Go CLI is unused.
   && apt-get -qq purge -y \
-       'imagemagick*' 'libmagick*' 'graphicsmagick*' \
+       'imagemagick*' 'libmagick*' 'graphicsmagick*' docker-ce-cli \
   && apt-get -qq autoremove -y --purge \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
@@ -105,16 +114,6 @@ COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 COPY --chown=airflow:0 ingestion/examples/airflow/test_dags /opt/airflow/dags
 COPY --chown=airflow:0 ingestion/airflow-constraints-3.3.2.txt /home/airflow/airflow-constraints-3.3.2.txt
 
-# Refresh the interpreter-level pip before dropping privileges. The per-user
-# pip upgrade below only reaches ~/.local, leaving the base image's
-# own copy (/usr/python/lib/python3.12/site-packages, pip 25.0.1) on disk for image
-# scanners (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
-# The explicit interpreter path is required, not stylistic: as root, `pip` resolves to
-# airflow's /root/bin/pip wrapper, which exits 1 (and for non-root execs ~/.local/bin/pip),
-# and bare `python` resolves to /home/airflow/.local/bin/python. Both would miss the very
-# copy this line exists to fix.
-RUN /usr/local/bin/python -m pip install --no-cache-dir --upgrade "pip>=26.2,<27"
-
 USER airflow
 
 # Disable pip cache dir
@@ -123,7 +122,9 @@ ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
 
-RUN pip install --upgrade "pip>=26.2,<27" "setuptools>=83"
+RUN python -m pip install --no-cache-dir --upgrade "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" \
+    && python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" "uv>=0.13.4" \
+    && pip install --upgrade "setuptools>=83"
 
 # Install FAB provider for Airflow 3.x Flask Blueprint compatibility
 RUN pip install "apache-airflow-providers-fab>=1.0.0" --constraint "/home/airflow/airflow-constraints-3.3.2.txt" || true
@@ -137,9 +138,13 @@ WORKDIR /home/airflow/ingestion
 # Pre-install the unmaintained dialect package that declares SQLAlchemy<2 in its
 # metadata but works at runtime with SQLAlchemy 2.0.
 RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3"
-RUN pip install "datamodel-code-generator==0.64.0"
-RUN mkdir -p /home/airflow/ingestion/src/metadata/generated
-RUN python /home/airflow/scripts/datamodel_generation.py
+# 0.64.0 is vulnerable to CVE-2026-107377 (first patched in 0.81.0). Generate with
+# 0.83.0, then remove it in the same layer so its files cannot remain in the final
+# image's lower layers.
+RUN pip install "datamodel-code-generator==0.83.0" \
+  && mkdir -p /home/airflow/ingestion/src/metadata/generated \
+  && python /home/airflow/scripts/datamodel_generation.py \
+  && pip uninstall -y datamodel-code-generator
 RUN wget -q https://repo1.maven.org/maven2/org/antlr/antlr4/4.9.2/antlr4-4.9.2-complete.jar -O /tmp/antlr.jar \
   && echo "bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd  /tmp/antlr.jar" | sha256sum -c - \
   && mkdir -p /home/airflow/ingestion/src/metadata/generated/antlr \
@@ -161,8 +166,10 @@ RUN [ $(uname -m) = "x86_64" ] \
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
 
-# remove all airflow providers except for docker, cncf kubernetes, and standard (required in Airflow 3.x)
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard" | xargs pip uninstall -y
+# Keep SMTP and standard providers required by Airflow core, alongside our runtime providers.
+RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard|smtp" | xargs pip uninstall -y
+# The removed Amazon provider was the only consumer of this driver.
+RUN pip uninstall -y redshift-connector
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
@@ -177,7 +184,22 @@ EXPOSE 8080
 # can leave stale 0.2.6 `upath` module files in site-packages that cause import
 # errors at runtime. Force-remove the stale registration then pin to the required version.
 RUN pip uninstall upath -y && pip install "universal-pathlib==0.3.10"
+RUN python -c "import importlib.util as u; assert u.find_spec('datamodel_code_generator') is None"
 
+# Models are opt-in so the default image remains unchanged. Run this after the
+# package installs and before the spaCy cleanup below, while using the runtime user.
+ARG AUTO_CLASSIFICATION_LANGUAGES=""
+RUN if [ -n "$AUTO_CLASSIFICATION_LANGUAGES" ]; then \
+      metadata install-classification-models --languages "$AUTO_CLASSIFICATION_LANGUAGES"; \
+    fi
+
+# Native Python extensions still need their shared libraries after header/tool cleanup.
+USER root
+RUN apt-mark manual libpq5 libmariadb3 mariadb-common libgcc-s1 libstdc++6 libgomp1 xz-utils bzip2 make \
+  && apt-get -qq purge -y --autoremove build-essential gcc default-libmysqlclient-dev libpq-dev freetds-bin \
+  && rm -rf /var/lib/apt/lists/*
+USER airflow
+RUN python -c "import MySQLdb, psycopg2"
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
 # See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
@@ -187,3 +209,9 @@ RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture
 
 # This is required as it's responsible to create airflow.cfg file
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db
+# Airflow's isolated prek environment carries another uv binary and CA bundle.
+ENV PREK_NATIVE_TLS=true
+RUN python -m pip --python /home/airflow/.local/share/uv/tools/prek/bin/python install --upgrade "uv>=0.13.4"
+RUN --mount=type=bind,source=ingestion/scripts/patch_python_seeds.py,target=/tmp/patch_python_seeds.py \
+    python -m pip install --no-cache-dir --upgrade "virtualenv>=21.14.12" \
+    && python /tmp/patch_python_seeds.py

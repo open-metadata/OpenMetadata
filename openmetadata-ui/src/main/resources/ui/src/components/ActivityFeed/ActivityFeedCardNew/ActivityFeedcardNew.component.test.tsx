@@ -83,8 +83,8 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
 );
 
 jest.mock('../ActivityFeedEditor/ActivityFeedEditorNew', () =>
-  jest.fn(({ onSave, onTextChange }) => (
-    <div data-testid="reply-editor">
+  jest.fn(({ focused, onSave, onTextChange }) => (
+    <div data-focused={String(Boolean(focused))} data-testid="reply-editor">
       <input
         aria-label="edit"
         data-testid="reply-editor-input"
@@ -138,7 +138,9 @@ jest.mock('../../../utils/SearchClassBase', () => ({
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
   __esModule: true,
-  default: { getEntityLink: () => '/table/service.table' },
+  default: {
+    getEntityLink: jest.fn((type: string, fqn: string) => `/${type}/${fqn}`),
+  },
 }));
 
 const conversation: Conversation = {
@@ -207,6 +209,23 @@ describe('ActivityFeedCardNew', () => {
     expect(screen.getByTestId('feed-actions')).toBeVisible();
   });
 
+  // FeedEditor no longer focuses itself on mount, so an editor revealed by a
+  // click must ask for focus, or the user clicks twice before typing.
+  it('focuses the comment editor its placeholder reveals', async () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew isOpenInDrawer showThread feed={conversation} />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('comments-input-field'));
+
+    expect(await screen.findByTestId('reply-editor')).toHaveAttribute(
+      'data-focused',
+      'true'
+    );
+  });
+
   it('keeps the root actions a direct child of the card body', () => {
     render(
       <MemoryRouter>
@@ -215,15 +234,145 @@ describe('ActivityFeedCardNew', () => {
     );
 
     // The hover reveal in activity-feed-actions.less is written as
-    // `.activity-feed-card-new:hover > .ant-card-body > .feed-actions`. antd's
-    // Card puts its children inside .ant-card-body, so that middle step is
-    // load-bearing: drop it and the selector stops matching, leaving the
-    // reply/resolve/edit/delete bar hidden from mouse users.
+    // `.activity-feed-card-new:hover > .activity-feed-card-new-body >
+    // .feed-actions`, so that middle step is load-bearing: drop it and the
+    // selector stops matching, leaving the reply/resolve/edit/delete bar
+    // hidden from mouse users.
     const actions = screen.getByTestId('feed-actions');
     const body = actions.parentElement;
 
-    expect(body).toHaveClass('ant-card-body');
+    expect(body).toHaveClass('activity-feed-card-new-body');
     expect(body?.parentElement).toHaveClass('activity-feed-card-new');
+  });
+
+  it('names the field a conversation was started on after the entity', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          showThread
+          feed={{
+            ...conversation,
+            about: '<#E::table::service.table::columns::category::description>',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('entity-link')).toHaveTextContent('table');
+    expect(screen.getByTestId('feed-field-path-column')).toHaveAttribute(
+      'href',
+      '/table/service.table.category'
+    );
+    expect(screen.getByTestId('feed-field-path-field')).toHaveTextContent(
+      'label.description'
+    );
+  });
+
+  it('names the column, not the field again, for a column-level activity event', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          activity={{
+            ...activity,
+            about: '<#E::table::service.table::columns::category::description>',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('feed-field-path-column')).toHaveTextContent(
+      'category'
+    );
+    expect(
+      screen.queryByTestId('feed-field-path-field')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no field path for a conversation on the entity itself', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew showThread feed={conversation} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId('feed-field-path')).not.toBeInTheDocument();
+  });
+
+  it('falls back to the activity entity when the event carries no about link', () => {
+    // `about` is optional on an activity event, and the EntityLink accessors
+    // answer '' for a missing link rather than undefined. Reading them with
+    // `??` would keep that '' and never reach `activity.entity`, leaving the
+    // header pointing at `//` with no entity name.
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew isOpenInDrawer activity={activity} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('entity-link')).toHaveAttribute(
+      'href',
+      '/table/service.table'
+    );
+  });
+
+  it('reads an activity event entity from its reference without an ANTLR error', () => {
+    // The server appends whatever field changed to `about`; `entityStatus` is
+    // not in the EntityLink grammar, so parsing it logged an ANTLR error
+    // ("no viable alternative at input '::entityStatus'") on every render.
+    const errorSpy = jest.spyOn(console, 'error');
+
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          isOpenInDrawer
+          activity={{
+            ...activity,
+            about: '<#E::table::service.table::entityStatus>',
+            fieldName: 'entityStatus',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('no viable alternative')
+    );
+    expect(screen.getByTestId('entity-link')).toHaveAttribute(
+      'href',
+      '/table/service.table'
+    );
+
+    errorSpy.mockRestore();
+  });
+
+  it('reads an activity-sourced conversation entity from its reference without an ANTLR error', () => {
+    // The server copies the activity's `about` (with the changed field) into
+    // the conversation it creates from it.
+    const errorSpy = jest.spyOn(console, 'error');
+
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          isOpenInDrawer
+          showThread
+          feed={{
+            ...conversation,
+            about: '<#E::table::service.table::entityStatus>',
+            source: ConversationSource.Activity,
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('no viable alternative')
+    );
+    expect(screen.getByTestId('entity-link')).toHaveAttribute(
+      'href',
+      '/table/service.table'
+    );
+
+    errorSpy.mockRestore();
   });
 
   it('renders activity replies in the open side panel', () => {

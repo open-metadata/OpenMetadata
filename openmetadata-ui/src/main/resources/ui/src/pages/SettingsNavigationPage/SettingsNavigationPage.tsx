@@ -10,27 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HolderOutlined } from '@ant-design/icons';
-import { Card, Col, Row, Switch, Tree, TreeDataNode, TreeProps } from 'antd';
-import { cloneDeep, isEqual } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import {
+  Box,
+  ButtonUtility,
+  Card,
+  Grid,
+  Toggle,
+  Tree,
+} from '@openmetadata/ui-core-components';
+import { DotsGrid } from '@openmetadata/ui-core-components/icons';
+import { NavigationTreeNode } from '../../interface/sidebar.interface';
+
+import { isEqual } from 'lodash';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDown } from '../../assets/svg/ic-arrow-down.svg';
-import { ReactComponent as IconRight } from '../../assets/svg/ic-arrow-right.svg';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { Persona } from '../../generated/entity/teams/persona';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import {
   getHiddenKeysFromNavigationItems,
   getTreeDataForNavigationItems,
 } from '../../utils/CustomizaNavigation/CustomizeNavigation';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { getNavigationItems } from '../../utils/SettingsNavigationPageUtils';
+import {
+  getNavigationItems,
+  moveNavigationItem,
+} from '../../utils/SettingsNavigationPageUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
-import './settings-navigation-page.less';
 
 interface Props {
   persona: Persona;
@@ -46,7 +56,7 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
   const [hiddenKeys, setHiddenKeys] = useState<string[]>(
     getHiddenKeysFromNavigationItems(currentNavigation, plugins)
   );
-  const [treeData, setTreeData] = useState<TreeDataNode[]>(() =>
+  const [treeData, setTreeData] = useState<NavigationTreeNode[]>(() =>
     getTreeDataForNavigationItems(currentNavigation, plugins)
   );
 
@@ -63,66 +73,24 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
     await onSave(navigationItems);
   };
 
-  const onDrop: TreeProps['onDrop'] = (info) => {
-    const dropKey = info.node.key;
-    const dragKey = info.dragNode.key;
-    const dropPos = info.node.pos.split('-');
-    const dropPosition =
-      info.dropPosition - Number(dropPos[dropPos.length - 1]); // the drop position relative to the drop node, inside 0, top -1, bottom 1
-
-    const loop = (
-      data: TreeDataNode[],
-      key: React.Key,
-      callback: (node: TreeDataNode, i: number, data: TreeDataNode[]) => void
-    ) => {
-      for (let i = 0; i < data.length; i++) {
-        if (data[i].key === key) {
-          return callback(data[i], i, data);
-        }
-        const children = data[i].children;
-        if (children) {
-          loop(children, key, callback);
-        }
-      }
-    };
-    const tempData = cloneDeep(treeData);
-
-    // Find dragObject
-    let dragObj!: TreeDataNode;
-    loop(tempData, dragKey, (item, index, arr) => {
-      arr.splice(index, 1);
-      dragObj = item;
-    });
-
-    if (!info.dropToGap) {
-      // Drop on the content
-      loop(tempData, dropKey, (item) => {
-        item.children = item.children || [];
-        // where to insert. New item was inserted to the start of the array in this example, but can be anywhere
-        item.children.unshift(dragObj);
-      });
-    } else {
-      let ar: TreeDataNode[] = [];
-      let i = 0;
-      loop(tempData, dropKey, (_item, index, arr) => {
-        ar = arr;
-        i = index;
-      });
-      if (dropPosition === -1) {
-        // Drop on the top of the drop node
-        ar.splice(i, 0, dragObj);
-      } else {
-        // Drop on the bottom of the drop node
-        ar.splice(i + 1, 0, dragObj);
-      }
-    }
-
-    setTreeData(tempData);
+  const onItemMove = ({
+    sourceKey,
+    targetKey,
+    dropPosition,
+  }: {
+    sourceKey: string | number;
+    targetKey: string | number;
+    dropPosition: 'before' | 'after' | 'on';
+  }) => {
+    setTreeData((nodes) =>
+      moveNavigationItem(
+        nodes,
+        String(sourceKey),
+        String(targetKey),
+        dropPosition
+      )
+    );
   };
-
-  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
-    return expanded ? <IconDown /> : <IconRight />;
-  }, []);
 
   const handleReset = () => {
     setTreeData(getTreeDataForNavigationItems(null, plugins));
@@ -135,15 +103,30 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
     );
   };
 
-  const titleRenderer = (node: TreeDataNode) => (
-    <div className="space-between">
-      {t(node.title as string)}
-      <Switch
-        checked={!hiddenKeys.includes(node.key as string)}
-        data-testid={`navigation-switch-${node.key}`}
-        onChange={(checked) => handleRemoveToggle(checked, node.key as string)}
-      />
-    </div>
+  const renderNode = (node: NavigationTreeNode): React.ReactNode => (
+    <Tree.Item id={node.key} key={node.key} textValue={t(node.title)}>
+      <Tree.ItemContent className="tw:min-h-12" icon={node.icon}>
+        <Box align="center" className="tw:flex-1" gap={2} justify="between">
+          <ButtonUtility
+            aria-label={t('label.move')}
+            className="tw:invisible tw:group-hover/tree-item:visible tw:group-focus-within/tree-item:visible"
+            color="tertiary"
+            icon={DotsGrid}
+            size="xs"
+            slot="drag"
+          />
+          <span className="tw:flex-1">{t(node.title)}</span>
+          <Toggle
+            data-testid={`navigation-switch-${node.key}`}
+            isSelected={!hiddenKeys.includes(node.key as string)}
+            onChange={(isSelected) =>
+              handleRemoveToggle(isSelected, node.key as string)
+            }
+          />
+        </Box>
+      </Tree.ItemContent>
+      {node.children?.map(renderNode)}
+    </Tree.Item>
   );
 
   return (
@@ -153,36 +136,42 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
         pageTitle={t('label.customize-entity', {
           entity: t('label.navigation'),
         })}>
-        <Row gutter={[0, 20]}>
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(0, 20) }}>
+          <Grid.Item className="layout-column" span={24}>
             <CustomizablePageHeader
               disableSave={disableSave}
               personaName={getEntityName(persona)}
               onReset={handleReset}
               onSave={handleSave}
             />
-          </Col>
+          </Grid.Item>
 
-          <Col span={24}>
-            <Card
-              bordered={false}
-              className="custom-navigation-tree-container"
-              title="Navigation Menus">
-              <Tree
-                autoExpandParent
-                blockNode
-                defaultExpandAll
-                showIcon
-                draggable={{ icon: <HolderOutlined /> }}
-                itemHeight={48}
-                switcherIcon={switcherIcon}
-                titleRender={titleRenderer}
-                treeData={treeData}
-                onDrop={onDrop}
-              />
+          <Grid.Item className="layout-column" span={24}>
+            <Card className="custom-navigation-tree-container" variant="ghost">
+              <Card.Header title={t('label.navigation')} />
+              <Card.Content>
+                <Tree
+                  aria-label={t('label.navigation')}
+                  className="tw:max-w-105"
+                  defaultExpandedKeys={treeData.flatMap((node) => [
+                    node.key,
+                    ...(node.children?.map((child) => child.key) ?? []),
+                  ])}
+                  selectionMode="none"
+                  onItemMove={onItemMove}
+                  onItemRootDrop={(key) =>
+                    setTreeData((nodes) =>
+                      moveNavigationItem(nodes, String(key), undefined, 'after')
+                    )
+                  }>
+                  {treeData.map(renderNode)}
+                </Tree>
+              </Card.Content>
             </Card>
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       </PageLayoutV1>
     </NavigationBlocker>
   );

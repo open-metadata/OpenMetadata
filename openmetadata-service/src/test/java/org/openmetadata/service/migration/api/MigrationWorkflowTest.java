@@ -24,6 +24,7 @@ import static org.openmetadata.service.util.EntityUtil.hash;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -31,6 +32,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.BeforeEach;
@@ -129,6 +132,59 @@ class MigrationWorkflowTest {
 
     assertEquals(List.of("1.0.1"), getMigrationVersions(workflow));
     assertEquals(Optional.of("1.2.0"), getCurrentMaxVersion(workflow));
+  }
+
+  @Test
+  void loadMigrationsRunsAPendingExtensionVersionBeforeHigherNativeVersions() throws Exception {
+    // Issue #34382: a first run stopped after 1.2.0-collate, and the retry ran native 2.0.0 before
+    // 1.6.0-collate, which renames the column 2.0.0 indexes.
+    Path nativeRoot = Files.createDirectories(tempDir.resolve("native"));
+    Path extensionRoot = Files.createDirectories(tempDir.resolve("extension"));
+    createMigrationDir(nativeRoot, "1.5.0", "SELECT 150;");
+    createMigrationDir(nativeRoot, "2.0.0", "SELECT 200;");
+    createMigrationDir(extensionRoot, "1.2.0-collate", "SELECT 120;");
+    createMigrationDir(extensionRoot, "1.6.0-collate", "SELECT 160;");
+    when(migrationDAO.getMigrationVersions()).thenReturn(List.of("1.2.0-collate"));
+    recordExecutedSql(List.of("SELECT 120"));
+
+    assertEquals(
+        List.of("1.5.0", "1.6.0-collate", "2.0.0"), loadPendingVersions(nativeRoot, extensionRoot));
+  }
+
+  @Test
+  void loadMigrationsContinuesTheEmptyDatabaseOrderFromWhereverARunStopped() throws Exception {
+    // A run records each version once it finishes, so a run that stops leaves a prefix of its
+    // order behind. The next run has to continue with exactly the rest of that order.
+    List<String> runOrder =
+        List.of(
+            "1.2.0-collate",
+            "1.4.7",
+            "1.5.0",
+            "1.6.0",
+            "1.6.0-collate",
+            "1.7.0-collate",
+            "2.0.0",
+            "2.0.0-collate",
+            "2.0.1");
+    Path nativeRoot = Files.createDirectories(tempDir.resolve("native"));
+    Path extensionRoot = Files.createDirectories(tempDir.resolve("extension"));
+    for (String version : runOrder) {
+      Path root = version.endsWith("-collate") ? extensionRoot : nativeRoot;
+      createMigrationDir(root, version, sqlOf(version) + ";");
+    }
+    when(migrationDAO.getMigrationVersions()).thenReturn(List.of());
+    assertEquals(runOrder, loadPendingVersions(nativeRoot, extensionRoot));
+
+    for (int ran = 1; ran <= runOrder.size(); ran++) {
+      List<String> executed = runOrder.subList(0, ran);
+      when(migrationDAO.getMigrationVersions()).thenReturn(executed);
+      recordExecutedSql(executed.stream().map(this::sqlOf).toList());
+
+      assertEquals(
+          runOrder.subList(ran, runOrder.size()),
+          loadPendingVersions(nativeRoot, extensionRoot),
+          "pending after a run that stopped once " + executed.getLast() + " was recorded");
+    }
   }
 
   @Test
@@ -350,6 +406,30 @@ class MigrationWorkflowTest {
 
     assertEquals(List.of("1.0.0", "1.1.0"), getMigrationVersions(workflow));
     assertEquals(Optional.empty(), getCurrentMaxVersion(workflow));
+  }
+
+  @Test
+  void loadMigrationsFailsWhenAPendingVersionCannotBeLoaded() throws Exception {
+    // Leaving the version out would also leave out every later one, and migrate would pass on a
+    // partial schema.
+    Path nativeRoot = Files.createDirectories(tempDir.resolve("native"));
+    createMigrationDir(nativeRoot, "1.0.0", "SELECT 1;");
+    createMigrationDir(nativeRoot, "1.1.0", "");
+    createMigrationDir(nativeRoot, "1.2.0", "SELECT 3;");
+    Files.write(
+        nativeRoot.resolve("1.1.0").resolve("postgres").resolve("schemaChanges.sql"),
+        "SELECT 'caf\u00e9';".getBytes(StandardCharsets.ISO_8859_1));
+    when(migrationDAO.getMigrationVersions()).thenReturn(List.of());
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, null, config, false);
+
+    IllegalStateException error =
+        assertThrows(IllegalStateException.class, workflow::loadMigrations);
+    assertTrue(
+        error.getMessage().startsWith("Migration 1.1.0 cannot be loaded, so no migration was run"),
+        error.getMessage());
   }
 
   @Test
@@ -844,13 +924,9 @@ class MigrationWorkflowTest {
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
 
-    List<String> nativeVersions =
-        result.stream().filter(m -> !m.isExtension).map(m -> m.version).toList();
-    List<String> extensionVersions =
-        result.stream().filter(m -> m.isExtension).map(m -> m.version).toList();
-
-    assertEquals(List.of("1.11.10", "1.11.11", "1.12.1", "1.12.2"), nativeVersions);
-    assertEquals(List.of("1.12.1-collate"), extensionVersions);
+    assertEquals(
+        List.of("1.11.10", "1.11.11", "1.12.1", "1.12.1-collate", "1.12.2"),
+        result.stream().map(m -> m.version).toList());
     assertTrue(result.stream().anyMatch(m -> m.version.equals("1.11.10") && m.isReprocessing()));
     assertTrue(result.stream().anyMatch(m -> m.version.equals("1.12.1") && m.isReprocessing()));
     assertTrue(
@@ -876,13 +952,9 @@ class MigrationWorkflowTest {
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
 
-    List<String> nativeVersions =
-        result.stream().filter(m -> !m.isExtension).map(m -> m.version).toList();
-    List<String> extensionVersions =
-        result.stream().filter(m -> m.isExtension).map(m -> m.version).toList();
-
-    assertEquals(List.of("1.11.10", "1.12.1", "1.12.2"), nativeVersions);
-    assertEquals(List.of("1.12.1-collate"), extensionVersions);
+    assertEquals(
+        List.of("1.11.10", "1.12.1", "1.12.1-collate", "1.12.2"),
+        result.stream().map(m -> m.version).toList());
     assertTrue(result.stream().anyMatch(m -> m.version.equals("1.11.10") && m.isReprocessing()));
     assertTrue(result.stream().anyMatch(m -> m.version.equals("1.12.1") && m.isReprocessing()));
     assertTrue(
@@ -891,7 +963,8 @@ class MigrationWorkflowTest {
   }
 
   @Test
-  void getMigrationsToApplyExtensionMigrationsProcessedSeparately() throws Exception {
+  void getMigrationsToApplySelectsExtensionVersionsOnTheirOwnHistoryButOrdersThemWithNativeOnes()
+      throws Exception {
     List<String> executedMigrations = List.of("1.12.0", "1.12.1");
     List<MigrationFile> availableMigrations =
         List.of(
@@ -908,13 +981,31 @@ class MigrationWorkflowTest {
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
 
-    List<String> nativeVersions =
-        result.stream().filter(m -> !m.isExtension).map(m -> m.version).toList();
-    List<String> extensionVersions =
-        result.stream().filter(m -> m.isExtension).map(m -> m.version).toList();
+    assertEquals(
+        List.of("1.12.1", "1.12.1-collate", "1.12.2", "1.12.2-collate"),
+        result.stream().map(m -> m.version).toList());
+  }
 
-    assertEquals(List.of("1.12.1", "1.12.2"), nativeVersions);
-    assertEquals(List.of("1.12.1-collate", "1.12.2-collate"), extensionVersions);
+  @Test
+  void getMigrationsToApplyRunsTheNativeVersionBeforeTheExtensionVersionOfTheSameNumber()
+      throws Exception {
+    List<MigrationFile> availableMigrations =
+        List.of(
+            createMigrationFile("1.6.0-collate", true),
+            createMigrationFile("2.0.0", false),
+            createMigrationFile("1.6.0", false),
+            createMigrationFile("1.5.0-collate", true));
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+
+    List<MigrationFile> result =
+        workflow.getMigrationsToApply(List.of("1.2.0"), availableMigrations);
+
+    assertEquals(
+        List.of("1.5.0-collate", "1.6.0", "1.6.0-collate", "2.0.0"),
+        result.stream().map(m -> m.version).toList());
   }
 
   @Test
@@ -1184,6 +1275,31 @@ class MigrationWorkflowTest {
     Path postgresDir = Files.createDirectories(root.resolve(version).resolve("postgres"));
     Files.writeString(postgresDir.resolve("schemaChanges.sql"), sql);
     Files.writeString(postgresDir.resolve("postDataMigrationSQLScript.sql"), "");
+  }
+
+  private String sqlOf(String version) {
+    return "SELECT '" + version + "'";
+  }
+
+  private void recordExecutedSql(List<String> statements) {
+    Set<String> checksums =
+        statements.stream().map(statement -> hash(statement)).collect(Collectors.toSet());
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString()))
+        .thenAnswer(invocation -> checksums.contains(invocation.getArgument(0)) ? "ran" : null);
+  }
+
+  private List<String> loadPendingVersions(Path nativeRoot, Path extensionRoot) throws Exception {
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi,
+            nativeRoot.toString(),
+            ConnectionType.POSTGRES,
+            extensionRoot.toString(),
+            null,
+            config,
+            false);
+    workflow.loadMigrations();
+    return getMigrationVersions(workflow);
   }
 
   @SuppressWarnings("unchecked")

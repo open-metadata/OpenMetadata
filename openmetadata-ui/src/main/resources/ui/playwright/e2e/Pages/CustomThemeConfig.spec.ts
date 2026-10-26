@@ -92,6 +92,8 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Verify the updated theme color
 
+    // The cursor still hovers the button after the click; read the resting colour.
+    await page.mouse.move(0, 0);
     await expect(page.getByTestId('save-btn')).toHaveCSS(
       'background-color',
       'rgb(104, 9, 220)'
@@ -110,6 +112,8 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     expect(defaultConfigResponse.status()).toBe(200);
 
     // Verify the default theme color
+    // The cursor still hovers the button after the click; read the resting colour.
+    await page.mouse.move(0, 0);
     await expect(page.getByTestId('reset-button')).toHaveCSS(
       'background-color',
       'rgb(21, 112, 239)'
@@ -166,6 +170,8 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     expect(defaultConfigResponse.status()).toBe(200);
 
     // Verify the default theme color
+    // The cursor still hovers the button after the click; read the resting colour.
+    await page.mouse.move(0, 0);
     await expect(page.getByTestId('reset-button')).toHaveCSS(
       'background-color',
       'rgb(21, 112, 239)'

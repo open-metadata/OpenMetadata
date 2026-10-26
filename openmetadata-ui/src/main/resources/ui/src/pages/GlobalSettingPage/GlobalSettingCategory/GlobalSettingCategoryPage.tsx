@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip } from '@openmetadata/ui-core-components';
-import { Col, Row, Space } from 'antd';
+import { Box, Button, Grid, Tooltip } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -48,7 +49,6 @@ import {
 } from '../../../utils/RouterUtils';
 import { canCreateAnyServiceCategory } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import '../global-setting-page.style.less';
 
 const GlobalSettingCategoryPage = () => {
   const { t } = useTranslation();
@@ -129,7 +129,14 @@ const GlobalSettingCategoryPage = () => {
 
     switch (option) {
       case GlobalSettingOptions.TEAMS:
-        navigate(getTeamsWithFqnPath(TeamType.Organization));
+        // `teams` is an option under both Members (the hierarchy, which opens on
+        // Organization) and Custom Properties (the property definitions page), so the
+        // category has to disambiguate — the option alone no longer identifies the target.
+        if (category === GlobalSettingsMenuCategory.MEMBERS) {
+          navigate(getTeamsWithFqnPath(TeamType.Organization));
+        } else {
+          navigate(getSettingPath(category, option));
+        }
 
         break;
       case GlobalSettingOptions.ONLINE_USERS:
@@ -167,13 +174,19 @@ const GlobalSettingCategoryPage = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
       {isEmbedded && <div className="tw:h-4" />}
-      <Row gutter={[0, 20]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(0, 20) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
-          <Space className="w-full d-flex justify-between">
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="center"
+            className="layout-space layout-space-horizontal w-full d-flex justify-between"
+            gap={2}
+            itemClassName="layout-space-item">
             <PageHeader
               data={{
                 header: settingCategoryData?.category,
@@ -212,23 +225,27 @@ const GlobalSettingCategoryPage = () => {
                 )}
               </>
             )}
-          </Space>
-        </Col>
+          </Box>
+        </Grid.Item>
 
-        <Col span={24}>
-          <Row className={settingCategoryData?.key} gutter={[20, 20]}>
+        <Grid.Item className="layout-column" span={24}>
+          <Grid
+            className={`layout-row layout-grid ${settingCategoryData?.key}`}
+            style={{ ...getLayoutGutter(20, 20) }}>
             {settingCategoryData?.items?.map((category) => (
-              <Col key={category?.key} lg={8} md={12} sm={24}>
+              <Grid.Item
+                className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 tw:min-[992px]:col-span-8"
+                key={category?.key}>
                 <SettingItemCard
                   className="global-setting-card"
                   data={category}
                   onClick={handleSettingItemClick}
                 />
-              </Col>
+              </Grid.Item>
             ))}
-          </Row>
-        </Col>
-      </Row>
+          </Grid>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

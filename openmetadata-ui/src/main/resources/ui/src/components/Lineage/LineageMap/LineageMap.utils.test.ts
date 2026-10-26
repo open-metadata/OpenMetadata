@@ -12,6 +12,7 @@
  */
 
 import type { TFunction } from 'i18next';
+import type { Viewport } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   LineageBand,
@@ -26,15 +27,26 @@ import {
   getBreadcrumbSceneRequest,
   getConnectedFieldLineagePathHighlight,
   getConnectedLineagePathHighlight,
+  getDeleteKeyAction,
   getDrillBand,
+  getDrilledRootBreadcrumb,
   getLensRootLabelKey,
+  getLineageMapEmptyState,
   getParentSceneRequest,
+  getRailDrillFallbackNode,
+  getRailStop,
+  getRailStopLabelKey,
   getSceneFocus,
+  getSceneLandingViewport,
   getSceneLevelLabelKey,
-  getSceneNodeCountSubtitle,
+  getSceneNodeCount,
+  getSceneNodeTypeSubtitle,
   getSceneOriginFocus,
   getSceneRequestFromSearch,
   getSceneSearch,
+  getScreenFill,
+  getSemanticZoomDirection,
+  type SceneLayoutBox,
 } from './LineageMap.utils';
 
 describe('scene focus validation', () => {
@@ -117,6 +129,43 @@ describe('scene URL navigation', () => {
     expect(getSceneOriginFocus(scene, {})).toEqual(focus);
   });
 
+  it('offers the root breadcrumb as the way back only once drilled in', () => {
+    const root: LineageSceneBreadcrumb = {
+      id: 'root',
+      label: 'root',
+      band: LineageBand.Layer,
+      levelKind: LineageLevelKind.Service,
+    };
+    const service: LineageSceneBreadcrumb = {
+      id: 'svc',
+      label: 'svc',
+      fullyQualifiedName: 'svc',
+      entityType: EntityType.DATABASE_SERVICE,
+      band: LineageBand.Layer,
+      levelKind: LineageLevelKind.Service,
+    };
+
+    expect(
+      getDrilledRootBreadcrumb({
+        breadcrumb: [root, service],
+        band: LineageBand.Asset,
+        focusFqn: 'svc',
+      })
+    ).toBe(root);
+    // An empty drilled scene carries only the root crumb.
+    expect(
+      getDrilledRootBreadcrumb({
+        breadcrumb: [root],
+        band: LineageBand.Asset,
+        focusFqn: 'svc',
+      })
+    ).toBe(root);
+    expect(
+      getDrilledRootBreadcrumb({ breadcrumb: [root], band: LineageBand.Layer })
+    ).toBeUndefined();
+    expect(getDrilledRootBreadcrumb(undefined)).toBeUndefined();
+  });
+
   it('removes the previous focus when navigating to a root breadcrumb', () => {
     const request = { lens: LineageLens.Domain, band: LineageBand.Layer };
     const search = getSceneSearch(
@@ -124,7 +173,9 @@ describe('scene URL navigation', () => {
       request
     );
 
-    expect(getSceneRequestFromSearch(search, defaultFocus)).toEqual(request);
+    expect(getSceneRequestFromSearch(search, defaultFocus, true)).toEqual(
+      request
+    );
   });
 
   it('uses the current route entity when no focus has been selected', () => {
@@ -172,38 +223,17 @@ describe('scene URL navigation', () => {
   });
 
   it.each([{}, defaultFocus])(
-    'recenters the entity-page table after reloading a Layer URL with focus %j',
+    'keeps an asset page Layer view focused on its asset, focus %j',
     (focus) => {
-      const request = {
-        lens: LineageLens.Service,
+      const search = getSceneSearch('', {
+        lens: LineageLens.Domain,
         band: LineageBand.Layer,
         ...focus,
-      };
-      const search = getSceneSearch('', request);
-      const reloaded = getSceneRequestFromSearch(search, defaultFocus);
+      });
 
-      expect(reloaded).toEqual(request);
-
-      const scene: LineageScene = {
-        ...request,
-        nodes: [],
-        edges: [],
-        breadcrumb: [],
-      };
-      const recentered = {
-        lens: scene.lens,
-        band: LineageBand.Asset,
-        ...getSceneOriginFocus(scene, defaultFocus),
-      };
-
-      expect(
-        getSceneRequestFromSearch(
-          getSceneSearch(search, recentered),
-          defaultFocus
-        )
-      ).toEqual({
-        lens: LineageLens.Service,
-        band: LineageBand.Asset,
+      expect(getSceneRequestFromSearch(search, defaultFocus)).toEqual({
+        lens: LineageLens.Domain,
+        band: LineageBand.Layer,
         ...defaultFocus,
       });
     }
@@ -236,8 +266,8 @@ const t = ((key: string, options?: Record<string, string | number>) => {
     'label.table-plural': 'Tables',
   };
 
-  if (key === 'label.lineage-map-node-count-subtitle') {
-    return `${options?.kind} · ${options?.count} ${options?.entity}`;
+  if (key === 'label.lineage-map-node-type-subtitle') {
+    return `${options?.type} · ${options?.kind}`;
   }
 
   return labels[key] ?? key;
@@ -312,6 +342,46 @@ const createTableFocusedScene = (band = LineageBand.Asset): LineageScene => ({
 });
 
 describe('LineageMap utils', () => {
+  it('maps scenes onto the three rail stops', () => {
+    expect(
+      getRailStop(createScene(LineageBand.Layer, [LineageLevelKind.Service]))
+    ).toBe(LineageBand.Layer);
+    // A drilled-into service lists databases / schemas in the Layer band;
+    // the rail reads those as Data Assets.
+    expect(
+      getRailStop(
+        createScene(LineageBand.Layer, [
+          LineageLevelKind.Service,
+          LineageLevelKind.Database,
+        ])
+      )
+    ).toBe(LineageBand.Asset);
+    expect(
+      getRailStop(createScene(LineageBand.Layer, [LineageLevelKind.Schema]))
+    ).toBe(LineageBand.Asset);
+    expect(
+      getRailStop(createScene(LineageBand.Asset, [LineageLevelKind.Table]))
+    ).toBe(LineageBand.Asset);
+    expect(
+      getRailStop(createScene(LineageBand.Field, [LineageLevelKind.Table]))
+    ).toBe(LineageBand.Field);
+  });
+
+  it('labels the first rail stop after the lens', () => {
+    expect(getRailStopLabelKey(LineageBand.Layer, LineageLens.Service)).toBe(
+      'label.service-level-view'
+    );
+    expect(getRailStopLabelKey(LineageBand.Layer, LineageLens.Domain)).toBe(
+      'label.domain'
+    );
+    expect(getRailStopLabelKey(LineageBand.Asset, LineageLens.Domain)).toBe(
+      'label.data-asset-plural'
+    );
+    expect(getRailStopLabelKey(LineageBand.Field, LineageLens.Service)).toBe(
+      'label.field-level-lineage'
+    );
+  });
+
   it('returns the visible hierarchy level for single-level asset scenes', () => {
     expect(
       getSceneLevelLabelKey(
@@ -385,6 +455,37 @@ describe('LineageMap utils', () => {
           levelKind,
         } as LineageSceneNode)
       ).toBe(LineageBand.Asset);
+    });
+  });
+
+  describe('getRailDrillFallbackNode', () => {
+    const service = (name: string, childrenCount: number): LineageSceneNode =>
+      ({
+        id: `service:${name}`,
+        label: name,
+        fullyQualifiedName: name,
+        entityType: EntityType.DATABASE_SERVICE,
+        band: LineageBand.Layer,
+        levelKind: LineageLevelKind.Service,
+        isExpandable: true,
+        childrenCount,
+      } as LineageSceneNode);
+
+    it('skips an empty service listed first for one that has assets', () => {
+      expect(
+        getRailDrillFallbackNode([service('empty', 0), service('full', 64)])
+          ?.fullyQualifiedName
+      ).toBe('full');
+    });
+
+    it('falls back to the first drillable node when none report children', () => {
+      expect(
+        getRailDrillFallbackNode([
+          { ...service('ghost', 5), isExpandable: false },
+          service('first', 0),
+          service('second', 0),
+        ])?.fullyQualifiedName
+      ).toBe('first');
     });
   });
 
@@ -549,56 +650,468 @@ describe('LineageMap utils', () => {
     ).toBeUndefined();
   });
 
-  it('formats semantic node count subtitles from concrete asset counts', () => {
-    const subtitle = getSceneNodeCountSubtitle(
-      {
-        id: 'schema:sample_data.ecommerce_db.shopify',
-        label: 'shopify',
-        band: LineageBand.Asset,
-        levelKind: LineageLevelKind.Schema,
-        counts: {
-          [LineageLevelKind.Table]: 14,
+  it('counts the concrete assets a container holds', () => {
+    expect(
+      getSceneNodeCount(
+        {
+          id: 'schema:sample_data.ecommerce_db.shopify',
+          label: 'shopify',
+          band: LineageBand.Asset,
+          levelKind: LineageLevelKind.Schema,
+          counts: { [LineageLevelKind.Table]: 14 },
         },
-      },
-      t
-    );
-
-    expect(subtitle).toBe('schema · 14 tables');
+        t
+      )
+    ).toEqual({ count: 14, entity: 'tables' });
   });
 
-  it('falls back to asset count labels for mixed concrete counts', () => {
-    const subtitle = getSceneNodeCountSubtitle(
-      {
-        id: 'service:sample_data',
-        label: 'sample_data',
-        band: LineageBand.Layer,
-        levelKind: LineageLevelKind.Service,
-        counts: {
-          [LineageLevelKind.Table]: 2,
-          [LineageLevelKind.Dashboard]: 1,
+  it('falls back to an asset count for mixed concrete counts', () => {
+    expect(
+      getSceneNodeCount(
+        {
+          id: 'service:sample_data',
+          label: 'sample_data',
+          band: LineageBand.Layer,
+          levelKind: LineageLevelKind.Service,
+          counts: {
+            [LineageLevelKind.Table]: 2,
+            [LineageLevelKind.Dashboard]: 1,
+          },
         },
-      },
-      t
-    );
-
-    expect(subtitle).toBe('service · 3 assets');
+        t
+      )
+    ).toEqual({ count: 3, entity: 'assets' });
   });
 
-  it('does not include field counts in container asset subtitles', () => {
-    const subtitle = getSceneNodeCountSubtitle(
-      {
-        id: 'service:sample_data',
-        label: 'sample_data',
-        band: LineageBand.Layer,
-        levelKind: LineageLevelKind.Service,
-        counts: {
-          [LineageLevelKind.Column]: 275,
-          [LineageLevelKind.Table]: 25,
+  it('does not count fields towards a container', () => {
+    expect(
+      getSceneNodeCount(
+        {
+          id: 'service:sample_data',
+          label: 'sample_data',
+          band: LineageBand.Layer,
+          levelKind: LineageLevelKind.Service,
+          counts: {
+            [LineageLevelKind.Column]: 275,
+            [LineageLevelKind.Table]: 25,
+          },
         },
-      },
-      t
+        t
+      )
+    ).toEqual({ count: 25, entity: 'tables' });
+  });
+
+  it('describes a container by its service type and kind', () => {
+    const service = {
+      id: 'service:sample_data',
+      label: 'sample_data',
+      band: LineageBand.Layer,
+      levelKind: LineageLevelKind.Service,
+    };
+
+    expect(
+      getSceneNodeTypeSubtitle({ ...service, serviceType: 'Snowflake' }, t)
+    ).toBe('Snowflake · service');
+    expect(getSceneNodeTypeSubtitle(service, t)).toBe('service');
+  });
+
+  it('leaves leaf assets without a container subtitle or count', () => {
+    const table = {
+      id: 'table:a',
+      label: 'a',
+      band: LineageBand.Asset,
+      levelKind: LineageLevelKind.Table,
+      counts: { [LineageLevelKind.Column]: 4 },
+    };
+
+    expect(getSceneNodeTypeSubtitle(table, t)).toBeUndefined();
+    expect(getSceneNodeCount(table, t)).toBeUndefined();
+  });
+});
+
+describe('getDeleteKeyAction', () => {
+  const keyEvent = (key: string, target: HTMLElement = document.body) =>
+    ({ key, target } as unknown as KeyboardEvent);
+
+  it('returns node for Delete with a selected node', () => {
+    expect(
+      getDeleteKeyAction(keyEvent('Delete'), {
+        canEdit: true,
+        hasSelectedNode: true,
+        hasSelectedEdge: false,
+      })
+    ).toBe('node');
+  });
+
+  it('returns edge for Backspace with only a selected edge', () => {
+    expect(
+      getDeleteKeyAction(keyEvent('Backspace'), {
+        canEdit: true,
+        hasSelectedNode: false,
+        hasSelectedEdge: true,
+      })
+    ).toBe('edge');
+  });
+
+  it('ignores keys typed in inputs', () => {
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+
+    expect(
+      getDeleteKeyAction(keyEvent('Delete', input), {
+        canEdit: true,
+        hasSelectedNode: true,
+        hasSelectedEdge: false,
+      })
+    ).toBeUndefined();
+  });
+
+  it('acts on keys pressed on the canvas', () => {
+    const canvas = document.createElement('div');
+    canvas.className = 'react-flow';
+    const pane = document.createElement('div');
+    canvas.appendChild(pane);
+    document.body.appendChild(canvas);
+
+    expect(
+      getDeleteKeyAction(keyEvent('Delete', pane), {
+        canEdit: true,
+        hasSelectedNode: false,
+        hasSelectedEdge: true,
+      })
+    ).toBe('edge');
+  });
+
+  it('ignores keys pressed in a drawer or other overlay', () => {
+    const drawer = document.createElement('div');
+    drawer.setAttribute('role', 'dialog');
+    const closeButton = document.createElement('button');
+    drawer.appendChild(closeButton);
+    document.body.appendChild(drawer);
+
+    expect(
+      getDeleteKeyAction(keyEvent('Delete', closeButton), {
+        canEdit: true,
+        hasSelectedNode: true,
+        hasSelectedEdge: true,
+      })
+    ).toBeUndefined();
+  });
+
+  it('ignores everything without edit permission', () => {
+    expect(
+      getDeleteKeyAction(keyEvent('Delete'), {
+        canEdit: false,
+        hasSelectedNode: true,
+        hasSelectedEdge: false,
+      })
+    ).toBeUndefined();
+  });
+});
+
+describe('semantic zoom by screen fill', () => {
+  const screen = { width: 1200, height: 800 };
+  const card = { width: 400, height: 0 };
+  // A large graph: 6000 x 4000 flow units.
+  const bigGraph = { width: 6000, height: 4000 };
+
+  it('measures the larger of the width and height share', () => {
+    expect(getScreenFill({ width: 600, height: 100 }, 1, screen)).toBe(0.5);
+    expect(getScreenFill({ width: 100, height: 800 }, 0.5, screen)).toBe(0.5);
+  });
+
+  it('keeps zooming out a large graph until it fits in a third of the screen', () => {
+    // 0.15 zoom: 900 of 1200 wide, still most of the screen.
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 0.2,
+        zoom: 0.15,
+        graph: bigGraph,
+        card,
+        screen,
+        minZoom: 0.01,
+        maxZoom: 10,
+      })
+    ).toBeUndefined();
+    // 0.06 zoom: 360 of 1200 wide, under a third.
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 0.07,
+        zoom: 0.06,
+        graph: bigGraph,
+        card,
+        screen,
+        minZoom: 0.01,
+        maxZoom: 10,
+      })
+    ).toBe('out');
+  });
+
+  it('goes up a level for a small graph that already fits', () => {
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 1,
+        zoom: 0.9,
+        graph: { width: 400, height: 100 },
+        card,
+        screen,
+        minZoom: 0.01,
+        maxZoom: 10,
+      })
+    ).toBe('out');
+  });
+
+  it('goes down a level only once a card fills most of the screen', () => {
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 1,
+        zoom: 1.5,
+        graph: bigGraph,
+        card,
+        screen,
+        minZoom: 0.01,
+        maxZoom: 10,
+      })
+    ).toBeUndefined();
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 1.5,
+        zoom: 1.9,
+        graph: bigGraph,
+        card,
+        screen,
+        minZoom: 0.01,
+        maxZoom: 10,
+      })
+    ).toBe('in');
+  });
+
+  it('goes up a level when zooming out reaches the minimum zoom', () => {
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 0.12,
+        zoom: 0.1,
+        graph: { width: 60000, height: 40000 },
+        card,
+        screen,
+        minZoom: 0.1,
+        maxZoom: 10,
+      })
+    ).toBe('out');
+  });
+
+  it('goes down a level when zooming in reaches the maximum zoom', () => {
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 2,
+        zoom: 2.5,
+        graph: bigGraph,
+        card: { width: 100, height: 0 },
+        screen,
+        minZoom: 0.1,
+        maxZoom: 2.5,
+      })
+    ).toBe('in');
+  });
+
+  it('never switches level while the zoom holds still', () => {
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 0.05,
+        zoom: 0.05,
+        graph: bigGraph,
+        card,
+        screen,
+        minZoom: 0.01,
+        maxZoom: 10,
+      })
+    ).toBeUndefined();
+  });
+});
+
+describe('scene landing viewport', () => {
+  const canvas = { width: 1200, height: 640 };
+  const minZoom = 0.55;
+  const padding = 0.2;
+  const inset = padding / (2 * (1 + padding));
+
+  const box = (
+    x: number,
+    y: number,
+    flags: Partial<SceneLayoutBox> = {}
+  ): SceneLayoutBox => ({ x, y, width: 400, height: 66, ...flags });
+
+  // A benchmark schema of 32 tables as the layered layout places it: 22 down
+  // the first layer, the rest along the top of later layers, and the two
+  // services their lineage rolls up to collapsed into context nodes mid-height.
+  const schemaScene = [
+    ...Array.from({ length: 22 }, (_, index) => box(12, 12 + index * 131)),
+    ...[492, 972, 1452, 1932].flatMap((x) => [box(x, 12), box(x, 158)]),
+    box(2412, 12),
+    box(2892, 12),
+    box(700, 1539, { isGhost: true }),
+    box(1290, 1539, { isGhost: true }),
+  ];
+
+  const visibleBoxes = (boxes: SceneLayoutBox[], viewport: Viewport) => {
+    const left = -viewport.x / viewport.zoom;
+    const top = -viewport.y / viewport.zoom;
+    const right = left + canvas.width / viewport.zoom;
+    const bottom = top + canvas.height / viewport.zoom;
+
+    return boxes.filter(
+      (candidate) =>
+        candidate.x < right &&
+        candidate.x + candidate.width > left &&
+        candidate.y < bottom &&
+        candidate.y + candidate.height > top
+    );
+  };
+
+  const screenCentre = (target: SceneLayoutBox, viewport: Viewport) => ({
+    x: (target.x + target.width / 2) * viewport.zoom + viewport.x,
+    y: (target.y + target.height / 2) * viewport.zoom + viewport.y,
+  });
+
+  it('leaves a scene that fits at the minimum zoom to a plain fit', () => {
+    expect(
+      getSceneLandingViewport(
+        [box(0, 0), box(600, 0), box(600, 200)],
+        canvas,
+        minZoom,
+        padding
+      )
+    ).toBeUndefined();
+  });
+
+  it('opens a scene too big to fit on its own nodes, not on the context nodes at its centre', () => {
+    const centredOnScene = {
+      x: canvas.width / 2 - ((12 + 3292) / 2) * minZoom,
+      y: canvas.height / 2 - ((12 + 12 + 21 * 131 + 66) / 2) * minZoom,
+      zoom: minZoom,
+    };
+
+    const viewport = getSceneLandingViewport(
+      schemaScene,
+      canvas,
+      minZoom,
+      padding
     );
 
-    expect(subtitle).toBe('service · 25 tables');
+    expect(
+      visibleBoxes(schemaScene, centredOnScene).every(
+        (candidate) => candidate.isGhost
+      )
+    ).toBe(true);
+    expect(viewport?.zoom).toBe(minZoom);
+    expect(
+      visibleBoxes(schemaScene, viewport as Viewport).filter(
+        (candidate) => !candidate.isGhost
+      ).length
+    ).toBeGreaterThanOrEqual(12);
+  });
+
+  it('places the top of the left-most real column at the fit inset, skipping context nodes further left', () => {
+    const viewport = getSceneLandingViewport(
+      [box(-600, 900, { isGhost: true }), ...schemaScene],
+      canvas,
+      minZoom,
+      padding
+    ) as Viewport;
+
+    expect(12 * viewport.zoom + viewport.x).toBeCloseTo(canvas.width * inset);
+    expect(12 * viewport.zoom + viewport.y).toBeCloseTo(canvas.height * inset);
+  });
+
+  it('centres the origin node of a scene too big to fit, and the focus node over it', () => {
+    const origin = box(2412, 2600, { isOrigin: true });
+    const focus = box(1452, 1200, { isFocus: true });
+
+    const onOrigin = getSceneLandingViewport(
+      [...schemaScene, origin],
+      canvas,
+      minZoom,
+      padding
+    ) as Viewport;
+    const onFocus = getSceneLandingViewport(
+      [...schemaScene, origin, focus],
+      canvas,
+      minZoom,
+      padding
+    ) as Viewport;
+
+    expect(screenCentre(origin, onOrigin).x).toBeCloseTo(canvas.width / 2);
+    expect(screenCentre(origin, onOrigin).y).toBeCloseTo(canvas.height / 2);
+    expect(screenCentre(focus, onFocus).x).toBeCloseTo(canvas.width / 2);
+    expect(screenCentre(focus, onFocus).y).toBeCloseTo(canvas.height / 2);
+  });
+
+  it('anchors on context nodes when a scene has nothing else', () => {
+    const viewport = getSceneLandingViewport(
+      [box(0, 3000, { isGhost: true }), box(0, 0, { isGhost: true })],
+      canvas,
+      minZoom,
+      padding
+    ) as Viewport;
+
+    expect(viewport.y).toBeCloseTo(canvas.height * inset);
+  });
+
+  it('waits for a measured canvas', () => {
+    expect(
+      getSceneLandingViewport(
+        schemaScene,
+        { width: 0, height: 0 },
+        minZoom,
+        padding
+      )
+    ).toBeUndefined();
+  });
+});
+
+describe('getLineageMapEmptyState', () => {
+  const emptyScene = {
+    lens: LineageLens.Service,
+    band: LineageBand.Asset,
+    nodes: [],
+    edges: [],
+  } as unknown as LineageScene;
+
+  it('shows the skeleton while the first scene loads', () => {
+    expect(getLineageMapEmptyState({ loading: true, hasError: false })).toBe(
+      'loading'
+    );
+    expect(getLineageMapEmptyState({ loading: true, hasError: true })).toBe(
+      'loading'
+    );
+  });
+
+  it('shows the error state when the first scene failed', () => {
+    expect(getLineageMapEmptyState({ loading: false, hasError: true })).toBe(
+      'error'
+    );
+  });
+
+  it('shows the empty state for a scene with no nodes, even on a failed refetch', () => {
+    expect(
+      getLineageMapEmptyState({
+        scene: emptyScene,
+        loading: false,
+        hasError: true,
+      })
+    ).toBe('empty');
+    expect(
+      getLineageMapEmptyState({
+        scene: emptyScene,
+        loading: true,
+        hasError: false,
+      })
+    ).toBe('empty');
+  });
+
+  it('falls back to the empty state with no scene, load or error', () => {
+    expect(getLineageMapEmptyState({ loading: false, hasError: false })).toBe(
+      'empty'
+    );
   });
 });

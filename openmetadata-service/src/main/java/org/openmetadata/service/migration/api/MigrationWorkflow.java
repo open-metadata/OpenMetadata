@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.api;
 
+import static java.util.stream.Collectors.partitioningBy;
 import static java.util.stream.Collectors.toSet;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.hash;
@@ -23,6 +24,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flywaydb.core.api.configuration.ClassicConfiguration;
 import org.flywaydb.core.api.configuration.Configuration;
 import org.flywaydb.core.internal.database.postgresql.PostgreSQLParser;
@@ -137,13 +139,9 @@ public class MigrationWorkflow {
           getMigrationFilesFromPath(extensionSQLScriptRootPath, connectionType, config, true);
     }
 
-    /*
-     Combined execution order:
-       1. Flyway migrations (legacy SQL files from Flyway)
-       2. OpenMetadata native migrations
-       3. Extension migrations
-     All sorted by version within their respective groups
-    */
+    // One execution order across Flyway, native and extension migrations: by version, with the
+    // native version before the extension one of the same number (see MigrationFile#compareTo).
+    // Flyway versions are 0.0.x, so they come first.
     return Stream.of(
             availableFlywayMigrations.stream().map(f -> (MigrationFile) f),
             availableOMNativeMigrations.stream(),
@@ -169,23 +167,34 @@ public class MigrationWorkflow {
     List<MigrationFile> applyMigrations = resolveApplyMigrations(availableMigrations);
     List<MigrationProcessExtensionProvider> extensionProviders = loadExtensionProviders();
     List<MigrationProcess> processes = new ArrayList<>();
-    try {
-      for (MigrationFile file : applyMigrations) {
-        file.parseSQLFiles();
-        MigrationProcess process = resolveMigrationProcess(file, extensionProviders);
-        if (file.isReprocessing() && !hasPendingWork(file, process)) {
-          LOG.debug(
-              "[MigrationWorkflow] Skipping version {} - reprocessing with no new SQL statements"
-                  + " and no pending data migration",
-              file.version);
-          continue;
-        }
-        processes.add(process);
+    for (MigrationFile file : applyMigrations) {
+      MigrationProcess process = loadMigration(file, extensionProviders);
+      if (file.isReprocessing() && !hasPendingWork(file, process)) {
+        LOG.debug(
+            "[MigrationWorkflow] Skipping version {} - reprocessing with no new SQL statements"
+                + " and no pending data migration",
+            file.version);
+        continue;
       }
-    } catch (Exception e) {
-      LOG.error("Failed to list and add migrations to run due to ", e);
+      processes.add(process);
     }
     return processes;
+  }
+
+  // A version that cannot be loaded stops the run before any version runs: skipping it would also
+  // skip every later version and leave the database on a partial schema.
+  private MigrationProcess loadMigration(
+      MigrationFile file, List<MigrationProcessExtensionProvider> extensionProviders) {
+    try {
+      file.parseSQLFiles();
+      return resolveMigrationProcess(file, extensionProviders);
+    } catch (ReflectiveOperationException | RuntimeException e) {
+      throw new IllegalStateException(
+          String.format(
+              "Migration %s cannot be loaded, so no migration was run: %s",
+              file.version, ExceptionUtils.getRootCauseMessage(e)),
+          e);
+    }
   }
 
   private MigrationProcess resolveMigrationProcess(
@@ -306,50 +315,33 @@ public class MigrationWorkflow {
   }
 
   /**
-   * We'll take the max from native migrations and double-check if there's any extension migration
-   * pending to be applied
+   * Returns the pending migrations in the order a run on an empty database uses. A run that stops
+   * part way therefore always leaves a prefix of that order behind, and the next run carries on with
+   * exactly the rest of it.
    */
   public List<MigrationFile> getMigrationsToApply(
       List<String> executedMigrations, List<MigrationFile> availableMigrations) {
     Set<String> executedSet = new HashSet<>(executedMigrations);
-    List<MigrationFile> migrationsToApply = new ArrayList<>();
-    migrationsToApply.addAll(processNativeMigrations(executedSet, availableMigrations));
-    migrationsToApply.addAll(processExtensionMigrations(executedSet, availableMigrations));
-    return migrationsToApply;
+    return availableMigrations.stream()
+        .collect(partitioningBy(migration -> migration.isExtension))
+        .values()
+        .stream()
+        .flatMap(family -> selectPendingMigrations(executedSet, family).stream())
+        .sorted()
+        .toList();
   }
 
-  private List<MigrationFile> processNativeMigrations(
-      Set<String> executedMigrations, List<MigrationFile> availableMigrations) {
-    List<MigrationFile> nativeMigrations =
-        availableMigrations.stream().filter(m -> !m.isExtension).toList();
+  // Native and extension versions are selected separately so each family reprocesses its own
+  // latest versions: 1.12.1-collate is reprocessed alongside 1.12.1 instead of losing to it.
+  private List<MigrationFile> selectPendingMigrations(
+      Set<String> executedMigrations, List<MigrationFile> familyMigrations) {
     Set<String> reprocessingVersions =
-        getReprocessingVersions(executedMigrations, nativeMigrations);
-    if (reprocessingVersions.isEmpty()) {
-      return nativeMigrations;
-    }
+        getReprocessingVersions(executedMigrations, familyMigrations);
     List<MigrationFile> result = new ArrayList<>();
-    for (MigrationFile migration : nativeMigrations) {
-      if (reprocessingVersions.contains(migration.version)) {
-        result.add(migration.copyWithReprocessing(true));
-      } else if (!executedMigrations.contains(migration.version)) {
-        result.add(migration.copyWithReprocessing(false));
-      }
-    }
-    return result;
-  }
-
-  private List<MigrationFile> processExtensionMigrations(
-      Set<String> executedMigrations, List<MigrationFile> availableMigrations) {
-    List<MigrationFile> extensionMigrations =
-        availableMigrations.stream().filter(migration -> migration.isExtension).toList();
-    Set<String> reprocessingVersions =
-        getReprocessingVersions(executedMigrations, extensionMigrations);
-    List<MigrationFile> result = new ArrayList<>();
-    for (MigrationFile migration : extensionMigrations) {
-      if (reprocessingVersions.contains(migration.version)) {
-        result.add(migration.copyWithReprocessing(true));
-      } else if (!executedMigrations.contains(migration.version)) {
-        result.add(migration.copyWithReprocessing(false));
+    for (MigrationFile migration : familyMigrations) {
+      boolean reprocessing = reprocessingVersions.contains(migration.version);
+      if (reprocessing || !executedMigrations.contains(migration.version)) {
+        result.add(migration.copyWithReprocessing(reprocessing));
       }
     }
     return result;
@@ -815,8 +807,8 @@ public class MigrationWorkflow {
           if (sql != null && !sql.isBlank()) {
             String checksum = hash(sql);
             try {
-              String existingQuery = migrationDAO.checkIfQueryPreviouslyRan(checksum);
-              if (existingQuery == null) {
+              String executedInVersion = migrationDAO.checkIfQueryPreviouslyRan(checksum);
+              if (executedInVersion == null) {
                 migrationDAO.upsertServerMigrationSQL(omVersion, sql, checksum);
                 totalStatements++;
               }

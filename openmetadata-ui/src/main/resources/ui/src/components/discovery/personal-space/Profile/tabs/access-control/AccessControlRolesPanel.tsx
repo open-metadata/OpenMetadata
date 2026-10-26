@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
   PaginationCardWithControls,
   Popover,
   PopoverTrigger,
@@ -62,6 +61,7 @@ import {
 } from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { AccessControlView } from './AccessControl.types';
 
@@ -307,7 +307,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     if (!viewPolicyPermission) {
       return (
         <Typography
-          className="tw:truncate tw:block"
+          className="tw:truncate tw:block tw:text-left"
           key={key}
           size="text-sm"
           tooltip={t(NO_PERMISSION_TO_VIEW)}>
@@ -318,7 +318,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
     return (
       <Button
-        className="tw:truncate tw:block"
+        className="tw:truncate tw:block tw:text-left"
         color="link-color"
         key={key}
         size="sm"
@@ -431,7 +431,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
           align="center"
           className="tw:min-h-32 tw:relative"
           justify="center">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             title={t('label.no-entity-found', {
               entity: t('label.role-plural'),
             })}

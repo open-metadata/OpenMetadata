@@ -65,7 +65,7 @@ export const Popover = ({
   children,
   arrow = false,
   containerClassName,
-  offset = 8,
+  offset = 4,
   ...popoverProps
 }: PopoverProps) => {
   return (
@@ -98,7 +98,10 @@ export const Popover = ({
           </svg>
         </AriaOverlayArrow>
       )}
-      <AriaDialog className={cx('tw:outline-hidden', containerClassName)}>
+      <AriaDialog
+        aria-label={popoverProps['aria-label']}
+        aria-labelledby={popoverProps['aria-labelledby']}
+        className={cx('tw:outline-hidden', containerClassName)}>
         {children}
       </AriaDialog>
     </AriaPopover>

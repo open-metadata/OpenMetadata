@@ -17,10 +17,6 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as HealthCheckIcon } from '../../../../assets/svg/ic-green-heart-border.svg';
-import {
-  DQ_CHART_FAILED_COLOR,
-  DQ_CHART_SUCCESS_COLOR,
-} from '../../../../constants/Color.constants';
 import { INITIAL_ENTITY_HEALTH_MATRIX } from '../../../../constants/profiler.constant';
 import { fetchEntityCoveredWithDQ } from '../../../../rest/dataQualityDashboardAPI';
 import { getTestCaseTabPath } from '../../../../utils/DataQuality/DataQualityPureUtils';
@@ -78,12 +74,12 @@ const EntityHealthStatusPieChartWidget = ({
         {
           name: t('label.healthy'),
           value: entityHealthStates.healthy,
-          color: DQ_CHART_SUCCESS_COLOR,
+          status: 'success' as const,
         },
         {
           name: t('label.unhealthy'),
           value: entityHealthStates.unhealthy,
-          color: DQ_CHART_FAILED_COLOR,
+          status: 'failed' as const,
         },
       ],
       chartLabel: getPieChartLabel(
@@ -97,30 +93,35 @@ const EntityHealthStatusPieChartWidget = ({
   if (isLoading) {
     return (
       <Card className={className} data-testid="entity-health-pie-chart-widget">
-        <Skeleton height={200} width="100%" />
+        <Card.Content>
+          <Skeleton height={200} width="100%" />
+        </Card.Content>
       </Card>
     );
   }
 
   return (
     <Card className={className} data-testid="entity-health-pie-chart-widget">
-      <div className="d-flex flex-column items-center">
-        <div className="d-flex items-center gap-2">
-          <div className="custom-chart-icon-background health-check-icon icon-container">
-            <HealthCheckIcon />
+      <Card.Content>
+        <div className="d-flex flex-column items-center">
+          <div className="d-flex items-center gap-2">
+            <div className="custom-chart-icon-background health-check-icon icon-container">
+              <HealthCheckIcon />
+            </div>
+            <Typography as="span" className="font-semibold text-sm">
+              {t('label.healthy-data-asset-plural')}
+            </Typography>
           </div>
-          <Typography as="span" className="font-semibold text-sm">
-            {t('label.healthy-data-asset-plural')}
-          </Typography>
+          <CustomPieChart
+            showLegends
+            ariaLabel={t('label.healthy-data-asset-plural')}
+            data={data}
+            label={chartLabel}
+            name="healthy-data-assets"
+            onSegmentClick={handleSegmentClick}
+          />
         </div>
-        <CustomPieChart
-          showLegends
-          data={data}
-          label={chartLabel}
-          name="healthy-data-assets"
-          onSegmentClick={handleSegmentClick}
-        />
-      </div>
+      </Card.Content>
     </Card>
   );
 };

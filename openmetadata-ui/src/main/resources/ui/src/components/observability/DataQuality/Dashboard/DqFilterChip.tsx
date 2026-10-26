@@ -69,7 +69,7 @@ const DqFilterChip = ({
           onOpenChange(false);
         }}>
         <button
-          className={chipTriggerClassName}
+          className={chipTriggerClassName(filter.selectedOwnerKeys.length > 0)}
           data-testid={`search-dropdown-${filter.key}`}
           type="button">
           {filter.label}
@@ -80,7 +80,11 @@ const DqFilterChip = ({
               {filter.selectedOwnerKeys.length}
             </span>
           )}
-          <ChevronDown className={chipChevronClassName} />
+          <ChevronDown
+            className={chipChevronClassName(
+              filter.selectedOwnerKeys.length > 0
+            )}
+          />
         </button>
       </UserTeamSelectableList>
     );

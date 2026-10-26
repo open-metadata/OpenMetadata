@@ -13,7 +13,6 @@
 Validator for column value length to be between test case
 """
 
-import math
 from typing import cast
 
 from sqlalchemy import Column
@@ -21,6 +20,9 @@ from sqlalchemy import Column
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
+)
+from metadata.data_quality.validations.checkers.between_bounds_checker import (
+    is_unbounded,
 )
 from metadata.data_quality.validations.column.base.columnValueLengthsToBeBetween import (
     BaseColumnValueLengthsToBeBetweenValidator,
@@ -87,20 +89,13 @@ class ColumnValueLengthsToBeBetweenValidator(
             NotImplementedError:
         """
         row_count = self._compute_row_count(self.runner, column)
-        filters = []
-        if min_bound > -math.inf:
-            filters.append((LenFn(column), "lt", min_bound))
-        if max_bound < math.inf:
-            filters.append((LenFn(column), "gt", max_bound))
-        failed_rows = self._compute_row_count_between(
-            self.runner,
+        failed_rows = self._count_rows_outside(
+            cast(QueryRunner, self.runner),  # noqa: TC006
             column,
-            {
-                "filters": filters,
-                "or_filter": True,
-            },
+            LenFn(column),
+            min_bound,
+            max_bound,
         )
-
         return row_count, failed_rows
 
     def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
@@ -139,34 +134,25 @@ class ColumnValueLengthsToBeBetweenValidator(
         Returns:
             List[DimensionResult]: Top N dimensions plus "Others"
         """
-        dimension_results = []
+        checker = self._get_validation_checker(test_params)
 
-        try:
-            checker = self._get_validation_checker(test_params)
+        metric_expressions = {
+            DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
+            Metrics.minLength.name: Metrics.minLength(column).fn(),
+            Metrics.maxLength.name: Metrics.maxLength(column).fn(),
+            DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(LenFn(column)),
+        }
 
-            metric_expressions = {
-                DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
-                Metrics.minLength.name: Metrics.minLength(column).fn(),
-                Metrics.maxLength.name: Metrics.maxLength(column).fn(),
-                DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(LenFn(column)),
-            }
+        normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
-            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
+        result_rows = self._run_dimensional_validation_query(
+            source=self.runner.dataset,
+            dimension_expr=normalized_dimension,
+            metric_expressions=metric_expressions,
+            top_n=top_n,
+        )
 
-            result_rows = self._run_dimensional_validation_query(
-                source=self.runner.dataset,
-                dimension_expr=normalized_dimension,
-                metric_expressions=metric_expressions,
-                top_n=top_n,
-            )
-
-            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
-
-        return dimension_results
+        return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
     def filter(self):
         # The window is the one the test case configured: the failure threshold is a row tolerance
@@ -175,9 +161,9 @@ class ColumnValueLengthsToBeBetweenValidator(
         min_bound = self.get_min_bound(self.MIN_BOUND)
         max_bound = self.get_max_bound(self.MAX_BOUND)
         filters = []
-        if min_bound is not None and min_bound > float("-inf"):
+        if not is_unbounded(min_bound):
             filters.append((LenFn(self.get_column()), "lt", min_bound))
-        if max_bound is not None and max_bound < float("inf"):
+        if not is_unbounded(max_bound):
             filters.append((LenFn(self.get_column()), "gt", max_bound))
         return {
             "filters": filters,

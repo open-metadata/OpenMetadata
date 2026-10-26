@@ -14,8 +14,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { DefaultColumnOrder } from '../../../generated/api/configuration/appConfiguration';
 import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import {
   getTableColumnsByFQN,
@@ -293,10 +295,6 @@ jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => {
   return jest.fn().mockReturnValue(<p>EntityNameModal</p>);
 });
 
-jest.mock('../../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () => {
-  return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
-});
-
 jest.mock('../../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn(() => Promise.resolve([])),
   getTagsHierarchy: jest.fn().mockReturnValue([]),
@@ -332,7 +330,7 @@ jest.mock('../../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn().mockResolvedValue({}),
 }));
 
-jest.mock('../../../utils/StringUtils', () => ({
+jest.mock('../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
@@ -390,6 +388,32 @@ jest.mock('../../../constants/Table.constants', () => ({
 }));
 
 describe('Test EntityTable Component', () => {
+  it('starts in source order when that is the tenant default', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockClear();
+    useApplicationStore.getState().setAppPreferences({
+      defaultColumnOrder: DefaultColumnOrder.SourceOrder,
+    });
+
+    try {
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+        MOCK_TABLE.fullyQualifiedName,
+        expect.objectContaining({ sortBy: 'ordinalPosition', sortOrder: 'asc' })
+      );
+      expect(getTableColumnsByFQN).not.toHaveBeenCalledWith(
+        MOCK_TABLE.fullyQualifiedName,
+        expect.objectContaining({ sortBy: 'name' })
+      );
+    } finally {
+      useApplicationStore
+        .getState()
+        .setAppPreferences({ defaultColumnOrder: undefined });
+    }
+  });
+
   it('Initially, Table should load', async () => {
     await act(async () => {
       render(<SchemaTable />, {
@@ -474,7 +498,9 @@ describe('Test EntityTable Component', () => {
 
     expect(entityTable).toBeInTheDocument();
 
-    const emptyPlaceholder = screen.getByText('FilterTablePlaceHolder');
+    const emptyPlaceholder = screen.getByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+    );
 
     expect(emptyPlaceholder).toBeInTheDocument();
   });

@@ -11,28 +11,34 @@
  *  limitations under the License.
  */
 
-import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import {
   Box,
-  Button as CoreButton,
-  Card as CoreCard,
+  Button,
+  ButtonUtility,
+  Card,
   Owner,
   Tooltip,
-  Typography as CoreTypography,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Card, Typography } from 'antd';
+import {
+  CheckCircleFilled,
+  CloseCircleFilled,
+  Comment,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
 import { useCallback, useMemo } from 'react';
+import {
+  ButtonProps as AriaButtonProps,
+  PressEvent,
+} from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import { TASK_ENTITY_TYPES } from '../../../constants/Task.constant';
 import { EntityType } from '../../../enums/entity.enum';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -65,7 +71,12 @@ import {
   isTaskPendingFurtherApproval,
 } from '../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
+import {
+  getTaskResolveBody,
+  isOntologyReviewTask,
+} from '../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { getTaskTypeMessageKey } from '../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import {
   CARD_CONTAINER_CLASS_NAME,
   handleCardContainerKeyDown,
@@ -174,9 +185,9 @@ const TaskFeedCardFromTask = ({
 
     if (columnName) {
       return (
-        <Typography.Text className="p-r-xss column-name">
+        <Typography className="p-r-xss column-name">
           {columnName} {t('label.in-lowercase')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
@@ -197,25 +208,29 @@ const TaskFeedCardFromTask = ({
       isEntityDetailsAvailable ? (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <Button
-            className="p-0 task-feed-header"
+            ellipsis
+            className="tw:max-w-full"
+            color="link-color"
             data-testid="redirect-task-button-link"
-            type="link"
+            tooltip={`#${taskDisplayId} ${t(
+              getTaskTypeMessageKey(task) ?? 'label.task'
+            )} ${getNameFromFQN(entityFQN)} (${entityType})`}
             onClick={handleTaskLinkClick}>
-            <Typography.Text className="m-r-xss task-details-id">{`#${taskDisplayId} `}</Typography.Text>
+            <Typography className="m-r-xss task-details-id">{`#${taskDisplayId} `}</Typography>
 
-            <Typography.Text className="m-r-xss  m-r-xss task-details-entity-link">
-              {t(TASK_ENTITY_TYPES[task.type] ?? 'label.task')}
-            </Typography.Text>
+            <Typography className="m-r-xss  m-r-xss task-details-entity-link">
+              {t(getTaskTypeMessageKey(task) ?? 'label.task')}
+            </Typography>
 
             {taskColumnName}
 
-            <Typography.Text
-              className="break-all header-link text-sm"
+            <Typography
+              className="break-all header-link text-sm tw:text-primary"
               data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
-            </Typography.Text>
+            </Typography>
 
-            <Typography.Text className="p-l-xss text-sm entity-type">{`(${entityType})`}</Typography.Text>
+            <Typography className="p-l-xss text-sm entity-type">{`(${entityType})`}</Typography>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -225,7 +240,7 @@ const TaskFeedCardFromTask = ({
       handleTaskLinkClick,
       isEntityDetailsAvailable,
       t,
-      task.type,
+      task,
       taskDisplayId,
       taskColumnName,
     ]
@@ -240,15 +255,18 @@ const TaskFeedCardFromTask = ({
   const isApprovalWorkflowTask =
     isTaskApprovalRequest || isTaskRecognizerFeedbackApproval;
 
-  const getTransitionId = (resolutionType: TaskResolutionType) =>
+  const getTransition = (resolutionType: TaskResolutionType) =>
     task.availableTransitions?.find(
       (transition) => transition.resolutionType === resolutionType
-    )?.id ??
+    ) ??
     task.availableTransitions?.find((transition) =>
       resolutionType === TaskResolutionType.Rejected
         ? transition.id === 'reject'
         : transition.id === 'approve'
-    )?.id;
+    );
+
+  const canQuickResolve = () =>
+    task.status === TaskEntityStatus.Open && !isOntologyReviewTask(task);
 
   const updateTaskData = async (
     newValue: string,
@@ -258,11 +276,14 @@ const TaskFeedCardFromTask = ({
       return;
     }
     try {
-      const updatedTask = await resolveTaskAPI(task.id, {
-        transitionId: getTransitionId(resolutionType),
-        resolutionType,
-        newValue,
-      });
+      const updatedTask = await resolveTaskAPI(
+        task.id,
+        getTaskResolveBody(task, {
+          transitionId: getTransition(resolutionType)?.id,
+          resolutionType,
+          newValue,
+        })
+      );
       showSuccessToast(
         isTaskPendingFurtherApproval(updatedTask)
           ? 'Vote recorded.'
@@ -332,6 +353,16 @@ const TaskFeedCardFromTask = ({
     showTaskDrawer?.(task);
   }, [showTaskDrawer, task]);
 
+  // The press must keep bubbling so the card also selects the task, as the
+  // reply icon did before. ButtonUtility does not declare onPress, so it is
+  // passed as typed react-aria props.
+  const replyPressProps: Pick<AriaButtonProps, 'onPress'> = {
+    onPress: (event: PressEvent) => {
+      event.continuePropagation();
+      showReplies();
+    },
+  };
+
   const commentsCount = task.comments?.length ?? 0;
 
   // Kept as a closure so the footer's own branching (reply count, edit
@@ -340,36 +371,32 @@ const TaskFeedCardFromTask = ({
   const renderTaskFooter = () => (
     <Box
       align="center"
-      className="task-feed-card-footer w-full"
+      className="task-feed-card-footer w-full tw:gap-y-3"
       justify="between"
       wrap="wrap">
-      <Box>
-        <Box align="center" justify="center">
-          <ReplyIcon
-            className="m-r-xs"
-            height={20}
-            width={20}
-            onClick={showReplies}
+      <Box align="center" gap={4}>
+        <Box align="center" gap={2} justify="center">
+          <ButtonUtility
+            aria-label={t('label.reply')}
+            color="tertiary"
+            data-testid="task-reply-button"
+            icon={Comment}
+            size="sm"
+            {...replyPressProps}
           />
           {commentsCount > 0 ? (
-            <CoreButton
-              className="posts-length m-r-xss"
+            <Button
               color="link-gray"
               data-testid="replies-count"
               onPress={showReplies}>
               {t(getReplyCountLabelKey(commentsCount), {
                 number: commentsCount,
               })}
-            </CoreButton>
+            </Button>
           ) : null}
         </Box>
 
-        <Box
-          align="center"
-          className={classNames('text-grey-muted', {
-            'task-card-assignee': commentsCount > 0,
-          })}
-          gap={2}>
+        <Box align="center" className="tw:text-tertiary" gap={2}>
           <Owner
             isCompactView={false}
             owners={task.assignees ?? []}
@@ -379,39 +406,50 @@ const TaskFeedCardFromTask = ({
       </Box>
 
       {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
-        <Box gap={2}>
-          {task.status === TaskEntityStatus.Open && (
-            <CoreButton
-              color="tertiary"
+        <Box gap={4}>
+          {canQuickResolve() && (
+            <Button
+              className="tw:gap-1.5 tw:text-success-primary tw:hover:text-success-primary"
+              color="link-gray"
               data-testid="approve-button"
-              iconLeading={<CheckCircleFilled />}
+              iconLeading={
+                <CheckCircleFilled
+                  className="tw:shrink-0 tw:text-fg-success-primary"
+                  size={14}
+                />
+              }
               size="xs"
               onPress={onTaskResolve}>
               {t('label.approve')}
-            </CoreButton>
+            </Button>
           )}
-          {task.status === TaskEntityStatus.Open && (
-            <CoreButton
-              color="tertiary-destructive"
+          {canQuickResolve() && (
+            <Button
+              className="tw:gap-1.5"
+              color="link-destructive"
               data-testid="reject-button"
-              iconLeading={<CloseCircleFilled />}
+              iconLeading={
+                <CloseCircleFilled className="tw:shrink-0" size={14} />
+              }
               size="xs"
               onPress={onTaskReject}>
               {t('label.reject')}
-            </CoreButton>
+            </Button>
           )}
         </Box>
       )}
     </Box>
   );
 
+  const TaskStatusIcon = getTaskStatusIcon(task.status);
+
   return (
     // The less `task-feed-card-v1-new` rules (unlayered) own the surface,
-    // border and active state; CoreCard adds the clickable/focus behaviour.
-    <CoreCard
+    // border and active state; Card adds the clickable/focus behaviour.
+    <Card
       isClickable
       aria-label={`#${taskDisplayId} ${t(
-        TASK_ENTITY_TYPES[task.type] ?? 'label.task'
+        getTaskTypeMessageKey(task) ?? 'label.task'
       )}`}
       className={classNames(
         className,
@@ -435,48 +473,49 @@ const TaskFeedCardFromTask = ({
         )}
         wrap="wrap">
         <Box align="start" className="tw:w-full tw:min-w-0" direction="col">
-          <div className="tw:w-full">
-            <Icon
-              className="m-r-xss m-t-xss text-md"
-              component={getTaskStatusIcon(task.status)}
+          <div className="tw:flex tw:w-full tw:min-w-0 tw:items-center">
+            <TaskStatusIcon
+              className="tw:mr-1 tw:size-3.5 tw:shrink-0"
               data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
             />
-            {taskLinkTitleElement}
+            <div className="tw:flex tw:min-w-0 tw:flex-1">
+              {taskLinkTitleElement}
+            </div>
           </div>
-          <div className="tw:-mt-2">
-            <CoreTypography>
+          <div className="tw:mt-1">
+            <Typography>
               <UserPopOverCard
                 key={task.createdBy?.name}
                 userName={task.createdBy?.name ?? ''}>
-                <span
+                <Typography
                   className="task-created-by-text p-r-xss"
                   data-testid="task-created-by">
                   {getEntityName(user)}
-                </span>
+                </Typography>
               </UserPopOverCard>
-              <span className="task-timestamp-text">
+              <Typography className="task-timestamp-text">
                 {t('message.created-this-task-lowercase')}
-              </span>
+              </Typography>
               {task.createdAt && (
                 <Tooltip
                   excludeTriggerFromTabOrder
                   title={formatDateTime(task.createdAt)}>
-                  <span
+                  <Typography
                     className="p-l-xss task-timestamp-text"
                     data-testid="timestamp">
                     {getRelativeTime(task.createdAt)}
-                  </span>
+                  </Typography>
                 </Tooltip>
               )}
-            </CoreTypography>
+            </Typography>
           </div>
         </Box>
         <div className="w-full">
           {isTaskTags && (
-            <Card
-              bordered
-              className="activity-feed-card-message tags-card-container">
-              <TagsTaskFromTask hasEditAccess={false} task={task} />
+            <Card>
+              <Card.Content>
+                <TagsTaskFromTask hasEditAccess={false} task={task} />
+              </Card.Content>
             </Card>
           )}
         </div>
@@ -485,7 +524,7 @@ const TaskFeedCardFromTask = ({
         )}
         {!isOpenInDrawer && renderTaskFooter()}
       </Box>
-    </CoreCard>
+    </Card>
   );
 };
 

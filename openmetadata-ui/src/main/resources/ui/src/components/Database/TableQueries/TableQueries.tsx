@@ -12,11 +12,17 @@
  */
 
 import {
-  CloseCircleOutlined,
-  SortAscendingOutlined,
-  SortDescendingOutlined,
-} from '@ant-design/icons';
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+  Box,
+  Button,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Database01,
+  SortAscending,
+  SortDescending,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -39,7 +45,7 @@ import {
 } from '../../../constants/Query.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
+import { SORT_ORDER } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -54,6 +60,7 @@ import {
   updateQueryVote,
 } from '../../../rest/queryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
@@ -64,10 +71,9 @@ import {
 } from '../../../utils/Query/QueryUtils';
 import { getAddQueryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import DatePicker, {
-  RangePickerProps,
-} from '../../common/DatePicker/DatePicker';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import DateRangeFilter from '../../common/DateRangeFilter/DateRangeFilter';
+import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -111,7 +117,6 @@ const TableQueries: FC<TableQueriesProp> = ({
   );
   const [isTagsLoading, setIsTagsLoading] = useState(false);
   const [isOwnerLoading, setIsOwnerLoading] = useState(false);
-  const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [queryDateFilter, setQueryDateFilter] = useState<{
     startTs: number;
     endTs: number;
@@ -424,23 +429,9 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const onDateChange: RangePickerProps['onChange'] = (values) => {
-    if (values) {
-      const startTs = values[0]?.startOf('day').valueOf();
-      const endTs = values[1]?.endOf('day').valueOf();
-
-      if (!isUndefined(startTs) && !isUndefined(endTs)) {
-        setQueryDateFilter({ startTs, endTs });
-        fetchFilteredQueries({
-          tags: tagsFilter.selected,
-          timeRange: { startTs, endTs },
-        });
-        setIsClickedCalendar(false);
-      }
-    } else {
-      setQueryDateFilter(undefined);
-      fetchFilteredQueries({ tags: tagsFilter.selected });
-    }
+  const onDateChange = (timeRange?: { startTs: number; endTs: number }) => {
+    setQueryDateFilter(timeRange);
+    void fetchFilteredQueries({ tags: tagsFilter.selected, timeRange });
   };
 
   const pagingHandler = (currentPage: number, pageSize: number) => {
@@ -491,13 +482,16 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   const addButton = (
     <Tooltip
+      arrow
+      isDisabled={permissions?.query.Create}
       placement="top"
-      title={!permissions?.query.Create && t(NO_PERMISSION_FOR_ACTION)}>
+      title={t(NO_PERMISSION_FOR_ACTION)}>
       <Button
+        color="primary"
         data-testid="add-query-btn"
-        disabled={!permissions?.query.Create}
-        type="primary"
-        onClick={handleAddQueryClick}>
+        isDisabled={!permissions?.query.Create}
+        size="sm"
+        onPress={handleAddQueryClick}>
         {t('label.add')}
       </Button>
     </Tooltip>
@@ -508,48 +502,67 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
   if (isError.page) {
     return (
-      <ErrorPlaceHolder
-        buttonId="add-query-btn"
-        doc={USAGE_DOCS}
-        heading={t('label.query-lowercase-plural')}
-        permission={permissions?.query.Create}
-        permissionValue={t('label.create-entity', {
-          entity: t('label.query'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        onClick={handleAddQueryClick}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <CreatePlaceholder
+          buttonId="add-query-btn"
+          data-testid={`create-error-placeholder-${t(
+            'label.query-lowercase-plural'
+          )}`}
+          doc={USAGE_DOCS}
+          heading={t('label.query-lowercase-plural')}
+          permission={permissions?.query.Create}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.query'),
+          })}
+          onCreate={handleAddQueryClick}
+        />
+      </div>
     );
   }
 
   if (isTableDeleted) {
     return (
       <div data-testid="no-queries">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          {t('message.field-data-is-not-available-for-deleted-entities', {
-            field: t('label.query-plural'),
-          })}
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={t(
+              'message.field-data-is-not-available-for-deleted-entities',
+              {
+                field: t('label.query-plural'),
+              }
+            )}
+            icon={<Database01 />}
+          />
+        </div>
       </div>
     );
   }
 
   const queryTabBody = isError.search ? (
-    <Col
-      className="flex-center font-medium mt-24 p-b-md"
+    <Grid.Item
+      className="layout-column flex-center font-medium mt-24 p-b-md"
       data-testid="no-queries"
       span={24}>
-      <ErrorPlaceHolder>
-        <Typography.Paragraph>
-          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-            entity: t('label.query-lowercase-plural'),
-          })}
-        </Typography.Paragraph>
-      </ErrorPlaceHolder>
-    </Col>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={t(
+            'message.adding-new-entity-is-easy-just-give-it-a-spin',
+            {
+              entity: t('label.query-lowercase-plural'),
+            }
+          )}
+        />
+      </div>
+    </Grid.Item>
   ) : (
     tableQueries.map((query) => (
-      <Col data-testid="query-card" key={query.id} span={24}>
+      <Grid.Item
+        className="layout-column"
+        data-testid="query-card"
+        key={query.id}
+        span={24}>
         <QueryCard
           afterDeleteAction={fetchFilteredQueries}
           isExpanded={false}
@@ -560,23 +573,42 @@ const TableQueries: FC<TableQueriesProp> = ({
           onQueryUpdate={handleQueryUpdate}
           onUpdateVote={updateVote}
         />
-      </Col>
+      </Grid.Item>
     ))
   );
 
   return (
-    <Row className="m-b-md" gutter={8} id="tablequeries" wrap={false}>
-      <Col className="tab-content-height-with-resizable-panel" span={24}>
+    <Box
+      className="layout-row m-b-md"
+      id="tablequeries"
+      style={{ ...getLayoutGutter(8) }}
+      wrap="nowrap">
+      <Box
+        className="layout-column tw:block tab-content-height-with-resizable-panel"
+        style={{ maxWidth: '100%', flex: '0 0 100%' }}>
         <ResizablePanels
           firstPanel={{
             className: 'entity-resizable-panel-container',
             allowScroll: true,
             cardClassName: 'm-x-auto',
             children: (
-              <Row data-testid="queries-container" gutter={[8, 16]}>
-                <Col span={24}>
-                  <Space className="justify-between w-full">
-                    <Space size={16}>
+              <Grid
+                className="layout-row layout-grid"
+                data-testid="queries-container"
+                style={{ ...getLayoutGutter(8, 16) }}>
+                <Grid.Item className="layout-column" span={24}>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal justify-between w-full"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={4}
+                      itemClassName="layout-space-item">
                       <FilterSelectDropdown
                         hideCounts
                         isSuggestionsLoading={isOwnerLoading}
@@ -600,59 +632,57 @@ const TableQueries: FC<TableQueriesProp> = ({
                         onGetInitialOptions={getInitialTagsOptions}
                         onSearch={handleTagsSearch}
                       />
-                      <Button
-                        className="p-x-0"
-                        type="text"
-                        onClick={() => {
-                          setIsClickedCalendar(true);
-                        }}>
-                        <span>
-                          <span>{t('label.created-date')}</span>
-                          <DatePicker.RangePicker
-                            allowClear
-                            showNow
-                            bordered={false}
-                            className="p-t-0"
-                            clearIcon={<CloseCircleOutlined />}
-                            data-testid="data-range-picker"
-                            open={isClickedCalendar}
-                            suffixIcon={null}
-                            onChange={onDateChange}
-                            onOpenChange={(isOpen) => {
-                              setIsClickedCalendar(isOpen);
-                            }}
-                          />
-                        </span>
-                      </Button>
-                    </Space>
-                    <Space size={16}>
+                      <Box
+                        inline
+                        align="center"
+                        data-testid="data-range-picker"
+                        gap={2}>
+                        <Typography>{t('label.created-date')}</Typography>
+                        <DateRangeFilter
+                          endTs={queryDateFilter?.endTs}
+                          size="sm"
+                          startTs={queryDateFilter?.startTs}
+                          onApply={onDateChange}
+                          onClear={() => onDateChange()}
+                        />
+                      </Box>
+                    </Box>
+
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={4}
+                      itemClassName="layout-space-item">
                       <SortingDropDown
                         fieldList={translatedQuerySortOptions}
                         handleFieldDropDown={handleSortFieldChange}
                         sortField={sortQuery.field}
                       />
                       <Button
-                        className="p-0"
+                        color="tertiary"
                         data-testid="sort-order-button"
-                        type="text"
                         onClick={() =>
                           handleSortOderChange(
                             isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
                           )
                         }>
                         {isAscSortOrder ? (
-                          <SortAscendingOutlined
-                            className="text-base text-grey-muted"
-                            style={{ fontSize: '14px' }}
+                          <SortAscending
+                            className="tw:text-quaternary tw:shrink-0"
+                            size={14}
                           />
                         ) : (
-                          <SortDescendingOutlined className="text-sm text-grey-muted" />
+                          <SortDescending
+                            className="tw:text-quaternary tw:shrink-0"
+                            size={14}
+                          />
                         )}
                       </Button>
                       {addButton}
-                    </Space>
-                  </Space>
-                </Col>
+                    </Box>
+                  </Box>
+                </Grid.Item>
 
                 {isLoading.query ? (
                   <Loader />
@@ -660,7 +690,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                   <>
                     {queryTabBody}
                     {showPagination && (
-                      <Col span={24}>
+                      <Grid.Item className="layout-column" span={24}>
                         <PaginationComponent
                           hideOnSinglePage
                           showSizeChanger
@@ -671,11 +701,11 @@ const TableQueries: FC<TableQueriesProp> = ({
                           total={paging.total}
                           onChange={pagingHandler}
                         />
-                      </Col>
+                      </Grid.Item>
                     )}
                   </>
                 )}
-              </Row>
+              </Grid>
             ),
             minWidth: 800,
             flex: 0.87,
@@ -696,8 +726,8 @@ const TableQueries: FC<TableQueriesProp> = ({
               'entity-summary-resizable-right-panel-container entity-resizable-panel-container',
           }}
         />
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 };
 

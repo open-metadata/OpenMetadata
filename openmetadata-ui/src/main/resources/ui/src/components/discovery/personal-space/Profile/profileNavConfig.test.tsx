@@ -17,6 +17,10 @@ jest.mock('./ProfileDetailsPanel', () => ({
   __esModule: true,
   default: () => null,
 }));
+jest.mock('./ProfileTabPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
 jest.mock('./components/AccessTokenPanel', () => ({
   __esModule: true,
   default: () => null,
@@ -33,12 +37,31 @@ jest.mock('./tabs/bots/BotsPanel', () => ({
   __esModule: true,
   default: () => null,
 }));
+jest.mock('./tabs/preferences/PreferencesPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+jest.mock('./tabs/platform-settings/PlatformSettingsPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+jest.mock('./tabs/applications/ApplicationsPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+jest.mock('./tabs/sso/SsoPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
 jest.mock('../../../../assets/svg/entity/bot.svg', () => ({
   ReactComponent: () => null,
 }));
 
+import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   DEFAULT_PROFILE_NAV_ID,
+  FEATURES_NAV_ITEMS,
   getProfileNavItem,
   PROFILE_NAV_GROUP_LABEL,
   PROFILE_NAV_GROUP_ORDER,
@@ -46,13 +69,16 @@ import {
 } from './profileNavConfig';
 
 describe('profileNavConfig', () => {
-  it('exposes exactly the 5 built-in nav items in order', () => {
+  it('exposes exactly the 8 built-in nav items in order', () => {
     expect(PROFILE_NAV_ITEMS.map((i) => i.id)).toEqual([
       'profile',
       'permissions',
+      'preferences',
       'access-token',
       'access-control',
       'bots',
+      'platform-settings',
+      'sso',
     ]);
   });
 
@@ -69,7 +95,7 @@ describe('profileNavConfig', () => {
       expect(typeof item.render).toBe('function');
     });
 
-    expect(ids.size).toBe(5);
+    expect(ids.size).toBe(8);
   });
 
   it('places access-control under administration group, not credentials', () => {
@@ -80,10 +106,21 @@ describe('profileNavConfig', () => {
     expect(groupById).toEqual({
       profile: 'account',
       permissions: 'account',
+      preferences: 'account',
       'access-token': 'credentials',
       'access-control': 'administration',
       bots: 'administration',
+      'platform-settings': 'administration',
+      sso: 'administration',
     });
+  });
+
+  it('shows SSO settings to admins only', () => {
+    const sso = getProfileNavItem('sso');
+    const permissions = {} as Parameters<NonNullable<typeof sso.isVisible>>[0];
+
+    expect(sso.isVisible?.(permissions, true)).toBe(true);
+    expect(sso.isVisible?.(permissions, false)).toBe(false);
   });
 
   it('includes administration in the group label map', () => {
@@ -94,8 +131,8 @@ describe('profileNavConfig', () => {
     expect(PROFILE_NAV_GROUP_ORDER).toEqual([
       'account',
       'administration',
+      'features',
       'workspace',
-      'application',
       'credentials',
     ]);
   });
@@ -109,6 +146,68 @@ describe('profileNavConfig', () => {
     );
     expect(getProfileNavItem('does-not-exist' as never)).toBe(
       PROFILE_NAV_ITEMS[0]
+    );
+  });
+
+  it('keeps Applications to admins, as classic does', () => {
+    const viewAll = { all: { ViewAll: true } } as unknown as UIPermission;
+    const item = FEATURES_NAV_ITEMS.find(
+      (navItem) => navItem.id === 'applications'
+    );
+
+    expect(item?.isVisible?.(viewAll, false)).toBeFalsy();
+    expect(item?.isVisible?.({} as UIPermission, true)).toBe(true);
+  });
+
+  it.each([
+    [{ type: { ViewAll: true } }, true],
+    [{ table: { ViewAll: true } }, false],
+  ])(
+    'shows Custom Properties to a non-admin by type view permission (%j)',
+    (permissions, visible) => {
+      expect(
+        Boolean(
+          getProfileNavItem('custom-properties').isVisible?.(
+            permissions as unknown as UIPermission,
+            false
+          )
+        )
+      ).toBe(visible);
+    }
+  );
+
+  // The settings surfaces behind these tabs are admin-only, whatever view
+  // permissions a non-admin holds (ADR:2026-10-21-settings-pages-are-classic-only).
+  it.each([
+    ['access-control', ResourceEntity.ROLE],
+    ['access-control', ResourceEntity.POLICY],
+    ['bots', ResourceEntity.BOT],
+  ])(
+    'hides %s from a non-admin even with %s view permission',
+    (id, resource) => {
+      const item = getProfileNavItem(id as never);
+      const canView = {
+        [resource]: { ViewAll: true },
+      } as unknown as UIPermission;
+
+      expect(item.id).toBe(id);
+      expect(item.isVisible?.(canView, false)).toBe(false);
+      expect(item.isVisible?.({} as UIPermission, true)).toBe(true);
+    }
+  );
+
+  // As in classic, Members opens to anyone who may view teams or users.
+  it.each([
+    [ResourceEntity.TEAM, true],
+    [ResourceEntity.USER, true],
+    [ResourceEntity.ROLE, false],
+  ])('shows members to a non-admin with %s view: %s', (resource, visible) => {
+    const canView = {
+      [resource]: { ViewAll: true },
+    } as unknown as UIPermission;
+
+    expect(getProfileNavItem('members').isVisible?.(canView, false)).toBe(
+      visible
     );
   });
 });

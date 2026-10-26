@@ -13,6 +13,7 @@
 import { useOktaAuth } from '@okta/okta-react';
 import { render, screen } from '@testing-library/react';
 import { act } from 'react';
+import { ReauthRequiredError } from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import OktaAuthenticator from './OktaAuthenticator';
@@ -338,6 +339,76 @@ describe('OktaAuthenticator', () => {
       await expect(renewer?.()).rejects.toThrow(
         'Okta renewal returned no idToken'
       );
+    });
+
+    it.each(['login_required', 'consent_required', 'invalid_grant'])(
+      'should ask for re-authentication when Okta answers %s',
+      async (errorCode) => {
+        mockOktaAuth.token.renewTokens.mockRejectedValueOnce(
+          Object.assign(new Error(errorCode), { errorCode })
+        );
+        render(
+          <OktaAuthenticator
+            {...mockProps}
+            ref={(ref) => (authenticatorRef = ref)}
+          />
+        );
+
+        const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+        await expect(renewer?.()).rejects.toBeInstanceOf(ReauthRequiredError);
+      }
+    );
+
+    it('should ask for re-authentication when the prompt=none iframe times out', async () => {
+      mockOktaAuth.token.renewTokens.mockRejectedValueOnce(
+        Object.assign(new Error('OAuth flow timed out'), {
+          errorCode: 'INTERNAL',
+        })
+      );
+      render(
+        <OktaAuthenticator
+          {...mockProps}
+          ref={(ref) => (authenticatorRef = ref)}
+        />
+      );
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      await expect(renewer?.()).rejects.toBeInstanceOf(ReauthRequiredError);
+    });
+
+    it('should rethrow failures a redirect cannot fix', async () => {
+      const networkError = new Error('Failed to fetch');
+      mockOktaAuth.token.renewTokens.mockRejectedValueOnce(networkError);
+      render(
+        <OktaAuthenticator
+          {...mockProps}
+          ref={(ref) => (authenticatorRef = ref)}
+        />
+      );
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      await expect(renewer?.()).rejects.toBe(networkError);
+    });
+  });
+
+  it('invokeSilentReauth redirects to Okta with prompt=none and remembers the current page', async () => {
+    render(
+      <OktaAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    await act(async () => {
+      await authenticatorRef?.invokeSilentReauth?.();
+    });
+
+    expect(mockOktaAuth.signInWithRedirect).toHaveBeenCalledWith({
+      originalUri: `${window.location.pathname}${window.location.search}`,
+      prompt: 'none',
     });
   });
 });

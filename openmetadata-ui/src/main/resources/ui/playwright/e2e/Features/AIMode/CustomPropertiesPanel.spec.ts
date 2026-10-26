@@ -51,6 +51,7 @@ import {
   removeCustomPropertyViaApi,
 } from '../../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { enableAiAppMode } from '../../Utils/appMode';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -125,10 +126,10 @@ const chooseSelectOption = async (
   optionName: string
 ): Promise<void> => {
   // The wrapper div contains a react-aria <button aria-haspopup="listbox">.
-  await page.getByTestId(wrapperTestId).getByRole('button').click();
-  const option = page.getByRole('option', { exact: true, name: optionName });
-  await expect(option).toBeVisible();
-  await option.click();
+  await selectOptionWithRetry(
+    page.getByTestId(wrapperTestId).getByRole('button'),
+    page.getByRole('option', { exact: true, name: optionName })
+  );
 };
 
 /**
@@ -334,10 +335,35 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await fillDescriptionBox(page, 'Updated description');
 
     const saves = recordCustomPropertySaves(page);
+    // The detail page renders its table (as a loading skeleton) before its
+    // refetch of the type lands, and under load that refetch outlasts the row
+    // assertion. Only a GET after the successful PATCH counts: the save itself
+    // reads the type first, and again after each rejected attempt.
+    let patched = false;
+    const detailRefetch = waitForResponseWithStatus(
+      page,
+      (res) => {
+        if (
+          res.request().method() === 'PATCH' &&
+          res.url().includes('/api/v1/metadata/types/')
+        ) {
+          patched = res.ok();
+
+          return false;
+        }
+
+        return (
+          patched &&
+          res.request().method() === 'GET' &&
+          res.url().includes(`/api/v1/metadata/types/name/${TABLE_FQN}`)
+        );
+      },
+      200
+    );
     await page.getByTestId('edit-custom-property-save').click();
+    await detailRefetch;
 
     // Back on detail page — updated display name is visible.
-    await page.getByTestId('custom-property-table').waitFor();
     await expect(
       page.locator('tr').filter({ hasText: updatedDisplayName })
     ).toBeVisible();
@@ -465,7 +491,7 @@ test.describe('Custom Properties Panel — user without type permissions', () =>
   }) => {
     const page = await browser.newPage();
     try {
-      await viewOnlyUser.login(page);
+      await viewOnlyUser.signIn(page);
       await enableAiAppMode(page);
       await redirectToHomePage(page);
       await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
@@ -490,7 +516,7 @@ test.describe('Custom Properties Panel — user without type permissions', () =>
  *
  * Strategy: beforeAll creates policy → role → user via UserClass/PoliciesClass/
  * RolesClass (in-memory, no JSON file written), seeds a property, then each
- * test creates a fresh page and logs in via typeUser.login(page).
+ * test creates a fresh page and signs in via typeUser.signIn(page).
  */
 
 let typeUser: UserClass;
@@ -586,7 +612,7 @@ test.describe('Custom Properties Panel — non-admin user with type permissions'
   }) => {
     const page = await browser.newPage();
     try {
-      await typeUser.login(page);
+      await typeUser.signIn(page);
       await enableAiAppMode(page);
       await redirectToHomePage(page);
       await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
@@ -613,7 +639,7 @@ test.describe('Custom Properties Panel — non-admin user with type permissions'
   test('detail page shows Add, Edit, Delete buttons', async ({ browser }) => {
     const page = await browser.newPage();
     try {
-      await typeUser.login(page);
+      await typeUser.signIn(page);
       await enableAiAppMode(page);
       await redirectToHomePage(page);
       await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
@@ -740,7 +766,7 @@ test.describe('Custom Properties Panel — user with ViewAll on All only', () =>
   }) => {
     const page = await browser.newPage();
     try {
-      await viewAllUser.login(page);
+      await viewAllUser.signIn(page);
       await enableAiAppMode(page);
       await redirectToHomePage(page);
       await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();

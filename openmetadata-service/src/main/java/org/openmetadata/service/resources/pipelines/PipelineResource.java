@@ -851,9 +851,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @GET
@@ -923,6 +921,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
     Fields fields = getFields(fieldsParam);
     ListFilter filter =
         new ListFilter(include)

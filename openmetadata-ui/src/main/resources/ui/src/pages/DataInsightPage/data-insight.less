@@ -15,9 +15,7 @@
 
 @left-panel-border-color: var(--om-color-gray-neutral-200);
 @box-shadow-color: var(--om-legacy-color-0-0-0-0-06);
-@icon-color: var(--om-legacy-color-515151);
 @group-title-color: var(--om-legacy-color-76746f);
-@summary-card-bg-hover: var(--om-legacy-color-f0f1f3);
 @target-blue-color: var(--om-legacy-color-1890ff);
 
 .data-insight-select-dropdown {
@@ -32,10 +30,6 @@
   border: 0px;
   padding-top: @size-md;
   border-radius: @border-rad-sm;
-
-  .side-panel-icons {
-    width: 14px;
-  }
 
   .ant-menu-item::after {
     left: 0;
@@ -64,13 +58,6 @@
     padding: 0 var(--om-space-16) !important;
   }
 
-  .ant-menu-item:hover,
-  .ant-menu-item-selected {
-    .side-panel-icons {
-      color: @primary-color;
-    }
-  }
-
   .ant-menu-item-selected {
     .ant-menu-title-content {
       font-weight: var(--om-font-weight-semibold);
@@ -86,41 +73,16 @@
   }
 }
 
-.side-panel-icons {
-  color: @icon-color;
-}
-
 .data-insight-progress-bar {
-  .ant-progress-outer {
-    margin-right: 0;
-    padding-right: 0;
-  }
-  .ant-progress-inner,
-  .ant-progress-bg,
-  .ant-progress-success-bg {
-    border-radius: var(--om-radius-sm);
-  }
-  .ant-progress-text {
-    display: flex;
-    margin: 0;
-    position: absolute;
-    width: 100%;
-    justify-content: space-between;
-    align-items: center;
-    height: 100%;
-    top: 0px;
-    right: 2px;
-    left: 2px;
-    padding: 0 var(--om-space-16) 0 var(--om-space-8);
-    font-size: var(--om-font-size-xs);
-    color: @text-color;
-  }
   .data-insight-kpi-target {
     position: absolute;
+    top: 0;
+    height: 100%;
     left: 0;
     border-right: 2px solid @target-blue-color;
 
     .target-text {
+      color: var(--om-color-text-primary);
       position: relative;
       right: -12px;
       top: -14px;
@@ -136,25 +98,6 @@
       right: -4px;
       color: @target-blue-color;
       font-size: var(--om-font-size-10);
-    }
-  }
-}
-
-.custom-data-insight-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--om-space-4);
-
-  .custom-data-insight-legend-item {
-    display: flex;
-    align-items: center;
-    padding: var(--om-space-4) var(--om-space-8);
-    cursor: pointer;
-    border-radius: var(--om-radius-sm);
-    color: @text-grey-muted;
-
-    &:hover {
-      background: @summary-card-bg-hover;
     }
   }
 }

@@ -12,22 +12,21 @@
  */
 
 @import (reference) '../../../styles/variables.less';
-@import (reference) '../../../styles/components/card.less';
 
-.entity-summary-panel-container,
-.column-detail-panel-container {
+.entity-summary-panel-container {
   height: 100%;
   width: 100%;
-  background: var(--tw-color-bg-primary);
+  background: var(--tw-background-color-canvas);
 
-  &.explore {
+  // Drawers take the core slideout's own surface.
+  &.explore,
+  &.lineage {
     background: transparent;
   }
 
-  &.lineage,
   &.glossary-term-assets-tab,
   &.ontology-explorer {
-    background: var(--tw-color-utility-gray-blue-50);
+    background: var(--tw-background-color-canvas);
   }
 
   &.explore,
@@ -53,34 +52,17 @@
     border-bottom: none !important;
     border-radius: var(--om-radius-lg) !important;
     display: flex;
-    border-color: @grey-38 !important;
+    border-color: var(--tw-border-color-subtle) !important;
     border-top: none !important;
 
     &.drawer-summary-panel-container {
       width: 85%;
       margin-left: var(--om-space-12);
       max-height: calc(100vh - 70px);
-      .ant-card-body {
-        max-height: calc(100vh - 70px);
-      }
       .data-quality-stats-container,
       .incidents-stats-container {
         margin-top: var(--om-space-12);
       }
-    }
-
-    .ant-card-head {
-      border-bottom: none;
-      padding-top: 0;
-    }
-
-    .ant-card-body {
-      padding-top: 0;
-      padding: 0 !important;
-      display: inherit;
-      flex-direction: row;
-      position: relative;
-      width: 100%;
     }
 
     .content-area {
@@ -92,7 +74,7 @@
       height: 100%;
       border-radius: var(--om-radius-lg);
       position: relative;
-      background: var(--om-color-bg-surface);
+      background: var(--tw-background-color-surface);
       &::-webkit-scrollbar {
         width: 0px;
         background: transparent;
@@ -104,7 +86,8 @@
       }
     }
 
-    .ant-divider {
+    .ant-divider,
+    .summary-panel-divider {
       visibility: hidden;
     }
 
@@ -134,7 +117,8 @@
       color: @text-color;
     }
 
-    .ant-divider-horizontal {
+    .ant-divider-horizontal,
+    .summary-panel-divider {
       margin: var(--om-space-16) 0;
     }
 
@@ -170,8 +154,9 @@
   }
 
   .summary-panel-card {
-    background-color: @grey-9;
-    border: 0.5px solid @grey-15;
+    background-color: var(--tw-background-color-surface);
+    border: 1px solid var(--tw-border-color-subtle);
+    box-shadow: var(--om-shadow-card);
   }
   .entity-icon {
     color: @primary-7;
@@ -187,7 +172,7 @@
     z-index: var(--om-z-999);
     top: 0;
     flex: 1;
-    background-color: var(--om-color-bg-surface);
+    background-color: var(--tw-background-color-surface);
   }
   .title-container {
     display: flex;
@@ -197,7 +182,7 @@
     height: 49px;
     padding-left: var(--om-space-4);
     padding-right: var(--om-space-4);
-    background-color: @grey-9;
+    background-color: var(--tw-background-color-surface);
     .d-flex {
       flex: 1;
       min-width: 0;

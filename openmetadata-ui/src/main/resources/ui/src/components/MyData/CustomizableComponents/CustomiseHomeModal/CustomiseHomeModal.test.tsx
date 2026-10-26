@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ModalProps } from 'antd';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
 import CustomiseHomeModal from './CustomiseHomeModal';
 
@@ -44,17 +43,6 @@ jest.mock('../AllWidgetsContent/AllWidgetsContent', () => {
   };
 });
 
-// Mock Ant Design Modal to avoid portal issues in tests
-jest.mock('antd', () => {
-  const antd = jest.requireActual('antd');
-
-  return {
-    ...antd,
-    Modal: ({ children, open }: ModalProps) =>
-      open ? <div data-testid="modal">{children}</div> : null,
-  };
-});
-
 describe('CustomiseHomeModal Component', () => {
   const mockOnClose = jest.fn();
   const mockOnBackgroundColorUpdate = jest.fn();
@@ -73,13 +61,24 @@ describe('CustomiseHomeModal Component', () => {
     it('should render modal when open is true', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
-      expect(screen.getByTestId('modal')).toBeInTheDocument();
+      expect(screen.getByTestId('customise-home-modal')).toBeInTheDocument();
+    });
+
+    // Playwright finds the modal by this accessible name.
+    it('should name the dialog after its title', () => {
+      render(<CustomiseHomeModal {...defaultProps} />);
+
+      expect(
+        screen.getByRole('dialog', { name: 'label.customize-entity' })
+      ).toBeInTheDocument();
     });
 
     it('should not render modal when open is false', () => {
       render(<CustomiseHomeModal {...defaultProps} open={false} />);
 
-      expect(screen.queryByTestId('modal')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('customise-home-modal')
+      ).not.toBeInTheDocument();
     });
 
     it('should render modal footer with action buttons', () => {
@@ -100,8 +99,11 @@ describe('CustomiseHomeModal Component', () => {
       expect(
         screen.getByTestId('sidebar-option-all-widgets')
       ).toBeInTheDocument();
-      expect(screen.getByText('Label Header Theme')).toBeInTheDocument();
-      expect(screen.getByText('Label All Widgets')).toBeInTheDocument();
+      // Rendered verbatim, not through `startCase`: these are already-written
+      // translations, and casing them would mangle any string whose shape the
+      // translator chose (a widget named "KPIs" became "KP Is").
+      expect(screen.getByText('label.header-theme')).toBeInTheDocument();
+      expect(screen.getByText('label.all-widgets')).toBeInTheDocument();
     });
 
     it('should have header-theme selected by default', () => {

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -49,8 +49,8 @@ import { getAllTags } from '../../../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../../../utils/TableUtils';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
+import NoSearchResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../../../common/Table/Table.interface';
 import Table from '../../../../common/Table/TableV2';
@@ -379,9 +379,9 @@ const ModelTab = () => {
         key: TABLE_COLUMNS_KEYS.DATA_TYPE,
         width: 100,
         render: (dataType, record) => (
-          <Typography.Text>
+          <Typography className="tw:text-primary">
             {record.dataTypeDisplay || dataType}
-          </Typography.Text>
+          </Typography>
         ),
       },
       {
@@ -482,7 +482,11 @@ const ModelTab = () => {
         }}
         loading={columnsLoading}
         locale={{
-          emptyText: <FilterTablePlaceHolder />,
+          emptyText: (
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+            </div>
+          ),
         }}
         pagination={false}
         rowClassName={getRowClassName}

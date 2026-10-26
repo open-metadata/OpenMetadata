@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,7 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 public class McpIntegrationIT extends McpTestBase {
 
@@ -111,6 +113,48 @@ public class McpIntegrationIT extends McpTestBase {
     String responseText = responseJson.get("result").get("content").get(0).get("text").asText();
     assertThat(responseText).contains("extension");
     assertThat(responseText).contains(propertyValue);
+  }
+
+  @Test
+  void testGetEntityDetailsMasksServiceConnectionPassword() throws Exception {
+    Map<String, Object> toolCallRequest =
+        McpTestUtils.createGetEntityToolCall(
+            Entity.DATABASE_SERVICE, testTable.getService().getFullyQualifiedName());
+    JsonNode responseJson = executeMcpRequest(toolCallRequest);
+
+    String responseText = responseJson.get("result").get("content").get(0).get("text").asText();
+    JsonNode config = OBJECT_MAPPER.readTree(responseText).at("/connection/config");
+    assertThat(config.at("/authType/password").asText())
+        .isEqualTo(PasswordEntityMasker.PASSWORD_MASK);
+    assertThat(config.at("/hostPort").asText()).isEqualTo("localhost:3306");
+  }
+
+  @Test
+  void testPatchEntityOnServiceSavesTheDescriptionAndLeavesTheConnection() throws Exception {
+    String serviceFqn = testTable.getService().getFullyQualifiedName();
+    String description = "patched through MCP " + UUID.randomUUID().toString().substring(0, 8);
+
+    JsonNode patched =
+        executeMcpRequest(
+            McpTestUtils.createPatchEntityToolCall(
+                Entity.DATABASE_SERVICE,
+                serviceFqn,
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\""
+                    + description
+                    + "\"}]"));
+    JsonNode refused =
+        executeMcpRequest(
+            McpTestUtils.createPatchEntityToolCall(
+                Entity.DATABASE_SERVICE,
+                serviceFqn,
+                "[{\"op\":\"replace\",\"path\":\"/connection/config/hostPort\","
+                    + "\"value\":\"example.invalid:3306\"}]"));
+
+    assertThat(patched.path("result").path("isError").asBoolean(false)).isFalse();
+    assertThat(refused.path("result").path("isError").asBoolean(false)).isTrue();
+    JsonNode stored = get("services/databaseServices/name/" + serviceFqn, JsonNode.class);
+    assertThat(stored.path("description").asText()).isEqualTo(description);
+    assertThat(stored.at("/connection/config/hostPort").asText()).isEqualTo("localhost:3306");
   }
 
   private static void addStringCustomProperty(String entityType, String propertyName)
@@ -472,6 +516,122 @@ public class McpIntegrationIT extends McpTestBase {
         .contains("\"relationshipType\":\"pipeline\"");
   }
 
+  /**
+   * One column's lineage out of a table with other consumers: the column is followed across a
+   * consumer that renames it, and a table fed only by a different column is left out.
+   */
+  @Test
+  void columnLineageFollowsTheColumnAcrossRenamesAndDropsOtherConsumers() throws Exception {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    Table root = createServiceDatabaseSchemaTable("mcp_col_root_" + suffix);
+    Table renamed = createServiceDatabaseSchemaTable("mcp_col_mid_" + suffix);
+    Table consumer = createServiceDatabaseSchemaTable("mcp_col_end_" + suffix);
+    Table unrelated = createServiceDatabaseSchemaTable("mcp_col_other_" + suffix);
+    Table unmapped = createServiceDatabaseSchemaTable("mcp_col_unmapped_" + suffix);
+    addColumnLineageEdge(root, "id", renamed, "name");
+    addColumnLineageEdge(renamed, "name", consumer, "id");
+    addColumnLineageEdge(root, "name", unrelated, "name");
+    addLineageEdge(root, unmapped);
+
+    String lineage =
+        executeMcpRequest(
+                McpTestUtils.createGetColumnLineageToolCall(
+                    Entity.TABLE, root.getFullyQualifiedName(), columnFqn(root, "id"), 0, 3))
+            .toString();
+
+    assertThat(lineage)
+        .as("the column is followed through the rename to the final consumer")
+        .contains(columnFqn(renamed, "name"))
+        .contains(columnFqn(consumer, "id"));
+    assertThat(lineage)
+        .as("a table fed only by another column is not part of this column's lineage")
+        .doesNotContain(unrelated.getFullyQualifiedName());
+    assertThat(lineage)
+        .as("a table-level edge with no column mappings is reported, not silently dropped")
+        .contains("\"columnUnmappedEdges\":1");
+  }
+
+  /** A mistyped column must be an error, not an empty graph that reads as "nothing depends on it". */
+  @Test
+  void columnLineageRejectsAColumnTheTableDoesNotHave() throws Exception {
+    Table root =
+        createServiceDatabaseSchemaTable(
+            "mcp_col_typo_" + UUID.randomUUID().toString().substring(0, 8));
+
+    String lineage =
+        executeMcpRequest(
+                McpTestUtils.createGetColumnLineageToolCall(
+                    Entity.TABLE,
+                    root.getFullyQualifiedName(),
+                    columnFqn(root, "custmer_id"),
+                    0,
+                    3))
+            .toString();
+
+    assertThat(lineage).contains("is not a column of");
+  }
+
+  /**
+   * A graph too large for one response must be fully reachable: following nextCursor from the first
+   * page returns every edge, each once, where the old behaviour could only advise a shallower depth.
+   */
+  @Test
+  void lineagePagesThroughAGraphTooLargeForOneResponse() throws Exception {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    Table root = createServiceDatabaseSchemaTable("mcp_paging_root_" + suffix);
+    String largeSql = "SELECT " + "customer_id, order_total, ".repeat(800) + "1";
+    List<String> expected = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      Table consumer = createServiceDatabaseSchemaTable("mcp_paging_" + i + "_" + suffix);
+      addSqlLineageEdge(root, consumer, largeSql);
+      expected.add(consumer.getFullyQualifiedName());
+    }
+
+    List<String> seen = new ArrayList<>();
+    int pages = 0;
+    String cursor = null;
+    do {
+      Map<String, Object> options = new HashMap<>();
+      options.put("upstreamDepth", 0);
+      options.put("downstreamDepth", 1);
+      options.put("includeSql", true);
+      if (cursor != null) {
+        options.put("cursor", cursor);
+      }
+      JsonNode payload =
+          toolPayload(
+              executeMcpRequest(
+                  McpTestUtils.createGetLineageToolCall(
+                      Entity.TABLE, root.getFullyQualifiedName(), options)));
+      payload.get("downstream").forEach(edge -> seen.add(edge.get("toFQN").asText()));
+      cursor = payload.hasNonNull("nextCursor") ? payload.get("nextCursor").asText() : null;
+      pages++;
+    } while (cursor != null && pages < 20);
+
+    assertThat(pages).as("eight edges with large SQL cannot fit one response").isGreaterThan(1);
+    assertThat(seen)
+        .as("every edge is returned exactly once across the pages")
+        .containsExactlyInAnyOrderElementsOf(expected);
+  }
+
+  private void addSqlLineageEdge(Table from, Table to, String sql) throws Exception {
+    putLineageEdge(
+        Map.of(
+            "fromEntity", Map.of("id", from.getId().toString(), "type", Entity.TABLE),
+            "toEntity", Map.of("id", to.getId().toString(), "type", Entity.TABLE),
+            "lineageDetails", Map.of("sqlQuery", sql)));
+  }
+
+  private JsonNode toolPayload(JsonNode response) throws Exception {
+    JsonNode content = response.at("/result/content");
+    assertThat(content.isArray()).as("tool result must carry content").isTrue();
+    return OBJECT_MAPPER.readTree(content.get(0).get("text").asText());
+  }
+
+  private static String columnFqn(Table table, String column) {
+    return table.getFullyQualifiedName() + "." + column;
+  }
+
   private void assertLineageDenied(Table table, String token) throws Exception {
     String lineage =
         executeMcpRequest(
@@ -535,6 +695,25 @@ public class McpIntegrationIT extends McpTestBase {
       edge.put(
           "lineageDetails", Map.of("pipeline", Map.of("id", pipelineId, "type", Entity.PIPELINE)));
     }
+    putLineageEdge(edge);
+  }
+
+  private void addColumnLineageEdge(Table from, String fromColumn, Table to, String toColumn)
+      throws Exception {
+    Map<String, Object> mapping =
+        Map.of(
+            "fromColumns",
+            List.of(columnFqn(from, fromColumn)),
+            "toColumn",
+            columnFqn(to, toColumn));
+    putLineageEdge(
+        Map.of(
+            "fromEntity", Map.of("id", from.getId().toString(), "type", Entity.TABLE),
+            "toEntity", Map.of("id", to.getId().toString(), "type", Entity.TABLE),
+            "lineageDetails", Map.of("columnsLineage", List.of(mapping))));
+  }
+
+  private void putLineageEdge(Map<String, Object> edge) throws Exception {
     String body = OBJECT_MAPPER.writeValueAsString(Map.of("edge", edge));
     HttpRequest request =
         HttpRequest.newBuilder()

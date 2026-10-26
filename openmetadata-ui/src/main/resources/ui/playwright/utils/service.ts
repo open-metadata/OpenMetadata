@@ -18,6 +18,7 @@ import { waitForResponseWithStatus } from './waitHelpers';
 // The child-asset list the AI-mode service details page reads, by service category.
 const SERVICE_CHILD_LIST_PATHS: Record<string, string> = {
   databaseServices: 'databases',
+  dashboardServices: 'dashboards',
   storageServices: 'containers',
   driveServices: 'drives/directories',
 };
@@ -72,9 +73,10 @@ export const visitServiceDetailsPage = async (
 };
 
 /** The AI-mode service details page's child-asset list request, optionally narrowed by its params. */
-export const waitForServiceChildList = (
+/** A service's asset list request at `/api/v1/<path>`, optionally narrowed by its params. */
+const waitForServiceAssetList = (
   page: Page,
-  category: string,
+  path: string,
   serviceFqn: string,
   matchesParams: (params: URLSearchParams) => boolean = () => true
 ): Promise<Response> =>
@@ -85,7 +87,7 @@ export const waitForServiceChildList = (
 
       return (
         response.request().method() === 'GET' &&
-        url.pathname === `/api/v1/${SERVICE_CHILD_LIST_PATHS[category]}` &&
+        url.pathname === `/api/v1/${path}` &&
         url.searchParams.get('service') === serviceFqn &&
         matchesParams(url.searchParams)
       );
@@ -93,16 +95,55 @@ export const waitForServiceChildList = (
     200
   );
 
+export const waitForServiceChildList = (
+  page: Page,
+  category: string,
+  serviceFqn: string,
+  matchesParams?: (params: URLSearchParams) => boolean
+): Promise<Response> =>
+  waitForServiceAssetList(
+    page,
+    SERVICE_CHILD_LIST_PATHS[category],
+    serviceFqn,
+    matchesParams
+  );
+
 /**
- * Opens a service on the AI-mode details page (`/connections/<category>/<fqn>[/<tab>]`) and waits
- * for its child-asset list. The caller puts the page in AI mode first (`enableAiAppMode`).
+ * Opens one of the AI-mode service page's secondary asset tabs (a dashboard service's data
+ * models, a drive service's files or spreadsheets) and waits for the list that tab requests.
+ */
+export const openAiModeServiceAssetTab = async (
+  page: Page,
+  {
+    tabName,
+    listPath,
+    serviceFqn,
+  }: { tabName: string; listPath: string; serviceFqn: string }
+) => {
+  const list = waitForServiceAssetList(page, listPath, serviceFqn);
+  // The tab's name carries its count once that loads ("Files 2"), so match the label alone.
+  await page
+    .getByRole('tab', { name: new RegExp(`^${tabName}( \\d+)?$`) })
+    .click();
+  await list;
+  await waitForAllLoadersToDisappear(page);
+};
+
+/**
+ * Opens a service on the AI-mode details page (`/connections/<category>/<fqn>/<tab>`) and, on the
+ * data-assets tab, waits for its child-asset list. The caller puts the page in AI mode first
+ * (`enableAiAppMode`).
+ *
+ * The tab defaults to `dataAssets` rather than the page's default tab: that is the first tab in
+ * `order`, and a plugin can contribute tabs ahead of the built-ins (Collate puts Summary first), so
+ * a bare service URL does not land on the data assets everywhere.
  */
 export const visitAiModeServiceDetailsPage = async (
   page: Page,
   {
     category,
     fqn,
-    tab = '',
+    tab = 'dataAssets',
     query = '',
     include = 'non-deleted',
   }: {
@@ -113,16 +154,18 @@ export const visitAiModeServiceDetailsPage = async (
     include?: string;
   }
 ) => {
-  const list = waitForServiceChildList(
-    page,
-    category,
-    fqn,
-    (params) => params.get('include') === include
-  );
+  // Only the data-assets tab requests the list; another tab, or the tab a gated deep link falls
+  // back to, may never send it.
+  const list =
+    tab === 'dataAssets' &&
+    waitForServiceChildList(
+      page,
+      category,
+      fqn,
+      (params) => params.get('include') === include
+    );
   await page.goto(
-    `/connections/${category}/${encodeURIComponent(fqn)}${
-      tab ? `/${tab}` : ''
-    }${query}`,
+    `/connections/${category}/${encodeURIComponent(fqn)}/${tab}${query}`,
     { waitUntil: 'domcontentloaded' }
   );
   await list;

@@ -12,11 +12,18 @@
  */
 
 import {
+  Autocomplete,
+  Box,
+  ButtonUtility,
+  Divider,
+  Select,
+  TextArea,
+} from '@openmetadata/ui-core-components';
+import {
   ArrowUpRight,
   Bold01,
   BookOpen02,
   Check,
-  ChevronDown,
   Code01,
   Cube01,
   Globe02,
@@ -27,12 +34,13 @@ import {
   Sliders02,
   Tag01,
   Type01,
+  XClose,
 } from '@openmetadata/ui-core-components/icons';
-import Select from 'antd/lib/select';
 import { isEmpty, startCase, toString } from 'lodash';
 import {
   CSSProperties,
   FocusEvent,
+  Key,
   KeyboardEvent,
   lazy,
   MouseEvent,
@@ -48,6 +56,9 @@ import type { RenderEditCellProps } from 'react-data-grid';
 import { createPortal } from 'react-dom';
 import { withSuspenseFallback } from '../../components/AppRouter/withSuspenseFallback';
 import Certification from '../../components/Certification/Certification.component';
+import ClassificationTagPicker, {
+  ClassificationTagPickerProps,
+} from '../../components/common/ClassificationTagPicker/ClassificationTagPicker';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
 import CsvCellPreview from '../../components/common/EntityImport/CsvCellPreview/CsvCellPreview.component';
@@ -73,6 +84,7 @@ import {
 import SchemaModal from '../../components/Modals/SchemaModal/SchemaModal';
 import { ENTITY_TYPE_OPTIONS } from '../../constants/BulkImport.constant';
 import {
+  PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   ROUTES,
@@ -83,15 +95,19 @@ import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Language } from '../../generated/entity/data/metric';
 import { Config, EntityReference, Type } from '../../generated/entity/type';
-import { TagLabel, TagSource } from '../../generated/type/tagLabel';
-import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../generated/type/tagLabel';
 import { fetchDataProductsElasticSearch } from '../../rest/dataProductAPI';
 import { getDomainList } from '../../rest/domainAPI';
 import { getGlossariesList, getGlossaryTerms } from '../../rest/glossaryAPI';
 import { getTypeByFQN } from '../../rest/metadataTypeAPI';
 import { getMetrics } from '../../rest/metricsAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getAllClassifications, getTags } from '../../rest/tagAPI';
+import { getTags } from '../../rest/tagAPI';
 import { formatTeamsResponse, formatUsersResponse } from '../APIUtils';
 import {
   getCustomPropertyReferenceSearchIndex,
@@ -101,7 +117,11 @@ import { getEntityName } from '../EntityNameUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
 import { getTermQuery } from '../SearchPureUtils';
-import { removeOuterEscapes } from '../StringUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+  removeOuterEscapes,
+} from '../StringUtils';
 import { isSystemClassificationTagFqn } from './CSV.utils';
 import {
   convertCustomPropertyStringToEntityExtension,
@@ -796,31 +816,32 @@ const loadBulkEditDataProductOptions = async (searchText: string) => {
 };
 
 const loadBulkEditTagOptions = async (searchText: string) => {
-  const [classifications, tags] = await Promise.all([
-    getAllClassifications({ limit: 1 }),
-    getTags({ disabled: false, limit: 50 }),
-  ]);
-
-  if (!classifications.data.length && !tags.data.length) {
-    return [];
-  }
-
-  return getFilteredBulkEditPickerOptions(
-    tags.data
-      .filter((tag) => !isSystemClassificationTagFqn(getBulkEditTagFqn(tag)))
-      .map((tag) =>
-        getBulkEditPickerOption({
-          color: tag.style?.color,
-          description: tag.description,
-          displayName: tag.displayName,
-          fullyQualifiedName: tag.fullyQualifiedName,
-          kind: 'tag',
-          name: tag.name,
+  // Search the catalog rather than filtering only the first page of tags.
+  const tags = searchText.trim()
+    ? (
+        await searchQuery({
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_LARGE,
+          query: `*${getEncodedFqn(escapeESReservedCharacters(searchText))}*`,
+          queryFilter: getTermQuery({ disabled: 'false' }),
+          searchIndex: SearchIndex.TAG,
         })
-      )
-      .filter((option): option is BulkEditPickerOption => Boolean(option)),
-    searchText
-  );
+      ).hits.hits.map(({ _source }) => _source)
+    : (await getTags({ disabled: false, limit: PAGE_SIZE_LARGE })).data;
+
+  return tags
+    .filter((tag) => !isSystemClassificationTagFqn(getBulkEditTagFqn(tag)))
+    .map((tag) =>
+      getBulkEditPickerOption({
+        color: tag.style?.color,
+        description: tag.description,
+        displayName: tag.displayName,
+        fullyQualifiedName: tag.fullyQualifiedName,
+        kind: 'tag',
+        name: tag.name,
+      })
+    )
+    .filter((option): option is BulkEditPickerOption => Boolean(option));
 };
 
 const loadBulkEditGlossaryTermOptions = async (searchText: string) => {
@@ -1133,6 +1154,8 @@ const InlineBulkEditReferencePickerEditor = ({
 
   const selectedSet = useMemo(() => new Set(draft), [draft]);
   const hasOptions = options.length > 0;
+  // A draft can outlive a search with no matches; keep Update reachable.
+  const showFooter = options.length + draft.length > 0;
 
   const handleToggleOption = (option: BulkEditPickerOption) => {
     setDraft((previous) =>
@@ -1156,6 +1179,7 @@ const InlineBulkEditReferencePickerEditor = ({
             className={`bulk-edit-picker-option${
               isSelected ? ' selected' : ''
             }`}
+            data-testid={`bulk-edit-picker-option-${option.value}`}
             key={option.value}
             type="button"
             onClick={() => handleToggleOption(option)}>
@@ -1243,7 +1267,7 @@ const InlineBulkEditReferencePickerEditor = ({
               optionsOrEmptyContent
             )}
           </div>
-          {hasOptions && (
+          {showFooter && (
             <div className="bulk-edit-picker-footer">
               <button
                 className="bulk-edit-picker-clear"
@@ -1470,37 +1494,69 @@ const InlineCustomPropertiesEditor = ({
     );
     const selectedValues = getCustomPropertyEnumValues(propertyValue);
     const isMultiSelect = isCustomPropertyEnumMultiSelect(customProperty);
-    const options = enumValues.map((option) => ({
-      label: option,
-      value: option,
-    }));
+    const items = enumValues.map((option) => ({ id: option, label: option }));
 
-    const handleEnumChange = (selectedValue?: string | string[]) => {
-      let nextValue: string[];
-      if (Array.isArray(selectedValue)) {
-        nextValue = selectedValue;
-      } else if (selectedValue) {
-        nextValue = [selectedValue];
-      } else {
-        nextValue = [];
-      }
-      handleUpdateDraft(customProperty.name, nextValue);
-    };
+    // Single-value enums need to swap one value for another, which a chip
+    // Autocomplete refuses while it holds a value; a Select replaces natively.
+    if (!isMultiSelect) {
+      const selectedValue = selectedValues[0] ?? null;
+
+      return (
+        <Box align="center" gap={1}>
+          <Select
+            aria-label={getEntityName(customProperty)}
+            className="bulk-edit-custom-property-enum-select tw:flex-1"
+            data-testid={`${customProperty.name}-enum-select`}
+            items={items}
+            placeholder={t('label.enum-value-plural')}
+            popoverClassName="bulk-edit-custom-property-select-dropdown"
+            value={selectedValue}
+            onChange={(key) =>
+              handleUpdateDraft(
+                customProperty.name,
+                key === null ? [] : [String(key)]
+              )
+            }>
+            {(item) => <Select.Item id={item.id} label={item.label} />}
+          </Select>
+          {selectedValue && (
+            <ButtonUtility
+              aria-label={t('label.clear')}
+              color="tertiary"
+              data-testid={`${customProperty.name}-enum-clear`}
+              icon={<XClose size={14} />}
+              onClick={() => handleUpdateDraft(customProperty.name, [])}
+            />
+          )}
+        </Box>
+      );
+    }
+
+    const handleInserted = (key: Key) =>
+      handleUpdateDraft(customProperty.name, [
+        ...new Set([...selectedValues, String(key)]),
+      ]);
+
+    const handleCleared = (key: Key) =>
+      handleUpdateDraft(
+        customProperty.name,
+        selectedValues.filter((value) => value !== String(key))
+      );
 
     return (
-      <Select
-        allowClear
-        showSearch
+      <Autocomplete
+        multiple
+        aria-label={getEntityName(customProperty)}
         className="bulk-edit-custom-property-enum-select"
-        getPopupContainer={() => document.body}
-        mode={isMultiSelect ? 'multiple' : undefined}
-        optionFilterProp="label"
-        options={options}
+        data-testid={`${customProperty.name}-enum-select`}
+        items={items}
         placeholder={t('label.enum-value-plural')}
-        popupClassName="bulk-edit-custom-property-select-dropdown"
-        value={isMultiSelect ? selectedValues : selectedValues[0]}
-        onChange={handleEnumChange}
-      />
+        popoverClassName="bulk-edit-custom-property-select-dropdown"
+        selectedItems={items.filter((item) => selectedValues.includes(item.id))}
+        onItemCleared={handleCleared}
+        onItemInserted={handleInserted}>
+        {(item) => <Autocomplete.Item id={item.id} label={item.label} />}
+      </Autocomplete>
     );
   };
 
@@ -1704,7 +1760,7 @@ const InlineCustomPropertiesEditor = ({
               ) : (
                 customProperties.map((customProperty) => {
                   const propertyLabel =
-                    customProperty.displayName ??
+                    customProperty.displayName ||
                     startCase(customProperty.name);
 
                   return (
@@ -1913,7 +1969,7 @@ const InlineDescriptionEditor = ({
     onComplete(draft);
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       event.preventDefault();
       onCancel();
@@ -1929,73 +1985,70 @@ const InlineDescriptionEditor = ({
 
   return (
     <KeyDownStopPropagationWrapper keys={['Enter', 'Escape', 'Tab']}>
-      <div
-        className="bulk-edit-description-editor"
+      <Box
+        className="bulk-edit-description-editor tw:z-10 tw:gap-2.5 tw:px-3.5 tw:pt-2.5 tw:pb-3"
         data-testid="bulk-edit-description-editor"
+        direction="col"
         role="presentation"
         onBlur={handleBlur}>
-        <div className="bulk-edit-description-editor-toolbar">
-          <button
-            aria-label={t('label.bold')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyInlineFormat('**')}
-            onMouseDown={handleToolbarMouseDown}>
-            <Bold01 size={16} />
-          </button>
-          <button
-            aria-label={t('label.italic')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyInlineFormat('_')}
-            onMouseDown={handleToolbarMouseDown}>
-            <Italic01 size={16} />
-          </button>
-          <button
-            aria-label={t('label.bulleted-list')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyLineFormat(() => '- ')}
-            onMouseDown={handleToolbarMouseDown}>
-            <List size={16} />
-          </button>
-          <button
-            aria-label={t('label.numbered-list')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyLineFormat((index) => `${index + 1}. `)}
-            onMouseDown={handleToolbarMouseDown}>
-            <span className="bulk-edit-description-editor-numbered-icon">
-              1.
-            </span>
-          </button>
-          <button
-            aria-label={t('label.code')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyInlineFormat('`')}
-            onMouseDown={handleToolbarMouseDown}>
-            <Code01 size={16} />
-          </button>
-          <span className="bulk-edit-description-editor-separator" />
-          <button
-            aria-label={t('label.clear-formatting')}
-            className="bulk-edit-description-editor-button"
-            type="button"
+        <Box
+          align="center"
+          className="bulk-edit-description-editor-toolbar tw:pb-2"
+          gap={1}>
+          {[
+            {
+              label: 'label.bold',
+              icon: Bold01,
+              onClick: () => applyInlineFormat('**'),
+            },
+            {
+              label: 'label.italic',
+              icon: Italic01,
+              onClick: () => applyInlineFormat('_'),
+            },
+            {
+              label: 'label.bulleted-list',
+              icon: List,
+              onClick: () => applyLineFormat(() => '- '),
+            },
+            {
+              label: 'label.numbered-list',
+              icon: <span className="tw:text-xs tw:font-semibold">1.</span>,
+              onClick: () => applyLineFormat((index) => `${index + 1}. `),
+            },
+            {
+              label: 'label.code',
+              icon: Code01,
+              onClick: () => applyInlineFormat('`'),
+            },
+          ].map(({ label, icon, onClick }) => (
+            <ButtonUtility
+              color="tertiary"
+              icon={icon}
+              key={label}
+              tooltip={t(label)}
+              onClick={onClick}
+              onMouseDown={handleToolbarMouseDown}
+            />
+          ))}
+          <Divider className="tw:mx-2 tw:h-5" orientation="vertical" />
+          <ButtonUtility
+            color="tertiary"
+            icon={Type01}
+            tooltip={t('label.clear-formatting')}
             onClick={clearFormatting}
-            onMouseDown={handleToolbarMouseDown}>
-            <Type01 size={16} />
-          </button>
-        </div>
-        <textarea
+            onMouseDown={handleToolbarMouseDown}
+          />
+        </Box>
+        <TextArea
           aria-label={t('label.description')}
-          className="bulk-edit-description-editor-textarea"
-          ref={textareaRef}
+          textAreaClassName="bulk-edit-description-editor-textarea"
+          textAreaRef={textareaRef}
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={setDraft}
           onKeyDown={handleKeyDown}
         />
-      </div>
+      </Box>
     </KeyDownStopPropagationWrapper>
   );
 };
@@ -2025,6 +2078,44 @@ interface CSVEditorContext {
 }
 
 type CSVEditorFactory = (ctx: CSVEditorContext) => CSVCellEditor;
+
+// Grid enum cells open their list straight away, like the inline editors
+// beside them; the popover keeps the grid's custom-editor class so the
+// grid's key handling leaves typing inside the list alone. Closing the list
+// ends the edit: re-picking the current value fires no selection change, so
+// without this the cell would stay in edit mode.
+const renderGridEnumSelect = ({
+  ariaLabel,
+  options = [],
+  testId,
+  value,
+  onChange,
+  onDismiss,
+}: {
+  ariaLabel: string;
+  options?: Array<{ label: string; value: string }>;
+  testId: string;
+  value: string;
+  onChange: (value: string) => void;
+  onDismiss: () => void;
+}) => (
+  <Select
+    // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
+    autoFocus
+    defaultOpen
+    aria-label={ariaLabel}
+    className="react-grid-select-dropdown"
+    data-testid={testId}
+    items={options.map((option) => ({ id: option.value, label: option.label }))}
+    popoverClassName="react-grid-select-dropdown"
+    size="sm"
+    value={value || null}
+    // A cleared selection reports null; keep the cell empty rather than "null".
+    onChange={(key) => onChange(key === null ? '' : String(key))}
+    onOpenChange={(isOpen) => !isOpen && onDismiss()}>
+    {(item) => <Select.Item id={item.id} label={item.label} />}
+  </Select>
+);
 
 const getCsvOwnerEditor: CSVEditorFactory = ({
   column,
@@ -2087,6 +2178,20 @@ const getCsvOwnerEditor: CSVEditorFactory = ({
   };
 };
 
+// The modal's focus scope restores focus to the cell node rdg replaced while
+// editing, which leaves focus on <body> and breaks arrow-key navigation.
+// Focus the cell right away, so the next key press is not lost, and again once
+// the scope's own restore has run.
+const focusActiveGridCell = () => {
+  const focusCell = () =>
+    document
+      .querySelector<HTMLElement>('.rdg-cell[aria-selected="true"]')
+      ?.focus();
+
+  focusCell();
+  requestAnimationFrame(() => requestAnimationFrame(focusCell));
+};
+
 const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
   if (options.usePlainTextEditor) {
     return ({
@@ -2126,6 +2231,11 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
     const value = row[column.key];
     const handleSave = async (description: string) => {
       onRowChange({ ...row, [column.key]: description }, true);
+      focusActiveGridCell();
+    };
+    const handleCancel = () => {
+      onClose(false);
+      focusActiveGridCell();
     };
 
     return (
@@ -2136,7 +2246,7 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
           header="Edit Description"
           placeholder="Description"
           value={value}
-          onCancel={() => onClose(false)}
+          onCancel={handleCancel}
           onSave={handleSave}
         />
       </>
@@ -2144,84 +2254,169 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
   };
 };
 
-const getCsvTagsEditor: CSVEditorFactory = ({ entityType, options }) => {
-  if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
-    return getInlineBulkEditReferencePickerEditor('tags');
-  }
-
-  return ({
-    row,
-    rowIdx,
-    onRowChange,
-    onClose,
-    column,
-  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
-    useMultiContainerFocusTrap({
-      containers: [containerRef.current, dropdownContainerRef.current],
-      active: true,
-    });
-    useEditCellHeightReporter(
-      containerRef,
-      rowIdx,
-      options.onEditCellHeightChange
-    );
-
-    const tags = row[column.key]
-      ? row[column.key]?.split(';').map(
-          (tag: string) =>
-            ({
-              tagFQN: tag,
-              source: TagSource.Classification,
-              name: Fqn.split(tag).pop(),
-            } as TagLabel)
-        )
-      : undefined;
-
-    const handleChange = (tags: TagLabel[]) => {
-      onRowChange({
-        ...row,
-        [column.key]: tags.map((tag) => tag.tagFQN).join(';'),
-      });
-    };
-
-    return (
-      <KeyDownStopPropagationWrapper>
-        <div ref={containerRef}>
-          <InlineEdit
-            onCancel={() => onClose(false)}
-            onSave={() => onClose(true)}>
-            <TagSuggestion
-              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
-              autoFocus
-              dropdownContainerRef={dropdownContainerRef}
-              selectProps={{
-                className: 'react-grid-select-dropdown',
-                getPopupContainer: () => document.body,
-                size: 'small',
-              }}
-              value={tags}
-              onChange={handleChange}
-            />
-          </InlineEdit>
-        </div>
-      </KeyDownStopPropagationWrapper>
-    );
-  };
-};
-
+const CSV_TAGS_PICKER_TESTID = 'csv-tags-picker';
 const CSV_GLOSSARY_PICKER_TESTID = 'csv-glossary-terms-picker';
 // Matches react-aria's own trigger-to-popover gap.
 const CSV_PICKER_POPOVER_GAP = 8;
-// Focus the popover's search box: the in-cell trigger has nothing to type into.
-const CSV_PICKER_FOCUS_TRAP = {
-  initialFocus: `[data-testid="${CSV_GLOSSARY_PICKER_TESTID}-popover"] input`,
-};
 
-// CSV stores glossary terms as a `;`-joined list of FQNs.
+// CSV stores tags and glossary terms as a `;`-joined list of FQNs.
+const csvValueToClassificationTags = (value: string): TagLabel[] =>
+  value
+    ? value.split(';').map((tagFQN) => ({
+        tagFQN,
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+        name: Fqn.split(tagFQN).pop(),
+      }))
+    : [];
+
 const csvValueToGlossaryTags = (value: string): TagLabel[] =>
   fqnsToGlossaryTags(value ? value.split(';') : []);
+
+type CsvPickerProps = Pick<
+  ClassificationTagPickerProps,
+  | 'isOpen'
+  | 'className'
+  | 'data-testid'
+  | 'offset'
+  | 'renderTrigger'
+  | 'value'
+  | 'onChange'
+  | 'onOpenChange'
+>;
+
+interface CsvPickerCellEditorProps
+  extends RenderEditCellProps<Record<string, unknown>, unknown> {
+  options: CSVEditorOptions;
+  testId: string;
+  toTags: (value: string) => TagLabel[];
+  renderPicker: (props: CsvPickerProps) => ReactNode;
+}
+
+const CsvPickerCellEditor = ({
+  row,
+  rowIdx,
+  onRowChange,
+  onClose,
+  column,
+  options,
+  testId,
+  toTags,
+  renderPicker,
+}: CsvPickerCellEditorProps) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLDivElement | null>(null);
+  const [popoverEl, setPopoverEl] = useState<HTMLElement | null>(null);
+  const [popoverOffset, setPopoverOffset] = useState(CSV_PICKER_POPOVER_GAP);
+  const popoverSelector = `[data-testid="${testId}-popover"]`;
+
+  // The popover is portaled and mounts a frame late, so poll until it is there.
+  useEffect(() => {
+    let frame = 0;
+    const findPopover = () => {
+      const el = document.querySelector<HTMLElement>(popoverSelector);
+      if (el) {
+        setPopoverEl(el);
+      } else {
+        frame = requestAnimationFrame(findPopover);
+      }
+    };
+    findPopover();
+
+    return () => cancelAnimationFrame(frame);
+  }, [popoverSelector]);
+
+  // Hang the popover off the cell: its own gap would overlap the taller row.
+  useLayoutEffect(() => {
+    const trigger = triggerRef.current;
+    const cell = trigger?.closest('.rdg-cell');
+
+    if (trigger && cell) {
+      setPopoverOffset(
+        cell.getBoundingClientRect().bottom -
+          trigger.getBoundingClientRect().bottom +
+          CSV_PICKER_POPOVER_GAP
+      );
+    }
+  }, []);
+
+  // Focus the popover's search box: the in-cell trigger has nothing to type into.
+  const focusTrapOptions = useMemo(
+    () => ({ initialFocus: `${popoverSelector} input` }),
+    [popoverSelector]
+  );
+
+  useMultiContainerFocusTrap({
+    containers: [containerRef.current, popoverEl],
+    active: true,
+    options: focusTrapOptions,
+  });
+
+  useEditCellHeightReporter(
+    containerRef,
+    rowIdx,
+    options.onEditCellHeightChange
+  );
+
+  const value = toString(row[column.key] ?? '');
+  const tags = useMemo(() => toTags(value), [toTags, value]);
+
+  const handleChange = (selected: TagLabel[]) => {
+    onRowChange({
+      ...row,
+      [column.key]: selected.map((tag) => tag.tagFQN).join(';'),
+    });
+  };
+
+  return (
+    // No save/cancel: each toggle is written to the row, so closing is enough.
+    // No height: the row is measured from this container, so it must not stretch.
+    <div
+      ref={containerRef}
+      role="presentation"
+      onKeyDown={onKeyDownStopPropagation}>
+      {renderPicker({
+        isOpen: true,
+        // Fill the cell; the wrapper is inline-block, which would shrink the trigger.
+        className: 'tw:block tw:w-full',
+        'data-testid': testId,
+        offset: popoverOffset,
+        // A custom trigger moves the search box and footer into the popover.
+        renderTrigger: () => (
+          <div
+            className="bulk-edit-custom-property-cell-trigger"
+            data-testid={testId}
+            ref={triggerRef}>
+            <CsvCellPreview column={column.key} value={value} />
+          </div>
+        ),
+        value: tags,
+        onChange: handleChange,
+        onOpenChange: (open) => !open && onClose(true, true),
+      })}
+    </div>
+  );
+};
+
+const getCsvTagsEditor: CSVEditorFactory = ({ options }) => {
+  // Commit the picker draft and close together so the CSV export sees the selected tags.
+  if (options.usePlainTextEditor) {
+    return getInlineBulkEditReferencePickerEditor('tags');
+  }
+
+  return (props: RenderEditCellProps<Record<string, unknown>, unknown>) => (
+    <CsvPickerCellEditor
+      {...props}
+      options={options}
+      renderPicker={(pickerProps) => (
+        <ClassificationTagPicker {...pickerProps} />
+      )}
+      testId={CSV_TAGS_PICKER_TESTID}
+      toTags={csvValueToClassificationTags}
+    />
+  );
+};
 
 const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
   column,
@@ -2236,101 +2431,15 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     return getInlineBulkEditReferencePickerEditor('glossaryTerms');
   }
 
-  return ({
-    row,
-    rowIdx,
-    onRowChange,
-    onClose,
-    column,
-  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const triggerRef = useRef<HTMLDivElement | null>(null);
-    const [popoverEl, setPopoverEl] = useState<HTMLElement | null>(null);
-    const [popoverOffset, setPopoverOffset] = useState(CSV_PICKER_POPOVER_GAP);
-
-    // The popover is portaled and mounts a frame late, so poll until it is there.
-    useEffect(() => {
-      let frame = 0;
-      const findPopover = () => {
-        const el = document.querySelector<HTMLElement>(
-          `[data-testid="${CSV_GLOSSARY_PICKER_TESTID}-popover"]`
-        );
-        if (el) {
-          setPopoverEl(el);
-        } else {
-          frame = requestAnimationFrame(findPopover);
-        }
-      };
-      findPopover();
-
-      return () => cancelAnimationFrame(frame);
-    }, []);
-
-    // Hang the popover off the cell: its own gap would overlap the taller row.
-    useLayoutEffect(() => {
-      const trigger = triggerRef.current;
-      const cell = trigger?.closest('.rdg-cell');
-
-      if (trigger && cell) {
-        setPopoverOffset(
-          cell.getBoundingClientRect().bottom -
-            trigger.getBoundingClientRect().bottom +
-            CSV_PICKER_POPOVER_GAP
-        );
-      }
-    }, []);
-
-    useMultiContainerFocusTrap({
-      containers: [containerRef.current, popoverEl],
-      active: true,
-      options: CSV_PICKER_FOCUS_TRAP,
-    });
-
-    useEditCellHeightReporter(
-      containerRef,
-      rowIdx,
-      options.onEditCellHeightChange
-    );
-
-    const value = toString(row[column.key] ?? '');
-    const terms = useMemo(() => csvValueToGlossaryTags(value), [value]);
-
-    const handleChange = (selected: TagLabel[]) => {
-      onRowChange({
-        ...row,
-        [column.key]: selected.map((term) => term.tagFQN).join(';'),
-      });
-    };
-
-    return (
-      // No save/cancel: each toggle is written to the row, so closing is enough.
-      // No height: the row is measured from this container, so it must not stretch.
-      <div
-        ref={containerRef}
-        role="presentation"
-        onKeyDown={onKeyDownStopPropagation}>
-        <GlossaryTermPicker
-          isOpen
-          // Fill the cell; the wrapper is inline-block, which would shrink the trigger.
-          className="tw:block tw:w-full"
-          data-testid={CSV_GLOSSARY_PICKER_TESTID}
-          offset={popoverOffset}
-          // A custom trigger moves the search box and footer into the popover.
-          renderTrigger={() => (
-            <div
-              className="bulk-edit-custom-property-cell-trigger"
-              data-testid={CSV_GLOSSARY_PICKER_TESTID}
-              ref={triggerRef}>
-              <CsvCellPreview column={column.key} value={value} />
-            </div>
-          )}
-          value={terms}
-          onChange={handleChange}
-          onOpenChange={(open) => !open && onClose(true, true)}
-        />
-      </div>
-    );
-  };
+  return (props: RenderEditCellProps<Record<string, unknown>, unknown>) => (
+    <CsvPickerCellEditor
+      {...props}
+      options={options}
+      renderPicker={(pickerProps) => <GlossaryTermPicker {...pickerProps} />}
+      testId={CSV_GLOSSARY_PICKER_TESTID}
+      toTags={csvValueToGlossaryTags}
+    />
+  );
 };
 
 const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
@@ -2349,28 +2458,17 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
 
       return (
         <KeyDownStopPropagationWrapper>
-          <Select
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
-            autoFocus
-            open
-            className="react-grid-select-dropdown bulk-edit-enum-select"
-            data-testid={`${column.key}-select`}
-            dropdownMatchSelectWidth={false}
-            dropdownStyle={{ minWidth: 220 }}
-            getPopupContainer={() => document.body}
-            menuItemSelectedIcon={<Check size={16} />}
-            optionFilterProp="label"
-            options={
+          {renderGridEnumSelect({
+            ariaLabel: startCase(column.key),
+            options:
               entityBulkEditConfigClassBase.getEnumColumnOptions(entityType)[
                 column.key
-              ]
-            }
-            popupClassName="bulk-edit-enum-select-dropdown"
-            size="small"
-            suffixIcon={<ChevronDown size={16} />}
-            value={value || undefined}
-            onChange={handleChange}
-          />
+              ],
+            testId: `${column.key}-select`,
+            value,
+            onChange: handleChange,
+            onDismiss: () => onClose(false),
+          })}
         </KeyDownStopPropagationWrapper>
       );
     };
@@ -2395,10 +2493,12 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
 
     // The popover takes focus on open, so its keydowns bubble (via the portal)
     // to the rdg EditCell, which closes the editor on Enter / navigates on Tab.
+    // The trigger fills the cell, so the popover opens below the cell.
     return (
-      <KeyDownStopPropagationWrapper>
+      <KeyDownStopPropagationWrapper className="tw:h-full">
         <TierCard
           open
+          className="tw:flex tw:size-full"
           currentTier={value}
           updateTier={handleChange}
           onClose={() => onClose(false)}>
@@ -2429,15 +2529,20 @@ const getCsvCertificationEditor: CSVEditorFactory =
       );
     };
 
+    // The search box takes focus on open; keep its keydowns from the rdg EditCell.
+    // The trigger fills the cell, so the popover opens below the cell.
     return (
-      <Certification
-        permission
-        currentCertificate={value}
-        popoverProps={{ open: true }}
-        onCertificationUpdate={handleChange}
-        onClose={() => onClose(false)}>
-        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-      </Certification>
+      <KeyDownStopPropagationWrapper className="tw:h-full">
+        <Certification
+          permission
+          className="tw:flex tw:size-full"
+          currentCertificate={value}
+          popoverProps={{ open: true }}
+          onCertificationUpdate={handleChange}
+          onClose={() => onClose(false)}>
+          <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        </Certification>
+      </KeyDownStopPropagationWrapper>
     );
   };
 
@@ -2614,9 +2719,8 @@ const getCsvEntityTypeEditor: CSVEditorFactory =
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const value = row[column.key];
-    const handleChange = (typeValue: string) => {
-      onRowChange({ ...row, [column.key]: typeValue });
-    };
+    const handleChange = (typeValue: string) =>
+      onRowChange({ ...row, [column.key]: typeValue }, true);
     const translatedEntityTypeOptions = () =>
       ENTITY_TYPE_OPTIONS.map((opt) => ({
         ...opt,
@@ -2625,21 +2729,14 @@ const getCsvEntityTypeEditor: CSVEditorFactory =
 
     return (
       <KeyDownStopPropagationWrapper>
-        <InlineEdit
-          onCancel={() => onClose(false)}
-          onSave={() => onClose(true)}>
-          <Select
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
-            autoFocus
-            open
-            data-testid="entity-type-select"
-            options={translatedEntityTypeOptions()}
-            size="small"
-            style={{ width: '155px' }}
-            value={value}
-            onChange={handleChange}
-          />
-        </InlineEdit>
+        {renderGridEnumSelect({
+          ariaLabel: startCase(column.key),
+          options: translatedEntityTypeOptions(),
+          testId: 'entity-type-select',
+          value: toString(value),
+          onChange: handleChange,
+          onDismiss: () => onClose(false),
+        })}
       </KeyDownStopPropagationWrapper>
     );
   };
@@ -2676,20 +2773,31 @@ const getCsvMultiSelectEditor: CSVEditorFactory = ({
         <InlineEdit
           onCancel={() => onClose(false)}
           onSave={() => onClose(true)}>
-          <Select
+          <Autocomplete
+            allowsCreation
             // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
             autoFocus
-            open
+            hideDropdown
+            multiple
+            aria-label={startCase(column.key)}
             className="react-grid-select-dropdown"
-            getPopupContainer={() => document.body}
-            mode="tags"
+            icon={null}
+            items={[]}
             placeholder={t('label.add-entity', {
               entity: startCase(column.key),
             })}
-            size="small"
-            value={selected}
-            onChange={handleChange}
-          />
+            selectedItems={selected.map((item) => ({ id: item, label: item }))}
+            onItemCleared={(key) =>
+              handleChange(selected.filter((item) => item !== String(key)))
+            }
+            onItemInserted={(key) => {
+              const value = String(key).trim();
+              if (value) {
+                handleChange([...new Set([...selected, value])]);
+              }
+            }}>
+            {null}
+          </Autocomplete>
         </InlineEdit>
       </KeyDownStopPropagationWrapper>
     );
@@ -2746,28 +2854,17 @@ const getCsvEnumEditor: CSVEditorFactory =
 
     return (
       <KeyDownStopPropagationWrapper>
-        <Select
-          // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
-          autoFocus
-          open
-          className="react-grid-select-dropdown bulk-edit-enum-select"
-          data-testid={`${column.key}-select`}
-          dropdownMatchSelectWidth={false}
-          dropdownStyle={{ minWidth: 240 }}
-          getPopupContainer={() => document.body}
-          menuItemSelectedIcon={<Check size={16} />}
-          optionFilterProp="label"
-          options={
+        {renderGridEnumSelect({
+          ariaLabel: startCase(column.key),
+          options:
             entityBulkEditConfigClassBase.getEnumColumnOptions(entityType)[
               column.key
-            ]
-          }
-          popupClassName="bulk-edit-enum-select-dropdown"
-          size="small"
-          suffixIcon={<ChevronDown size={16} />}
-          value={value || undefined}
-          onChange={handleChange}
-        />
+            ],
+          testId: `${column.key}-select`,
+          value: toString(value),
+          onChange: handleChange,
+          onDismiss: () => onClose(false),
+        })}
       </KeyDownStopPropagationWrapper>
     );
   };

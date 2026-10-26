@@ -44,6 +44,8 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+    .EmptyPlaceholder,
   Badge: jest.fn(({ children }: { children?: React.ReactNode }) => (
     <span>{children}</span>
   )),
@@ -265,22 +267,6 @@ jest.mock('../ContractStatusAlert/ContractStatusAlert', () => {
   };
 });
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return function MockErrorPlaceHolder({
-    type,
-    children,
-  }: {
-    type?: string;
-    children?: React.ReactNode;
-  }) {
-    return (
-      <div data-testid="error-placeholder" data-type={type}>
-        {children}
-      </div>
-    );
-  };
-});
-
 jest.mock('../ContractExecutionChart/ContractExecutionChart.component', () => {
   return function MockContractExecutionChart({
     contract,
@@ -317,15 +303,13 @@ jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
   return function MockContractViewSwitchTab({
     handleModeChange,
   }: {
-    handleModeChange: (e: { target: { value: DataContractMode } }) => void;
+    handleModeChange: (mode: DataContractMode) => void;
   }) {
     return (
       <div data-testid="contract-view-switch-tab">
         <button
           data-testid="switch-to-yaml"
-          onClick={() =>
-            handleModeChange({ target: { value: DataContractMode.YAML } })
-          }>
+          onClick={() => handleModeChange(DataContractMode.YAML)}>
           YAML
         </button>
       </div>
@@ -515,7 +499,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
     });
 
     it('should render contract details when contract is provided', async () => {
@@ -1172,7 +1160,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
     });
   });
 
@@ -1549,7 +1541,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
       expect(
         screen.getByText('No contract has been defined for this entity.')
       ).toBeInTheDocument();

@@ -13,16 +13,13 @@
 
 import React from 'react';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import WelcomeScreenGate from '../../MyData/WelcomeScreen/WelcomeScreenGate';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 import { RoutePosition } from '../../Settings/Applications/plugins/AppPlugin';
 import { PERSONAL_SPACE_ROUTES } from './personalSpace.constants';
 
 const PersonalSpaceGate = withSuspenseFallback(
   React.lazy(() => import('./PersonalSpaceGate/PersonalSpaceGate'))
-);
-
-const InboxPage = withSuspenseFallback(
-  React.lazy(() => import('./InboxPage/InboxPage'))
 );
 
 const MyData = withSuspenseFallback(
@@ -35,7 +32,20 @@ const InboxContent = withSuspenseFallback(
 
 const gatedInbox = (
   <PersonalSpaceGate>
-    <InboxPage myDataContent={<MyData />} triageContent={<InboxContent />} />
+    <InboxContent />
+  </PersonalSpaceGate>
+);
+
+// My Data is no longer an inbox tab: the inbox is Activity and Triage. Its own
+// route stays as a direct link to the page the user menu opens in the
+// personal-space modal; the AI landing page is `/`, not this route.
+// The welcome gate wraps the route element only: the modal's copy of My Data
+// must never show the first-login welcome screen.
+const gatedMyData = (
+  <PersonalSpaceGate>
+    <WelcomeScreenGate>
+      <MyData />
+    </WelcomeScreenGate>
   </PersonalSpaceGate>
 );
 
@@ -72,7 +82,7 @@ export const personalSpaceModule: AppModule = {
     },
     {
       path: PERSONAL_SPACE_ROUTES.MY_DATA,
-      element: gatedInbox,
+      element: gatedMyData,
       position: RoutePosition.APP,
     },
   ],

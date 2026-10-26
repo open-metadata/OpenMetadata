@@ -1,4 +1,8 @@
-FROM python:3.12-slim-trixie
+ARG BASE_IMAGE=python:3.12-slim-trixie
+FROM ${BASE_IMAGE}
+
+# gRPC ships a separate CA bundle that can lag behind OS distrust updates.
+ENV GRPC_DEFAULT_SSL_ROOTS_FILE_PATH=/etc/ssl/certs/ca-certificates.crt
 
 # The -slim base ships without curl/gnupg/ca-certificates, so bootstrap them
 # before configuring third-party apt repositories.
@@ -6,6 +10,12 @@ RUN apt-get -qq update \
     && apt-get -qq install -y --no-install-recommends \
          curl ca-certificates gnupg \
     && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=bind,source=ingestion/scripts/patch_python_seeds.py,target=/tmp/patch_python_seeds.py \
+    python -m pip download --no-cache-dir --no-deps --dest /tmp/python-pip "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" \
+    && python -m pip install --no-cache-dir --upgrade /tmp/python-pip/*.whl \
+    && python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" \
+    && python /tmp/patch_python_seeds.py /tmp/python-pip/pip-26.2.2-py3-none-any.whl \
+    && rm -rf /tmp/python-pip
 # apt-key was removed in Debian 13. The repo was also pointing at Debian 11
 # while the image was Debian 12 -- now matched to the actual base. The
 # debian/13 "prod" repo is signed with Microsoft's newer General GPG Signer
@@ -24,7 +34,6 @@ RUN dpkg --configure -a \
     && apt-get -qq install -y \
     build-essential \
     default-libmysqlclient-dev \
-    freetds-bin \
     freetds-dev \
     gcc \
     gnupg \
@@ -51,8 +60,6 @@ RUN dpkg --configure -a \
     # two in lockstep; trixie ships 2.3.12-2 for both, so the pins are dropped
     # rather than retargeted.
     odbcinst \
-    postgresql \
-    postgresql-contrib \
     tdsodbc \
     unixodbc \
     unixodbc-dev \
@@ -68,7 +75,7 @@ RUN dpkg --configure -a \
     && apt-get -qq install -y --only-upgrade \
          libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
          libpam0g libpam-modules libpam-modules-bin libpam-runtime \
-         curl libcurl4 libcurl3-gnutls libmariadb3 wget \
+         curl libcurl4 libcurl3-gnutls wget \
          perl perl-base libnss3 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -78,7 +85,7 @@ RUN curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
       | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
 RUN echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt/ trixie-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
     apt-get -qq update; \
-    apt-get -qq install --no-install-recommends -y libpq-dev postgresql-client postgresql-common postgresql postgresql-contrib; \
+    apt-get -qq install --no-install-recommends -y libpq-dev; \
     apt-get -qq autoremove -yqq --purge; \
     apt-get -qq clean && rm -rf /var/lib/apt/lists/*
 
@@ -142,7 +149,7 @@ ENV PATH="/home/openmetadata/.local/bin:${PATH}"
 
 # Upgrade interpreter-level build tools before dropping privileges so scanners do not retain
 # the vulnerable base copies (pip CVE-2025-8869/3219/6357/8643; setuptools CVE-2026-59890).
-RUN pip install --no-cache-dir --upgrade "pip>=26.2,<27" "setuptools>=83"
+RUN pip install --no-cache-dir --upgrade "setuptools>=83"
 
 USER openmetadata
 
@@ -174,21 +181,28 @@ RUN [ $(uname -m) = "x86_64" ] \
 # because the psycopg2-binary generates a architecture specific error
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
-RUN pip install psycopg2 mysqlclient==2.1.1
+RUN pip install psycopg2
+# pydoris declares mysqlclient, but the Doris connector runs pydoris on PyMySQL
+# (metadata/ingestion/source/database/doris/connection.py), so nothing imports the
+# C extension. Removing it lets the root layer below purge the MariaDB client libraries.
+RUN pip uninstall -y mysqlclient
 
-# Drop build-only packages that leaked into the runtime image. libmariadb-dev
-# and libmariadb-dev-compat are only needed to compile mysqlclient (done above);
+# Drop build-only packages that leaked into the runtime image. The MariaDB client
+# packages were only needed to compile mysqlclient, which was uninstalled above.
+# Debian reports every MariaDB server CVE against libmariadb3 and mariadb-common,
+# so keeping them would carry server CVEs into an image that has no server.
 # libunbound8 arrived as a transitive build dependency and nothing here resolves
-# DNS through it. Together they carry 10 CVEs the runtime does not need.
-# libmariadb3 and mariadb-common MUST stay -- mysqlclient links against them at
-# runtime. apt-get needs root, so switch back briefly -- USER openmetadata above
-# has no sudo access -- then restore the non-root user for the runtime image.
-#
-# Purging libmariadb-dev force-removes default-libmysqlclient-dev as a reverse
-# dependency, which orphans libmariadb3/mariadb-common in apt's eyes even
-# though mysqlclient's compiled extension links against them at runtime.
-# apt-mark manual pins them before autoremove runs so the cleanup doesn't take
-# them out too -- verified end-to-end by the `import MySQLdb` gate check.
+# DNS through it. apt-get needs root, so switch back briefly -- USER openmetadata
+# above has no sudo access -- then restore the non-root user for the runtime image.
+# The build fails if any src:mariadb binary survives the purge.
+# libxml2, the Cyrus SASL plugins and librdkafka go for the same reason: Debian
+# files CVEs against them with no trixie fix, and nothing here loads them. lxml
+# bundles its own libxml2 (shared-mime-info is its only Debian dependent), Hive and
+# Impala authenticate through pure-sasl + kerberos rather than Cyrus SASL, and the
+# confluent_kafka wheel bundles its own librdkafka. libsasl2-2 and its sasldb
+# plugin stay because libpq5 needs them through libldap2; the DIGEST-MD5 plugin
+# those CVEs are in lives in libsasl2-modules. dpkg --purge rather than apt-get:
+# apt-get would silently remove anything that still depends on these, dpkg refuses.
 #
 # The OS security upgrades ride along in the same root layer. trixie's base ships
 # util-linux 2.41-5, which carries CVE-2025-14104, CVE-2026-13595 and
@@ -207,8 +221,8 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # are not reachable at runtime, but scanners flag the installed version anyway.
 # trixie-security carries the fixed 6.12.105-1 (DSA-6466-1), so this clears the
 # finding on the next build rather than being a speculative no-op. Purging it
-# instead would cascade through libc6-dev to build-essential and break runtime
-# pip builds of C extensions.
+# instead would cascade through libc6-dev, which the -dev packages installed at
+# the top of this file still depend on.
 # The package sets are computed from dpkg rather than hand-listed. One source
 # package produces many binaries -- here util-linux, bsdutils, login, mount,
 # liblastlog2-2, libblkid1, libmount1, libsmartcols1 and libuuid1 -- and scanners
@@ -228,6 +242,23 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # key never changes, so an upgrade placed there freezes its Debian index with it
 # and the image keeps shipping whatever was current when the layer was first
 # built. Below the COPY and pip layers, the index is re-read on every build.
+#
+# The C/C++ toolchain is build-only and goes in this layer, the first point after
+# the last pip install that compiles: psycopg2 above; mysqlclient (pulled in by pydoris),
+# kerberos and mysql-connector-python through the extras. Scanners attribute src:gcc-NN CVEs to
+# every installed binary of that source, and most of those binaries are the
+# compilers and their sanitizer libraries. Nothing compiles at runtime: the DB2
+# connector switches clidriver versions by swapping the driver files, not by
+# rebuilding ibm_db (see ingestion/src/metadata/ingestion/source/database/db2/utils.py).
+# Only build-essential and gcc are purged by name. autoremove takes what they pulled
+# in, so the gcc major version is never hand-listed and nothing another package
+# still needs is removed. What stays: libstdc++6, libgcc-s1 and gcc-NN-base, which
+# libc6, apt, msodbcsql18, the JRE and most native wheels need; libgomp1, which
+# backs numba's OpenMP threading layer in images built on this one; and xz-utils
+# and bzip2, general-purpose tools that arrived with dpkg-dev. The checks after
+# autoremove fail the build if any other src:gcc-NN binary survives or a compiler
+# is still on PATH. The surviving runtime libraries are then upgraded, so a Debian
+# fix for them ships on the next build.
 USER root
 RUN set -eu; \
     ul="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="util-linux"{print $2}')"; \
@@ -239,11 +270,38 @@ RUN set -eu; \
     apt-get -qq update; \
     cve_pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^(perl|glibc|sqlite3|gzip|libssh2|libevent|pcre2)$/ {print $2}')"; \
     apt-get -qq install -y --only-upgrade $ul $ex $kh $ossl $cve_pkgs; \
-    apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8; \
-    apt-mark manual libmariadb3 mariadb-common; \
+    apt-mark manual libpq5 libgomp1 xz-utils bzip2; \
+    apt-get -qq purge -y libpq-dev libmariadb-dev libmariadb-dev-compat libmariadb3 mariadb-common libunbound8; \
+    dpkg --purge libxml2 shared-mime-info libsasl2-dev libsasl2-modules libsasl2-modules-gssapi-mit \
+      librdkafka-dev librdkafka1 'librdkafka++1'; \
+    apt-get -qq purge -y build-essential gcc; \
     apt-get -qq autoremove -y --purge; \
+    mariadb_left="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="mariadb"{print $2}')"; \
+    [ -z "$mariadb_left" ] || { echo "MariaDB packages survived the purge: $mariadb_left" >&2; exit 1; }; \
+    cc_left="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '($1=="gcc-defaults" || $1 ~ /^gcc-[0-9]+$/) && $2 !~ /^(gcc-[0-9]+-base|libgcc-s1|libstdc\+\+6|libgomp1)$/ {print $2}')"; \
+    [ -z "$cc_left" ] || { echo "compiler packages survived the purge: $cc_left" >&2; exit 1; }; \
+    for cc in cc c++ gcc g++ cpp; do if command -v "$cc" >/dev/null; then echo "$cc is still on PATH" >&2; exit 1; fi; done; \
+    gcc_rt="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^gcc-[0-9]+$/ {print $2}')"; \
+    apt-get -qq install -y --only-upgrade $gcc_rt; \
     rm -rf /var/lib/apt/lists/*
 USER openmetadata
+
+# Fail the build if the purge above took a runtime library from an extension that was
+# compiled earlier, or from the DB2 driver on amd64. Modules that a slimmer
+# INGESTION_DEPENDENCY does not install are skipped.
+RUN python -c "import importlib, importlib.util as u; [importlib.import_module(m) for m in ('psycopg2', 'kerberos', '_mysql_connector', 'ibm_db') if u.find_spec(m)]"
+# The import check only covers modules we name. This catches any native library, in a wheel
+# or a vendor driver, that links one of the libraries purged above.
+RUN missing="$(find /home/openmetadata/.local /usr/local/lib /opt /instantclient -name '*.so*' -type f -exec ldd {} + 2>/dev/null \
+      | grep -E '(libxml2|libsasl2|librdkafka|libmariadb|libmysqlclient)[^ ]* => not found' | sort -u)"; \
+    [ -z "$missing" ] || { echo "native libraries link a purged library: $missing" >&2; exit 1; }
+
+# Models are opt-in so the default image remains unchanged. Run this after the
+# package installs and before the spaCy cleanup below, while using the runtime user.
+ARG AUTO_CLASSIFICATION_LANGUAGES=""
+RUN if [ -n "$AUTO_CLASSIFICATION_LANGUAGES" ]; then \
+      metadata install-classification-models --languages "$AUTO_CLASSIFICATION_LANGUAGES"; \
+    fi
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
 # See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the

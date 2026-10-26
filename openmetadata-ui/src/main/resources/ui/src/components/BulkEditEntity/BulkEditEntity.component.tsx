@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BadgeWithIcon, Button, Input } from '@openmetadata/ui-core-components';
+import {
+  BadgeWithIcon,
+  Button,
+  Card,
+  Input,
+} from '@openmetadata/ui-core-components';
 import {
   Edit03,
   Lock01,
@@ -37,12 +42,14 @@ import type {
 } from 'react-data-grid';
 import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import entityBulkEditConfigClassBase from '../../utils/CSV/EntityBulkEditConfigClassBase';
+import { mergeGridRows } from '../../utils/CSV/GridRowsUtils';
+import { getTestCaseExportFiltersFromSearch } from '../../utils/DataQuality/DataQualityPureUtils';
 import {
   getBulkEditCSVExportEntityApi,
   getBulkEntityNavigationPath,
@@ -60,6 +67,12 @@ import { BulkActionOperation } from '../common/EntityImport/OperationCell/Operat
 import Loader from '../common/Loader/Loader';
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { BulkEditEntityProps } from './BulkEditEntity.interface';
+import {
+  BULK_EDIT_OPERATION_KEY,
+  getBulkEditRenderedColumns,
+  getBulkEditRowsLabelKey,
+  isBulkEditNameColumn,
+} from './BulkEditEntity.utils';
 
 const BULK_EDIT_COLUMN_WIDTHS: Record<string, number> = {
   operation: 170,
@@ -71,7 +84,6 @@ const BULK_EDIT_COLUMN_WIDTHS: Record<string, number> = {
   customUnitOfMeasurement: 160,
 };
 
-const BULK_EDIT_OPERATION_KEY = '__bulkEditOperation';
 const BULK_EDIT_ORIGINAL_NAME_KEY = '__bulkEditOriginalName';
 
 // Plain-text columns select on single click and enter edit mode on typing or
@@ -154,18 +166,28 @@ const BulkEditEntity = ({
   sourceEntityType,
   workflowHeaderConfig,
   workflowMode = 'bulkEdit',
+  searchText,
+  visibleRows,
+  onSearchTextChange,
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { search } = useLocation();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const testCaseExportFilters = useMemo(
+    () =>
+      entityType === EntityType.TEST_CASE
+        ? getTestCaseExportFiltersFromSearch(search)
+        : undefined,
+    [entityType, search]
+  );
   const {
     triggerExportForBulkEdit,
     csvExportData,
     csvExportError,
     clearCSVExportData,
   } = useEntityExportModalProvider();
-  const [searchText, setSearchText] = useState('');
   const [highlightedRowId, setHighlightedRowId] = useState<string>();
   const gridWrapperRef = useRef<HTMLDivElement | null>(null);
   const setGridRef = useCallback(
@@ -186,7 +208,7 @@ const BulkEditEntity = ({
   );
   const entityPluralDisplayName = useMemo(
     () =>
-      t(`label.${entityType}-plural`, {
+      t(getBulkEditRowsLabelKey(entityType), {
         defaultValue: startCase(entityType),
       }),
     [entityType, t]
@@ -245,8 +267,8 @@ const BulkEditEntity = ({
   );
 
   // Hydrate the grid from a single export per entity. The ref guard keeps this
-  // idempotent so a re-run of the effect (React StrictMode in dev, or a
-  // provider value identity change) cannot spawn duplicate export jobs. On
+  // idempotent so a re-run of the effect (a provider value identity change)
+  // cannot spawn duplicate export jobs. On
   // failure the guard intentionally stays set so the effect can't auto-retry a
   // failing export; recovery is explicit via the Try Again button
   // (handleRetryExport), which re-runs the export directly.
@@ -256,10 +278,13 @@ const BulkEditEntity = ({
     triggeredExportKeyRef.current = `${entityType}:${fqn}`;
     triggerExportForBulkEdit({
       name: fqn,
-      onExport: getBulkEditCSVExportEntityApi(entityType),
+      onExport: getBulkEditCSVExportEntityApi(
+        entityType,
+        testCaseExportFilters
+      ),
       exportTypes: [ExportTypes.CSV],
     });
-  }, [entityType, fqn, triggerExportForBulkEdit]);
+  }, [entityType, fqn, testCaseExportFilters, triggerExportForBulkEdit]);
 
   useEffect(() => {
     if (!isExportHydrationRequired) {
@@ -303,30 +328,12 @@ const BulkEditEntity = ({
     return () => {
       if (isExportHydrationRequired) {
         clearCSVExportData();
+        // The cleared export must be re-triggered on remount (StrictMode
+        // remounts every component once in dev).
+        triggeredExportKeyRef.current = undefined;
       }
     };
   }, [clearCSVExportData, isExportHydrationRequired]);
-
-  const filteredDataSource = useMemo(() => {
-    const search = searchText.trim().toLowerCase();
-    if (!search) {
-      return dataSource;
-    }
-
-    return dataSource.filter((row) => {
-      const haystack = [
-        row.name,
-        row['name*'],
-        row.displayName,
-        row['displayName*'],
-        row.description,
-      ]
-        .filter(Boolean)
-        .map((value) => String(value).toLowerCase());
-
-      return haystack.some((value) => value.includes(search));
-    });
-  }, [dataSource, searchText]);
 
   // Look up the original (pre-edit) row by its stable id so operation
   // classification and the rename hint never depend on array position.
@@ -341,9 +348,12 @@ const BulkEditEntity = ({
     Updating store will trigger re-render of the component
     This will cause the owner dropdown or full grid to re-render
   */
-  const editDataGrid = useMemo(() => {
-    const dataSourceWithOperations: Record<string, string>[] =
-      filteredDataSource.map((row, index) => {
+  // react-data-grid closes an open cell editor, discarding its draft, as soon as
+  // the row object it is editing is replaced. Keep these identities stable
+  // across re-renders that do not change the data (columns, handlers, ...).
+  const dataSourceWithOperations = useMemo<Record<string, string>[]>(
+    () =>
+      visibleRows.map((row, index) => {
         const rowId = row.id ?? `${index}`;
         const originalRow = initialRowById.get(row.id);
         const operation = getBulkEditOperation(
@@ -358,7 +368,11 @@ const BulkEditEntity = ({
           [BULK_EDIT_OPERATION_KEY]: operation,
           [BULK_EDIT_ORIGINAL_NAME_KEY]: getBulkEditRowName(originalRow),
         };
-      });
+      }),
+    [visibleRows, initialRowById, changedCellKeysByRowId, workflowMode]
+  );
+
+  const editDataGrid = useMemo(() => {
     const operationColumn: Column<Record<string, string>> = {
       key: BULK_EDIT_OPERATION_KEY,
       name: t('label.operation'),
@@ -393,17 +407,15 @@ const BulkEditEntity = ({
         </>
       ),
     };
-    const gridColumns = [
-      operationColumn,
-      ...(columns as unknown as Column<Record<string, string>>[]).filter(
-        (column) => column.key !== 'operation'
-      ),
-    ].map((column) => {
+    const gridColumns = getBulkEditRenderedColumns(
+      columns as unknown as Column<Record<string, string>>[],
+      operationColumn
+    ).map((column) => {
       const baseCellClass = column.cellClass;
       const baseRenderCell = column.renderCell;
       const columnKey = column.key.replaceAll('*', '');
       const columnWidth = BULK_EDIT_COLUMN_WIDTHS[columnKey];
-      const isNameColumn = columnKey === 'name';
+      const isNameColumn = isBulkEditNameColumn(column);
       const shouldLockNameColumn =
         !isImportWorkflow &&
         Boolean(bulkEditConfig?.lockedColumns.includes(columnKey));
@@ -483,6 +495,7 @@ const BulkEditEntity = ({
               : operationClass;
           }}
           rowHeight={52}
+          rowTestId={(row) => (row.id ? `rdg-row-${row.id}` : undefined)}
           rows={dataSourceWithOperations}
           onCellClick={(args: CellClickArgs<Record<string, string>>) => {
             const colType = (args.column.key.split('.').pop() ?? '').replace(
@@ -494,25 +507,27 @@ const BulkEditEntity = ({
           }}
           onCopy={handleCopy}
           onPaste={handlePaste}
-          onRowsChange={handleOnRowsChange}
+          onRowsChange={(rows: Record<string, string>[]) =>
+            handleOnRowsChange(mergeGridRows(dataSource, visibleRows, rows))
+          }
         />
       </div>
     );
   }, [
     changedCellKeysByRowId,
     columns,
-    filteredDataSource,
+    dataSource,
+    dataSourceWithOperations,
+    visibleRows,
     handleCopy,
     handlePaste,
     handleOnRowsChange,
     handleRemoveRow,
     highlightedRowId,
-    initialRowById,
     isImportWorkflow,
     bulkEditConfig,
     setGridRef,
     t,
-    workflowMode,
   ]);
 
   const operationSummary = useMemo(() => {
@@ -588,7 +603,7 @@ const BulkEditEntity = ({
     }
 
     return (
-      <div className="csv-import-card bulk-edit-card">
+      <Card className="csv-import-card bulk-edit-card">
         <Banner
           className="border-radius"
           isLoading={false}
@@ -600,7 +615,7 @@ const BulkEditEntity = ({
             {t('label.try-again')}
           </Button>
         </div>
-      </div>
+      </Card>
     );
   };
 
@@ -653,7 +668,7 @@ const BulkEditEntity = ({
           type="search"
           value={searchText}
           wrapperClassName="bulk-edit-search-wrapper"
-          onChange={setSearchText}
+          onChange={onSearchTextChange}
         />
         <Button
           color="secondary"
@@ -706,13 +721,13 @@ const BulkEditEntity = ({
   );
 
   const renderStepOneCard = () => (
-    <div className="csv-import-card bulk-edit-card">
+    <Card className="csv-import-card bulk-edit-card">
       <div className="csv-import-stack bulk-edit-stack">
         {renderToolbar()}
         <div className="bulk-edit-grid-shell">{editDataGrid}</div>
         {newRowConfig && renderAddRowBar()}
       </div>
-    </div>
+    </Card>
   );
 
   const renderStepTwoCard = () => {
@@ -721,7 +736,7 @@ const BulkEditEntity = ({
     }
 
     return (
-      <div className="csv-import-card">
+      <Card className="csv-import-card tw:p-6">
         <div className="csv-import-stack">
           <div>
             <ImportStatus csvImportResult={validationData} />
@@ -741,13 +756,13 @@ const BulkEditEntity = ({
             )}
           </div>
         </div>
-      </div>
+      </Card>
     );
   };
 
   const renderFooterActions = () => (
     <div>
-      <div className="float-right import-footer">
+      <div className="float-right import-footer tw:mt-auto tw:-mx-6 tw:in-[.assistant-content]:-mx-10">
         {activeStep === 1 && (
           <Button
             color="secondary"

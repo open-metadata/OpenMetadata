@@ -11,25 +11,19 @@
  *  limitations under the License.
  */
 
-import { queryByAttribute, render, screen } from '@testing-library/react';
+import {
+  BarChart,
+  type BarChartProps,
+} from '@openmetadata/ui-core-components/charts';
+import { act, queryByAttribute, render, screen } from '@testing-library/react';
 import { ColumnProfile } from '../../../generated/entity/data/table';
-import '../../../test/unit/mocks/recharts.mock';
 import CardinalityDistributionChart, {
   CardinalityDistributionChartProps,
 } from './CardinalityDistributionChart.component';
 
-jest.mock('../../../hooks/useChartColors', () => ({
-  useChartColors: jest.fn().mockReturnValue({
-    axis: '#123456',
-    cursorFill: '#234567',
-    emptyFill: '#345678',
-    grid: '#456789',
-    inactive: '#56789a',
-    primary: '#6789ab',
-  }),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
+  EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+    .EmptyPlaceholder,
   Badge: ({
     children,
     ...props
@@ -45,7 +39,6 @@ jest.mock('../../../utils/ChartUtils', () => ({
     (value: string, suffix: string) => `${value}${suffix}`
   ),
   tooltipFormatter: jest.fn((value: number) => value.toLocaleString()),
-  createHorizontalGridLineRenderer: jest.fn(() => jest.fn()),
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
@@ -60,16 +53,6 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
     return 'Unknown Date';
   }),
 }));
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return function MockErrorPlaceHolder({
-    placeholderText,
-  }: {
-    placeholderText: string | React.ReactNode;
-  }) {
-    return <div data-testid="error-placeholder">{placeholderText}</div>;
-  };
-});
 
 const mockColumnProfileWithCardinality: ColumnProfile = {
   name: 'test_column',
@@ -204,7 +187,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
       expect(
         await screen.findByText('No cardinality data available')
@@ -223,7 +208,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
       expect(screen.queryByTestId('chart-container')).not.toBeInTheDocument();
     });
@@ -389,7 +376,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
       expect(screen.queryByTestId('chart-container')).not.toBeInTheDocument();
     });
@@ -411,7 +400,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
       expect(screen.queryByTestId('chart-container')).not.toBeInTheDocument();
     });
@@ -449,7 +440,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
       expect(
         await screen.findByText('Custom No Data Message')
@@ -467,7 +460,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
       expect(screen.queryByTestId('chart-container')).not.toBeInTheDocument();
     });
@@ -505,7 +500,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
     });
   });
@@ -521,7 +518,9 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+      const errorPlaceholder = await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      );
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveTextContent(
@@ -542,7 +541,9 @@ describe('CardinalityDistributionChart', () => {
 
       const { container } = render(<CardinalityDistributionChart {...props} />);
 
-      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+      const errorPlaceholder = await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      );
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveTextContent(
@@ -571,7 +572,9 @@ describe('CardinalityDistributionChart', () => {
 
       const { container } = render(<CardinalityDistributionChart {...props} />);
 
-      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+      const errorPlaceholder = await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      );
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveTextContent(
@@ -618,7 +621,11 @@ describe('CardinalityDistributionChart', () => {
       expect(
         queryByAttribute('id', container, 'currentDayData-cardinality')
       ).toBeInTheDocument();
-      expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).not.toBeInTheDocument();
     });
 
     it('should render charts normally when allValuesUnique is undefined', async () => {
@@ -640,7 +647,11 @@ describe('CardinalityDistributionChart', () => {
       expect(
         queryByAttribute('id', container, 'currentDayData-cardinality')
       ).toBeInTheDocument();
-      expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).not.toBeInTheDocument();
     });
 
     it('should handle allValuesUnique with empty categories array', async () => {
@@ -665,7 +676,9 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+      const errorPlaceholder = await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      );
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveTextContent(
@@ -695,8 +708,115 @@ describe('CardinalityDistributionChart', () => {
 
       // Error placeholder should exist for second chart
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('core chart', () => {
+    type CardinalityRow = { name: string; count: number; percentage: number };
+    type LabelAxis = {
+      formatter: (value: string) => string;
+      axisLabel: Record<string, unknown>;
+    };
+    const mockBarChart = BarChart as unknown as jest.Mock<
+      null,
+      [BarChartProps<CardinalityRow>]
+    >;
+    const lastBarProps = () =>
+      mockBarChart.mock.calls[mockBarChart.mock.calls.length - 1][0];
+    const renderCurrentDay = () =>
+      render(
+        <CardinalityDistributionChart
+          data={{ currentDayData: mockColumnProfileWithCardinality }}
+        />
+      );
+
+    it('draws horizontal percentage bars sized by category count', () => {
+      renderCurrentDay();
+
+      expect(lastBarProps()).toEqual(
+        expect.objectContaining({
+          layout: 'horizontal',
+          xKey: 'name',
+          height: 350,
+          radius: 8,
+        })
+      );
+      expect(lastBarProps().data).toEqual([
+        { name: 'low', count: 100, percentage: 10 },
+        { name: 'medium', count: 300, percentage: 30 },
+        { name: 'high', count: 400, percentage: 40 },
+        { name: 'very_high', count: 200, percentage: 20 },
+      ]);
+      expect(lastBarProps().series[0]).toEqual(
+        expect.objectContaining({ key: 'percentage', status: 'info' })
+      );
+    });
+
+    it('shows name, count and percentage in the tooltip', () => {
+      renderCurrentDay();
+      const content = lastBarProps().tooltip?.render?.([], {
+        name: 'high',
+        count: 400,
+        percentage: 40,
+      });
+      render(<>{content}</>);
+
+      expect(screen.getByText('high')).toBeInTheDocument();
+      expect(screen.getByText('label.count')).toBeInTheDocument();
+      expect(screen.getByText('400')).toBeInTheDocument();
+      expect(screen.getByText('40%')).toBeInTheDocument();
+    });
+
+    it('selects a category from a bar click and clears it on a second click', () => {
+      renderCurrentDay();
+      const row = lastBarProps().data[1];
+
+      act(() => lastBarProps().onPointClick?.(row, 'percentage', {} as never));
+
+      expect(lastBarProps().getBarStatus?.(lastBarProps().data[0], 0)).toBe(
+        'neutral'
+      );
+      expect(lastBarProps().getBarStatus?.(row, 1)).toBeUndefined();
+
+      act(() => lastBarProps().onPointClick?.(row, 'percentage', {} as never));
+
+      expect(
+        lastBarProps().getBarStatus?.(lastBarProps().data[0], 0)
+      ).toBeUndefined();
+    });
+
+    it('selects a category from a label click and styles the labels', () => {
+      renderCurrentDay();
+
+      act(() => lastBarProps().onCategoryClick?.('high', {} as never));
+      const axis = lastBarProps().xAxis as unknown as LabelAxis;
+
+      expect(axis.formatter('high')).toBe('{selected|high}');
+      expect(axis.formatter('low')).toBe('{dimmed|low}');
+      expect(axis.axisLabel).toEqual(
+        expect.objectContaining({ width: 120, overflow: 'truncate' })
+      );
+    });
+
+    it('keeps names with braces or pipes readable while a category is selected', () => {
+      renderCurrentDay();
+      act(() => lastBarProps().onCategoryClick?.('high', {} as never));
+
+      expect(
+        (lastBarProps().xAxis as unknown as LabelAxis).formatter('a{b}|c')
+      ).toBe('{dimmed|a\uFF5Bb\uFF5D\uFF5Cc}');
+    });
+
+    it('draws labels as plain text, without rich styles, when nothing is selected', () => {
+      renderCurrentDay();
+      const axis = lastBarProps().xAxis as unknown as LabelAxis;
+
+      expect(axis.formatter('{a|b}')).toBe('{a|b}');
+      expect(axis.axisLabel.rich).toBeUndefined();
     });
   });
 });

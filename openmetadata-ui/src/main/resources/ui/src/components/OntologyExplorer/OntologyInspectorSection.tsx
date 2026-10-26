@@ -10,59 +10,200 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
+import {
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Plus, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
+import { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+
+interface InspectorSectionProps {
+  readonly children: ReactNode;
+  readonly testId?: string;
+}
+
+export const InspectorSection = ({
+  children,
+  testId,
+}: InspectorSectionProps) => (
+  <Box className="tw:py-1" data-testid={testId} direction="col" gap={2}>
+    {children}
+  </Box>
+);
 
 interface InspectorSectionHeadingProps {
   readonly count: number;
   readonly label: string;
+  readonly addTestId?: string;
+  readonly onAdd?: () => void;
 }
 
 export const InspectorSectionHeading = ({
   count,
   label,
-}: InspectorSectionHeadingProps) => (
-  <div className="tw:mb-2.5 tw:flex tw:items-center tw:gap-2">
-    <h3 className="tw:m-0 tw:font-body tw:text-[13px] tw:leading-normal tw:font-semibold tw:text-primary">
-      {label}
-    </h3>
-    <span className="tw:rounded-full tw:border tw:border-secondary tw:bg-tertiary tw:px-2 tw:py-px tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-secondary">
-      {count}
-    </span>
-  </div>
+  addTestId,
+  onAdd,
+}: InspectorSectionHeadingProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="center" className="tw:min-h-8" gap={2}>
+      <Typography
+        aria-level={3}
+        className="tw:text-primary"
+        role="heading"
+        size="text-sm"
+        weight="semibold">
+        {label}
+      </Typography>
+      <Badge color="gray" size="sm" type="pill-color">
+        {count}
+      </Badge>
+      {onAdd ? (
+        <Button
+          className="tw:ml-auto"
+          color="link-color"
+          data-testid={addTestId}
+          iconLeading={Plus}
+          size="sm"
+          type="button"
+          onPress={onAdd}>
+          {t('label.add')}
+        </Button>
+      ) : null}
+    </Box>
+  );
+};
+
+export const InspectorEmptyText = ({
+  children,
+}: {
+  readonly children: ReactNode;
+}) => (
+  <Box
+    align="center"
+    className="tw:min-h-14 tw:rounded-lg tw:border tw:border-dashed tw:border-primary tw:bg-surface tw:px-4 tw:py-3 tw:text-center"
+    justify="center">
+    <Typography as="p" className="tw:m-0 tw:text-tertiary" size="text-sm">
+      {children}
+    </Typography>
+  </Box>
 );
 
-interface InspectorAddButtonProps {
-  readonly isDisabled: boolean;
-  readonly isPrimary?: boolean;
-  readonly label: string;
-  readonly testId: string;
-  readonly onClick: () => void;
+export const InspectorList = ({
+  children,
+}: {
+  readonly children: ReactNode;
+}) => (
+  <Box
+    className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:bg-surface"
+    direction="col">
+    {children}
+  </Box>
+);
+
+interface InspectorRowProps {
+  readonly children: ReactNode;
+  readonly testId?: string;
 }
 
-export const InspectorAddButton = ({
+export const InspectorRow = ({ children, testId }: InspectorRowProps) => (
+  <Box
+    align="center"
+    className="tw:min-h-12 tw:px-3 tw:py-2"
+    data-testid={testId}
+    gap={3}>
+    {children}
+  </Box>
+);
+
+interface InspectorRemoveButtonProps {
+  readonly isDisabled?: boolean;
+  readonly label: string;
+  readonly testId?: string;
+  readonly onRemove: () => void;
+}
+
+export const InspectorRemoveButton = ({
   isDisabled,
-  isPrimary = false,
   label,
   testId,
-  onClick,
-}: InspectorAddButtonProps) => (
-  <Button
-    noTextPadding
-    className={classNames(
-      'tw:mt-2 tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:rounded-[9px] tw:border tw:border-dashed tw:bg-primary tw:px-2.5 tw:py-[9px] tw:*:data-icon:size-3',
-      'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold',
-      isPrimary
-        ? 'tw:border-brand tw:text-brand-tertiary'
-        : 'tw:border-primary tw:text-secondary',
-      isDisabled && 'tw:cursor-not-allowed tw:opacity-50'
-    )}
+  onRemove,
+}: InspectorRemoveButtonProps) => (
+  <ButtonUtility
     color="tertiary"
     data-testid={testId}
-    iconLeading={Plus}
+    icon={Trash01}
     isDisabled={isDisabled}
-    onClick={onClick}>
-    {label}
-  </Button>
+    size="xs"
+    tooltip={label}
+    onClick={onRemove}
+  />
 );
+
+interface InspectorFormProps {
+  readonly children: ReactNode;
+  readonly isSubmitDisabled: boolean;
+  readonly submitLabel: string;
+  readonly submitTestId?: string;
+  readonly testId?: string;
+  readonly title: string;
+  readonly onCancel: () => void;
+  readonly onSubmit: () => void;
+}
+
+export const InspectorForm = ({
+  children,
+  isSubmitDisabled,
+  submitLabel,
+  submitTestId,
+  testId,
+  title,
+  onCancel,
+  onSubmit,
+}: InspectorFormProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box
+      className="tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:px-3.5 tw:pt-3 tw:pb-3.5"
+      data-testid={testId}
+      direction="col"
+      gap={3}>
+      <Box align="center" gap={2}>
+        <Typography
+          className="tw:flex-1 tw:text-secondary"
+          size="text-xs"
+          weight="semibold">
+          {title}
+        </Typography>
+        <ButtonUtility
+          color="tertiary"
+          icon={XClose}
+          size="xs"
+          tooltip={t('label.cancel')}
+          onClick={onCancel}
+        />
+      </Box>
+      {children}
+      <Box gap={2} justify="end">
+        <Button color="secondary" size="sm" type="button" onPress={onCancel}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          color="primary"
+          data-testid={submitTestId}
+          isDisabled={isSubmitDisabled}
+          size="sm"
+          type="button"
+          onPress={onSubmit}>
+          {submitLabel}
+        </Button>
+      </Box>
+    </Box>
+  );
+};

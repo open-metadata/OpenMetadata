@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import { forwardRef } from 'react';
@@ -20,6 +20,7 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import { EntityVersionButtonProps } from './EntityVersionTimeline.interface';
 
@@ -74,7 +75,7 @@ export const VersionButton = forwardRef<
           <span className={classNames('timeline-line')} />
         </div>
         <div>
-          <Typography.Text
+          <Typography
             className={classNames('d-flex font-medium', {
               'text-primary': selected,
             })}>
@@ -86,7 +87,7 @@ export const VersionButton = forwardRef<
                 {t('label.major')}
               </span>
             ) : null}
-          </Typography.Text>
+          </Typography>
           <div
             className={classNames('text-xs font-normal break-all', {
               'diff-description': selected,
@@ -101,7 +102,7 @@ export const VersionButton = forwardRef<
               userName={updatedBy}>
               <Link
                 className="thread-author m-r-xss"
-                to={getUserPath(updatedBy)}>
+                to={getSettingsLink(getUserPath(updatedBy))}>
                 {getEntityName(user)}
               </Link>
             </UserPopOverCard>

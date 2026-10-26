@@ -15,7 +15,7 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   `openmetadata-ui/src/main/resources/ui/specs/`: start at `specs/README.md` (it declares the two
   stacks — go-forward **UntitledUI + Tailwind (`tw:`)** vs legacy **Ant Design + Less**, deprecated),
   then read `specs/untitled/<component>.md` for the component you touch. `yarn tw-guard` blocks new
-  `antd` imports and new `.less` files.
+  `antd` imports, new `assets/svg/` raw-SVG files/imports, and new `.less` files.
 - Available components (all under
   `openmetadata-ui-core-components/src/main/resources/ui/src/components/`): Button, Input, Select,
   Modal, Table, Tabs, Pagination, Badge, Avatar, Checkbox, Dropdown, Form, Card, Tooltip, Toggle,
@@ -45,11 +45,18 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   that a hand-rolled widget must at least be accessible: `jsx-a11y` blocks an invalid `role`, missing
   required ARIA props, and unusable tab order. Using the library component is how you satisfy that
   without writing the ARIA yourself.
+- **Modals: always `<Dialog dividers="scroll">`.** Dividers show only when the modal scrolls: no
+  line under the title, and the footer line appears only while `Dialog.Content` overflows. Do not
+  draw your own `border-t`/`border-b` or `<Divider>` around a dialog's header or footer. The
+  default (`always`) exists only for legacy modals. Spec: `specs/untitled/modal.md` → Dividers.
+- **Empty states: use the variants in `src/components/common/EmptyPlaceholder/`**, never the core
+  `EmptyPlaceholder` directly — `NoDataPlaceholder`, `CreatePlaceholder`, `PermissionPlaceholder`,
+  `NoSearchResultsPlaceholder`, `NoFilteredResultsPlaceholder`, `SomethingWentWrongPlaceholder`
+  carry the default icon and i18n copy; `FeaturesPlaceholder` has no defaults, so pass `title`,
+  `description` and `features` (ADR:2026-10-21-empty-states-render-through-the-placeholder-wrappers).
+  The host must be `tw:relative` (the placeholder is absolutely positioned). Keep the default icon
+  (no `assets/svg` icons) and never wrap `title`/`description` in a `Tooltip`: its trigger is
+  `w-max`, so the copy stops wrapping.
 - **Legacy**: Ant Design components remain in existing code but should be replaced with
   `openmetadata-ui-core-components` equivalents when refactoring. For forms, do not use the legacy
   Ant Design `getField`/`generateFormFields` (see `frontend-react.md` → Forms).
-
-> **Resolved contradiction (do not follow the old wording):** `AGENTS.md` still says the frontend is
-> "React + TypeScript + Ant Design" and to "use React/TypeScript with Ant Design components." The
-> code says otherwise — a blocking hook rejects `antd` imports and every other source forbids Ant
-> Design for new work — so **the code-supported rule wins: no Ant Design for new work.**

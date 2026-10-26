@@ -28,16 +28,16 @@ import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useObservabilityAlerts } from '../../../pages/ObservabilityAlertsPage/hooks/useObservabilityAlerts';
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 import AlertEditModal from './AlertEditModal.component';
 import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
 import ObservabilityAlertsAiTable from './ObservabilityAlertsAiTable.component';
-import { invalidateQueriesWithoutInitialRace } from './queryCacheUtils';
 
 interface AlertsPageProps {
-  /** Which alerts this page serves; Settings → Notifications passes its kind. */
+  /** Which alerts this page serves (observability by default). */
   kind?: AlertKind;
 }
 
@@ -78,7 +78,6 @@ const AlertsPage = ({ kind = OBSERVABILITY_ALERT_KIND }: AlertsPageProps) => {
 
   const alertsState = useObservabilityAlerts({
     alertType: kind.alertType,
-    includeSystemAlerts: kind.includeSystemAlerts,
     getAlertDetailsPath: kind.getDetailsPath,
     onAddAlert: handleAddAlert,
   });
@@ -89,6 +88,7 @@ const AlertsPage = ({ kind = OBSERVABILITY_ALERT_KIND }: AlertsPageProps) => {
     hasResourcePermissionError,
     refetchResourcePermission,
     alerts,
+    alertsError,
     columnList,
     currentPage,
     fetchAlerts,
@@ -222,6 +222,7 @@ const AlertsPage = ({ kind = OBSERVABILITY_ALERT_KIND }: AlertsPageProps) => {
           alertPermissions={alertPermissions}
           alertResourcePermission={alertResourcePermission}
           alerts={alerts}
+          alertsError={alertsError}
           ariaLabel={t(kind.titleKey)}
           columnList={columnList}
           currentPage={currentPage}
@@ -236,6 +237,7 @@ const AlertsPage = ({ kind = OBSERVABILITY_ALERT_KIND }: AlertsPageProps) => {
           onEditAlert={handleEditAlert}
           onPageChange={onPageChange}
           onPageSizeChange={handlePageSizeChange}
+          onRetry={() => fetchAlerts()}
           onRetryPermission={refetchResourcePermission}
           onSelectAlert={handleSelectAlert}
         />

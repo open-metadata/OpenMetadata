@@ -26,6 +26,10 @@ export interface ListActivityParams {
   actorId?: string;
   domains?: string;
   days?: number;
+  // Absolute lower bound (epoch millis) for the activity window; overrides
+  // `days` when supplied so a calendar-aligned window (e.g. the Inbox "Last
+  // 30 days" preset) fetches its full range instead of `now - days`.
+  startTs?: number;
   limit?: number;
 }
 
@@ -82,30 +86,40 @@ export const getUserActivity = async (
   return response.data;
 };
 
-export const getMyActivityFeed = async (params?: {
+interface ScopedActivityFeedParams {
   days?: number;
+  // Absolute lower bound (epoch millis) for the activity window; overrides
+  // `days` when supplied (see ListActivityParams.startTs).
+  startTs?: number;
   limit?: number;
   domain?: string;
-}) => {
+  // Compute the feed for this user instead of the viewer (needs ViewBasic on
+  // that user).
+  userId?: string;
+}
+
+// The personal feeds share one shape and differ only in their path.
+const getScopedActivityFeed = async (
+  scope: string,
+  params?: ScopedActivityFeedParams
+) => {
   const response = await APIClient.get<PagingResponse<ActivityEvent[]>>(
-    `${BASE_URL}/my-feed`,
+    `${BASE_URL}/${scope}`,
     { params }
   );
 
   return response.data;
 };
 
-export const getFollowingActivityFeed = async (params?: {
-  days?: number;
-  limit?: number;
-}) => {
-  const response = await APIClient.get<PagingResponse<ActivityEvent[]>>(
-    `${BASE_URL}/following`,
-    { params }
-  );
+export const getMyActivityFeed = (params?: ScopedActivityFeedParams) =>
+  getScopedActivityFeed('my-feed', params);
 
-  return response.data;
-};
+export const getFollowingActivityFeed = (params?: ScopedActivityFeedParams) =>
+  getScopedActivityFeed('following', params);
+
+// Activity whose replies mention the viewer (or `userId`) or one of their teams.
+export const getMentionsActivityFeed = (params?: ScopedActivityFeedParams) =>
+  getScopedActivityFeed('mentions', params);
 
 export const getActivityByEntityLink = async (
   entityLink: string,

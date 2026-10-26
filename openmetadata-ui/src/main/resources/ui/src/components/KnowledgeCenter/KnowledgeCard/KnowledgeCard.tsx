@@ -44,7 +44,8 @@ import {
   addToKnowledgeCenterRecentViewed,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
-import { getSafeHttpUrl, stripMarkdown } from '../../../utils/StringUtils';
+import { stripMarkdown } from '../../../utils/RichTextStringUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   QuickLinkFormModal,

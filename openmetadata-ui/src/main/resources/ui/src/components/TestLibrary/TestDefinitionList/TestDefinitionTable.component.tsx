@@ -13,12 +13,14 @@
 
 import {
   Box,
-  EmptyPlaceholder,
+  ButtonUtility,
   Skeleton,
   Table,
+  Toggle,
+  Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@openmetadata/ui-core-components/icons';
-import { Button, Space, Switch, Tooltip, Typography } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +32,8 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { TestDefinitionTableProps } from './TestDefinitionTable.interface';
@@ -56,6 +60,9 @@ const TestDefinitionTable = ({
   onClearFilters,
 }: TestDefinitionTableProps) => {
   const { t } = useTranslation();
+  const EmptyStatePlaceholder = hasActiveFilters
+    ? NoFilteredResultsPlaceholder
+    : NoDataPlaceholder;
 
   // react-aria reports the new descriptor; the listing state upstream is keyed
   // by column id and asc/desc, so translate here rather than teaching every
@@ -153,16 +160,13 @@ const TestDefinitionTable = ({
     }
 
     return (
-      <Tooltip title={tooltipTitle}>
-        <div className="new-form-style d-inline-flex">
-          <Switch
-            checked={record.enabled ?? true}
-            data-testid={`enable-switch-${record.name}`}
-            disabled={isExternal || !hasEditPermission || isRefetching}
-            size="small"
-            onChange={(checked) => onEnableToggle(record, checked)}
-          />
-        </div>
+      <Tooltip isDisabled={!tooltipTitle} title={tooltipTitle}>
+        <Toggle
+          data-testid={`enable-switch-${record.name}`}
+          isDisabled={isExternal || !hasEditPermission || isRefetching}
+          isSelected={record.enabled ?? true}
+          onChange={(isSelected) => onEnableToggle(record, isSelected)}
+        />
       </Tooltip>
     );
   };
@@ -197,48 +201,55 @@ const TestDefinitionTable = ({
       deleteTooltip = t('message.no-permission-for-action');
     }
 
+    // The Tooltip, not ButtonUtility's own, so the reason still shows while the button is disabled.
     return (
-      <Space size={0}>
+      <Box align="center">
         <Tooltip title={editTooltip}>
-          <Button
+          <ButtonUtility
+            aria-label={t('label.edit')}
+            color="tertiary"
             data-testid={`edit-test-definition-${record.name}`}
-            disabled={!hasEditPermission || isRefetching}
             icon={<IconEdit height={16} width={16} />}
-            type="text"
+            isDisabled={!hasEditPermission || isRefetching}
+            size="xs"
             onClick={() => onEdit(record)}
           />
         </Tooltip>
 
         <Tooltip title={deleteTooltip}>
-          <Button
+          <ButtonUtility
+            aria-label={t('label.delete')}
+            color="tertiary"
             data-testid={`delete-test-definition-${record.name}`}
-            disabled={isSystemProvider || !hasDeletePermission || isRefetching}
             icon={<IconDelete height={16} width={16} />}
-            type="text"
+            isDisabled={
+              isSystemProvider || !hasDeletePermission || isRefetching
+            }
+            size="xs"
             onClick={() => onDelete(record)}
           />
         </Tooltip>
-      </Space>
+      </Box>
     );
   };
 
   const renderRow = (record: TestDefinition) => (
     <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
       <Table.Cell>
-        <Typography.Text data-testid={record.name}>
+        <Typography className="tw:text-primary" data-testid={record.name}>
           {getEntityName(record)}
-        </Typography.Text>
+        </Typography>
       </Table.Cell>
       <Table.Cell>
         <RichTextEditorPreviewerNew markdown={record.description ?? ''} />
       </Table.Cell>
       <Table.Cell>
-        <Typography.Text>{record.entityType}</Typography.Text>
+        <Typography className="tw:text-primary">{record.entityType}</Typography>
       </Table.Cell>
       <Table.Cell>
-        <Typography.Text>
+        <Typography className="tw:text-primary">
           {record.testPlatforms?.join(', ') ?? '--'}
-        </Typography.Text>
+        </Typography>
       </Table.Cell>
       <Table.Cell>{renderEnabledCell(record)}</Table.Cell>
       <Table.Cell>{renderActionsCell(record)}</Table.Cell>
@@ -290,7 +301,7 @@ const TestDefinitionTable = ({
                 loadingSkeletons
               ) : (
                 <Box className="tw:relative tw:min-h-80 tw:w-full">
-                  <EmptyPlaceholder
+                  <EmptyStatePlaceholder
                     actions={
                       hasActiveFilters && onClearFilters
                         ? [
@@ -310,7 +321,7 @@ const TestDefinitionTable = ({
                     )}
                     icon={
                       hasActiveFilters ? (
-                        <FilterOffIcon className="tw:text-fg-quaternary" />
+                        <FilterOffIcon />
                       ) : (
                         <FileShield02 className="tw:text-fg-brand-primary" />
                       )
@@ -320,7 +331,6 @@ const TestDefinitionTable = ({
                         ? 'message.no-results-for-filters'
                         : 'message.no-test-definitions-yet'
                     )}
-                    variant="blank"
                   />
                 </Box>
               )

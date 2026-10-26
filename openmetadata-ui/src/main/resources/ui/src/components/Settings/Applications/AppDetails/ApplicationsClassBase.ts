@@ -11,6 +11,52 @@
  *  limitations under the License.
  */
 
+import {
+  AppAutopilot,
+  AppAutopilotColored,
+  AppCacheWarmup,
+  AppCacheWarmupColored,
+  AppCollateAiChat,
+  AppCollateAiChatColored,
+  AppDataContractValidation,
+  AppDataContractValidationColored,
+  AppDataInsights,
+  AppDataInsightsColored,
+  AppDataInsightsReport,
+  AppDataInsightsReportColored,
+  AppDataRetention,
+  AppDataRetentionColored,
+  AppMcpServer,
+  AppMcpServerColored,
+  AppMemberWeeklyEmails,
+  AppMemberWeeklyEmailsColored,
+  AppMemoryReconciliationColored,
+  AppMetadataExplorer,
+  AppMetadataExplorerColored,
+  AppMicrosoftTeams,
+  AppMicrosoftTeamsColored,
+  AppOnboarding,
+  AppOnboardingColored,
+  AppQueryRunner,
+  AppQueryRunnerColored,
+  AppRdfGraphIndexing,
+  AppRdfGraphIndexingColored,
+  AppRdfInferenceMaterialization,
+  AppRdfInferenceMaterializationColored,
+  AppReverseMetadata,
+  AppReverseMetadataColored,
+  AppSearchIndexing,
+  AppSearchIndexingColored,
+  AppSlack,
+  AppSlackColored,
+  AppSupport,
+  AppSupportColored,
+  AppTelemetry,
+  AppTelemetryColored,
+  AppWeeklyInsightsDigest,
+  AppWeeklyInsightsDigestColored,
+  LayoutGrid01,
+} from '@openmetadata/ui-core-components/icons';
 import type { RJSFSchema } from '@rjsf/utils';
 import type { AxiosError } from 'axios';
 import type { ComponentType, FC } from 'react';
@@ -20,8 +66,10 @@ import { SEARCH_INDEXING_APPLICATION } from '../../../../constants/explore.const
 import { AppType } from '../../../../generated/entity/applications/app';
 import { getSearchEntityTypes } from '../../../../rest/searchAPI';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
+import type { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import type { AppConfigFormProps } from '../../../discovery/personal-space/Profile/tabs/applications/AppConfigForm';
 import type { ApplicationConfigurationProps } from '../ApplicationConfiguration/ApplicationConfiguration';
 import type { AppPlugin } from '../plugins/AppPlugin';
 // Glob maps live in a sibling `.assets.ts` file so ts-jest can mock them (see
@@ -38,9 +86,73 @@ const ApplicationConfiguration =
     lazy(() => import('../ApplicationConfiguration/ApplicationConfiguration'))
   );
 
+const AppConfigForm = withSuspenseFallback<AppConfigFormProps>(
+  lazy(
+    () =>
+      import(
+        '../../../discovery/personal-space/Profile/tabs/applications/AppConfigForm'
+      )
+  )
+);
+
+type AppIcon = FC<{ className?: string }>;
+
+// Includes the Collate-distributed apps too: a name the server never returns
+// simply never matches, so one map serves both distributions.
+const APP_ICONS: Record<string, AppIcon> = {
+  AIChatApplication: AppCollateAiChat,
+  AutoPilotApplication: AppAutopilot,
+  CacheWarmupApplication: AppCacheWarmup,
+  CollateSupport: AppSupport,
+  DataContractValidationApplication: AppDataContractValidation,
+  DataInsightsApplication: AppDataInsights,
+  DataInsightsReportApplication: AppDataInsightsReport,
+  DataRetentionApplication: AppDataRetention,
+  McpApplication: AppMcpServer,
+  MemberWeeklyEmailApplication: AppMemberWeeklyEmails,
+  MetadataExporterApplication: AppMetadataExplorer,
+  OnboardingApplication: AppOnboarding,
+  QueryRunner: AppQueryRunner,
+  RdfIndexApp: AppRdfGraphIndexing,
+  RdfInferenceApp: AppRdfInferenceMaterialization,
+  ReverseMetadata: AppReverseMetadata,
+  SearchIndexingApplication: AppSearchIndexing,
+  SlackApplication: AppSlack,
+  TeamsApplication: AppMicrosoftTeams,
+  TelemetryApplication: AppTelemetry,
+  WeeklyInsightDigestApplication: AppWeeklyInsightsDigest,
+};
+
+// Full-colour tiles for the app landing and marketplace cards. Apps without one
+// keep their monochrome glyph on a neutral tile.
+const APP_COLORED_ICONS: Record<string, AppIcon> = {
+  AIChatApplication: AppCollateAiChatColored,
+  AutoPilotApplication: AppAutopilotColored,
+  CacheWarmupApplication: AppCacheWarmupColored,
+  CollateSupport: AppSupportColored,
+  DataContractValidationApplication: AppDataContractValidationColored,
+  DataInsightsApplication: AppDataInsightsColored,
+  DataInsightsReportApplication: AppDataInsightsReportColored,
+  DataRetentionApplication: AppDataRetentionColored,
+  McpApplication: AppMcpServerColored,
+  MemoryReconciliationApplication: AppMemoryReconciliationColored,
+  MemberWeeklyEmailApplication: AppMemberWeeklyEmailsColored,
+  MetadataExporterApplication: AppMetadataExplorerColored,
+  OnboardingApplication: AppOnboardingColored,
+  QueryRunner: AppQueryRunnerColored,
+  RdfIndexApp: AppRdfGraphIndexingColored,
+  RdfInferenceApp: AppRdfInferenceMaterializationColored,
+  ReverseMetadata: AppReverseMetadataColored,
+  SearchIndexingApplication: AppSearchIndexingColored,
+  SlackApplication: AppSlackColored,
+  TeamsApplication: AppMicrosoftTeamsColored,
+  TelemetryApplication: AppTelemetryColored,
+  WeeklyInsightDigestApplication: AppWeeklyInsightsDigestColored,
+};
+
 // The sentinel the backend expands to every registered index. It is not an index itself, so the
 // endpoint does not return it, but it has to be in the enum for the `["all"]` default to validate.
-// TreeSelectWidget filters it out of the child nodes and renders it as the synthetic "All" parent.
+// CoreEnumMultiSelectField filters it out of the options and renders it as the synthetic "All" option.
 const ALL_ENTITY_TYPES = 'all';
 
 /**
@@ -180,6 +292,34 @@ class ApplicationsClassBase {
    */
   public getApplicationConfigurationComponent(): ComponentType<ApplicationConfigurationProps> {
     return ApplicationConfiguration;
+  }
+
+  /**
+   * Settings-modal (core-ui) counterparts of `importAppLogo` and
+   * `getApplicationConfigurationComponent`, overridable the same way.
+   */
+  public getAppIcon(appName?: string): AppIcon {
+    return (appName && APP_ICONS[appName]) || LayoutGrid01;
+  }
+
+  public getAppColoredIcon(appName?: string): AppIcon | undefined {
+    return appName ? APP_COLORED_ICONS[appName] : undefined;
+  }
+
+  public getModalAppConfigurationComponent(): ComponentType<AppConfigFormProps> {
+    return AppConfigForm;
+  }
+
+  /**
+   * Contribute extension points that are NOT tied to an installed app.
+   *
+   * `AppPlugin.contributeExtensions` only runs for apps the server reports as
+   * installed, so a downstream build cannot use it for features that always
+   * ship (e.g. Collate's SCIM provisioning). This hook runs once regardless of
+   * the installed-app list. Base implementation contributes nothing.
+   */
+  public contributeStaticExtensions(_registry: ExtensionPointRegistry): void {
+    return;
   }
 }
 

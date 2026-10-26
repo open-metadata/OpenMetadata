@@ -10,13 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   ButtonGroup,
   ButtonGroupItem,
   Card,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -31,10 +30,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
-import {
-  DATA_ASSET_ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { PIPELINE_TASK_TABS } from '../../../constants/pipeline.constants';
 import {
   SEGMENT_TOGGLE_GROUP_CLASS,
@@ -59,6 +55,7 @@ import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import {
   columnFilterIcon,
   ownerTableObject,
@@ -305,28 +302,28 @@ export const PipelineTaskTab = () => {
         sorter: getColumnSorter<Task, 'name'>('name'),
         onCell: (record: Task) => ({
           onClick: (event) =>
-            isEmpty(record.sourceUrl) && handleTaskClick(record, event),
+            !getSafeHttpUrl(record.sourceUrl) && handleTaskClick(record, event),
           'data-testid': 'column-name-cell',
         }),
-        render: (_, record) =>
-          isEmpty(record.sourceUrl) ? (
-            <span className="text-link-color">{getEntityName(record)}</span>
-          ) : (
+        render: (_, record) => {
+          const sourceUrl = getSafeHttpUrl(record.sourceUrl);
+
+          return sourceUrl ? (
             <Link
               className="flex items-center gap-2"
+              rel="noopener noreferrer"
               target="_blank"
-              to={record.sourceUrl ?? ''}>
+              to={sourceUrl}>
               <div className="d-flex items-center">
                 <span className="break-all">{getEntityName(record)}</span>
 
-                <Icon
-                  className="m-l-xs flex-none"
-                  component={ExternalLinkIcon}
-                  style={DATA_ASSET_ICON_DIMENSION}
-                />
+                <ExternalLinkIcon className="tw:ml-2 tw:shrink-0 tw:size-3.5" />
               </div>
             </Link>
-          ),
+          ) : (
+            <span className="text-link-color">{getEntityName(record)}</span>
+          );
+        },
       },
       {
         key: TABLE_COLUMNS_KEYS.TASK_TYPE,
@@ -334,7 +331,9 @@ export const PipelineTaskTab = () => {
         width: 180,
         title: t('label.type'),
         render: (text) => (
-          <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
+          <Typography className="tw:text-primary">
+            {text || NO_DATA_PLACEHOLDER}
+          </Typography>
         ),
       },
       {

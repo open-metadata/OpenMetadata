@@ -25,22 +25,24 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.Collections;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 import org.apache.ibatis.exceptions.PersistenceException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -48,11 +50,12 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,16 +75,6 @@ class WorkflowEventConsumerTest {
     when(subscriptionDestination.getId()).thenReturn(UUID.randomUUID());
 
     consumer = new WorkflowEventConsumer(eventSubscription, subscriptionDestination);
-  }
-
-  @Test
-  void testConstructor_RejectsInvalidSubscriptionType() {
-    SubscriptionDestination invalidDestination = mock(SubscriptionDestination.class);
-    when(invalidDestination.getType()).thenReturn(SubscriptionDestination.SubscriptionType.SLACK);
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new WorkflowEventConsumer(eventSubscription, invalidDestination));
   }
 
   @Test
@@ -112,6 +105,143 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
+  void testSendMessage_SkipsBotUserEvents() {
+    ChangeEvent event = createChangeEvent("ingestion-bot", EventType.ENTITY_UPDATED);
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockedEntity
+          .when(() -> Entity.findByNameOrNull(eq(Entity.USER), eq("ingestion-bot"), any()))
+          .thenReturn(new User().withName("ingestion-bot").withIsBot(true));
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_BotCreatingAnAutomationProposalStartsItsWorkflows() {
+    ChangeEvent event = createBotProposal("ingestion-bot", EventType.ENTITY_CREATED);
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockBotUser(mockedEntity, "ingestion-bot");
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(createEntityReference());
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, times(1))
+          .triggerWithSignal(eq("glossaryTerm-entityCreated"), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_AutomationProposalStoredAsAnObjectStartsItsWorkflows() {
+    ChangeEvent event = createBotProposal("ingestion-bot", EventType.ENTITY_CREATED);
+    event.setEntity(Map.of("name", "Revenue", "provider", "automation"));
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockBotUser(mockedEntity, "ingestion-bot");
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(createEntityReference());
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, times(1))
+          .triggerWithSignal(eq("glossaryTerm-entityCreated"), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_BotEditOfAnAutomationTermIsStillSkipped() {
+    ChangeEvent event = createBotProposal("ingestion-bot", EventType.ENTITY_UPDATED);
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockBotUser(mockedEntity, "ingestion-bot");
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_BotCreatingAnEntityOfItsOwnIsStillSkipped() {
+    ChangeEvent event = createBotProposal("ingestion-bot", EventType.ENTITY_CREATED);
+    event.setEntity("{\"name\":\"Revenue\",\"provider\":\"user\"}");
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockBotUser(mockedEntity, "ingestion-bot");
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_WorkflowCreatingAnAutomationEntityIsStillSkipped() {
+    assertNoWorkflowStarts(createBotProposal("governance-bot", EventType.ENTITY_CREATED));
+  }
+
+  @Test
+  void testSendMessage_WorkflowCreatingAnAutomationEntityForABotIsStillSkipped() {
+    ChangeEvent event = createBotProposal("ingestion-bot", EventType.ENTITY_CREATED);
+    event.setImpersonatedBy("governance-bot");
+
+    assertNoWorkflowStarts(event);
+  }
+
+  // The entity resolves, so only the bot rules can keep the workflows from starting.
+  private void assertNoWorkflowStarts(ChangeEvent event) {
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockBotUser(mockedEntity, "ingestion-bot");
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(createEntityReference());
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_BotImpersonatingUserIsTheUsersChange() {
+    ChangeEvent event = createChangeEvent("alice", EventType.ENTITY_UPDATED);
+    event.setImpersonatedBy("ingestion-bot");
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockedEntity
+          .when(() -> Entity.findByNameOrNull(eq(Entity.USER), eq("alice"), any()))
+          .thenReturn(new User().withName("alice").withIsBot(false));
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(createEntityReference());
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, times(1)).triggerWithSignal(eq("table-entityUpdated"), anyMap());
+    }
+  }
+
+  @Test
   void testSendMessage_SuccessfulTrigger() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
@@ -133,7 +263,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_RetriesOnDeadlock() {
+  void testSendMessage_DoesNotReplayPartiallyDeliveredSignalOnDeadlock() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -159,14 +289,15 @@ class WorkflowEventConsumerTest {
           .when(workflowHandler)
           .triggerWithSignal(anyString(), anyMap());
 
-      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+      assertThrows(
+          EventPublisherException.class, () -> consumer.sendMessage(event, Collections.emptySet()));
 
-      assertEquals(3, callCount.get());
+      assertEquals(1, callCount.get());
     }
   }
 
   @Test
-  void testSendMessage_RetriesOnOptimisticLockingFailure() {
+  void testSendMessage_DoesNotReplayPartiallyDeliveredSignalOnOptimisticLockingFailure() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -191,9 +322,10 @@ class WorkflowEventConsumerTest {
           .when(workflowHandler)
           .triggerWithSignal(anyString(), anyMap());
 
-      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+      assertThrows(
+          EventPublisherException.class, () -> consumer.sendMessage(event, Collections.emptySet()));
 
-      assertEquals(2, callCount.get());
+      assertEquals(1, callCount.get());
     }
   }
 
@@ -222,7 +354,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_FailsAfterMaxRetries() {
+  void testSendMessage_PropagatesExhaustedSubscriberRetries() {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
     EntityReference entityRef = createEntityReference();
 
@@ -247,7 +379,7 @@ class WorkflowEventConsumerTest {
       assertThrows(
           EventPublisherException.class, () -> consumer.sendMessage(event, Collections.emptySet()));
 
-      assertEquals(3, callCount.get());
+      assertEquals(1, callCount.get());
     }
   }
 
@@ -303,56 +435,34 @@ class WorkflowEventConsumerTest {
     }
   }
 
-  @Test
-  void testIsTransientDatabaseError_Deadlock() throws Exception {
-    Exception deadlockException =
-        new PersistenceException(new SQLException("Deadlock found when trying to get lock"));
-
-    assertTrue(invokeIsTransientDatabaseError(deadlockException));
+  // The workflow-builder "Data Asset" picker is driven by the keys of
+  // WorkflowTriggerFieldsRegistry.entitySpecific, and event-based workflows only fire for entity
+  // types in WorkflowEventConsumer.validEntityTypes. Every pickable type must therefore be
+  // event-triggerable; otherwise a workflow saved against the orphaned type silently never
+  // starts. This guard fails the moment the two sources drift (e.g. a picker entity type is added
+  // that the backend consumer cannot trigger), keeping picker-entity-types ⊆ validEntityTypes.
+  static Stream<String> workflowPickerEntityTypes() {
+    return WorkflowTriggerFieldsRegistry.getConfig().entitySpecific().keySet().stream();
   }
 
-  @Test
-  void testIsTransientDatabaseError_LockWaitTimeout() throws Exception {
-    Exception lockTimeoutException =
-        new RuntimeException(new SQLException("Lock wait timeout exceeded"));
+  @ParameterizedTest(name = "triggers for picker entity type: {0}")
+  @MethodSource("workflowPickerEntityTypes")
+  void testSendMessage_TriggersForEveryPickerEntityType(String entityType) {
+    ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED, entityType);
 
-    assertTrue(invokeIsTransientDatabaseError(lockTimeoutException));
-  }
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(createEntityReference());
+      doNothing().when(workflowHandler).triggerWithSignal(anyString(), anyMap());
 
-  @Test
-  void testIsTransientDatabaseError_ConcurrentUpdate() throws Exception {
-    Exception concurrentException =
-        new RuntimeException("was updated by another transaction concurrently");
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
 
-    assertTrue(invokeIsTransientDatabaseError(concurrentException));
-  }
-
-  @Test
-  void testIsTransientDatabaseError_OptimisticLocking() throws Exception {
-    Exception optimisticException = new RuntimeException("OptimisticLockingFailureException");
-
-    assertTrue(invokeIsTransientDatabaseError(optimisticException));
-  }
-
-  @Test
-  void testIsTransientDatabaseError_RestartTransaction() throws Exception {
-    Exception restartException = new RuntimeException("try restarting transaction");
-
-    assertTrue(invokeIsTransientDatabaseError(restartException));
-  }
-
-  @Test
-  void testIsTransientDatabaseError_NonTransient() throws Exception {
-    Exception regularException = new RuntimeException("Some regular error");
-
-    assertFalse(invokeIsTransientDatabaseError(regularException));
-  }
-
-  @Test
-  void testIsTransientDatabaseError_NullMessage() throws Exception {
-    Exception nullMessageException = new RuntimeException((String) null);
-
-    assertFalse(invokeIsTransientDatabaseError(nullMessageException));
+      verify(workflowHandler, times(1))
+          .triggerWithSignal(eq(entityType + "-entityUpdated"), anyMap());
+    }
   }
 
   @Test
@@ -375,12 +485,29 @@ class WorkflowEventConsumerTest {
   }
 
   private ChangeEvent createChangeEvent(String userName, EventType eventType) {
+    return createChangeEvent(userName, eventType, "table");
+  }
+
+  // As the REST filter stores it: the masked entity as a JSON string.
+  private ChangeEvent createBotProposal(String userName, EventType eventType) {
+    ChangeEvent event = createChangeEvent(userName, eventType, Entity.GLOSSARY_TERM);
+    event.setEntity("{\"name\":\"Revenue\",\"provider\":\"automation\"}");
+    return event;
+  }
+
+  private static void mockBotUser(MockedStatic<Entity> mockedEntity, String botName) {
+    mockedEntity
+        .when(() -> Entity.findByNameOrNull(eq(Entity.USER), eq(botName), any()))
+        .thenReturn(new User().withName(botName).withIsBot(true));
+  }
+
+  private ChangeEvent createChangeEvent(String userName, EventType eventType, String entityType) {
     ChangeEvent event = new ChangeEvent();
     event.setUserName(userName);
     event.setEventType(eventType);
-    event.setEntityType("table");
+    event.setEntityType(entityType);
     event.setEntityId(UUID.randomUUID());
-    event.setEntityFullyQualifiedName("test.db.schema.table");
+    event.setEntityFullyQualifiedName("test.db.schema." + entityType);
     return event;
   }
 
@@ -391,12 +518,5 @@ class WorkflowEventConsumerTest {
     ref.setName("table");
     ref.setFullyQualifiedName("test.db.schema.table");
     return ref;
-  }
-
-  private boolean invokeIsTransientDatabaseError(Throwable e) throws Exception {
-    Method method =
-        WorkflowEventConsumer.class.getDeclaredMethod("isTransientDatabaseError", Throwable.class);
-    method.setAccessible(true);
-    return (boolean) method.invoke(null, e);
   }
 }

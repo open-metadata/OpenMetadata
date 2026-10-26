@@ -17,6 +17,7 @@ import { MemoryRouter, useParams } from 'react-router-dom';
 import { useTestCaseIncidentHeader } from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TestCase } from '../../../generated/tests/testCase';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
@@ -50,7 +51,6 @@ jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
 const TEST_CASE_FQN =
   'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals';
 const TEST_SUITE_FQN = 'sample_data.ecommerce_db.shopify.dim_address.testSuite';
-const ERROR_PLACEHOLDER_TEST_ID = 'error-placeholder';
 const HEADER_BREADCRUMB_TEST_ID = 'header-breadcrumb';
 const INCIDENT_MANAGER_HEADER_TEST_ID = 'incident-manager-page-header';
 const LAST_RUN_SUCCESS_BANNER_TEST_ID = 'test-case-last-run-banner-success';
@@ -120,6 +120,11 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
   isTabExpanded: false,
   setIsTabExpanded: jest.fn(),
 };
+jest.mock('../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
+
 jest.mock('./useTestCase.store', () => ({
   useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),
 }));
@@ -200,15 +205,6 @@ jest.mock(
   () => ({
     useTestCaseIncidentHeader: jest.fn(),
   })
-);
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ type }) => (
-        <div data-testid={ERROR_PLACEHOLDER_TEST_ID} data-type={type} />
-      ))
 );
 jest.mock(
   '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
@@ -402,6 +398,23 @@ describe('IncidentManagerDetailPage', () => {
     );
   });
 
+  it('puts the tab content on a white panel in classic mode only', async () => {
+    const { rerender } = render(<IncidentManagerDetailPage />, {
+      wrapper: Wrapper,
+    });
+
+    expect(await screen.findByRole('tabpanel')).toHaveClass('tw:bg-surface');
+
+    jest.mocked(useIsAiMode).mockReturnValue(true);
+    rerender(<IncidentManagerDetailPage />);
+
+    expect(await screen.findByRole('tabpanel')).not.toHaveClass(
+      'tw:bg-surface'
+    );
+
+    jest.mocked(useIsAiMode).mockReturnValue(false);
+  });
+
   it('should show the next run from the enabled test suite schedule', async () => {
     const dateNowSpy = jest
       .spyOn(Date, 'now')
@@ -454,8 +467,8 @@ describe('IncidentManagerDetailPage', () => {
     });
 
     expect(
-      await screen.findByTestId(ERROR_PLACEHOLDER_TEST_ID)
-    ).toHaveAttribute('data-type', 'PERMISSION');
+      await screen.findByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
 
     setMockPermissions(MOCK_PERMISSIONS);
   });
@@ -471,7 +484,9 @@ describe('IncidentManagerDetailPage', () => {
     });
 
     expect(
-      await screen.findByTestId(ERROR_PLACEHOLDER_TEST_ID)
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
     ).toBeInTheDocument();
 
     mockUseTestCase.testCase = mockTestCaseData;

@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -45,6 +44,8 @@ import {
   tagTableObject,
 } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 import Table from '../../../common/Table/TableV2';
 import { SpreadsheetsTableProps } from './SpreadsheetsTable.interface';
@@ -194,15 +195,14 @@ function SpreadsheetsTable({
       defaultVisibleColumns={DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS}
       entityType="dashboardDataModelTable"
       extraTableFilters={
-        <span>
-          <Switch
-            checked={showDeleted}
+        <span className="tw:inline-flex tw:items-center">
+          <Toggle
             data-testid="show-deleted"
-            onClick={handleShowDeletedChange}
+            isSelected={showDeleted}
+            size="sm"
+            onChange={handleShowDeletedChange}
           />
-          <Typography.Text className="m-l-xs">
-            {t('label.deleted')}
-          </Typography.Text>
+          <Typography className="m-l-xs">{t('label.deleted')}</Typography>
         </span>
       }
       loading={isLoading}
@@ -210,19 +210,17 @@ function SpreadsheetsTable({
         emptyText: (
           <div className="tw:relative tw:min-h-70">
             {searchValue ? (
-              <EmptyPlaceholder
+              <NoSearchResultsPlaceholder
                 description={t('message.check-spelling-or-try-shorter-term')}
-                icon={<NoSearch className="tw:text-secondary" />}
+                icon={<NoSearch />}
                 title={t('label.no-matching-result-plural')}
-                variant="blank"
               />
             ) : (
-              <EmptyPlaceholder
-                icon={<Assets className="tw:text-utility-gray-600" />}
+              <NoDataPlaceholder
+                icon={<Assets />}
                 title={t('message.no-entity-data-available', {
                   entity: t('label.spreadsheet-plural'),
                 })}
-                variant="blank"
               />
             )}
           </div>

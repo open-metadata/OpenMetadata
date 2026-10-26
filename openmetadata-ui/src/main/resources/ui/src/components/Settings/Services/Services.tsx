@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Tooltip, Typography } from 'antd';
-import Card from 'antd/lib/card/Card';
+import {
+  Box,
+  Button,
+  Button as CoreButton,
+  Card,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -34,7 +40,6 @@ import { OPEN_METADATA } from '../../../constants/Services.constant';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Include } from '../../../generated/type/include';
@@ -43,6 +48,7 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
@@ -63,7 +69,8 @@ import {
   ownerTableObject,
 } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { DomainFilterChip } from '../../common/DomainFilterChip/DomainFilterChip.component';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { ListView } from '../../common/ListView/ListView.component';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -72,6 +79,7 @@ import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElement
 import { ColumnsType, TableProps } from '../../common/Table/Table.interface';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
+
 interface ServicesProps {
   serviceName: ServiceCategory;
 }
@@ -281,10 +289,9 @@ const Services = ({ serviceName }: ServicesProps) => {
     // the category has any.
     if (!isEmpty(searchTerm) || serviceQueryFilter || deleted) {
       return (
-        <ErrorPlaceHolder
-          className="mt-24 border-none"
-          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder data-testid="no-data-placeholder" />
+        </div>
       );
     }
 
@@ -299,7 +306,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       <div
         className="tw:relative tw:min-h-[400px]"
         data-testid="services-empty-placeholder">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           description={t(descriptionKey)}
           // `footer` rather than `actions` so the button keeps the same LimitWrapper the header
           // button has — service creation is limit-gated wherever the action appears.
@@ -320,7 +327,6 @@ const Services = ({ serviceName }: ServicesProps) => {
           }
           icon={<EmptyStateIcon className={SERVICE_EMPTY_STATE_ICON_CLASS} />}
           title={t(titleKey)}
-          variant="blank"
         />
       </div>
     );
@@ -441,61 +447,67 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const serviceCardRenderer = (service: ServicesType) => {
     return (
-      <Col key={service.name} lg={8} xl={6}>
-        <Card className="w-full" size="small">
-          <div
-            className="d-flex justify-between text-grey-muted"
-            data-testid="service-card">
-            <Row gutter={[0, 6]}>
-              <Col span={24}>
-                <Link
-                  className="no-underline"
-                  to={getServiceDetailsPath(
-                    service.fullyQualifiedName ?? service.name,
-                    serviceName
-                  )}>
-                  <Typography.Text
-                    className="text-base text-grey-body font-medium truncate w-48 d-inline-block"
-                    data-testid={`service-name-${service.name}`}
-                    title={getEntityName(service)}>
-                    {getEntityName(service)}
-                  </Typography.Text>
-                </Link>
-                <div
-                  className="p-t-xs text-grey-body break-all description-text"
-                  data-testid="service-description">
-                  {service.description ? (
-                    <RichTextEditorPreviewerV1
-                      className="max-two-lines"
-                      enableSeeMoreVariant={false}
-                      markdown={service.description}
-                    />
-                  ) : (
-                    <span className="text-grey-muted">
-                      {t('label.no-description')}
+      <Grid.Item
+        className="layout-column tw:col-span-24 tw:min-[992px]:col-span-8 tw:min-[1200px]:col-span-6"
+        key={service.name}>
+        <Card className="w-full" size="sm">
+          <Card.Content>
+            <div
+              className="d-flex justify-between text-grey-muted"
+              data-testid="service-card">
+              <Grid
+                className="layout-row layout-grid"
+                style={{ ...getLayoutGutter(0, 6) }}>
+                <Grid.Item className="layout-column" span={24}>
+                  <Link
+                    className="no-underline"
+                    to={getServiceDetailsPath(
+                      service.fullyQualifiedName ?? service.name,
+                      serviceName
+                    )}>
+                    <Typography
+                      className="text-base text-grey-body font-medium truncate w-48 d-inline-block"
+                      data-testid={`service-name-${service.name}`}
+                      title={getEntityName(service)}>
+                      {getEntityName(service)}
+                    </Typography>
+                  </Link>
+                  <div
+                    className="p-t-xs text-grey-body break-all description-text"
+                    data-testid="service-description">
+                    {service.description ? (
+                      <RichTextEditorPreviewerV1
+                        className="max-two-lines"
+                        enableSeeMoreVariant={false}
+                        markdown={service.description}
+                      />
+                    ) : (
+                      <span className="text-grey-muted">
+                        {t('label.no-description')}
+                      </span>
+                    )}
+                  </div>
+                  {getOptionalFields(service, serviceName)}
+                </Grid.Item>
+                <Grid.Item className="layout-column" span={24}>
+                  <div className="m-b-xss" data-testid="service-type">
+                    <span className="m-b-0">{`${t('label.type')}:`}</span>
+                    <span className="font-normal m-l-xss text-grey-body">
+                      {service.serviceType}
                     </span>
-                  )}
-                </div>
-                {getOptionalFields(service, serviceName)}
-              </Col>
-              <Col span={24}>
-                <div className="m-b-xss" data-testid="service-type">
-                  <span className="m-b-0">{`${t('label.type')}:`}</span>
-                  <span className="font-normal m-l-xss text-grey-body">
-                    {service.serviceType}
-                  </span>
-                </div>
-              </Col>
-            </Row>
+                  </div>
+                </Grid.Item>
+              </Grid>
 
-            <div className="d-flex flex-col justify-between flex-none">
-              <div className="d-flex justify-end" data-testid="service-icon">
-                {getServiceLogoElement(service, 'h-7')}
+              <div className="d-flex flex-col justify-between flex-none">
+                <div className="d-flex justify-end" data-testid="service-icon">
+                  {getServiceLogoElement(service, 'h-7')}
+                </div>
               </div>
             </div>
-          </div>
+          </Card.Content>
         </Card>
-      </Col>
+      </Grid.Item>
     );
   };
 
@@ -544,12 +556,18 @@ const Services = ({ serviceName }: ServicesProps) => {
   };
 
   return (
-    <Row
-      className="justify-center"
+    <Grid
+      className="layout-row layout-grid justify-center"
       data-testid="services-container"
-      gutter={[16, 16]}>
-      <Col span={24}>
-        <Space className="w-full justify-between m-b-lg" data-testid="header">
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal w-full justify-between m-b-lg"
+          data-testid="header"
+          gap={2}
+          itemClassName="layout-space-item">
           <PageHeader
             data={getServicePageHeader()}
             learningPageId={LEARNING_PAGE_IDS.SERVICES}
@@ -558,6 +576,8 @@ const Services = ({ serviceName }: ServicesProps) => {
             <ButtonSkeleton size="default" />
           ) : (
             <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
               placement="left"
               title={
                 addServicePermission
@@ -565,25 +585,28 @@ const Services = ({ serviceName }: ServicesProps) => {
                       entity: t('label.service'),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
-              }>
+              }
+              triggerClassName="tw:inline-flex">
               {addServicePermission && (
                 <LimitWrapper resource="dataAssets">
-                  <Button
+                  <CoreButton
                     className="m-b-xs"
+                    color="primary"
                     data-testid="add-service-button"
-                    type="primary"
-                    onClick={handleAddServiceClick}>
+                    size="sm"
+                    onPress={handleAddServiceClick}>
                     {t('label.add-new-entity', {
                       entity: t('label.service'),
                     })}
-                  </Button>
+                  </CoreButton>
                 </LimitWrapper>
               )}
             </Tooltip>
           )}
-        </Space>
-      </Col>
-      <Col span={24}>
+        </Box>
+        <DomainFilterChip />
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
           customPaginationProps={customPaginationTableProps}
@@ -606,8 +629,8 @@ const Services = ({ serviceName }: ServicesProps) => {
             onChange: handleTableChange,
           }}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

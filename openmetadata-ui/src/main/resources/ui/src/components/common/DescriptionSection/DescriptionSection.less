@@ -23,7 +23,7 @@
   }
   .description-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: var(--om-space-8);
     margin-bottom: var(--om-space-12);
 
@@ -33,12 +33,6 @@
       flex-wrap: wrap;
       gap: var(--om-space-8);
       min-width: 0;
-    }
-
-    .description-title {
-      font-weight: var(--om-font-weight-semibold);
-      font-size: var(--om-font-size-13);
-      color: @grey-900;
     }
   }
 
@@ -67,35 +61,9 @@
         }
       }
 
-      .show-more-button {
-        background: none;
-        border: none;
-        color: @primary-color;
-        cursor: pointer;
-        font-size: var(--om-font-size-xs);
-        padding: 0;
-        text-decoration: none;
-        transition: color var(--om-duration-200) ease;
-
-        &:hover {
-          color: @primary-6;
-          text-decoration: underline;
-        }
-
-        &:focus {
-          outline: none;
-          color: @primary-6;
-        }
-      }
-
       .description-metadata {
         margin-top: var(--om-space-10);
       }
-    }
-
-    .no-data-placeholder {
-      color: @grey-500;
-      font-size: var(--om-font-size-xs);
     }
 
     .description-metadata {

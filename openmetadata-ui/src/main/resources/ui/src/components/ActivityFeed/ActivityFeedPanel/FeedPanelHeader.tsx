@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,8 +38,14 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   hideCloseIcon = false,
 }) => {
   const { t } = useTranslation();
-  const entityType = getEntityType(entityLink);
-  const entityFQN = getEntityFQN(entityLink);
+  // Prefer the entity reference over parsing `entityLink`: a thread created
+  // from an activity event links the changed field (`::entityStatus`), which
+  // the EntityLink grammar does not list, so ANTLR logs a syntax error.
+  const entityRef = feed?.entityRef;
+  const entityType = entityRef?.fullyQualifiedName
+    ? entityRef.type
+    : getEntityType(entityLink);
+  const entityFQN = entityRef?.fullyQualifiedName ?? getEntityFQN(entityLink);
   const entityField = getEntityField(entityLink);
 
   return (
@@ -61,8 +67,8 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
               data-testid="entitylink"
               to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
               <span>
-                {feed?.entityRef
-                  ? getEntityName(feed.entityRef)
+                {entityRef
+                  ? getEntityName(entityRef)
                   : entityDisplayName(entityType, entityFQN)}
               </span>
             </Link>
@@ -71,22 +77,22 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
       </p>
       <div className="d-flex items-center">
         {onShowNewConversation ? (
-          <Tooltip
-            placement="bottom"
-            title={t('label.start-entity', {
+          <Button
+            aria-label={t('label.start-entity', {
               entity: t('label.conversation-lowercase'),
             })}
-            trigger="hover">
-            <Button
-              data-testid="add-new-conversation"
-              icon={<PlusOutlined />}
-              size="small"
-              type="primary"
-              onClick={() => {
-                onShowNewConversation(true);
-              }}
-            />
-          </Tooltip>
+            color="primary"
+            data-testid="add-new-conversation"
+            iconLeading={Plus}
+            size="sm"
+            tooltip={t('label.start-entity', {
+              entity: t('label.conversation-lowercase'),
+            })}
+            tooltipPlacement="bottom"
+            onPress={() => {
+              onShowNewConversation(true);
+            }}
+          />
         ) : null}
         {hideCloseIcon ? null : (
           <CloseIcon dataTestId="closeDrawer" handleCancel={onCancel} />

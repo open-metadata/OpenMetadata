@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ReactElement, ReactNode } from 'react';
+import type { CSSProperties, ReactElement, ReactNode } from 'react';
+import { Link as AriaLink } from 'react-aria-components';
 import { User01 as OwnersIcon } from '../../../icons/User01';
 import { Teams as TeamsIcon } from '../../../icons/Teams';
 import { cx } from '@/utils/cx';
@@ -28,6 +29,16 @@ const nameToHue = (name: string): number => {
 
   return Math.abs(hash) % 360;
 };
+
+// Light reproduces the original 92%/40% HSL tint exactly; dark uses a deep
+// tint with a light glyph, and a ring in the same hue.
+const USER_AVATAR_CLASSES = [
+  'tw:bg-[hsl(var(--avatar-hue)_100%_92%)]',
+  'tw:text-[hsl(var(--avatar-hue)_70%_40%)]',
+  'tw:dark:bg-[hsl(var(--avatar-hue)_40%_22%)]',
+  'tw:dark:text-[hsl(var(--avatar-hue)_85%_78%)]',
+  'tw:dark:border-[hsl(var(--avatar-hue)_45%_38%)]',
+].join(' ');
 
 const avatarSizeMap: Record<number, AvatarProps['size']> = {
   16: 'xxs',
@@ -59,19 +70,18 @@ export const OwnerChip = ({
   const nameStr =
     typeof displayName === 'string' ? displayName : owner.name ?? '';
   const hue = nameToHue(nameStr);
+  // Inline colours cannot follow the theme, so a user's hue travels as a CSS
+  // variable and USER_AVATAR_CLASSES pick the lightness per theme.
   const avatarStyle = isTeam
     ? {
         backgroundColor: 'var(--tw-color-utility-gray-200)',
       }
-    : {
-        backgroundColor: `hsl(${hue}, 100%, 92%)`,
-        color: `hsl(${hue}, 70%, 40%)`,
-      };
+    : ({ '--avatar-hue': hue } as CSSProperties);
 
   const avatar = (
     <Avatar
       alt={typeof displayName === 'string' ? displayName : owner.name}
-      className={isTeam ? 'tw:opacity-60' : undefined}
+      className={isTeam ? undefined : USER_AVATAR_CLASSES}
       contrastBorder={!isTeam}
       initials={
         typeof displayName === 'string' && !isTeam
@@ -114,13 +124,16 @@ export const OwnerChip = ({
           className
         )}>
         {avatar}
+        {/* AriaLink: a plain left click navigates through the app's
+            RouterProvider instead of the browser; modified clicks (new tab)
+            stay native. */}
         {href ? (
-          <a
+          <AriaLink
             className="tw:truncate tw:text-sm tw:text-primary tw:hover:underline"
             data-testid="owner-link"
             href={href}>
             {nameNode}
-          </a>
+          </AriaLink>
         ) : (
           <span
             className="tw:truncate tw:text-sm tw:text-primary"

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Skeleton } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
@@ -387,7 +387,7 @@ function IngestionListTable({
         width: 300,
         render: (_: string, record: ModifiedIngestionPipeline) => {
           return isLoading ? (
-            <Skeleton.Input active size="small" />
+            <Skeleton height={24} variant="rounded" width={120} />
           ) : (
             <IngestionStatusCount
               runId={record.runId}
@@ -476,6 +476,9 @@ function IngestionListTable({
         className={classNames('ingestion-list-table', tableContainerClassName)}
         data-testid="ingestion-table">
         <Table
+          // The 48px run-count tiles set the row height; centring every cell keeps
+          // the name, type, schedule and checkbox on the same line as them.
+          cellClassName="tw:p-2 tw:align-middle"
           columns={tableColumn}
           containerClassName={tableClassName}
           {...(!isUndefined(ingestionPagingInfo) &&

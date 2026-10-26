@@ -12,20 +12,27 @@
  */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
+import { useTestCaseStore } from '../../components/DataQuality/IncidentManager/useTestCase.store';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
+import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { TableType } from '../../generated/entity/data/table';
+import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
+import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import { getListTestCaseBySearch } from '../../rest/testAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import tableClassBase from '../../utils/TableClassBase';
 // Mocked globally in src/setupTests.js — imported here only to assert on it.
 import { showErrorToast } from '../../utils/ToastUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
@@ -104,6 +111,25 @@ jest.mock('../../rest/tableAPI', () => ({
   updateTablesVotes: jest.fn(),
 }));
 
+jest.mock('../../rest/testAPI', () => ({
+  ...jest.requireActual('../../rest/testAPI'),
+  getListTestCaseBySearch: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: { total: 0 } }),
+}));
+
+jest.mock('../../rest/incidentManagerAPI', () => ({
+  ...jest.requireActual('../../rest/incidentManagerAPI'),
+  getListTestCaseIncidentStatus: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: { total: 0 } }),
+}));
+
+jest.mock('../../rest/lineageAPI', () => ({
+  ...jest.requireActual('../../rest/lineageAPI'),
+  getDataQualityLineage: jest.fn().mockResolvedValue({ nodes: [], edges: [] }),
+}));
+
 jest.mock('../../rest/suggestionsAPI', () => ({
   getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
@@ -153,19 +179,14 @@ jest.mock(
 jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <p>testDescription</p>);
 });
+// Distinct sentinel so "skeleton shown" assertions don't collide with other components
+// that render data-testid="loader".
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton',
   () => {
-    return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
+    return jest.fn().mockImplementation(() => <p>testPermissionSkeleton</p>);
   }
 );
-
-// Distinct sentinel so permission-loading (this) and entity-loading (mocked PageLoader
-// below) are unambiguous in assertions — both real components render
-// data-testid="loader", which would make "no loader" assertions ambiguous between the two.
-jest.mock('./TableDetailsPageSkeleton.component', () => {
-  return jest.fn().mockImplementation(() => <p>testPermissionSkeleton</p>);
-});
 
 jest.mock('../../components/common/QueryViewer/QueryViewer.component', () => {
   return jest.fn().mockImplementation(() => <p>testQueryViewer</p>);
@@ -178,14 +199,17 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
-    DataAssetsHeader: jest.fn().mockImplementation(({ breadcrumbData }) => (
-      <div>
-        testDataAssetsHeader
-        <span data-testid="header-breadcrumb-data">
-          {JSON.stringify(breadcrumbData)}
-        </span>
-      </div>
-    )),
+    DataAssetsHeader: jest
+      .fn()
+      .mockImplementation(({ badge, breadcrumbData }) => (
+        <div>
+          testDataAssetsHeader
+          {badge}
+          <span data-testid="header-breadcrumb-data">
+            {JSON.stringify(breadcrumbData)}
+          </span>
+        </div>
+      )),
   })
 );
 
@@ -401,8 +425,8 @@ describe('TestDetailsPageV1 component', () => {
 
     it('does not show the permission-loading skeleton in tour mode, even while isLoading is true', () => {
       // mockImplementationOnce would only override the FIRST call to useTourProvider() —
-      // TableDetailsPageV1 is wrapped in withSuggestions(withActivityFeed(...)), and those
-      // wrappers (or providers they render) may call the hook before the inner component
+      // TableDetailsPageV1 is wrapped in withActivityFeed(...), and that
+      // wrapper (or providers it renders) may call the hook before the inner component
       // does, silently consuming the "once" override before it reaches this test's target.
       // A persistent mockImplementation, explicitly restored after, doesn't depend on call
       // order.
@@ -450,6 +474,26 @@ describe('TestDetailsPageV1 component', () => {
       );
     });
 
+    it('does not request the query count for the tour mock table', async () => {
+      (getQueriesList as jest.Mock).mockClear();
+      (useTourProvider as jest.Mock).mockImplementation(() => ({
+        isTourOpen: true,
+        activeTabForTourDatasetPage: EntityTabs.TABLE_QUERIES,
+        isTourPage: true,
+        tourMockDatasetData: mockDatasetData,
+      }));
+      setMockPermissions({});
+
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+
+      expect(await screen.findByText('testTableQueries')).toBeInTheDocument();
+      expect(getQueriesList).not.toHaveBeenCalled();
+    });
+
     it('uses tour permissions for Lineage edit access', async () => {
       (useTourProvider as jest.Mock).mockImplementation(() => ({
         isTourOpen: true,
@@ -470,6 +514,140 @@ describe('TestDetailsPageV1 component', () => {
         'true'
       );
     });
+  });
+
+  // The tab strip is the one piece of TableDetailsPageV1 that historically gated on
+  // `isTourOpen` alone (selectedKey + handleTabChange) instead of the union
+  // `isTourOpen || isTourPage` the rest of the page uses (e.g. mock-data seeding). On
+  // /tour there is no :fqn or :tab, so on an X-close (isTourOpen → false while
+  // isTourPage stays true) the displayed tab snapped to Schema and a tab click
+  // navigated to /table//<tab> (an empty-FQN route that renders blank). These tests
+  // cover the post-X-close split state that the tour-mode tests above never reach.
+  describe('tab-strip tour-mode gating on /tour', () => {
+    const setTourState = (tourState: {
+      isTourOpen: boolean;
+      isTourPage: boolean;
+      activeTabForTourDatasetPage: EntityTabs;
+    }) => {
+      (useTourProvider as jest.Mock).mockImplementation(() => ({
+        isTourOpen: tourState.isTourOpen,
+        isTourPage: tourState.isTourPage,
+        activeTabForTourDatasetPage: tourState.activeTabForTourDatasetPage,
+        tourMockDatasetData: mockDatasetData,
+      }));
+    };
+
+    beforeEach(() => {
+      setMockPermissions();
+      mockNavigate.mockClear();
+      // /tour carries no :fqn or :tab, so both route params are absent — making
+      // tableFqn '' and activeTab undefined, the exact state the bug exploits.
+      (useParams as jest.Mock).mockImplementation(() => ({}));
+    });
+
+    afterEach(() => {
+      (useTourProvider as jest.Mock).mockImplementation(() => ({
+        isTourOpen: false,
+        activeTabForTourDatasetPage: 'schema',
+        isTourPage: false,
+      }));
+      (useParams as jest.Mock).mockImplementation(() => ({
+        fqn: 'fqn',
+        tab: 'schema',
+      }));
+    });
+
+    it('keeps the tour-controlled tab selected after X-close while still on /tour', async () => {
+      setTourState({
+        isTourOpen: false, // X-close dismissed the overlay…
+        isTourPage: true, // …but the user is still on /tour
+        activeTabForTourDatasetPage: EntityTabs.SAMPLE_DATA,
+      });
+
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+
+      // Sample Data stays selected (does not snap to Schema): the tour-controlled
+      // panel renders while the Schema panel does not.
+      expect(
+        await screen.findByText('testSampleDataTable')
+      ).toBeInTheDocument();
+      expect(screen.queryByText('GenericTab')).not.toBeInTheDocument();
+    });
+
+    it('does not navigate when a tab is clicked after X-close while still on /tour', async () => {
+      setTourState({
+        isTourOpen: false,
+        isTourPage: true,
+        activeTabForTourDatasetPage: EntityTabs.SAMPLE_DATA,
+      });
+
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+
+      await screen.findByText('testSampleDataTable');
+      fireEvent.click(screen.getByText('label.lineage'));
+
+      // Navigation stays suppressed: no /table//<tab> transition off the demo.
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+  });
+
+  // Regression for #35848: a hidden tab in the URL (Knowledge Graph while RDF is
+  // off) selected Schema but the provider built its layout from the hidden tab,
+  // which has no widgets, so the panel rendered empty.
+  it('renders the Schema layout when the URL tab is hidden', async () => {
+    setMockPermissions({ ViewBasic: true });
+    (useParams as jest.Mock).mockImplementation(() => ({
+      fqn: 'fqn',
+      tab: EntityTabs.KNOWLEDGE_GRAPH,
+    }));
+    // Read the layout the real GenericProvider computed, instead of fixed text.
+    (GenericTab as jest.Mock).mockImplementation(() => {
+      const { layout } = useGenericContext();
+
+      return (
+        <div data-testid="generic-tab-layout">
+          {layout.map((widget) => widget.i).join(',')}
+        </div>
+      );
+    });
+
+    try {
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+
+      expect(
+        await screen.findByText('testDataAssetsHeader')
+      ).toBeInTheDocument();
+      expect(screen.getByRole('tab', { selected: true })).toHaveTextContent(
+        'label.column-plural'
+      );
+      expect(await screen.findByTestId('generic-tab-layout')).toHaveTextContent(
+        DetailPageWidgetKeys.LEFT_PANEL
+      );
+    } finally {
+      (useParams as jest.Mock).mockImplementation(() => ({
+        fqn: 'fqn',
+        tab: 'schema',
+      }));
+      (GenericTab as jest.Mock).mockImplementation(() => <>GenericTab</>);
+    }
   });
 
   it('TableDetailsPageV1 should fetch table details with basic fields', async () => {
@@ -502,6 +680,26 @@ describe('TestDetailsPageV1 component', () => {
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
       fields: `${COMMON_API_FIELDS},usageSummary,testSuite`,
     });
+  });
+
+  it('keeps the entity skeleton, not a spinner, while the table itself is still loading', async () => {
+    setMockPermissions({ ViewBasic: true });
+    // Never settles, so the page stays on its entity-loading branch.
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(
+      () => new Promise(() => undefined)
+    );
+
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByText('testPermissionSkeleton')).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+    expect(screen.queryByText('testDataAssetsHeader')).not.toBeInTheDocument();
   });
 
   it('TableDetailsPageV1 should render page for ViewBasic permissions', async () => {
@@ -905,5 +1103,169 @@ describe('TestDetailsPageV1 component', () => {
         )
       );
     });
+  });
+});
+
+describe('TableDetailsPageV1 data quality indicator', () => {
+  let alertGate: jest.SpyInstance;
+
+  const renderPage = async () => {
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+    });
+  };
+
+  const openCard = () => {
+    // Establish pointer modality so react-aria accepts hover events.
+    fireEvent.mouseMove(document);
+    fireEvent.mouseEnter(
+      screen.getByTestId('dq-indicator').parentElement as HTMLElement,
+      { pointerType: 'mouse' }
+    );
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+  };
+
+  const incidentOn = (testCaseId: string) => ({
+    testCaseReference: { id: testCaseId, type: 'testCase' },
+  });
+
+  beforeEach(() => {
+    setMockPermissions({ ViewAll: true });
+    alertGate = jest
+      .spyOn(tableClassBase, 'getAlertEnableStatus')
+      .mockReturnValue(true);
+    (getTableDetailsByFQN as jest.Mock).mockResolvedValue({
+      name: 'test',
+      id: '123',
+      columns: [],
+      fullyQualifiedName: 'fqn',
+    });
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    (getDataQualityLineage as jest.Mock).mockResolvedValue({
+      nodes: [],
+      edges: [],
+    });
+    useTestCaseStore.getState().setDqLineageData(undefined);
+  });
+
+  afterEach(() => {
+    alertGate.mockRestore();
+  });
+
+  it('counts failing tests from paging.total, not the returned page', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [{ id: 'failing-1' }],
+      paging: { total: 3 },
+    });
+
+    await renderPage();
+
+    expect(await screen.findByTestId('dq-indicator')).toHaveAttribute(
+      'data-level',
+      'failing'
+    );
+
+    openCard();
+
+    expect(
+      screen.getByText('message.dq-failing-tests-description-plural')
+    ).toBeInTheDocument();
+  });
+
+  it('does not count an open incident on a currently failing test again', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [{ id: 'failing-1' }],
+      paging: { total: 1 },
+    });
+    (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue({
+      data: [incidentOn('failing-1')],
+      paging: { total: 1 },
+    });
+
+    await renderPage();
+
+    const indicator = await screen.findByTestId('dq-indicator');
+
+    expect(indicator).toHaveAttribute('data-level', 'failing');
+    expect(indicator).toHaveAttribute(
+      'aria-label',
+      'label.data-quality-test-failing'
+    );
+  });
+
+  it('stays amber for an open incident when the other calls fail', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockRejectedValue(
+      new Error('search failed')
+    );
+    (getDataQualityLineage as jest.Mock).mockRejectedValue(
+      new Error('lineage failed')
+    );
+    (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue({
+      data: [incidentOn('passing-1')],
+      paging: { total: 1 },
+    });
+
+    await renderPage();
+
+    expect(await screen.findByTestId('dq-indicator')).toHaveAttribute(
+      'data-level',
+      'incident'
+    );
+    expect(useTestCaseStore.getState().dqLineageData).toBeUndefined();
+  });
+
+  it('skips the incidents request without ViewTests permission', async () => {
+    setMockPermissions({ ViewBasic: true });
+    (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue({
+      data: [incidentOn('passing-1')],
+      paging: { total: 1 },
+    });
+
+    await renderPage();
+
+    await waitFor(() => expect(getDataQualityLineage).toHaveBeenCalled());
+
+    expect(getListTestCaseIncidentStatus).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('dq-indicator')).not.toBeInTheDocument();
+  });
+
+  it('shows the upstream state and stores the lineage response', async () => {
+    const lineage = {
+      nodes: [{ fullyQualifiedName: 'fqn' }, { fullyQualifiedName: 'raw' }],
+      edges: [],
+    };
+    (getDataQualityLineage as jest.Mock).mockResolvedValue(lineage);
+
+    await renderPage();
+
+    expect(await screen.findByTestId('dq-indicator')).toHaveAttribute(
+      'data-level',
+      'upstream'
+    );
+    expect(useTestCaseStore.getState().dqLineageData).toEqual(lineage);
+  });
+
+  it('renders no indicator and skips the requests when alerts are disabled', async () => {
+    alertGate.mockReturnValue(false);
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    await renderPage();
+
+    expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
+    expect(screen.queryByTestId('dq-indicator')).not.toBeInTheDocument();
+    expect(getListTestCaseBySearch).not.toHaveBeenCalled();
   });
 });

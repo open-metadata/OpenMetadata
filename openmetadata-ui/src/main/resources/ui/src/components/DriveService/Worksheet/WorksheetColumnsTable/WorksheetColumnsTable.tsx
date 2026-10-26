@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import {
   cloneDeep,
@@ -52,8 +52,8 @@ import {
 } from '../../../../utils/TableUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../../common/CopyLinkButton/CopyLinkButton';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 import Table from '../../../common/Table/TableV2';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
@@ -190,13 +190,13 @@ function WorksheetColumnsTable() {
                   columnName: name,
                   columnConstraint: record.constraint,
                 })}
-                <Typography.Text
+                <Typography
                   className={classNames(
                     'm-b-0 d-block break-word text-link-color'
                   )}
                   data-testid="column-name">
                   {name}
-                </Typography.Text>
+                </Typography>
                 {record.fullyQualifiedName && (
                   <CopyLinkButton
                     entityType={EntityType.WORKSHEET}
@@ -205,11 +205,11 @@ function WorksheetColumnsTable() {
                 )}
               </div>
               {isEmpty(displayName) ? null : (
-                <Typography.Text
-                  className="m-b-0 d-block break-word"
+                <Typography
+                  className="m-b-0 d-block break-word tw:text-primary"
                   data-testid="column-display-name">
                   {getEntityName(record)}
-                </Typography.Text>
+                </Typography>
               )}
             </div>
           );
@@ -227,16 +227,13 @@ function WorksheetColumnsTable() {
         ) => {
           return (
             <Tooltip
-              destroyTooltipOnHide
-              overlayInnerStyle={{
-                maxWidth: '420px',
-                overflowWrap: 'break-word',
-                textAlign: 'center',
-              }}
-              title={toLower(dataTypeDisplay)}>
-              <Typography.Text ellipsis className="cursor-pointer">
+              arrow
+              excludeTriggerFromTabOrder
+              title={toLower(dataTypeDisplay)}
+              triggerClassName="tw:block tw:min-w-0">
+              <Typography ellipsis className="cursor-pointer tw:text-primary">
                 {dataTypeDisplay ?? record.dataType}
-              </Typography.Text>
+              </Typography>
             </Tooltip>
           );
         },
@@ -322,7 +319,11 @@ function WorksheetColumnsTable() {
   );
 
   if (isEmpty(schema)) {
-    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (

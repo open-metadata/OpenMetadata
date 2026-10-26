@@ -95,6 +95,10 @@ const mockGetServicesData = [
   },
 ];
 
+jest.mock('../../common/DomainFilterChip/DomainFilterChip.component', () => ({
+  DomainFilterChip: () => null,
+}));
+
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: jest.fn().mockReturnValue({
@@ -143,6 +147,9 @@ jest.mock('../../../rest/serviceAPI', () => ({
 
 jest.mock('../../../utils/StringUtils', () => ({
   ...jest.requireActual('../../../utils/StringUtils'),
+}));
+
+jest.mock('../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
@@ -168,10 +175,6 @@ jest.mock('../../../utils/ServicePureUtils', () => ({
 jest.mock('../../../utils/ServiceUtils', () => ({
   getOptionalFields: jest.fn(),
 }));
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return () => <div data-testid="error-placeholder">ErrorPlaceHolder</div>;
-});
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
@@ -417,7 +420,11 @@ describe('Services', () => {
 
       // "No deleted services" says nothing about whether the category has any, so inviting the user
       // to connect their first one would be wrong.
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
       expect(
         screen.queryByText('message.empty-database-services-title')
       ).not.toBeInTheDocument();
@@ -432,7 +439,11 @@ describe('Services', () => {
         fireEvent.click(screen.getByTestId('trigger-search'));
       });
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
       expect(
         screen.queryByText('message.empty-database-services-title')
       ).not.toBeInTheDocument();

@@ -31,6 +31,14 @@ import { guardStorageStateBoot } from '../../utils/storageStateRecovery';
 const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
 
 /**
+ * The tracking pixel in `index.html` is a document subresource, so the `load`
+ * event — what `page.goto`/`reload` wait for by default — waits on an internet
+ * host. When it stalls, a fully rendered page times out its navigation (seen in
+ * OntologyReview.spec.ts: Studio on screen, `page.goto` timed out on "load").
+ */
+const SCARF_PIXEL = 'https://static.scarf.sh/**';
+
+/**
  * Boot endpoints safe to serve from the per-worker cache.
  *
  * Three things have to hold for a path to be listed here. It must have no
@@ -373,6 +381,33 @@ const serveStaticAsset = async (route: Route) => {
 };
 
 /**
+ * `BrowserContext.close()` disposes `context.request` — which runs every
+ * `route.fetch()` and owns its response — as its first step, before a single
+ * page is closed, so `page.isClosed()` is still false when the in-flight fetch
+ * ("Request context disposed") or body read ("Response has been disposed")
+ * fails. That check alone let a `beforeAll` that closes its own
+ * `browser.newPage()` fail the first test of the describe. A disposal only
+ * counts as teardown once the context's `close` event proves it; on a live
+ * context it is still an error.
+ */
+const CONTEXT_CLOSE_TIMEOUT_MS = 30_000;
+
+const isContextClosing = async (route: Route) => {
+  const page = route.request().frame().page();
+
+  return (
+    page.isClosed() ||
+    page
+      .context()
+      .waitForEvent('close', { timeout: CONTEXT_CLOSE_TIMEOUT_MS })
+      .then(
+        () => true,
+        () => false
+      )
+  );
+};
+
+/**
  * Playwright rethrows out of a route handler (`RouteHandler._handleImpl`) and
  * `BrowserContext._onRoute` does not catch it, so a handler that throws fails
  * whichever test owns the route. Losing the target mid-flight is routine here
@@ -386,23 +421,25 @@ const serveStaticAsset = async (route: Route) => {
  * propagates — a cache that is broken for a real reason must not be
  * silent.
  */
-const ignoreClosedTarget = async (route: Route, serve: () => Promise<void>) => {
+export const ignoreClosedTarget = async (
+  route: Route,
+  serve: () => Promise<void>
+) => {
   try {
     await serve();
   } catch (error) {
     if (/has been closed|Route is already handled/.test(String(error))) {
       return;
     }
-    // Closing a context disposes route.fetch's response store before its body
-    // reader resumes. A disposed response on a live page is still an error.
-    if (
-      /Response has been disposed/.test(String(error)) &&
-      route.request().frame().page().isClosed()
-    ) {
-      return;
-    }
 
-    throw error;
+    const disposedByClose =
+      /Response has been disposed|Request context disposed/.test(
+        String(error)
+      ) && (await isContextClosing(route));
+
+    if (!disposedByClose) {
+      throw error;
+    }
   }
 };
 
@@ -432,6 +469,10 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
   // page that is already going away.
   await context.route(ANALYTICS_COLLECT, (route) =>
     ignoreClosedTarget(route, () => route.fulfill({ status: 200, body: '' }))
+  );
+
+  await context.route(SCARF_PIXEL, (route) =>
+    ignoreClosedTarget(route, () => route.fulfill({ status: 204 }))
   );
 
   await context.route(CACHEABLE_BOOT_PATTERN, (route) =>

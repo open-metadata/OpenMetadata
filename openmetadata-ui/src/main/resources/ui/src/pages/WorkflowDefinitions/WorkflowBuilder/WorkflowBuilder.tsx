@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs } from '@openmetadata/ui-core-components';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
+import { get } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -26,6 +27,8 @@ import { useTranslation } from 'react-i18next';
 import { Navigate } from 'react-router-dom';
 import { Edge, Node, ReactFlowProvider } from 'reactflow';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../../components/common/Loader/Loader';
@@ -47,7 +50,10 @@ import {
   useWorkflowModeContext,
   WorkflowModeProvider,
 } from '../../../contexts/WorkflowModeContext';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
+import { ApprovalMode } from '../../../generated/governance/workflows/elements/triggers/eventBasedEntityTrigger';
+import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
 import { useWorkflowActions } from '../../../hooks/useWorkflowActions';
@@ -63,20 +69,92 @@ import {
 } from '../../../rest/metadataTypeAPI';
 import {
   patchWorkflowDefinition,
+  resumeWorkflow,
+  suspendWorkflow,
   triggerWorkflow,
 } from '../../../rest/workflowDefinitionsAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
+import { isGitSinkNode } from '../../../utils/WorkflowConfigUtils';
 import { applyFlowchartLayout } from '../../../utils/WorkflowLayout';
 import { getWorkflowDefinitionsListPath } from '../../../utils/WorkflowRouterUtils';
 
 interface WorkflowBuilderInternalProps {
   workflowLogic: UseWorkflowLogicReturn;
+  workflowFqn?: string;
+  /** Renders the tabs and their panels without the page layout, breadcrumb and title header. */
+  embedded?: boolean;
+  /** Called after the workflow is saved, so a host page can reload what it shows. */
+  onSaved?: () => void;
 }
+
+// The approval mode chosen on the start node in this session, else the one the workflow was saved
+// with.
+const isEnforceApproval = (
+  startNode: Node | null,
+  workflowDefinition?: WorkflowDefinition | null
+) =>
+  (startNode?.data?.approvalMode ??
+    get(workflowDefinition, 'trigger.config.approvalMode')) ===
+  ApprovalMode.Enforce;
+
+interface WorkflowBuilderLoadErrorProps {
+  breadcrumb: React.ReactNode;
+  embedded: boolean;
+  error: AxiosError;
+  onReload: () => void;
+}
+
+const WorkflowBuilderLoadError: React.FC<WorkflowBuilderLoadErrorProps> = ({
+  breadcrumb,
+  embedded,
+  error,
+  onReload,
+}) => {
+  const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const placeholder = (
+    <div className="tw:relative tw:flex-1 tw:min-h-0">
+      {error.response?.status === ClientErrors.FORBIDDEN ? (
+        <PermissionPlaceholder
+          permissionValue={t('label.view-entity', {
+            entity: t('label.workflow'),
+          })}
+        />
+      ) : (
+        <SomethingWentWrongPlaceholder
+          title={t('server.entity-fetch-error', {
+            entity: t('label.workflow'),
+          })}
+          onReload={onReload}
+        />
+      )}
+    </div>
+  );
+
+  if (embedded) {
+    return placeholder;
+  }
+
+  return (
+    <PageLayoutV1
+      fullHeight
+      pageTitle={t('label.workflow-plural')}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <div className="tw:flex tw:flex-1 tw:min-h-0 tw:flex-col">
+        <div className="tw:mb-4">{breadcrumb}</div>
+        {placeholder}
+      </div>
+    </PageLayoutV1>
+  );
+};
 
 const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   workflowLogic,
+  workflowFqn,
+  embedded = false,
+  onSaved,
 }) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -110,9 +188,12 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     selectedNode,
     setEdges,
     setNodes,
+    setWorkflowDefinition,
     workflowDefinition,
     workflowMetadata,
     isNodeDragEnabled,
+    loadError,
+    reloadWorkflow,
   } = workflowLogic;
 
   const syncWithStore = workflowLogic.syncWithStore;
@@ -156,9 +237,13 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     return startEventNode?.data?.dataAssets || [];
   }, [startEventNode]);
 
+  const isEnforceMode = isEnforceApproval(startEventNode, workflowDefinition);
+
   const startEventTriggerType = useMemo(() => {
     return startEventNode?.data?.triggerType || '';
   }, [startEventNode]);
+
+  const hasGitSinkNode = useMemo(() => nodes.some(isGitSinkNode), [nodes]);
 
   const [isUndoRedoInProgress, setIsUndoRedoInProgress] = useState(false);
   const [isRunLoading, setIsRunLoading] = useState(false);
@@ -314,6 +399,23 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     }
   }, [performDeleteWorkflow]);
 
+  const isSuspended = Boolean(workflowDefinition?.suspended);
+
+  const handleToggleSuspend = useCallback(async () => {
+    if (!workflowDefinition) {
+      return;
+    }
+
+    try {
+      await (isSuspended ? resumeWorkflow : suspendWorkflow)(
+        workflowDefinition.name
+      );
+      setWorkflowDefinition({ ...workflowDefinition, suspended: !isSuspended });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [workflowDefinition, isSuspended, setWorkflowDefinition]);
+
   const handleRunWorkflow = useCallback(async () => {
     const workflowFqn = workflowMetadata?.name;
     if (!workflowFqn) {
@@ -365,10 +467,11 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
       const success = await handleSaveWorkflow();
       if (success) {
         setHasNodeConfigSaved(false);
+        onSaved?.();
       }
 
       return success;
-    }, [handleSaveWorkflow]);
+    }, [handleSaveWorkflow, onSaved]);
 
   const handleUpdateDisplayName = useCallback(
     async (newDisplayName: string) => {
@@ -462,6 +565,19 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     return <Loader />;
   }
 
+  if (loadError) {
+    return (
+      <WorkflowBuilderLoadError
+        breadcrumb={
+          isAiMode ? breadcrumb : <TitleBreadcrumb titleLinks={breadcrumbs} />
+        }
+        embedded={embedded}
+        error={loadError}
+        onReload={reloadWorkflow}
+      />
+    );
+  }
+
   const sidebarClassName = classNames(
     'tw:absolute tw:top-8.5 tw:left-5 tw:bottom-5 tw:w-72 tw:z-10',
     'tw:flex tw:flex-col tw:min-h-0',
@@ -529,7 +645,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
       </div>
     ) : (
       <div className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
-        <WorkflowExecutionHistory />
+        <WorkflowExecutionHistory workflowFqn={workflowFqn} />
       </div>
     );
 
@@ -547,6 +663,8 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
           dataAssets: startEventDataAssets,
           triggerType: startEventTriggerType,
         }}
+        hasGitSinkNode={hasGitSinkNode}
+        isEnforceMode={isEnforceMode}
         isOpen={isConfigSidebarOpen}
         node={selectedNode}
         setEdges={setEdges}
@@ -596,7 +714,59 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     </>
   );
 
-  return (
+  const builderTabs = (
+    <Tabs
+      data-testid="workflow-execution-tabs"
+      selectedKey={activeTab}
+      onSelectionChange={(key) => setActiveTab(key as WorkflowBuilderTab)}>
+      <Tabs.List
+        items={workflowBuilderTabs}
+        size="sm"
+        type="underline"
+        variant="card">
+        {(tab) => (
+          <Tabs.Item
+            data-testid={tabTestIds[tab.id as WorkflowBuilderTab]}
+            id={tab.id}
+            label={tab.label}
+          />
+        )}
+      </Tabs.List>
+    </Tabs>
+  );
+
+  const tabContent = (
+    <div className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:pt-4">
+      {renderTabPanel()}
+      {renderSidebar()}
+    </div>
+  );
+
+  // The host page carries the title and its own delete, so only the workflow's controls stay.
+  const renderEmbedded = () => (
+    <div
+      className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col"
+      data-testid="embedded-workflow-builder">
+      {renderConnectionOverlay()}
+      <div className="tw:flex tw:items-center tw:justify-between tw:gap-3">
+        {builderTabs}
+        <WorkflowHeader
+          handleRevertAndCancel={handleRevertAndCancel}
+          handleRunWorkflow={handleRunWorkflow}
+          handleSaveWorkflow={handleSaveWorkflowWithSnapshot}
+          handleTestWorkflow={handleTestWorkflow}
+          isRunLoading={isRunLoading}
+          title={workflowDisplayName}
+          variant="actions"
+          workflowName={workflowName}
+        />
+      </div>
+      {tabContent}
+      {renderOverlays()}
+    </div>
+  );
+
+  const renderPage = () => (
     <PageLayoutV1
       fullHeight
       mainContainerClassName="workflow-builder-layout"
@@ -616,50 +786,43 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
         <div className="tw:shrink-0">
           <WorkflowHeader
             breadcrumb={isAiMode ? breadcrumb : undefined}
+            editorLink={workflowClassBase.getWorkflowEditorLink(
+              workflowDefinition
+            )}
             handleDeleteWorkflow={handleShowDeleteModal}
             handleRevertAndCancel={handleRevertAndCancel}
             handleRunWorkflow={handleRunWorkflow}
             handleSaveWorkflow={handleSaveWorkflowWithSnapshot}
             handleTestWorkflow={handleTestWorkflow}
+            handleToggleSuspend={handleToggleSuspend}
             isAiMode={isAiMode}
             isRunLoading={isRunLoading}
+            isSuspended={isSuspended}
             title={workflowDisplayName}
             workflowName={workflowName}
             onUpdateDisplayName={handleUpdateDisplayName}
           />
         </div>
-        <Card className="tw:mt-3">
-          <Tabs
-            className="tw:w-full tw:mt-3 tw:shrink-0 tw:pl-5"
-            data-testid="workflow-execution-tabs"
-            selectedKey={activeTab}
-            onSelectionChange={(key) =>
-              setActiveTab(key as WorkflowBuilderTab)
-            }>
-            <Tabs.List items={workflowBuilderTabs} type="underline">
-              {(tab) => (
-                <Tabs.Item
-                  data-testid={tabTestIds[tab.id as WorkflowBuilderTab]}
-                  id={tab.id}
-                  label={tab.label}
-                />
-              )}
-            </Tabs.List>
-          </Tabs>
-        </Card>
-        <div className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:pt-4">
-          {renderTabPanel()}
-          {renderSidebar()}
-        </div>
+        <div className="tw:mt-3">{builderTabs}</div>
+        {tabContent}
       </div>
 
       {renderOverlays()}
     </PageLayoutV1>
   );
+
+  return embedded ? renderEmbedded() : renderPage();
 };
 
-const WorkflowBuilderWrapper: React.FC<{ workflowFqn?: string }> = ({
+type WorkflowBuilderWrapperProps = Pick<
+  WorkflowBuilderInternalProps,
+  'workflowFqn' | 'embedded' | 'onSaved'
+>;
+
+const WorkflowBuilderWrapper: React.FC<WorkflowBuilderWrapperProps> = ({
   workflowFqn,
+  embedded,
+  onSaved,
 }) => {
   const workflowLogic = useWorkflowLogic({ fqn: workflowFqn });
   const { workflowDefinition } = workflowLogic;
@@ -668,10 +831,32 @@ const WorkflowBuilderWrapper: React.FC<{ workflowFqn?: string }> = ({
     <WorkflowModeProvider
       workflowDefinition={workflowDefinition}
       workflowFqn={workflowFqn}>
-      <WorkflowBuilderInternal workflowLogic={workflowLogic} />
+      <WorkflowBuilderInternal
+        embedded={embedded}
+        workflowFqn={workflowFqn}
+        workflowLogic={workflowLogic}
+        onSaved={onSaved}
+      />
     </WorkflowModeProvider>
   );
 };
+
+/**
+ * The builder's Workflow Builder and Execution History tabs for a saved workflow, without its page,
+ * for a host page that shows the workflow's title and header itself.
+ */
+export const EmbeddedWorkflowBuilder: React.FC<{
+  workflowFqn: string;
+  onSaved?: () => void;
+}> = ({ workflowFqn, onSaved }) => (
+  <ReactFlowProvider>
+    <WorkflowBuilderWrapper
+      embedded
+      workflowFqn={workflowFqn}
+      onSaved={onSaved}
+    />
+  </ReactFlowProvider>
+);
 
 const WorkflowBuilder: React.FC = () => {
   const { fqn } = useFqn();

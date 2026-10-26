@@ -1727,7 +1727,8 @@
                 "EN",
                 "JP",
                 "ZH",
-                "RU"
+                "RU",
+                "KO"
               ],
               "default": "EN"
             },
@@ -2059,12 +2060,12 @@
           "javaType": "org.openmetadata.schema.entity.applications.configuration.internal.RdfInferenceAppConfig",
           "properties": {
             "force": {
-              "description": "Materialize every enabled rule even when its durable dirty flag is clear.",
+              "description": "Recompute every rule even when no rule is dirty.",
               "type": "boolean",
               "default": false
             },
             "ruleName": {
-              "description": "Optional rule name for an on-demand single-rule run.",
+              "description": "Optional rule that must exist. The run still computes every rule, because rules read each other's conclusions.",
               "type": "string",
               "pattern": "^[a-z][a-z0-9-]{1,62}[a-z0-9]$"
             }
@@ -2118,6 +2119,13 @@
             "workflowRetentionPeriod": {
               "title": "Automation Workflow Retention Period (days)",
               "description": "Enter the retention period in days for automation Workflows: the short-lived records left behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them forever.",
+              "type": "integer",
+              "default": 30,
+              "minimum": 0
+            },
+            "workflowInstanceRetentionPeriod": {
+              "title": "Governance Workflow Run History Retention Period (days)",
+              "description": "Enter the retention period in days for the run history of governance workflows. A finished run older than this is deleted with its stages, but the latest run of each workflow for every entity is always kept. Use 0 to retain the history forever.",
               "type": "integer",
               "default": 30,
               "minimum": 0

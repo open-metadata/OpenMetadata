@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon, { CheckOutlined } from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import type { LoadingState } from 'Models';
 import { Link } from 'react-router-dom';
@@ -37,7 +37,7 @@ export const getLoadingStatusValue = (
   if (loading) {
     return <Loader className="text-primary" size="small" />;
   } else if (status === 'success') {
-    return <CheckOutlined className="text-primary" />;
+    return <Check className="tw:text-brand-secondary tw:shrink-0" size={14} />;
   } else {
     return defaultState;
   }
@@ -60,7 +60,7 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
     return (
       <div className="d-flex items-center gap-2">
         {isMetricEntity ? (
-          <Icon component={MetricIcon} style={{ fontSize: '20px' }} />
+          <MetricIcon className="tw:size-5 tw:shrink-0" />
         ) : (
           <img
             alt={fqn}
@@ -69,9 +69,9 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
           />
         )}
 
-        <Typography.Text className="text-primary" ellipsis={{ tooltip: true }}>
+        <Typography className="text-primary" ellipsis={{ tooltip: true }}>
           {isEmpty(fqn) ? NO_DATA_PLACEHOLDER : fqn}
-        </Typography.Text>
+        </Typography>
       </div>
     );
   };
@@ -160,11 +160,12 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
       width: 200,
       ellipsis: { showTitle: false },
       render: (text: string) => (
-        <Typography.Text
+        <Typography
+          className="tw:text-primary"
           data-testid={`lineage-column-${header}-${text}`}
           ellipsis={{ tooltip: true }}>
           {isEmpty(text) ? NO_DATA_PLACEHOLDER : text}
-        </Typography.Text>
+        </Typography>
       ),
     });
   });

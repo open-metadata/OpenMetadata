@@ -35,7 +35,7 @@ install_all:  ## Install the ingestion module with all dependencies
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
-	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ setuptools~=70.3.0
+	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ "setuptools>=83"
 
 .PHONY: static-checks
 static-checks:  ## Run basedpyright type checks (delegates to nox so local matches CI)
@@ -120,7 +120,7 @@ coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
 	coverage xml --rcfile $(INGESTION_DIR)/pyproject.toml -o $(INGESTION_DIR)/coverage.xml || true
-	sed 's|filename="[^"]*\(/metadata/[^"]*"\)|filename="src\1|g' $(INGESTION_DIR)/coverage.xml > $(INGESTION_DIR)/ci-coverage.xml
+	sed 's|filename="[^"]*/site-packages/metadata/|filename="src/metadata/|g' $(INGESTION_DIR)/coverage.xml > $(INGESTION_DIR)/ci-coverage.xml
 
 .PHONY: clean-nox
 clean-nox:

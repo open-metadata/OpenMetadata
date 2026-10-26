@@ -72,8 +72,9 @@ describe('ActivityEventFooter', () => {
 
       render(<ActivityEventFooter activity={activity} />);
 
-      expect(screen.getByTestId('comment-button')).toBeInTheDocument();
-      expect(screen.getByTestId('comment-icon')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'label.comment' })
+      ).toHaveAttribute('data-testid', 'comment-button');
     });
 
     it('should render reactions component', () => {
@@ -157,6 +158,27 @@ describe('ActivityEventFooter', () => {
       fireEvent.click(screen.getByTestId('comment-button'));
 
       expect(mockOnActivityClick).not.toHaveBeenCalled();
+    });
+
+    it('lets the click reach the card container behind the footer', () => {
+      const activity = createMockActivity();
+      const mockOnActivityClick = jest.fn();
+      const mockContainerClick = jest.fn();
+
+      render(
+        <div role="presentation" onClick={mockContainerClick}>
+          <ActivityEventFooter
+            isForFeedTab
+            activity={activity}
+            onActivityClick={mockOnActivityClick}
+          />
+        </div>
+      );
+
+      fireEvent.click(screen.getByTestId('comment-button'));
+
+      expect(mockOnActivityClick).toHaveBeenCalledWith(activity);
+      expect(mockContainerClick).toHaveBeenCalled();
     });
 
     it('should not throw when onActivityClick is not provided', () => {

@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactElement } from 'react';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
-import { EntityType } from '../enums/entity.enum';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
+import {
+  EntityStatus,
+  GlossaryTerm,
+  ProviderType,
+} from '../generated/entity/data/glossaryTerm';
 import {
   MOCKED_GLOSSARY_TERMS,
   MOCKED_GLOSSARY_TERMS_1,
@@ -27,10 +32,12 @@ import {
   findExpandableKeysForArray,
   getQueryFilterToExcludeTerm,
   glossaryTermTableColumnsWidth,
+  isAiGeneratedDraft,
   permissionForApproveOrReject,
   referenceURLValidator,
   validateReferenceURL,
 } from './GlossaryPureUtils';
+import { getReviewTab } from './GlossaryUtils';
 
 describe('Glossary Utils', () => {
   it('getQueryFilterToExcludeTerm returns the correct query filter', () => {
@@ -467,7 +474,7 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
     const columnWidthObject = glossaryTermTableColumnsWidth();
 
     expect(columnWidthObject).toEqual({
-      descriptionMax: 600,
+      descriptionMax: 480,
       descriptionMin: 420,
       name: 250,
       owners: 220,
@@ -521,5 +528,67 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
     it('should resolve for empty string', async () => {
       await expect(referenceURLValidator({}, '')).resolves.toBeUndefined();
     });
+  });
+});
+
+describe('AI-generated glossary drafts', () => {
+  const draft = (overrides: Partial<GlossaryTerm> = {}): GlossaryTerm =>
+    ({
+      id: 'term-id',
+      name: 'churn',
+      description: 'Customers who cancel',
+      glossary: { id: 'glossary-id', type: EntityType.GLOSSARY },
+      provider: ProviderType.Automation,
+      entityStatus: EntityStatus.Draft,
+      ...overrides,
+    } as GlossaryTerm);
+
+  it('marks an automation term until it is approved', () => {
+    expect(isAiGeneratedDraft(draft())).toBe(true);
+    expect(
+      isAiGeneratedDraft(draft({ entityStatus: EntityStatus.InReview }))
+    ).toBe(true);
+    expect(
+      isAiGeneratedDraft(draft({ entityStatus: EntityStatus.Approved }))
+    ).toBe(false);
+    expect(isAiGeneratedDraft(draft({ entityStatus: undefined }))).toBe(false);
+    expect(isAiGeneratedDraft(draft({ provider: ProviderType.User }))).toBe(
+      false
+    );
+  });
+});
+
+describe('getReviewTab', () => {
+  it('lists the tasks about the glossary in the Review tab, counting the open ones', () => {
+    const onTasksChange = jest.fn();
+    const reviewTab = getReviewTab({
+      entityFqn: 'Banking Core',
+      openTaskCount: 6,
+      onTasksChange,
+    }) as unknown as {
+      label: ReactElement<{ children: ReactElement }>;
+      children: ReactElement<{ children: ReactElement }>;
+    };
+
+    expect(reviewTab.label.props).toEqual(
+      expect.objectContaining({
+        count: 6,
+        id: EntityTabs.REVIEW,
+        name: 'label.review',
+      })
+    );
+    expect(reviewTab.children.props.children.props).toEqual({
+      aboutEntity: 'Banking Core',
+      onCountChange: onTasksChange,
+    });
+  });
+
+  it('names the Review tab as a persona renamed it', () => {
+    const reviewTab = getReviewTab({
+      entityFqn: 'Banking Core',
+      name: 'Approvals',
+    }) as unknown as { label: ReactElement<{ name: string }> };
+
+    expect(reviewTab.label.props.name).toBe('Approvals');
   });
 });

@@ -54,7 +54,11 @@ const toVersionLabel = (version: unknown) =>
  * `ReferenceError: UnitOfMeasurement is not defined`, collapsing the whole
  * version page into the error boundary.
  */
-const openMetricVersion = async (page: Page, versionLabel: string) => {
+const openMetricVersion = async (
+  page: Page,
+  versionLabel: string,
+  metricInstance: MetricClass = metric
+) => {
   const versionButton = page.getByTestId('version-button');
 
   await expect(versionButton).toBeVisible();
@@ -63,7 +67,9 @@ const openMetricVersion = async (page: Page, versionLabel: string) => {
   const versionResponse = page.waitForResponse((response) =>
     response
       .url()
-      .includes(`/api/v1/metrics/${metric.entityResponseData.id}/versions`)
+      .includes(
+        `/api/v1/metrics/${metricInstance.entityResponseData.id}/versions`
+      )
   );
 
   await versionButton.click();
@@ -166,6 +172,99 @@ test.describe(
 
         await expect(unitInfo).toContainText('OTHER');
         await expect(unitInfo).toContainText(CHANGED_UNIT);
+      });
+    });
+  }
+);
+
+// Regression coverage for the to-Other direction: the version where the unit is
+// switched TO Other AND a custom unit is introduced in the same version. This
+// is the direction the original bug hid the custom unit from, so it is covered
+// end-to-end here and not just at the unit-test layer.
+test.describe(
+  'Metric version page to-Other custom unit',
+  { tag: [DOMAIN_TAGS.GOVERNANCE, PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag] },
+  () => {
+    const toOtherMetric = new MetricClass();
+    const PREVIOUS_UNIT = 'PERCENTAGE';
+    const TO_OTHER_CUSTOM_UNIT = 'Leads';
+    let toOtherVersion: string;
+
+    test.beforeAll(
+      'Setup metric with a to-Other unit change',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        // Start on a non-Other unit with no custom unit, so the first version has
+        // neither Other nor a custom unit.
+        toOtherMetric.entity.unitOfMeasurement = PREVIOUS_UNIT;
+        toOtherMetric.entity.customUnitOfMeasurement = undefined;
+
+        await toOtherMetric.create(apiContext);
+
+        // A single patch switches the unit to Other and sets the custom unit, so
+        // both field changes land in the same new version.
+        await toOtherMetric.patch({
+          apiContext,
+          patchData: [
+            { op: 'replace', path: '/unitOfMeasurement', value: 'OTHER' },
+            {
+              op: 'add',
+              path: '/customUnitOfMeasurement',
+              value: TO_OTHER_CUSTOM_UNIT,
+            },
+          ],
+        });
+        toOtherVersion = toVersionLabel(
+          toOtherMetric.entityResponseData.version
+        );
+
+        // Sanity: the to-Other patch must have produced a new version beyond the
+        // initial 0.1 of the freshly created entity.
+        expect(toOtherVersion).not.toBe(toVersionLabel(0.1));
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup to-Other metric', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      await toOtherMetric.delete(apiContext);
+
+      await afterAction();
+    });
+
+    test.beforeEach('Visit metric details page', async ({ page }) => {
+      await redirectToHomePage(page);
+      await toOtherMetric.visitEntityPage(page);
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    test('should show the custom unit (not the unit diff) on the version that switches to Other', async ({
+      page,
+    }) => {
+      await test.step('Open the version that switched the unit to Other', async () => {
+        await openMetricVersion(page, toOtherVersion, toOtherMetric);
+      });
+
+      await test.step('Header shows the custom unit, not the PERCENTAGE -> OTHER unit diff', async () => {
+        await expect(page.getByText(ERROR_BOUNDARY_TITLE)).toBeHidden();
+
+        const unitInfo = page.getByTestId('unit-of-measurement-version-info');
+
+        await expect(unitInfo).toContainText(TO_OTHER_CUSTOM_UNIT);
+        // The unit transition markup must NOT be shown in place of the custom
+        // unit on this version: neither side of the PERCENTAGE -> OTHER diff
+        // should appear in the unit slot.
+        await expect(unitInfo).not.toContainText(PREVIOUS_UNIT);
+      });
+
+      await test.step('Definition card also shows the custom unit', async () => {
+        const definitionUnit = page.getByTestId('metric-definition-unit');
+
+        await expect(definitionUnit).toContainText(TO_OTHER_CUSTOM_UNIT);
+        await expect(definitionUnit).not.toContainText(PREVIOUS_UNIT);
       });
     });
   }

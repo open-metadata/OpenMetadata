@@ -23,11 +23,14 @@
       overflow: visible;
     }
 
-    [data-testid='description-container'] {
-      display: none;
+    // Classic paints this grey behind its cards. With the table as the only card, the grey would
+    // show as a strip under it.
+    .resizable-panels-layout {
+      background-color: transparent;
     }
 
-    .entity-resizable-right-panel-container {
+    // The tab renders its own description card above this list.
+    [data-testid='description-container'] {
       display: none;
     }
 
@@ -38,30 +41,6 @@
       // Same reason as the wrapper above: OSS pins this to the viewport height and scrolls it.
       height: auto;
       overflow-y: visible;
-      .ant-card-body,
-      .ant-card {
-        padding: 0;
-        border: none;
-        overflow: hidden;
-      }
-    }
-  }
-  .schema-description {
-    gap: 12px !important;
-  }
-  .glossary-terms-section {
-    border-bottom: none;
-    .glossary-terms-header,
-    .glossary-terms-content {
-      padding: 0;
-    }
-  }
-  .tags-section {
-    border-bottom: none;
-    padding-bottom: 0;
-    .tags-header,
-    .tags-content {
-      padding-left: 0;
     }
   }
 }

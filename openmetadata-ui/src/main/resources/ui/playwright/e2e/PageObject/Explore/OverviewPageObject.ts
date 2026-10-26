@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Locator, Page, Response } from '@playwright/test';
 import { setDomain } from '../../../utils/domainPicker';
+import {
+  classificationTagPickerRow,
+  isClassificationTagSelected,
+  openClassificationTagPicker,
+  searchClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
 import {
   applyGlossaryPicker,
   glossaryPickerRow,
@@ -67,14 +74,11 @@ export class OverviewPageObject extends RightPanelBase {
   private readonly markdownEditor: Locator;
   private readonly saveButton: Locator;
   private readonly updateButton: Locator;
-  private readonly selectableList: Locator;
   private readonly descriptionSection: Locator;
-  private readonly searchBar: Locator;
-  private readonly tagSearchBar: Locator;
+  private readonly applyTagPickerButton: Locator;
   private readonly domainList: Locator;
   private readonly tagListContainer: Locator;
   private readonly tierListContainer: Locator;
-  private readonly updateTierButton: Locator;
   private readonly tierList: Locator;
   private readonly glossaryTermListContainer: Locator;
   private readonly userSearchBar: Locator;
@@ -86,7 +90,6 @@ export class OverviewPageObject extends RightPanelBase {
   private readonly lineageSection: Locator;
   private readonly selectOwnerTabs: Locator;
   private readonly selectOwnerTabsRoleTab: Locator;
-  private readonly selectOwnerTabsLoader: Locator;
   private readonly selectOwnerUsersTab: Locator;
   private readonly teamsSearchBar: Locator;
   private readonly listItem: Locator;
@@ -117,16 +120,13 @@ export class OverviewPageObject extends RightPanelBase {
     );
     this.saveButton = this.page.getByTestId('save');
     this.updateButton = this.page.getByTestId('selectable-list-update-btn');
-    this.selectableList = this.page.getByTestId('selectable-list');
     this.descriptionSection = this.getSummaryPanel().locator(
       '.description-section'
     );
-    this.searchBar = this.page.getByTestId('search-bar-container');
-    this.tagSearchBar = this.searchBar.getByTestId('tag-select-search-bar');
+    this.applyTagPickerButton = this.page.getByTestId('update-btn');
     this.domainList = this.page.locator('.domains-content');
     this.tagListContainer = this.page.locator('.tags-section');
-    this.tierListContainer = this.page.getByTestId('cards');
-    this.updateTierButton = this.page.getByTestId('update-tier-card');
+    this.tierListContainer = this.page.getByTestId('drop-down-menu');
     this.tierList = this.getSummaryPanel().getByTestId('Tier');
     this.glossaryTermListContainer =
       this.page.getByTestId('glossary-container');
@@ -144,9 +144,6 @@ export class OverviewPageObject extends RightPanelBase {
     this.selectOwnerTabsRoleTab = this.page
       .locator('[data-testid="select-owner-tabs"] [role="tab"]')
       .first();
-    this.selectOwnerTabsLoader = this.page.locator(
-      '[data-testid="select-owner-tabs"] [data-testid="loader"]'
-    );
     this.selectOwnerUsersTab = this.selectOwnerTabs.getByRole('tab', {
       name: 'Users',
     });
@@ -154,7 +151,8 @@ export class OverviewPageObject extends RightPanelBase {
       'owner-select-teams-search-bar'
     );
     this.listItem = this.page.locator('.selectable-list-item');
-    this.clearTierButton = this.tierListContainer.getByTestId('clear-tier');
+    this.clearTierButton =
+      this.tierListContainer.getByTestId('clear-filter-btn');
     this.tagsSection = this.container.locator('.tags-section, [class*="tags"]');
     this.tierSection = this.container.locator('.tier-section, [class*="tier"]');
     this.domainsSection = this.container.locator(
@@ -197,19 +195,28 @@ export class OverviewPageObject extends RightPanelBase {
     // Wait for the markdown editor modal to be fully visible - use semantic selector
     await this.markdownEditor.waitFor({ state: 'visible' });
 
-    await this.markdownEditor.click();
-    await this.page.keyboard.press('ControlOrMeta+a');
-    await this.page.keyboard.press('Backspace');
+    // Select-all can fire before the editor takes focus; the old text then
+    // survives and save re-sends it, so a clear silently never lands.
+    await expect(async () => {
+      await this.markdownEditor.click();
+      await this.page.keyboard.press('ControlOrMeta+a');
+      await this.page.keyboard.press('Backspace');
+      await expect(this.markdownEditor).toHaveText('', { timeout: 2_000 });
+    }).toPass();
     if (description) {
       await this.markdownEditor.fill(description);
     }
 
-    // Set up PATCH listener before clicking save so we don't race with the response.
-    // This ensures the description is committed to the server before the caller proceeds
-    // (particularly important when clearing description and then immediately reloading).
-    const patchPromise = this.waitForPatchResponse();
+    // Scoped to the description op: with no entity endpoint configured the
+    // matcher is `/api/v1/`, which any unrelated PATCH would satisfy.
+    const patchPromise = this.waitForPatchResponse('/description');
     await this.saveButton.click();
-    await patchPromise;
+    const response = await patchPromise;
+    if (!description) {
+      const body: { description?: string } = await response.json();
+      expect(body.description ?? '').toBe('');
+    }
+
     return this;
   }
 
@@ -219,45 +226,22 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns OverviewPageObject for method chaining
    */
   async editTags(tagName: string): Promise<OverviewPageObject> {
-    // Use dispatchEvent to avoid Playwright's internal scroll-into-view on click().
-    // Scrolling the panel container triggers a React re-render that detaches the icon,
-    // causing Playwright to retry the scroll → re-render → infinite loop under load.
-    await this.editTagsIcon.waitFor({ state: 'visible' });
-    await this.editTagsIcon.dispatchEvent('click');
+    await openClassificationTagPicker(this.page, this.editTagsIcon);
 
-    // Wait for the tag selection modal to be visible
-    await this.selectableList.waitFor({ state: 'visible' });
+    const tagItem = await searchClassificationTagPicker(this.page, tagName);
+    await expect(tagItem).toBeVisible();
 
-    // Use semantic search bar selector
-    await this.tagSearchBar.fill(tagName);
-
-    // Scope loader to the selectable-list to avoid strict-mode violations when
-    // multiple [data-testid="loader"] elements coexist on the page during
-    // parallel test runs (e.g. one inside lineage section, one inside the popover).
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'hidden' });
-
-    // Target the .selectable-list-item button, which carries the
-    // 'active' CSS class when the tag is already selected.
-    const tagItem = this.selectableList
-      .locator('.selectable-list-item')
-      .filter({ hasText: tagName });
-    await tagItem.waitFor({ state: 'visible' });
-
-    // Only click if not already active — in parallel test runs another test may have added
-    // this tag already. Clicking an already-active item would deselect (remove) it.
-    // Use dispatchEvent to avoid scroll-triggered re-renders.
-    const isAlreadySelected = await tagItem.evaluate((el) =>
-      el.classList.contains('active')
-    );
-    if (!isAlreadySelected) {
-      await tagItem.dispatchEvent('click');
+    // A parallel test may have added it already; clicking would deselect it.
+    const alreadySelected = await isClassificationTagSelected(tagItem);
+    if (!alreadySelected) {
+      await tagItem.click();
     }
 
-    await this.updateButton.waitFor({ state: 'visible' });
-    const tagPatchPromise = this.waitForPatchResponse();
-    await this.updateButton.click();
+    // Applying an unchanged selection sends no request, so nothing to await.
+    const tagPatchPromise = alreadySelected
+      ? undefined
+      : this.waitForPatchResponse();
+    await this.applyTagPickerButton.click();
     await tagPatchPromise;
 
     // After update the popover closes; rely on tag list container assertions
@@ -308,21 +292,15 @@ export class OverviewPageObject extends RightPanelBase {
     // Wait for the tier selection popover
     await this.tierListContainer.waitFor({ state: 'visible' });
 
-    // Scoped to the popover: a page-wide `loader` also matches the overview's
-    // lineage-section loader, and two at once is a strict-mode violation.
-    await expect(this.tierListContainer.getByTestId('loader')).toHaveCount(0);
+    await waitForAllLoadersToDisappear(this.tierListContainer);
 
-    // Find and click the tier radio button
-    const tierRadioButton = this.tierListContainer.getByTestId(
-      `radio-btn-${tierName}`
-    );
-    await tierRadioButton.scrollIntoViewIfNeeded();
-    await tierRadioButton.waitFor({ state: 'visible' });
-    await tierRadioButton.click();
+    const tierRow = this.tierListContainer.getByTestId(`Tier.${tierName}`);
+    await tierRow.scrollIntoViewIfNeeded();
+    await tierRow.waitFor({ state: 'visible' });
 
-    await this.updateTierButton.waitFor({ state: 'visible' });
+    // Picking a tier saves it and closes the picker.
     const tierPatchPromise = this.waitForPatchResponse();
-    await this.updateTierButton.click();
+    await tierRow.click();
     await tierPatchPromise;
 
     await this.tierList.waitFor({ state: 'visible' });
@@ -387,7 +365,7 @@ export class OverviewPageObject extends RightPanelBase {
         .toBe(true);
     }
 
-    await expect(this.selectOwnerTabsLoader).toHaveCount(0);
+    await waitForAllLoadersToDisappear(this.selectOwnerTabs);
     await this.userSearchBar.waitFor({ state: 'visible' });
 
     const searchUser = this.page.waitForResponse(
@@ -397,7 +375,7 @@ export class OverviewPageObject extends RightPanelBase {
 
     await searchUser;
 
-    await expect(this.selectOwnerTabsLoader).toHaveCount(0);
+    await waitForAllLoadersToDisappear(this.selectOwnerTabs);
 
     const ownerOption = this.page
       .locator('[data-testid="owner-option"]')
@@ -419,7 +397,7 @@ export class OverviewPageObject extends RightPanelBase {
     await this.openOwnerSelector();
     await expect(this.userSearchBar).toBeVisible();
     await this.userSearchBar.fill(ownerName);
-    await expect(this.selectOwnerTabsLoader).toHaveCount(0);
+    await waitForAllLoadersToDisappear(this.selectOwnerTabs);
     await this.userListItem
       .filter({ hasText: ownerName })
       .waitFor({ state: 'visible' });
@@ -457,7 +435,7 @@ export class OverviewPageObject extends RightPanelBase {
       const searchBar =
         type === 'Users' ? this.userSearchBar : this.teamsSearchBar;
 
-      await expect(this.selectOwnerTabsLoader).toHaveCount(0);
+      await waitForAllLoadersToDisappear(this.selectOwnerTabs);
       await searchBar.waitFor({ state: 'visible' });
       await searchBar.fill(ownerName);
 
@@ -509,28 +487,19 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns OverviewPageObject for method chaining
    */
   async removeTag(tagDisplayNames: string[]): Promise<OverviewPageObject> {
-    await this.editTagsIcon.click();
-    await this.selectableList.waitFor({ state: 'visible' });
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await openClassificationTagPicker(this.page, this.editTagsIcon);
 
     for (const tagName of tagDisplayNames) {
-      const tagOption = this.selectableList
-        .locator('.selectable-list-item')
-        .filter({ hasText: tagName });
-      await tagOption.waitFor({ state: 'visible' });
-      // Only click if it's currently active (selected)
-      const isActive = await tagOption.evaluate((el) =>
-        el.classList.contains('active')
-      );
-      if (isActive) {
+      const tagOption = await searchClassificationTagPicker(this.page, tagName);
+      await expect(tagOption).toBeVisible();
+
+      if (await isClassificationTagSelected(tagOption)) {
         await tagOption.click();
       }
     }
 
     const patchPromise = this.waitForPatchResponse();
-    await this.updateButton.click();
+    await this.applyTagPickerButton.click();
     await patchPromise;
 
     return this;
@@ -654,7 +623,7 @@ export class OverviewPageObject extends RightPanelBase {
     const searchResponse = await searchResponsePromise;
     expect(searchResponse.status()).toBe(200);
 
-    await expect(this.selectOwnerTabsLoader).toHaveCount(0);
+    await waitForAllLoadersToDisappear(this.selectOwnerTabs);
 
     // Scope to the owner selection dropdown, not the whole page: a page-wide
     // match also hits the entity's still-assigned owner chip in the panel, whose
@@ -671,33 +640,21 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns Locator of the deleted item (should not be visible)
    */
   async verifyDeletedTagNotVisible(tagName: string): Promise<Locator> {
-    await this.editTagsIcon.click();
-    await this.selectableList.waitFor({ state: 'visible' });
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await openClassificationTagPicker(this.page, this.editTagsIcon);
 
     const searchResponsePromise = this.page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.url().includes('index=tag')
     );
-
-    await this.tagSearchBar.fill(tagName);
+    await this.page
+      .getByTestId('classification-tag-picker-search')
+      .fill(tagName);
     const searchResponse = await searchResponsePromise;
     expect(searchResponse.status()).toBe(200);
 
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
-
-    // Scope to the tag selection dropdown, not the whole page: a page-wide match
-    // also hits the entity's still-assigned tag chip in the panel, whose removal
-    // after the tag hard-delete is eventually consistent and independent of this
-    // search-backed dropdown — the deleted-entity flake.
-    return this.selectableList
-      .locator('.selectable-list-item')
-      .filter({ hasText: tagName });
+    // Scoped to the picker; a page-wide match also hits the assigned chip.
+    return classificationTagPickerRow(this.page, tagName);
   }
 
   /**
@@ -717,18 +674,22 @@ export class OverviewPageObject extends RightPanelBase {
 
   // ============ HELPER METHODS ============
 
-  private async waitForPatchResponse(): Promise<void> {
+  private async waitForPatchResponse(requestPath?: string): Promise<Response> {
     const endpoint = this.rightPanel.getEntityEndpoint();
     const urlPattern = endpoint ? `/api/v1/${endpoint}/` : '/api/v1/';
     const responsePromise = this.page.waitForResponse(
       (resp) =>
         resp.request().method() === 'PATCH' &&
         resp.url().includes(urlPattern) &&
-        !resp.url().includes('/api/v1/analytics')
+        !resp.url().includes('/api/v1/analytics') &&
+        (!requestPath ||
+          (resp.request().postData() ?? '').includes(`"${requestPath}"`))
     );
 
     const response = await responsePromise;
     expect(response.status()).toBe(200);
+
+    return response;
   }
 
   // ============ VERIFICATION METHODS (BDD Style) ============
@@ -823,6 +784,12 @@ export class OverviewPageObject extends RightPanelBase {
     await this.descriptionSection
       .getByText(expectedText)
       .waitFor({ state: 'visible' });
+  }
+
+  async shouldShowEmptyDescription(): Promise<void> {
+    await expect(
+      this.descriptionSection.getByText('No description added')
+    ).toBeVisible();
   }
 
   /**

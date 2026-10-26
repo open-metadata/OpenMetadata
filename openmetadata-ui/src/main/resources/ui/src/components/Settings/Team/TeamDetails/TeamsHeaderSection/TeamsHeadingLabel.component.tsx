@@ -10,17 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
-  CheckOutlined,
-  CloseOutlined,
-  ExclamationCircleFilled,
-} from '@ant-design/icons';
-import { Button, Input, Space, Tooltip, Typography } from 'antd';
+  Box,
+  Button,
+  Input,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../../../constants/constants';
+import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
+
+import {
+  Check,
+  ExclamationCircleFilled,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { Team } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
@@ -91,48 +97,46 @@ const TeamsHeadingLabel = ({
 
   const teamHeadingRender = useMemo(() => {
     const headingTitle = heading ? (
-      <Typography.Title
+      <Typography
+        as="h5"
         className="m-b-0 flex-1 w-min-0"
         data-testid="team-heading"
         ellipsis={{ tooltip: true }}
-        level={5}>
+        size="text-md"
+        weight="semibold">
         {heading}
-      </Typography.Title>
+      </Typography>
     ) : (
-      <Typography.Text
-        className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm"
+      <Typography
+        className="m-b-0 flex-1 w-min-0 text-sm"
+        color="secondary"
         data-testid="team-heading">
         {t('label.no-entity', {
           entity: t('label.display-name'),
         })}
-      </Typography.Text>
+      </Typography>
     );
 
     const canEditHeading = hasAccess || isCurrentTeamOwner;
     const editHeadingButton = canEditHeading && !currentTeam.deleted && (
-      <Tooltip
-        placement="right"
+      <EditIconButton
+        newLook
+        data-testid="edit-team-name"
+        disabled={!hasEditDisplayNamePermission}
+        size="small"
         title={
           hasEditDisplayNamePermission
             ? t('label.edit-entity', {
                 entity: t('label.display-name'),
               })
             : t('message.no-permission-for-action')
-        }>
-        <Button
-          className="p-0 edit-team-name flex-center"
-          data-testid="edit-team-name"
-          disabled={!hasEditDisplayNamePermission}
-          icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-          size="small"
-          type="text"
-          onClick={(e) => {
-            // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-            e.stopPropagation();
-            setIsHeadingEditing(true);
-          }}
-        />
-      </Tooltip>
+        }
+        onClick={(e) => {
+          // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+          e.stopPropagation();
+          setIsHeadingEditing(true);
+        }}
+      />
     );
 
     return isHeadingEditing ? (
@@ -143,33 +147,37 @@ const TeamsHeadingLabel = ({
         role="presentation"
         onClick={(e) => e.stopPropagation()}>
         <Input
-          className="flex-1 w-min-0"
-          data-testid="team-name-input"
+          aria-label={t('label.display-name')}
+          className="tw:min-w-0 tw:flex-1"
+          inputDataTestId="team-name-input"
           placeholder={t('message.enter-comma-separated-field', {
             field: t('label.term-lowercase'),
           })}
-          type="text"
           value={heading}
-          onChange={(e) => setHeading(e.target.value)}
+          onChange={setHeading}
         />
-        <Space className="flex-none" data-testid="buttons" size={4}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal flex-none"
+          data-testid="buttons"
+          gap={1}
+          itemClassName="layout-space-item">
           <Button
-            className="rounded-4 text-sm p-xss"
+            color="primary"
             data-testid="cancelAssociatedTag"
-            disabled={isLoading}
-            type="primary"
+            isDisabled={isLoading}
             onMouseDown={handleClose}>
-            <CloseOutlined />
+            <XClose className="tw:shrink-0" size={14} />
           </Button>
           <Button
-            className="rounded-4 text-sm p-xss"
+            color="primary"
             data-testid="saveAssociatedTag"
-            loading={isLoading}
-            type="primary"
+            isLoading={isLoading}
             onMouseDown={onHeadingSave}>
-            <CheckOutlined />
+            <Check className="tw:shrink-0" size={14} />
           </Button>
-        </Space>
+        </Box>
       </div>
     ) : (
       <>
@@ -181,7 +189,10 @@ const TeamsHeadingLabel = ({
           <div
             className="deleted-badge-button text-xs flex-center"
             data-testid="deleted-badge">
-            <ExclamationCircleFilled className="m-r-xss" />
+            <ExclamationCircleFilled
+              className="tw:mr-1 tw:shrink-0"
+              size={12}
+            />
             {t('label.deleted')}
           </div>
         )}

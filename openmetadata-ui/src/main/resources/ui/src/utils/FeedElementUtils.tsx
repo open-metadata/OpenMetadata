@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
-import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
+import { WidgetCommentButton } from '../components/common/WidgetActionButton/WidgetActionButton';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityPureUtils';
@@ -33,23 +32,19 @@ export const getFieldThreadElement = (
   );
 
   return (
-    <Tooltip
-      destroyTooltipOnHide
-      overlayClassName="ant-popover-request-description"
+    <WidgetCommentButton
+      compact
+      className="hover-cell-icon"
+      data-testid="field-thread"
       title={t('label.list-entity', {
         entity: t('label.conversation'),
-      })}>
-      <IconComments
-        className="table-action-icon hover-cell-icon"
-        data-testid="field-thread"
-        name="comments"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
+      })}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
 
-          onThreadLinkSelect(entityLink);
-        }}
-      />
-    </Tooltip>
+        onThreadLinkSelect(entityLink);
+      }}
+    />
   );
 };

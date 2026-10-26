@@ -36,7 +36,7 @@ const test = base.extend<{
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
     try {
-      await adminUser.login(adminPage);
+      await adminUser.signIn(adminPage);
       await use(adminPage);
     } finally {
       await adminPage.close();
@@ -45,7 +45,7 @@ const test = base.extend<{
   testUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await testUser.login(page);
+      await testUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -75,7 +75,7 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
 
   // Setup allow permissions
   const page = await browser.newPage();
-  await adminUser.login(page);
+  await adminUser.signIn(page);
   const { apiContext } = await getApiContext(page);
   await initializePermissions(page, 'allow', [
     'EditDescription',
@@ -146,7 +146,7 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
 
   // Setup deny permissions
   const page = await browser.newPage();
-  await adminUser.login(page);
+  await adminUser.signIn(page);
   const { apiContext } = await getApiContext(page);
   await initializePermissions(page, 'deny', [
     'EditDescription',

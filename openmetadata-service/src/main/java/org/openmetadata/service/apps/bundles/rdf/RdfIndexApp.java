@@ -44,6 +44,7 @@ import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfExcludedEntities;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -200,16 +201,23 @@ public class RdfIndexApp extends AbstractNativeApplication {
       getApp().setAppConfiguration(jsonAppConfig);
     }
 
+    boolean writesServingGraph = false;
     try {
       initialProjectionFailureVersion = RdfProjectionHealth.failureVersion();
       jobData.setRdfBuildDataset(null);
       jobData.setRdfRebuildId(null);
       rebuildLeaseFailure = null;
+      final Set<String> requested = jobData.getEntities();
+      final boolean includesOntologies =
+          requested == null
+              || requested.isEmpty()
+              || requested.contains(ALL)
+              || requested.contains(Entity.ONTOLOGY);
       jobData.setEntities(resolveEntityTypes(jobData.getEntities()));
       rebuildsEntireProjection =
           Boolean.TRUE.equals(jobData.getRecreateIndex())
               && jobData.getEntities().containsAll(getAll());
-      if (jobData.getEntities().isEmpty()) {
+      if (jobData.getEntities().isEmpty() && !includesOntologies) {
         throw new IllegalStateException(
             "No repository-backed entity types configured for RDF indexing");
       }
@@ -233,10 +241,18 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
       if (buildDataset != null) {
         prepareBuildDataset(indexingRepository, buildDataset);
-      } else if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
-        LOG.info("Clearing existing RDF data");
-        markIncompleteDuringInPlaceRebuild();
-        clearRdfData();
+      } else {
+        // An in-place run rewrites the serving graph outside the live-write queue, so reasoning
+        // results computed before it, or while it runs, must not pass for current afterwards.
+        writesServingGraph = true;
+        RdfUpdater.recordUntrackedWrite();
+        if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
+          LOG.info("Clearing existing RDF data");
+          markIncompleteDuringInPlaceRebuild();
+          clearRdfData();
+        } else if (includesOntologies) {
+          indexingRepository.rebuildOntologyGraphs();
+        }
       }
 
       updateJobStatus(EventPublisherJob.Status.RUNNING);
@@ -265,6 +281,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
         handleJobFailure(ex);
       }
     } finally {
+      if (writesServingGraph) {
+        RdfUpdater.recordUntrackedWrite();
+      }
       clearAutoTuneOverride();
       sendUpdates(jobExecutionContext, true);
     }
@@ -542,6 +561,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     indexingRepository.clearAll();
     indexingRepository.compactStorage();
     indexingRepository.reloadOntologies();
+    indexingRepository.rebuildOntologyGraphs();
     LOG.info("Build dataset '{}' is empty and ontology-seeded", targetDataset);
   }
 
@@ -668,6 +688,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       // before indexing starts so SPARQL queries that depend on the ontology
       // (inference, federated, etc.) work after the wipe.
       rdf().reloadOntologies();
+      rdf().rebuildOntologyGraphs();
     } catch (Exception e) {
       LOG.error("Failed to clear RDF data", e);
       throw new RuntimeException("Failed to clear RDF data", e);

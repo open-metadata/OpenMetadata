@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.server.auth.handlers;
 
 import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE;
+import static org.openmetadata.service.security.SecurityUtil.buildPrincipalClaimsMapping;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 
@@ -28,6 +29,7 @@ import java.util.TreeMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
+import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.mcp.server.auth.validators.IdTokenValidator;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
@@ -154,14 +156,7 @@ public class McpCallbackServlet extends HttpServlet {
     try {
       var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
       if (authConfig != null && authConfig.getJwtPrincipalClaimsMapping() != null) {
-        Map<String, String> mapping = new TreeMap<>();
-        for (String claimPair : authConfig.getJwtPrincipalClaimsMapping()) {
-          String[] parts = claimPair.split(":");
-          if (parts.length == 2) {
-            mapping.put(parts[0], parts[1]);
-          }
-        }
-        return mapping;
+        return buildPrincipalClaimsMapping(authConfig.getJwtPrincipalClaimsMapping());
       }
     } catch (Exception e) {
       LOG.warn("Failed to get claims mapping from config: {}", e.getMessage());
@@ -469,7 +464,7 @@ public class McpCallbackServlet extends HttpServlet {
 
       String ssoCallbackUrl = ssoHandler.getClient().getCallbackUrl();
       session.setAttribute(AuthenticationCodeFlowHandler.SESSION_SSO_CALLBACK_URL, ssoCallbackUrl);
-      String baseUrl = resolveBaseUrl();
+      String baseUrl = UriUtils.withoutTrailingSlash(resolveBaseUrl());
       session.setAttribute(
           AuthenticationCodeFlowHandler.SESSION_REDIRECT_URI, baseUrl + "/mcp/callback");
       LOG.debug("Set session SSO callback URL to: {}", ssoCallbackUrl);

@@ -123,6 +123,14 @@ class DatasourceField(BaseModel):
     upstreamColumns: list[UpstreamColumn | None] | None = None  # noqa: N815
     description: str | None = None
     formula: str | None = None
+    # Only populated for ColumnField/CalculatedField; a field inherited from a published
+    # datasource leaves these unset, so its measures are ingested once, from their definition.
+    role: str | None = None
+    dataType: str | None = None  # noqa: N815
+    aggregation: str | None = None
+    defaultFormat: str | None = None  # noqa: N815
+    isHidden: bool | None = None  # noqa: N815
+    upstreamFields: list[TableauDatasource | None] | None = None  # noqa: N815
 
 
 class UpstreamTableColumn(BaseModel):

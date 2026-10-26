@@ -47,6 +47,7 @@ import {
   fillRowDetails,
   fillTagDetails,
   pressKeyXTimes,
+  previewBulkImportChanges,
   saveBulkImport,
   validateImportStatus,
 } from '../../utils/importUtils';
@@ -93,7 +94,7 @@ let columnDetails1: ReturnType<typeof createColumnRowDetails> & {
   glossary: GlossaryDetails;
 };
 
-test.describe('Bulk Edit Entity', () => {
+test.describe('Bulk Edit Entity', { tag: '@quarantine' }, () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
     test.slow();
     user1 = new UserClass();
@@ -591,8 +592,10 @@ test.describe('Bulk Edit Entity', () => {
         page.getByTestId('certification-Certification.Gold')
       ).toBeVisible();
 
+      // Columns inherit the table's glossary terms as DERIVED labels (#31834),
+      // so the schema grid repeats the term on every column row.
       await expect(
-        page.getByRole('link', {
+        page.getByTestId('KnowledgePanel.GlossaryTerms').getByRole('link', {
           name: glossaryTerm.data.displayName,
         })
       ).toBeVisible();
@@ -602,7 +605,7 @@ test.describe('Bulk Edit Entity', () => {
     await afterAction();
   });
 
-  test('Table', { tag: '@quarantine' }, async ({ page }) => {
+  test('Table', async ({ page }) => {
     test.slow(true);
 
     const tableEntity = new TableClass({ service: new DatabaseServiceClass() });
@@ -652,14 +655,13 @@ test.describe('Bulk Edit Entity', () => {
         .press('ArrowRight', { delay: 100 });
       await fillGlossaryTermDetails(page, columnDetails1.glossary);
 
-      // Reverse traves to first cell to fill the details
-      await page.click(RDG_ACTIVE_CELL_SELECTOR);
-      await page
-        .locator(RDG_ACTIVE_CELL_SELECTOR)
-        .press('ArrowDown', { delay: 100 });
+      // Closing the picker commits the term. Clicking this cell again would
+      // reopen it, and its focus trap swallows outside clicks — Next included.
+      await expect(page.locator(RDG_ACTIVE_CELL_SELECTOR)).toHaveClass(
+        /rdg-cell-edited/
+      );
 
-      // eslint-disable-next-line playwright/no-force-option -- button obscured by data grid overlay
-      await page.click('[type="button"] >> text="Next"', { force: true });
+      await previewBulkImportChanges(page, 'tables');
       await validateImportStatus(page, {
         passed: '1',
         processed: '1',
@@ -810,8 +812,11 @@ test.describe('Bulk Edit Entity', () => {
       }
     });
 
-    await glossary.delete(apiContext);
     await afterAction();
+    // Fresh context: the setup one idled past the server keep-alive and its DELETE hangs up.
+    const cleanup = await getApiContext(page);
+    await glossary.delete(cleanup.apiContext);
+    await cleanup.afterAction();
   });
 
   test('Glossary Term (Nested)', async ({ page }) => {

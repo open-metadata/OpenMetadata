@@ -10,19 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Card,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  chartColor,
+  PieChart,
+  useChartPalette,
+  type PieDatum,
+} from '@openmetadata/ui-core-components/charts';
 import { AxiosError } from 'axios';
 import { find, first, isString, last, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Cell, Pie, PieChart, Tooltip as RechartsTooltip } from 'recharts';
-import {
-  GREEN_3,
-  RED_3,
-  YELLOW_2,
-} from '../../../../constants/Color.constants';
 import {
   DEFAULT_RANGE_DATA,
   INITIAL_COLUMN_METRICS_VALUE,
@@ -32,7 +37,6 @@ import {
   ColumnProfile,
 } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
-import { useChartColors } from '../../../../hooks/useChartColors';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
 import documentationLinksClassBase from '../../../../utils/DocumentationLinksClassBase';
@@ -51,8 +55,10 @@ import ProfilerDetailsCard from '../ProfilerDetailsCard/ProfilerDetailsCard';
 import ProfilerStateWrapper from '../ProfilerStateWrapper/ProfilerStateWrapper.component';
 import ColumnSummary from './ColumnSummary';
 import CustomMetricGraphs from './CustomMetricGraphs/CustomMetricGraphs.component';
-import './single-column-profiler.less';
 import { useTableProfiler } from './TableProfilerProvider';
+
+const PIE_SIZE = 160;
+const LEGEND_HIDDEN = { show: false };
 
 interface SingleColumnProfileProps {
   activeColumnFqn: string;
@@ -63,7 +69,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   activeColumnFqn,
   tableDetails,
 }) => {
-  const { emptyFill } = useChartColors();
+  const palette = useChartPalette();
   const location = useCustomLocation();
   const {
     isProfilerDataLoading,
@@ -125,7 +131,9 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     return isProfilingEnabled ? (
       t('message.profiler-is-enabled-but-no-data-available')
     ) : (
-      <Tooltip title={t('label.documentation')}>
+      // tw:w-auto overrides the trigger's w-max so the sentence wraps in
+      // narrow containers such as the custom metric drawer preview.
+      <Tooltip title={t('label.documentation')} triggerClassName="tw:w-auto">
         <span>
           <Transi18next
             i18nKey="message.no-profiler-card-message-with-link"
@@ -168,23 +176,25 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   const { columnTestData, activeColumnTests } = useMemo(() => {
     const activeColumnTests =
       testCaseSummary?.[activeColumnFqn?.toLocaleLowerCase()];
+    const columnTestData: PieDatum[] = [
+      {
+        name: 'Success',
+        value: activeColumnTests?.success ?? 0,
+        status: 'success',
+      },
+      {
+        name: 'Failed',
+        value: activeColumnTests?.failed ?? 0,
+        status: 'failed',
+      },
+      {
+        name: 'Aborted',
+        value: activeColumnTests?.aborted ?? 0,
+        status: 'warning',
+      },
+    ];
 
-    return {
-      columnTestData: [
-        {
-          name: 'Success',
-          value: activeColumnTests?.success ?? 0,
-          color: GREEN_3,
-        },
-        { name: 'Failed', value: activeColumnTests?.failed ?? 0, color: RED_3 },
-        {
-          name: 'Aborted',
-          value: activeColumnTests?.aborted ?? 0,
-          color: YELLOW_2,
-        },
-      ],
-      activeColumnTests,
-    };
+    return { columnTestData, activeColumnTests };
   }, [testCaseSummary, activeColumnFqn]);
 
   const { firstDay, currentDay } = useMemo(() => {
@@ -222,118 +232,81 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   }, [activeColumnFqn, dateRangeObject]);
 
   return (
-    <div
-      className="tw:mb-lg tw:flex tw:flex-col tw:gap-8"
-      data-testid="profiler-tab-container">
+    <Box
+      className="tw:mb-lg"
+      data-testid="profiler-tab-container"
+      direction="col"
+      gap={8}>
       {selectedColumn && (
-        <div className="tw:grid tw:grid-cols-24 tw:gap-5">
-          <div className="tw:col-span-14">
-            <ColumnSummary column={selectedColumn} />
-          </div>
-          <div className="tw:col-span-10">
-            <div className="tw:h-full tw:rounded-[10px] tw:border tw:border-border-secondary tw:shadow-none">
-              <div className="tw:p-4">
-                <p className="tw:m-0 tw:text-md tw:font-medium tw:text-primary">
-                  {t('label.data-quality-test-plural')}
-                </p>
-              </div>
-              <hr className="tw:my-0 tw:h-px tw:border-0 tw:bg-border-secondary" />
-              <div className="tw:grid tw:grid-cols-12 tw:gap-3 tw:p-4">
-                <div className="tw:col-span-5">
+        // Side by side on the page; wraps to a stack in narrow columns such as
+        // the custom metric drawer preview (each card needs at least 20rem).
+        <Box gap={5} wrap="wrap">
+          <ColumnSummary
+            className="tw:min-w-80 tw:grow-14 tw:basis-0"
+            column={selectedColumn}
+          />
+          <Card className="tw:min-w-80 tw:grow-10 tw:basis-0">
+            <Card.Header title={t('label.data-quality-test-plural')} />
+            <Card.Content>
+              <Box align="center" gap={3}>
+                <div className="tw:shrink-0" style={{ width: PIE_SIZE }}>
                   <PieChart
-                    className="dq-pie-chart-container"
-                    height={160}
-                    width={160}>
-                    <Pie
-                      cx="50%"
-                      cy="50%"
-                      // to show the empty pie chart when there is no data
-                      data={[{ value: 1 }]}
-                      dataKey="value"
-                      endAngle={-270}
-                      innerRadius={50}
-                      outerRadius={70}
-                      paddingAngle={0}
-                      // to hide tooltip when there is no data
-                      pointerEvents="none"
-                      startAngle={90}>
-                      <Cell fill={emptyFill} />
-                    </Pie>
-                    <Pie
-                      cx="50%"
-                      cy="50%"
-                      // to show the empty pie chart when there is no data
-                      data={[{ value: 1 }]}
-                      dataKey="value"
-                      endAngle={-270}
-                      innerRadius={75}
-                      outerRadius={80}
-                      paddingAngle={0}
-                      // to hide tooltip when there is no data
-                      pointerEvents="none"
-                      startAngle={90}>
-                      <Cell fill={emptyFill} />
-                    </Pie>
-                    <Pie
-                      cx="50%"
-                      cy="50%"
-                      data={columnTestData}
-                      dataKey="value"
-                      endAngle={-270}
-                      innerRadius={50}
-                      outerRadius={70}
-                      paddingAngle={0}
-                      startAngle={90}>
-                      {columnTestData.map((entry) => (
-                        <Cell fill={entry.color} key={`cell-${entry.name}`} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip />
-                    <text
-                      className="chart-center-text-header"
-                      dominantBaseline="middle"
-                      textAnchor="middle"
-                      x="50%"
-                      y="42%">
-                      {activeColumnTests?.total ?? 0}
-                    </text>
-                    <text
-                      className="chart-center-text-sub-header"
-                      dominantBaseline="middle"
-                      textAnchor="middle"
-                      x="50%"
-                      y="55%">
-                      {t('label.total-test-plural')}
-                    </text>
-                  </PieChart>
+                    track
+                    ariaLabel={t('label.data-quality-test-plural')}
+                    centerLabel={
+                      <Box align="center" direction="col">
+                        <Typography
+                          className="tw:text-primary"
+                          data-testid="column-test-total"
+                          size="text-sm"
+                          weight="semibold">
+                          {activeColumnTests?.total ?? 0}
+                        </Typography>
+                        <Typography
+                          color="secondary"
+                          size="text-xs"
+                          weight="medium">
+                          {t('label.total-test-plural')}
+                        </Typography>
+                      </Box>
+                    }
+                    data={columnTestData}
+                    height={PIE_SIZE}
+                    innerRadius="62%"
+                    legend={LEGEND_HIDDEN}
+                    outerRadius="88%"
+                  />
                 </div>
-
-                <div className="tw:col-span-7">
-                  <div className="tw:w-full tw:rounded-md tw:bg-secondary tw:p-4">
-                    {columnTestData.map((item) => (
-                      <div
-                        className="tw:mb-1 tw:flex tw:items-center tw:justify-between"
-                        key={item.name}>
-                        <span
-                          className="tw:text-sm tw:text-secondary"
-                          style={{
-                            borderLeft: `4px solid ${item.color}`,
-                            paddingLeft: '8px',
-                            lineHeight: '10px',
-                          }}>
-                          {item.name}
-                        </span>
-                        <span className="tw:text-sm tw:font-medium tw:text-primary">
-                          {formatNumberWithComma(item.value)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                <div className="tw:flex-1 tw:rounded-md tw:bg-secondary tw:p-4">
+                  {columnTestData.map((item, index) => (
+                    <Box
+                      align="center"
+                      className="tw:mb-1"
+                      justify="between"
+                      key={item.name}>
+                      <span
+                        className="tw:text-sm tw:text-secondary"
+                        style={{
+                          borderLeft: `4px solid ${chartColor(
+                            palette,
+                            index,
+                            item.status
+                          )}`,
+                          paddingLeft: '8px',
+                          lineHeight: '10px',
+                        }}>
+                        {item.name}
+                      </span>
+                      <span className="tw:text-sm tw:font-medium tw:text-primary">
+                        {formatNumberWithComma(item.value)}
+                      </span>
+                    </Box>
+                  ))}
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
+              </Box>
+            </Card.Content>
+          </Card>
+        </Box>
       )}
 
       <ProfilerDetailsCard
@@ -409,7 +382,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         customMetricsGraphData={columnCustomMetrics}
         isLoading={isLoading || isProfilerDataLoading}
       />
-    </div>
+    </Box>
   );
 };
 

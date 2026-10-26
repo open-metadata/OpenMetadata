@@ -24,7 +24,13 @@ import {
   Status,
   SubscriptionCategory,
   SubscriptionType,
+  type Destination,
 } from '../../../../generated/events/eventSubscription';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../../hooks/useAlertSelection';
+import type { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import DestinationSelectItem from './DestinationSelectItem';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
@@ -207,7 +213,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  X: () => <span>X</span>,
+  XClose: () => <span>XClose</span>,
 }));
 
 jest.mock('../../../../utils/ObservabilityUtils', () => ({
@@ -230,13 +236,6 @@ jest.mock('../../../../utils/Alerts/AlertsUtil', () => ({
 
 jest.mock('../../../../utils/Alerts/AlertsUtilPure', () => ({
   ...jest.requireActual('../../../../utils/Alerts/AlertsUtilPure'),
-  getFilteredDestinationOptions: jest
-    .fn()
-    .mockImplementation((key: string) =>
-      key === 'internal'
-        ? [{ value: SubscriptionCategory.Admins }]
-        : [{ value: SubscriptionType.Email }, { value: SubscriptionType.Slack }]
-    ),
   getSubscriptionTypeOptions: jest.fn().mockReturnValue([
     { value: 'ActivityFeed', disabled: false },
     { value: 'Email', disabled: false },
@@ -338,6 +337,54 @@ function renderWithDestinationValue(
   return render(<Wrapper />);
 }
 
+function renderDestinationRows(
+  destinationsWithStatus: Array<Destination | undefined>,
+  defaultDestinations: ModifiedDestination[]
+) {
+  function Wrapper() {
+    const methods = useForm({
+      defaultValues: { destinations: defaultDestinations },
+    });
+
+    return (
+      <FormProvider {...methods}>
+        {defaultDestinations.map((_, index) => (
+          <DestinationSelectItem
+            destinationsWithStatus={destinationsWithStatus}
+            id={index}
+            isDestinationStatusLoading={false}
+            // eslint-disable-next-line react/no-array-index-key -- form array rows keyed by position in tests
+            key={index}
+            remove={jest.fn()}
+            selectorKey={index}
+          />
+        ))}
+      </FormProvider>
+    );
+  }
+
+  return render(<Wrapper />);
+}
+
+const offering = (recipientCategories: string[]): AlertSelection => ({
+  sources: ['table'],
+  support: { recipientCategories },
+  capabilities: {
+    knownSources: [],
+    loading: false,
+    settled: true,
+    retry: jest.fn(),
+  },
+  ready: true,
+  loading: false,
+  search: {
+    indexes: [],
+    containerEntities: [],
+    byName: jest.fn(),
+    byId: jest.fn(),
+  },
+});
+
 describe('DestinationSelectItem', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -351,10 +398,12 @@ describe('DestinationSelectItem', () => {
     ).toBeInTheDocument();
   });
 
-  it('filters destination categories for the selected source', () => {
-    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
-      resources: ['table'],
-    });
+  it('offers the recipients the selected sources reach, as the server says', () => {
+    renderWithForm(
+      <AlertSelectionProvider value={offering([SubscriptionCategory.Admins])}>
+        <DestinationSelectItem {...MOCK_PROPS} />
+      </AlertSelectionProvider>
+    );
 
     expect(
       screen.getByRole('option', { name: SubscriptionCategory.Admins })
@@ -362,6 +411,26 @@ describe('DestinationSelectItem', () => {
     expect(
       screen.queryByRole('option', { name: SubscriptionCategory.Owners })
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps offering the recipient a saved destination already has', () => {
+    renderWithForm(
+      <AlertSelectionProvider value={offering([SubscriptionCategory.Admins])}>
+        <DestinationSelectItem {...MOCK_PROPS} />
+      </AlertSelectionProvider>,
+      {
+        destinations: [
+          {
+            category: SubscriptionCategory.Followers,
+            destinationType: SubscriptionCategory.Followers,
+          },
+        ],
+      }
+    );
+
+    expect(
+      screen.getByRole('option', { name: SubscriptionCategory.Followers })
+    ).toBeInTheDocument();
   });
 
   it('requires a destination category before submission', async () => {
@@ -663,6 +732,78 @@ describe('DestinationSelectItem', () => {
     );
 
     expect(await screen.findByTestId('alert-error')).toBeInTheDocument();
+  });
+
+  it('shows each duplicate destination its own test status instead of the first match', async () => {
+    const duplicateRow: ModifiedDestination = {
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+      category: SubscriptionCategory.External,
+      config: { endpoint: 'https://hooks.slack.com' },
+    };
+    const destinationsWithStatus: Array<Destination | undefined> = [
+      {
+        type: SubscriptionType.Slack,
+        category: SubscriptionCategory.External,
+        config: { endpoint: 'https://hooks.slack.com' },
+        statusDetails: {
+          status: Status.Success,
+          statusCode: 200,
+          reason: 'OK',
+        },
+      },
+      {
+        type: SubscriptionType.Slack,
+        category: SubscriptionCategory.External,
+        config: { endpoint: 'https://hooks.slack.com' },
+        statusDetails: {
+          status: Status.Failed,
+          statusCode: 500,
+          reason: 'rate limited',
+        },
+      },
+    ];
+
+    renderDestinationRows(destinationsWithStatus, [duplicateRow, duplicateRow]);
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('alert-success')).toHaveLength(1);
+      expect(screen.getAllByTestId('alert-error')).toHaveLength(1);
+    });
+  });
+
+  it('does not leak an external row test status onto a neighboring internal row', async () => {
+    const internalRow: ModifiedDestination = {
+      destinationType: SubscriptionCategory.Owners,
+      category: SubscriptionCategory.Owners,
+      type: SubscriptionType.Email,
+    };
+    const externalRow: ModifiedDestination = {
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+      category: SubscriptionCategory.External,
+      config: { endpoint: 'https://hooks.slack.com' },
+    };
+    const destinationsWithStatus: Array<Destination | undefined> = [
+      undefined,
+      {
+        type: SubscriptionType.Slack,
+        category: SubscriptionCategory.External,
+        config: { endpoint: 'https://hooks.slack.com' },
+        statusDetails: {
+          status: Status.Success,
+          statusCode: 200,
+          reason: 'OK',
+        },
+      },
+    ];
+
+    renderDestinationRows(destinationsWithStatus, [internalRow, externalRow]);
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('alert-success')).toHaveLength(1);
+      expect(screen.queryAllByTestId('alert-error')).toHaveLength(0);
+    });
   });
 
   it('clears destination-specific values when destination type changes', async () => {

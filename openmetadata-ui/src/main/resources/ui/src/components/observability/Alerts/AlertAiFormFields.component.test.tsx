@@ -29,9 +29,11 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { isEmpty } from 'lodash';
 import { ReactNode } from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
+import { AlertCapabilities } from '../../../generated/events/api/alertCapabilities';
 import { AlertType } from '../../../generated/events/api/createEventSubscription';
 import {
   AlertType as EventSubscriptionAlertType,
@@ -40,25 +42,80 @@ import {
   EventFilterRule,
   EventSubscription,
   InputType,
+  Status,
   SubscriptionCategory,
   SubscriptionType,
   Type,
+  type Destination,
 } from '../../../generated/events/eventSubscription';
+import type { AlertSelection } from '../../../hooks/useAlertSelection';
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import type { SelectionSupport } from '../../../utils/Alerts/AlertSelectionUtil';
+import { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import AlertAiDestinationItem from './AlertAiDestinationItem.component';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
 import AlertAiForm from './AlertAiForm.component';
 import AlertAiFormFields from './AlertAiFormFields.component';
-import AlertAiRuleSection from './AlertAiRuleSection.component';
+import AlertAiRuleSection, {
+  RuleArgumentField,
+} from './AlertAiRuleSection.component';
 import AlertAiSection from './AlertAiSection.component';
 import AlertDescriptionCard from './AlertDescriptionCard.component';
+
+// The AI form's onChange is a functional updater (prev) => next; apply the latest updater to the
+// value the component rendered with to get the committed value the assertions check.
+const applyLastUpdater = (
+  onChange: jest.Mock,
+  prev: ModifiedCreateEventSubscription
+): ModifiedCreateEventSubscription =>
+  onChange.mock.calls[onChange.mock.calls.length - 1][0](prev);
+
+const makeSourceSearch = (): AlertSourceSearch => ({
+  byId: jest.fn().mockResolvedValue([]),
+  byName: jest.fn().mockResolvedValue([]),
+  containerEntities: [],
+  indexes: [],
+});
+
+// The sources the server lists for the picker.
+const LISTED_SOURCES = {
+  alertType: 'Observability',
+  filters: [],
+  triggers: [],
+  sources: ['table', 'topic', 'pipeline'].map((name) => ({
+    name,
+    kind: 'entity',
+  })),
+} as unknown as AlertCapabilities;
+
+// What the page that shows the form hands it: what the chosen sources support, and their search.
+// An answer for the chosen sources says whether it lists any rule, as getSelectionSupport does.
+const selectionOf = (support: SelectionSupport = {}): AlertSelection => ({
+  sources: [],
+  support: {
+    hasFilters: support.supportedFilters && !isEmpty(support.supportedFilters),
+    hasTriggers:
+      support.supportedTriggers && !isEmpty(support.supportedTriggers),
+    ...support,
+  },
+  capabilities: {
+    selection: LISTED_SOURCES,
+    knownSources: [],
+    loading: false,
+    settled: true,
+    retry: jest.fn(),
+  },
+  ready: true,
+  loading: false,
+  search: makeSourceSearch(),
+});
 
 jest.mock('../../../rest/alertsAPI', () => ({
   testAlertDestination: jest.fn().mockResolvedValue([]),
@@ -294,8 +351,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
     AccordionHeader: ({ children }: MockCoreProps) => <div>{children}</div>,
     AccordionItem: ({ children }: MockCoreProps) => <div>{children}</div>,
     AccordionPanel: ({ children }: MockCoreProps) => <div>{children}</div>,
-    Alert: ({ title }: MockCoreProps & { title?: ReactNode }) => (
-      <div>{title}</div>
+    Alert: ({
+      title,
+      variant,
+    }: MockCoreProps & { title?: ReactNode; variant?: string }) => (
+      <div data-testid={`alert-${variant}`}>{title}</div>
     ),
     Autocomplete,
     BadgeWithButton: ({
@@ -615,6 +675,8 @@ describe('AlertAi form field components', () => {
       <AlertAiRuleSection
         isViewOnly
         field="filters"
+        selectedSources={[]}
+        sourceSearch={makeSourceSearch()}
         supportedRules={[]}
         title="Filters"
         value={baseValue}
@@ -637,7 +699,8 @@ describe('AlertAi form field components', () => {
     render(
       <AlertAiRuleSection
         field="filters"
-        selectedSource={undefined}
+        selectedSources={[]}
+        sourceSearch={makeSourceSearch()}
         supportedRules={supportedRules}
         title="Filters"
         value={baseValue}
@@ -649,10 +712,10 @@ describe('AlertAi form field components', () => {
     expect(addFilterButton).toBeDisabled();
   });
 
-  it('enables add rule buttons from selected source descriptors', () => {
+  it('enables add rule buttons once the chosen sources support rules', () => {
     const value = {
       ...baseValue,
-      resources: ['table'],
+      resources: ['table', 'topic'],
     } as ModifiedCreateEventSubscription;
     const sourceRule: EventFilterRule = {
       condition: '',
@@ -665,13 +728,10 @@ describe('AlertAi form field components', () => {
       <AlertAiFormFields
         shouldShowActionsSection
         shouldShowFiltersSection
-        filterResources={[
-          {
-            name: 'table',
-            supportedActions: [sourceRule],
-            supportedFilters: [sourceRule],
-          },
-        ]}
+        selection={selectionOf({
+          supportedFilters: [sourceRule],
+          supportedTriggers: [sourceRule],
+        })}
         value={value}
         onChange={jest.fn()}
       />
@@ -697,7 +757,8 @@ describe('AlertAi form field components', () => {
       <AlertAiRuleSection
         isViewOnly
         field="filters"
-        selectedSource="table"
+        selectedSources={['table']}
+        sourceSearch={makeSourceSearch()}
         supportedRules={[
           {
             condition: '',
@@ -735,7 +796,8 @@ describe('AlertAi form field components', () => {
       render(
         <AlertAiRuleSection
           field="filters"
-          selectedSource="table"
+          selectedSources={['table']}
+          sourceSearch={makeSourceSearch()}
           supportedRules={[
             {
               arguments: ['domainList'],
@@ -809,7 +871,8 @@ describe('AlertAi form field components', () => {
     render(
       <AlertAiRuleSection
         field="filters"
-        selectedSource="table"
+        selectedSources={['table']}
+        sourceSearch={makeSourceSearch()}
         supportedRules={[
           {
             arguments: ['domainList'],
@@ -846,6 +909,60 @@ describe('AlertAi form field components', () => {
     );
   });
 
+  it('keeps a typed search when the source search is rebuilt during the debounce', async () => {
+    jest.useFakeTimers();
+    const getSourceSearch = () =>
+      ({
+        byId: jest.fn(),
+        byName: jest.fn(),
+        containerEntities: [],
+        indexes: [],
+      } as unknown as AlertSourceSearch);
+    const value = {
+      ...baseValue,
+      input: {
+        filters: [
+          {
+            arguments: [{ input: [], name: 'domainList' }],
+            effect: Effect.Include,
+            name: 'matchAnyDomain',
+          },
+        ],
+      },
+    } as ModifiedCreateEventSubscription;
+    const renderField = (sourceSearch: AlertSourceSearch) => (
+      <RuleArgumentField
+        argument="domainList"
+        field="filters"
+        index={0}
+        name={0}
+        sourceSearch={sourceSearch}
+        value={value}
+        onChange={jest.fn()}
+      />
+    );
+
+    const { rerender } = render(renderField(getSourceSearch()));
+    await act(async () => {
+      jest.advanceTimersByTime(0);
+    });
+    (searchQuery as jest.Mock).mockClear();
+
+    fireEvent.change(screen.getByTestId('domainList-autocomplete'), {
+      target: { value: 'dom' },
+    });
+    // Adding a filter re-asks the server what the selection supports, which hands the field
+    // a new source search while the typed text is still waiting on the debounce.
+    rerender(renderField(getSourceSearch()));
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ query: 'dom' })
+    );
+  });
+
   it('renders fixed runtime options with the fqn autocomplete contract', () => {
     const onChange = jest.fn();
     const selectedRule: ArgumentsInput = {
@@ -863,7 +980,8 @@ describe('AlertAi form field components', () => {
     render(
       <AlertAiRuleSection
         field="actions"
-        selectedSource="testCase"
+        selectedSources={['testCase']}
+        sourceSearch={makeSourceSearch()}
         supportedRules={[
           {
             arguments: ['testResultList'],
@@ -890,7 +1008,7 @@ describe('AlertAi form field components', () => {
       { target: { value: 'Success' } }
     );
 
-    expect(onChange).toHaveBeenCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         input: expect.objectContaining({
           actions: [
@@ -926,7 +1044,8 @@ describe('AlertAi form field components', () => {
       render(
         <AlertAiRuleSection
           field="actions"
-          selectedSource="testCase"
+          selectedSources={['testCase']}
+          sourceSearch={makeSourceSearch()}
           supportedRules={[
             {
               arguments: ['testStatusList', 'testSuiteList'],
@@ -977,7 +1096,7 @@ describe('AlertAi form field components', () => {
     render(
       <AlertAiDestinationSection
         isViewOnly
-        selectedSource="table"
+        selectedSources={['table']}
         value={value}
       />
     );
@@ -1073,7 +1192,7 @@ describe('AlertAi form field components', () => {
       key: 'Enter',
     });
 
-    expect(onChange).toHaveBeenCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         destinations: [
           expect.objectContaining({
@@ -1110,7 +1229,7 @@ describe('AlertAi form field components', () => {
     });
     fireEvent.blur(screen.getByTestId('email-input-0'));
 
-    expect(onChange).toHaveBeenCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         destinations: [
           expect.objectContaining({
@@ -1177,8 +1296,14 @@ describe('AlertAi form field components', () => {
     );
 
     const lastConfig = () =>
-      onChange.mock.calls[onChange.mock.calls.length - 1][0].destinations[0]
-        .config;
+      (
+        applyLastUpdater(onChange, value)
+          .destinations?.[0] as ModifiedDestination
+      ).config as {
+        headers?: { key: string; value: string }[];
+        httpMethod?: string;
+        queryParams?: { key: string; value: string }[];
+      };
 
     expect(screen.getByTestId('header-key-input-0-0')).toHaveValue('X-Token');
 
@@ -1234,7 +1359,7 @@ describe('AlertAi form field components', () => {
       screen.getByRole('checkbox', { name: 'label.notify-downstream' })
     );
 
-    expect(onChange).toHaveBeenLastCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         destinations: [
           expect.objectContaining({
@@ -1271,6 +1396,108 @@ describe('AlertAi form field components', () => {
     expect(screen.getByTestId('destination-downstream-depth-0')).toBeEnabled();
   });
 
+  it('shows each duplicate AI alert destination its own test status', async () => {
+    const duplicate = {
+      category: SubscriptionCategory.External,
+      config: { endpoint: 'https://hooks.slack.com' },
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+    } as ModifiedDestination;
+    const destinationsWithStatus: Array<Destination | undefined> = [
+      {
+        category: SubscriptionCategory.External,
+        config: { endpoint: 'https://hooks.slack.com' },
+        type: SubscriptionType.Slack,
+        statusDetails: { status: Status.Success, statusCode: 200 },
+      } as Destination,
+      {
+        category: SubscriptionCategory.External,
+        config: { endpoint: 'https://hooks.slack.com' },
+        type: SubscriptionType.Slack,
+        statusDetails: {
+          status: Status.Failed,
+          statusCode: 500,
+          reason: 'rate limited',
+        },
+      } as Destination,
+    ];
+    const value = {
+      ...baseValue,
+      destinations: [duplicate, duplicate],
+    } as ModifiedCreateEventSubscription;
+
+    render(
+      <>
+        <AlertAiDestinationItem
+          destination={duplicate}
+          destinationsWithStatus={destinationsWithStatus}
+          name={0}
+          value={value}
+        />
+        <AlertAiDestinationItem
+          destination={duplicate}
+          destinationsWithStatus={destinationsWithStatus}
+          name={1}
+          value={value}
+        />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('alert-success')).toHaveLength(1);
+      expect(screen.getAllByTestId('alert-error')).toHaveLength(1);
+    });
+  });
+
+  it('does not leak an external AI destination test status onto a neighboring internal destination', async () => {
+    const internal = {
+      category: SubscriptionCategory.Owners,
+      destinationType: SubscriptionCategory.Owners,
+      type: SubscriptionType.Email,
+    } as ModifiedDestination;
+    const external = {
+      category: SubscriptionCategory.External,
+      config: { endpoint: 'https://hooks.slack.com' },
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+    } as ModifiedDestination;
+    const destinationsWithStatus: Array<Destination | undefined> = [
+      undefined,
+      {
+        category: SubscriptionCategory.External,
+        config: { endpoint: 'https://hooks.slack.com' },
+        type: SubscriptionType.Slack,
+        statusDetails: { status: Status.Success, statusCode: 200 },
+      } as Destination,
+    ];
+    const value = {
+      ...baseValue,
+      destinations: [internal, external],
+    } as ModifiedCreateEventSubscription;
+
+    render(
+      <>
+        <AlertAiDestinationItem
+          destination={internal}
+          destinationsWithStatus={destinationsWithStatus}
+          name={0}
+          value={value}
+        />
+        <AlertAiDestinationItem
+          destination={external}
+          destinationsWithStatus={destinationsWithStatus}
+          name={1}
+          value={value}
+        />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('alert-success')).toHaveLength(1);
+      expect(screen.queryAllByTestId('alert-error')).toHaveLength(0);
+    });
+  });
+
   it('tests configured external destinations with OSS destination API', async () => {
     const destination = {
       category: SubscriptionCategory.External,
@@ -1283,7 +1510,9 @@ describe('AlertAi form field components', () => {
       destinations: [destination],
     } as ModifiedCreateEventSubscription;
 
-    render(<AlertAiDestinationSection selectedSource="table" value={value} />);
+    render(
+      <AlertAiDestinationSection selectedSources={['table']} value={value} />
+    );
 
     expect(screen.getByTestId('test-destination-button')).not.toBeDisabled();
 
@@ -1301,8 +1530,293 @@ describe('AlertAi form field components', () => {
     );
   });
 
-  it('resets dependent values when source changes', () => {
+  it('clears AI destination test statuses when a destination row is removed', async () => {
+    const destination = {
+      category: SubscriptionCategory.External,
+      config: { endpoint: 'https://hooks.example.com' },
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+    } as ModifiedDestination;
+    const value = {
+      ...baseValue,
+      destinations: [destination, destination],
+    } as ModifiedCreateEventSubscription;
+    (testAlertDestination as jest.Mock).mockResolvedValueOnce([
+      { statusDetails: { status: Status.Failed, statusCode: 500 } },
+      { statusDetails: { status: Status.Success, statusCode: 200 } },
+    ]);
+
+    render(
+      <AlertAiDestinationSection selectedSources={['table']} value={value} />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-destination-button'));
+    });
+
+    expect(await screen.findByTestId('alert-success')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('remove-destination-0'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('alert-success')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
+    });
+  });
+
+  it('rebuilds a clean internal row when switching a populated external destination to Owners', () => {
     const onChange = jest.fn();
+    const populatedSlack: ModifiedDestination = {
+      category: SubscriptionCategory.External,
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+      config: {
+        endpoint: 'https://hooks.slack.com/services/T00/B00/XXX',
+        authType: { type: Type.Bearer, secretKey: 'secret' },
+        headers: [{ key: 'X-Key', value: 'v' }],
+        queryParams: [{ key: 'q', value: '1' }],
+      },
+      notifyDownstream: true,
+      downstreamDepth: 3,
+    } as ModifiedDestination;
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      destinations: [populatedSlack],
+      resources: ['table'],
+    };
+
+    render(
+      <AlertAiFormFields
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        selection={selectionOf({
+          recipientCategories: [SubscriptionCategory.Owners],
+        })}
+        value={value}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('destination-category-select-0'), {
+      target: { value: SubscriptionCategory.Owners },
+    });
+
+    const result = applyLastUpdater(onChange, value);
+    const resultDest = result.destinations?.[0] as ModifiedDestination;
+
+    expect(resultDest.category).toBe(SubscriptionCategory.Owners);
+    expect(resultDest.destinationType).toBe(SubscriptionCategory.Owners);
+    expect(resultDest.type).toBeUndefined();
+    expect(resultDest.config).toEqual({ sendToOwners: true });
+    expect(resultDest.config?.endpoint).toBeUndefined();
+    expect(resultDest.notifyDownstream).toBeUndefined();
+    expect(resultDest.downstreamDepth).toBeUndefined();
+  });
+
+  it('does not carry the stale Slack endpoint when switching to another external destination (MSTeams)', () => {
+    const onChange = jest.fn();
+    const populatedSlack: ModifiedDestination = {
+      category: SubscriptionCategory.External,
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+      config: {
+        endpoint: 'https://hooks.slack.com/services/T00/B00/XXX',
+        authType: { type: Type.Bearer, secretKey: 'secret' },
+        headers: [{ key: 'X-Key', value: 'v' }],
+        queryParams: [{ key: 'q', value: '1' }],
+      },
+      notifyDownstream: true,
+      downstreamDepth: 3,
+    } as ModifiedDestination;
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      destinations: [populatedSlack],
+      resources: ['table'],
+    };
+
+    render(
+      <AlertAiFormFields
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        selection={selectionOf()}
+        value={value}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('destination-category-select-0'), {
+      target: { value: SubscriptionType.MSTeams },
+    });
+
+    const result = applyLastUpdater(onChange, value);
+    const resultDest = result.destinations?.[0] as ModifiedDestination;
+
+    expect(resultDest.category).toBe(SubscriptionCategory.External);
+    expect(resultDest.destinationType).toBe(SubscriptionType.MSTeams);
+    expect(resultDest.type).toBe(SubscriptionType.MSTeams);
+    expect(resultDest.config).toBeUndefined();
+    expect(resultDest.config?.endpoint).toBeUndefined();
+    expect(resultDest.notifyDownstream).toBeUndefined();
+    expect(resultDest.downstreamDepth).toBeUndefined();
+  });
+
+  it('keeps the configured destination when the destination selection is cleared', () => {
+    const onChange = jest.fn();
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      destinations: [
+        {
+          category: SubscriptionCategory.External,
+          destinationType: SubscriptionType.Slack,
+          type: SubscriptionType.Slack,
+          config: { endpoint: 'https://hooks.slack.com/services/T00/B00/XXX' },
+        } as ModifiedDestination,
+      ],
+      resources: ['table'],
+    };
+
+    render(
+      <AlertAiFormFields
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        selection={selectionOf()}
+        value={value}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('destination-category-select-0'), {
+      target: { value: '' },
+    });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('blocks submit of a switched-but-unconfigured destination so stale fields never reach onSubmit', async () => {
+    const onChange = jest.fn();
+    const onSubmit = jest.fn();
+    const populatedSlack: ModifiedDestination = {
+      category: SubscriptionCategory.External,
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+      config: {
+        endpoint: 'https://hooks.slack.com/services/T00/B00/XXX',
+        authType: { type: Type.Bearer, secretKey: 'secret' },
+      },
+      notifyDownstream: true,
+      downstreamDepth: 3,
+    } as ModifiedDestination;
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      destinations: [populatedSlack],
+      resources: ['table'],
+    };
+
+    const { rerender } = render(
+      <AlertAiForm
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        mode="edit"
+        selection={selectionOf()}
+        value={value}
+        onChange={onChange}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('destination-category-select-0'), {
+      target: { value: SubscriptionType.MSTeams },
+    });
+
+    // Simulate the parent persisting the functional updater into state before the save.
+    const switchedValue = applyLastUpdater(onChange, value);
+    onChange.mockClear();
+
+    rerender(
+      <AlertAiForm
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        mode="edit"
+        selection={selectionOf()}
+        value={switchedValue}
+        onChange={onChange}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.submit(screen.getByTestId('alert-ai-form'));
+
+    await waitFor(() => expect(onSubmit).not.toHaveBeenCalled());
+
+    const submittedDestination = onSubmit.mock.calls[0]?.[0]?.destinations?.[0];
+
+    // No payload reached onSubmit, and there is no stale Slack endpoint or downstream state to leak.
+    expect(submittedDestination).toBeUndefined();
+  });
+
+  it('still submits a freshly-configured webhook destination after a category switch (no webhook regression)', async () => {
+    const onSubmit = jest.fn();
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      destinations: [
+        {
+          category: SubscriptionCategory.External,
+          destinationType: SubscriptionType.MSTeams,
+          type: SubscriptionType.MSTeams,
+          config: { endpoint: 'https://outlook.example/webhook' },
+        } as ModifiedDestination,
+      ],
+      resources: ['table'],
+    };
+
+    render(
+      <AlertAiForm
+        mode="edit"
+        selection={selectionOf()}
+        shouldShowActionsSection={false}
+        shouldShowFiltersSection={false}
+        value={value}
+        onChange={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.submit(screen.getByTestId('alert-ai-form'));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(value));
+
+    expect(onSubmit.mock.calls[0][0].destinations[0].config).toEqual({
+      endpoint: 'https://outlook.example/webhook',
+    });
+  });
+
+  it('shows required errors instead of testing an unconfigured external destination', async () => {
+    const value = {
+      ...baseValue,
+      destinations: [
+        {
+          category: SubscriptionCategory.External,
+          destinationType: SubscriptionType.Slack,
+          type: SubscriptionType.Slack,
+        },
+      ],
+    } as ModifiedCreateEventSubscription;
+
+    render(
+      <AlertAiDestinationSection selectedSources={['table']} value={value} />
+    );
+
+    fireEvent.click(screen.getByTestId('test-destination-button'));
+
+    expect(
+      await screen.findByText(
+        'message.field-text-is-required:label.endpoint-url'
+      )
+    ).toBeInTheDocument();
+    expect(testAlertDestination).not.toHaveBeenCalled();
+  });
+
+  describe('several sources', () => {
     const value: ModifiedCreateEventSubscription = {
       ...baseValue,
       destinations: [
@@ -1318,28 +1832,326 @@ describe('AlertAi form field components', () => {
       },
       resources: ['table'],
     };
+    const renderFields = (onChange: jest.Mock) =>
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          selection={selectionOf()}
+          value={value}
+          onChange={onChange}
+        />
+      );
 
-    render(
-      <AlertAiFormFields
-        shouldShowActionsSection
-        shouldShowFiltersSection
-        filterResources={[{ name: 'table' }, { name: 'pipeline' }]}
-        value={value}
-        onChange={onChange}
-      />
-    );
+    it('adds a source to the ones chosen, starting the rules over but keeping the destinations', () => {
+      const onChange = jest.fn();
+      renderFields(onChange);
 
-    fireEvent.change(screen.getByTestId('source-select'), {
-      target: { value: 'pipeline' },
+      fireEvent.change(screen.getByTestId('source-select-options'), {
+        target: { value: 'pipeline' },
+      });
+
+      expect(applyLastUpdater(onChange, value)).toEqual(
+        expect.objectContaining({
+          destinations: value.destinations,
+          input: {},
+          resources: ['table', 'pipeline'],
+        })
+      );
     });
 
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        destinations: [],
-        input: {},
-        resources: ['pipeline'],
-      })
-    );
+    it('starts the destinations over when a source is taken away', () => {
+      const onChange = jest.fn();
+      renderFields(onChange);
+
+      fireEvent.click(screen.getByTestId('source-select-clear-table'));
+
+      expect(applyLastUpdater(onChange, value)).toEqual(
+        expect.objectContaining({
+          destinations: [],
+          input: {},
+          resources: [],
+        })
+      );
+    });
+
+    it('shows every source a saved alert watches', () => {
+      render(
+        <AlertAiFormFields
+          isViewOnly
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          selection={selectionOf()}
+          value={{ ...value, resources: ['table', 'pipeline'] }}
+        />
+      );
+
+      expect(
+        screen.getByTestId('source-select-clear-table')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('source-select-clear-pipeline')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('source-select')).toBeDisabled();
+    });
+
+    it('searches what every chosen source holds for a name filter', async () => {
+      const selection = selectionOf({
+        supportedFilters: [
+          {
+            arguments: ['fqnList'],
+            condition: '',
+            effect: Effect.Include,
+            inputType: InputType.Runtime,
+            name: 'filterByFqn',
+          } as EventFilterRule,
+        ],
+      });
+      (selection.search.byName as jest.Mock).mockResolvedValue([
+        { label: 'shop.orders', value: 'shop.orders' },
+      ]);
+
+      await act(async () => {
+        render(
+          <AlertAiFormFields
+            shouldShowFiltersSection
+            selection={selection}
+            shouldShowActionsSection={false}
+            value={{
+              ...value,
+              input: {
+                filters: [
+                  {
+                    arguments: [{ input: [], name: 'fqnList' }],
+                    effect: Effect.Include,
+                    name: 'filterByFqn',
+                  },
+                ],
+              },
+              resources: ['table', 'pipeline'],
+            }}
+            onChange={jest.fn()}
+          />
+        );
+      });
+
+      expect(selection.search.byName).toHaveBeenCalledWith('');
+      expect(await screen.findByText('shop.orders')).toBeInTheDocument();
+    });
+  });
+
+  describe('view-mode section visibility when what the sources support is unknown', () => {
+    const viewValue = {
+      ...baseValue,
+      input: {
+        actions: [{ effect: Effect.Include, name: 'testResultTrigger' }],
+        filters: [{ effect: Effect.Include, name: 'domainList' }],
+      },
+      resources: ['table'],
+    } as ModifiedCreateEventSubscription;
+    const domainFilterRule: EventFilterRule = {
+      condition: '',
+      effect: Effect.Include,
+      name: 'domainList',
+    };
+    const testResultTriggerRule: EventFilterRule = {
+      condition: '',
+      effect: Effect.Include,
+      name: 'testResultTrigger',
+    };
+
+    it('renders configured filters and triggers in view mode when what the sources support is unknown (regression)', () => {
+      render(
+        <AlertAiFormFields
+          isViewOnly
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          selection={selectionOf()}
+          value={viewValue}
+        />
+      );
+
+      expect(
+        screen.getByTestId('label.filter-plural-section')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('label.trigger-section')).toBeInTheDocument();
+      expect(screen.getByTestId('filters-0')).toBeInTheDocument();
+      expect(screen.getByTestId('actions-0')).toBeInTheDocument();
+    });
+
+    it('renders configured rules in view mode once the sources support them (contrast)', () => {
+      render(
+        <AlertAiFormFields
+          isViewOnly
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          selection={selectionOf({
+            supportedFilters: [domainFilterRule],
+            supportedTriggers: [testResultTriggerRule],
+          })}
+          value={viewValue}
+        />
+      );
+
+      expect(
+        screen.getByTestId('label.filter-plural-section')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('label.trigger-section')).toBeInTheDocument();
+    });
+
+    // The server answers after the saved alert has loaded, or its answer failed.
+    it("keeps a saved alert's rules in edit mode while what the sources support is unknown", () => {
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          selection={selectionOf()}
+          value={viewValue}
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(screen.getByTestId('filters-0')).toBeInTheDocument();
+      expect(screen.getByTestId('actions-0')).toBeInTheDocument();
+      // A saved rule is shown by its name, never blank.
+      expect(screen.getByTestId('filters-select-0')).toHaveValue('domainList');
+      // Nothing new can be added until the server says what is supported.
+      expect(screen.getByTestId('add-filters')).toBeDisabled();
+    });
+
+    it('shows no empty rule section in edit mode while what the sources support is unknown', () => {
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          selection={selectionOf()}
+          value={{ ...viewValue, input: {} }}
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('label.filter-plural-section')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('label.trigger-section')
+      ).not.toBeInTheDocument();
+    });
+
+    // Rules stored only in filteringRules, with no `input` selections.
+    const legacyAlert: EventSubscription = {
+      alertType: EventSubscriptionAlertType.Observability,
+      destinations: [
+        {
+          category: SubscriptionCategory.External,
+          config: { endpoint: 'https://hooks.slack.com/services/x' },
+          readTimeout: 12,
+          timeout: 10,
+          type: SubscriptionType.Slack,
+        },
+      ],
+      id: 'legacy-alert-id',
+      name: 'legacy-alert',
+      filteringRules: {
+        actions: [
+          {
+            arguments: ['testSuiteList'],
+            condition: 'matchTestResult(true)',
+            effect: Effect.Include,
+            name: 'testResultTrigger',
+          },
+        ],
+        resources: ['table'],
+        rules: [
+          {
+            arguments: ['domainList'],
+            condition: 'matchAnyDomain(true)',
+            effect: Effect.Include,
+            name: 'domainList',
+          },
+        ],
+      },
+    } as EventSubscription;
+
+    it("renders a legacy-shaped alert's rules in view mode after seeding from filteringRules", () => {
+      // A WrittenByHand alert carries its rules only in the legacy filteringRules
+      // shape with no `input`; getModifiedAlertDataForForm seeds `input` from it.
+      const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
+
+      render(
+        <AlertAiFormFields
+          isViewOnly
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          alert={seeded}
+          selection={selectionOf()}
+          value={seeded}
+        />
+      );
+
+      // The legacy rules are seeded into `input`, so the form lists them in view
+      // mode instead of hiding the sections — "a saved alert never hides them".
+      expect(
+        screen.getByTestId('label.filter-plural-section')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('label.trigger-section')).toBeInTheDocument();
+      expect(screen.getByTestId('filters-0')).toBeInTheDocument();
+      expect(screen.getByTestId('actions-0')).toBeInTheDocument();
+      expect(screen.getByTestId('filters-select-0')).toHaveValue('domainList');
+      expect(screen.getByTestId('actions-select-0')).toHaveValue(
+        'testResultTrigger'
+      );
+    });
+
+    it("keeps a legacy-shaped alert's rules listed when its sources change", () => {
+      const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
+      const onChange = jest.fn();
+
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          alert={seeded}
+          selection={selectionOf()}
+          value={seeded}
+          onChange={onChange}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId('source-select-options'), {
+        target: { value: 'pipeline' },
+      });
+
+      expect(applyLastUpdater(onChange, seeded)).toEqual(
+        expect.objectContaining({
+          input: seeded.input,
+          resources: ['table', 'pipeline'],
+        })
+      );
+    });
+
+    it("keeps a legacy-shaped alert's rules read-only in edit mode", () => {
+      const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
+
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          alert={seeded}
+          selection={selectionOf()}
+          value={seeded}
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(screen.getByTestId('alert-brand')).toHaveTextContent(
+        'message.alert-rules-read-only'
+      );
+      expect(screen.getByTestId('filters-select-0')).toHaveValue('domainList');
+      expect(screen.queryByTestId('add-filters')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('add-actions')).not.toBeInTheDocument();
+      expect(screen.getByTestId('alert-name-input')).not.toBeDisabled();
+    });
   });
 
   it('submits editable forms and skips submit in view mode', async () => {
@@ -1358,7 +2170,7 @@ describe('AlertAi form field components', () => {
     };
 
     const editableProps = {
-      filterResources: [{ name: 'table' }],
+      selection: selectionOf(),
       mode: 'edit' as const,
       onChange: jest.fn(),
       onSubmit,
@@ -1377,8 +2189,8 @@ describe('AlertAi form field components', () => {
 
     rerender(
       <AlertAiForm
-        filterResources={[]}
         mode="view"
+        selection={selectionOf()}
         shouldShowActionsSection={false}
         shouldShowFiltersSection={false}
         value={baseValue}
@@ -1395,8 +2207,8 @@ describe('AlertAi form field components', () => {
 
     render(
       <AlertAiForm
-        filterResources={[{ name: 'table' }]}
         mode="add"
+        selection={selectionOf()}
         shouldShowActionsSection={false}
         shouldShowFiltersSection={false}
         value={{ ...baseValue, name: '' }}
@@ -1432,8 +2244,8 @@ describe('AlertAi form field components', () => {
 
     render(
       <AlertAiForm
-        filterResources={[{ name: 'table' }]}
         mode="add"
+        selection={selectionOf()}
         shouldShowActionsSection={false}
         shouldShowFiltersSection={false}
         value={{ ...baseValue, name: '' }}
@@ -1448,7 +2260,7 @@ describe('AlertAi form field components', () => {
       screen.getByText('message.field-text-is-required:label.source')
     ).toBeInTheDocument();
 
-    fireEvent.change(screen.getByTestId('source-select'), {
+    fireEvent.change(screen.getByTestId('source-select-options'), {
       target: { value: 'table' },
     });
 
@@ -1466,8 +2278,8 @@ describe('AlertAi form field components', () => {
   it('renders hint docs inside the shared typography wrapper', () => {
     render(
       <AlertAiForm
-        filterResources={[{ name: 'table' }]}
         mode="edit"
+        selection={selectionOf()}
         shouldShowActionsSection={false}
         shouldShowFiltersSection={false}
         value={baseValue}
@@ -1490,7 +2302,7 @@ describe('AlertAi form field components', () => {
         <AlertAiFormFields
           shouldShowActionsSection
           shouldShowFiltersSection
-          filterResources={[{ name: 'table' }]}
+          selection={selectionOf()}
           value={{} as ModifiedCreateEventSubscription}
           onChange={jest.fn()}
         />
@@ -1520,7 +2332,7 @@ describe('AlertAi form field components', () => {
           shouldShowActionsSection
           shouldShowFiltersSection
           templatesLoading
-          filterResources={[{ name: 'table' }]}
+          selection={selectionOf()}
           templateResourcePermission={permission}
           templates={templates}
           value={value}
@@ -1551,7 +2363,7 @@ describe('AlertAi form field components', () => {
       <AlertAiFormFields
         shouldShowActionsSection
         shouldShowFiltersSection
-        filterResources={[{ name: 'table' }]}
+        selection={selectionOf()}
         value={{} as ModifiedCreateEventSubscription}
         onChange={jest.fn()}
       />
@@ -1584,7 +2396,7 @@ describe('AlertAi form field components', () => {
         isViewOnly
         shouldShowActionsSection
         shouldShowFiltersSection
-        filterResources={[{ name: 'table' }]}
+        selection={selectionOf()}
         value={{} as ModifiedCreateEventSubscription}
         onChange={jest.fn()}
       />

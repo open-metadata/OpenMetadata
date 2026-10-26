@@ -379,6 +379,37 @@ describe('DataQualityTab', () => {
         expect(getListTestCaseIncidentStatus).toHaveBeenCalled();
       });
     });
+
+    it('should show the incidents empty message on the incidents tab', async () => {
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
+      const { getListTestCaseIncidentStatus } = jest.requireMock(
+        '../../../../rest/incidentManagerAPI'
+      );
+
+      getListTestCaseBySearch.mockResolvedValue({ data: [] });
+      getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
+
+      render(<DataQualityTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('message.no-data-quality-test-message')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole('tab', { name: /label.incident-plural/ })
+      );
+
+      expect(
+        await screen.findByText('message.no-incident-found')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.no-data-quality-test-message')
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe('Test Cases Rendering', () => {
@@ -618,6 +649,34 @@ describe('DataQualityTab', () => {
         expect(screen.getByText(/label.no-entity/)).toBeInTheDocument();
       });
     });
+
+    it('reports no matching results when a search finds no test cases', async () => {
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
+      const { getListTestCaseIncidentStatus } = jest.requireMock(
+        '../../../../rest/incidentManagerAPI'
+      );
+      getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
+
+      render(<DataQualityTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getAllByTestId('data-quality-section')[0]
+        ).toBeInTheDocument();
+      });
+
+      // The search re-queries the API; the counts from the first load stay.
+      getListTestCaseBySearch.mockResolvedValueOnce({ data: [] });
+      fireEvent.change(screen.getAllByTestId('search-input')[0], {
+        target: { value: 'zzz_no_such_test' },
+      });
+
+      expect(
+        await screen.findByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
+    });
   });
 
   describe('Tab Navigation', () => {
@@ -659,7 +718,7 @@ describe('DataQualityTab', () => {
       fireEvent.click(incidentsTab);
 
       expect(
-        screen.getByText('label.new', { selector: '.stat-label.new' })
+        screen.getByRole('button', { name: /label.new/ })
       ).toBeInTheDocument();
     });
 
@@ -714,44 +773,15 @@ describe('DataQualityTab', () => {
     });
 
     it('should render incident status counts', () => {
-      // Check for new count (should be 1 based on mock data)
-      const newCount = screen.getByText((content, element) => {
-        const className = element?.getAttribute('class') || '';
-
-        return (
-          content === '1' &&
-          className.includes('stat-count') &&
-          className.includes('new')
-        );
-      });
-
-      expect(newCount).toBeInTheDocument();
-
-      // Check for assigned count (should be 1 based on mock data)
-      const assignedCount = screen.getByText((content, element) => {
-        const className = element?.getAttribute('class') || '';
-
-        return (
-          content === '1' &&
-          className.includes('stat-count') &&
-          className.includes('assigned')
-        );
-      });
-
-      expect(assignedCount).toBeInTheDocument();
-
-      // Check for acknowledged count (should be 0 based on mock data)
-      const ackCount = screen.getByText((content, element) => {
-        const className = element?.getAttribute('class') || '';
-
-        return (
-          content === '0' &&
-          className.includes('stat-count') &&
-          className.includes('ack')
-        );
-      });
-
-      expect(ackCount).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /label.new/ })
+      ).toHaveTextContent('1');
+      expect(
+        screen.getByRole('button', { name: /label.assigned/ })
+      ).toHaveTextContent('1');
+      expect(
+        screen.getByRole('button', { name: /label.acknowledged/ })
+      ).toHaveTextContent('0');
 
       // Check for resolved count (should be 0 based on mock data)
       const resolvedCount = screen.getByText((content, element) => {
@@ -1001,7 +1031,7 @@ describe('DataQualityTab', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('message.no-access-placeholder')
+          screen.getByTestId('permission-error-placeholder')
         ).toBeInTheDocument();
       });
 

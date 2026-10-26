@@ -13,8 +13,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
+import {
+  TourContext,
+  TourProviderContextProps,
+} from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
+import { useChangeSummary } from '../../../hooks/useChangeSummary';
 import { updateWidgetHeightRecursively } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -27,6 +32,12 @@ jest.mock('../../../hooks/useCustomPages', () => ({
       pageType: PageType.Table,
       tabs: [],
     },
+  })),
+}));
+
+jest.mock('../../../hooks/useChangeSummary', () => ({
+  useChangeSummary: jest.fn().mockImplementation(() => ({
+    changeSummary: {},
   })),
 }));
 
@@ -148,6 +159,41 @@ describe('GenericProvider', () => {
     expect(screen.getByTestId('context-data')).toHaveTextContent(
       JSON.stringify(updatedData)
     );
+  });
+
+  it('should request the change summary of the entity', () => {
+    render(
+      <MemoryRouter>
+        <GenericProvider {...defaultProps}>
+          <TestComponent />
+        </GenericProvider>
+      </MemoryRouter>
+    );
+
+    expect(useChangeSummary).toHaveBeenLastCalledWith(
+      EntityType.TABLE,
+      mockData.id,
+      { limit: 1000 }
+    );
+  });
+
+  it('should not request a change summary for the tour mock entity', () => {
+    render(
+      <MemoryRouter>
+        <TourContext.Provider
+          value={
+            {
+              isTourPage: true,
+            } as Partial<TourProviderContextProps> as TourProviderContextProps
+          }>
+          <GenericProvider {...defaultProps}>
+            <TestComponent />
+          </GenericProvider>
+        </TourContext.Provider>
+      </MemoryRouter>
+    );
+
+    expect(useChangeSummary).toHaveBeenLastCalledWith('', '', { limit: 1000 });
   });
 
   it('should handle version view mode', () => {

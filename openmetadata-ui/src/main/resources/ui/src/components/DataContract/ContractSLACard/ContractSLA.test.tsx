@@ -26,6 +26,10 @@ import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { mockTableData } from '../../../mocks/TableVersion.mock';
 import ContractSLA from './ContractSLA.component';
 
+// LocalUtil and LocalUtilClassBase import each other; mocking the latter keeps
+// requireActual below from reading LocalUtil's exports mid-initialization.
+jest.mock('../../../utils/i18next/LocalUtilClassBase');
+
 jest.mock('../../../utils/i18next/LocalUtil', () => ({
   ...jest.requireActual('../../../utils/i18next/LocalUtil'),
   Transi18next: ({
@@ -46,8 +50,11 @@ jest.mock('../../../utils/i18next/LocalUtil', () => ({
   t: jest.fn().mockImplementation((key) => key),
 }));
 
+// Every SVG import maps to one mocked module, so this mock stands in for all icons.
 jest.mock('../../../assets/svg/ic-check-circle-2.svg', () => ({
-  ReactComponent: () => <svg data-testid="check-icon" />,
+  ReactComponent: ({ className }: { className?: string }) => (
+    <svg className={className} data-testid="check-icon" />
+  ),
 }));
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
