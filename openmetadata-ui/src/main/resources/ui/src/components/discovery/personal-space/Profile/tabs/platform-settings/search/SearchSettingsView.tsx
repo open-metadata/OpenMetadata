@@ -312,9 +312,10 @@ const SearchSettingsView = ({
         count={termBoosts.length}
         testId="term-boosts"
         title={t('label.term-boost')}>
-        <Box direction="row" gap={3} wrap="wrap">
+        <div className="tw:grid tw:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] tw:gap-3">
           {termBoosts.map((boost) => (
             <TermBoostCard
+              className="tw:w-full"
               key={boost.value}
               termBoost={boost}
               onChange={handleTermBoostChange}
@@ -323,11 +324,12 @@ const SearchSettingsView = ({
           ))}
           {showNewTermBoost && (
             <TermBoostCard
+              className="tw:w-full"
               onChange={handleTermBoostChange}
               onDelete={handleTermBoostDelete}
             />
           )}
-        </Box>
+        </div>
       </SearchSection>
 
       <Box data-testid="field-value-boosts" direction="col">
