@@ -33,10 +33,11 @@ import org.openmetadata.schema.utils.JsonUtils;
  * negation of the whole list ({@code !some(tags, tagFQN == X)}, "no tag is X"), which is what its
  * "Is Not" row always said. The same rewrite runs in the UI ({@code
  * utils/queryBuilder/jsonLogicNegation.ts}); both are tested against one case table, and applying
- * either to its own output changes nothing.
+ * either to its own output changes nothing. Public so Collate's migration of the rules it stores
+ * (reverse metadata filters) uses the same rewrite.
  */
 @Slf4j
-final class NegatedListRuleRewriter {
+public final class NegatedListRuleRewriter {
   private static final String SOME = "some";
   private static final String NOT = "!";
   private static final String EQUALS = "==";
@@ -48,7 +49,7 @@ final class NegatedListRuleRewriter {
   private NegatedListRuleRewriter() {}
 
   /** {@code rule} in the stored shape, or {@code rule} itself when nothing in it changes. */
-  static String rewrite(final String rule) {
+  public static String rewrite(final String rule) {
     final Optional<JsonNode> parsed = parse(rule);
     final JsonNode rewritten = parsed.map(NegatedListRuleRewriter::rewriteNode).orElse(null);
     return rewritten == null || rewritten.equals(parsed.get()) ? rule : rewritten.toString();
