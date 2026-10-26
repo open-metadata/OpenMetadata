@@ -83,7 +83,12 @@ jest.mock('../../hoc/LimitWrapper', () => {
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     currentUser: mockUserData,
+    updateCurrentUser: jest.fn(),
   })),
+}));
+
+jest.mock('../../rest/userAPI', () => ({
+  updateUserDetail: jest.fn().mockResolvedValue({}),
 }));
 
 let mockIsWelcomeVisible = true;

@@ -12,21 +12,42 @@
  */
 import { Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../constant/config';
-import { clickIgnoringToasts } from '../../utils/common';
+import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
+import { UserClass } from '../../support/user/UserClass';
+import {
+  clickIgnoringToasts,
+  getWorkerAdminAPIContext,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { expect, test } from '../fixtures/pages';
+import { expect, test as base } from '../fixtures/pages';
 import { enableAiAppMode } from '../Utils/appMode';
 
-// The shared admin session seeds `loggedInUsers`, which is how every other spec
-// keeps the welcome screen away. Drop it once per page — the session flag keeps
-// a reload from dropping it again — so this page is the user's first login.
-const asFirstLogin = (page: Page) =>
-  page.addInitScript(() => {
-    if (!sessionStorage.getItem('__pw_first_login')) {
-      localStorage.removeItem('loggedInUsers');
-      sessionStorage.setItem('__pw_first_login', '1');
+// The welcome screen is remembered on the user (`welcomeScreenSeenAt`), so a
+// first login needs an account that has never reached a home route: a fresh
+// admin per test (admin so the connect button renders), signed in without the
+// `loggedInUsers` seed and landing away from home.
+const test = base.extend<{ firstLoginPage: Page }>({
+  firstLoginPage: async ({ browser }, use) => {
+    const apiContext = await getWorkerAdminAPIContext();
+    const user = new UserClass(undefined, true);
+    await user.create(apiContext);
+
+    const page = await browser.newPage();
+
+    try {
+      await installServerLoadReducers(page.context());
+      await user.signIn(page, undefined, undefined, {
+        suppressWelcomeScreen: false,
+        landingPath: '/explore',
+      });
+
+      await use(page);
+    } finally {
+      await page.close();
+      await user.delete(apiContext);
     }
-  });
+  },
+});
 
 // The add-service route differs by distribution (Collate nests it under
 // /connections in AI mode), so the connect tests check which connectors the
@@ -41,9 +62,8 @@ test.describe(
   { tag: ['@Features', DOMAIN_TAGS.PLATFORM] },
   () => {
     test('shows once on the classic home and closes to the landing page', async ({
-      page,
+      firstLoginPage: page,
     }) => {
-      await asFirstLogin(page);
       await openHome(page, '/my-data');
 
       await test.step('the first visit shows the welcome screen', async () => {
@@ -68,9 +88,8 @@ test.describe(
     });
 
     test('classic: connect a data source opens the database service wizard', async ({
-      page,
+      firstLoginPage: page,
     }) => {
-      await asFirstLogin(page);
       await openHome(page, '/my-data');
 
       await clickIgnoringToasts(page.getByTestId('welcome-screen-connect-btn'));
@@ -81,8 +100,9 @@ test.describe(
       await expect(connectors.getByTestId('Looker')).toBeHidden();
     });
 
-    test('classic: take a product tour opens the tour', async ({ page }) => {
-      await asFirstLogin(page);
+    test('classic: take a product tour opens the tour', async ({
+      firstLoginPage: page,
+    }) => {
       await openHome(page, '/my-data');
 
       await clickIgnoringToasts(page.getByTestId('welcome-screen-tour-btn'));
@@ -91,9 +111,8 @@ test.describe(
     });
 
     test('AI mode: shows on the home, opens every connector, and stays dismissed', async ({
-      page,
+      firstLoginPage: page,
     }) => {
-      await asFirstLogin(page);
       await enableAiAppMode(page);
       await openHome(page, '/');
 

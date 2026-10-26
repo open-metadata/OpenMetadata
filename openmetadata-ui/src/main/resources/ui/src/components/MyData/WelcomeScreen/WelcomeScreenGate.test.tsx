@@ -13,13 +13,25 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../../constants/constants';
 import { RouteVisibilityProvider } from '../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
+import { updateUserDetail } from '../../../rest/userAPI';
 import WelcomeScreenGate from './WelcomeScreenGate';
 
 const mockTour = { isTourPage: false };
 const mockWelcome = { isWelcomeVisible: true };
+const mockStore: {
+  currentUser: { id: string; name: string; welcomeScreenSeenAt?: number };
+  updateCurrentUser: jest.Mock;
+} = {
+  currentUser: { id: 'alex-id', name: 'alex' },
+  updateCurrentUser: jest.fn(),
+};
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { name: 'alex' } }),
+  useApplicationStore: () => mockStore,
+}));
+
+jest.mock('../../../rest/userAPI', () => ({
+  updateUserDetail: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../hooks/useWelcomeStore', () => ({
@@ -48,16 +60,23 @@ const renderGate = () =>
 describe('WelcomeScreenGate', () => {
   beforeEach(() => {
     localStorage.clear();
+    jest.clearAllMocks();
+    mockStore.currentUser = { id: 'alex-id', name: 'alex' };
     mockTour.isTourPage = false;
     mockWelcome.isWelcomeVisible = true;
   });
 
-  it('shows the welcome screen to a first-time user and remembers them', async () => {
+  it('shows the welcome screen to a first-time user and records it on the user', async () => {
     renderGate();
 
     expect(await screen.findByTestId('welcome')).toBeInTheDocument();
     expect(screen.queryByTestId('home')).not.toBeInTheDocument();
-    expect(localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY)).toBe('alex');
+    expect(updateUserDetail).toHaveBeenCalledWith('alex-id', [
+      expect.objectContaining({ op: 'add', path: '/welcomeScreenSeenAt' }),
+    ]);
+    expect(mockStore.updateCurrentUser).toHaveBeenCalledWith(
+      expect.objectContaining({ welcomeScreenSeenAt: expect.any(Number) })
+    );
   });
 
   it('shows the home route once the welcome screen is closed', async () => {
@@ -89,12 +108,33 @@ describe('WelcomeScreenGate', () => {
     expect(screen.queryByTestId('welcome')).not.toBeInTheDocument();
   });
 
-  it('skips the welcome screen for a user who has already seen it', () => {
+  it('skips the welcome screen for a user who saw it in another browser', () => {
+    mockStore.currentUser.welcomeScreenSeenAt = 1;
+    renderGate();
+
+    expect(screen.getByTestId('home')).toBeInTheDocument();
+    expect(screen.queryByTestId('welcome')).not.toBeInTheDocument();
+    expect(updateUserDetail).not.toHaveBeenCalled();
+  });
+
+  it('backfills the user from the legacy localStorage list without showing it again', () => {
     localStorage.setItem(LOGGED_IN_USER_STORAGE_KEY, 'someone,alex');
     renderGate();
 
     expect(screen.getByTestId('home')).toBeInTheDocument();
     expect(screen.queryByTestId('welcome')).not.toBeInTheDocument();
+    expect(updateUserDetail).toHaveBeenCalledWith('alex-id', [
+      expect.objectContaining({ path: '/welcomeScreenSeenAt' }),
+    ]);
+  });
+
+  it('keeps the welcome screen dismissed when recording it fails', async () => {
+    (updateUserDetail as jest.Mock).mockRejectedValueOnce(new Error('down'));
+    renderGate();
+
+    fireEvent.click(await screen.findByTestId('welcome'));
+
+    expect(screen.getByTestId('home')).toBeInTheDocument();
   });
 
   it('skips the welcome screen on the tour', () => {

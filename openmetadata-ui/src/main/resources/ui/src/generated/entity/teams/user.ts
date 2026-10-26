@@ -184,6 +184,11 @@ export interface User {
      * Metadata version of the entity.
      */
     version?: number;
+    /**
+     * When the user was first shown the first-login welcome screen. Unset means the user has
+     * not seen it yet.
+     */
+    welcomeScreenSeenAt?: number;
 }
 
 /**

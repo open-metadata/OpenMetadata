@@ -193,6 +193,10 @@
       "description": "Last time the user was active in the system.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
+    "welcomeScreenSeenAt": {
+      "description": "When the user was first shown the first-login welcome screen. Unset means the user has not seen it yet.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
      "personaPreferences": {
       "description": "User's personal preferences for each persona. Users can customize certain UI elements per persona while inheriting base persona configuration.",
       "type": "array",

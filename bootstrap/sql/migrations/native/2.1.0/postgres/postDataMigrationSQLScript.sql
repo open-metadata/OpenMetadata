@@ -680,3 +680,11 @@ WHERE name = 'columnValuesToBeInSet'
 UPDATE test_definition
 SET json = jsonb_set(json, '{description}', to_jsonb('Checks column values against an allowed set according to the matchEnum mode.'::text))
 WHERE name = 'columnValuesToBeInSet';
+
+-- The first-login welcome screen used to remember dismissal only in browser localStorage, so it
+-- reappeared on every new browser. It is now tracked on the user as welcomeScreenSeenAt. Anyone
+-- who has logged in before this upgrade is not a first-time user: mark them as having seen it.
+UPDATE user_entity
+SET json = jsonb_set(json, '{welcomeScreenSeenAt}', to_jsonb(lastLoginTime))
+WHERE lastLoginTime IS NOT NULL
+  AND json->'welcomeScreenSeenAt' IS NULL;

@@ -688,3 +688,11 @@ WHERE name = 'columnValuesToBeInSet'
 UPDATE test_definition
 SET json = JSON_SET(json, '$.description', 'Checks column values against an allowed set according to the matchEnum mode.')
 WHERE name = 'columnValuesToBeInSet';
+
+-- The first-login welcome screen used to remember dismissal only in browser localStorage, so it
+-- reappeared on every new browser. It is now tracked on the user as welcomeScreenSeenAt. Anyone
+-- who has logged in before this upgrade is not a first-time user: mark them as having seen it.
+UPDATE user_entity
+SET json = JSON_SET(json, '$.welcomeScreenSeenAt', lastLoginTime)
+WHERE lastLoginTime IS NOT NULL
+  AND JSON_EXTRACT(json, '$.welcomeScreenSeenAt') IS NULL;

@@ -140,6 +140,7 @@ public class UserRepository extends EntityRepository<User> {
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
+  private static final String WELCOME_SCREEN_SEEN_AT_FIELD = "welcomeScreenSeenAt";
   static final String USER_PATCH_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
   static final String USER_UPDATE_FIELDS =
@@ -1916,6 +1917,7 @@ public class UserRepository extends EntityRepository<User> {
                   false,
                   objectMatch,
                   false));
+      compareAndUpdate(WELCOME_SCREEN_SEEN_AT_FIELD, this::updateWelcomeScreenSeenAt);
 
       compareAndUpdate("roles", () -> updateRoles(original, updated));
       compareAndUpdate("teams", () -> updateTeams(original, updated));
@@ -1955,6 +1957,21 @@ public class UserRepository extends EntityRepository<User> {
           "isAdmin");
       JwtFilter.invalidateResolvedEmailIdentity(original.getEmail());
       JwtFilter.invalidateResolvedEmailIdentity(updated.getEmail());
+    }
+
+    private void updateWelcomeScreenSeenAt() {
+      if (operation.isPut() && updated.getWelcomeScreenSeenAt() == null) {
+        // CreateUser does not carry welcomeScreenSeenAt; PUT must not bring the welcome screen back
+        updated.setWelcomeScreenSeenAt(original.getWelcomeScreenSeenAt());
+        return;
+      }
+      recordChange(
+          WELCOME_SCREEN_SEEN_AT_FIELD,
+          original.getWelcomeScreenSeenAt(),
+          updated.getWelcomeScreenSeenAt(),
+          false,
+          objectMatch,
+          false);
     }
 
     private void updateAllowImpersonation() {
