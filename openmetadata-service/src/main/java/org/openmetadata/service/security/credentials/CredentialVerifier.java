@@ -714,9 +714,16 @@ public final class CredentialVerifier implements Managed {
   private boolean deepReadQuietly(List<CredentialSubject> batch) {
     boolean succeeded = false;
     try {
-      reread(batch, ReadReason.DEEP, Map.of());
+      boolean allConverted = reread(batch, ReadReason.DEEP, Map.of());
       metrics.recordSweepQuery(SweepQuery.FULL);
-      succeeded = true;
+      succeeded = allConverted;
+      if (!allConverted) {
+        LOG.warn(
+            "Deep credential verification left some of {} subjects unconverted; the pass is retried"
+                + " in {} ms",
+            batch.size(),
+            TimeUnit.NANOSECONDS.toMillis(deepRetryIntervalNanos));
+      }
     } catch (Throwable failure) {
       LOG.warn(
           "Deep credential verification of {} subjects failed; they stay trusted by fingerprint and"
@@ -763,8 +770,11 @@ public final class CredentialVerifier implements Managed {
     return changed;
   }
 
-  /** A sweep's or a deep verify's read: it replaces cached entries and never creates one. */
-  private void reread(
+  /**
+   * A sweep's or a deep verify's read: it replaces cached entries and never creates one. Answers
+   * whether the source converted every requested subject.
+   */
+  private boolean reread(
       List<CredentialSubject> subjects,
       ReadReason reason,
       Map<CredentialSubject, CredentialRecord> previous) {
@@ -776,6 +786,7 @@ public final class CredentialVerifier implements Managed {
         install(subject, new VerifiedCredentials(record, stamp), NEVER_CREATES);
       }
     }
+    return records.keySet().containsAll(subjects);
   }
 
   /**

@@ -940,6 +940,26 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void aDeepPassThatLeavesASubjectOutIsRetriedAtTheRetryInterval() {
+    source.withPats(BOB, TOKEN_A).withJwtMechanism(ALICE, JWT_OLD);
+    verifier(DEFAULTS);
+    assertAccepted(BOB, TOKEN_A);
+    assertAccepted(ALICE, JWT_OLD);
+    source.failConversionOf(BOB);
+
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    verifier.sweepOnce();
+    source.restoreConversionOf(BOB);
+    source.replacePatInPlace(BOB, TOKEN_A, TOKEN_B);
+    ticker.advanceNanos(MINUTE);
+    verifier.sweepOnce();
+
+    assertRejected(BOB, TOKEN_A);
+    assertAccepted(BOB, TOKEN_B);
+    assertAccepted(ALICE, JWT_OLD);
+  }
+
+  @Test
   void externalSecretsRotationIsSeenWithinTheBound() {
     source.withSecretReferenceMechanism(BOB, JWT_OLD);
     verifier(DEFAULTS);
