@@ -73,10 +73,12 @@ def source() -> PowerbiSource:
         )
 
 
-def native_query_table(sql: str) -> PowerBiTable:
-    """A table sourced from a BigQuery native query, as the Power BI API returns it. `sql` is M-escaped."""
+def native_query_table(sql: str, before_source: str = "") -> PowerBiTable:
+    """A table sourced from a BigQuery native query, as the Power BI API returns it. `sql` is M-escaped;
+    `before_source` is M text placed ahead of the Source step."""
     expression = (
         "let\n"
+        f"{before_source}"
         '    Source = Value.NativeQuery(GoogleBigQuery.Database([BillingProject="sales-prod"])'
         '{[Name="sales-prod"]}[Data], '
         f'"{sql}", null, [EnableFolding=true])\n'
@@ -99,6 +101,10 @@ def native_query_table(sql: str) -> PowerBiTable:
             "select id, concat('https://shop.example.com/p/', sku) as url from `sales.orders`",
             id="m-line-comment-marker",
         ),
+        pytest.param(
+            "select id, 'exports/*.csv' as file_glob from `sales.orders` /* nightly */",
+            id="m-block-comment-marker",
+        ),
     ],
 )
 def test_comment_markers_inside_a_string_literal_keep_the_lineage(source, sql):
@@ -109,3 +115,13 @@ def test_bigquery_hash_comment_ends_at_its_line(source):
     sql = "select id, amount#(lf)# refunds are excluded upstream#(lf)from `sales.orders`"
 
     assert source._parse_table_info_from_source_exp(native_query_table(sql), DATA_MODEL) == ORDERS
+
+
+def test_block_commented_source_step_is_ignored(source):
+    replaced_step = (
+        '    /* Source = Value.NativeQuery(GoogleBigQuery.Database([BillingProject="sales-prod"])'
+        '{[Name="sales-prod"]}[Data], "select * from `sales.orders_v1`", null, [EnableFolding=true]), */\n'
+    )
+    table = native_query_table("select id, amount from `sales.orders`", before_source=replaced_step)
+
+    assert source._parse_table_info_from_source_exp(table, DATA_MODEL) == ORDERS
