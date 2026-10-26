@@ -195,7 +195,7 @@ const FieldValueBoostForm = ({
 
   return (
     <SettingsFormLayout
-      isCentered
+      centered
       form={form}
       isSaving={isSaving}
       showHint={showHint}

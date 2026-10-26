@@ -13,10 +13,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
-import {
-  TourContext,
-  TourProviderContextProps,
-} from '../../../context/TourProvider/TourProvider';
 import { Table } from '../../../generated/entity/data/table';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getListTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
@@ -59,20 +55,13 @@ const ASSET_HEALTH_APIS = [
   getTestCaseExecutionSummary,
 ];
 
-const createWrapper = (isTourPage: boolean) => {
+const createWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  const tourContext = {
-    isTourPage,
-  } as Partial<TourProviderContextProps> as TourProviderContextProps;
 
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <TourContext.Provider value={tourContext}>
-        {children}
-      </TourContext.Provider>
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 };
 
@@ -83,22 +72,11 @@ describe('useAssetHealth', () => {
 
   it('fetches every health signal for a real table', async () => {
     const { result } = renderHook(() => useAssetHealth(TABLE), {
-      wrapper: createWrapper(false),
+      wrapper: createWrapper(),
     });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     ASSET_HEALTH_APIS.forEach((api) => expect(api).toHaveBeenCalled());
-  });
-
-  it('fetches nothing for the tour mock table', () => {
-    const { result } = renderHook(() => useAssetHealth(TABLE), {
-      wrapper: createWrapper(true),
-    });
-
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.rows).toHaveLength(4);
-
-    ASSET_HEALTH_APIS.forEach((api) => expect(api).not.toHaveBeenCalled());
   });
 });

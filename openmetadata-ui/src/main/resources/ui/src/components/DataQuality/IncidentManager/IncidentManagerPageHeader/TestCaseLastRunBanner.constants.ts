@@ -30,7 +30,14 @@ export const NO_RUN_BANNER_TEST_ID = 'test-case-last-run-banner-not-run-yet';
 // translucent white to sit a shade lighter than the summary row above it.
 const INCIDENT_STRIP_CLASS = 'tw:bg-primary/55';
 
-export const NO_RUN_CONFIG = {
+export const NO_RUN_CONFIG: {
+  readonly containerClassName: string;
+  readonly icon: typeof Minus;
+  readonly iconColor: StatusIconColor;
+  readonly statusClassName: string;
+  readonly statusLabel: string;
+  readonly testId: string;
+} = {
   containerClassName:
     'tw:border-utility-gray-200 tw:border-l-utility-gray-400 tw:bg-secondary',
   icon: Minus,

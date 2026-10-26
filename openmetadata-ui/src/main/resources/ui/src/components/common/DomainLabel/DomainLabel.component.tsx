@@ -61,7 +61,7 @@ export const DomainLabel = ({
     return showDashPlaceholder
       ? NO_DATA_PLACEHOLDER
       : t('label.no-entity', { entity: t('label.domain-plural') });
-  }, [showDashPlaceholder]);
+  }, [showDashPlaceholder, t]);
 
   const widgetTitle = useMemo(
     () => (multiple ? t('label.domain-plural') : t('label.domain')),
@@ -234,8 +234,8 @@ export const DomainLabel = ({
 
     if (variant === 'card') {
       return (
-        <div className="d-flex flex-col mb-4 w-full p-[20px] user-profile-card">
-          <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
+        <div className="tw:flex tw:w-full tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:pt-5 tw:pb-2.5 tw:mb-5">
+          <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
             <div style={{ width: '16px' }}>
               <DomainIcon height={16} style={{ marginLeft: '2px' }} />
             </div>
@@ -247,9 +247,9 @@ export const DomainLabel = ({
               {selectableList}
             </div>
           </div>
-          <div className="user-profile-card-body d-flex justify-start gap-2">
-            <div className="user-page-icon d-flex-center">
-              <Divider className="tw:h-full" orientation="vertical" />
+          <div className="tw:mb-2.5 tw:flex tw:justify-start tw:gap-2">
+            <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center">
+              <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
             </div>
             <div
               className="d-flex flex-col items-start gap-1 flex-wrap justify-center"
@@ -321,7 +321,6 @@ export const DomainLabel = ({
     );
   }, [
     activeDomain,
-    hasPermission,
     selectableList,
     labelClassName,
     variant,
@@ -329,6 +328,8 @@ export const DomainLabel = ({
     widgetEditor,
     widgetTitle,
     showDomainHeading,
+    defaultDomainText,
+    headerLayout,
     t,
   ]);
 

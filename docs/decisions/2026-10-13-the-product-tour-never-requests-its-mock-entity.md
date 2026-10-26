@@ -1,8 +1,8 @@
 # The product tour never sends a request about its mock table
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-10-23-the-product-tour-serves-its-pages-from-recorded-fixtures
 - **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-15 (Tour spec removed; guard is `reviewer`
-  until the redesigned tour ships its own spec)
+  until the redesigned tour ships its own spec) · v3 2026-10-23 (superseded)
 - **Deciders:** @harsh-vador
 - **Guard:** `reviewer` — see the v2 amendment
 - **Related:** #34473, #35090

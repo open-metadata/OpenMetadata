@@ -33,7 +33,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -342,7 +341,6 @@ const ExploreTree = ({
   // count refresh.
   const treeSelectRef = useRef(false);
   const { t } = useTranslation();
-  const { isTourOpen } = useTourProvider();
   const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
   const [treeData, setTreeData] = useState(initTreeData);
@@ -397,11 +395,6 @@ const ExploreTree = ({
   const onLoadData = useCallback(
     async (treeNode: ExploreTreeNode) => {
       if (treeNode.children || treeNode.disabled) {
-        return;
-      }
-      if (isTourOpen) {
-        forgetLoadRequest(treeNode.key);
-
         return;
       }
       setLoadingKeys((prev) => new Set(prev).add(treeNode.key));
@@ -533,7 +526,6 @@ const ExploreTree = ({
       }
     },
     [
-      isTourOpen,
       forgetLoadRequest,
       updateTreeData,
       searchQueryParam,
@@ -604,13 +596,6 @@ const ExploreTree = ({
   );
 
   const fetchEntityCounts = useCallback(async () => {
-    // Explore is mock-driven during the tour; skip the real aggregation calls.
-    if (isTourOpen) {
-      setIsLoading(false);
-
-      return;
-    }
-
     const fetchSeq = ++countFetchSeqRef.current;
     const isLatestFetch = () => fetchSeq === countFetchSeqRef.current;
     // A browse click keeps the expanded subtree; anything else (dropdown filter,
@@ -709,7 +694,6 @@ const ExploreTree = ({
       }
     }
   }, [
-    isTourOpen,
     searchQueryParam,
     setTreeData,
     parsedSearch.quickFilter,
@@ -723,15 +707,6 @@ const ExploreTree = ({
       fetchEntityCounts();
     }
   }, []);
-
-  const previousIsTourOpenRef = useRef(isTourOpen);
-  useEffect(() => {
-    // Fetch the counts skipped during the tour once it closes.
-    if (previousIsTourOpenRef.current && !isTourOpen) {
-      fetchEntityCounts();
-    }
-    previousIsTourOpenRef.current = isTourOpen;
-  }, [isTourOpen, fetchEntityCounts]);
 
   const filterSignature = useMemo(
     () =>

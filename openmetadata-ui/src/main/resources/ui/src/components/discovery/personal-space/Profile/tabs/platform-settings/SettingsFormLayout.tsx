@@ -19,6 +19,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import type { ReactNode } from 'react';
 import type { FieldValues, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -57,11 +58,11 @@ interface SettingsFormLayoutProps<T extends FieldValues> {
   showHint: boolean;
   isSaving: boolean;
   isSaveDisabled?: boolean;
-  /** Centres the fields at half the panel width instead of aligning them left. */
-  isCentered?: boolean;
   onCancel: () => void;
   onSubmit: (values: T) => void | Promise<void>;
   children: ReactNode;
+  /** Center the form column horizontally. */
+  centered?: boolean;
 }
 
 const SettingsFormLayout = <T extends FieldValues>({
@@ -70,10 +71,10 @@ const SettingsFormLayout = <T extends FieldValues>({
   showHint,
   isSaving,
   isSaveDisabled = false,
-  isCentered = false,
   onCancel,
   onSubmit,
   children,
+  centered,
 }: SettingsFormLayoutProps<T>) => {
   const { t } = useTranslation();
 
@@ -92,7 +93,9 @@ const SettingsFormLayout = <T extends FieldValues>({
       onSubmit={form.handleSubmit(onSubmit)}>
       <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0">
         <Box
-          className={isCentered ? 'tw:mx-auto tw:w-1/2' : 'tw:max-w-240'}
+          className={classNames('tw:max-w-240', {
+            'tw:w-full tw:mx-auto': centered,
+          })}
           direction="col"
           gap={8}>
           {children}

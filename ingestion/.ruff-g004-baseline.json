@@ -1909,8 +1909,6 @@
       "fabeb9a2deaae9771864ab5ef5b826832a93cd08d63b53f95012e293b2ce89c8": 1
     },
     "ingestion/src/metadata/ingestion/source/metadata/alationsink/client.py": {
-      "9c4111f150ac4b239678ff070cd48dc3f60e765d21f10d68e15ccee9313eb6a4": 1,
-      "b09f393cc09de0ae58b01af647577391682c81d8555b0695cdf3ca86968db7b2": 1,
       "c9b8ca8ba4a16fbca41bb44274d8697765ab60f852c9f5ccf4800a9302367cb2": 1,
       "ed7cd6dcbf0734219f11e9dc67568ed1d768b62efe08187120f0e977001c51cc": 1
     },

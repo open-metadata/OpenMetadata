@@ -216,6 +216,7 @@ import org.openmetadata.service.swagger.SwaggerBundle;
 import org.openmetadata.service.swagger.SwaggerBundleConfiguration;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CustomParameterNameProvider;
+import org.openmetadata.service.util.PerRequestContextCleanupFilter;
 import org.openmetadata.service.util.StartupTimer;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.quartz.SchedulerException;
@@ -462,6 +463,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // context) after every response so state cannot leak across requests that share a Jetty
     // worker thread. Non-HTTP pools clear the same set via PerRequestContextCleaner.
     environment.jersey().register(ImpersonationCleanupFilter.class);
+    // The same cleanup around servlets and filters outside Jersey. Prepended, so it runs before the
+    // filters registered earlier on the application context, including ones that answer without
+    // chaining.
+    environment
+        .servlets()
+        .addFilter("PerRequestContextCleanupFilter", new PerRequestContextCleanupFilter())
+        .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), false, "/*");
 
     // Blocks impersonated sessions from the identity-affecting endpoints (token mint/revoke,
     // password change, logout) - those call no authorizer, so nothing else would stop them.
