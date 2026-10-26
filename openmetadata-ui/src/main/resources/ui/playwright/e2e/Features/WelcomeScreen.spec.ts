@@ -77,11 +77,21 @@ test.describe(
       firstLoginPage: page,
       firstLoginUser,
     }) => {
+      // The home records the welcome screen on the user in the background; the
+      // later steps read it back from the server, so they wait for that write.
+      const welcomeRecorded = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          response
+            .url()
+            .includes(`/api/v1/users/${firstLoginUser.responseData.id}`)
+      );
       await openHome(page, '/my-data');
 
       await test.step('the first visit shows the welcome screen', async () => {
         await expect(page.getByTestId('welcome-screen')).toBeVisible();
         await expect(page.getByTestId('welcome-screen-img')).toBeVisible();
+        expect((await welcomeRecorded).status()).toBe(200);
       });
 
       await test.step('closing it shows the landing page', async () => {
