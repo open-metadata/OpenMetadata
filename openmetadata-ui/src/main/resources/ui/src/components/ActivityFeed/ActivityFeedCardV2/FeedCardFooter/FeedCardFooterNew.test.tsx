@@ -10,33 +10,56 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { Conversation } from '../../../../generated/entity/feed/conversation';
+import { mockUserData } from '../../../../mocks/MyDataPage.mock';
+import ActivityFeedProvider from '../../ActivityFeedProvider/ActivityFeedProvider';
 import FeedCardFooterNew from './FeedCardFooterNew';
 
-const mockShowDrawer = jest.fn();
-
-jest.mock('../../ActivityFeedProvider/ActivityFeedProvider', () => ({
-  useActivityFeedProvider: jest.fn().mockImplementation(() => ({
-    showDrawer: mockShowDrawer,
-    updateReactions: jest.fn(),
-  })),
+// Only the boundaries are mocked: REST calls, the app stores, and the lazily
+// loaded drawer, which shows the thread the real provider opened.
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({ currentUser: mockUserData })),
 }));
 
-jest.mock('../../../common/PopOverCard/UserPopOverCard', () =>
-  jest.fn().mockImplementation(({ children }) => children)
+jest.mock('../../../../hooks/useDomainStore', () => ({
+  useDomainStore: (selector: (state: { activeDomain: string }) => unknown) =>
+    selector({ activeDomain: 'All Domains' }),
+}));
+
+jest.mock('../../ActivityFeedDrawer/ActivityFeedDrawer', () =>
+  jest.fn().mockImplementation(() => {
+    const { useActivityFeedProvider } = jest.requireActual(
+      '../../ActivityFeedProvider/ActivityFeedProvider'
+    );
+    const { selectedThread } = useActivityFeedProvider();
+
+    return <p data-testid="replies-drawer">{selectedThread?.message}</p>;
+  })
 );
 
-jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
-  jest.fn().mockImplementation(({ name }) => <span>{name}</span>)
-);
+jest.mock('../../../../rest/activityAPI', () => ({
+  getActivityEvents: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  listActivityReplies: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: { total: 0 } }),
+}));
 
-jest.mock('../../Reactions/Reactions', () =>
-  jest.fn().mockImplementation(() => <div data-testid="reactions" />)
-);
+jest.mock('../../../../rest/conversationsAPI', () => ({
+  listConversationReplies: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: { total: 0 } }),
+  listConversations: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+}));
+
+jest.mock('../../../../rest/userAPI', () => ({
+  getUserByName: jest.fn().mockResolvedValue({}),
+}));
 
 const conversation = {
   id: 'conversation-1',
+  message: 'Footer conversation',
   replyCount: 2,
   replies: [
     { author: { name: 'alice' } },
@@ -45,69 +68,68 @@ const conversation = {
   ],
 } as unknown as Conversation;
 
-describe('FeedCardFooterNew', () => {
-  beforeEach(() => {
-    mockShowDrawer.mockClear();
-  });
-
-  it('names each replier avatar button after the user it shows', () => {
+const renderFooter = async (
+  props: Partial<Parameters<typeof FeedCardFooterNew>[0]> = {},
+  onCardClick = jest.fn()
+) => {
+  await act(async () => {
     render(
-      <FeedCardFooterNew
-        conversation={conversation}
-        conversationId="conversation-1"
-      />
+      <MemoryRouter>
+        <ActivityFeedProvider>
+          <div role="presentation" onClick={onCardClick}>
+            <FeedCardFooterNew
+              conversation={conversation}
+              conversationId="conversation-1"
+              {...props}
+            />
+          </div>
+        </ActivityFeedProvider>
+      </MemoryRouter>
     );
+  });
+};
+
+describe('FeedCardFooterNew', () => {
+  it('names each replier avatar button after the user it shows', async () => {
+    await renderFooter();
 
     expect(
       screen.getAllByRole('button', { name: 'label.view-replies-by-user' })
     ).toHaveLength(2);
   });
 
-  it('opens the replies from an avatar and lets the click reach the card', () => {
-    const mockContainerClick = jest.fn();
+  it('opens the replies from an avatar and lets the click reach the card', async () => {
+    const onCardClick = jest.fn();
+    await renderFooter({ isForFeedTab: true }, onCardClick);
 
-    render(
-      <div role="presentation" onClick={mockContainerClick}>
-        <FeedCardFooterNew
-          isForFeedTab
-          conversation={conversation}
-          conversationId="conversation-1"
-        />
-      </div>
-    );
+    expect(screen.queryByTestId('replies-drawer')).not.toBeInTheDocument();
 
     fireEvent.click(
       screen.getAllByRole('button', { name: 'label.view-replies-by-user' })[0]
     );
 
-    expect(mockShowDrawer).toHaveBeenCalledWith(conversation);
-    expect(mockContainerClick).toHaveBeenCalled();
+    expect(await screen.findByTestId('replies-drawer')).toHaveTextContent(
+      'Footer conversation'
+    );
+    expect(onCardClick).toHaveBeenCalled();
   });
 
-  it('opens the replies from the reply button', () => {
-    render(
-      <FeedCardFooterNew
-        isForFeedTab
-        conversation={conversation}
-        conversationId="conversation-1"
-      />
+  it('opens the replies from the reply button', async () => {
+    await renderFooter({ isForFeedTab: true });
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reply' }));
+
+    expect(await screen.findByTestId('replies-drawer')).toHaveTextContent(
+      'Footer conversation'
     );
-
-    fireEvent.click(screen.getByTestId('reply-button'));
-
-    expect(mockShowDrawer).toHaveBeenCalledWith(conversation);
   });
 
-  it('hides the avatars and reply button on a reply', () => {
-    render(
-      <FeedCardFooterNew
-        isReply
-        conversation={conversation}
-        conversationId="conversation-1"
-      />
-    );
+  it('hides the avatars and reply button on a reply', async () => {
+    await renderFooter({ isReply: true });
 
-    expect(screen.queryByTestId('reply-button')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.reply' })
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'label.view-replies-by-user' })
     ).not.toBeInTheDocument();
