@@ -1873,7 +1873,6 @@
       "85863acd716f7758bf3ffcf90ef5272beede12df3f98478fe9960e0b7f8e22ee": 1,
       "aa89a041fd47a8f361672858844b4f327ff7ae4e828e16482a47cde2291433c5": 1,
       "db7aab052ac118b059a0c6b082c458be43c100698e94e70d2cd332d754fb5136": 1,
-      "e4b5085187bf89b919ff29d6445b259749eb307daed42dabf23a672011e49d1e": 1,
       "e94989ac8141ec6acb01834a61afaa40efeb2a62258ca40915520bc37430f517": 1
     },
     "ingestion/src/metadata/ingestion/source/messaging/kinesis/metadata.py": {
@@ -1910,8 +1909,6 @@
       "fabeb9a2deaae9771864ab5ef5b826832a93cd08d63b53f95012e293b2ce89c8": 1
     },
     "ingestion/src/metadata/ingestion/source/metadata/alationsink/client.py": {
-      "9c4111f150ac4b239678ff070cd48dc3f60e765d21f10d68e15ccee9313eb6a4": 1,
-      "b09f393cc09de0ae58b01af647577391682c81d8555b0695cdf3ca86968db7b2": 1,
       "c9b8ca8ba4a16fbca41bb44274d8697765ab60f852c9f5ccf4800a9302367cb2": 1,
       "ed7cd6dcbf0734219f11e9dc67568ed1d768b62efe08187120f0e977001c51cc": 1
     },

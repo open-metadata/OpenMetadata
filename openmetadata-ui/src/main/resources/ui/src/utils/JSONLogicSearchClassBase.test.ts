@@ -10,6 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  ImmutableTree,
+  Utils as QbUtils,
+} from '@react-awesome-query-builder/ui';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getEntityLifecycleStages } from '../rest/metadataTypeAPI';
@@ -673,5 +677,44 @@ beforeEach(() => {
         stageWorkflows: [],
       },
     ],
+  });
+});
+
+describe('provider field for glossary terms', () => {
+  const automationProposal = {
+    and: [
+      { '==': [{ var: 'provider' }, 'automation'] },
+      { '!=': [{ var: 'entityStatus' }, 'Approved'] },
+    ],
+  };
+
+  it('offers the three providers a glossary term can have', () => {
+    const fields = new JSONLogicSearchClassBase().getQbConfigs([
+      SearchIndex.GLOSSARY_TERM,
+    ]).fields;
+
+    expect(
+      Object.keys(
+        (
+          fields[EntityReferenceFields.PROVIDER] as {
+            fieldSettings: { listValues: Record<string, string> };
+          }
+        ).fieldSettings.listValues
+      )
+    ).toEqual(['user', 'system', 'automation']);
+  });
+
+  it('keeps an automation proposal rule through a load and a save', () => {
+    const config = new JSONLogicSearchClassBase().getQbConfigs([
+      SearchIndex.GLOSSARY_TERM,
+    ]);
+    const tree = QbUtils.loadFromJsonLogic(
+      automationProposal,
+      config
+    ) as ImmutableTree;
+
+    expect(QbUtils.jsonLogicFormat(tree, config).logic).toEqual(
+      automationProposal
+    );
   });
 });
