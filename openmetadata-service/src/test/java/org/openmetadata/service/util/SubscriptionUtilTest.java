@@ -506,6 +506,7 @@ class SubscriptionUtilTest {
   void getClientClampsTimeouts() {
     ClientBuilder builder = mock(ClientBuilder.class);
     Client client = mock(Client.class);
+    when(builder.withConfig(any())).thenReturn(builder);
     when(builder.connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)).thenReturn(builder);
     when(builder.readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)).thenReturn(builder);
     when(builder.build()).thenReturn(client);

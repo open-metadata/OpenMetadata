@@ -17,7 +17,9 @@ import {
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
 import { Status } from '../../generated/events/testDestinationStatus';
-import { getDestinationsWithTestStatus } from './AlertsUtilPure';
+import { getDestinationsWithTestStatus,
+  formatEventCount,
+} from './AlertsUtilPure';
 
 const webhookDestination = {
   category: SubscriptionCategory.External,
@@ -88,5 +90,20 @@ describe('getDestinationsWithTestStatus', () => {
     expect(result).toHaveLength(2);
     expect(result[0].statusDetails).toBeUndefined();
     expect(result[1].config).toEqual(slackDestination.config);
+  });
+});
+
+describe('formatEventCount', () => {
+  it('shows an exact count as it is', () => {
+    expect(formatEventCount(12, false)).toBe('12');
+    expect(formatEventCount(12)).toBe('12');
+  });
+
+  it('marks a count the server capped with a plus', () => {
+    expect(formatEventCount(500, true)).toBe('500+');
+  });
+
+  it('shows a missing count as zero', () => {
+    expect(formatEventCount(undefined)).toBe('0');
   });
 });

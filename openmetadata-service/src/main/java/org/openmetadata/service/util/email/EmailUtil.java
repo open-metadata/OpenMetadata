@@ -52,6 +52,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -76,6 +77,7 @@ import org.simplejavamail.mailer.MailerBuilder;
 @Slf4j
 public class EmailUtil {
   private static Mailer mailer;
+  private static Mailer notificationMailer;
   private static SmtpSettings storedSmtpSettings;
   private static TemplateProvider templateProvider;
 
@@ -98,7 +100,7 @@ public class EmailUtil {
     }
   }
 
-  private static Mailer createMailer(SmtpSettings smtpServerSettings) {
+  private static Mailer createMailer(SmtpSettings smtpServerSettings, ExecutorService senders) {
     if (Boolean.TRUE.equals(smtpServerSettings.getEnableSmtpServer())) {
       TransportStrategy strategy =
           switch (smtpServerSettings.getTransportationStrategy()) {
@@ -120,6 +122,7 @@ public class EmailUtil {
               username,
               password)
           .withTransportStrategy(strategy)
+          .withExecutorService(senders)
           .buildMailer();
     }
     return null;
@@ -289,9 +292,18 @@ public class EmailUtil {
               .withHTMLText(htmlContent)
               .buildEmail();
 
-      sendMail(email, true);
+      sendNotificationMail(email);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, to);
+    }
+  }
+
+  // Alert mail goes through its own bounded queue, so it never delays account mail.
+  private static void sendNotificationMail(Email email) {
+    if (notificationMailer != null) {
+      notificationMailer.sendMail(email, true);
+    } else {
+      LOG.error("Mailer is not initialized or Smtp is not Enabled.");
     }
   }
 
@@ -452,7 +464,8 @@ public class EmailUtil {
         SettingsCache.getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
     if (!emailConfig.equals(storedSmtpSettings)) {
       storedSmtpSettings = emailConfig;
-      mailer = createMailer(emailConfig);
+      mailer = createMailer(emailConfig, MailQueues.ACCOUNT_MAIL);
+      notificationMailer = createMailer(emailConfig, MailQueues.NOTIFICATIONS);
     }
     return emailConfig;
   }

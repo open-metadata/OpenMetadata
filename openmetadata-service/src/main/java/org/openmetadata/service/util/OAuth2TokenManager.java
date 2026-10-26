@@ -21,6 +21,7 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Form;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -153,7 +154,10 @@ public class OAuth2TokenManager {
   }
 
   private static Client createTokenClient() {
+    Duration deadline =
+        Duration.ofSeconds((long) TOKEN_CONNECT_TIMEOUT_SECONDS + TOKEN_READ_TIMEOUT_SECONDS);
     return ClientBuilder.newBuilder()
+        .withConfig(DeadlineConnector.within(deadline))
         .connectTimeout(TOKEN_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .readTimeout(TOKEN_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .build();

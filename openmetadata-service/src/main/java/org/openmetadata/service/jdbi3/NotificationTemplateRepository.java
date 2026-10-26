@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.TestSends;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.channels.email.EmailMessage;
@@ -393,20 +394,41 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
             .withName("test-notification")
             .withDisplayName("Test Notification Template");
 
-    for (SubscriptionDestination dest : request.getDestinations()) {
-      try {
-        sendToDestination(mockEvent, testSubscription, dest, testTemplate);
-        LOG.info("Successfully sent test notification to {} destination", dest.getType());
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to send test notification to {} destination: {}",
-            dest.getType(),
-            e.getMessage(),
-            e);
-      }
-    }
+    TestSends.toEach(
+        request.getDestinations(),
+        dest -> sendAndLog(mockEvent, testSubscription, dest, testTemplate),
+        NotificationTemplateRepository::logTimedOut);
 
     return validation;
+  }
+
+  // Delivery errors are logged only, as before: the response carries the template's validation.
+  private Boolean sendAndLog(
+      ChangeEvent event,
+      EventSubscription subscription,
+      SubscriptionDestination dest,
+      NotificationTemplate template) {
+    boolean sent = false;
+    try {
+      sendToDestination(event, subscription, dest, template);
+      LOG.info("Successfully sent test notification to {} destination", dest.getType());
+      sent = true;
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to send test notification to {} destination: {}",
+          dest.getType(),
+          e.getMessage(),
+          e);
+    }
+    return sent;
+  }
+
+  private static Boolean logTimedOut(SubscriptionDestination dest) {
+    LOG.error(
+        "Test notification to {} destination timed out after {} s",
+        dest.getType(),
+        TestSends.DEADLINE.toSeconds());
+    return false;
   }
 
   public List<HandlebarsHelperMetadata> getHelperMetadata() {

@@ -50,6 +50,7 @@ import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.audit.AuditLogConsumer;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -80,6 +81,7 @@ public class EventSubscriptionScheduler {
   @Getter private final Scheduler alertsScheduler;
   private static final String SCHEDULER_NAME = "OMEventSubScheduler";
   private static final int SCHEDULER_THREAD_COUNT = 10;
+  static final int MAX_PENDING_EVALUATED = 500;
   // A trigger later than this is skipped by acquisition until the misfire handler, which rescans at
   // this period, picks it up again.
   static final long MISFIRE_THRESHOLD_MS = 5_000L;
@@ -367,19 +369,24 @@ public class EventSubscriptionScheduler {
             .eventSubscriptionDAO()
             .getSuccessfulRecordCount(subscriptionId.toString());
 
-    long unprocessedEventsCount = getRelevantUnprocessedEvents(subscriptionId);
-    long totalEventsCount = failedEventsCount + successfulEventsCount + unprocessedEventsCount;
+    PendingCount pending = getRelevantUnprocessedEvents(subscriptionId);
+    long totalEventsCount = failedEventsCount + successfulEventsCount + pending.count();
 
     return new EventsRecord()
         .withTotalEventsCount(totalEventsCount)
         .withFailedEventsCount(failedEventsCount)
-        .withPendingEventsCount(unprocessedEventsCount)
-        .withSuccessfulEventsCount(successfulEventsCount);
+        .withPendingEventsCount(pending.count())
+        .withSuccessfulEventsCount(successfulEventsCount)
+        .withCountsAreLowerBound(pending.lowerBound());
   }
 
-  public long getRelevantUnprocessedEvents(UUID subscriptionId) {
+  /**
+   * The unread events the alert's rules let through. Each one is evaluated, so a count evaluates
+   * at most {@link #MAX_PENDING_EVALUATED} of them in one read and says when more are unread;
+   * requests for the alert at the same position share one count, a few at a time.
+   */
+  public PendingCount getRelevantUnprocessedEvents(UUID subscriptionId) {
     // Fetch subscription ONCE before the loop to avoid N+1 query problem
-    // Previously, getEventSubscription was called for each event in the stream
     EventSubscription subscription = getEventSubscription(subscriptionId);
     FilteringRules filteringRules = subscription.getFilteringRules();
     Long startingTimestamp =
@@ -388,23 +395,31 @@ public class EventSubscriptionScheduler {
             getEventSubscriptionOffset(subscriptionId)
                 .map(EventSubscriptionOffset::getStartingTimestamp)
                 .orElse(null));
-
+    long latest = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
     long offset =
         getEventSubscriptionOffset(subscriptionId)
             .map(EventSubscriptionOffset::getCurrentOffset)
-            .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
+            .orElse(latest);
+    PendingCounts.Key key =
+        new PendingCounts.Key(subscriptionId, subscription.getVersion(), offset, latest);
+    return PendingCounts.shared(
+        key, () -> countAllowed(offset, latest, filteringRules, startingTimestamp));
+  }
 
-    return Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset).parallelStream()
-        .map(
-            eventJson -> {
-              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.isChangeEventAllowed(
-                      event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR)
-                  ? event
-                  : null;
-            })
-        .filter(Objects::nonNull)
-        .count();
+  private static PendingCount countAllowed(
+      long offset, long latest, FilteringRules filteringRules, Long startingTimestamp) {
+    List<ChangeEventRecord> read =
+        Entity.getCollectionDAO().changeEventDAO().listWithOffset(MAX_PENDING_EVALUATED, offset);
+    long count =
+        read.parallelStream()
+            .map(row -> JsonUtils.readValue(row.json(), ChangeEvent.class))
+            .filter(
+                event ->
+                    AlertUtil.isChangeEventAllowed(
+                        event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR))
+            .count();
+    boolean moreUnread = !read.isEmpty() && read.getLast().offset() < latest;
+    return new PendingCount(count, moreUnread);
   }
 
   public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(

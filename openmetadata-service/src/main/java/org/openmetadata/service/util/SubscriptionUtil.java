@@ -26,6 +26,7 @@ import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -659,7 +660,10 @@ public class SubscriptionUtil {
           effectiveReadTimeout);
     }
 
-    ClientBuilder clientBuilder = ClientBuilder.newBuilder();
+    // One exchange may take at most its two timeouts together, however the receiver behaves.
+    Duration deadline = Duration.ofSeconds((long) effectiveConnectTimeout + effectiveReadTimeout);
+    ClientBuilder clientBuilder =
+        ClientBuilder.newBuilder().withConfig(DeadlineConnector.within(deadline));
     clientBuilder.connectTimeout(effectiveConnectTimeout, TimeUnit.SECONDS);
     clientBuilder.readTimeout(effectiveReadTimeout, TimeUnit.SECONDS);
     return clientBuilder.build();
@@ -677,9 +681,15 @@ public class SubscriptionUtil {
   public static WebTarget addQueryParams(WebTarget target, Map<String, String> queryParams) {
     if (!CommonUtil.nullOrEmpty(queryParams)) {
       for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-        target = target.queryParam(entry.getKey(), entry.getValue());
+        target = target.queryParam(literally(entry.getKey()), literally(entry.getValue()));
       }
     }
     return target;
+  }
+
+  // The client reads {name} in a query parameter as a template to fill in, so a value with a
+  // brace failed to send; encoded, it is sent as written.
+  private static String literally(String part) {
+    return part == null ? null : part.replace("{", "%7B").replace("}", "%7D");
   }
 }

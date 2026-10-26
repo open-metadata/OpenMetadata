@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
+import org.openmetadata.service.events.subscription.AlertLimits;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -143,6 +144,9 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
 
     validateFilterRules(entity);
+    if (!update) {
+      AlertLimits.requireWithin(null, entity);
+    }
   }
 
   private void validateFilterRules(EventSubscription entity) {
@@ -246,6 +250,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     public EventSubscriptionUpdater(
         EventSubscription original, EventSubscription updated, Operation operation) {
       super(original, updated, operation);
+      AlertLimits.requireWithin(original, updated);
     }
 
     @Override

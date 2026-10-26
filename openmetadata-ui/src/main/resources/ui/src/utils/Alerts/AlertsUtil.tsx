@@ -91,6 +91,7 @@ import {
   getMessageFromArgumentName,
   getSelectOptionsFromEnum,
   getSelectOptionsFromValues,
+  formatEventCount,
 } from './AlertsUtilPure';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
@@ -1319,7 +1320,10 @@ export const getAlertExtraInfo = (
         label={t('label.total-entity', {
           entity: t('label.event-plural'),
         })}
-        value={alertEventCounts?.totalEventsCount ?? 0}
+        value={formatEventCount(
+          alertEventCounts?.totalEventsCount,
+          alertEventCounts?.countsAreLowerBound
+        )}
       />
       <ExtraInfoLabel
         inlineLayout
@@ -1327,7 +1331,10 @@ export const getAlertExtraInfo = (
         label={t('label.pending-entity', {
           entity: t('label.event-plural'),
         })}
-        value={alertEventCounts?.pendingEventsCount ?? 0}
+        value={formatEventCount(
+          alertEventCounts?.pendingEventsCount,
+          alertEventCounts?.countsAreLowerBound
+        )}
       />
       <ExtraInfoLabel
         inlineLayout
