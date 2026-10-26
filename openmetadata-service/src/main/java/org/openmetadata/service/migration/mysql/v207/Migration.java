@@ -28,6 +28,7 @@ public class Migration extends MigrationProcessImpl {
   @Override
   public void runDataMigration() {
     MigrationUtil.addWorkflowRunEntityLinkIndexOnMySql(handle);
+    MigrationUtil.addMcpConsentColumnsOnMySql(handle);
     runOnce(
         migrationDAO,
         getVersion(),
