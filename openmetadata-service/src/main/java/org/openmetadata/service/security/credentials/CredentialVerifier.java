@@ -103,12 +103,12 @@ public final class CredentialVerifier implements Managed {
   private final AtomicReference<ScheduledExecutorService> sweeper = new AtomicReference<>();
 
   /**
-   * A read of one subject that may create its entry: a check's read, a refresh or a nudge. It is
-   * registered in {@link #inFlight} until it has installed its result, so checks of the subject
-   * join it instead of reading again. Its future completes with the entry to decide on, with null
-   * when the source left the subject out, or exceptionally with whatever the read threw. A refresh
-   * or nudge supersedes the read it finds registered: no check can join that read any more, and it
-   * never creates an entry, though it may still replace an older one.
+   * A read of one subject that may create its entry: a check's read, a refresh or a nudge. It stays
+   * registered in {@link #inFlight} until it has installed its result or failed, so checks of the
+   * subject join it instead of reading again. Its future completes with the entry to decide on,
+   * with null when the source left the subject out, or exceptionally with whatever the read threw.
+   * A refresh or nudge supersedes the read it finds registered: no check can join that read any
+   * more, and it never creates an entry, though it may still replace an older one.
    */
   private static final class InFlightRead {
     private final CompletableFuture<VerifiedCredentials> result = new CompletableFuture<>();
@@ -472,9 +472,10 @@ public final class CredentialVerifier implements Managed {
   }
 
   /**
-   * A read still queued when a waiter's budget ends is withdrawn, so no slot is spent on a result
-   * nobody waits for, and counts as a read that got no slot. One that a thread took finishes in the
-   * background and installs its result under the usual newer-wins rule.
+   * A read still queued when any of its waiters runs out of budget is withdrawn and counts as a
+   * read that got no slot. Every waiter of it then answers NO_PERMIT, a joiner with budget left
+   * included, so a backlog sheds each read that a check has given up on. One that a thread took
+   * finishes in the background and installs its result under the usual newer-wins rule.
    */
   private CredentialUnavailableException timedOut(
       CredentialSubject subject, InFlightRead read, TimeoutException timeout) {
