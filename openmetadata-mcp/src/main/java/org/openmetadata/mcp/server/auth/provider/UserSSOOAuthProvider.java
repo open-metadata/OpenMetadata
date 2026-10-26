@@ -406,7 +406,10 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       LOG.debug("Created pending auth request for Basic Auth: {}", authRequestId);
 
       // Return redirect URL — MCP client opens this in user's browser
-      String loginUrl = getBaseUrl() + "/mcp/login?auth_request_id=" + authRequestId;
+      String loginUrl =
+          UriUtils.withoutTrailingSlash(getBaseUrl())
+              + "/mcp/login?auth_request_id="
+              + authRequestId;
       return CompletableFuture.completedFuture(loginUrl);
 
     } catch (AuthorizeException e) {

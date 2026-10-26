@@ -211,4 +211,13 @@ class UriUtilsTest {
     assertThat(result.getHost()).isEqualTo("example.com");
     assertThat(result.getScheme()).isEqualTo("https");
   }
+
+  @Test
+  void testWithoutTrailingSlash_dropsOnlyTheTrailingSlash() {
+    assertThat(UriUtils.withoutTrailingSlash("http://localhost:8585/om/"))
+        .isEqualTo("http://localhost:8585/om");
+    assertThat(UriUtils.withoutTrailingSlash("http://localhost:8585/om"))
+        .isEqualTo("http://localhost:8585/om");
+    assertThat(UriUtils.withoutTrailingSlash(null)).isNull();
+  }
 }

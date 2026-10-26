@@ -4,6 +4,8 @@
 
 package org.openmetadata.mcp.server.transport;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.json.McpJsonDefaults;
@@ -104,6 +106,18 @@ public class HttpServletStatelessServerTransport extends HttpServlet
   }
 
   /**
+   * The request path without the servlet context path. Under a BASE_PATH the context path is that
+   * base path, so the raw request URI never equals the bare MCP routes.
+   */
+  public static String pathInContext(final HttpServletRequest request) {
+    final String requestUri = request.getRequestURI();
+    final String contextPath = request.getContextPath();
+    return !nullOrEmpty(contextPath) && requestUri.startsWith(contextPath)
+        ? requestUri.substring(contextPath.length())
+        : requestUri;
+  }
+
+  /**
    * Handles GET requests - returns 405 METHOD NOT ALLOWED as stateless transport
    * doesn't support GET requests.
    * @param request The HTTP servlet request
@@ -114,8 +128,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
-    String requestURI = request.getRequestURI();
-    if (!requestURI.equals(mcpEndpoint)) {
+    if (!pathInContext(request).equals(mcpEndpoint)) {
       response.sendError(HttpServletResponse.SC_NOT_FOUND);
       return;
     }
@@ -133,8 +146,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
   protected void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
 
-    String requestURI = request.getRequestURI();
-    if (!requestURI.equals(mcpEndpoint)) {
+    if (!pathInContext(request).equals(mcpEndpoint)) {
       response.sendError(HttpServletResponse.SC_NOT_FOUND);
       return;
     }
