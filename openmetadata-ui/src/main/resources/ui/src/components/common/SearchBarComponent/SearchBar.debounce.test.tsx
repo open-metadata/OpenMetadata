@@ -33,6 +33,25 @@ describe('Searchbar debounce (real lodash debounce)', () => {
     expect(onSearch).toHaveBeenCalledWith('orders');
   });
 
+  it('keeps a pending search when the parent re-renders with a new onSearch', () => {
+    const first = jest.fn();
+    const second = jest.fn();
+    const { rerender } = render(
+      <Searchbar typingInterval={500} onSearch={first} />
+    );
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'orders' },
+    });
+    rerender(<Searchbar typingInterval={500} onSearch={second} />);
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect([...first.mock.calls, ...second.mock.calls]).toEqual([['orders']]);
+  });
+
   it('drops a pending search when the bar unmounts', () => {
     const onSearch = jest.fn();
     const { unmount } = render(

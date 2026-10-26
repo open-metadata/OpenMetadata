@@ -69,7 +69,11 @@ const Searchbar = ({
 
   // A search still pending when the bar unmounts (a picker closed within
   // `typingInterval` of typing) would otherwise fire for a list that is gone.
-  useEffect(() => () => debounceOnSearch.cancel(), [debounceOnSearch]);
+  // Cancel on unmount only: the debounce is recreated whenever the parent
+  // passes a new `onSearch`, and that must not drop the search being typed.
+  const pendingSearch = useRef(debounceOnSearch);
+  pendingSearch.current = debounceOnSearch;
+  useEffect(() => () => pendingSearch.current.cancel(), []);
 
   const handleChange = (searchText: string): void => {
     searchTextRef.current = searchText;
