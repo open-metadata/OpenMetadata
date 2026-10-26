@@ -2866,26 +2866,31 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Batch-rewrite {@code task_entity.aboutFqnHash} from old to new for a set of
-   * {@code oldHash -> newHash} pairs (one per entity in a moved/renamed subtree). Tasks are keyed by
-   * an opaque FQN hash that cannot be prefix-matched, so each entity is rewritten by exact hash.
-   * No-op when empty.
+   * Entity types whose FQNs sit under this entity's FQN and change with it on a rename or move,
+   * including this entity's own type.
    */
-  protected void updateTaskAboutFqnHashes(Map<String, String> fqnHashUpdates) {
-    if (nullOrEmpty(fqnHashUpdates)) {
-      return;
-    }
-    int rows = 0;
-    int[] counts =
+  protected Set<String> getFqnSubtreeEntityTypes() {
+    return Set.of(entityType);
+  }
+
+  /**
+   * Carry the tasks and workflow instances that find an entity by FQN over to its new FQN, for the
+   * entity itself and everything nested under it.
+   */
+  private void repointTasksAndWorkflowInstancesForFqnChange(String oldFqn, String newFqn) {
+    String oldFqnHash = FullyQualifiedName.buildHash(oldFqn);
+    List<String> subtreeTypes = List.copyOf(getFqnSubtreeEntityTypes());
+    int tasks =
         daoCollection
             .taskDAO()
-            .updateAboutFqnHashBatch(
-                new ArrayList<>(fqnHashUpdates.keySet()), new ArrayList<>(fqnHashUpdates.values()));
-    for (int count : counts) {
-      rows += count;
-    }
-    LOG.info(
-        "[fqn-change] task aboutFqnHash updates={} rowsUpdated={}", fqnHashUpdates.size(), rows);
+            .repointAboutFqnHashSubtree(
+                oldFqnHash,
+                oldFqnHash + Entity.SEPARATOR + "%",
+                FullyQualifiedName.buildHash(newFqn),
+                Relationship.MENTIONED_IN.ordinal(),
+                subtreeTypes);
+    subtreeTypes.forEach(type -> repointWorkflowInstancesForFqnChange(type, oldFqn, newFqn));
+    LOG.info("[fqn-change] repointed tasks {} -> {} rows={}", oldFqn, newFqn, tasks);
   }
 
   /**
@@ -12180,6 +12185,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           revertToPreviousVersion();
         }
       }
+      repointTasksAndWorkflowInstancesIfFqnChanged();
+    }
+
+    /**
+     * {@code originalFqn} is the FQN the entity had when this request started, which is what its
+     * tasks and workflow instances still point at; {@code original} may already be the rebased
+     * pre-session version by now.
+     */
+    private void repointTasksAndWorkflowInstancesIfFqnChanged() {
+      String newFqn = updated.getFullyQualifiedName();
+      if (originalFqn != null && newFqn != null && !originalFqn.equals(newFqn)) {
+        repointTasksAndWorkflowInstancesForFqnChange(originalFqn, newFqn);
+      }
     }
 
     /**
@@ -12246,6 +12264,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           revertToPreviousVersion();
         }
       }
+      repointTasksAndWorkflowInstancesIfFqnChanged();
     }
 
     private void storeEntityHistory() {

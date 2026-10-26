@@ -861,3 +861,10 @@ DELETE FROM entity_relationship WHERE
   (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration'))));
 DELETE FROM entity_extension WHERE jsonSchema = 'ontologyChangeSet' AND (json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration')));
 DELETE FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration'));
+
+-- An FQN hash is one 32-char md5 per level joined by dots, so anything eight or more levels deep
+-- (263+ chars) overflowed these varchar(256) columns: tasks on deep entities could not be created,
+-- moving a glossary term with tasks to that depth failed, and eighth-level subdomains could not be
+-- created. 768 is what the table and container FQN hash columns use.
+ALTER TABLE task_entity ALTER COLUMN aboutfqnhash TYPE character varying(768);
+ALTER TABLE domain_entity ALTER COLUMN fqnhash TYPE character varying(768);

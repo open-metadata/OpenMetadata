@@ -30,17 +30,14 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
-import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.Reaction;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.jdbi.BindFQN;
@@ -168,21 +165,37 @@ public interface FeedDAOs {
     int updateAboutFqnHash(
         @Bind("oldFqnHash") String oldFqnHash, @Bind("newFqnHash") String newFqnHash);
 
-    @Transaction
-    @ConnectionAwareSqlBatch(
+    /**
+     * Swap the {@code oldFqnHash} prefix for {@code newFqnHash} on the tasks about an entity and
+     * everything nested under it. The hash is built per FQN level, so descendants share the prefix.
+     * Other entity types can share the same FQN (a domain and a glossary both named {@code X}), so
+     * only tasks whose {@code about} relationship comes from one of {@code entityTypes} move.
+     */
+    @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', :newFqnHash) "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.aboutFqnHash')) = :oldFqnHash",
+            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', "
+                + "CONCAT(:newFqnHash, SUBSTRING(aboutFqnHash, CHAR_LENGTH(:oldFqnHash) + 1))) "
+                + "WHERE (aboutFqnHash = :oldFqnHash OR aboutFqnHash LIKE :oldFqnHashPrefix) "
+                + "AND EXISTS (SELECT 1 FROM entity_relationship er WHERE er.toId = task_entity.id "
+                + "AND er.toEntity = 'task' AND er.relation = :relation "
+                + "AND er.fromEntity IN (<entityTypes>))",
         connectionType = MYSQL)
-    @ConnectionAwareSqlBatch(
+    @ConnectionAwareSqlUpdate(
         value =
             "UPDATE task_entity SET json = jsonb_set(json, '{aboutFqnHash}', "
-                + "to_jsonb(:newFqnHash::text)) WHERE json->>'aboutFqnHash' = :oldFqnHash",
+                + "to_jsonb(:newFqnHash::text || "
+                + "substring(aboutfqnhash from char_length(:oldFqnHash::text) + 1))) "
+                + "WHERE (aboutfqnhash = :oldFqnHash OR aboutfqnhash LIKE :oldFqnHashPrefix) "
+                + "AND EXISTS (SELECT 1 FROM entity_relationship er WHERE er.toId = task_entity.id "
+                + "AND er.toEntity = 'task' AND er.relation = :relation "
+                + "AND er.fromEntity IN (<entityTypes>))",
         connectionType = POSTGRES)
-    @BatchChunkSize(100)
-    int[] updateAboutFqnHashBatch(
-        @Bind("oldFqnHash") List<String> oldFqnHashes,
-        @Bind("newFqnHash") List<String> newFqnHashes);
+    int repointAboutFqnHashSubtree(
+        @Bind("oldFqnHash") String oldFqnHash,
+        @Bind("oldFqnHashPrefix") String oldFqnHashPrefix,
+        @Bind("newFqnHash") String newFqnHash,
+        @Bind("relation") int relation,
+        @BindList("entityTypes") List<String> entityTypes);
 
     @Override
     default void update(UUID id, String fqn, String json) {
