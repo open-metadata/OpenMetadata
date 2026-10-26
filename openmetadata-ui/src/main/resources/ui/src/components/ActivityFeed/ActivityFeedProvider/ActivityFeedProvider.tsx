@@ -719,15 +719,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     setFocusReplyEditor(isFocused);
   }, []);
 
-  const showDrawer = useCallback(
-    (thread: Conversation) => {
-      setIsDrawerOpen(true);
-      setActiveThread(thread);
-      setSelectedTask(undefined);
-    },
-    [setActiveThread]
-  );
-
   const showTaskDrawer = useCallback(
     (task: Task) => {
       setIsDrawerOpen(true);
@@ -772,14 +763,30 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     }
   }, []);
 
+  // The drawer shows an activity ahead of a thread, and closing it keeps the
+  // activity selected, so opening a conversation drops it here.
+  const showDrawer = useCallback(
+    (thread: Conversation) => {
+      setIsDrawerOpen(true);
+      setActiveThread(thread);
+      setSelectedTask(undefined);
+      setActiveActivity(undefined);
+    },
+    [setActiveThread, setActiveActivity]
+  );
+
   const showActivityDrawer = useCallback(
     (activity: ActivityEvent) => {
       setIsDrawerOpen(true);
       setSelectedThread(undefined);
       setSelectedTask(undefined);
-      setActiveActivity(activity);
+      // Already selected (the Activity tab's side panel shows it): keep its
+      // replies rather than clearing and fetching them again.
+      if (selectedActivity?.id !== activity.id) {
+        setActiveActivity(activity);
+      }
     },
-    [setActiveActivity]
+    [setActiveActivity, selectedActivity?.id]
   );
 
   const postActivityComment = useCallback(
@@ -796,11 +803,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     },
     []
   );
+  // Leaves the selection alone: the entity Activity tab's side panel shows the
+  // same thread or activity the drawer opened on.
   const hideDrawer = useCallback(() => {
     setFocusReplyEditor(false);
     setIsDrawerOpen(false);
-    setSelectedActivity(undefined);
-    setActivityReplies([]);
   }, []);
 
   const updateTestCaseIncidentStatus = useCallback(

@@ -431,6 +431,47 @@ export const DummySetActiveActivityComponent = ({
   );
 };
 
+export const DummyActivityDrawerComponent = ({
+  activity,
+  thread,
+}: {
+  activity: ActivityEvent;
+  thread: Conversation;
+}) => {
+  const { t } = useTranslation();
+  const {
+    showActivityDrawer,
+    showDrawer,
+    hideDrawer,
+    isDrawerOpen,
+    selectedActivity,
+    activityReplies,
+  } = useActivityFeedProvider();
+
+  return (
+    <div>
+      <button
+        data-testid="open-activity-drawer"
+        onClick={() => showActivityDrawer(activity)}>
+        {t('label.comment')}
+      </button>
+      <button
+        data-testid="open-thread-drawer"
+        onClick={() => showDrawer(thread)}>
+        {t('label.reply')}
+      </button>
+      <button data-testid="hide-drawer" onClick={hideDrawer}>
+        {t('label.close')}
+      </button>
+      <span data-testid="drawer-open">{String(isDrawerOpen)}</span>
+      <span data-testid="selected-activity-id">
+        {selectedActivity?.id ?? 'none'}
+      </span>
+      <span data-testid="activity-reply-count">{activityReplies.length}</span>
+    </div>
+  );
+};
+
 const threadPost = { id: 'post', reactions: [] } as unknown as Conversation;
 const replyPost = {
   id: 'reply-post',

@@ -48,9 +48,11 @@ const FeedCardReplyButton = ({
     );
   }
 
-  // link-gray: no hover background behind the icon, on any card surface.
+  // link-gray draws no hover background on any card surface; boxed keeps a
+  // 28px target around the 18px icon.
   return (
     <Button
+      boxed
       aria-label={t('label.reply')}
       color="link-gray"
       data-testid="reply-button"

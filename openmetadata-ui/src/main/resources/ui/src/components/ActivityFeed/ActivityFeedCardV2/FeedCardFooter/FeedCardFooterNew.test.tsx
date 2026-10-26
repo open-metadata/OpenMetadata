@@ -120,7 +120,7 @@ describe('FeedCardFooterNew', () => {
     expect(onCardClick).toHaveBeenCalled();
   });
 
-  // The entity Activity tab's list cards opened nothing from here.
+  // Regression: on the entity Activity tab this press opened nothing.
   it('opens the replies with the reply editor focused from the reply button', async () => {
     await renderFooter();
 

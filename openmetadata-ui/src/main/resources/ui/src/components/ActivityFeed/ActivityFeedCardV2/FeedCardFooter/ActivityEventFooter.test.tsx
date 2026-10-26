@@ -146,7 +146,7 @@ describe('ActivityEventFooter', () => {
       expect(mockShowActivityDrawer).not.toHaveBeenCalled();
     });
 
-    // The entity Activity tab's list cards opened nothing from here.
+    // Regression: on the entity Activity tab this press opened nothing.
     it('opens the activity in the reply drawer when isForFeedTab is false', () => {
       const activity = createMockActivity();
       const mockOnActivityClick = jest.fn();

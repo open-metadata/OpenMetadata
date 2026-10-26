@@ -19,9 +19,11 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
+import { Conversation } from '../../../generated/entity/feed/conversation';
 import { ReactionType } from '../../../generated/type/reaction';
 import {
   DummyActivityCommentComponent,
+  DummyActivityDrawerComponent,
   DummyActivityFeedComponent,
   DummyActivityFilterSwitchComponent,
   DummyActivityReactionComponent,
@@ -834,6 +836,64 @@ describe('ActivityFeedProvider', () => {
       );
       expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('0');
     });
+  });
+
+  // The entity Activity tab's side panel reads the same selection the drawer
+  // opens on, so closing the drawer must not empty the panel.
+  it('keeps the activity and its replies selected when its drawer closes', async () => {
+    (listActivityReplies as jest.Mock).mockResolvedValue({
+      data: [activityReply],
+      paging: { total: 1 },
+    });
+
+    render(
+      <ActivityFeedProvider>
+        <DummyActivityDrawerComponent
+          activity={activity}
+          thread={{ id: 'thread-1' } as Conversation}
+        />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('open-activity-drawer'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1')
+    );
+
+    // Reopening the selected activity keeps its replies instead of refetching.
+    fireEvent.click(screen.getByTestId('hide-drawer'));
+    fireEvent.click(screen.getByTestId('open-activity-drawer'));
+    fireEvent.click(screen.getByTestId('hide-drawer'));
+
+    expect(screen.getByTestId('drawer-open')).toHaveTextContent('false');
+    expect(screen.getByTestId('selected-activity-id')).toHaveTextContent(
+      activity.id
+    );
+    expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1');
+    expect(listActivityReplies).toHaveBeenCalledTimes(1);
+  });
+
+  // The drawer shows an activity ahead of a thread.
+  it('drops the selected activity when a conversation drawer opens', async () => {
+    render(
+      <ActivityFeedProvider>
+        <DummyActivityDrawerComponent
+          activity={activity}
+          thread={{ id: 'thread-1' } as Conversation}
+        />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('open-activity-drawer'));
+    fireEvent.click(screen.getByTestId('hide-drawer'));
+    fireEvent.click(screen.getByTestId('open-thread-drawer'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('selected-activity-id')).toHaveTextContent(
+        'none'
+      )
+    );
+
+    expect(screen.getByTestId('drawer-open')).toHaveTextContent('true');
   });
 
   describe('updateReactions rejection handling', () => {

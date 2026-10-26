@@ -70,8 +70,9 @@ function ActivityEventFooter({
       <Box className="footer-container tw:w-full" direction="col">
         <div>
           <Box align="center" className="w-full rounded-8" gap={1}>
-            {/* link-gray: no hover background behind the icon. */}
+            {/* link-gray draws no hover background; boxed keeps a 28px target. */}
             <Button
+              boxed
               aria-label={t('label.comment')}
               color="link-gray"
               data-testid="comment-button"

@@ -45,12 +45,13 @@ export const PANEL_HEADER_LAYOUT = {
   timestamp: 'tw:whitespace-nowrap',
 };
 
-// The conversation's menu sits in the card's top corner.
+// The conversation's menu sits in the card's top corner, and its header keeps
+// clear of it.
 export const ACTIONS_CLASS_NAME = 'tw:absolute tw:end-2.5 tw:top-4.5';
+export const ACTIONS_CLEARANCE_CLASS_NAME = 'tw:pe-8';
 
 export const DEFAULT_HEADER_LAYOUT = {
-  // Keeps the header clear of the conversation's menu in the corner.
-  row: 'tw:pe-8',
+  row: undefined,
   rowItem: SPACE_ITEM_CLASS_NAME,
   authorRowItem: SPACE_ITEM_CLASS_NAME,
   authorName: undefined,

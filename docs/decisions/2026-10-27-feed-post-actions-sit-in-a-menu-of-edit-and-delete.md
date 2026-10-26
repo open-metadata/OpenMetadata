@@ -25,6 +25,7 @@ nothing, which left the hover bar's Reply as the only way into the reply drawer.
   API; only the UI affordance is gone.
 
 ## Consequences
-Every feed surface shows the same actions in the same place, and the menu needs no hover to be
-reached by keyboard or touch. A conversation cannot be resolved from the UI; bringing Resolve back
+Every surface built on `ActivityFeedActions` shows the same actions in the same place, and the menu
+needs no hover to be reached by keyboard or touch. The Inbox renders its own reply actions and is
+not covered here. A conversation cannot be resolved from the UI; bringing Resolve back
 means adding it to this menu (and revising this record), not restoring a separate hover bar.

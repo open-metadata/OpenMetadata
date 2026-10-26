@@ -64,6 +64,7 @@ import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import FeedFieldPath from '../Shared/FeedFieldPath/FeedFieldPath';
 import {
   ACTIONS_CLASS_NAME,
+  ACTIONS_CLEARANCE_CLASS_NAME,
   PANEL_HEADER_LAYOUT,
   SPACE_ITEM_CLASS_NAME,
 } from './ActivityFeedcardNew.constants';
@@ -98,7 +99,7 @@ interface ActivityFeedCardNewProps {
   isOpenInDrawer?: boolean;
   isFeedWidget?: boolean;
   isFullSizeWidget?: boolean;
-  /** In the activity thread panel the conversation's Edit / Delete sit in a menu. */
+  /** The activity thread panels' compact header, Inbox-style footer and replies. */
   isThreadPanel?: boolean;
   /** Replaces the footer reply's default of opening the thread drawer. */
   onReplyPress?: () => void;
@@ -790,7 +791,9 @@ const ActivityFeedCardNew = ({
                 one-line (truncating) header would push past the card. */}
             <Box
               align={isContainerThread ? 'start' : 'center'}
-              className={headerLayout.row}
+              className={classNames(headerLayout.row, {
+                [ACTIONS_CLEARANCE_CLASS_NAME]: feedActions,
+              })}
               gap={2}
               itemClassName={headerLayout.rowItem}
               justify="start">
