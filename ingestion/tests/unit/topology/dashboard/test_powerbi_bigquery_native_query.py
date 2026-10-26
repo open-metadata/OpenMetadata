@@ -119,8 +119,10 @@ def test_bigquery_hash_comment_ends_at_its_line(source):
 
 def test_block_commented_source_step_is_ignored(source):
     replaced_step = (
-        '    /* Source = Value.NativeQuery(GoogleBigQuery.Database([BillingProject="sales-prod"])'
-        '{[Name="sales-prod"]}[Data], "select * from `sales.orders_v1`", null, [EnableFolding=true]), */\n'
+        "    /*\n"
+        '    Source = Value.NativeQuery(GoogleBigQuery.Database([BillingProject="sales-prod"])'
+        '{[Name="sales-prod"]}[Data], "select * from `sales.orders_v1`", null, [EnableFolding=true]),\n'
+        "    */\n"
     )
     table = native_query_table("select id, amount from `sales.orders`", before_source=replaced_step)
 
