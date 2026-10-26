@@ -61,7 +61,8 @@ import SearchPreviewPanel from './SearchPreviewPanel';
 import SearchSection, { SearchSectionTitle } from './SearchSection';
 import {
   EntitySearchDraft,
-  EntitySearchSavedState,
+  getReturningSearchState,
+  SearchSavedState,
   toEntityDraft,
   toFieldValueBoostItemId,
   toggleHighlightField,
@@ -147,13 +148,16 @@ const EntitySearchSettings = ({
       return;
     }
     hasLoadedRef.current = true;
-    // Back from the field value boost form: resume the draft it was opened with.
-    const resumed = savedState as EntitySearchSavedState | undefined;
+    // Back from the field value boost form: resume the draft it was opened
+    // with. Any other saved draft was abandoned, so it is dropped either way.
+    const resumed = getReturningSearchState(savedState, itemId);
+    if (savedState) {
+      onSaveState?.(undefined);
+    }
     void fetchConfig().then((loaded) => {
-      if (loaded && resumed?.entity === itemId) {
+      if (loaded && resumed && 'draft' in resumed) {
         setDraft(resumed.draft);
         setIsChanged(resumed.isChanged);
-        onSaveState?.(undefined);
       }
     });
     getCustomPropertiesByEntityType(entityType)
@@ -271,7 +275,7 @@ const EntitySearchSettings = ({
   }
 
   const openFieldValueBoostForm = (field?: string) => {
-    const state: EntitySearchSavedState = { entity: itemId, draft, isChanged };
+    const state: SearchSavedState = { entity: itemId, draft, isChanged };
     onSaveState?.(state);
     onNavigate({
       type: 'page',

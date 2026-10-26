@@ -29,14 +29,15 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
+import SomethingWentWrongPlaceholder from '../../../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import type { PlatformSettingsFormProps } from '../PlatformSettings.types';
 import SettingsFormLayout, { SettingsSkeleton } from '../SettingsFormLayout';
 import { useSettingsFetch } from '../useSettingsFetch';
 import FieldValueBoostFields from './FieldValueBoostFields';
 import {
-  EntitySearchSavedState,
   FieldValueBoostFormValues,
   parseFieldValueBoostItemId,
+  SearchSavedState,
   toFieldValueBoost,
   toFieldValueBoostFormValues,
   upsertFieldValueBoost,
@@ -62,11 +63,15 @@ const FieldValueBoostForm = ({
     (state) => state.setAppPreferences
   );
   const { entity, field } = parseFieldValueBoostItemId(itemId);
-  const entityState = savedState as EntitySearchSavedState | undefined;
+  const pageState = savedState as SearchSavedState | undefined;
   const draft =
-    entity && entityState?.entity === entity ? entityState.draft : undefined;
+    entity && pageState?.entity === entity ? pageState.draft : undefined;
   const isMissingDraft = Boolean(entity) && !draft;
-  const { data: config, isLoading } = useSettingsFetch(fetchSearchSettings);
+  const {
+    data: config,
+    isLoading,
+    reload,
+  } = useSettingsFetch(fetchSearchSettings);
   const [isSaving, setIsSaving] = useState(false);
 
   const boosts = entity
@@ -91,13 +96,26 @@ const FieldValueBoostForm = ({
     [config]
   );
 
-  const backToParent = () =>
+  const backToParent = () => {
     onNavigate({
       type: 'page',
       page: 'search',
       isEditing: false,
       itemId: entity,
     });
+  };
+
+  /** Hands the page's unsaved edits back to it; `update` replaces the entity draft. */
+  const returnToParent = (update?: Partial<SearchSavedState>) => {
+    if (pageState) {
+      onSaveState?.({
+        ...pageState,
+        ...update,
+        isReturning: true,
+      } as SearchSavedState);
+    }
+    backToParent();
+  };
 
   // A refresh or deep link loses the entity's draft: nothing to add the boost to.
   useEffect(() => {
@@ -133,7 +151,7 @@ const FieldValueBoostForm = ({
           entity: t('label.search-setting-plural'),
         })
       );
-      backToParent();
+      returnToParent();
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -142,13 +160,12 @@ const FieldValueBoostForm = ({
   };
 
   const handleSubmit = async (values: FieldValueBoostFormValues) => {
-    if (!entityState || !draft) {
+    if (!draft) {
       await saveGlobal(values);
 
       return;
     }
-    onSaveState?.({
-      ...entityState,
+    returnToParent({
       draft: {
         ...draft,
         fieldValueBoosts: upsertFieldValueBoost(
@@ -158,13 +175,20 @@ const FieldValueBoostForm = ({
       },
       isChanged: true,
     });
-    backToParent();
   };
 
   if (isLoading || isMissingDraft) {
     return (
       <div className="tw:p-8 tw:pt-0">
         <SettingsSkeleton rows={6} />
+      </div>
+    );
+  }
+
+  if (!config) {
+    return (
+      <div className="tw:relative tw:min-h-60">
+        <SomethingWentWrongPlaceholder onReload={reload} />
       </div>
     );
   }
@@ -176,7 +200,7 @@ const FieldValueBoostForm = ({
       isSaving={isSaving}
       showHint={showHint}
       testId="field-value-boost-form"
-      onCancel={backToParent}
+      onCancel={() => returnToParent()}
       onSubmit={handleSubmit}>
       <FieldValueBoostFields
         boost={boost}

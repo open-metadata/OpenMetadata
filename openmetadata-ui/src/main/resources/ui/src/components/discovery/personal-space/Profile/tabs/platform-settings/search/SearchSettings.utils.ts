@@ -222,10 +222,29 @@ export const parseFieldValueBoostItemId = (
   };
 };
 
-/** The entity page's unsaved draft, kept by the panel while the boost form is open. */
-export interface EntitySearchSavedState {
-  /** The entity page's `itemId`, so a draft never leaks onto another entity. */
-  entity: string;
-  draft: EntitySearchDraft;
-  isChanged: boolean;
-}
+/**
+ * A search page's unsaved edits, kept by the panel while the field value boost
+ * form is open: an entity page's draft, or the global page's term boosts.
+ */
+export type SearchSavedState = (
+  | {
+      /** The entity page's `itemId`, so a draft never leaks onto another entity. */
+      entity: string;
+      draft: EntitySearchDraft;
+      isChanged: boolean;
+    }
+  | { entity?: undefined; termBoosts: TermBoost[] }
+) & {
+  /** Set by the form's Cancel/Save; a draft left any other way is abandoned. */
+  isReturning?: boolean;
+};
+
+/** The saved state to resume on `entity`'s page (undefined: the global page). */
+export const getReturningSearchState = (
+  savedState: unknown,
+  entity?: string
+): SearchSavedState | undefined => {
+  const state = savedState as SearchSavedState | undefined;
+
+  return state?.isReturning && state.entity === entity ? state : undefined;
+};

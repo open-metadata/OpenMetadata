@@ -13,6 +13,7 @@
 
 import {
   act,
+  cleanup,
   fireEvent,
   render,
   screen,
@@ -101,15 +102,18 @@ const CONFIG = {
 };
 
 const onNavigate = jest.fn();
+const onSaveState = jest.fn();
 let headerActions: ReactNode;
 const onSetHeaderActions = (actions: ReactNode) => {
   headerActions = actions;
 };
 
-const renderView = async () => {
+const renderView = async (savedState?: unknown) => {
   render(
     <SearchSettingsView
+      savedState={savedState}
       onNavigate={onNavigate}
+      onSaveState={onSaveState}
       onSetHeaderActions={onSetHeaderActions}
     />
   );
@@ -341,6 +345,51 @@ describe('SearchSettingsView', () => {
         },
       ],
     ]);
+  });
+
+  it('hands unsaved term boosts to the boost form and resumes them on return', async () => {
+    await renderView();
+    act(() => {
+      fireEvent.keyDown(
+        within(screen.getByTestId('term-boost-PII.Sensitive')).getByRole(
+          'slider'
+        ),
+        { key: 'ArrowRight' }
+      );
+    });
+    fireEvent.click(screen.getByTestId('add-field-value-boost-btn'));
+
+    const stashed = onSaveState.mock.calls[0][0];
+
+    expect(stashed.termBoosts[1]).toEqual({
+      ...CONFIG.globalSettings.termBoosts[1],
+      boost: 2.1,
+    });
+
+    cleanup();
+    await renderView({ ...stashed, isReturning: true });
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId('term-boost-PII.Sensitive')).getByTestId(
+          'term-boost-value'
+        )
+      ).toHaveTextContent('2.1')
+    );
+
+    expect(screen.getByTestId('term-boost-save-btn')).toBeEnabled();
+    expect(onSaveState).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it('drops an entity draft abandoned by leaving the boost form', async () => {
+    await renderView({
+      entity: 'tables',
+      draft: { fieldValueBoosts: [] },
+      isChanged: true,
+    });
+
+    expect(onSaveState).toHaveBeenCalledWith(undefined);
+    expect(screen.getByTestId('term-boost-save-btn')).toBeDisabled();
   });
 
   it('toasts and keeps the settings when a save fails', async () => {

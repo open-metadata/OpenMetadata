@@ -306,6 +306,7 @@ describe('EntitySearchSettings', () => {
       entity: 'tables',
       draft: { ...TABLE_CONFIG, fieldValueBoosts: [boost] },
       isChanged: true,
+      isReturning: true,
     });
 
     await waitFor(() =>
@@ -320,20 +321,22 @@ describe('EntitySearchSettings', () => {
     expect(updateSettingsConfig).not.toHaveBeenCalled();
   });
 
-  it('ignores a draft saved for another entity', async () => {
+  it.each([
+    ['saved for another entity', { entity: 'topics', isReturning: true }],
+    ['abandoned without the form returning', { entity: 'tables' }],
+  ])('drops a draft %s', async (_, state) => {
     await renderPage('tables', {
-      entity: 'topics',
       draft: { ...TABLE_CONFIG, fieldValueBoosts: [] },
       isChanged: true,
+      ...state,
     });
 
-    await waitFor(() =>
-      expect(lastPreviewTableConfig().fieldValueBoosts).toEqual(
-        TABLE_CONFIG.fieldValueBoosts
-      )
-    );
+    await waitFor(() => expect(searchPreview).toHaveBeenCalled());
 
-    expect(onSaveState).not.toHaveBeenCalledWith(undefined);
+    expect(lastPreviewTableConfig().fieldValueBoosts).toEqual(
+      TABLE_CONFIG.fieldValueBoosts
+    );
+    expect(onSaveState).toHaveBeenCalledWith(undefined);
   });
 
   const choose = async (selectTestId: string, option: string) => {

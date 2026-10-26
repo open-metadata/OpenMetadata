@@ -47,6 +47,8 @@ import SearchEntityCards from './SearchEntityCards';
 import SearchSection from './SearchSection';
 import {
   complementWeight,
+  getReturningSearchState,
+  SearchSavedState,
   toFieldValueBoostItemId,
   upsertTermBoost,
 } from './SearchSettings.utils';
@@ -56,6 +58,8 @@ import TermBoostCard from './TermBoostCard';
 const SearchSettingsView = ({
   onNavigate,
   onSetHeaderActions,
+  savedState,
+  onSaveState,
 }: PlatformSettingsPageProps) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
@@ -105,10 +109,24 @@ const SearchSettingsView = ({
   // Once per mount: under StrictMode a second response would wipe unsaved term boosts.
   const hasLoadedRef = useRef(false);
   useEffect(() => {
-    if (!hasLoadedRef.current) {
-      hasLoadedRef.current = true;
-      void fetchConfig();
+    if (hasLoadedRef.current) {
+      return;
     }
+    hasLoadedRef.current = true;
+    // Back from the field value boost form: resume the unsaved term boosts.
+    // Any other saved draft (e.g. an entity's, left by a breadcrumb) is dropped.
+    const resumed = getReturningSearchState(savedState);
+    if (savedState) {
+      onSaveState?.(undefined);
+    }
+    void fetchConfig().then((loaded) => {
+      if (loaded && resumed && 'termBoosts' in resumed) {
+        setTermBoosts(resumed.termBoosts);
+        setTermBoostsChanged(true);
+      }
+    });
+    // Load once per mount; the saved state is read on arrival only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchConfig]);
 
   /** Resolves to whether the save succeeded, so editors close only on success. */
@@ -211,13 +229,18 @@ const SearchSettingsView = ({
     });
   };
 
-  const openFieldValueBoostForm = (field?: string) =>
+  const openFieldValueBoostForm = (field?: string) => {
+    const state: SearchSavedState | undefined = termBoostsChanged
+      ? { termBoosts }
+      : undefined;
+    onSaveState?.(state);
     onNavigate({
       type: 'page',
       page: 'search',
       isEditing: true,
       itemId: toFieldValueBoostItemId(undefined, field),
     });
+  };
 
   if (isLoading || !config) {
     return <SettingsSkeleton rows={6} />;

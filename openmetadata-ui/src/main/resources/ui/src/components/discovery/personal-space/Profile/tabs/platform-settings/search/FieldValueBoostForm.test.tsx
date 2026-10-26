@@ -118,6 +118,43 @@ describe('FieldValueBoostForm', () => {
     });
   });
 
+  it('hands unsaved term boosts back to the global page on cancel', async () => {
+    const termBoosts = [
+      { field: 'tags.tagFQN', value: 'PII.Sensitive', boost: 3 },
+    ];
+    await renderForm('field-value-boost', { termBoosts });
+    await screen.findByTestId('field-value-boost-form');
+    setInput('lt-input', '9');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('cancel-button'));
+    });
+
+    expect(onSaveState).toHaveBeenCalledWith({ termBoosts, isReturning: true });
+    expect(updateSettingsConfig).not.toHaveBeenCalled();
+  });
+
+  it('offers a reload when the settings fail to load', async () => {
+    (getSettingsByType as jest.Mock)
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce(CONFIG);
+    await renderForm('field-value-boost');
+
+    const reload = await screen.findByText('label.reload');
+
+    expect(
+      screen.queryByTestId('field-value-boost-form')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(reload);
+    });
+
+    expect(
+      await screen.findByTestId('field-value-boost-form')
+    ).toBeInTheDocument();
+    expect(getSettingsByType).toHaveBeenCalledTimes(2);
+  });
+
   it('requires a field when adding a boost', async () => {
     await renderForm('field-value-boost');
     await screen.findByTestId('field-value-boost-form');
@@ -157,6 +194,7 @@ describe('FieldValueBoostForm', () => {
         ],
       },
       isChanged: true,
+      isReturning: true,
     });
     expect(onNavigate).toHaveBeenCalledWith({
       type: 'page',
