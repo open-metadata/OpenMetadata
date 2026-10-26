@@ -99,9 +99,8 @@ public final class CredentialVerifier implements Managed {
   private final AtomicLong lastCompleteSweepStartNanos;
   private final AtomicLong nextDeepVerifyNanos;
   private final long deepRetryIntervalNanos;
-  private final AtomicBoolean started = new AtomicBoolean();
   private final AtomicBoolean drainScheduled = new AtomicBoolean();
-  private volatile ScheduledExecutorService sweeper;
+  private final AtomicReference<ScheduledExecutorService> sweeper = new AtomicReference<>();
 
   /**
    * A read of one subject that may create its entry: a check's read, a refresh or a nudge. It is
@@ -262,27 +261,28 @@ public final class CredentialVerifier implements Managed {
     };
   }
 
-  /** Idempotent. The first sweep runs at once, so an empty cache is confirmed before traffic. */
+  /**
+   * Idempotent, and safe to race with {@link #stop}: the scheduler is published before it is
+   * scheduled, and a call that finds one published discards its own. The first sweep runs at once,
+   * so an empty cache is confirmed before traffic.
+   */
   @Override
   public void start() {
-    if (started.compareAndSet(false, true)) {
-      ScheduledExecutorService scheduler =
-          Executors.newSingleThreadScheduledExecutor(CredentialVerifier::sweepThread);
-      scheduler.scheduleWithFixedDelay(
-          this::sweepSafely, 0, config.sweepIntervalNanos(), TimeUnit.NANOSECONDS);
-      sweeper = scheduler;
-      LOG.info(
-          "Credential verifier started: maxStaleness={} sweepInterval={}",
-          config.maxStaleness(),
-          config.sweepInterval());
+    ScheduledExecutorService scheduler =
+        Executors.newSingleThreadScheduledExecutor(CredentialVerifier::sweepThread);
+    if (sweeper.compareAndSet(null, scheduler)) {
+      scheduleSweeps(scheduler);
+    } else {
+      scheduler.shutdownNow();
     }
   }
 
+  /** Idempotent; takes the published scheduler, so exactly one call shuts each one down. */
   @Override
   public void stop() {
-    if (started.compareAndSet(true, false)) {
-      sweeper.shutdownNow();
-      sweeper = null;
+    ScheduledExecutorService running = sweeper.getAndSet(null);
+    if (running != null) {
+      running.shutdownNow();
     }
   }
 
@@ -755,9 +755,23 @@ public final class CredentialVerifier implements Managed {
     }
   }
 
+  /** A stop that took the scheduler before this call scheduled on it leaves it shut down. */
+  private void scheduleSweeps(ScheduledExecutorService scheduler) {
+    try {
+      scheduler.scheduleWithFixedDelay(
+          this::sweepSafely, 0, config.sweepIntervalNanos(), TimeUnit.NANOSECONDS);
+      LOG.info(
+          "Credential verifier started: maxStaleness={} sweepInterval={}",
+          config.maxStaleness(),
+          config.sweepInterval());
+    } catch (RejectedExecutionException stopped) {
+      LOG.debug("Credential sweeps not scheduled; the verifier was stopped meanwhile", stopped);
+    }
+  }
+
   /** At most one drain waits on the sweep thread, however many nudges arrive meanwhile. */
   private void scheduleDrain() {
-    ScheduledExecutorService running = sweeper;
+    ScheduledExecutorService running = sweeper.get();
     if (running != null && drainScheduled.compareAndSet(false, true)) {
       try {
         running.execute(this::drainNudges);

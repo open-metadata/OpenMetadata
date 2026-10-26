@@ -952,6 +952,26 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void concurrentStartsAndStopsLeaveNoSweepThreadAfterAFinalStop() throws Exception {
+    verifier(DEFAULTS);
+    Runnable start = verifier::start;
+    Runnable stop = verifier::stop;
+    for (int round = 0; round < 200; round++) {
+      List<Future<?>> calls =
+          IntStream.range(0, 8)
+              .<Future<?>>mapToObj(call -> threads.submit(call % 2 == 0 ? start : stop))
+              .toList();
+      for (Future<?> call : calls) {
+        call.get(30, TimeUnit.SECONDS);
+      }
+    }
+
+    verifier.stop();
+
+    await().atMost(10, TimeUnit.SECONDS).until(() -> sweepThreads().isEmpty());
+  }
+
+  @Test
   void nudgeIsDrainedOnTheSweepThreadNotTheCaller() {
     source.withPats(ALICE, TOKEN_A);
     verifier(DEFAULTS);
