@@ -18,8 +18,8 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 
-import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import { getTags } from '../../../rest/tagAPI';
 import KnowledgePageListRightPanel, {

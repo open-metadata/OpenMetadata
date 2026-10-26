@@ -337,3 +337,9 @@ export const buildRuleIndex = (
 
   return acc;
 };
+
+// Peer cards render without a card for the root, so a negated root has no header of its own to carry the NOT.
+export const isNegatedPeerRoot = (
+  root: QueryBuilderNode,
+  asSiblings: boolean
+): boolean => asSiblings && Boolean(root.properties?.not);

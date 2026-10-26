@@ -137,7 +137,6 @@ describe('TableClassBase', () => {
       const mockProps: TableDetailPageTabProps = {
         queryCount: 5,
         isQueryCountLoading: false,
-        isTourOpen: false,
         activeTab: EntityTabs.SCHEMA,
         feedCount: {
           conversationCount: 0,

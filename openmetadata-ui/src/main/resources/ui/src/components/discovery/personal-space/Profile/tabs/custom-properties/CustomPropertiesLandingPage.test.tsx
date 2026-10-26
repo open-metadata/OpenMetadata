@@ -92,7 +92,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     children?: ReactNode;
     onClick?: () => void;
     'data-testid'?: string;
-    'aria-busy'?: boolean | string;
+    'aria-busy'?: React.AriaAttributes['aria-busy'];
   }) => (
     <div
       aria-busy={ariaBusy}

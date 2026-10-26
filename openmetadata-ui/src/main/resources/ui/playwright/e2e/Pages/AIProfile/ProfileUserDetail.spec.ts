@@ -325,17 +325,6 @@ const recordActivityAs = async (
     .toContain(description);
 };
 
-const isOwnedAssetsSearch = (ownerId: string) => (response: Response) => {
-  const url = new URL(response.url());
-
-  return (
-    response.request().method() === 'GET' &&
-    url.pathname === '/api/v1/search/query' &&
-    url.searchParams.get('size') !== '0' &&
-    url.searchParams.get('query_filter')?.includes(ownerId) === true
-  );
-};
-
 test.describe('AI Profile Members user detail', () => {
   test('grants a role from the Access tab', async ({
     isolatedUserPage: page,
