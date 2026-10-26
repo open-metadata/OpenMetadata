@@ -70,6 +70,7 @@ final class FakeCredentialSource implements CredentialSource {
   private final AtomicBoolean failing = new AtomicBoolean();
   private final AtomicBoolean failNextFingerprints = new AtomicBoolean();
   private final AtomicBoolean blockNext = new AtomicBoolean();
+  private final AtomicBoolean errorOnRead = new AtomicBoolean();
   private final Set<String> unconvertible = ConcurrentHashMap.newKeySet();
   private final Set<String> poison = ConcurrentHashMap.newKeySet();
   private volatile CountDownLatch readStarted = new CountDownLatch(1);
@@ -177,6 +178,14 @@ final class FakeCredentialSource implements CredentialSource {
     poison.add(key(principal));
   }
 
+  /**
+   * Every full read ends by throwing an {@link Error}, after any requested block: the shape of a
+   * failure that is not an exception, such as a stack overflow inside a decrypt.
+   */
+  void failReadsWithError() {
+    errorOnRead.set(true);
+  }
+
   /** The next full read computes its result, then parks until {@link #releaseReads()}. */
   void blockNextRead() {
     readStarted = new CountDownLatch(1);
@@ -242,6 +251,9 @@ final class FakeCredentialSource implements CredentialSource {
       }
     }
     blockIfRequested();
+    if (errorOnRead.get()) {
+      throw new AssertionError("injected error inside the read");
+    }
     return records;
   }
 

@@ -22,16 +22,22 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.github.benmanes.caffeine.cache.Ticker;
 import io.dropwizard.util.Duration;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,6 +69,13 @@ class CredentialVerifierTest {
   private static final String REJECTED = "rejected";
 
   private record Revocation(CredentialSubject subject, Set<TokenDigest> removed) {}
+
+  /** A check on its own thread, so a test can wait until it is parked and read its outcome. */
+  private record RunningCheck(Thread thread, CompletableFuture<Throwable> outcome) {
+    Throwable result() throws Exception {
+      return outcome.get(30, TimeUnit.SECONDS);
+    }
+  }
 
   private final FakeCredentialSource source = new FakeCredentialSource();
   private final FakeTicker ticker = new FakeTicker();
@@ -267,9 +280,120 @@ class CredentialVerifierTest {
     assertEquals(0, source.fullReadsOf(BOB));
     assertEquals(1.0, counter("om.credential.unavailable", "cause", "no_permit"));
     assertEquals(1.0, counter("om.credential.reads", "reason", "miss", "outcome", "no_permit"));
+    assertInstanceOf(CredentialUnavailableException.class, holder.get());
+    assertEquals(1.0, counter("om.credential.unavailable", "cause", "timeout"));
     source.releaseReads();
-    assertNull(holder.get());
+    await().atMost(10, TimeUnit.SECONDS).until(() -> verifier.cachedSubjects() == 1);
     assertAccepted(BOB, TOKEN_B);
+  }
+
+  @Test
+  void aBlockedReadAnswersCannotConfirmWithinLoadTimeoutAndStartsNoSecondRead() throws Exception {
+    source.withPats(ALICE, TOKEN_A).withPats(BOB, TOKEN_B);
+    verifier(
+        new CredentialVerificationConfig(
+            null, null, null, Duration.milliseconds(200), 2, null, null, null, null));
+    source.blockNextRead();
+
+    assertUnavailable(ALICE, TOKEN_A);
+    ticker.advanceNanos(600 * MILLISECOND);
+    assertUnavailable(ALICE, TOKEN_A);
+    assertAccepted(BOB, TOKEN_B);
+
+    assertEquals(1, source.fullReadsOf(ALICE));
+    assertEquals(1, source.fullReadsOf(BOB));
+    assertEquals(2.0, counter("om.credential.unavailable", "cause", "timeout"));
+    source.releaseReads();
+    await().atMost(10, TimeUnit.SECONDS).until(() -> verifier.cachedSubjects() == 2);
+    assertAccepted(ALICE, TOKEN_A);
+    assertEquals(1, source.fullReadsOf(ALICE));
+  }
+
+  @Test
+  void anErrorInsideTheSourceFailsTheStarterAndItsJoinerAtOnce() throws Exception {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(
+        new CredentialVerificationConfig(
+            null, null, null, Duration.milliseconds(1500), null, null, null, null, null));
+    source.blockNextRead();
+    source.failReadsWithError();
+    RunningCheck starter = startCheck(ALICE, TOKEN_A);
+    source.awaitReadStarted();
+    RunningCheck joiner = startCheck(ALICE, TOKEN_A);
+    awaitParked(joiner.thread());
+
+    source.releaseReads();
+
+    assertInstanceOf(CredentialUnavailableException.class, starter.result());
+    assertInstanceOf(CredentialUnavailableException.class, joiner.result());
+    assertEquals(2.0, counter("om.credential.unavailable", "cause", "read_failed"));
+    assertEquals(0.0, counter("om.credential.unavailable", "cause", "timeout"));
+    assertEquals(1.0, counter("om.credential.reads", "reason", "miss", "outcome", "error"));
+  }
+
+  @Test
+  void aCheckThatJoinsAnOldReadLackingItsTokenReadsAgainBeforeAnswering() throws Exception {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(DEFAULTS);
+    source.blockNextRead();
+    RunningCheck first = startCheck(ALICE, TOKEN_A);
+    source.awaitReadStarted();
+    ticker.advanceNanos(600 * MILLISECOND);
+    source.addPat(ALICE, TOKEN_B);
+    RunningCheck second = startCheck(ALICE, TOKEN_B);
+    awaitParked(second.thread());
+
+    source.releaseReads();
+
+    assertNull(first.result());
+    assertNull(second.result());
+    assertEquals(2, source.fullReads());
+  }
+
+  @Test
+  void aCheckThatJoinsAReadThatNeverReturnsCannotConfirm() throws Exception {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(
+        new CredentialVerificationConfig(
+            null, null, null, Duration.milliseconds(200), null, null, null, null, null));
+    source.blockNextRead();
+    RunningCheck first = startCheck(ALICE, TOKEN_A);
+    source.awaitReadStarted();
+    ticker.advanceNanos(600 * MILLISECOND);
+    source.addPat(ALICE, TOKEN_B);
+
+    assertUnavailable(ALICE, TOKEN_B);
+
+    assertEquals(1, source.fullReads());
+    assertInstanceOf(CredentialUnavailableException.class, first.result());
+    source.releaseReads();
+  }
+
+  @Test
+  void aCheckThatBecomesTheOwnerAfterTheReadInstalledReadsNothing() throws Exception {
+    source.withPats(ALICE, TOKEN_A);
+    CountDownLatch gate = new CountDownLatch(1);
+    AtomicReference<Thread> gatedThread = new AtomicReference<>();
+    AtomicBoolean gateArmed = new AtomicBoolean(true);
+    Ticker gatedTicker =
+        () -> {
+          if (Thread.currentThread() == gatedThread.get() && gateArmed.compareAndSet(true, false)) {
+            awaitLatch(gate);
+          }
+          return ticker.read();
+        };
+    verifier =
+        new CredentialVerifier(
+            DEFAULTS, source, gatedTicker, new CredentialMetrics(registry), List.of());
+    RunningCheck second = startCheck(ALICE, TOKEN_A, gatedThread::set);
+    awaitParked(second.thread());
+
+    assertAccepted(ALICE, TOKEN_A);
+    gate.countDown();
+
+    assertNull(second.result());
+    assertEquals(1, source.fullReads());
+    assertEquals(2.0, counter("om.credential.checks", "decision", "accept"));
   }
 
   @Test
@@ -821,6 +945,47 @@ class CredentialVerifierTest {
       return false;
     } catch (AuthenticationException rejected) {
       return true;
+    }
+  }
+
+  private RunningCheck startCheck(String principal, String token) {
+    return startCheck(principal, token, thread -> {});
+  }
+
+  /** {@code beforeStart} sees the thread before it runs, so a hook can key on its identity. */
+  private RunningCheck startCheck(String principal, String token, Consumer<Thread> beforeStart) {
+    CompletableFuture<Throwable> outcome = new CompletableFuture<>();
+    Thread thread =
+        Thread.ofVirtual().unstarted(() -> outcome.complete(checkOutcome(principal, token)));
+    beforeStart.accept(thread);
+    thread.start();
+    return new RunningCheck(thread, outcome);
+  }
+
+  private Throwable checkOutcome(String principal, String token) {
+    try {
+      verifier.require(stored(principal), token, REJECTED);
+      return null;
+    } catch (Throwable failure) {
+      return failure;
+    }
+  }
+
+  private static void awaitParked(Thread thread) {
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .until(
+            () ->
+                thread.getState() == Thread.State.WAITING
+                    || thread.getState() == Thread.State.TIMED_WAITING);
+  }
+
+  private static void awaitLatch(CountDownLatch latch) {
+    try {
+      assertTrue(latch.await(10, TimeUnit.SECONDS), "the gate should open");
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException(interrupted);
     }
   }
 

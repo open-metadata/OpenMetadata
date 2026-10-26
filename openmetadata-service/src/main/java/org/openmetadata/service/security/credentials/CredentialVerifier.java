@@ -31,6 +31,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -38,10 +39,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
@@ -66,17 +68,22 @@ import org.openmetadata.service.security.credentials.CredentialMetrics.Unavailab
  * background sweep re-confirms every cached principal each {@code sweepInterval} with one fingerprint
  * query per {@code batchSize} principals and re-reads only the ones whose fingerprint moved, so in
  * steady state a check is a lock-free cache read, a clock read and a set lookup. When the sweep falls
- * behind, the next check does one single-flight read on the request thread; when that read fails,
- * times out or gets no permit, the check throws {@link CredentialUnavailableException} ("cannot
- * confirm"), which is not {@link AuthenticationException} ("confirmed not current").
+ * behind, the next check starts or joins one single-flight read of its principal on a small read
+ * pool and waits for it within {@code loadTimeout}; when that read fails, does not finish in time
+ * or gets no slot, the check throws {@link CredentialUnavailableException} ("cannot confirm"),
+ * which is not {@link AuthenticationException} ("confirmed not current").
  *
  * <p>All state is per instance. Every stamp is a {@link Ticker} reading compared by difference.
  */
 @Slf4j
 public final class CredentialVerifier implements Managed {
   private static final String SWEEP_THREAD_NAME = "om-credential-verifier";
+  private static final String READ_THREAD_NAME_PREFIX = "om-credential-read-";
+  private static final AtomicInteger READ_THREADS = new AtomicInteger();
   private static final long NANOS_PER_SECOND = TimeUnit.SECONDS.toNanos(1);
   private static final long DEEP_RETRY_CAP_NANOS = TimeUnit.MINUTES.toNanos(1);
+  private static final long READ_THREAD_IDLE_SECONDS = 60;
+  private static final int QUEUED_READS_PER_THREAD = 16;
 
   private final CredentialVerificationConfig config;
   private final CredentialSource source;
@@ -86,7 +93,7 @@ public final class CredentialVerifier implements Managed {
   private final List<RevocationListener> revocationListeners;
   private final Cache<CredentialSubject, VerifiedCredentials> entries;
   private final ConcurrentMap<CredentialSubject, InFlightRead> inFlight = new ConcurrentHashMap<>();
-  private final Semaphore requestThreadReads;
+  private final ThreadPoolExecutor requestReads;
   private final Set<CredentialSubject> nudged = ConcurrentHashMap.newKeySet();
   private final AtomicLong lastCompleteSweepStartNanos;
   private final AtomicLong nextDeepVerifyNanos;
@@ -94,8 +101,51 @@ public final class CredentialVerifier implements Managed {
   private final AtomicBoolean started = new AtomicBoolean();
   private volatile ScheduledExecutorService sweeper;
 
-  /** A request-thread read that others may join; it lives in {@link #inFlight} only while it runs. */
-  private record InFlightRead(long stampNanos, CompletableFuture<VerifiedCredentials> result) {}
+  /**
+   * A check's read of one subject, registered in {@link #inFlight} until it has installed its
+   * result, so other checks of the subject join it instead of reading again. Its future completes
+   * with the installed entry, with null when the source left the subject out, or exceptionally with
+   * whatever the read threw.
+   */
+  private static final class InFlightRead {
+    private final CompletableFuture<VerifiedCredentials> result = new CompletableFuture<>();
+    private volatile RequestRead task;
+  }
+
+  /**
+   * A check's read on the request-read pool. A throwable of any kind fails it, so every waiter
+   * fails at once. An {@link Error} is rethrown after that, as on any thread; any other failure
+   * reaches the waiters, which report it.
+   */
+  private final class RequestRead implements Runnable {
+    private final CredentialSubject subject;
+    private final InFlightRead read;
+    private final ReadReason reason;
+    private final long stampNanos;
+
+    private RequestRead(
+        CredentialSubject subject, InFlightRead read, ReadReason reason, long stampNanos) {
+      this.subject = subject;
+      this.read = read;
+      this.reason = reason;
+      this.stampNanos = stampNanos;
+    }
+
+    @Override
+    public void run() {
+      try {
+        readAndInstall(Map.of(subject, read), stampNanos, reason);
+      } catch (RuntimeException failure) {
+        LOG.debug("The credential read of {} failed", subject.principal(), failure);
+      }
+    }
+
+    /** No slot, at once or within the budget of a waiter: every waiter answers NO_PERMIT. */
+    private void reject(RejectedExecutionException why) {
+      metrics.recordRead(reason, ReadOutcome.NO_PERMIT, ticker.read() - stampNanos);
+      fail(subject, read, why);
+    }
+  }
 
   /** Create and read start the idle window; an update (sweep or re-read) keeps what is left of it. */
   private record IdleExpiry(long idleExpiryNanos)
@@ -149,7 +199,7 @@ public final class CredentialVerifier implements Managed {
     this.metrics = metrics;
     this.policy = config.policy();
     this.revocationListeners = List.copyOf(revocationListeners);
-    this.requestThreadReads = new Semaphore(config.maxConcurrentRequestReads());
+    this.requestReads = readPool(config.maxConcurrentRequestReads());
     this.entries =
         Caffeine.newBuilder()
             .ticker(ticker)
@@ -303,7 +353,7 @@ public final class CredentialVerifier implements Managed {
     long now = ticker.read();
     CheckDecision decision = CheckDecision.decide(entry, now, digest, policy);
     if (decision.needsLoad()) {
-      entry = readOnRequestThread(subject, ReadReason.of(decision));
+      entry = loadForCheck(subject, digest, now, ReadReason.of(decision));
       now = ticker.read();
       decision = CheckDecision.decideAfterLoad(entry, now, digest, policy);
     }
@@ -318,114 +368,171 @@ public final class CredentialVerifier implements Managed {
   }
 
   /**
-   * Joins the read in flight for {@code subject} when it is stamped within the last
-   * missRefreshMinAge (so a new token is still seen within that bound); otherwise starts one.
+   * Joins the read in flight for {@code subject}, whatever its age, or starts one, and waits for it
+   * within what is left of {@code loadTimeout} since the check's first clock read. A result that
+   * lacks the digest and comes from a full read older than that clock read minus missRefreshMinAge
+   * cannot show a token created since, so the check then joins or starts one newer read within the
+   * same budget. That read is registered after the first one finished, so after this check began,
+   * and is stamped later still. A check therefore waits for at most two reads and never answers
+   * "not current" from a read too old to decide.
    */
-  private VerifiedCredentials readOnRequestThread(CredentialSubject subject, ReadReason reason) {
-    long now = ticker.read();
-    InFlightRead mine = new InFlightRead(now, new CompletableFuture<>());
-    InFlightRead current =
-        inFlight.compute(subject, (key, running) -> isJoinable(running, now) ? running : mine);
-    return current == mine ? own(subject, mine, reason) : join(subject, current);
-  }
-
-  private boolean isJoinable(InFlightRead running, long nowNanos) {
-    return running != null && nowNanos - running.stampNanos() <= config.missRefreshMinAgeNanos();
-  }
-
-  /** The owner removes only its own mapping, since a newer read may have replaced it. */
-  private VerifiedCredentials own(CredentialSubject subject, InFlightRead mine, ReadReason reason) {
-    try {
-      VerifiedCredentials loaded = readUnderPermit(subject, mine.stampNanos(), reason);
-      mine.result().complete(loaded);
-      return loaded;
-    } catch (RuntimeException failure) {
-      mine.result().completeExceptionally(failure);
-      throw failure;
-    } finally {
-      inFlight.remove(subject, mine);
+  private VerifiedCredentials loadForCheck(
+      CredentialSubject subject, TokenDigest digest, long checkStartNanos, ReadReason reason) {
+    long deadlineNanos = checkStartNanos + config.loadTimeoutNanos();
+    VerifiedCredentials loaded =
+        awaitRead(subject, joinOrStart(subject, digest, reason), deadlineNanos);
+    boolean tooOldToDecide =
+        !loaded.record().holds(digest)
+            && checkStartNanos - loaded.fullReadAtNanos() > config.missRefreshMinAgeNanos();
+    if (tooOldToDecide) {
+      loaded = awaitRead(subject, joinOrStart(subject, digest, reason), deadlineNanos);
     }
-  }
-
-  private VerifiedCredentials join(CredentialSubject subject, InFlightRead running) {
-    try {
-      return running.result().get(config.loadTimeoutNanos(), TimeUnit.NANOSECONDS);
-    } catch (TimeoutException timeout) {
-      throw joinFailed(
-          subject, UnavailableCause.TIMEOUT, "did not finish within loadTimeout", timeout);
-    } catch (ExecutionException failed) {
-      throw joinFailed(subject, UnavailableCause.READ_FAILED, "failed", failed.getCause());
-    } catch (InterruptedException interrupted) {
-      Thread.currentThread().interrupt();
-      throw joinFailed(subject, UnavailableCause.TIMEOUT, "was interrupted", interrupted);
-    }
-  }
-
-  private CredentialUnavailableException joinFailed(
-      CredentialSubject subject, UnavailableCause cause, String outcome, Throwable failure) {
-    return unavailable(
-        cause, "The read in flight for " + subject.principal() + " " + outcome, failure);
+    return loaded;
   }
 
   /**
-   * The stamp predates the permit wait, which only shortens the entry's trust. The read itself runs
-   * outside every lock and cache compute.
+   * Single flight: a check joins the read registered for its subject or registers its own. The
+   * owner of a new registration decides again on the cached entry first, because the read it
+   * missed may have installed its entry and left the registry between this check's lookup and its
+   * registration; that decision keeps the new-token floor, since it is the same decision at a later
+   * instant. A read is stamped once registered, so a read registered later carries a later stamp,
+   * and before it waits for a pool slot.
    */
-  private VerifiedCredentials readUnderPermit(
-      CredentialSubject subject, long stampNanos, ReadReason reason) {
-    acquirePermit(subject, stampNanos, reason);
-    try {
-      CredentialRecord record = readOne(subject, reason);
-      return install(subject, new VerifiedCredentials(record, stampNanos), true);
-    } finally {
-      requestThreadReads.release();
+  private InFlightRead joinOrStart(
+      CredentialSubject subject, TokenDigest digest, ReadReason reason) {
+    InFlightRead mine = new InFlightRead();
+    InFlightRead running = inFlight.putIfAbsent(subject, mine);
+    if (running == null) {
+      readUnlessCached(subject, mine, digest, reason);
+    }
+    return running == null ? mine : running;
+  }
+
+  private void readUnlessCached(
+      CredentialSubject subject, InFlightRead read, TokenDigest digest, ReadReason reason) {
+    VerifiedCredentials cached = entries.getIfPresent(subject);
+    long stampNanos = ticker.read();
+    if (cached != null && !CheckDecision.decide(cached, stampNanos, digest, policy).needsLoad()) {
+      finish(subject, read, cached);
+    } else {
+      submit(subject, read, reason, stampNanos);
     }
   }
 
-  private void acquirePermit(CredentialSubject subject, long stampNanos, ReadReason reason) {
-    long remainingNanos = config.loadTimeoutNanos() - (ticker.read() - stampNanos);
+  /** A read the pool cannot even queue answers NO_PERMIT at once, to every waiter. */
+  private void submit(
+      CredentialSubject subject, InFlightRead read, ReadReason reason, long stampNanos) {
+    RequestRead task = new RequestRead(subject, read, reason, stampNanos);
+    read.task = task;
     try {
-      if (!requestThreadReads.tryAcquire(Math.max(0, remainingNanos), TimeUnit.NANOSECONDS)) {
-        metrics.recordRead(reason, ReadOutcome.NO_PERMIT, ticker.read() - stampNanos);
-        throw unavailable(
-            UnavailableCause.NO_PERMIT,
-            "No request-read permit for " + subject.principal() + " within loadTimeout",
-            null);
-      }
-    } catch (InterruptedException interrupted) {
-      Thread.currentThread().interrupt();
-      throw unavailable(
-          UnavailableCause.NO_PERMIT,
-          "Interrupted while waiting for a request-read permit for " + subject.principal(),
-          interrupted);
+      requestReads.execute(task);
+    } catch (RejectedExecutionException full) {
+      task.reject(full);
     }
   }
 
-  /** A subject the source left out of its result is unconfirmed, which a check cannot act on. */
-  private CredentialRecord readOne(CredentialSubject subject, ReadReason reason) {
-    List<CredentialSubject> one = List.of(subject);
-    Map<CredentialSubject, CredentialRecord> records;
-    try {
-      records = timedRead(one, cachedRecords(one), reason);
-    } catch (RuntimeException failure) {
-      throw unavailable(
-          UnavailableCause.READ_FAILED,
-          "Could not read the stored credentials of " + subject.principal(),
-          failure);
-    }
-    CredentialRecord record = records.get(subject);
-    if (record == null) {
+  /** Every waiter, the one that started the read included, waits within its own check's budget. */
+  private VerifiedCredentials awaitRead(
+      CredentialSubject subject, InFlightRead read, long deadlineNanos) {
+    VerifiedCredentials loaded = resultWithin(subject, read, deadlineNanos);
+    if (loaded == null) {
       throw unavailable(
           UnavailableCause.SUBJECT_READ_FAILED,
           "The stored credentials of " + subject.principal() + " could not be converted",
           null);
     }
-    return record;
+    return loaded;
+  }
+
+  private VerifiedCredentials resultWithin(
+      CredentialSubject subject, InFlightRead read, long deadlineNanos) {
+    try {
+      return read.result.get(Math.max(0, deadlineNanos - ticker.read()), TimeUnit.NANOSECONDS);
+    } catch (TimeoutException timeout) {
+      throw timedOut(subject, read, timeout);
+    } catch (ExecutionException failed) {
+      throw failed(subject, failed.getCause());
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw unavailable(
+          UnavailableCause.TIMEOUT,
+          "Interrupted while waiting for the read of " + subject.principal(),
+          interrupted);
+    }
   }
 
   /**
-   * The only call into the source for full reads. Records the read and the subjects it left out; a
-   * failure propagates as is.
+   * A read still queued when a waiter's budget ends is withdrawn, so no slot is spent on a result
+   * nobody waits for, and counts as a read that got no slot. One that a thread took finishes in the
+   * background and installs its result under the usual newer-wins rule.
+   */
+  private CredentialUnavailableException timedOut(
+      CredentialSubject subject, InFlightRead read, TimeoutException timeout) {
+    RequestRead queued = read.task;
+    boolean withdrawn = queued != null && requestReads.remove(queued);
+    if (withdrawn) {
+      queued.reject(new RejectedExecutionException("no read slot within loadTimeout"));
+    }
+    return withdrawn
+        ? unavailable(
+            UnavailableCause.NO_PERMIT,
+            "No read slot for " + subject.principal() + " within loadTimeout",
+            timeout)
+        : unavailable(
+            UnavailableCause.TIMEOUT,
+            "The read of " + subject.principal() + " did not finish within loadTimeout",
+            timeout);
+  }
+
+  private CredentialUnavailableException failed(CredentialSubject subject, Throwable cause) {
+    return cause instanceof RejectedExecutionException
+        ? unavailable(UnavailableCause.NO_PERMIT, "No read slot for " + subject.principal(), cause)
+        : unavailable(
+            UnavailableCause.READ_FAILED,
+            "Could not read the stored credentials of " + subject.principal(),
+            cause);
+  }
+
+  /**
+   * One full read of registered subjects, then each install. A throwable of any kind fails every
+   * read not yet finished, so no check is left waiting for it, and is rethrown.
+   */
+  private void readAndInstall(
+      Map<CredentialSubject, InFlightRead> reads, long stampNanos, ReadReason reason) {
+    try {
+      Map<CredentialSubject, CredentialRecord> records =
+          timedRead(reads.keySet(), cachedRecords(reads.keySet()), reason);
+      reads.forEach(
+          (subject, read) ->
+              finish(subject, read, installRead(subject, records.get(subject), stampNanos)));
+    } catch (Throwable failure) {
+      reads.forEach((subject, read) -> fail(subject, read, failure));
+      throw failure;
+    }
+  }
+
+  /** Null when the source left the subject out: unconfirmed, so nothing is installed. */
+  private VerifiedCredentials installRead(
+      CredentialSubject subject, CredentialRecord record, long stampNanos) {
+    return record == null
+        ? null
+        : install(subject, new VerifiedCredentials(record, stampNanos), true);
+  }
+
+  /** Deregisters before completing, so a check that reads again can never find a finished read. */
+  private void finish(CredentialSubject subject, InFlightRead read, VerifiedCredentials entry) {
+    inFlight.remove(subject, read);
+    read.result.complete(entry);
+  }
+
+  private void fail(CredentialSubject subject, InFlightRead read, Throwable failure) {
+    inFlight.remove(subject, read);
+    read.result.completeExceptionally(failure);
+  }
+
+  /**
+   * The only call into the source for full reads. Records the read, whatever it ends in, and the
+   * subjects it left out; a failure propagates as is.
    */
   private Map<CredentialSubject, CredentialRecord> timedRead(
       Collection<CredentialSubject> subjects,
@@ -440,7 +547,7 @@ public final class CredentialVerifier implements Managed {
         metrics.recordUnreadableSubjects(unreadable);
       }
       return records;
-    } catch (RuntimeException failure) {
+    } catch (RuntimeException | Error failure) {
       metrics.recordRead(reason, ReadOutcome.ERROR, ticker.read() - started);
       throw failure;
     }
@@ -663,7 +770,31 @@ public final class CredentialVerifier implements Managed {
   }
 
   private static Thread sweepThread(Runnable task) {
-    Thread thread = new Thread(task, SWEEP_THREAD_NAME);
+    return daemon(task, SWEEP_THREAD_NAME);
+  }
+
+  /**
+   * Checks' reads run here, on platform threads because JDBC drivers pin a virtual carrier under
+   * {@code synchronized}; a check waits for its read within its own budget, and a read that outlives
+   * it finishes in the background. The pool is as wide as maxConcurrentRequestReads. Its queue
+   * holds QUEUED_READS_PER_THREAD reads per thread and sheds the rest, so a database that stops
+   * answering cannot grow it without bound. Idle threads exit.
+   */
+  private static ThreadPoolExecutor readPool(int threads) {
+    ThreadPoolExecutor pool =
+        new ThreadPoolExecutor(
+            threads,
+            threads,
+            READ_THREAD_IDLE_SECONDS,
+            TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(threads * QUEUED_READS_PER_THREAD),
+            task -> daemon(task, READ_THREAD_NAME_PREFIX + READ_THREADS.incrementAndGet()));
+    pool.allowCoreThreadTimeOut(true);
+    return pool;
+  }
+
+  private static Thread daemon(Runnable task, String name) {
+    Thread thread = new Thread(task, name);
     thread.setDaemon(true);
     return thread;
   }
