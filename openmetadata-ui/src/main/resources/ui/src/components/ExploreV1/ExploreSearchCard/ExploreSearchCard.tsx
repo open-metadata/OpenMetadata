@@ -136,6 +136,8 @@ const getReadableExplanation = (description: string) => {
   if (signalMatch?.[1]) {
     return signalMatch[1];
   }
+
+  return undefined;
 };
 
 /**

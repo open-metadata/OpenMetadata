@@ -95,7 +95,6 @@ export const ReviewerLabelV2 = <
           listHeight={200}
           multiple={{ user: true, team: false }}
           owner={assignedReviewers ?? []}
-          popoverProps={{ placement: 'topLeft' }}
           onUpdate={handleReviewerSave}>
           {hasReviewers ? (
             <WidgetEditButton

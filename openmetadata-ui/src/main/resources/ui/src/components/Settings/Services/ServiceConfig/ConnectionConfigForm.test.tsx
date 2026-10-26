@@ -535,7 +535,7 @@ describe('ServiceConfig', () => {
 
   it('should not gate the submit button on test connection results', async () => {
     await act(async () => {
-      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+      render(<ConnectionConfigForm {...mockProps} />);
     });
 
     expect(await screen.findByTestId('submit-button')).not.toBeDisabled();
@@ -556,7 +556,7 @@ describe('ServiceConfig', () => {
     (flattenAuthTypeIntoConfig as jest.Mock).mockReturnValue(flattenedFormData);
 
     await act(async () => {
-      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+      render(<ConnectionConfigForm {...mockProps} />);
     });
 
     fireEvent.click(screen.getByTestId('change-valid-form'));
@@ -571,7 +571,7 @@ describe('ServiceConfig', () => {
 
   it('should expose required-field validation to the test connection component', async () => {
     await act(async () => {
-      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+      render(<ConnectionConfigForm {...mockProps} />);
     });
 
     const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
@@ -608,7 +608,7 @@ describe('ServiceConfig', () => {
     );
 
     await act(async () => {
-      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+      render(<ConnectionConfigForm {...mockProps} />);
     });
 
     fireEvent.click(screen.getByTestId('change-valid-form'));
@@ -623,13 +623,7 @@ describe('ServiceConfig', () => {
     const onSave = jest.fn();
 
     await act(async () => {
-      render(
-        <ConnectionConfigForm
-          {...mockProps}
-          requireTestConnection
-          onSave={onSave}
-        />
-      );
+      render(<ConnectionConfigForm {...mockProps} onSave={onSave} />);
     });
 
     fireEvent.click(screen.getByTestId('mark-test-connection-success'));
@@ -643,7 +637,7 @@ describe('ServiceConfig', () => {
 
   it('should keep next enabled when the form emits an equivalent change after test succeeds', async () => {
     await act(async () => {
-      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+      render(<ConnectionConfigForm {...mockProps} />);
     });
 
     fireEvent.click(screen.getByTestId('change-valid-form'));

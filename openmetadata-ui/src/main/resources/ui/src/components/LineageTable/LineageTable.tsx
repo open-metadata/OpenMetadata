@@ -52,10 +52,7 @@ import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
-import {
-  EdgeFromToData,
-  LineageNodeType,
-} from '../../interface/lineage.interface';
+import { EdgeFromToData } from '../../interface/lineage.interface';
 import { QueryFieldInterface } from '../../interface/queryFilter.interface';
 import {
   getLineageByEntityCount,
@@ -525,13 +522,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       if (res.nodes) {
         const upstreamNodes = prepareUpstreamColumnLevelNodesFromUpstreamEdges(
           upstreamEdges,
-          res.nodes as unknown as Record<string, LineageNodeType>
+          res.nodes
         );
 
         const downstreamNodes =
           prepareDownstreamColumnLevelNodesFromDownstreamEdges(
             downstreamEdges,
-            res.nodes as unknown as Record<string, LineageNodeType>
+            res.nodes
           );
 
         setColumnLineageNodes(upstreamNodes, downstreamNodes);

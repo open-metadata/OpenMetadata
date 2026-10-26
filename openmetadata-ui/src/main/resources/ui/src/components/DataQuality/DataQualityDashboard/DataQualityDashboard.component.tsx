@@ -107,7 +107,6 @@ const DataQualityDashboard = ({
                     <UserTeamSelectableList
                       hasPermission
                       owner={filter.selectedOwners}
-                      popoverProps={{ placement: 'bottomLeft' }}
                       onUpdate={filter.onChange}>
                       <div
                         className="tw:flex tw:items-center tw:gap-1  tw:rounded-md quick-filter-dropdown-trigger-btn"

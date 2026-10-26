@@ -13,6 +13,7 @@
 
 import { act, renderHook } from '@testing-library/react';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { SearchResponse } from '../../../../interface/search.interface';
 import { nlqSearch, searchQuery } from '../../../../rest/searchAPI';
 import { useDataFetching } from './useDataFetching';
 
@@ -24,6 +25,9 @@ jest.mock('../../../../rest/searchAPI', () => ({
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
+
+const transform = (response: SearchResponse<SearchIndex.DATA_PRODUCT>) =>
+  response.hits.hits.map(({ _source }) => _source);
 
 const emptyResponse = { hits: { hits: [], total: { value: 0 } } };
 
@@ -54,7 +58,11 @@ describe('useDataFetching', () => {
 
   const renderFetching = (useNlq: boolean) =>
     renderHook(() =>
-      useDataFetching({ searchIndex: SearchIndex.DATA_PRODUCT, useNlq })
+      useDataFetching({
+        searchIndex: SearchIndex.DATA_PRODUCT,
+        useNlq,
+        transform,
+      })
     );
 
   it('uses the plain search endpoint when NLQ is off', async () => {
@@ -113,7 +121,11 @@ describe('useDataFetching', () => {
 
     const { result, rerender } = renderHook(
       ({ useNlq }) =>
-        useDataFetching({ searchIndex: SearchIndex.DATA_PRODUCT, useNlq }),
+        useDataFetching({
+          searchIndex: SearchIndex.DATA_PRODUCT,
+          useNlq,
+          transform,
+        }),
       { initialProps: { useNlq: true } }
     );
 

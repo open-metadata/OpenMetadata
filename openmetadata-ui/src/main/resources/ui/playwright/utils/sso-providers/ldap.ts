@@ -75,17 +75,6 @@ const buildValidConfig = () => ({
   },
 });
 
-const buildBrokenConfig = () => {
-  const cfg = buildValidConfig();
-  // Drop ldapConfiguration.host — validateAuthFields should surface this
-  // before any bind is attempted. Scenario 9 asserts on /host/ in the log.
-  delete (
-    cfg.authenticationConfiguration.ldapConfiguration as Record<string, unknown>
-  ).host;
-
-  return cfg;
-};
-
 /**
  * LDAP (OpenLDAP) fixture. Backed by the openldap service in
  * docker/local-sso/openldap/docker-compose.yml —

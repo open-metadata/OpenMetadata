@@ -316,7 +316,7 @@ describe('AppRunsHistory', () => {
   });
 
   it('should fetch data based on startTs and endTs for external app onclick of NextPrevious', async () => {
-    jest.useFakeTimers('modern').setSystemTime(new Date('2024-02-05'));
+    jest.useFakeTimers().setSystemTime(new Date('2024-02-05'));
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
