@@ -1084,8 +1084,18 @@ public interface AccessControlDAOs {
         @Bind("limit") int limit,
         @Bind("paginationOffset") int paginationOffset);
 
-    @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE id = :id ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    // The listings below answer each event without the entity it carries: the alert pages read
+    // only the event's own fields, and the entity is as large as the asset that changed.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, source FROM consumers_dlq "
+                + "WHERE id = :id ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json #- '{changeEvent,entity}' AS json, source FROM consumers_dlq "
+                + "WHERE id = :id ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listFailedEventsById(
         @Bind("id") String id,
@@ -1095,8 +1105,18 @@ public interface AccessControlDAOs {
     @SqlQuery("SELECT COUNT(*) FROM consumers_dlq WHERE id = :id")
     long countFailedEvents(@Bind("id") String id);
 
-    @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE id = :id AND source = :source ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, source FROM consumers_dlq "
+                + "WHERE id = :id AND source = :source "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json #- '{changeEvent,entity}' AS json, source FROM consumers_dlq "
+                + "WHERE id = :id AND source = :source "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listFailedEventsByIdAndSource(
         @Bind("id") String id,
@@ -1104,14 +1124,32 @@ public interface AccessControlDAOs {
         @Bind("limit") int limit,
         @Bind("paginationOffset") int paginationOffset);
 
-    @SqlQuery(
-        "SELECT json, source FROM consumers_dlq ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, source FROM consumers_dlq "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json #- '{changeEvent,entity}' AS json, source FROM consumers_dlq "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listAllFailedEvents(
         @Bind("limit") int limit, @Bind("paginationOffset") int paginationOffset);
 
-    @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE source = :source ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, source FROM consumers_dlq "
+                + "WHERE source = :source "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json #- '{changeEvent,entity}' AS json, source FROM consumers_dlq "
+                + "WHERE source = :source "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listAllFailedEventsBySource(
         @Bind("source") String source,
@@ -1122,10 +1160,11 @@ public interface AccessControlDAOs {
         value =
             "SELECT json, status, timestamp "
                 + "FROM ( "
-                + "    SELECT json, 'FAILED' AS status, timestamp "
+                + "    SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, "
+                + "      'FAILED' AS status, timestamp "
                 + "    FROM consumers_dlq WHERE id = :id "
                 + "    UNION ALL "
-                + "    SELECT json, 'SUCCESSFUL' AS status, timestamp "
+                + "    SELECT JSON_REMOVE(json, '$.entity') AS json, 'SUCCESSFUL' AS status, timestamp "
                 + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
                 + ") AS combined_events "
                 + "ORDER BY timestamp DESC "
@@ -1135,10 +1174,10 @@ public interface AccessControlDAOs {
         value =
             "SELECT json, status, timestamp "
                 + "FROM ( "
-                + "    SELECT json, 'failed' AS status, timestamp "
+                + "    SELECT json #- '{changeEvent,entity}' AS json, 'failed' AS status, timestamp "
                 + "    FROM consumers_dlq WHERE id = :id "
                 + "    UNION ALL "
-                + "    SELECT json, 'successful' AS status, timestamp "
+                + "    SELECT json - 'entity' AS json, 'successful' AS status, timestamp "
                 + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
                 + ") AS combined_events "
                 + "ORDER BY timestamp DESC "
