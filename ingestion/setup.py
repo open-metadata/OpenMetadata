@@ -372,6 +372,7 @@ plugins: dict[str, set[str]] = {
     },
     "iomete": {
         "iomete-sqlalchemy>=1.0.22",
+        # ADBC 1.13 requires Python >=3.11; retain 1.12 for Python 3.10 compatibility.
         "adbc-driver-flightsql==1.12.0; python_version < '3.11'",
         "adbc-driver-flightsql>=1.13.0; python_version >= '3.11'",
         "adbc-driver-manager==1.12.0; python_version < '3.11'",
