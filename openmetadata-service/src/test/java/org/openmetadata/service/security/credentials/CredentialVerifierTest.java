@@ -803,8 +803,9 @@ class CredentialVerifierTest {
   }
 
   /**
-   * A sweep re-read leaves alice out at 100 ms. The next one, stamped at 200 ms, converts her, but
-   * her entry idles out while it runs, so it installs nothing; it still ends her backoff.
+   * A check's read at 600 ms leaves alice out and opens a backoff window to 1100 ms. A sweep
+   * re-read at 700 ms converts her, but her entry idles out while it runs, so it installs nothing;
+   * it still ends the window, so the check at 950 ms, which needs a read, is accepted.
    */
   @Test
   void aReadThatConvertsTheSubjectEndsItsBackoffEvenWhenItInstallsNothing() {
@@ -814,17 +815,40 @@ class CredentialVerifierTest {
             null, null, null, null, null, Duration.milliseconds(300), null, null, null));
     assertAccepted(ALICE, TOKEN_A);
     source.failConversionOf(ALICE);
-    source.addPat(ALICE, TOKEN_B);
-    ticker.advanceNanos(100 * MILLISECOND);
-    verifier.sweepOnce();
+    ticker.advanceNanos(200 * MILLISECOND);
+    assertAccepted(ALICE, TOKEN_A);
+    ticker.advanceNanos(200 * MILLISECOND);
+    assertAccepted(ALICE, TOKEN_A);
+    ticker.advanceNanos(200 * MILLISECOND);
+    assertUnavailable(ALICE, NEVER_ISSUED);
     source.restoreConversionOf(ALICE);
+    source.addPat(ALICE, TOKEN_B);
     source.duringNextRead(() -> ticker.advanceNanos(250 * MILLISECOND));
     ticker.advanceNanos(100 * MILLISECOND);
     verifier.sweepOnce();
 
     assertEquals(0, verifier.cachedSubjects());
     assertAccepted(ALICE, TOKEN_B);
-    assertEquals(4, source.fullReadsOf(ALICE));
+    assertEquals(0.0, counter("om.credential.unavailable", "cause", "backoff"));
+  }
+
+  /**
+   * A sweep re-read leaves alice out at 2 s, which no check started, so it opens no window. A
+   * check of her new token 100 ms later reads and is accepted.
+   */
+  @Test
+  void aSweepRereadThatLeavesASubjectOutDoesNotBackOffItsChecks() {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(DEFAULTS);
+    assertAccepted(ALICE, TOKEN_A);
+    source.failConversionOf(ALICE);
+    source.addPat(ALICE, TOKEN_B);
+    sweepAfterInterval();
+    source.restoreConversionOf(ALICE);
+    ticker.advanceNanos(100 * MILLISECOND);
+
+    assertAccepted(ALICE, TOKEN_B);
+    assertEquals(0.0, counter("om.credential.unavailable", "cause", "backoff"));
   }
 
   @Test
