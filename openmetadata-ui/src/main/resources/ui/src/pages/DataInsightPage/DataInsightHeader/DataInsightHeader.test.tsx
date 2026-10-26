@@ -12,13 +12,32 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ROUTES } from '../../../constants/constants';
+import dataInsightClassBase from '../DataInsightClassBase';
 import DataInsightHeader from './DataInsightHeader.component';
 
 const mockNavigate = jest.fn();
+const mockShowModal = jest.fn();
+const mockUseParams = jest.fn(() => ({ tab: 'tab' }));
+const HOOK_ERROR =
+  /Do not call Hooks|change in the order of Hooks|Rendered (more|fewer) hooks/;
+
+// A real context read stands in for the provider, so a call that moves back
+// inside a memo (or a menu helper it runs) trips React's hook-order checks.
+jest.mock(
+  '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  () => {
+    const { createContext, useContext } = jest.requireActual('react');
+    const context = createContext({
+      showModal: (data: unknown) => mockShowModal(data),
+    });
+
+    return { useEntityExportModalProvider: () => useContext(context) };
+  }
+);
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
-  useParams: jest.fn(() => ({ tab: 'tab' })),
+  useParams: () => mockUseParams(),
 }));
 
 jest.mock('../../../components/DataInsight/DataInsightSummary', () =>
@@ -111,5 +130,28 @@ describe('DataInsightHeader component', () => {
     expect(screen.getByText('DatePickerMenu')).toBeInTheDocument();
     expect(screen.getByText('DataInsightSummary')).toBeInTheDocument();
     expect(screen.getByText('KPIChart')).toBeInTheDocument();
+  });
+
+  it('should read the export modal hook outside the menu memo and hand its showModal to the menu builder', () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error');
+    const exportData = { name: 'data-insight', onExport: jest.fn() };
+
+    const { rerender } = render(<DataInsightHeader {...mockProps} />);
+    mockUseParams.mockReturnValue({ tab: 'other-tab' });
+    rerender(<DataInsightHeader {...mockProps} />);
+
+    const [showModal] = (
+      dataInsightClassBase.getManageExtraOptions as jest.Mock
+    ).mock.calls.at(-1);
+    showModal(exportData);
+
+    expect(mockShowModal).toHaveBeenCalledWith(exportData);
+    expect(
+      consoleErrorSpy.mock.calls.filter(([message]) =>
+        HOOK_ERROR.test(String(message))
+      )
+    ).toEqual([]);
+
+    consoleErrorSpy.mockRestore();
   });
 });

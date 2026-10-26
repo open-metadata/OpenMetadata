@@ -48,6 +48,8 @@ export interface InboxTaskListToolbarProps {
   onTypeFilterChange: (value: string[]) => void;
   /** The loaded tasks, whose types are the only ones worth offering. */
   tasks: Task[];
+  /** One row for a full-width list; the Inbox's narrow column stacks two. */
+  inline?: boolean;
 }
 
 /**
@@ -69,6 +71,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
   typeFilter,
   onTypeFilterChange,
   tasks,
+  inline,
 }) => {
   const { t } = useTranslation();
 
@@ -107,63 +110,92 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
     }));
   }, [tasks, typeFilter, t]);
 
+  // A grouping always has a value, so it is a menu, not a filter whose
+  // "active" tint would never go away.
+  const groupingMenu = (
+    <ActivityToolbarMenu
+      color="tertiary"
+      data-testid="inbox-tasks-group-by"
+      options={groupingOptions}
+      size="sm"
+      title={t('label.group-by')}
+      triggerIcon={FilterLines}
+      triggerLabel={t('label.group-with-value', {
+        value: groupingOptions.find((option) => option.value === grouping)
+          ?.label,
+      })}
+      value={grouping}
+      onChange={(value) => onGroupingChange(value as InboxTaskGrouping)}
+    />
+  );
+
+  const filters = (
+    <>
+      <Input
+        // Wrapping, a basis of 0 would let the search shrink away first.
+        className={inline ? 'tw:min-w-48 tw:flex-1' : 'tw:min-w-40 tw:flex-1'}
+        icon={SearchInputIcon}
+        inputDataTestId="inbox-tasks-search"
+        placeholder={t(
+          inline ? 'label.search-tasks' : 'label.search-this-queue'
+        )}
+        size="sm"
+        value={search}
+        onChange={onSearchChange}
+      />
+      {inline && groupingMenu}
+      <FilterSelect
+        bordered
+        data-testid="inbox-tasks-status-filter"
+        label={t('label.status')}
+        options={statusFilterOptions}
+        popoverClassName="tw:w-56"
+        selectedValues={statusFilter}
+        selectionMode="multiple"
+        triggerVariant="button"
+        onChange={(values) =>
+          onStatusFilterChange(values as TaskStatusBucket[])
+        }
+      />
+      <FilterSelect
+        bordered
+        data-testid="inbox-tasks-type-filter"
+        label={t('label.type')}
+        options={typeOptions}
+        selectedValues={typeFilter}
+        selectionMode="multiple"
+        triggerVariant="button"
+        onChange={onTypeFilterChange}
+      />
+    </>
+  );
+
+  if (inline) {
+    return (
+      <Box
+        align="center"
+        className="tw:shrink-0 tw:flex-wrap tw:gap-3 tw:px-4 tw:pt-4 tw:pb-3"
+        data-testid="inbox-tasks-toolbar">
+        {statusTabs}
+        {filters}
+      </Box>
+    );
+  }
+
   return (
     <Box
       className="tw:shrink-0 tw:gap-3 tw:px-4 tw:pt-4 tw:pb-3"
       data-testid="inbox-tasks-toolbar"
       direction="col">
-      <Box align="center" className="tw:justify-between tw:gap-2">
+      {/* Wraps rather than pushing the menu past the column's edge once the
+          tab counts widen the tabs. */}
+      <Box align="center" className="tw:justify-between tw:gap-2" wrap="wrap">
         {statusTabs}
-        {/* A grouping always has a value, so it is a menu, not a filter whose
-            "active" tint would never go away. */}
-        <ActivityToolbarMenu
-          color="tertiary"
-          data-testid="inbox-tasks-group-by"
-          options={groupingOptions}
-          size="sm"
-          title={t('label.group-by')}
-          triggerIcon={FilterLines}
-          triggerLabel={t('label.group-with-value', {
-            value: groupingOptions.find((option) => option.value === grouping)
-              ?.label,
-          })}
-          value={grouping}
-          onChange={(value) => onGroupingChange(value as InboxTaskGrouping)}
-        />
+        {groupingMenu}
       </Box>
-      <Box align="center" className="tw:gap-2">
-        <Input
-          className="tw:min-w-0 tw:flex-1"
-          icon={SearchInputIcon}
-          inputDataTestId="inbox-tasks-search"
-          placeholder={t('label.search-this-queue')}
-          size="sm"
-          value={search}
-          onChange={onSearchChange}
-        />
-        <FilterSelect
-          bordered
-          data-testid="inbox-tasks-status-filter"
-          label={t('label.status')}
-          options={statusFilterOptions}
-          popoverClassName="tw:w-56"
-          selectedValues={statusFilter}
-          selectionMode="multiple"
-          triggerVariant="button"
-          onChange={(values) =>
-            onStatusFilterChange(values as TaskStatusBucket[])
-          }
-        />
-        <FilterSelect
-          bordered
-          data-testid="inbox-tasks-type-filter"
-          label={t('label.type')}
-          options={typeOptions}
-          selectedValues={typeFilter}
-          selectionMode="multiple"
-          triggerVariant="button"
-          onChange={onTypeFilterChange}
-        />
+      {/* Each row wraps rather than spill into the detail pane when the list column is narrow. */}
+      <Box align="center" className="tw:gap-2" wrap="wrap">
+        {filters}
       </Box>
     </Box>
   );

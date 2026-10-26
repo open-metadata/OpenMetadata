@@ -382,7 +382,7 @@ const MlModelFeaturesList = () => {
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={t('message.no-features-data-available')}
+          title={t('message.no-features-data-available')}
         />
       </div>
     );

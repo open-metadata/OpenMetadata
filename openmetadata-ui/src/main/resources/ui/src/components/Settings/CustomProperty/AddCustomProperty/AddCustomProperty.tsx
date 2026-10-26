@@ -222,10 +222,10 @@ const AddCustomProperty = ({
           }
         />
         {isUndefined(open) && (
-          <Box className="layout-row" justify="end" wrap="wrap">
+          <Box className="layout-row" gap={3} justify="end" wrap="wrap">
             <Box className="layout-column tw:block">
               <Button
-                color="link-color"
+                color="secondary"
                 data-testid="back-button"
                 onClick={handleCancel}>
                 {t('label.back')}

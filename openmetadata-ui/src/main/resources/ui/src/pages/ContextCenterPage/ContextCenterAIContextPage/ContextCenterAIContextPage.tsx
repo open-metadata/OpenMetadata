@@ -46,6 +46,7 @@ import { Persona } from '../../../generated/entity/teams/persona';
 import { PersonaContextStatus } from '../../../generated/type/personaContextStatus';
 import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import {
   getAllPersonas,
   getPersonaAIContextStatus,
@@ -66,6 +67,7 @@ const CHARS_PER_TOKEN = 4;
 
 const ContextCenterAIContextPage = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const pageLayoutClassNames = useContextCenterPageLayout();
   const navigate = useNavigate();
   const { isAdminUser } = useAuth();
@@ -256,16 +258,10 @@ const ContextCenterAIContextPage = () => {
               theme="light"
             />
             <Box className="tw:min-w-0" direction="col">
-              <Typography
-                ellipsis
-                className="tw:text-primary"
-                weight="semibold">
+              <Typography ellipsis weight="medium">
                 {getEntityName(persona)}
               </Typography>
-              <Typography
-                ellipsis
-                className="tw:font-mono tw:text-tertiary"
-                size="text-sm">
+              <Typography ellipsis color="secondary" size="text-xs">
                 {persona.name}
               </Typography>
             </Box>
@@ -301,7 +297,9 @@ const ContextCenterAIContextPage = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-ai-context-page">
       <DocumentTitle title={t('label.ai-context')} />
       <PageLayout

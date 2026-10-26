@@ -15,6 +15,7 @@ import { Link01 } from '@openmetadata/ui-core-components/icons';
 import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Hyperlink } from '../../../../../generated/type/customProperties/complexTypes';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import { getHyperlinkUrlValidationErrorKey } from '../../../../../utils/CustomProperty.utils';
 import {
   CustomPropertyRenderer,
@@ -49,12 +50,18 @@ const HyperlinkPropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const hyperlink = (value ?? {}) as Partial<Hyperlink>;
   const [url, setUrl] = useState(hyperlink.url ?? '');
   const [displayText, setDisplayText] = useState(hyperlink.displayText ?? '');
   const [urlError, setUrlError] = useState<string>();
+
+  useReportDirty(
+    { url: url.trim(), displayText: displayText.trim() },
+    onDirtyChange
+  );
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
