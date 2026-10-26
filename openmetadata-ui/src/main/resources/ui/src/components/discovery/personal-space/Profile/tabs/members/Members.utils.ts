@@ -37,10 +37,10 @@ import type {
 } from './Members.types';
 import {
   TASKS_TAB,
-  TEAM_TAB_SUBPAGE,
   TEAMS_ADD,
   TEAMS_IMPORT,
   TEAM_DETAIL,
+  TEAM_TAB_SUBPAGE,
   USER_DETAIL,
 } from './membersRoute.utils';
 
