@@ -188,6 +188,10 @@ const columnOf = (parent: string, columns: Column[]): ChildServer => {
 const at = (route: string, fqn?: string) =>
   `/${route}/${encodeURIComponent(fqn ?? '')}`;
 
+// The flows edit the first column only; a short schema keeps every re-render
+// of the columns table cheap (120 columns made each Table test ~2x slower).
+const STEWARD_COLUMNS = ALL_COLUMNS.slice(0, 15);
+
 const ENTITIES: EntityConfig[] = [
   {
     label: 'ApiEndpoint',
@@ -213,11 +217,11 @@ const ENTITIES: EntityConfig[] = [
         http.get('/api/v1/queries', () => HttpResponse.json(EMPTY_LIST))
       );
 
-      return columnOf('tables', ALL_COLUMNS);
+      return columnOf('tables', STEWARD_COLUMNS);
     },
     children: {
       tabId: 'schema',
-      rowId: ALL_COLUMNS[0].fullyQualifiedName ?? '',
+      rowId: STEWARD_COLUMNS[0].fullyQualifiedName ?? '',
       displayName: true,
     },
   },

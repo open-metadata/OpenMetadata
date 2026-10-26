@@ -80,6 +80,12 @@ export default defineConfig(async (env) => {
         include: ['src/**/*.browser.test.{ts,tsx}'],
         setupFiles: ['src/test/browser/setup.ts'],
         testTimeout: 15_000,
+        // Reuse each worker's page across files: the app's module graph loads
+        // once per worker instead of once per file (~10 s each). Tests stay
+        // independent through setup.ts (unmount, handler reset, URL and
+        // localStorage reset); CI's shuffled stability runs guard against
+        // order-dependent leaks.
+        isolate: false,
         browser: {
           enabled: true,
           headless,
