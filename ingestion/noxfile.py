@@ -12,7 +12,10 @@
 Nox sessions for testing and formatting checks.
 """
 
+import importlib.util
 import os
+import shlex
+from pathlib import Path
 
 import nox
 from nox.virtualenv import PassthroughEnv
@@ -37,10 +40,34 @@ def get_python_versions():
     return SUPPORTED_PYTHON_VERSIONS
 
 
-def install(session, *args, **kwargs):
-    """Install packages unless running with --no-venv (packages already installed)."""
-    if not isinstance(session.virtualenv, PassthroughEnv):
-        session.install(*args, **kwargs)
+INGESTION_ROOT = Path(__file__).resolve().parent
+nox.options.envdir = str(INGESTION_ROOT / ".nox")
+ROOT = INGESTION_ROOT.parent
+SPEC = importlib.util.spec_from_file_location("python_environment", ROOT / "scripts/python_environment.py")
+ENVIRONMENT = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(ENVIRONMENT)
+
+
+def prepare(session, profile):
+    """Synchronize the locked profile into the selected Nox environment."""
+    session.chdir(INGESTION_ROOT)
+    path = (
+        ENVIRONMENT.default_environment(profile)
+        if isinstance(session.virtualenv, PassthroughEnv)
+        else Path(session.virtualenv.location).resolve()
+    )
+    session.run(
+        "python",
+        str(ROOT / "scripts/python_environment.py"),
+        "--profile",
+        profile,
+        "--environment",
+        str(path),
+        external=True,
+    )
+    session.env["VIRTUAL_ENV"] = str(path)
+    session.env["PATH"] = str(path / "bin") + os.pathsep + os.environ["PATH"]
+    return path
 
 
 @nox.session(
@@ -49,61 +76,11 @@ def install(session, *args, **kwargs):
     venv_backend="uv|venv",
 )
 def lint(session):
-    # Single-tool replacement for the old black + isort + pycln stack.
-    # Mirrors `make py_format_check` so local nox and Makefile stay in sync.
-    install(session, ".[dev]")
-    session.run("ruff", "check", ".", "../openmetadata-airflow-apis/")
-    session.run("python", "scripts/check_ruff_suppressions.py", "--check")
-    session.run("ruff", "format", "--check", ".", "../openmetadata-airflow-apis/")
-
-
-@nox.session(name="unit", reuse_venv=True, venv_backend="uv|venv", python=get_python_versions())
-def unit(session):
-    session.install(".[all-dev-env, test-unit]")
-    # TODO: we need to install pip so that spaCy can install its dependencies
-    #       we should find a way to avoid this
-    session.install("pip")
-
-    # TODO: We need to remove ignored test once they can be run properly within nox
-    # Run unit tests
-    ignored_tests = [
-        "test_ometa_endpoints.py",
-        "test_ometa_mlmodel.py",
-        "test_dbt.py",
-        "test_sample_usage.py",
-        "test_ssl_manager.py",
-        "test_usage_filter.py",
-        "test_suite/",
-        "profiler/test_profiler_partitions.py",
-        "profiler/test_workflow.py",
-        "workflow",
-        "topology",
-    ]
-    ignore_args = [f"--ignore=tests/unit/{test}" for test in ignored_tests]
-
-    # run pytest with the ignore arguments and in parallel mode
-    session.run("pytest", "tests/unit/", *ignore_args)
-
-
-# TEST PLUGINS
-PLUGINS_TESTS = {
-    "great-expectations": "tests/unit/great_expectations",
-}
-PLUGINS = list(PLUGINS_TESTS.keys())
-
-
-@nox.session(
-    name="unit-plugins",
-    reuse_venv=False,
-    venv_backend="uv|venv",
-    python=get_python_versions(),
-)
-@nox.parametrize("plugin", PLUGINS)
-def unit_plugins(session, plugin):
-    session.install(".[test-unit]")
-    session.install(f".[{plugin}]")
-    # Assuming the plugin has its own tests in a specific directory
-    session.run("pytest", PLUGINS_TESTS[plugin])
+    path = prepare(session, "style")
+    runner = shlex.join(
+        [str(path / "bin/python"), str(ROOT / "scripts/python_environment.py"), "--environment", str(path)]
+    )
+    session.run("make", "py_format_check", f"PYTHON_RUN={runner}", external=True)
 
 
 # ---------------------------------------------------------------------------
@@ -116,7 +93,7 @@ def unit_plugins(session, plugin):
     python=get_python_versions(),
 )
 def static_checks(session):
-    install(session, ".[dev]")
+    prepare(session, "test")
     # `--baselinemode=discard` fails the run on any *new* error not in the
     # baseline (early-return path in basedpyright's BaselineHandler.write)
     # while tolerating baseline entries that don't fire on the current
@@ -152,18 +129,13 @@ def unit_tests(session):
         nox -s unit-tests -- -k test_name # run specific test
         nox -s unit-tests -- tests/unit/topology/  # run specific directory
     """
-    install(session, ".[dev]")
-    install(session, ".[all]")
-    install(session, ".[test]")
-
-    # Separate test paths from pytest flags in posargs
-    args = list(session.posargs)
-    test_paths = [a for a in args if not a.startswith("-")]
-    extra_flags = [a for a in args if a.startswith("-")]
+    prepare(session, "test")
 
     pytest_args = [
         "-c",
         "pyproject.toml",
+        "-o",
+        "testpaths=tests/unit/",
         "--cov=metadata",
         "--cov-branch",
         "--cov-config=pyproject.toml",
@@ -177,8 +149,7 @@ def unit_tests(session):
         "--durations=20",
     ]
 
-    pytest_args.extend(test_paths or ["tests/unit/"])
-    pytest_args.extend(extra_flags)
+    pytest_args.extend(session.posargs)
 
     session.run("pytest", *pytest_args)
 
@@ -202,8 +173,7 @@ def integration_tests(session):
         nox -s integration-tests                   # local, appends to .coverage
         nox -s integration-tests -- --standalone   # CI, standalone .coverage
     """
-    install(session, ".[all]")
-    install(session, ".[test]")
+    prepare(session, "test")
 
     args = list(session.posargs)
     standalone = "--standalone" in args
@@ -216,13 +186,11 @@ def integration_tests(session):
         workers = args[idx + 1]
         args = args[:idx] + args[idx + 2 :]
 
-    # Separate test paths from pytest flags in posargs
-    test_paths = [a for a in args if not a.startswith("-")]
-    extra_flags = [a for a in args if a.startswith("-")]
-
     pytest_args = [
         "-c",
         "pyproject.toml",
+        "-o",
+        "testpaths=tests/integration/",
         "--cov=metadata",
         "--cov-branch",
         "--cov-config=pyproject.toml",
@@ -235,8 +203,7 @@ def integration_tests(session):
     if use_xdist:
         pytest_args.extend([f"-n{workers}", "--dist=loadgroup"])
 
-    pytest_args.extend(test_paths or ["tests/integration/"])
-    pytest_args.extend(extra_flags)
+    pytest_args.extend(args)
 
     session.run("pytest", *pytest_args)
 
@@ -258,7 +225,7 @@ def combine_coverage(session):
     Example:
         nox -s combine-coverage
     """
-    install(session, "coverage[toml]")
+    prepare(session, "coverage")
     session.run("coverage", "combine")
     session.run(
         "coverage",

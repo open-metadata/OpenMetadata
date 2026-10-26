@@ -1,0 +1,47 @@
+name: Python dependency canary
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: python-dependency-canary
+  cancel-in-progress: false
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PYTHON_VERSIONS: '3.10'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Prepare Python and native prerequisites
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: '3.10'
+          install-server: 'false'
+          python-profile: dev
+      - name: Resolve and test an isolated candidate
+        run: >-
+          python scripts/refresh_python_dependencies.py --all
+          --output-dir "$RUNNER_TEMP/python-dependency-canary" --
+          python scripts/python_environment.py --profile test --cwd ingestion --
+          nox --no-venv -s unit-tests -- -n 2
+          tests/unit/test_python_environments.py tests/unit/test_python_tooling.py
+          tests/unit/test_coverage_reporting.py tests/unit/source/database/db2/test_connection.py
+          tests/unit/source/database/doris/test_connection.py tests/unit/source/mlmodel/mlflow/test_serialization.py
+      - name: Retain candidate evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: python-dependency-candidate
+          path: |
+            ${{ runner.temp }}/python-dependency-canary/report.json
+            ${{ runner.temp }}/python-dependency-canary/accepted.uv.lock
+            ${{ runner.temp }}/python-dependency-canary/candidate.uv.lock
+            ${{ runner.temp }}/python-dependency-canary/*.log
+          if-no-files-found: error
+          retention-days: 14

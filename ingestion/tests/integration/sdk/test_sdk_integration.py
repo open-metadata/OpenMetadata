@@ -7,10 +7,12 @@ fluent SDK classes only.
 
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Iterable  # noqa: TC003
 from types import SimpleNamespace
 from typing import Any
+from uuid import uuid4
 
 import pytest
 
@@ -19,6 +21,9 @@ from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.api.data.createCustomProperty import (
+    CreateCustomPropertyRequest,
+)
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -65,6 +70,10 @@ from metadata.generated.schema.type.tagLabel import (
     State,
     TagLabel,
     TagSource,
+)
+from metadata.ingestion.models.custom_properties import (
+    CustomPropertyDataTypes,
+    OMetaCustomProperties,
 )
 from metadata.sdk.api.lineage import Lineage
 from metadata.sdk.api.search import Search
@@ -266,6 +275,41 @@ def sdk_test_data():
 @pytest.fixture(scope="function")
 def test_table_name():
     return f"test_table_{int(time.time() * 1000)}"
+
+
+@pytest.fixture
+def sdk_custom_properties(metadata, request):
+    names = {key: f"sdk_{key}_{uuid4().hex}" for key in ("department", "priority")}
+    property_type = metadata.get_property_type_ref(CustomPropertyDataTypes.STRING)
+
+    def remove_property(name):
+        table_type = metadata.client.get("/metadata/types/name/table?fields=customProperties")
+        for index, prop in enumerate(table_type.get("customProperties") or []):
+            if prop["name"] == name:
+                metadata.client.patch(
+                    f"/metadata/types/{table_type['id']}",
+                    data=json.dumps(
+                        [
+                            {"op": "test", "path": f"/customProperties/{index}/name", "value": name},
+                            {"op": "remove", "path": f"/customProperties/{index}"},
+                        ]
+                    ),
+                )
+                break
+
+    for name in names.values():
+        request.addfinalizer(lambda name=name: remove_property(name))
+        metadata.create_or_update_custom_property(
+            OMetaCustomProperties(
+                entity_type=Table,
+                createCustomPropertyRequest=CreateCustomPropertyRequest(
+                    name=name,
+                    description="SDK integration test property",
+                    propertyType=property_type,
+                ),
+            )
+        )
+    return names
 
 
 class TestSDKIntegration:
@@ -684,28 +728,34 @@ class TestSDKIntegration:
             om.Tables.delete(str(target.id.root), hard_delete=True)
             om.Tables.delete(str(source.id.root), hard_delete=True)
 
-    def test_custom_properties_with_pydantic_uuid(self, sdk_test_data, test_table_name) -> None:
+    def test_custom_properties_with_pydantic_uuid(self, sdk_test_data, test_table_name, sdk_custom_properties) -> None:
         table = self._create_basic_table(sdk_test_data, test_table_name)
+        department = sdk_custom_properties["department"]
+        priority = sdk_custom_properties["priority"]
         try:
             updated = (
-                om.Tables.update_custom_properties(table.id).with_property("department", "Data Engineering").execute()
+                om.Tables.update_custom_properties(table.id).with_property(department, "Data Engineering").execute()
             )
             assert updated is not None
             ext = getattr(updated, "extension", None)
             assert ext is not None
             root = getattr(ext, "root", ext)
-            assert root.get("department") == "Data Engineering"
+            assert root.get(department) == "Data Engineering"
 
             updated2 = (
                 om.Tables.update_custom_properties(table.id)
-                .with_property("department", "Analytics")
-                .with_property("priority", "high")
+                .with_property(department, "Analytics")
+                .with_property(priority, "high")
                 .execute()
             )
+            assert updated2 is not None
             ext2 = getattr(updated2, "extension", None)
             root2 = getattr(ext2, "root", ext2)
-            assert root2.get("department") == "Analytics"
-            assert root2.get("priority") == "high"
+            assert root2.get(department) == "Analytics"
+            assert root2.get(priority) == "high"
+            persisted = om.Tables.retrieve(table.id, fields=["extension"])
+            assert persisted.extension.root[department] == "Analytics"
+            assert persisted.extension.root[priority] == "high"
         finally:
             om.Tables.delete(str(table.id.root), hard_delete=True)
 

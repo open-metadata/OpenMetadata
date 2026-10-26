@@ -6,8 +6,10 @@ version: 2
 # Settings -> Code security -> Dependabot -> "Manage rules".
 
 updates:
-  - package-ecosystem: "pip"
-    directory: "/ingestion"
+  - package-ecosystem: "uv"
+    directories:
+      - "/ingestion"
+      - "/ingestion/images/runtime"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -15,16 +17,29 @@ updates:
     labels:
       - "dependencies"
       - "python"
+    # setup.py retains shared constraints; lock-only updates include its resolved graph.
+    versioning-strategy: "lockfile-only"
+    allow:
+      - dependency-type: "all"
     groups:
-      python-minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
-    ignore:
-      # urllib3 is pinned <2.0 transitively via tableauserverclient==0.25.
-      # See ingestion/setup.py comment on the tableau pin.
-      - dependency-name: "urllib3"
-        versions: [">=2.0.0"]
+      python-tooling-minor-patch:
+        patterns:
+          - "ruff"
+          - "basedpyright"
+          - "pytest*"
+          - "nox"
+          - "coverage"
+          - "pre-commit"
+          - "datamodel-code-generator"
+          - "uvloop"
+          - "build"
+          - "twine"
+          - "*stubs*"
+          - "types-*"
+        update-types: ["minor", "patch"]
+      python-runtime-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: "maven"
     directory: "/"

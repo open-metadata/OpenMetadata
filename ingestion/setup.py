@@ -206,9 +206,9 @@ base_requirements = {
     "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
     "lxml>=6.1.0",  # CVE-2026-41066 iterparse/ETCompatXMLParser XXE
     "Mako>=1.3.12",  # CVE-2026-44307 TemplateLookup path traversal
-    "memory-profiler",
     "mistune>=3.3.3",  # CVE-2026-49851 link parsing ReDoS; CVE-2026-76098 emphasis recursion DoS
     "mypy_extensions>=0.4.3",
+    "psutil",
     "PyJWT>=2.15.0",  # CVE-2026-48522/48523/48525/48526; CVE-2026-101918/102275 payload recursion and JWK key confusion
     VERSIONS["pydantic"],
     VERSIONS["pydantic-settings"],
@@ -296,7 +296,6 @@ plugins: dict[str, set[str]] = {
         "dagster_graphql>=1.8.0",
     },
     "dbt": {
-        "google-cloud",
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
         "collate-dbt-artifacts-parser",
@@ -509,23 +508,6 @@ dev = {
     # For publishing
     "twine",
     "build",
-    *plugins["sample-data"],
-}
-
-# Dependencies for unit testing in addition to dev dependencies and plugins
-test_unit = {
-    "pytest==7.0.1",
-    "pytest-cov",
-    "pytest-order",
-    "pytest-rerunfailures",
-    "pytest-timeout~=2.4",
-    "dirty-equals",
-    "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
-    # TODO: Remove once no unit test requires testcontainers
-    "testcontainers",
-    VERSIONS["factory-boy"],
-    *plugins["exasol"],
-    *plugins["teradata"],
 }
 
 exasol_test = {
@@ -653,16 +635,10 @@ setup(
     extras_require={
         "dev": list(dev),
         "test": list(test),
-        "test-unit": list(test_unit),
         "e2e_test": list(e2e_test),
         "exasol-test": list(exasol_test),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
-        # FIXME: all-dev-env is a temporary solution to install all dependencies except
-        #   those that might conflict with each other or cause issues in the dev environment
-        #   This covers all development cases where none of the plugins are used
-        "all-dev-env": filter_requirements({"airflow", "db2", "great-expectations", "pymssql"}),
-        # enf-of-fixme
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
         "playwright": list(playwright_dependencies),
         "slim": filter_requirements(

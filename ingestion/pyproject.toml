@@ -20,6 +20,147 @@ Homepage = "https://open-metadata.org/"
 Documentation = "https://docs.open-metadata.org/"
 Source = "https://github.com/open-metadata/OpenMetadata"
 
+[dependency-groups]
+api = [{ include-group = "test" }, "openmetadata-managed-apis"]
+
+style = [
+    { include-group = "environment-check" },
+    "ruff~=0.15.12",
+]
+
+dev = [
+    { include-group = "style" },
+    { include-group = "generation" },
+    "boto3-stubs",
+    "mypy-boto3-glue",
+    "google-api-python-client-stubs",
+    "google-auth-stubs",
+    "types-requests",
+    "pandas-stubs~=2.2",
+    "scipy-stubs",
+    "nox",
+    "pre-commit",
+    "basedpyright==1.39.3",
+    "import-linter~=2.13",
+    "twine",
+    "build",
+]
+
+test = [
+    { include-group = "dev" },
+    { include-group = "coverage" },
+    { include-group = "dialect-compat" },
+    { include-group = "exasol-test" },
+    "pytest==7.0.1",
+    "pytest-cov",
+    "pytest-xdist~=3.5",
+    "pytest-order",
+    "pytest-rerunfailures",
+    "pytest-timeout~=2.4",
+    "dirty-equals",
+    "freezegun",
+    "faker==37.1.0",
+    "factory-boy~=3.3.3",
+    "testcontainers~=4.8.0",
+    "skops",
+    "socksio==1.*",
+    "minio==7.2.5",
+    "kafka-python==2.3.2",
+    "locust~=2.32.0",
+]
+
+exasol-test = [
+    "exasol-integration-test-docker-environment>=6.0.0,<7",
+    "luigi>=2.8.4,<=3.6.0",
+]
+
+generation = [
+    { include-group = "environment-check" },
+    "uvloop==0.21.0",
+    "datamodel-code-generator==0.83.0",
+]
+
+coverage = [{ include-group = "environment-check" }, "coverage[toml]"]
+
+environment-check = ["packaging", "pip", "uv==0.13.4", "tomli>=2; python_version < '3.11'"]
+
+dialect-compat = ["sqlalchemy-ibmi==0.9.3"]
+
+[tool.uv]
+required-version = "==0.13.4"
+default-groups = []
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64' and python_version >= '3.10' and python_version < '3.13'",
+    "sys_platform == 'linux' and platform_machine == 'aarch64' and python_version >= '3.10' and python_version < '3.13'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64' and python_version >= '3.10' and python_version < '3.13'",
+]
+
+# The existing DB2 shim adapts this exact release's SQLAlchemy 1.x call sites.
+[[tool.uv.dependency-metadata]]
+name = "sqlalchemy-ibmi"
+version = "0.9.3"
+requires-dist = ["pyodbc>=4.0", "sqlalchemy>=2.0,<2.1"]
+
+[tool.openmetadata.python-environments]
+uv-version = "0.13.4"
+python-versions = ["3.10", "3.11", "3.12"]
+platforms = ["linux-x86_64", "linux-aarch64", "darwin-arm64"]
+forbidden-packages = ["pydoris-custom"]
+
+[tool.openmetadata.python-environments.profiles.runtime]
+groups = ["environment-check"]
+extras = []
+install-project = true
+
+[tool.openmetadata.python-environments.profiles.all]
+groups = ["environment-check"]
+extras = ["all"]
+install-project = true
+
+[tool.openmetadata.python-environments.profiles.api]
+groups = ["api"]
+extras = ["all", "airflow", "great-expectations"]
+install-project = true
+
+[tool.openmetadata.python-environments.profiles.style]
+groups = ["style"]
+extras = []
+install-project = false
+
+[tool.openmetadata.python-environments.profiles.generation]
+groups = ["generation"]
+extras = []
+install-project = false
+
+[tool.openmetadata.python-environments.profiles.dev]
+groups = ["dev"]
+extras = []
+install-project = true
+
+[tool.openmetadata.python-environments.profiles.test]
+groups = ["test"]
+extras = ["all", "airflow", "great-expectations"]
+install-project = true
+
+[tool.openmetadata.python-environments.profiles.coverage]
+groups = ["coverage"]
+extras = []
+install-project = false
+
+[[tool.openmetadata.python-environments.metadata-exceptions]]
+package = "sqlalchemy-ibmi"
+version = "0.9.3"
+dependency = "sqlalchemy"
+declared = ">=1.3.0,<2.0"
+accepted = ">=2.0,<2.1"
+regression = "tests/unit/source/database/db2/test_connection.py"
+
+[tool.openmetadata.python-environments.classification-models]
+languages = ["en", "es", "it", "pl"]
+provision-command = "metadata install-classification-models --languages en,es,it,pl"
+registry = "src/metadata/pii/model_registry.py"
+preserve-on-sync = false
+
 [tool.setuptools.dynamic]
 readme = { file = ["README.md"] }
 
@@ -81,7 +222,7 @@ markers = [
 ]
 
 # Skip tests that are known to fail or are not ready to run until issue #21736 is solved
-addopts = "--ignore=ingestion/tests/integration/sources/mlmodels/mlflow/test_mlflow.py"
+addopts = "--ignore=ingestion/tests/integration/sources/mlmodels/mlflow/test_mlflow.py --ignore=tests/integration/sources/mlmodels/mlflow/test_mlflow.py"
 [project.entry-points.pytest11]
 pytest_openmetadata = "_openmetadata_testutils.pytest_openmetadata.plugin"
 
@@ -370,3 +511,6 @@ allowedUntypedLibraries = []
 # [[tool.basedpyright.executionEnvironments]]
 # root = "src/metadata/utils"
 # reportMissingParameterType = "error"
+
+[tool.uv.sources]
+openmetadata-managed-apis = { path = "../openmetadata-airflow-apis", editable = true }

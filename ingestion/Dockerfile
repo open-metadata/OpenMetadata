@@ -1,9 +1,36 @@
-ARG BASE_IMAGE=apache/airflow:3.3.2-python3.12
-FROM mysql:8.3 AS mysql
+ARG BASE_IMAGE=apache/airflow:3.3.2-python3.12@sha256:9df9c8be4096b9cc626bd7cb1f2b8c712eef66c59c615f8c7e6200871ca10bd1
+ARG RI_VERSION="2.0.0.0.dev0"
+ARG INGESTION_DEPENDENCY="all"
+FROM python:3.12-slim-trixie@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2 AS packages
+ARG RI_VERSION
+ARG INGESTION_DEPENDENCY
+RUN apt-get -qq update \
+    && apt-get -qq install -y --no-install-recommends default-jre-headless make curl ca-certificates unzip \
+    && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=bind,source=ingestion/scripts/patch_python_seeds.py,target=/tmp/patch_python_seeds.py \
+    /usr/local/bin/python -m pip download --no-cache-dir --no-deps --dest /tmp/python-pip "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" \
+    && /usr/local/bin/python -m pip install --no-cache-dir --upgrade /tmp/python-pip/*.whl \
+    && /usr/local/bin/python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" "uv>=0.13.4" \
+    && /usr/local/bin/python /tmp/patch_python_seeds.py /tmp/python-pip/pip-26.2.2-py3-none-any.whl \
+    && rm -rf /tmp/python-pip
+WORKDIR /build
+COPY Makefile /build/Makefile
+COPY ingestion /build/ingestion
+COPY openmetadata-spec /build/openmetadata-spec
+COPY openmetadata-airflow-apis /build/openmetadata-airflow-apis
+COPY scripts /build/scripts
+ENV PATH="/build/ingestion/.nox/generation/bin:${PATH}"
+RUN make install_antlr_cli \
+    && python scripts/python_environment.py --profile generation -- \
+       python scripts/build_python_artifacts.py build --output-dir /artifacts --expected-version "${RI_VERSION}"
+RUN python scripts/python_image_environment.py export --artifacts /artifacts \
+    --kind airflow --extras "${INGESTION_DEPENDENCY}" --output-dir /artifacts/runtime
+
+FROM mysql:8.3@sha256:9de9d54fecee6253130e65154b930978b1fcc336bcc86dfd06e89b72a2588ebe AS mysql
 
 FROM ${BASE_IMAGE}
 
-# gRPC ships a separate CA bundle that can lag behind OS distrust updates.
+# gRPC uses the updated OS trust store.
 ENV GRPC_DEFAULT_SSL_ROOTS_FILE_PATH=/etc/ssl/certs/ca-certificates.crt
 USER root
 RUN apt-get -qq update \
@@ -89,10 +116,10 @@ RUN arch="$(uname -m)"; \
     if [ "$arch" = "arm64" ] || [ "$arch" = "aarch64" ]; \
   then \
   wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
-  unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+  sha256sum /oracle-instantclient.zip > /oracle-instantclient.sha256 && unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
   else \
   wget -q https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
-  unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+  sha256sum /oracle-instantclient.zip > /oracle-instantclient.sha256 && unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
   fi
 
 ENV LD_LIBRARY_PATH=/instantclient
@@ -117,46 +144,30 @@ COPY --chown=airflow:0 ingestion/examples/sample_data /home/airflow/ingestion/ex
 # Required for Airflow DAGs of Sample Data
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 
-USER airflow
-# Argument to provide for Ingestion Dependencies to install. Defaults to all
-ARG INGESTION_DEPENDENCY="all"
-
-# Disable pip cache dir
-# https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching
+# The base interpreter is outside the isolated application environment.
+USER root
+COPY --from=packages /build/ingestion/.nox/generation/bin/uv /usr/local/bin/uv
+COPY --from=packages /artifacts/runtime /opt/openmetadata-runtime
+COPY --from=packages /build/scripts/python_artifact_smoke.py /opt/openmetadata-runtime/smoke.py
+ENV UV_NO_CACHE=1
+RUN uv pip install --system --python /usr/local/bin/python --require-hashes -r /opt/openmetadata-runtime/bootstrap-tools.txt
+RUN uv venv --python /usr/local/bin/python /opt/openmetadata \
+    && chown -R airflow:0 /opt/openmetadata
+ENV VIRTUAL_ENV=/opt/openmetadata
+ENV PATH="/opt/openmetadata/bin:${PATH}"
 ENV PIP_NO_CACHE_DIR=1
-# Make pip silent
 ENV PIP_QUIET=1
-ARG RI_VERSION="2.0.0.0.dev0"
-RUN python -m pip install --no-cache-dir --upgrade "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" \
-    && python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" "uv>=0.13.4" \
-    && pip install --upgrade "setuptools>=83"
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint /opt/openmetadata/python-tls/airflow-constraints.txt
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
-
-
-# Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
-RUN [ $(uname -m) = "x86_64" ] \
-  && pip install "openmetadata-ingestion[db2]~=${RI_VERSION}" \
-  || echo "DB2 not supported on ARM architectures."
-
-# Ship py-spy so a hung worker can be sampled in place
-# (`py-spy dump --pid <pid>`) without first installing anything in the pod.
-# Container-only — kept out of setup.py to avoid forcing a native binary on
-# dev laptops / CI / non-container installs.
-RUN pip install "py-spy>=0.3.14"
-
-# bump python-daemon for https://github.com/apache/airflow/pull/29916
-RUN pip install "python-daemon>=3.0.0"
-# Keep SMTP and standard providers required by Airflow core, alongside our runtime providers.
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard|smtp" | xargs pip uninstall -y
-# The removed Amazon provider was the only consumer of this driver.
-RUN pip uninstall -y redshift-connector
-# Uninstalling psycopg2-binary and installing psycopg2 instead 
-# because the psycopg2-binary generates a architecture specific error 
-# while authenticating connection with the airflow, psycopg2 solves this error
-RUN pip uninstall psycopg2-binary -y
-RUN pip install psycopg2 mysqlclient==2.1.1
-
+ENV CFLAGS="-Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=int-conversion"
+USER airflow
+RUN uv pip sync --python /opt/openmetadata/bin/python --require-hashes \
+      --build-constraint /opt/openmetadata-runtime/build-constraints.txt \
+      /opt/openmetadata-runtime/requirements.txt
+COPY --from=packages /artifacts/*.whl /opt/openmetadata-artifacts/
+ARG RI_VERSION
+RUN uv pip install --python /opt/openmetadata/bin/python --no-deps --no-index \
+      --find-links /opt/openmetadata-artifacts "openmetadata-ingestion==${RI_VERSION}" "openmetadata-managed-apis==${RI_VERSION}" \
+    && python -I /opt/openmetadata-runtime/smoke.py --version "${RI_VERSION}" --managed-api \
+       --policy /opt/openmetadata-runtime/policy.json
 
 # Models are opt-in so the default image remains unchanged. Run this after the
 # package installs and before the spaCy cleanup below, while using the runtime user.
@@ -184,6 +195,7 @@ USER root
 RUN apt-mark manual libpq5 libmariadb3 mariadb-common libgcc-s1 libstdc++6 libgomp1 xz-utils bzip2 make \
   && apt-get -qq purge -y --autoremove build-essential gcc default-libmysqlclient-dev libpq-dev freetds-bin \
   && rm -rf /var/lib/apt/lists/*
+RUN dpkg-query -W > /opt/openmetadata-runtime/native-packages.txt
 USER airflow
 RUN python -c "import MySQLdb, psycopg2"
 
@@ -195,5 +207,4 @@ RUN airflow db migrate && rm -f /opt/airflow/airflow.db
 ENV PREK_NATIVE_TLS=true
 RUN python -m pip --python /home/airflow/.local/share/uv/tools/prek/bin/python install --upgrade "uv>=0.13.4"
 RUN --mount=type=bind,source=ingestion/scripts/patch_python_seeds.py,target=/tmp/patch_python_seeds.py \
-    python -m pip install --no-cache-dir --upgrade "virtualenv>=21.14.12" \
-    && python /tmp/patch_python_seeds.py
+    python /tmp/patch_python_seeds.py

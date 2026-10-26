@@ -45,6 +45,19 @@ jobs:
               - 'ingestion/**'
               - 'openmetadata-airflow-apis/**'
               - 'openmetadata-spec/**'
+              - 'scripts/python_environment.py'
+              - 'scripts/check_generated_models.py'
+              - 'scripts/generate_ingestion_models.py'
+              - 'scripts/datamodel_generation.py'
+              - 'scripts/refresh_python_dependencies.py'
+              - 'scripts/review_python_constraints.py'
+              - 'scripts/build_python_artifacts.py'
+              - 'scripts/python_artifact_smoke.py'
+              - 'scripts/python_image_environment.py'
+              - 'Makefile'
+              - '.github/scripts/python_ci.py'
+              - '.github/actions/setup-python-environment/**'
+              - '.github/workflows/py-checkstyle.yml'
 
       - name: Resolve Python check scope
         id: scope
@@ -75,21 +88,12 @@ jobs:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
           persist-credentials: false
-      - name: Set up Python 3.10
+      - name: Setup locked style profile
         if: ${{ steps.scope.outputs.python == 'true' }}
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        uses: ./.github/actions/setup-python-environment
         with:
           python-version: '3.10'
-
-      - name: Install uv
-        if: ${{ steps.scope.outputs.python == 'true' }}
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
-
-      - name: Install Ruff
-        if: ${{ steps.scope.outputs.python == 'true' }}
-        run: |
-          uv venv env --python 3.10
-          uv pip install --python env/bin/python "ruff~=0.15.12"
+          profile: style
 
       # Add back linting once we have 10/10 on main
       - name: Code style check
@@ -97,7 +101,6 @@ jobs:
         if: ${{ steps.scope.outputs.python == 'true' }}
         continue-on-error: true
         run: |
-          source env/bin/activate
           make py_format_check
 
       - name: Create a comment in the PR with the instructions

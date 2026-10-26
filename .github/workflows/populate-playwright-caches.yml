@@ -39,12 +39,8 @@
 #                which runs it for its cache side effects and stops before the
 #                shards. The commit was already tested by the queue entry that
 #                produced it; re-running the suite on main proves nothing.
-#   warm-venv    the ingestion Python venv, one per py-tests matrix version.
-#                py-tests-shared.yml, playwright-visual.yml and the knowledge-
-#                graph e2e all restore it, but none of them run on push, so
-#                until 2026-09-29 main never held a copy: every PR built its
-#                own ~300 MB entry under its PR ref, and merge_group always
-#                built cold. Calls the composite exactly as py-tests does.
+#   warm-venv    locked profiles for the interpreter versions their consumers use,
+#                using the same action and exact keys as routine consumers.
 #
 # Keeping all three tiers here is deliberate. A second warmer workflow would be a
 # second writer, which is exactly the drift the one-writer rule above prevents:
@@ -254,24 +250,36 @@ jobs:
       coarse_bundle: true
   warm-venv:
     concurrency:
-      group: populate-playwright-caches-venv-${{ matrix.py-version }}
+      group: populate-playwright-caches-venv-${{ matrix.py-version }}-${{ matrix.profile }}
       cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        py-version: ["3.10", "3.11", "3.12"]
+        include:
+          - {py-version: "3.10", profile: test}
+          - {py-version: "3.11", profile: test}
+          - {py-version: "3.12", profile: test}
+          - {py-version: "3.10", profile: api}
+          - {py-version: "3.10", profile: dev}
+          - {py-version: "3.10", profile: style}
+          - {py-version: "3.10", profile: coverage}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-      # The composite's own "Save ingestion Python venv" step is the writer;
-      # it is gated off merge_group / pull_request, so push and schedule here
-      # are the only events that populate the main-scoped key.
-      - name: Warm ingestion Python venv (main-scoped writer)
+      - name: Warm locked application profile with native prerequisites
+        if: matrix.profile == 'test' || matrix.profile == 'api' || matrix.profile == 'dev'
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: ${{ matrix.py-version }}
           install-server: 'false'
+          python-profile: ${{ matrix.profile }}
+      - name: Warm locked tool profile
+        if: matrix.profile == 'style' || matrix.profile == 'coverage'
+        uses: ./.github/actions/setup-python-environment
+        with:
+          python-version: ${{ matrix.py-version }}
+          profile: ${{ matrix.profile }}

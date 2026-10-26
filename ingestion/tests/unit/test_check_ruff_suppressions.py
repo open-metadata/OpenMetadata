@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import json
+import os
+import shutil
+import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
@@ -25,6 +29,7 @@ from ingestion.scripts.check_ruff_suppressions import (
     run_policy,
     write_baseline,
 )
+from ingestion.tests.utils.python_tooling import prepare_locked_tooling
 
 
 def _write_repo(tmp_path: Path, source: str) -> tuple[Path, Path]:
@@ -37,6 +42,7 @@ def _write_repo(tmp_path: Path, source: str) -> tuple[Path, Path]:
         """
 [tool.ruff]
 target-version = "py310"
+line-length = 120
 
 [tool.ruff.lint]
 select = ["UP"]
@@ -53,6 +59,55 @@ def _ruff_executable() -> str:
     executable = Path(sys.executable).with_name("ruff")
     assert executable.exists()
     return str(executable)
+
+
+def _prepare_make_repo(repo_root: Path, monkeypatch) -> None:
+    source_root = Path(__file__).resolve().parents[3]
+    shutil.copyfile(source_root / "ingestion/Makefile", repo_root / "ingestion/Makefile")
+    scripts = repo_root / "ingestion/scripts"
+    scripts.mkdir()
+    shutil.copyfile(
+        source_root / "ingestion/scripts/check_ruff_suppressions.py", scripts / "check_ruff_suppressions.py"
+    )
+    (repo_root / "Makefile").write_text("include ingestion/Makefile\n")
+    monkeypatch.setenv("PATH", str(Path(sys.executable).parent) + os.pathsep + os.environ["PATH"])
+    prepare_locked_tooling(repo_root, monkeypatch)
+
+
+@pytest.mark.parametrize("directory", [".", "ingestion"])
+def test_make_format_check_enforces_suppression_policy(tmp_path: Path, directory: str, monkeypatch) -> None:
+    repo_root, source_path = _write_repo(tmp_path, "VALUE = 1\n")
+    _prepare_make_repo(repo_root, monkeypatch)
+    write_baseline(repo_root / "ingestion/.ruff-g004-baseline.json", Counter())
+    result = subprocess.run(
+        ["make", "py_format_check"], cwd=repo_root / directory, capture_output=True, text=True, check=False, timeout=30
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    source_path.write_text("VALUE = 1  # noqa: UP006\n")
+
+    result = subprocess.run(
+        ["make", "py_format_check"], cwd=repo_root / directory, capture_output=True, text=True, check=False, timeout=30
+    )
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "UP006" in result.stdout + result.stderr
+
+
+def test_make_format_prunes_fixed_logging_debt(tmp_path: Path, monkeypatch) -> None:
+    repo_root, source_path = _write_repo(tmp_path, 'import logging\n\nlogging.info(f"Value: {1}")\n')
+    _prepare_make_repo(repo_root, monkeypatch)
+    baseline = repo_root / "ingestion/.ruff-g004-baseline.json"
+    state = collect_policy_state(repo_root, _ruff_executable())
+    assert sum(state.logging_debt.values()) == 1
+    write_baseline(baseline, state.logging_debt)
+    source_path.write_text('import logging\n\nlogging.info("Value: %s", 1)\n')
+
+    result = subprocess.run(
+        ["make", "py_format"], cwd=repo_root, capture_output=True, text=True, check=False, timeout=30
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(baseline.read_text())["files"] == {}
 
 
 def test_forbidden_suppression_scan_ignores_string_contents(tmp_path: Path) -> None:
@@ -110,6 +165,17 @@ def test_discovery_does_not_require_optional_search_tool(tmp_path: Path, monkeyp
     state = collect_policy_state(repo_root, _ruff_executable())
 
     assert not state.forbidden_suppressions
+
+
+def test_discovery_ignores_nox_dependencies_but_checks_project_source(tmp_path: Path) -> None:
+    repo_root, source_path = _write_repo(tmp_path, "VALUE = 1  # noqa: UP006\n")
+    dependency = repo_root / "ingestion/.nox/style/lib/site-packages/dependency.py"
+    dependency.parent.mkdir(parents=True)
+    dependency.write_text("VALUE = 1  # noqa: UP045\n")
+
+    state = collect_policy_state(repo_root, _ruff_executable())
+
+    assert [(finding.path, finding.code) for finding in state.forbidden_suppressions] == [(str(source_path), "UP006")]
 
 
 def test_discovery_fails_when_source_root_is_missing(tmp_path: Path) -> None:

@@ -70,6 +70,7 @@ jobs:
           name: coverage-unit
           path: ingestion/.coverage
           include-hidden-files: true
+          if-no-files-found: error
 
   py-integration-tests:
     name: "Integration Tests (${{ matrix.shard.name }})"
@@ -135,13 +136,14 @@ jobs:
           name: coverage-integration-${{ matrix.shard.name }}
           path: ingestion/.coverage
           include-hidden-files: true
+          if-no-files-found: error
 
       - name: Clean Up
         if: ${{ !cancelled() }}
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
+          sudo rm -rf "${PWD}/docker-volume"
 
   py-combine-coverage:
     if: ${{ !cancelled() }}
@@ -157,21 +159,11 @@ jobs:
           # lazily fetch blobs from a promisor remote.
           fetch-depth: 0
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
+      - name: Setup locked coverage profile
+        uses: ./.github/actions/setup-python-environment
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install uv
-        run: pip install uv
-        shell: bash
-
-      - name: Install coverage
-        run: |
-          python3 -m venv env
-          source env/bin/activate
-          uv pip install "coverage[toml]" nox
-        shell: bash
+          profile: coverage
 
       - name: Download coverage artifacts
         uses: actions/download-artifact@v7
@@ -179,21 +171,10 @@ jobs:
           pattern: coverage-*
           path: ingestion/coverage-data/
 
-      - name: Prepare coverage files
-        run: |
-          cd ingestion
-          [ -f coverage-data/coverage-unit/.coverage ] && mv coverage-data/coverage-unit/.coverage .coverage.unit
-          for dir in coverage-data/coverage-integration-*/; do
-            shard=$(basename "$dir" | sed 's/coverage-integration-//')
-            [ -f "$dir/.coverage" ] && mv "$dir/.coverage" ".coverage.integration-$shard"
-          done
-        shell: bash
-
-      - name: Combine coverage
-        run: |
-          source env/bin/activate
-          cd ingestion
-          nox --no-venv -s combine-coverage
+      - name: Require and combine expected coverage
+        env:
+          EXPECTED_COVERAGE_SHARDS: shard-1,shard-2
+        run: python3 scripts/python_environment.py --profile coverage -- python .github/scripts/python_ci.py coverage --artifact-dir ingestion/coverage-data --shards "$EXPECTED_COVERAGE_SHARDS"
         shell: bash
 
       - name: Remove pom.xml
@@ -219,6 +200,8 @@ jobs:
         shell: bash
 
       - name: Retry 'Push Results to Sonar'
+
+        continue-on-error: true
         if: ${{ !cancelled() && steps.push-to-sonar.outcome != 'success' }}
         uses: SonarSource/sonarqube-scan-action@v7
         env:

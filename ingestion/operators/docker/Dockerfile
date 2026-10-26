@@ -1,7 +1,34 @@
-ARG BASE_IMAGE=python:3.12-slim-trixie
+ARG BASE_IMAGE=python:3.12-slim-trixie@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2
+ARG RI_VERSION="2.0.0.0.dev0"
+ARG INGESTION_DEPENDENCY="all"
+FROM python:3.12-slim-trixie@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2 AS packages
+ARG RI_VERSION
+ARG INGESTION_DEPENDENCY
+RUN apt-get -qq update \
+    && apt-get -qq install -y --no-install-recommends default-jre-headless make curl ca-certificates unzip \
+    && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=bind,source=ingestion/scripts/patch_python_seeds.py,target=/tmp/patch_python_seeds.py \
+    python -m pip download --no-cache-dir --no-deps --dest /tmp/python-pip "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" \
+    && python -m pip install --no-cache-dir --upgrade /tmp/python-pip/*.whl \
+    && python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" \
+    && python /tmp/patch_python_seeds.py /tmp/python-pip/pip-26.2.2-py3-none-any.whl \
+    && rm -rf /tmp/python-pip
+WORKDIR /build
+COPY Makefile /build/Makefile
+COPY ingestion /build/ingestion
+COPY openmetadata-spec /build/openmetadata-spec
+COPY openmetadata-airflow-apis /build/openmetadata-airflow-apis
+COPY scripts /build/scripts
+ENV PATH="/build/ingestion/.nox/generation/bin:${PATH}"
+RUN make install_antlr_cli \
+    && python scripts/python_environment.py --profile generation -- \
+       python scripts/build_python_artifacts.py build --output-dir /artifacts --expected-version "${RI_VERSION}"
+RUN python scripts/python_image_environment.py export --artifacts /artifacts \
+    --kind operator --extras "${INGESTION_DEPENDENCY}" --output-dir /artifacts/runtime
+
 FROM ${BASE_IMAGE}
 
-# gRPC ships a separate CA bundle that can lag behind OS distrust updates.
+# gRPC uses the updated OS trust store.
 ENV GRPC_DEFAULT_SSL_ROOTS_FILE_PATH=/etc/ssl/certs/ca-certificates.crt
 
 # The -slim base ships without curl/gnupg/ca-certificates, so bootstrap them
@@ -108,10 +135,10 @@ RUN arch="$(uname -m)"; \
     if [ "$arch" = "arm64" ] || [ "$arch" = "aarch64" ]; \
  then \
  wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
- unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+ sha256sum /oracle-instantclient.zip > /oracle-instantclient.sha256 && unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
  else \
  wget -q https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
- unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+ sha256sum /oracle-instantclient.zip > /oracle-instantclient.sha256 && unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
  fi
 
 ENV LD_LIBRARY_PATH=/instantclient
@@ -130,7 +157,7 @@ RUN if [ $(uname -m) = "x86_64" ]; then \
   rm -f /tmp/ibm-iaccess.deb; \
 fi
 
-WORKDIR ingestion/
+WORKDIR /ingestion
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
 COPY ingestion/operators/docker/*.py .
@@ -147,48 +174,35 @@ RUN chown -R openmetadata:openmetadata /ingestion
 ENV HOME=/home/openmetadata
 ENV PATH="/home/openmetadata/.local/bin:${PATH}"
 
-# Upgrade interpreter-level build tools before dropping privileges so scanners do not retain
-# the vulnerable base copies (pip CVE-2025-8869/3219/6357/8643; setuptools CVE-2026-59890).
-RUN pip install --no-cache-dir --upgrade "setuptools>=83"
-
-USER openmetadata
-
-# Disable pip cache dir
-# https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching
+# The base interpreter is outside the isolated application environment.
+USER root
+COPY --from=packages /build/ingestion/.nox/generation/bin/uv /usr/local/bin/uv
+COPY --from=packages /artifacts/runtime /opt/openmetadata-runtime
+COPY --from=packages /build/scripts/python_artifact_smoke.py /opt/openmetadata-runtime/smoke.py
+ENV UV_NO_CACHE=1
+RUN uv pip install --system --python /usr/local/bin/python --require-hashes -r /opt/openmetadata-runtime/bootstrap-tools.txt
+RUN uv venv --python /usr/local/bin/python /opt/openmetadata \
+    && chown -R openmetadata:openmetadata /opt/openmetadata
+ENV VIRTUAL_ENV=/opt/openmetadata
+ENV PATH="/opt/openmetadata/bin:${PATH}"
 ENV PIP_NO_CACHE_DIR=1
-# Make pip silent
 ENV PIP_QUIET=1
-
-# GCC 14 (trixie's default) turns implicit-function-declaration,
-# incompatible-pointer-types, and int-conversion from warnings into hard
-# errors by default. Some pinned C-extension deps (e.g. asammdf 7.4.5) predate
-# that default and fail to compile without this; it does not relax any check
-# performed on our own code.
 ENV CFLAGS="-Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=int-conversion"
+USER openmetadata
+RUN uv pip sync --python /opt/openmetadata/bin/python --require-hashes \
+      --build-constraint /opt/openmetadata-runtime/build-constraints.txt \
+      /opt/openmetadata-runtime/requirements.txt
+COPY --from=packages /artifacts/openmetadata_ingestion-*.whl /opt/openmetadata-artifacts/
+ARG RI_VERSION
+RUN uv pip install --python /opt/openmetadata/bin/python --no-deps --no-index \
+      --find-links /opt/openmetadata-artifacts "openmetadata-ingestion==${RI_VERSION}" \
+    && python -I /opt/openmetadata-runtime/smoke.py --version "${RI_VERSION}" \
+       --policy /opt/openmetadata-runtime/policy.json
 
-ARG INGESTION_DEPENDENCY="all"
-ARG RI_VERSION="2.0.0.0.dev0"
-RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
-
-
-# Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
-RUN [ $(uname -m) = "x86_64" ] \
-  && pip install "openmetadata-ingestion[db2]~=${RI_VERSION}" \
-  || echo "DB2 not supported on ARM architectures."
-
-# Uninstalling psycopg2-binary and installing psycopg2 instead
-# because the psycopg2-binary generates a architecture specific error
-# while authenticating connection with the airflow, psycopg2 solves this error
-RUN pip uninstall psycopg2-binary -y
-RUN pip install psycopg2
-# pydoris declares mysqlclient, but the Doris connector runs pydoris on PyMySQL
-# (metadata/ingestion/source/database/doris/connection.py), so nothing imports the
-# C extension. Removing it lets the root layer below purge the MariaDB client libraries.
-RUN pip uninstall -y mysqlclient
+COPY ingestion/operators/docker/*.py .
 
 # Drop build-only packages that leaked into the runtime image. The MariaDB client
-# packages were only needed to compile mysqlclient, which was uninstalled above.
+# packages supported mysqlclient, which the locked operator environment excludes.
 # Debian reports every MariaDB server CVE against libmariadb3 and mariadb-common,
 # so keeping them would carry server CVEs into an image that has no server.
 # libunbound8 arrived as a transitive build dependency and nothing here resolves
@@ -244,7 +258,7 @@ RUN pip uninstall -y mysqlclient
 # built. Below the COPY and pip layers, the index is re-read on every build.
 #
 # The C/C++ toolchain is build-only and goes in this layer, the first point after
-# the last pip install that compiles: psycopg2 above; mysqlclient (pulled in by pydoris),
+# the last locked install that compiles: psycopg2 above,
 # kerberos and mysql-connector-python through the extras. Scanners attribute src:gcc-NN CVEs to
 # every installed binary of that source, and most of those binaries are the
 # compilers and their sanitizer libraries. Nothing compiles at runtime: the DB2
@@ -284,6 +298,7 @@ RUN set -eu; \
     gcc_rt="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^gcc-[0-9]+$/ {print $2}')"; \
     apt-get -qq install -y --only-upgrade $gcc_rt; \
     rm -rf /var/lib/apt/lists/*
+RUN dpkg-query -W > /opt/openmetadata-runtime/native-packages.txt
 USER openmetadata
 
 # Fail the build if the purge above took a runtime library from an extension that was

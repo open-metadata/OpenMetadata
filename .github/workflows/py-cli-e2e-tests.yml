@@ -120,7 +120,6 @@ jobs:
 
     - name: Rename coverage file for Python unit tests
       if: matrix.e2e-test == 'python-unittests' && steps.python-unittest.outcome == 'success' && env.DEBUG == 'false'
-      continue-on-error: true
       run: mv ingestion/.coverage .coverage.python-unittests
 
     - name: Run Python Integration Tests
@@ -138,6 +137,7 @@ jobs:
     - name: Run CLI E2E Python Tests & record coverage
       if: matrix.e2e-test != 'python-unittests' && matrix.e2e-test != 'python-integration'
       id: e2e-test
+      working-directory: ingestion
       env:
         E2E_TEST: ${{ matrix.e2e-test }}
         E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
@@ -201,7 +201,7 @@ jobs:
         E2E_ATHENA_WORKGROUP: ${{ secrets.E2E_ATHENA_WORKGROUP }}
       run: |
         set -o pipefail
-        source env/bin/activate
+        source ../env/bin/activate
         site_packages_path="$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")"
         SITE_CUSTOMIZE_PATH="${site_packages_path}/sitecustomize.py"
         export SITE_CUSTOMIZE_PATH
@@ -214,42 +214,42 @@ jobs:
           echo "except ImportError:"
           echo "    pass"
         } >> "$SITE_CUSTOMIZE_PATH"
-        coverage run --rcfile ingestion/pyproject.toml --branch -m pytest -c ingestion/pyproject.toml "--junitxml=ingestion/junit/test-results-${E2E_TEST}.xml" --ignore=ingestion/tests/unit/source "ingestion/tests/cli_e2e/test_cli_${E2E_TEST}.py" 2>&1 | tee ingestion/cli-e2e-test-run.log
-        coverage combine "--data-file=.coverage.${E2E_TEST}" --rcfile=ingestion/pyproject.toml --keep .coverage* || true
-        coverage report --rcfile ingestion/pyproject.toml "--data-file=.coverage.${E2E_TEST}" || true
+        coverage run --rcfile pyproject.toml --branch -m pytest -c pyproject.toml "--junitxml=junit/test-results-${E2E_TEST}.xml" --ignore=tests/unit/source "tests/cli_e2e/test_cli_${E2E_TEST}.py" 2>&1 | tee cli-e2e-test-run.log
+        coverage combine "--data-file=.coverage.${E2E_TEST}" --rcfile=pyproject.toml --keep .coverage*
+        coverage report --rcfile pyproject.toml "--data-file=.coverage.${E2E_TEST}"
+        mv ".coverage.${E2E_TEST}" ..
       shell: bash
 
     - name: Upload coverage artifact for Python unit tests
       if: matrix.e2e-test == 'python-unittests' && steps.python-unittest.outcome == 'success' && env.DEBUG == 'false'
-      continue-on-error: true
       uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.python-unittests
         include-hidden-files: true
+        if-no-files-found: error
 
     - name: Rename coverage file for Python integration tests
       if: matrix.e2e-test == 'python-integration' && steps.python-integration-test.outcome == 'success' && env.DEBUG == 'false'
-      continue-on-error: true
       run: mv ingestion/.coverage .coverage.python-integration
 
     - name: Upload coverage artifact for Python integration tests
       if: matrix.e2e-test == 'python-integration' && steps.python-integration-test.outcome == 'success' && env.DEBUG == 'false'
-      continue-on-error: true
       uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.python-integration
         include-hidden-files: true
+        if-no-files-found: error
 
     - name: Upload coverage artifact for CLI E2E tests
       if: matrix.e2e-test != 'python-unittests' && matrix.e2e-test != 'python-integration' && steps.e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      continue-on-error: true
       uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.${{ matrix.e2e-test }}
         include-hidden-files: true
+        if-no-files-found: error
 
     - name: Classify Python CLI E2E test outcome
       if: ${{ always() }}
@@ -378,50 +378,35 @@ jobs:
       - py-cli-e2e-tests
       - check-debug
     if: ${{ needs.check-debug.outputs.DEBUG == 'false' && needs.py-cli-e2e-tests.result == 'success' }}
-    continue-on-error: true
     steps:
 
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v6
+      - name: Setup locked coverage profile
+        uses: ./.github/actions/setup-python-environment
         with:
           python-version: '3.10'
-
-      - name: Install Ubuntu dependencies
-        run: |
-          sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-          unixodbc-dev libevent-dev python3-dev libkrb5-dev
-
-      - name: Install coverage dependencies
-        run: |
-          python3 -m venv env
-          source env/bin/activate
-          make install_all install_test
+          profile: coverage
 
       - name: Download all artifacts
         uses: actions/download-artifact@v7
         with:
           path: artifacts
 
-      - name: Generate report
+      - name: Require and combine expected CLI coverage
+        env:
+          EXPECTED_CLI_SUITES: ${{ inputs.e2e-tests || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "python-unittests", "python-integration", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol", "powerbi"]' }}
         run: |
-          # Copy coverage artifacts into ingestion/ so paths resolve relative to it
-          for folder in artifacts/coverage-*; do
-            [ -d "$folder" ] && cp -rT "$folder/" ingestion/
-          done
+          python3 scripts/python_environment.py --profile coverage -- python .github/scripts/python_ci.py coverage --artifact-dir artifacts --cli-suites "$EXPECTED_CLI_SUITES"
           mkdir -p ingestion/junit
           for folder in artifacts/tests-*; do
-            [ -d "$folder" ] && cp -rT "$folder/" ingestion/junit/
+            [ ! -d "$folder" ] || cp -r "$folder/." ingestion/junit/
           done
-          source env/bin/activate
-          cd ingestion
-          coverage combine --rcfile=pyproject.toml --keep .coverage*
-          coverage xml --rcfile=pyproject.toml --data-file=.coverage
         shell: bash
 
       - name: Push Results to Sonar
+        continue-on-error: true
         uses: SonarSource/sonarqube-scan-action@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

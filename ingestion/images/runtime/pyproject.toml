@@ -1,0 +1,145 @@
+# Generated aliases: python scripts/python_image_environment.py manifest --artifacts DIR --write
+[project]
+name = "openmetadata-image-environment"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "openmetadata-ingestion[airflow]",
+    "apache-airflow-providers-docker",
+    "apache-airflow-providers-cncf-kubernetes",
+    "apache-airflow-providers-smtp",
+    "python-daemon>=3.0.0",
+    "aiomysql>=0.3.2",
+    "asyncpg>=0.31.0",
+    "psycopg2==2.9.13",
+    "pip>=26.2.2,<27",
+    "setuptools>=83",
+    "uv==0.13.4",
+    "sqlalchemy-ibmi==0.9.3"
+]
+
+[project.optional-dependencies]
+"airflow" = ["openmetadata-ingestion[airflow]"]
+"all" = ["openmetadata-ingestion[all]"]
+"amundsen" = ["openmetadata-ingestion[amundsen]"]
+"athena" = ["openmetadata-ingestion[athena]"]
+"atlas" = ["openmetadata-ingestion[atlas]"]
+"azure-sso" = ["openmetadata-ingestion[azure-sso]"]
+"azuresql" = ["openmetadata-ingestion[azuresql]"]
+"backup" = ["openmetadata-ingestion[backup]"]
+"bigquery" = ["openmetadata-ingestion[bigquery]"]
+"bigtable" = ["openmetadata-ingestion[bigtable]"]
+"cassandra" = ["openmetadata-ingestion[cassandra]"]
+"clickhouse" = ["openmetadata-ingestion[clickhouse]"]
+"clickzetta" = ["openmetadata-ingestion[clickzetta]"]
+"cockroach" = ["openmetadata-ingestion[cockroach]"]
+"couchbase" = ["openmetadata-ingestion[couchbase]"]
+"dagster" = ["openmetadata-ingestion[dagster]"]
+"data-insight" = ["openmetadata-ingestion[data-insight]"]
+"data360" = ["openmetadata-ingestion[data360]"]
+"data360pipeline" = ["openmetadata-ingestion[data360pipeline]"]
+"databend" = ["openmetadata-ingestion[databend]"]
+"databricks" = ["openmetadata-ingestion[databricks]"]
+"datalake-azure" = ["openmetadata-ingestion[datalake-azure]"]
+"datalake-gcs" = ["openmetadata-ingestion[datalake-gcs]"]
+"datalake-s3" = ["openmetadata-ingestion[datalake-s3]"]
+"db2" = ["openmetadata-ingestion[db2]"]
+"db2-ibmi" = ["openmetadata-ingestion[db2-ibmi]"]
+"dbt" = ["openmetadata-ingestion[dbt]"]
+"dev" = ["openmetadata-ingestion[dev]"]
+"docs" = ["openmetadata-ingestion[docs]"]
+"domo" = ["openmetadata-ingestion[domo]"]
+"doris" = ["openmetadata-ingestion[doris]"]
+"druid" = ["openmetadata-ingestion[druid]"]
+"dynamodb" = ["openmetadata-ingestion[dynamodb]"]
+"e2e-test" = ["openmetadata-ingestion[e2e-test]"]
+"elasticsearch" = ["openmetadata-ingestion[elasticsearch]"]
+"exasol" = ["openmetadata-ingestion[exasol]"]
+"exasol-test" = ["openmetadata-ingestion[exasol-test]"]
+"gcs" = ["openmetadata-ingestion[gcs]"]
+"glue" = ["openmetadata-ingestion[glue]"]
+"googledrive" = ["openmetadata-ingestion[googledrive]"]
+"great-expectations" = ["openmetadata-ingestion[great-expectations]"]
+"greenplum" = ["openmetadata-ingestion[greenplum]"]
+"hive" = ["openmetadata-ingestion[hive]"]
+"impala" = ["openmetadata-ingestion[impala]"]
+"iomete" = ["openmetadata-ingestion[iomete]"]
+"kafka" = ["openmetadata-ingestion[kafka]"]
+"kafkaconnect" = ["openmetadata-ingestion[kafkaconnect]"]
+"kinesis" = ["openmetadata-ingestion[kinesis]"]
+"looker" = ["openmetadata-ingestion[looker]"]
+"mlflow" = ["openmetadata-ingestion[mlflow]"]
+"mongo" = ["openmetadata-ingestion[mongo]"]
+"mssql" = ["openmetadata-ingestion[mssql]"]
+"mssql-odbc" = ["openmetadata-ingestion[mssql-odbc]"]
+"mysql" = ["openmetadata-ingestion[mysql]"]
+"nats" = ["openmetadata-ingestion[nats]"]
+"neo4j" = ["openmetadata-ingestion[neo4j]"]
+"nifi" = ["openmetadata-ingestion[nifi]"]
+"openlineage" = ["openmetadata-ingestion[openlineage]"]
+"opensearch" = ["openmetadata-ingestion[opensearch]"]
+"oracle" = ["openmetadata-ingestion[oracle]"]
+"pandas" = ["openmetadata-ingestion[pandas]"]
+"pgspider" = ["openmetadata-ingestion[pgspider]"]
+"pii-processor" = ["openmetadata-ingestion[pii-processor]"]
+"pinotdb" = ["openmetadata-ingestion[pinotdb]"]
+"playwright" = ["openmetadata-ingestion[playwright]"]
+"postgres" = ["openmetadata-ingestion[postgres]"]
+"powerbi" = ["openmetadata-ingestion[powerbi]"]
+"prefect" = ["openmetadata-ingestion[prefect]"]
+"presidio-analyzer" = ["openmetadata-ingestion[presidio-analyzer]"]
+"presto" = ["openmetadata-ingestion[presto]"]
+"pubsub" = ["openmetadata-ingestion[pubsub]"]
+"pyarrow" = ["openmetadata-ingestion[pyarrow]"]
+"pymssql" = ["openmetadata-ingestion[pymssql]"]
+"qliksense" = ["openmetadata-ingestion[qliksense]"]
+"questdb" = ["openmetadata-ingestion[questdb]"]
+"quicksight" = ["openmetadata-ingestion[quicksight]"]
+"redash" = ["openmetadata-ingestion[redash]"]
+"redpanda" = ["openmetadata-ingestion[redpanda]"]
+"redshift" = ["openmetadata-ingestion[redshift]"]
+"s3" = ["openmetadata-ingestion[s3]"]
+"sagemaker" = ["openmetadata-ingestion[sagemaker]"]
+"salesforce" = ["openmetadata-ingestion[salesforce]"]
+"sample-data" = ["openmetadata-ingestion[sample-data]"]
+"sap-hana" = ["openmetadata-ingestion[sap-hana]"]
+"sas" = ["openmetadata-ingestion[sas]"]
+"sftp" = ["openmetadata-ingestion[sftp]"]
+"singlestore" = ["openmetadata-ingestion[singlestore]"]
+"sklearn" = ["openmetadata-ingestion[sklearn]"]
+"slim" = ["openmetadata-ingestion[slim]"]
+"snowflake" = ["openmetadata-ingestion[snowflake]"]
+"ssrs" = ["openmetadata-ingestion[ssrs]"]
+"starrocks" = ["openmetadata-ingestion[starrocks]"]
+"superset" = ["openmetadata-ingestion[superset]"]
+"tableau" = ["openmetadata-ingestion[tableau]"]
+"tableaupipeline" = ["openmetadata-ingestion[tableaupipeline]"]
+"teradata" = ["openmetadata-ingestion[teradata]"]
+"test" = ["openmetadata-ingestion[test]"]
+"trino" = ["openmetadata-ingestion[trino]"]
+"vertica" = ["openmetadata-ingestion[vertica]"]
+
+[dependency-groups]
+managed-api = ["openmetadata-managed-apis", "py-spy", "virtualenv>=21.14.12", "mysqlclient==2.1.1"]
+
+[tool.uv]
+required-version = "==0.13.4"
+package = false
+default-groups = []
+environments = ["sys_platform == 'linux'"]
+required-environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'", "sys_platform == 'linux' and platform_machine == 'aarch64'"]
+exclude-dependencies = ["psycopg2-binary"]
+
+[tool.uv.sources]
+openmetadata-ingestion = {path = "../.."}
+openmetadata-managed-apis = {path = "../../../openmetadata-airflow-apis"}
+
+[[tool.uv.dependency-metadata]]
+name = "sqlalchemy-ibmi"
+version = "0.9.3"
+requires-dist = ["pyodbc>=4.0", "sqlalchemy>=2.0,<2.1"]
+
+[[tool.uv.dependency-metadata]]
+name = "pydoris"
+version = "1.2.0"
+requires-dist = ["sqlalchemy>=1.4", "sqlalchemy-utils>=0.38.3", "requests", "pymysql~=1.0"]

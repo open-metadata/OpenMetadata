@@ -1,0 +1,69 @@
+name: Setup locked Python environment
+description: Restore and synchronize a repository Python profile
+inputs:
+  python-version:
+    description: Python interpreter version
+    required: true
+  profile:
+    description: Repository Python dependency profile
+    required: true
+outputs:
+  environment:
+    description: Selected virtual environment
+    value: ${{ steps.identity.outputs.environment }}
+  cache-key:
+    description: Lock, profile, interpreter and platform identity
+    value: ${{ steps.identity.outputs.cache-key }}
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Identify locked environment
+      id: identity
+      env:
+        PYTHON_PROFILE: ${{ inputs.profile }}
+      run: python3 .github/scripts/python_ci.py metadata --profile "$PYTHON_PROFILE" --output "$GITHUB_OUTPUT"
+      shell: bash
+    - name: Install pinned uv
+      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      with:
+        version: ${{ steps.identity.outputs.uv-version }}
+        enable-cache: false
+    - name: Restore locked environment
+      id: cache
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: |
+          ${{ steps.identity.outputs.environment }}
+          .cache/python-model-wheels
+        key: ${{ steps.identity.outputs.cache-key }}
+    - name: Install generation prerequisites
+      if: ${{ contains(fromJSON('["runtime", "all", "dev", "test", "api"]'), inputs.profile) }}
+      run: sudo make install_antlr_cli
+      shell: bash
+    - name: Synchronize locked profile after restore
+      env:
+        PYTHON_PROFILE: ${{ inputs.profile }}
+        PIP_CACHE_DIR: ${{ github.workspace }}/.cache/python-model-wheels
+      run: |
+        python3 .github/scripts/python_ci.py sync --profile "$PYTHON_PROFILE"
+        echo "PIP_CACHE_DIR=$PIP_CACHE_DIR" >> "$GITHUB_ENV"
+        echo "OM_PYTHON_PROFILE=$PYTHON_PROFILE" >> "$GITHUB_ENV"
+        echo "VIRTUAL_ENV=${{ steps.identity.outputs.environment }}" >> "$GITHUB_ENV"
+        echo "${{ steps.identity.outputs.environment }}/bin" >> "$GITHUB_PATH"
+      shell: bash
+    - name: Save locked environment
+      if: >-
+        ${{ steps.cache.outputs.cache-hit != 'true' &&
+        github.event_name != 'merge_group' && github.event_name != 'pull_request' &&
+        !(github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository) }}
+      continue-on-error: true
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: |
+          ${{ steps.identity.outputs.environment }}
+          .cache/python-model-wheels
+        key: ${{ steps.identity.outputs.cache-key }}

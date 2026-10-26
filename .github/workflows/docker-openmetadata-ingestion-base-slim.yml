@@ -58,3 +58,4 @@ jobs:
           file: ./ingestion/operators/docker/Dockerfile
           build-args: |
             INGESTION_DEPENDENCY=slim
+            RI_VERSION=${{ inputs.pypi_release_version }}

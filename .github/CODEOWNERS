@@ -20,6 +20,11 @@
 
 # Review from Ingestion owners for changes around Ingestion code
 /ingestion @open-metadata/ingestion
+/scripts/refresh_python_dependencies.py @open-metadata/ingestion
+/scripts/review_python_constraints.py @open-metadata/ingestion
+/scripts/build_python_artifacts.py @open-metadata/ingestion
+/scripts/python_artifact_smoke.py @open-metadata/ingestion
+/scripts/python_image_environment.py @open-metadata/ingestion
 
 # Review from Devops owners for changes around workflows
 /.github @akash-jain-10 @harshach @tutte @open-metadata/mergers
