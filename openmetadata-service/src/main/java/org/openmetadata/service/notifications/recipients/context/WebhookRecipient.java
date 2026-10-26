@@ -116,7 +116,7 @@ public final class WebhookRecipient extends Recipient {
 
     // Build the request target with query parameters
     WebTarget target = client.target(endpoint);
-    target = addQueryParameters(target, webhook.getQueryParams());
+    target = SubscriptionUtil.addQueryParams(target, webhook.getQueryParams());
 
     // Add authentication headers
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
@@ -126,17 +126,6 @@ public final class WebhookRecipient extends Recipient {
     prepareWebhookHeaders(requestBuilder, webhook, payload);
 
     return requestBuilder;
-  }
-
-  private static WebTarget addQueryParameters(WebTarget target, Map<String, String> queryParams) {
-    if (CommonUtil.nullOrEmpty(queryParams)) {
-      return target;
-    }
-
-    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-      target = target.queryParam(entry.getKey(), entry.getValue());
-    }
-    return target;
   }
 
   private static void prepareWebhookHeaders(

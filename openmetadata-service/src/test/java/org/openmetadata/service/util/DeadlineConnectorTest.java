@@ -1,9 +1,13 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import jakarta.ws.rs.ProcessingException;
@@ -22,6 +26,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import org.glassfish.jersey.client.ClientRequest;
+import org.glassfish.jersey.client.spi.Connector;
 import org.junit.jupiter.api.Test;
 
 /** One outbound exchange ends by its deadline, however the receiver behaves. */
@@ -71,6 +77,19 @@ class DeadlineConnectorTest {
       assertTrue(failed.getMessage().contains("Timed out"), failed.getMessage());
       testIsOver.countDown();
     }
+  }
+
+  @Test
+  void anErrorDuringTheExchangeIsThrownAsItIs() {
+    Connector failing = mock(Connector.class);
+    OutOfMemoryError outOfMemory = new OutOfMemoryError("reading the answer");
+    when(failing.apply(any(ClientRequest.class))).thenThrow(outOfMemory);
+    DeadlineConnector connector = new DeadlineConnector(failing, DEADLINE);
+
+    OutOfMemoryError thrown =
+        assertThrows(OutOfMemoryError.class, () -> connector.apply(mock(ClientRequest.class)));
+
+    assertSame(outOfMemory, thrown);
   }
 
   @Test

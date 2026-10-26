@@ -9073,7 +9073,8 @@ public interface CollectionDAO {
      * Returns the change events after {@code afterOffset} in offset order, with their offsets for
      * cursor tracking. A read stops at {@link #MAX_ROWS_PER_READ} events and at {@link
      * #MAX_BYTES_PER_READ} bytes, because each event embeds a whole entity: the events it leaves
-     * out are the first ones the next read returns.
+     * out are the first ones the next read returns, so a short read does not mean the caller has
+     * caught up (ADR:2026-10-26-alerting-bounds-the-work-of-each-request-and-tick).
      */
     default List<ChangeEventRecord> listWithOffset(long limit, long afterOffset) {
       int rows = Math.clamp(limit, 1, MAX_ROWS_PER_READ);

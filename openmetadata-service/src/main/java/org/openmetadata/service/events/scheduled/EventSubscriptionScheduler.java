@@ -410,15 +410,20 @@ public class EventSubscriptionScheduler {
       long offset, long latest, FilteringRules filteringRules, Long startingTimestamp) {
     List<ChangeEventRecord> read =
         Entity.getCollectionDAO().changeEventDAO().listWithOffset(MAX_PENDING_EVALUATED, offset);
+    // Up to the latest offset read with the position only: events written since may fill the read
+    // in place of older ones, and a count of them could not say that it stopped short.
+    List<ChangeEventRecord> counted =
+        read.stream().takeWhile(row -> row.offset() <= latest).toList();
     long count =
-        read.parallelStream()
+        counted.parallelStream()
             .map(row -> JsonUtils.readValue(row.json(), ChangeEvent.class))
             .filter(
                 event ->
                     AlertUtil.isChangeEventAllowed(
                         event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR))
             .count();
-    boolean moreUnread = !read.isEmpty() && read.getLast().offset() < latest;
+    boolean moreUnread =
+        counted.size() == read.size() && !read.isEmpty() && read.getLast().offset() < latest;
     return new PendingCount(count, moreUnread);
   }
 

@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertLimits;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -30,6 +31,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 class AlertConfigLimitsIT {
 
   private static final String ENDPOINT = "http://localhost:9/hook/";
+  private static final String ALERTS_PATH = "/v1/events/subscriptions";
   private static final String DESCRIBE =
       "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"edited\"}]";
 
@@ -77,6 +79,40 @@ class AlertConfigLimitsIT {
     EventSubscription edited = SdkClients.adminClient().eventSubscriptions().get(alert.getId());
     assertEquals("edited", edited.getDescription());
     assertEquals(60, edited.getDestinations().size());
+  }
+
+  // PUT sends the whole alert, so its unchanged destinations and batch size are sent again.
+  @Test
+  void anAlertStoredPastTheLimitsCanStillBePut(TestNamespace ns) {
+    List<SubscriptionDestination> sixty = destinations(60);
+    int largeBatch = AlertLimits.MAX_BATCH_SIZE + 500;
+    CreateEventSubscription request = request(ns, "put_past_limits", destinations(1));
+    EventSubscription alert = SdkClients.adminClient().eventSubscriptions().create(request);
+    writeBehindTheServer(alert.withDestinations(sixty).withBatchSize(largeBatch));
+
+    assertDoesNotThrow(
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PUT,
+                    ALERTS_PATH,
+                    request
+                        .withDestinations(sixty)
+                        .withBatchSize(largeBatch)
+                        .withDescription("edited"),
+                    EventSubscription.class));
+    EventSubscription edited = SdkClients.adminClient().eventSubscriptions().get(alert.getId());
+    assertEquals("edited", edited.getDescription());
+    assertEquals(60, edited.getDestinations().size());
+  }
+
+  @Test
+  void aPatchCannotStopAnAlertFromReadingEvents(TestNamespace ns) {
+    EventSubscription alert = create(ns, "reads_nothing", 1);
+
+    assertBadRequest(
+        () -> patch(alert, "[{\"op\":\"replace\",\"path\":\"/batchSize\",\"value\":0}]"));
   }
 
   private static void assertBadRequest(Executable request) {

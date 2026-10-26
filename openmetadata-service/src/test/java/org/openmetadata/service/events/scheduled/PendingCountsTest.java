@@ -4,12 +4,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import jakarta.ws.rs.WebApplicationException;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
@@ -55,6 +58,38 @@ class PendingCountsTest {
       counts.get(new PendingCounts.Key(ALERT, 0.2, 43L, 51L), () -> counted(computed));
 
       assertEquals(4, computed.get());
+    }
+  }
+
+  @Test
+  void aCountWithNoRoomToWaitIsAnsweredTooManyRequests() throws Exception {
+    AtomicInteger computed = new AtomicInteger();
+    CountDownLatch started = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    ExecutorService oneCounterNoQueue =
+        new ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS, new SynchronousQueue<>());
+    ExecutorService caller = Executors.newSingleThreadExecutor();
+    try (PendingCounts counts = new PendingCounts(oneCounterNoQueue)) {
+      caller.submit(
+          () ->
+              counts.get(
+                  new PendingCounts.Key(ALERT, 0.1, 42L, 50L),
+                  () -> {
+                    started.countDown();
+                    return blockedCount(computed, release);
+                  }));
+      assertTrue(started.await(30, TimeUnit.SECONDS));
+
+      WebApplicationException refused =
+          assertThrows(
+              WebApplicationException.class,
+              () ->
+                  counts.get(new PendingCounts.Key(ALERT, 0.1, 43L, 50L), () -> counted(computed)));
+
+      assertEquals(429, refused.getResponse().getStatus());
+      release.countDown();
+    } finally {
+      caller.shutdownNow();
     }
   }
 

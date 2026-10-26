@@ -56,6 +56,33 @@ class AlertLimitsTest {
   }
 
   @Test
+  void aBatchSizeBelowOneIsRefused() {
+    EventSubscription stored = alert(destinations(1), 100);
+
+    assertThrows(
+        BadRequestException.class,
+        () -> AlertLimits.requireWithin(null, alert(destinations(1), 0)));
+    assertThrows(
+        BadRequestException.class,
+        () -> AlertLimits.requireWithin(stored, alert(destinations(1), 0)));
+  }
+
+  // One destination already past the limit does not let another grow past it.
+  @Test
+  void eachDestinationIsHeldToTheReceiverLimitOnItsOwn() {
+    int pastTheLimit = AlertLimits.MAX_RECEIVERS_PER_DESTINATION * 2;
+    SubscriptionDestination large = webhookTo(pastTheLimit);
+    SubscriptionDestination small = webhookTo(10);
+    EventSubscription stored = alert(List.of(large, small), 100);
+    SubscriptionDestination grown = webhookTo(pastTheLimit).withId(small.getId());
+
+    assertDoesNotThrow(() -> AlertLimits.requireWithin(stored, alert(List.of(large, small), 100)));
+    assertThrows(
+        BadRequestException.class,
+        () -> AlertLimits.requireWithin(stored, alert(List.of(large, grown), 100)));
+  }
+
+  @Test
   void anAlertStoredPastTheLimitsCanStillBeEdited() {
     EventSubscription stored =
         alert(destinations(AlertLimits.MAX_DESTINATIONS + 10), AlertLimits.MAX_BATCH_SIZE + 500);

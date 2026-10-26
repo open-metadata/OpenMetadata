@@ -4,6 +4,7 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -81,13 +82,16 @@ public final class TestSends {
       Future<T> answer = answers.get(index);
       results.add(answer.isCancelled() ? timedOut.apply(destinations.get(index)) : done(answer));
     }
-    return results;
+    return Collections.unmodifiableList(results);
   }
 
   private static <T> T done(Future<T> answer) {
     try {
       return answer.get();
     } catch (ExecutionException e) {
+      if (e.getCause() instanceof Error error) {
+        throw error;
+      }
       throw e.getCause() instanceof RuntimeException cause
           ? cause
           : new WebApplicationException(e.getCause());

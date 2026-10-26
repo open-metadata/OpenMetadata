@@ -34,10 +34,8 @@
       "default": true
     },
     "batchSize": {
-      "description": "Maximum number of events sent in a batch (Default 10).",
+      "description": "Maximum number of events sent in a batch, from 1 to 1000 (Default 10). An alert stored past 1000 keeps its value but cannot grow.",
       "type": "integer",
-      "minimum": 1,
-      "maximum": 1000,
       "default": 10
     },
     "alertType": {
@@ -55,12 +53,11 @@
       }
     },
     "destinations": {
-      "description": "Subscription Config.",
+      "description": "Subscription Config. At most 50 destinations; an alert stored with more keeps them but cannot add one.",
       "type": "array",
       "items": {
         "$ref": "../../events/eventSubscription.json#/definitions/destination"
-      },
-      "maxItems": 50
+      }
     },
     "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"

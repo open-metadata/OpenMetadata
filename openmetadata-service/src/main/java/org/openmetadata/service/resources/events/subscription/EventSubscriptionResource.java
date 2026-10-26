@@ -1476,13 +1476,16 @@ public class EventSubscriptionResource
     return Response.ok(resultDestinations).build();
   }
 
+  // A copy: the interrupted send still holds the request's destination and may write to it later.
   private static SubscriptionDestination timedOutTestSend(SubscriptionDestination destination) {
-    destination.setStatusDetails(
+    SubscriptionDestination timedOut =
+        JsonUtils.deepCopy(destination, SubscriptionDestination.class).withConfig(null);
+    timedOut.setStatusDetails(
         AlertUtil.buildTestDestinationStatus(
             TestDestinationStatus.Status.FAILED,
             String.format("Timed out after %d s", TestSends.DEADLINE.toSeconds()),
             System.currentTimeMillis()));
-    return destination.withConfig(null);
+    return timedOut;
   }
 
   private SubscriptionDestination sendTestMessageToDestination(
