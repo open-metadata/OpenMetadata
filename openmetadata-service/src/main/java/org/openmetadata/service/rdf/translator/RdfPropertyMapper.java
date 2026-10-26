@@ -31,7 +31,6 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -42,7 +41,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class RdfPropertyMapper {
 
-  private static final int MAX_IDENTIFIER_CACHE_ENTRIES = 1_000;
   private static final int MAX_UNMAPPED_JSON_LITERAL_CHARS = 32_768;
   private static final int MAX_MERGED_CONTEXT_ENTRIES = 50;
   private static final String TIER_CLASSIFICATION_PREFIX = "Tier.";
@@ -169,14 +167,27 @@ public class RdfPropertyMapper {
   // mapper rather than once per entity.
   private final Cache<String, Map<String, Object>> mergedContextCache =
       Caffeine.newBuilder().maximumSize(MAX_MERGED_CONTEXT_ENTRIES).build();
-  private final Cache<String, Optional<UUID>> glossaryTermIdCache = identifierCache();
-  private final Cache<String, Optional<UUID>> classificationTagIdCache = identifierCache();
+  private final LiveReferenceFilter liveReferences;
 
   public RdfPropertyMapper(
       String baseUri, ObjectMapper objectMapper, Map<String, Object> contextCache) {
+    this(baseUri, objectMapper, contextCache, LiveTagLookup.database(), ReferenceScope.LIVE);
+  }
+
+  public RdfPropertyMapper(
+      String baseUri,
+      ObjectMapper objectMapper,
+      Map<String, Object> contextCache,
+      LiveTagLookup tagLookup,
+      ReferenceScope referenceScope) {
     this.baseUri = Objects.requireNonNull(baseUri, "baseUri");
     this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
     this.contextCache = Map.copyOf(Objects.requireNonNull(contextCache, "contextCache"));
+    this.liveReferences =
+        new LiveReferenceFilter(
+            this.baseUri,
+            Objects.requireNonNull(tagLookup, "tagLookup"),
+            Objects.requireNonNull(referenceScope, "referenceScope"));
   }
 
   public static boolean isIgnoredEntityField(String fieldName) {
@@ -204,6 +215,7 @@ public class RdfPropertyMapper {
     Resource requiredResource = Objects.requireNonNull(entityResource, "entityResource");
     Model requiredModel = Objects.requireNonNull(model, "model");
     JsonNode entityJson = objectMapper.valueToTree(requiredEntity);
+    liveReferences.apply(entityJson);
     String entityType = requiredEntity.getEntityReference().getType();
     String contextName = getContextName(entityType);
     Object context = contextCache.get(contextName);
@@ -582,21 +594,23 @@ public class RdfPropertyMapper {
   }
 
   /**
-   * Resolves a TagLabel to the canonical entity URI. When the underlying tag or glossary term can
-   * be looked up by FQN, the asset is linked to the real entity (e.g. {@code entity/tag/{uuid}})
-   * so SPARQL traversals reach the tag's metadata, owners, classification, etc. Falls back to a
-   * deterministic synthetic URI only if lookup fails (e.g. tag deleted concurrently).
+   * Resolves a TagLabel to the canonical entity URI, so SPARQL traversals reach the tag's metadata,
+   * owners, classification, etc. {@link LiveReferenceFilter} has already resolved every live label
+   * of the entity; a label mapped on its own falls back to its href, then to a deterministic
+   * synthetic URI.
    */
   private Resource resolveTagResource(
       String tagFqn, String source, JsonNode tagLabel, Model model) {
-    boolean isGlossary = GLOSSARY_SOURCE.equalsIgnoreCase(source);
-    Optional<UUID> id =
-        isGlossary
-            ? resolveGlossaryTermId(tagFqn, tagLabel)
-            : resolveClassificationTagId(tagFqn, tagLabel);
-    String entityType = isGlossary ? Entity.GLOSSARY_TERM : Entity.TAG;
+    String entityType =
+        GLOSSARY_SOURCE.equalsIgnoreCase(source) ? Entity.GLOSSARY_TERM : Entity.TAG;
     String resourceUri =
-        id.map(value -> baseUri + "entity/" + entityType + "/" + value)
+        RdfJsonNode.field(tagLabel, LiveReferenceFilter.LABEL_IRI)
+            .filter(JsonNode::isTextual)
+            .map(JsonNode::asText)
+            .or(
+                () ->
+                    tryResolveUuidFromHref(tagLabel)
+                        .map(id -> baseUri + "entity/" + entityType + "/" + id))
             .orElseGet(() -> baseUri + "tag/" + tagFqn.replace(".", "/"));
     return model.createResource(resourceUri);
   }
@@ -612,44 +626,6 @@ public class RdfPropertyMapper {
           : Optional.of(FullyQualifiedName.unquoteName(parts[parts.length - 1]));
     } catch (RuntimeException exception) {
       LOG.debug("Could not extract certification level from FQN {}", tagFqn);
-      return Optional.empty();
-    }
-  }
-
-  private Optional<UUID> resolveClassificationTagId(String tagFqn, JsonNode tagLabel) {
-    return resolveTagEntityId(tagFqn, tagLabel, Entity.TAG, classificationTagIdCache);
-  }
-
-  private Optional<UUID> resolveGlossaryTermId(String termFqn, JsonNode tagLabel) {
-    return resolveTagEntityId(termFqn, tagLabel, Entity.GLOSSARY_TERM, glossaryTermIdCache);
-  }
-
-  private Optional<UUID> resolveTagEntityId(
-      String fqn,
-      JsonNode tagLabel,
-      String entityType,
-      Cache<String, Optional<UUID>> identifierCache) {
-    if (nullOrEmpty(fqn)) {
-      return Optional.empty();
-    }
-    return identifierCache.get(fqn, key -> findTagEntityId(key, tagLabel, entityType));
-  }
-
-  private static Cache<String, Optional<UUID>> identifierCache() {
-    return Caffeine.newBuilder().maximumSize(MAX_IDENTIFIER_CACHE_ENTRIES).build();
-  }
-
-  private Optional<UUID> findTagEntityId(String fqn, JsonNode tagLabel, String entityType) {
-    return tryResolveUuidFromHref(tagLabel).or(() -> findEntityId(entityType, fqn));
-  }
-
-  private Optional<UUID> findEntityId(String entityType, String fqn) {
-    try {
-      EntityInterface<?> entity =
-          Entity.findEntityByNameOrNull(entityType, fqn, Include.NON_DELETED);
-      return Optional.ofNullable(entity).map(EntityInterface<?>::getId);
-    } catch (RuntimeException exception) {
-      LOG.debug("Could not resolve {} id for FQN {}", entityType, fqn, exception);
       return Optional.empty();
     }
   }

@@ -23,7 +23,9 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -32,6 +34,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.rdf.RdfReasoningFreshness;
 import org.openmetadata.schema.api.rdf.RdfReasoningInput;
 import org.openmetadata.schema.api.rdf.RdfSourceRevision;
@@ -41,6 +44,7 @@ import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.rdf.reasoning.ReasoningFreshness;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
@@ -148,6 +152,75 @@ class RdfUpdaterTest {
     assertEquals(
         List.of(first.getId(), second.getId()),
         submitted.stream().map(write -> ((RdfLiveWrite.EntityUpdate) write).entityId()).toList());
+  }
+
+  @Test
+  void aSoftDeletedEntityLeavesTheGraph() {
+    final Table table = new Table().withId(UUID.randomUUID()).withName("t").withDeleted(true);
+    RdfUpdater.updateEntity(table);
+    RdfUpdater.updateEntities(List.of(table));
+    assertEquals(
+        List.of(
+            new RdfLiveWrite.EntityDelete(Entity.getEntityTypeFromObject(table), table.getId()),
+            new RdfLiveWrite.EntityDelete(Entity.getEntityTypeFromObject(table), table.getId())),
+        submitted);
+  }
+
+  @Test
+  void aCascadeRestoreIsPlannedOnceAfterItCommits() throws ReflectiveOperationException {
+    final List<List<UUID>> planned = new ArrayList<>();
+    final Field plannerField = RdfUpdater.class.getDeclaredField("restorePlanner");
+    plannerField.setAccessible(true);
+    final Object originalPlanner = plannerField.get(null);
+    plannerField.set(null, recordingPlanner(planned));
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", Entity.TABLE);
+    final Table schemaChild = new Table().withId(UUID.randomUUID()).withName("child");
+    final Table root = new Table().withId(UUID.randomUUID()).withName("root");
+    try {
+      PostCommitActionQueue.begin();
+      RdfUpdater.restoring(
+          () -> {
+            RdfUpdater.recordRestored(List.of(schemaChild));
+            RdfUpdater.restoring(
+                () -> {
+                  RdfUpdater.recordRestored(List.of(root));
+                  return null;
+                });
+            return null;
+          });
+      assertTrue(planned.isEmpty());
+
+      PostCommitActionQueue.run(PostCommitActionQueue.drain());
+
+      assertEquals(List.of(List.of(schemaChild.getId(), root.getId())), planned);
+    } finally {
+      plannerField.set(null, originalPlanner);
+    }
+  }
+
+  private static RdfRestorePlanner recordingPlanner(final List<List<UUID>> planned) {
+    return new RdfRestorePlanner(
+        new RdfRestorePlanner.Sources() {
+          @Override
+          public List<EntityRelationshipObject> relationshipsOf(
+              final String entityType, final List<UUID> entityIds) {
+            planned.add(entityIds);
+            return List.of();
+          }
+
+          @Override
+          public Set<RdfEntityLiveness.Endpoint> labelledEntities(
+              final String labelType, final List<UUID> labelIds) {
+            return Set.of();
+          }
+
+          @Override
+          public List<RdfRestorePlanner.GlossaryRelation> glossaryRelations(
+              final Collection<UUID> termIds) {
+            return List.of();
+          }
+        },
+        (type, ids) -> Set.copyOf(ids));
   }
 
   @Test

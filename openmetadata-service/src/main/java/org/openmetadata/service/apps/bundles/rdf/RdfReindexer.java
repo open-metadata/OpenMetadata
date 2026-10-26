@@ -343,10 +343,19 @@ final class RdfReindexer {
   private record RepositoryPages(EntityRepository<?> repository, Fields fields, ListFilter filter)
       implements EntityPages {
     static RepositoryPages of(final String entityType) {
+      final EntityRepository<?> repository = Entity.getEntityRepository(entityType);
       return new RepositoryPages(
-          Entity.getEntityRepository(entityType),
+          repository,
           Entity.getOnlySupportedFields(entityType, RdfIndexingFields.forEntityType(entityType)),
-          new ListFilter(Include.ALL));
+          new ListFilter(liveRows(repository)));
+    }
+
+    /**
+     * Live entities only (ADR:2026-10-26-the-rdf-graph-projects-the-live-catalog-only). A table
+     * without a deleted column holds live rows only, and filtering on that column would fail.
+     */
+    private static Include liveRows(final EntityRepository<?> repository) {
+      return repository.getDao().supportsSoftDelete() ? Include.NON_DELETED : Include.ALL;
     }
 
     @Override

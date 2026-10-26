@@ -48,27 +48,49 @@ public class JsonLdTranslator {
   private final ObjectMapper objectMapper;
   private final Map<String, Object> contextCache;
   private final String baseUri;
-  // One mapper for the translator's lifetime. A per-entity mapper made the
-  // FQN→UUID and merged-context caches die with each entity — structurally
-  // zero cross-entity hits, i.e. one DB round trip per tag FQN per entity
-  // during reindexing.
+  // One mapper for the translator's lifetime, so its merged-context cache is
+  // shared across entities.
   private final RdfPropertyMapper propertyMapper;
   private final Function<EntityInterface<?>, String> entityTypeResolver;
 
+  /** A translator for the graph: references and labels that are not live are left out. */
   public JsonLdTranslator(ObjectMapper objectMapper, String baseUri) {
-    this(objectMapper, baseUri, entity -> entity.getEntityReference().getType());
+    this(objectMapper, baseUri, LiveTagLookup.database(), ReferenceScope.LIVE);
+  }
+
+  public JsonLdTranslator(
+      ObjectMapper objectMapper,
+      String baseUri,
+      LiveTagLookup tagLookup,
+      ReferenceScope referenceScope) {
+    this(
+        objectMapper,
+        baseUri,
+        entity -> entity.getEntityReference().getType(),
+        tagLookup,
+        referenceScope);
   }
 
   JsonLdTranslator(
       ObjectMapper objectMapper,
       String baseUri,
       Function<EntityInterface<?>, String> entityTypeResolver) {
+    this(objectMapper, baseUri, entityTypeResolver, LiveTagLookup.database(), ReferenceScope.LIVE);
+  }
+
+  private JsonLdTranslator(
+      ObjectMapper objectMapper,
+      String baseUri,
+      Function<EntityInterface<?>, String> entityTypeResolver,
+      LiveTagLookup tagLookup,
+      ReferenceScope referenceScope) {
     this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
     this.contextCache = new HashMap<>();
     this.baseUri = Objects.requireNonNull(baseUri, "baseUri");
     this.entityTypeResolver = Objects.requireNonNull(entityTypeResolver, "entityTypeResolver");
     loadContexts();
-    this.propertyMapper = new RdfPropertyMapper(baseUri, objectMapper, contextCache);
+    this.propertyMapper =
+        new RdfPropertyMapper(baseUri, objectMapper, contextCache, tagLookup, referenceScope);
   }
 
   private void loadContexts() {

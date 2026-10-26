@@ -7790,8 +7790,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // a clean 404 instead of running children / hooks against a non-existent id and
     // potentially surfacing a 500 from a hook side-effect.
     T restoredEntity = find(id, ALL);
-    return executeEntityWrite(
-        List.of(restoredEntity), () -> restoreLoadedEntity(updatedBy, id, restoredEntity));
+    return RdfUpdater.restoring(
+        () ->
+            executeEntityWrite(
+                List.of(restoredEntity), () -> restoreLoadedEntity(updatedBy, id, restoredEntity)));
   }
 
   private PutResponse<T> restoreLoadedEntity(String updatedBy, UUID id, T restoredEntity) {
@@ -7820,6 +7822,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updated.setUpdatedAt(System.currentTimeMillis());
       EntityUpdater updater = getUpdater(original, updated, Operation.PUT, null);
       updater.update();
+      RdfUpdater.recordRestored(List.of(updated));
       // Restore moves the row from deleted=true to deleted=false, changing the listing total.
       ListCountCache.invalidate(entityType);
       response = new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
@@ -7935,6 +7938,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       List<EntityUpdater> changed = filterChanged(updaters);
       if (!changed.isEmpty()) {
         persistBulkUpdaters(changed, "bulkRestore");
+        RdfUpdater.recordRestored(changed.stream().map(EntityUpdater::getUpdated).toList());
         ListCountCache.invalidate(entityType);
       }
     }

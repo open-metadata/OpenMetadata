@@ -14,9 +14,12 @@ package org.openmetadata.service.rdf;
 
 import java.time.Clock;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -34,7 +37,10 @@ import org.openmetadata.service.util.PostCommitActionQueue;
 public final class RdfUpdater {
   private static volatile Consumer<List<RdfLiveWrite>> writeQueue;
   private static volatile RdfLiveWriteStore liveWriteStore;
+  private static volatile RdfRestorePlanner restorePlanner;
   private static RdfLiveWriter writer;
+  // Entities restored by the restore running on this thread; null outside a restore.
+  private static final ThreadLocal<Set<RdfEntityLiveness.Endpoint>> RESTORED = new ThreadLocal<>();
 
   private RdfUpdater() {}
 
@@ -62,6 +68,9 @@ public final class RdfUpdater {
               AsyncService.getInstance().getExecutorService());
       writeQueue = writer::enqueueAll;
       liveWriteStore = store;
+      restorePlanner =
+          new RdfRestorePlanner(
+              new RdfRestoreSources(Entity.getCollectionDAO()), RdfEntityLiveness.database());
       writer.start();
       LOG.info("RDF updater initialized with durable, ordered live writes");
     }
@@ -89,6 +98,7 @@ public final class RdfUpdater {
   public static synchronized void stop() {
     writeQueue = null;
     liveWriteStore = null;
+    restorePlanner = null;
     if (writer != null) {
       writer.close();
       writer = null;
@@ -96,8 +106,8 @@ public final class RdfUpdater {
   }
 
   public static void updateEntity(final EntityInterface<?> entity) {
-    if (isEnabled() && !RdfExcludedEntities.isExcluded(Entity.getEntityTypeFromObject(entity))) {
-      submit(RdfLiveWrite.EntityUpdate.capture(entity));
+    if (isEnabled() && isProjected(entity)) {
+      submit(projection(entity));
     }
   }
 
@@ -105,11 +115,88 @@ public final class RdfUpdater {
   public static void updateEntities(final Collection<? extends EntityInterface<?>> entities) {
     if (isEnabled()) {
       submitAll(
+          entities.stream().filter(RdfUpdater::isProjected).map(RdfUpdater::projection).toList());
+    }
+  }
+
+  /**
+   * The graph projects the live catalog only: a soft-deleted entity leaves it with every edge that
+   * touches it, as a hard-deleted one does, and a restore puts it back
+   * (ADR:2026-10-26-the-rdf-graph-projects-the-live-catalog-only).
+   */
+  private static RdfLiveWrite projection(final EntityInterface<?> entity) {
+    return Boolean.TRUE.equals(entity.getDeleted())
+        ? new RdfLiveWrite.EntityDelete(Entity.getEntityTypeFromObject(entity), entity.getId())
+        : RdfLiveWrite.EntityUpdate.capture(entity);
+  }
+
+  private static boolean isProjected(final EntityInterface<?> entity) {
+    return !RdfExcludedEntities.isExcluded(Entity.getEntityTypeFromObject(entity));
+  }
+
+  /**
+   * Runs {@code restore} and, once it commits, re-adds the edges of every entity it restored.
+   * Planning once for a whole cascade writes each edge between two restored entities once, after
+   * both of its ends are live. A restore nested in another joins the outer one's plan.
+   */
+  public static <R> R restoring(final Supplier<R> restore) {
+    if (!isEnabled() || RESTORED.get() != null) {
+      return restore.get();
+    }
+    RESTORED.set(new LinkedHashSet<>());
+    try {
+      final R result = restore.get();
+      submitRestorePlan(List.copyOf(RESTORED.get()));
+      return result;
+    } finally {
+      RESTORED.remove();
+    }
+  }
+
+  /**
+   * Records entities a restore turned live. Their own triples come from {@link #updateEntity}; the
+   * restore plan adds the edges and the references to them that their soft delete removed.
+   */
+  public static void recordRestored(final Collection<? extends EntityInterface<?>> entities) {
+    if (isEnabled()) {
+      final List<RdfEntityLiveness.Endpoint> restored =
           entities.stream()
-              .filter(
-                  entity -> !RdfExcludedEntities.isExcluded(Entity.getEntityTypeFromObject(entity)))
-              .<RdfLiveWrite>map(RdfLiveWrite.EntityUpdate::capture)
-              .toList());
+              .filter(RdfUpdater::isProjected)
+              .map(
+                  entity ->
+                      new RdfEntityLiveness.Endpoint(
+                          Entity.getEntityTypeFromObject(entity), entity.getId()))
+              .toList();
+      final Set<RdfEntityLiveness.Endpoint> scope = RESTORED.get();
+      if (scope == null) {
+        submitRestorePlan(restored);
+      } else {
+        scope.addAll(restored);
+      }
+    }
+  }
+
+  private static void submitRestorePlan(final List<RdfEntityLiveness.Endpoint> restored) {
+    final RdfRestorePlanner planner = restorePlanner;
+    final Consumer<List<RdfLiveWrite>> queue = writeQueue;
+    if (planner != null && queue != null && !restored.isEmpty()) {
+      PostCommitActionQueue.runOrDefer(() -> enqueueRestorePlan(planner, queue, restored));
+    }
+  }
+
+  private static void enqueueRestorePlan(
+      final RdfRestorePlanner planner,
+      final Consumer<List<RdfLiveWrite>> queue,
+      final List<RdfEntityLiveness.Endpoint> restored) {
+    try {
+      final List<RdfLiveWrite> plan = planner.plan(restored);
+      if (!plan.isEmpty()) {
+        queue.accept(plan);
+      }
+    } catch (RuntimeException exception) {
+      // Without the plan the graph misses these entities' edges until a reindex.
+      RdfProjectionHealth.markDegraded(exception);
+      throw exception;
     }
   }
 
