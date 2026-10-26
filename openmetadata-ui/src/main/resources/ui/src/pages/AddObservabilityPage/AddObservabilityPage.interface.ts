@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 
+import type { AxiosError } from 'axios';
 import type { ComponentType } from 'react';
 import type { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
 import type { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import type { ResourceEntity } from '../../enums/permissions.enum';
 import type { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
-import {
-  AlertType,
-  EventFilterRule,
-} from '../../generated/events/eventSubscription';
-import { EventType } from '../../generated/type/changeEvent';
+import { AlertType } from '../../generated/events/eventSubscription';
 import type { AlertSelection } from '../../hooks/useAlertSelection';
 import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
 import type {
@@ -38,18 +35,9 @@ export type {
   ModifiedWebhookConfig,
 };
 
-export interface ObservabilityFilterResourceDescriptor {
-  containerEntities?: string[];
-  name?: string;
-  supportedActions?: EventFilterRule[];
-  /** Event types the source emits; narrows the event-type filter options. */
-  supportedEventTypes?: EventType[];
-  supportedFilters?: EventFilterRule[];
-}
-
 export interface UseAlertFormDataOptions {
   afterSaveAction?: (fqn: string) => Promise<void> | void;
-  /** Defaults to Observability; selects which resource catalogue to load. */
+  /** Defaults to Observability; says which kind of alert the server is asked about. */
   alertType?: AlertType;
   fqn?: string;
   onCancel?: () => void;
@@ -60,7 +48,7 @@ export interface UseAlertFormDataOptions {
 }
 
 export interface UseObservabilityAlertResourcesReturn {
-  filterResources: ObservabilityFilterResourceDescriptor[];
+  /** The server has not answered its first question yet. */
   loading: boolean;
   selection: AlertSelection;
   shouldShowActionsSection: boolean;
@@ -82,13 +70,15 @@ export interface UseObservabilityAlertTemplatesOptions {
 
 export interface UseAlertFormDataReturn {
   alert?: ModifiedEventSubscription;
+  /** Set when loading the alert to edit failed. */
+  alertError?: AxiosError;
   breadcrumb: {
     name: string;
     url: string;
   }[];
   extraFormButtons: Record<string, ComponentType<AddAlertFormWidgetProps>>;
   extraFormWidgets: Record<string, ComponentType<AddAlertFormWidgetProps>>;
-  filterResources: ObservabilityFilterResourceDescriptor[];
+  fetchAlert: () => Promise<void>;
   handleCancel: () => void;
   handleSave: (data: ModifiedCreateEventSubscription) => Promise<void>;
   inlineAlertDetails?: InlineAlertProps;

@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  EmptyPlaceholder,
-  Toggle,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -31,9 +27,9 @@ import {
 } from '../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { File } from '../../../../generated/entity/data/file';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useTableFilters } from '../../../../hooks/useTableFilters';
-import { ServicePageData } from '../../../../interface/platform/service.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -48,6 +44,8 @@ import {
   tagTableObject,
 } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 import Table from '../../../common/Table/TableV2';
 import { FilesTableProps } from './FilesTable.interface';
@@ -117,15 +115,15 @@ function FilesTable({
     [paging]
   );
 
-  const tableColumn: ColumnsType<ServicePageData> = useMemo(
+  const tableColumn: ColumnsType<File> = useMemo(
     () => [
       {
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 300,
-        sorter: getColumnSorter<ServicePageData, 'name'>('name'),
-        render: (_, record: ServicePageData) => {
+        sorter: getColumnSorter<File, 'name'>('name'),
+        render: (_, record: File) => {
           const fileDisplayName = getEntityName(record);
 
           return (
@@ -145,8 +143,8 @@ function FilesTable({
           );
         },
       },
-      ...descriptionTableObject<ServicePageData>({ width: 400 }),
-      ...tagTableObject<ServicePageData>(),
+      ...descriptionTableObject<File>({ width: 400 }),
+      ...tagTableObject<File>(),
     ],
     [searchValue, t]
   );
@@ -210,19 +208,17 @@ function FilesTable({
         emptyText: (
           <div className="tw:relative tw:min-h-70">
             {searchValue ? (
-              <EmptyPlaceholder
+              <NoSearchResultsPlaceholder
                 description={t('message.check-spelling-or-try-shorter-term')}
-                icon={<NoSearch className="tw:text-secondary" />}
+                icon={<NoSearch />}
                 title={t('label.no-matching-result-plural')}
-                variant="blank"
               />
             ) : (
-              <EmptyPlaceholder
-                icon={<Assets className="tw:text-utility-gray-600" />}
+              <NoDataPlaceholder
+                icon={<Assets />}
                 title={t('message.no-entity-data-available', {
                   entity: t('label.file-plural'),
                 })}
-                variant="blank"
               />
             )}
           </div>

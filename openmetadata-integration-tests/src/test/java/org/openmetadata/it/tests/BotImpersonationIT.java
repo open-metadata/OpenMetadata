@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -500,6 +501,170 @@ public class BotImpersonationIT {
         denied.getMessage().contains("identity endpoint"),
         "Error should name the identity endpoint: " + denied.getMessage());
   }
+
+  @Test
+  void test_impersonation_cannotMintBotCredentialViaUserCreate(TestNamespace ns) {
+    // Creating a bot user mints and returns its JWT. Reached through /v1/users, that is the same
+    // standalone credential the identity endpoints guard, so a privileged user mutation is refused
+    // while impersonating even though the impersonated principal is an admin.
+    OpenMetadataClient asAdmin = grantedBotImpersonating(ns, "mintbot", "admin");
+    String name = "mintedbot" + ns.shortPrefix();
+
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () ->
+                asAdmin
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        "/v1/users",
+                        Map.of(
+                            "name",
+                            name,
+                            "email",
+                            name + "@test.com",
+                            "isBot",
+                            true,
+                            "authenticationMechanism",
+                            Map.of(
+                                "authType",
+                                "JWT",
+                                "config",
+                                Map.of("JWTTokenExpiry", "Unlimited"))),
+                        null),
+            "An impersonated request must not mint a bot credential through user create");
+    assertTrue(
+        denied.getMessage().contains("Impersonated requests cannot grant privileges"),
+        "Bot mint must be refused as a privileged mutation: " + denied.getMessage());
+  }
+
+  @Test
+  void test_impersonation_cannotGrantPrivilegesThroughUserPatch(TestNamespace ns) {
+    // PATCH reaches the same privileged fields as POST and PUT, so making a user admin or giving
+    // them a role while impersonating an admin is refused the same way.
+    User target = createRegularUser(ns, "patchgrant");
+    OpenMetadataClient asAdmin = grantedBotImpersonating(ns, "patchgrant", "admin");
+    Role dataSteward = SdkClients.adminClient().roles().getByName("DataSteward");
+    List<String> patches =
+        List.of(
+            "[{\"op\":\"replace\",\"path\":\"/isAdmin\",\"value\":true}]",
+            "[{\"op\":\"add\",\"path\":\"/roles/0\",\"value\":{\"id\":\""
+                + dataSteward.getId()
+                + "\",\"type\":\"role\"}}]");
+
+    for (String patch : patches) {
+      Exception denied =
+          assertThrows(
+              Exception.class,
+              () ->
+                  asAdmin
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.PATCH,
+                          "/v1/users/" + target.getId(),
+                          JsonUtils.readTree(patch)),
+              "An impersonated PATCH must not grant privileges: " + patch);
+      assertTrue(
+          denied.getMessage().contains("Impersonated requests cannot grant privileges"),
+          "Privileged PATCH must be refused: " + denied.getMessage());
+    }
+    User unchanged = SdkClients.adminClient().users().getByName(target.getName(), "roles");
+    assertFalse(Boolean.TRUE.equals(unchanged.getIsAdmin()), "Target must not become admin");
+    assertFalse(
+        unchanged.getRoles().stream().anyMatch(role -> role.getId().equals(dataSteward.getId())),
+        "Target must not gain the role");
+  }
+
+  @Test
+  void test_impersonation_cannotCreateBot(TestNamespace ns) {
+    // The /v1/bots write surface is identity management; an impersonated request has no business
+    // creating or altering a bot.
+    User botUser = createBotUser(ns, "makebot");
+    OpenMetadataClient asAdmin = grantedBotImpersonating(ns, "makebotcaller", "admin");
+
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () ->
+                asAdmin
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        "/v1/bots",
+                        Map.of("name", ns.prefix("newbot"), "botUser", botUser.getName()),
+                        null),
+            "An impersonated request must not create a bot");
+    assertTrue(
+        denied.getMessage().contains("identity endpoint"),
+        "Bot creation must be blocked as an identity endpoint: " + denied.getMessage());
+  }
+
+  @Test
+  void test_identityEndpoints_deniedForEveryRoutedSpelling(TestNamespace ns) {
+    // Jersey drops matrix parameters and a trailing slash before it picks the method, so each of
+    // these spellings reaches the same handler and must be refused like the canonical path.
+    User target = createRegularUser(ns, "spelling");
+    OpenMetadataClient asTarget = grantedBotImpersonating(ns, "spelling", target.getName());
+    List<IdentityCall> calls =
+        List.of(
+            new IdentityCall(
+                HttpMethod.POST,
+                "/v1/users/generateToken",
+                Map.of("id", target.getId().toString(), "JWTTokenExpiry", "OneHour")),
+            new IdentityCall(
+                HttpMethod.PUT,
+                "/v1/users/security/token",
+                Map.of("tokenName", "spelling", "JWTTokenExpiry", "OneHour")),
+            new IdentityCall(HttpMethod.GET, "/v1/users/security/token", null),
+            new IdentityCall(
+                HttpMethod.PUT,
+                "/v1/users/changePassword",
+                Map.of(
+                    "oldPassword", "Wrong@Passw0rd1",
+                    "newPassword", "Spelling@Passw0rd1",
+                    "confirmPassword", "Spelling@Passw0rd1",
+                    "requestType", "SELF")),
+            new IdentityCall(HttpMethod.POST, "/v1/users/logout", Map.of("token", "not-a-token")),
+            new IdentityCall(HttpMethod.GET, "/v1/users/generateRandomPwd", null));
+
+    for (IdentityCall call : calls) {
+      for (String suffix : List.of("", ";x=1", "/", ";x=1/")) {
+        String path = call.path() + suffix;
+        Exception denied =
+            assertThrows(
+                Exception.class,
+                () -> asTarget.getHttpClient().executeForString(call.method(), path, call.body()),
+                call.method() + " " + path + " must be refused while impersonating");
+        assertTrue(
+            denied.getMessage().contains("identity endpoint"),
+            call.method()
+                + " "
+                + path
+                + " must be blocked as an identity endpoint: "
+                + denied.getMessage());
+      }
+    }
+  }
+
+  @Test
+  void test_ordinaryEndpoint_withMatrixParam_staysOpenToImpersonation(TestNamespace ns) {
+    // Control for the test above: the refusal comes from the identity binding, not from matrix
+    // parameters breaking routing for impersonated requests in general.
+    User target = createRegularUser(ns, "matrixok");
+    OpenMetadataClient asTarget = grantedBotImpersonating(ns, "matrixok", target.getName());
+
+    String body =
+        assertDoesNotThrow(
+            () ->
+                asTarget
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.GET, "/v1/users/" + target.getId() + ";x=1", null));
+    assertTrue(body.contains(target.getName()), "Expected the target user back: " + body);
+  }
+
+  private record IdentityCall(HttpMethod method, String path, Object body) {}
 
   private OpenMetadataClient grantedBotImpersonating(
       TestNamespace ns, String suffix, String targetUserName) {

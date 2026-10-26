@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -45,6 +46,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskAvailableTransition;
+import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
@@ -720,5 +722,24 @@ class TaskWorkflowHandlerTest {
     assertTrue(
         parentTags == null || parentTags.isEmpty(),
         "Column tag suggestion must not tag the parent table");
+  }
+
+  @Test
+  void aRejectionWithoutItsOwnCommentUsesTheReviewersLatestTaskComment() {
+    EntityReference karan = new EntityReference().withName("karan").withType("user");
+    EntityReference owner = new EntityReference().withName("qaowner").withType("user");
+    List<TaskComment> comments =
+        List.of(
+            new TaskComment().withMessage("Earlier note").withAuthor(karan).withCreatedAt(1L),
+            new TaskComment().withMessage("Owner reply").withAuthor(owner).withCreatedAt(3L),
+            new TaskComment()
+                .withMessage("Add the refresh schedule")
+                .withAuthor(karan)
+                .withCreatedAt(2L));
+
+    assertEquals(
+        "Add the refresh schedule", TaskWorkflowHandler.latestCommentBy("karan", comments));
+    assertNull(TaskWorkflowHandler.latestCommentBy("admin", comments));
+    assertNull(TaskWorkflowHandler.latestCommentBy("karan", null));
   }
 }

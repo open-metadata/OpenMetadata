@@ -23,6 +23,7 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 public class McpIntegrationIT extends McpTestBase {
 
@@ -112,6 +113,48 @@ public class McpIntegrationIT extends McpTestBase {
     String responseText = responseJson.get("result").get("content").get(0).get("text").asText();
     assertThat(responseText).contains("extension");
     assertThat(responseText).contains(propertyValue);
+  }
+
+  @Test
+  void testGetEntityDetailsMasksServiceConnectionPassword() throws Exception {
+    Map<String, Object> toolCallRequest =
+        McpTestUtils.createGetEntityToolCall(
+            Entity.DATABASE_SERVICE, testTable.getService().getFullyQualifiedName());
+    JsonNode responseJson = executeMcpRequest(toolCallRequest);
+
+    String responseText = responseJson.get("result").get("content").get(0).get("text").asText();
+    JsonNode config = OBJECT_MAPPER.readTree(responseText).at("/connection/config");
+    assertThat(config.at("/authType/password").asText())
+        .isEqualTo(PasswordEntityMasker.PASSWORD_MASK);
+    assertThat(config.at("/hostPort").asText()).isEqualTo("localhost:3306");
+  }
+
+  @Test
+  void testPatchEntityOnServiceSavesTheDescriptionAndLeavesTheConnection() throws Exception {
+    String serviceFqn = testTable.getService().getFullyQualifiedName();
+    String description = "patched through MCP " + UUID.randomUUID().toString().substring(0, 8);
+
+    JsonNode patched =
+        executeMcpRequest(
+            McpTestUtils.createPatchEntityToolCall(
+                Entity.DATABASE_SERVICE,
+                serviceFqn,
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\""
+                    + description
+                    + "\"}]"));
+    JsonNode refused =
+        executeMcpRequest(
+            McpTestUtils.createPatchEntityToolCall(
+                Entity.DATABASE_SERVICE,
+                serviceFqn,
+                "[{\"op\":\"replace\",\"path\":\"/connection/config/hostPort\","
+                    + "\"value\":\"example.invalid:3306\"}]"));
+
+    assertThat(patched.path("result").path("isError").asBoolean(false)).isFalse();
+    assertThat(refused.path("result").path("isError").asBoolean(false)).isTrue();
+    JsonNode stored = get("services/databaseServices/name/" + serviceFqn, JsonNode.class);
+    assertThat(stored.path("description").asText()).isEqualTo(description);
+    assertThat(stored.at("/connection/config/hostPort").asText()).isEqualTo("localhost:3306");
   }
 
   private static void addStringCustomProperty(String entityType, String propertyName)

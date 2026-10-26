@@ -533,7 +533,7 @@ const emitGlossaryChange = (terms: TagLabel[]) => {
     throw new Error('GlossaryTermPicker was never rendered');
   }
 
-  return onChange(terms);
+  return onChange(terms, terms);
 };
 
 const renderGlossaryContainer = (props: {

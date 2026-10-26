@@ -27,13 +27,21 @@ import {
   Home02,
   InfoCircle,
   LayersThree01,
+  PlatformLineage,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import type { LayoutOptions } from 'elkjs/lib/elk.bundled.js';
 import { debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ReactFlow, {
@@ -59,8 +67,6 @@ import {
   NODE_HEIGHT_WITH_CHILDREN,
   NODE_WIDTH,
 } from '../../../constants/Lineage.constants';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import {
   LineageBand,
@@ -94,7 +100,8 @@ import { onEdgeClick } from '../../../utils/Lineage/handlers/edgeMutations';
 import { onPaneClick } from '../../../utils/Lineage/handlers/nodeMutations';
 import ELKLayout from '../../../utils/Lineage/Layout/ELKUtil/ELKUtil';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import CustomNodeV1 from '../../Entity/EntityLineage/CustomNodeV1.component';
 import LineageControlButtons from '../../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
@@ -111,8 +118,11 @@ import {
   getConnectedFieldLineagePathHighlight,
   getConnectedLineagePathHighlight,
   getDrillBand,
+  getDrilledRootBreadcrumb,
   getLensRootLabelKey,
+  getLineageMapEmptyState,
   getParentSceneRequest,
+  getRailDrillFallbackNode,
   getRailStop,
   getRailStopLabelKey,
   getSceneFocus,
@@ -125,6 +135,8 @@ import {
   getSceneSearch,
   getSemanticZoomDirection,
   isContainerSceneNode,
+  isSceneNodeDrillable,
+  LineageMapEmptyState,
   LINEAGE_MAP_RAIL_STOPS,
   type LineageSceneRequest,
 } from './LineageMap.utils';
@@ -158,8 +170,6 @@ const SCENE_FIT_VIEW_MAX_ZOOM = 1;
 // in every band; assets keep the wider default for their column lists.
 const CONTAINER_NODE_WIDTH = 340;
 const SCENE_LAYER_NODE_HEIGHT = 66;
-const LINEAGE_MAP_EMPTY_CLASSES =
-  'lineage-map-empty tw:absolute tw:inset-0 tw:z-1 tw:grid tw:place-items-center tw:bg-transparent tw:text-tertiary';
 const LINEAGE_MAP_RAIL_CLASSES = [
   'lineage-map-rail tw:group tw:absolute tw:right-6 tw:z-10 tw:flex tw:-translate-y-1/2',
   'tw:items-stretch tw:gap-2',
@@ -396,13 +406,6 @@ const getPreviousZoomBand = (band: LineageBand) => {
 
 const isDeeperBand = (currentBand: LineageBand, nextBand: LineageBand) =>
   BAND_DEPTH[nextBand] > BAND_DEPTH[currentBand];
-
-const isSceneNodeDrillable = (
-  node?: LineageSceneNode
-): node is LineageSceneNode & {
-  fullyQualifiedName: string;
-  entityType: string;
-} => Boolean(node?.isExpandable && node.fullyQualifiedName && node.entityType);
 
 export const getSceneCacheKey = (
   request: SceneRequest,
@@ -897,6 +900,41 @@ const LineageMapBreadcrumbs = ({
   );
 };
 
+// A drilled-in scene with nothing in it replaces the canvas, breadcrumb
+// included, so the empty state carries the way back to the root.
+const LineageMapEmptyPlaceholder = ({
+  scene,
+  onBack,
+}: {
+  scene?: LineageScene;
+  onBack: (breadcrumb: LineageSceneBreadcrumb) => void;
+}) => {
+  const { t } = useTranslation();
+  const rootBreadcrumb = getDrilledRootBreadcrumb(scene);
+
+  return (
+    <NoDataPlaceholder
+      actions={
+        rootBreadcrumb && scene
+          ? [
+              {
+                key: 'back-to-root',
+                label: t('label.back-to-entity', {
+                  entity: t(getLensRootLabelKey(scene.lens)),
+                }),
+                color: 'secondary',
+                iconLeading: Home02,
+                onPress: () => onBack(rootBreadcrumb),
+              },
+            ]
+          : undefined
+      }
+      icon={<PlatformLineage />}
+      title={t('message.no-lineage-data-available')}
+    />
+  );
+};
+
 const LineageMapStatusPanel = ({
   scene,
   error,
@@ -940,51 +978,6 @@ const LineageMapStatusPanel = ({
   );
 };
 
-const LineageMapPlaceholder = ({
-  scene,
-  loading,
-  error,
-  onRetry,
-}: {
-  scene?: LineageScene;
-  loading: boolean;
-  error?: AxiosError;
-  onRetry: () => void;
-}) => {
-  const { t } = useTranslation();
-  if (loading && !scene) {
-    return <LineageSkeleton />;
-  }
-  if (error && !scene) {
-    return (
-      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <span>{t('message.something-went-wrong')}</span>
-          <Button data-testid="lineage-map-retry" onClick={onRetry}>
-            {t('label.try-again')}
-          </Button>
-        </ErrorPlaceHolder>
-      </div>
-    );
-  }
-  if (!scene) {
-    return (
-      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-        <span>{t('message.no-lineage-data-available')}</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-      <ErrorPlaceHolder
-        placeholderText={t('message.no-lineage-data-available')}
-        type={ERROR_PLACEHOLDER_TYPE.FILTER}
-      />
-    </div>
-  );
-};
-
 const LineageMapCanvas = ({
   config,
   deleted,
@@ -1001,12 +994,6 @@ const LineageMapCanvas = ({
   const { t } = useTranslation();
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const { isTourOpen, isTourPage, tourMockDatasetData } = useTourProvider();
-  // The tour's table is mock data, so its scene is too — never ask the server.
-  const tourLineageScene = isTourPage
-    ? (tourMockDatasetData as { lineageScene?: LineageScene } | undefined)
-        ?.lineageScene
-    : undefined;
   const { activeDomain, isDomainRestricted } = useDomainStore();
   const { onNodeClick: onProviderNodeClick } = useLineageHandlers();
   const request = useMemo(
@@ -1201,12 +1188,11 @@ const LineageMapCanvas = ({
   }, []);
 
   useEffect(() => {
-    const isOnboardingContext =
-      Boolean(isPlatformLineage) && !deleted && !isTourOpen && !isTourPage;
+    const isOnboardingContext = Boolean(isPlatformLineage) && !deleted;
     const hasSeenOnboarding =
       cookieStorage.getItem(LINEAGE_MAP_ONBOARDING_COOKIE) === 'true';
     setShowOnboarding(isOnboardingContext && !hasSeenOnboarding);
-  }, [deleted, isPlatformLineage, isTourOpen, isTourPage]);
+  }, [deleted, isPlatformLineage]);
 
   const getOriginRequestTarget = useCallback(
     (currentScene?: LineageScene): LineageSceneFocus =>
@@ -1251,10 +1237,7 @@ const LineageMapCanvas = ({
       try {
         response = await sceneCache.load(
           cacheKey,
-          () =>
-            tourLineageScene
-              ? Promise.resolve(tourLineageScene)
-              : getLineageScene({ ...nextRequest, config, queryFilter }),
+          () => getLineageScene({ ...nextRequest, config, queryFilter }),
           options.bypassCache
         );
         if (sceneRequestIdRef.current === requestId) {
@@ -1281,7 +1264,7 @@ const LineageMapCanvas = ({
 
       return response;
     },
-    [config, queryFilter, sceneCache, tourLineageScene]
+    [config, queryFilter, sceneCache]
   );
   const refetchCurrentScene = useCallback(
     async (isExpectedScene?: (response: LineageScene) => boolean) => {
@@ -1307,10 +1290,6 @@ const LineageMapCanvas = ({
   const prefetchAdjacentBands = useMemo(
     () =>
       debounce((currentScene: LineageScene) => {
-        // The tour scene is a fixed mock; there is nothing to prefetch.
-        if (tourLineageScene) {
-          return;
-        }
         prefetchSceneBands(
           currentScene,
           request,
@@ -1319,7 +1298,7 @@ const LineageMapCanvas = ({
           sceneCache
         );
       }, 300),
-    [config, queryFilter, request, sceneCache, tourLineageScene]
+    [config, queryFilter, request, sceneCache]
   );
 
   useEffect(() => {
@@ -1678,10 +1657,10 @@ const LineageMapCanvas = ({
         return;
       }
       // Going deeper drills one level into a node, like zooming in: the one
-      // the zoom would pick (selected / nearest the centre), else the first.
+      // the zoom would pick (selected / nearest the centre), else a fallback.
       if (isDeeperBand(getRailStop(scene), stop)) {
         const target =
-          pickZoomTargetNode().target ?? scene.nodes.find(isSceneNodeDrillable);
+          pickZoomTargetNode().target ?? getRailDrillFallbackNode(scene.nodes);
         if (target) {
           handleDrill(target);
         }
@@ -1957,13 +1936,35 @@ const LineageMapCanvas = ({
   );
 
   if (!scene || scene.nodes.length === 0) {
+    const emptyStates: Record<LineageMapEmptyState, ReactNode> = {
+      loading: <LineageSkeleton />,
+      error: (
+        <SomethingWentWrongPlaceholder
+          onReload={() => fetchScene(request, { bypassCache: true })}
+        />
+      ),
+      empty: (
+        <LineageMapEmptyPlaceholder
+          scene={scene}
+          onBack={handleBreadcrumbFocus}
+        />
+      ),
+    };
+
+    // The placeholders fill their nearest positioned ancestor; this wrapper
+    // keeps them to the canvas rather than the card that also holds the toolbar.
     return (
-      <LineageMapPlaceholder
-        error={sceneError}
-        loading={loading}
-        scene={scene}
-        onRetry={() => fetchScene(request, { bypassCache: true })}
-      />
+      <div className="tw:relative tw:h-full tw:w-full">
+        {
+          emptyStates[
+            getLineageMapEmptyState({
+              scene,
+              loading,
+              hasError: Boolean(sceneError),
+            })
+          ]
+        }
+      </div>
     );
   }
 

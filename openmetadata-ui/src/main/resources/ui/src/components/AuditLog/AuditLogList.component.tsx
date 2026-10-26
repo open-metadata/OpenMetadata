@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Skeleton,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { compact, startCase } from 'lodash';
 import {
@@ -46,7 +41,11 @@ import {
   getTeamsWithFqnPath,
   getUserPath,
 } from '../../utils/RouterUtils';
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import { isValidJSONString } from '../../utils/StringUtils';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import {
   AuditLogListItemProps,
@@ -160,7 +159,7 @@ const extractEntityInfo = (value: unknown): EntityInfo[] => {
 const LINKABLE_FIELD_RESOLVERS: Record<string, (fqn: string) => string> = {
   tags: getTagPath,
   dataproducts: (fqn) => getEntityLinkFromType(fqn, EntityType.DATA_PRODUCT),
-  teams: getTeamsWithFqnPath,
+  teams: (fqn) => getSettingsLink(getTeamsWithFqnPath(fqn)),
   domain: getDomainPath,
   owner: getUserPath,
   reviewers: getUserPath,
@@ -288,7 +287,7 @@ const getUserEntityLink = (
   return (
     <Link
       className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
-      to={getUserPath(userNameForLink)}>
+      to={getSettingsLink(getUserPath(userNameForLink))}>
       {entityLabel ?? userNameForLink}
     </Link>
   );
@@ -352,7 +351,7 @@ const AuditLogItemHeader: FC<AuditLogItemHeaderProps> = ({
           </Typography>{' '}
           <Link
             className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
-            to={getUserPath(impersonatedBy)}>
+            to={getSettingsLink(getUserPath(impersonatedBy))}>
             {impersonatedBy}
           </Link>
         </>
@@ -660,19 +659,16 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
     );
   }, [normalizedType, entityFQN, entityLabel, log]);
 
-  const userLink = useMemo(() => {
-    if (log.userName) {
-      return (
-        <Link
-          className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
-          to={getUserPath(log.userName)}>
-          {userName}
-        </Link>
-      );
-    }
-
-    return <Typography weight="semibold">{userName}</Typography>;
-  }, [log.userName, userName]);
+  // Built per render: `getSettingsLink` reads the current mode and search.
+  const userLink = log.userName ? (
+    <Link
+      className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
+      to={getSettingsLink(getUserPath(log.userName))}>
+      {userName}
+    </Link>
+  ) : (
+    <Typography weight="semibold">{userName}</Typography>
+  );
 
   return (
     <Box
@@ -766,35 +762,34 @@ const AuditLogList: FC<AuditLogListProps> = ({
 
     if (hasActiveSearch) {
       emptyContent = (
-        <EmptyPlaceholder
+        <NoSearchResultsPlaceholder
           actions={clearAction}
           description={t('message.check-spelling-or-try-different-term')}
-          icon={<NoSearch className="tw:text-quaternary" />}
+          icon={<NoSearch />}
           title={t('label.no-matching-results')}
         />
       );
     } else if (hasActiveFilters) {
       emptyContent = (
-        <EmptyPlaceholder
+        <NoFilteredResultsPlaceholder
           actions={clearAction}
           description={t('message.no-results-for-filters-description')}
-          icon={<NoSearch className="tw:text-quaternary" />}
+          icon={<NoSearch />}
           title={t('label.no-result-for-these-filter-plural')}
         />
       );
     } else {
       emptyContent = (
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           description={t('message.no-audit-logs-description')}
           title={t('label.no-audit-logs-yet')}
-          variant="blank"
         />
       );
     }
 
     return (
       <div data-testid="audit-log-list">
-        <div className="tw:p-8">{emptyContent}</div>
+        <div className="tw:relative tw:min-h-80 tw:p-8">{emptyContent}</div>
       </div>
     );
   }

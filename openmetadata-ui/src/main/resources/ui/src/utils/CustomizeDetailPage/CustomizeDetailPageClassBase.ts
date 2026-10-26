@@ -52,6 +52,7 @@ import {
 } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import i18n from '../i18next/LocalUtil';
+import { getOwnHandler } from '../RecordUtils';
 
 const GLOSSARY_WIDGET_IMAGE_MAP: Record<string, string> = {
   [GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES]: CustomPropertyImg,
@@ -121,7 +122,7 @@ class CustomizeDetailPageClassBase {
   }
 
   public getTabLabelFromId(tab: EntityTabs): string {
-    const labelKey = TAB_LABEL_MAP[tab];
+    const labelKey = getOwnHandler(TAB_LABEL_MAP, tab);
 
     return labelKey ? i18n.t(labelKey) : tab;
   }

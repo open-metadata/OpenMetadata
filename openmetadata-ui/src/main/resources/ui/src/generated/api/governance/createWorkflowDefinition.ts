@@ -420,6 +420,13 @@ export interface NodeConfiguration {
      */
     fields?: RequiredField[];
     /**
+     * Set on the steps a rejected approval adds instead of collecting fields: `request` asks
+     * the stage's assignees to revise the asset, with the reviewer's comment; `resubmit` closes
+     * that request when the stage's approval opens again
+     * (ADR:2026-10-21-a-rejected-lifecycle-approval-asks-for-a-revision-and-the-next-edit-resubmits-it).
+     */
+    revision?: Revision;
+    /**
      * The task applies while the asset is in this stage.
      */
     stage?: EntityStatus;
@@ -592,6 +599,17 @@ export interface QualityBand {
 }
 
 /**
+ * Set on the steps a rejected approval adds instead of collecting fields: `request` asks
+ * the stage's assignees to revise the asset, with the reviewer's comment; `resubmit` closes
+ * that request when the stage's approval opens again
+ * (ADR:2026-10-21-a-rejected-lifecycle-approval-asks-for-a-revision-and-the-next-edit-resubmits-it).
+ */
+export enum Revision {
+    Request = "request",
+    Resubmit = "resubmit",
+}
+
+/**
  * Coarse task status mapped while this user task is active.
  *
  * Current status of the task in its lifecycle.
@@ -711,24 +729,26 @@ export enum Event {
 /**
  * Entity-specific filters with optional default
  */
-export interface FilterConditionObject {
+export type FilterConditionObject = {
     /**
      * Default filter for entity types not explicitly configured
      */
     default?: string;
+} & {
     [property: string]: string;
-}
+};
 
 /**
  * Entity-specific filters with optional default
  */
-export interface FiltersObject {
+export type FiltersObject = {
     /**
      * Default filter for entity types not explicitly configured
      */
     default?: string;
+} & {
     [property: string]: string;
-}
+};
 
 export interface AppScheduleClass {
     /**

@@ -19,6 +19,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import type { ReactNode } from 'react';
 import type { FieldValues, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -60,6 +61,8 @@ interface SettingsFormLayoutProps<T extends FieldValues> {
   onCancel: () => void;
   onSubmit: (values: T) => void | Promise<void>;
   children: ReactNode;
+  /** Center the form column horizontally. */
+  centered?: boolean;
 }
 
 const SettingsFormLayout = <T extends FieldValues>({
@@ -71,6 +74,7 @@ const SettingsFormLayout = <T extends FieldValues>({
   onCancel,
   onSubmit,
   children,
+  centered,
 }: SettingsFormLayoutProps<T>) => {
   const { t } = useTranslation();
 
@@ -88,7 +92,12 @@ const SettingsFormLayout = <T extends FieldValues>({
       showFieldDocs={showHint}
       onSubmit={form.handleSubmit(onSubmit)}>
       <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0">
-        <Box className="tw:max-w-240" direction="col" gap={8}>
+        <Box
+          className={classNames('tw:max-w-240', {
+            'tw:w-full tw:mx-auto': centered,
+          })}
+          direction="col"
+          gap={8}>
           {children}
         </Box>
       </div>
