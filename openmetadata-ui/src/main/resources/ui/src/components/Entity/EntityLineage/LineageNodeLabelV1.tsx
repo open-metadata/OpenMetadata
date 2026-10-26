@@ -24,7 +24,7 @@ import {
   Table as TableIcon,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { capitalize, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import {
   memo,
   ReactNode,
@@ -48,9 +48,13 @@ import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getEntityBreadcrumbs } from '../../../utils/EntityBreadcrumbPureUtils';
 import { getEntityIcon } from '../../../utils/EntityIconUtils';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageNodeUtils';
-import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  getEntityName,
+  getEntityNameLabel,
+} from '../../../utils/EntityNameUtils';
 import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { NODE_INSET_FILL_CLASS } from './CustomNode.constants';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 interface LineageNodeLabelProps {
@@ -61,6 +65,8 @@ interface LineageNodeLabelProps {
   toggleOnlyShowColumnsWithLineageFilterActive?: () => void;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
   actions?: ReactNode;
+  /** Colour of the clickable title; the base node uses link-primary. */
+  titleColor?: 'link-gray' | 'link-primary';
 }
 
 const getFooterChildrenCount = (node: LineageNodeType) =>
@@ -94,7 +100,11 @@ const EntityLabel = ({
   actions,
   node,
   onEntityClick,
-}: Pick<LineageNodeLabelProps, 'actions' | 'node' | 'onEntityClick'>) => {
+  titleColor = 'link-gray',
+}: Pick<
+  LineageNodeLabelProps,
+  'actions' | 'node' | 'onEntityClick' | 'titleColor'
+>) => {
   const { showDeletedIcon, showDbtIcon } = useMemo(() => {
     return {
       showDbtIcon:
@@ -177,7 +187,7 @@ const EntityLabel = ({
               <Button
                 ellipsis
                 className="nodrag nopan tw:max-w-full tw:justify-start tw:p-0"
-                color="link-gray"
+                color={titleColor}
                 size="sm"
                 onClick={onEntityClick}>
                 {entityName}
@@ -332,14 +342,18 @@ const EntityFooter = ({
   }
 
   return (
-    <div className="entity-footer">
+    <div
+      className={classNames(
+        'entity-footer',
+        isChildrenListExpanded && NODE_INSET_FILL_CLASS
+      )}>
       <div className="entity-footer__entity-type-and-dropdown">
         <BadgeWithIcon
           color="gray"
           iconLeading={renderEntityTypeIcon}
           size="md"
           type="color">
-          {capitalize(node.entityType)}
+          {getEntityNameLabel(node.entityType)}
         </BadgeWithIcon>
         <Button
           className={classNames(
@@ -376,6 +390,7 @@ const LineageNodeLabelV1 = ({
   actions,
   node,
   onEntityClick,
+  titleColor,
   isChildrenListExpanded,
   toggleColumnsList,
   toggleOnlyShowColumnsWithLineageFilterActive,
@@ -386,6 +401,7 @@ const LineageNodeLabelV1 = ({
       <EntityLabel
         actions={actions}
         node={node}
+        titleColor={titleColor}
         onEntityClick={onEntityClick}
       />
       <EntityFooter

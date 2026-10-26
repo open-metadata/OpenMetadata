@@ -40,6 +40,7 @@ import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
+import { borderAfter } from '@/utils/tailwindClasses';
 
 export const TableRowActionsDropdown = () => {
   const { t } = useCoreTranslation();
@@ -156,7 +157,12 @@ const TableCardRoot = ({
       <div
         {...props}
         className={cx(
-          'tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:outline-1 tw:-outline-offset-1 tw:outline-subtle',
+          // The edge is an overlay above the content: an inset outline on the
+          // card itself is painted over by a `stickyHeader` thead (sticky,
+          // z-10, opaque), so the frame vanished along the header. `isolate`
+          // keeps the overlay's z-index inside the card.
+          'tw:relative tw:isolate tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:after:z-20 tw:after:outline-subtle',
+          borderAfter,
           className
         )}>
         {children}

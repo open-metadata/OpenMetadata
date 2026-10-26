@@ -176,11 +176,11 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
     {change && <ActivityChangePanel change={change} />}
 
     {callout && (
-      <Box
-        className="tw:rounded-xl tw:border tw:border-l-2 tw:border-secondary tw:border-l-utility-brand-300 tw:bg-secondary tw:px-4 tw:py-3"
-        data-testid="task-detail-callout"
-        direction="col"
-        gap={1}>
+      // A surface of its own, not a layout Box. In dark the pane behind is
+      // bg-secondary, so it lifts to bg-surface.
+      <div
+        className="tw:flex tw:flex-col tw:gap-1 tw:rounded-xl tw:border tw:border-l-2 tw:border-secondary tw:border-l-utility-brand-300 tw:bg-secondary tw:px-4 tw:py-3 tw:dark:bg-surface"
+        data-testid="task-detail-callout">
         <Typography
           className="tw:uppercase tw:text-tertiary tw:tracking-wide"
           size="text-xs"
@@ -193,7 +193,7 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
           enableSeeMoreVariant={false}
           markdown={getFrontEndFormat(callout.text)}
         />
-      </Box>
+      </div>
     )}
   </Box>
 );

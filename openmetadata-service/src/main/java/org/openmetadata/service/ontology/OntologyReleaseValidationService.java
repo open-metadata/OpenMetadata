@@ -44,7 +44,6 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.rdf.NativeOntologyValidation;
 
-/** Combines immutable release findings with fresh authorized bindings and captured dependencies. */
 public final class OntologyReleaseValidationService {
   private static final int MAX_CACHE_STRING_LENGTH = 131_072;
   private final OntologyReleaseReader reader;

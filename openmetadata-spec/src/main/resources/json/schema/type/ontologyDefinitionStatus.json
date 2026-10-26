@@ -1,0 +1,9 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyDefinitionStatus.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyDefinitionStatus",
+  "description": "Release review state of an ontology definition. The server derives it from ontology releases, and clients cannot set it.",
+  "javaType": "org.openmetadata.schema.type.OntologyDefinitionStatus",
+  "type": "string",
+  "enum": ["Draft", "InReview", "Approved"]
+}

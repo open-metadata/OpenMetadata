@@ -23,6 +23,7 @@ import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
+import { safeDecodeURIComponent } from '../../../../../../utils/SettingsHashUtils';
 import { CRUMB } from './CustomPropertiesPanel.constants';
 import {
   AddCustomPropertyFormValues,
@@ -134,8 +135,9 @@ export function parseCustomPropertiesHash(
     return { entityFqn: null, action: 'detail' };
   }
 
+  // Names travel URL-encoded in the hash; decode them once here.
   const parts = subPath.split('/');
-  const entityFqn = parts[0] || null;
+  const entityFqn = parts[0] ? safeDecodeURIComponent(parts[0]) : null;
 
   if (parts[1] === 'add-property') {
     return { entityFqn, action: 'add' };
@@ -145,12 +147,17 @@ export function parseCustomPropertiesHash(
     return {
       entityFqn,
       action: 'edit',
-      propertyName: parts.slice(2).join('/'),
+      propertyName: safeDecodeURIComponent(parts.slice(2).join('/')),
     };
   }
 
   return { entityFqn, action: 'detail' };
 }
+
+/** Sub-path of an entity type's custom-property list, from its fqn alone. */
+// Names travel URL-encoded in the hash; parseCustomPropertiesHash decodes them.
+export const entityTypeDetailSubPath = (entityTypeFqn: string): string =>
+  encodeURIComponent(entityTypeFqn);
 
 export function viewToSubPath(
   view: CustomPropertiesSubView
@@ -159,11 +166,17 @@ export function viewToSubPath(
     case 'landing':
       return undefined;
     case 'detail':
-      return view.entityType.fullyQualifiedName ?? undefined;
+      return view.entityType.fullyQualifiedName
+        ? entityTypeDetailSubPath(view.entityType.fullyQualifiedName)
+        : undefined;
     case 'add':
-      return `${view.entityType.fullyQualifiedName}/add-property`;
+      return `${encodeURIComponent(
+        view.entityType.fullyQualifiedName ?? ''
+      )}/add-property`;
     case 'edit':
-      return `${view.entityType.fullyQualifiedName}/edit-property/${view.property.name}`;
+      return `${encodeURIComponent(
+        view.entityType.fullyQualifiedName ?? ''
+      )}/edit-property/${encodeURIComponent(view.property.name)}`;
     default:
       return undefined;
   }

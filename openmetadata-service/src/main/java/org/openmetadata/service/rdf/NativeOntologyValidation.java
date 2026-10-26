@@ -35,7 +35,6 @@ import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.service.ontology.OntologyReleaseReader;
 import org.openmetadata.service.rdf.RdfShaclValidator.ShapeSet;
 
-/** Validates a captured projection with shape targets bound only to captured definitions. */
 public final class NativeOntologyValidation {
   private static final Property TARGET_CLASS =
       ResourceFactory.createProperty(SHACL.NS, "targetClass");

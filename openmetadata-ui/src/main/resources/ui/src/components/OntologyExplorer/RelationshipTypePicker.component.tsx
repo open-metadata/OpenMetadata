@@ -42,9 +42,27 @@ const SearchInputIcon = ({ className }: { className?: string }) => (
   <Search aria-hidden="true" className={className} />
 );
 
-const toOption = (type: RelationshipType): RelationTypeOption => ({
+/** The registry stores an inverse as `{ id, fullyQualifiedName }` with no `name` or `displayName`. */
+const inverseLabelOf = (
+  type: RelationshipType,
+  byId: ReadonlyMap<string, RelationshipType>
+): string | undefined => {
+  if (!type.inverse) {
+    return undefined;
+  }
+  const inverse = byId.get(type.inverse.id);
+
+  return inverse
+    ? inverse.displayName || inverse.name
+    : type.inverse.fullyQualifiedName ?? type.inverse.name;
+};
+
+const toOption = (
+  type: RelationshipType,
+  byId: ReadonlyMap<string, RelationshipType>
+): RelationTypeOption => ({
   id: type.name,
-  inverseLabel: type.inverse?.name,
+  inverseLabel: inverseLabelOf(type, byId),
   label: type.displayName || type.name,
   paletteKey: type.paletteKey,
 });
@@ -132,26 +150,29 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
     };
   }, [groups]);
 
-  const availableGroups = useMemo<RelationTypeOptionGroup[]>(
-    () =>
-      groups ?? [
-        {
-          id: 'system-defined',
-          options: relationTypes
-            .filter((type) => type.category !== Category.Custom)
-            .map(toOption),
-          title: t('label.core-owl-skos'),
-        },
-        {
-          id: 'custom',
-          options: relationTypes
-            .filter((type) => type.category === Category.Custom)
-            .map(toOption),
-          title: t('label.custom-admin-defined'),
-        },
-      ],
-    [groups, relationTypes, t]
-  );
+  const availableGroups = useMemo<RelationTypeOptionGroup[]>(() => {
+    if (groups) {
+      return groups;
+    }
+    const byId = new Map(relationTypes.map((type) => [type.id, type]));
+
+    return [
+      {
+        id: 'system-defined',
+        options: relationTypes
+          .filter((type) => type.category !== Category.Custom)
+          .map((type) => toOption(type, byId)),
+        title: t('label.core-owl-skos'),
+      },
+      {
+        id: 'custom',
+        options: relationTypes
+          .filter((type) => type.category === Category.Custom)
+          .map((type) => toOption(type, byId)),
+        title: t('label.custom-admin-defined'),
+      },
+    ];
+  }, [groups, relationTypes, t]);
 
   const term = search.trim();
   const visibleGroups = useMemo(() => {

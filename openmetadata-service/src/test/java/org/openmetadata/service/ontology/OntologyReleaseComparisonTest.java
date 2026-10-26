@@ -36,6 +36,49 @@ class OntologyReleaseComparisonTest {
   private static final UUID RELEASE_ID = UUID.randomUUID();
 
   @Test
+  void summaryPartitionsDeprecationsAndOtherChangesWithoutDoubleCounting() {
+    final OntologyConcept deprecated = concept();
+    final OntologyProperty property = property("owner", "Customer", "Customer");
+    final OntologyConcept editedDeprecated = concept().withDeprecated(true);
+    final OntologyConcept restored = concept().withDeprecated(true);
+    final OntologyConcept changed = concept();
+    final OntologyConcept removed = concept().withDeprecated(true);
+    final List<OntologyReleaseMember> before =
+        Stream.of(deprecated, property, editedDeprecated, restored, changed, removed)
+            .map(entity -> member(BASE_ID, entity))
+            .toList();
+    final List<OntologyReleaseMember> after =
+        Stream.of(
+                JsonUtils.deepCopy(deprecated, OntologyConcept.class)
+                    .withDeprecated(true)
+                    .withDescription("Deprecated and edited"),
+                JsonUtils.deepCopy(property, OntologyProperty.class).withDeprecated(true),
+                JsonUtils.deepCopy(editedDeprecated, OntologyConcept.class).withDescription("Edit"),
+                JsonUtils.deepCopy(restored, OntologyConcept.class).withDeprecated(false),
+                JsonUtils.deepCopy(changed, OntologyConcept.class).withDescription("Edit"),
+                concept().withDeprecated(true))
+            .map(entity -> member(RELEASE_ID, entity))
+            .toList();
+
+    final var summary = OntologyReleaseComparison.summarize(before, after);
+
+    assertEquals(1, summary.getAdded());
+    assertEquals(3, summary.getChanged());
+    assertEquals(1, summary.getRemoved());
+    assertEquals(2, summary.getDeprecated());
+    assertEquals(
+        OntologyReleaseComparison.compareMembers(before, after).size(),
+        summary.getAdded() + summary.getChanged() + summary.getRemoved() + summary.getDeprecated());
+  }
+
+  @Test
+  void unchangedAndNewClosuresHaveAnExplicitZeroDeprecationCount() {
+    final var members = List.of(member(RELEASE_ID, concept()));
+    assertEquals(0, OntologyReleaseComparison.summarize(members, members).getDeprecated());
+    assertEquals(0, OntologyReleaseComparison.summarize(List.of(), members).getDeprecated());
+  }
+
+  @Test
   void operationalChangesAndReferenceDisplayFieldsDoNotChangeGovernedContent() {
     final var before = concept();
     final var after =
