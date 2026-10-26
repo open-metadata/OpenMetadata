@@ -701,10 +701,8 @@ const ExplorePageV1: FC<unknown> = () => {
 
 const ExplorePageV1WithAdvanceSearch = withAdvanceSearch(ExplorePageV1);
 
-const ExplorePageV1WithLayout = withPageLayout(ExplorePageV1WithAdvanceSearch);
-
-// Classic pins the page to the viewport so the results panel fills what the
-// filters leave and scrolls inside it; the shell around it never scrolls.
+// Both modes pin the page to the available height so the results panel fills
+// what the filters leave and scrolls inside it; the shell around it never scrolls.
 const ExplorePageV1WithFullHeightLayout = withPageLayout(
   ExplorePageV1WithAdvanceSearch,
   { fullHeight: true }
@@ -713,16 +711,16 @@ const ExplorePageV1WithFullHeightLayout = withPageLayout(
 // AI-mode presentation: an AI search header rendered above the shared Explore
 // page, with layout overrides that keep the embedded page in the AI flow.
 const EXPLORE_MODE_PAGE_CLASS_NAME =
-  'tw:flex tw:h-full tw:flex-col tw:overflow-y-auto tw:bg-primary tw:dark:bg-secondary';
+  'tw:flex tw:h-full tw:flex-col tw:overflow-hidden tw:bg-primary tw:dark:bg-secondary';
 
 const EXPLORE_MODE_SEARCH_CARD_WRAPPER_CLASS_NAME =
   'tw:mt-2 tw:w-full tw:shrink-0 tw:px-2';
 
+// The full-height page fills what the search card leaves: `--om-page-height`
+// is the viewport calc everywhere else, so it is rebound to this box.
 const EXPLORE_MODE_CONTENT_CLASS_NAME = classNames(
-  'tw:flex tw:h-full tw:flex-col tw:bg-primary tw:dark:bg-secondary',
+  'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:bg-primary tw:dark:bg-secondary tw:[--om-page-height:100%]',
   'tw:[&_.explore-page]:!bg-primary tw:dark:[&_.explore-page]:!bg-secondary',
-  'tw:[&_.page-layout-v1-vertical-scroll]:!overflow-visible',
-  "tw:[&_[data-testid='page-layout-v1']]:!overflow-visible",
   "tw:[&>[data-testid='loader']]:tw:m-auto"
 );
 
@@ -757,7 +755,7 @@ const ExplorePageV1WithMode: FC<{ pageTitle?: string }> = ({
       <Box
         className={EXPLORE_MODE_CONTENT_CLASS_NAME}
         data-testid="explore-content">
-        <ExplorePageV1WithLayout pageTitle={pageTitle} />
+        <ExplorePageV1WithFullHeightLayout pageTitle={pageTitle} />
       </Box>
     </Box>
   );

@@ -63,7 +63,6 @@ import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
-import { useFillViewportHeight } from '../../hooks/useFillViewportHeight';
 import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
 import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
@@ -631,7 +630,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   onTreeSelect = noop,
 }) => {
   const { t, i18n } = useTranslation();
-  const panelsRef = useFillViewportHeight<HTMLDivElement>();
   // getTabsInfo() bakes translated labels into its result, so recompute on a
   // language switch rather than freezing the first language for the mount.
   const tabsInfo = useMemo(
@@ -1391,7 +1389,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
         </div>
       </CoreCard>
 
-      <div ref={panelsRef}>
+      <div className="content-height-with-resizable-panel">
         <ResizableLeftPanels
           showLearningIcon
           className="tw:h-full"
