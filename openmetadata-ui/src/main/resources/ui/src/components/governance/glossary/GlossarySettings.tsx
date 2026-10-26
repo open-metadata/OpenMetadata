@@ -19,21 +19,38 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { SettingType } from '../../../generated/settings/settings';
 import {
   getGlossarySettings,
   updateGlossarySettings,
 } from '../../../rest/settingConfigAPI';
+import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import SettingsSection, {
+  ReadOnlyRow,
+} from '../../discovery/personal-space/Profile/components/SettingsSection';
+import PageHeader from '../../PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 
 const QUERY_KEY = ['settings', SettingType.GlossarySettings];
 
-// The settings modal already pads its content; the standalone settings route does not.
-const GlossarySettings = ({ className = 'tw:p-6' }: { className?: string }) => {
+// `embedded` renders as a section of the platform settings panel, which owns the page chrome.
+const GlossarySettings = ({ embedded = false }: { embedded?: boolean }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const pageTitle = t('label.glossary');
+  const breadcrumbs = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.PREFERENCES,
+        pageTitle
+      ),
+    [pageTitle]
+  );
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: QUERY_KEY,
     queryFn: getGlossarySettings,
@@ -43,52 +60,84 @@ const GlossarySettings = ({ className = 'tw:p-6' }: { className?: string }) => {
     onSuccess: (settings) => {
       queryClient.setQueryData(QUERY_KEY, settings);
       showSuccessToast(
-        t('server.entity-updated-success', { entity: t('label.glossary') })
+        t('server.entity-updated-success', { entity: pageTitle })
       );
     },
     onError: (error: AxiosError) => showErrorToast(error),
   });
 
-  return (
-    <Box className={className} data-testid="glossary-settings" direction="col">
-      <DocumentTitle title={t('label.glossary')} />
-      <Card variant="muted">
-        <Card.Header title={t('label.glossary')} />
-        <Card.Content>
-          {isPending && (
-            <Typography role="status">{t('label.loading')}</Typography>
-          )}
-          {isError && (
-            <Box direction="col" gap={4}>
-              <Typography role="alert">
-                {t('server.entity-fetch-error', {
-                  entity: t('label.glossary'),
-                })}
-              </Typography>
-              <Button color="secondary" onPress={() => refetch()}>
-                {t('label.retry')}
-              </Button>
-            </Box>
-          )}
-          {data && !isError && (
-            <Toggle
-              className="tw:w-full"
-              hint={t('message.glossary-tag-propagation-description')}
-              isDisabled={isSaving}
-              isSelected={data.enableTagPropagation !== false}
-              label={t('label.glossary-tag-propagation')}
-              size="md"
-              onChange={(enableTagPropagation) =>
-                mutate({ enableTagPropagation })
-              }
-            />
-          )}
-          <Typography as="p" className="tw:mt-4 tw:text-tertiary">
-            {t('message.glossary-tag-propagation-reindex')}
+  const status = (
+    <>
+      {isPending && <Typography role="status">{t('label.loading')}</Typography>}
+      {isError && (
+        <Box direction="col" gap={4}>
+          <Typography role="alert">
+            {t('server.entity-fetch-error', { entity: pageTitle })}
           </Typography>
-        </Card.Content>
-      </Card>
+          <Button color="secondary" onPress={() => refetch()}>
+            {t('label.retry')}
+          </Button>
+        </Box>
+      )}
+    </>
+  );
+  const toggle = data && !isError && (
+    <Toggle
+      aria-label={t('label.glossary-tag-propagation')}
+      isDisabled={isSaving}
+      isSelected={data.enableTagPropagation !== false}
+      size="md"
+      onChange={(enableTagPropagation) => mutate({ enableTagPropagation })}
+    />
+  );
+
+  const propagationRow = (
+    <Box align="center" gap={4} justify="between">
+      <Box direction="col" gap={1}>
+        <Typography className="tw:text-primary" weight="medium">
+          {t('label.glossary-tag-propagation')}
+        </Typography>
+        <Typography className="tw:text-tertiary" size="text-sm">
+          {t('message.glossary-tag-propagation-reindex')}
+        </Typography>
+      </Box>
+      {status}
+      {toggle}
     </Box>
+  );
+
+  if (embedded) {
+    return (
+      <SettingsSection testId="glossary-settings" title={pageTitle}>
+        <ReadOnlyRow
+          description={t('message.glossary-tag-propagation-reindex')}
+          title={t('label.glossary-tag-propagation')}>
+          {status}
+          {toggle}
+        </ReadOnlyRow>
+      </SettingsSection>
+    );
+  }
+
+  return (
+    <PageLayoutV1 pageTitle={pageTitle}>
+      <Box
+        className="page-container m-x-auto"
+        data-testid="glossary-settings"
+        direction="col"
+        gap={4}>
+        <TitleBreadcrumb titleLinks={breadcrumbs} />
+        <PageHeader
+          data={{
+            header: pageTitle,
+            subHeader: t('message.glossary-tag-propagation-description'),
+          }}
+        />
+        <Card>
+          <Card.Content>{propagationRow}</Card.Content>
+        </Card>
+      </Box>
+    </PageLayoutV1>
   );
 };
 

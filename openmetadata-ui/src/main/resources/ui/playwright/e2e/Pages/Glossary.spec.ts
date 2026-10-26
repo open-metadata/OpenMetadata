@@ -37,6 +37,7 @@ import {
   waitForGlossaryListRefetch,
 } from '../../utils/asyncDelete';
 import {
+  clickIgnoringToasts,
   clickOutside,
   getAuthContext,
   getRandomLastName,
@@ -46,6 +47,7 @@ import {
   visitGlossaryPage,
   waitForAntdPopupToSettle,
 } from '../../utils/common';
+import { switchNavbarDomain } from '../../utils/domain';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -117,6 +119,7 @@ import {
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
+import { loginAsIsolatedAdmin } from '../../utils/isolatedDomainUser';
 import { TaskDetails, waitForTaskResolveResponse } from '../../utils/task';
 import { performUserLogin } from '../../utils/user';
 
@@ -184,7 +187,7 @@ test.describe('Glossary tests', () => {
       await page1.getByTestId('task-notifications').click();
       await page1.getByTestId('notification-heading').waitFor();
       const firstNotification = page1
-        .locator('.ant-list-items > .ant-list-item')
+        .locator('.notification-box li.notification-dropdown-list-btn')
         .first();
 
       await expect(firstNotification).toContainText(
@@ -738,6 +741,19 @@ test.describe('Glossary tests', () => {
     // Adding both table and its column as glossary term is assigned to both of them
     // and table columns are also count as assets
     const allAssets = [...assetsToBeAddedViaUI, table1, table1.children[0]];
+    // A term on a table is inherited by every one of its columns, nested ones included, so each
+    // column is listed as an asset too. `table` is the only one tagged at the table level, so it is
+    // the only one contributing its whole column tree; `table1` carries the term on a single column,
+    // already counted above. Derived from `children` rather than the hand-curated
+    // `entityLinkColumnsName`, so the two cannot drift apart.
+    const countFlattenedColumns = (columns: TableClass['children']): number =>
+      columns.reduce(
+        (total, column) =>
+          total + 1 + countFlattenedColumns(column.children ?? []),
+        0
+      );
+    const expectedAssetCount =
+      allAssets.length + countFlattenedColumns(table.children);
 
     try {
       await test.step('Assign Glossary Term to table column', async () => {
@@ -780,7 +796,7 @@ test.describe('Glossary tests', () => {
 
         await expect(
           page.getByTestId('assets').getByTestId('filter-count')
-        ).toContainText(`${allAssets.length}`);
+        ).toContainText(`${expectedAssetCount}`);
       });
 
       await test.step('Verify the entity page by clicking on asset', async () => {
@@ -833,7 +849,7 @@ test.describe('Glossary tests', () => {
         await goToAssetsTab(
           page,
           glossaryTerm1.data.displayName,
-          allAssets.length
+          expectedAssetCount
         );
         await renameGlossaryTerm(page, glossaryTerm1, newName);
         await page.click('[data-testid="overview"]');
@@ -848,7 +864,7 @@ test.describe('Glossary tests', () => {
 
         await expect(
           page.getByTestId('assets').getByTestId('filter-count')
-        ).toContainText(`${allAssets.length}`);
+        ).toContainText(`${expectedAssetCount}`);
       });
     } finally {
       await table.delete(apiContext);
@@ -1216,7 +1232,7 @@ test.describe('Glossary tests', () => {
       await createDescriptionTaskForGlossary(page, value, glossary1);
 
       const taskResolve = waitForTaskResolveResponse(page);
-      await page.getByTestId('approve-button').first().click();
+      await clickIgnoringToasts(page.getByTestId('approve-button').first());
       await taskResolve;
 
       await redirectToHomePage(page);
@@ -1259,7 +1275,7 @@ test.describe('Glossary tests', () => {
       await createDescriptionTaskForGlossary(page, value, glossaryTerm1, false);
 
       const taskResolve = waitForTaskResolveResponse(page);
-      await page.getByTestId('approve-button').first().click();
+      await clickIgnoringToasts(page.getByTestId('approve-button').first());
       await taskResolve;
 
       await redirectToHomePage(page);
@@ -1291,8 +1307,14 @@ test.describe('Glossary tests', () => {
     const glossary1 = new Glossary();
     try {
       await glossary1.create(apiContext);
-      await page.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
-      await selectActiveGlossary(page, glossary1.data.displayName);
+      // Open by FQN so the /glossary auto-select redirect cannot replace the request-tags navigation.
+      await page.goto(
+        `/glossary/${encodeURIComponent(
+          glossary1.responseData.fullyQualifiedName
+        )}`,
+        { waitUntil: 'domcontentloaded' }
+      );
+      await waitForAllLoadersToDisappear(page);
 
       const value: TaskDetails = {
         term: glossary1.data.name,
@@ -1913,7 +1935,7 @@ test.describe('Glossary tests', () => {
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toHaveText(
+      ).toContainText(
         "You don't have necessary permissions. Please check with the admin to get the View Glossary permission."
       );
     } finally {
@@ -1947,8 +1969,8 @@ test.describe('Glossary tests', () => {
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toHaveText(
-        "You don't have necessary permissions. Please check with the admin to get the  permission."
+      ).toContainText(
+        "You don't have necessary permissions. Please check with the admin to get the Resource permission."
       );
     } finally {
       await consumerAfterAction();
@@ -2066,8 +2088,9 @@ test.describe('Glossary tests', () => {
     test.slow(true);
 
     const { afterAction, apiContext } = await performAdminLogin(browser);
+    // Picks a navbar domain, which is saved per user: use a throwaway admin so it can't leak.
     const { page: page1, afterAction: afterActionUser1 } =
-      await performUserLogin(browser, adminUser);
+      await loginAsIsolatedAdmin(browser);
     const domain = new Domain();
     const glossary = new Glossary();
 
@@ -2090,9 +2113,10 @@ test.describe('Glossary tests', () => {
           .fill(domain.data.name);
         await searchDomain;
 
-        await page1.getByTestId(`tree-node-"${domain.data.name}"`).click();
-
-        await waitForAllLoadersToDisappear(page1);
+        // The pick saves on the user and reloads; wait for both before filling the form.
+        await switchNavbarDomain(page1, () =>
+          page1.getByTestId(`tree-node-"${domain.data.name}"`).click()
+        );
       });
 
       await test.step('Open Add Glossary form', async () => {

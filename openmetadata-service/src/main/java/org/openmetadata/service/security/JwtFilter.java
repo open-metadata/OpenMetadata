@@ -53,20 +53,25 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -78,6 +83,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.security.session.SessionProviders;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
@@ -95,8 +101,6 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   public static final String IMPERSONATE_USER_HEADER = "X-Impersonate-User";
   public static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
-  private static final Set<String> NATIVE_PASSWORD_PROVIDER_VALUES =
-      Set.of(AuthProvider.BASIC.value(), AuthProvider.OPENMETADATA.value());
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   @Getter private String jwtTeamClaimMapping;
@@ -107,6 +111,9 @@ public class JwtFilter implements ContainerRequestFilter {
   private AuthProvider providerType;
   private boolean useRolesFromProvider = false;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
+  private OidcClientConfig serverSideOidcClient;
+  private ProviderTokenValidator providerTokenValidator =
+      ProviderTokenValidator.acceptingAnyProviderToken();
 
   private String emailClaim;
   private String displayNameClaim;
@@ -189,7 +196,14 @@ public class JwtFilter implements ContainerRequestFilter {
     for (String publicKeyUrlStr : authenticationConfiguration.getPublicKeyUrls()) {
       publicKeyUrlsBuilder.add(URI.create(publicKeyUrlStr).toURL());
     }
-    this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
+    this.jwkProvider =
+        new MultiUrlJwkProvider(publicKeyUrlsBuilder.build(), this::providerKeySetUrls);
+    this.serverSideOidcClient =
+        authenticationConfiguration.getClientType() == ClientType.CONFIDENTIAL
+            ? authenticationConfiguration.getOidcConfiguration()
+            : null;
+    this.providerTokenValidator =
+        new ProviderTokenValidator(clientIdsOf(authenticationConfiguration), this::providerIssuer);
 
     this.principalDomain =
         SecurityUtil.resolvePrincipalDomain(
@@ -263,6 +277,16 @@ public class JwtFilter implements ContainerRequestFilter {
   @VisibleForTesting
   JwtFilter(
       JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      ProviderTokenValidator providerTokenValidator) {
+    this(jwkProvider, jwtPrincipalClaims, principalDomain, false);
+    this.providerTokenValidator = providerTokenValidator;
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
       String emailClaim,
       String displayNameClaim,
       List<String> allowedEmailDomains) {
@@ -302,6 +326,7 @@ public class JwtFilter implements ContainerRequestFilter {
     Timer.Sample authSample = RequestLatencyContext.startAuthOperation();
     ImpersonationContext.clear();
     ActivePersonaContext.clear();
+    ActiveDomainContext.clear();
 
     try {
       String tokenFromHeader = extractToken(requestContext.getHeaders());
@@ -339,6 +364,10 @@ public class JwtFilter implements ContainerRequestFilter {
 
       CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
       String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+      // The persisted navbar selection is a UI view preference: bot tokens (including impersonated
+      // requests) and personal access tokens (scripts, SDK) list without it.
+      EntityReference activeDomain =
+          ActiveDomainContext.resolve(userName, isBotUser || isPersonalAccessToken(claims));
       CatalogSecurityContext catalogSecurityContext =
           new CatalogSecurityContext(
               catalogPrincipal,
@@ -347,7 +376,8 @@ public class JwtFilter implements ContainerRequestFilter {
               getUserRolesFromClaims(claims, isBotUser, tokenKeyId),
               isBotUser,
               impersonatedBy,
-              activePersona);
+              activePersona,
+              activeDomain);
       LOG.debug("SecurityContext {}", catalogSecurityContext);
       requestContext.setSecurityContext(catalogSecurityContext);
 
@@ -357,9 +387,11 @@ public class JwtFilter implements ContainerRequestFilter {
         ImpersonationContext.clear();
       }
       ActivePersonaContext.setActivePersona(activePersona);
+      ActiveDomainContext.setActiveDomain(activeDomain);
     } catch (Throwable t) {
       ImpersonationContext.clear();
       ActivePersonaContext.clear();
+      ActiveDomainContext.clear();
       throw t;
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);
@@ -534,8 +566,57 @@ public class JwtFilter implements ContainerRequestFilter {
       throw AuthenticationException.getInvalidTokenException(
           "Invalid token. Token verification failed. Public key mismatch.", runtimeException);
     }
+    requireIssuedForThisDeployment(jwt);
 
     return jwt;
+  }
+
+  private void requireIssuedForThisDeployment(DecodedJWT jwt) {
+    if (!isSignedWithOpenMetadataKey(jwt)) {
+      providerTokenValidator.validate(jwt);
+    }
+  }
+
+  /**
+   * Key lookup resolves OpenMetadata's own key id locally before any configured URL, so a verified
+   * token carrying it was signed with our key. Unlike {@link #isInternallyIssuedToken}, this does
+   * not require the current issuer: long-lived bot tokens minted under an earlier one are still ours.
+   */
+  private static boolean isSignedWithOpenMetadataKey(DecodedJWT jwt) {
+    String openMetadataKeyId = JWTTokenGenerator.getInstance().getKid();
+    return !nullOrEmpty(openMetadataKeyId) && openMetadataKeyId.equals(jwt.getKeyId());
+  }
+
+  /** The OIDC client IDs this deployment's sign-in flows request tokens for. */
+  static Set<String> clientIdsOf(AuthenticationConfiguration authenticationConfiguration) {
+    OidcClientConfig oidcClient = authenticationConfiguration.getOidcConfiguration();
+    return Stream.of(
+            authenticationConfiguration.getClientId(),
+            oidcClient == null ? null : oidcClient.getId())
+        .filter(clientId -> !nullOrEmpty(clientId) && !clientId.isBlank())
+        .collect(Collectors.toUnmodifiableSet());
+  }
+
+  @VisibleForTesting
+  Optional<String> providerIssuer() {
+    return codeFlowHandler().map(AuthenticationCodeFlowHandler::getProviderIssuer);
+  }
+
+  @VisibleForTesting
+  List<URL> providerKeySetUrls() {
+    return codeFlowHandler().map(AuthenticationCodeFlowHandler::getProviderKeySetUrl).stream()
+        .toList();
+  }
+
+  /**
+   * The server-side sign-in handler, when it serves this filter's OIDC client. It registers after
+   * this filter at startup and is replaced on a configuration change, so it is looked up per use.
+   */
+  private Optional<AuthenticationCodeFlowHandler> codeFlowHandler() {
+    return AuthServeletHandlerRegistry.getHandler() instanceof AuthenticationCodeFlowHandler handler
+            && handler.servesClient(serverSideOidcClient)
+        ? Optional.of(handler)
+        : Optional.empty();
   }
 
   private static Map<String, Claim> extractClaims(DecodedJWT jwt) {
@@ -574,12 +655,15 @@ public class JwtFilter implements ContainerRequestFilter {
         "The given token does not match the current bot's token!");
   }
 
+  private static boolean isPersonalAccessToken(Map<String, Claim> claims) {
+    Claim tokenTypeClaim = claims.get(TOKEN_TYPE);
+    return tokenTypeClaim != null
+        && ServiceTokenType.PERSONAL_ACCESS.value().equals(tokenTypeClaim.asString());
+  }
+
   private void validatePersonalAccessToken(
       Map<String, Claim> claims, String tokenFromHeader, String userName) {
-    Claim tokenTypeClaim = claims.get(TOKEN_TYPE);
-    String tokenType = tokenTypeClaim == null ? StringUtils.EMPTY : tokenTypeClaim.asString();
-    if (claims.containsKey(TOKEN_TYPE)
-        && ServiceTokenType.PERSONAL_ACCESS.value().equals(tokenType)) {
+    if (isPersonalAccessToken(claims)) {
       if (UserTokenCache.isTokenValid(userName, tokenFromHeader)) {
         return;
       }
@@ -647,7 +731,7 @@ public class JwtFilter implements ContainerRequestFilter {
     if (nullOrEmpty(sessionProvider) || providerType == null) {
       return;
     }
-    if (!isSameProvider(sessionProvider, providerType.value())) {
+    if (!SessionProviders.isSameProvider(sessionProvider, providerType.value())) {
       LOG.warn(
           "Rejecting session {} issued by provider {} — the configured provider is now {}",
           SessionService.truncateId(session.getId()),
@@ -656,22 +740,6 @@ public class JwtFilter implements ContainerRequestFilter {
       throw AuthenticationException.getInvalidTokenException(
           "Session was issued by a provider that is no longer configured.");
     }
-  }
-
-  /**
-   * {@code basic} and {@code openmetadata} are two historical names for the same native-password
-   * authenticator — {@code SecurityConfigurationManager.isNativePasswordProvider} treats them
-   * interchangeably and one servlet handler serves both. Renaming one to the other is not a provider
-   * swap and must not log the whole deployment out.
-   */
-  private static boolean isSameProvider(String sessionProvider, String configuredProvider) {
-    return sessionProvider.equalsIgnoreCase(configuredProvider)
-        || (isNativePasswordProviderValue(sessionProvider)
-            && isNativePasswordProviderValue(configuredProvider));
-  }
-
-  private static boolean isNativePasswordProviderValue(String provider) {
-    return NATIVE_PASSWORD_PROVIDER_VALUES.contains(provider.toLowerCase(Locale.ROOT));
   }
 
   public CatalogSecurityContext getCatalogSecurityContext(String token) {
@@ -705,7 +773,9 @@ public class JwtFilter implements ContainerRequestFilter {
         getUserRolesFromClaims(claims, isBotUser, tokenKeyId),
         isBotUser,
         null,
-        activePersona);
+        activePersona,
+        ActiveDomainContext.resolve(
+            resolvedIdentity.userName(), isBotUser || isPersonalAccessToken(claims)));
   }
 
   private Algorithm createAlgorithmFromJwk(

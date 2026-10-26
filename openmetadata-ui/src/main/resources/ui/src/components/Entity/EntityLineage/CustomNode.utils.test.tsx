@@ -12,15 +12,15 @@
  */
 import { fireEvent, render } from '@testing-library/react';
 import { ReactFlowProvider } from 'reactflow';
-import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { BASE_NODE_FILL_CLASS } from './CustomNode.constants';
 import {
   ColumnContent,
   getCollapseHandle,
-  getColumnHandle,
   getExpandHandle,
+  getNodeClassNames,
 } from './CustomNode.utils';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -49,7 +49,6 @@ const mockLineageState = {
   setSelectedColumn: mockSetSelectedColumn,
   selectedColumn: '',
   setTracedColumns: mockSetTracedColumns,
-  isEditMode: false,
   tracedColumns: new Set<string>(),
   sceneBand: undefined,
   columnEdges: [],
@@ -69,29 +68,6 @@ describe('Custom Node Utils', () => {
     (
       useLineageStore as unknown as { getState: () => typeof mockLineageState }
     ).getState = () => mockLineageState;
-  });
-
-  it('getColumnHandle should return null when nodeType is NOT_CONNECTED', () => {
-    const result = getColumnHandle(
-      EntityLineageNodeType.NOT_CONNECTED,
-      true,
-      'test',
-      '123'
-    );
-
-    expect(result).toBeNull();
-  });
-
-  it('getColumnHandle should render handles when nodeType is not NOT_CONNECTED', () => {
-    const { getByTestId } = render(
-      <ReactFlowProvider>
-        <div data-testid="column-handle">
-          {getColumnHandle('CONNECTED', true)}
-        </div>
-      </ReactFlowProvider>
-    );
-
-    expect(getByTestId('column-handle')).toBeInTheDocument();
   });
 
   describe('getExpandHandle', () => {
@@ -177,7 +153,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId, getByText } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -194,7 +169,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -218,7 +192,6 @@ describe('Custom Node Utils', () => {
       const { getAllByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             isLoading
             showDataObservabilitySummary
             column={mockColumn}
@@ -241,7 +214,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             showDataObservabilitySummary
             column={mockColumn}
             isLoading={false}
@@ -257,7 +229,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -276,7 +247,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -294,5 +264,94 @@ describe('Custom Node Utils', () => {
       expect(onColumnHover).toHaveBeenCalledWith(undefined);
       expect(onColumnSelect).toHaveBeenCalledWith('test.column');
     });
+
+    it('does not render the column menu when onColumnLineageEdit is not passed', () => {
+      const { queryByTestId } = render(
+        <ReactFlowProvider>
+          <ColumnContent
+            column={mockColumn}
+            isLoading={false}
+            showDataObservabilitySummary={false}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(queryByTestId('lineage-column-menu')).not.toBeInTheDocument();
+    });
+
+    it('renders the column menu and calls onColumnLineageEdit with the column fqn', async () => {
+      const onColumnLineageEdit = jest.fn();
+      const { getByTestId, findByText } = render(
+        <ReactFlowProvider>
+          <ColumnContent
+            column={mockColumn}
+            isLoading={false}
+            showDataObservabilitySummary={false}
+            onColumnLineageEdit={onColumnLineageEdit}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(getByTestId('lineage-column-menu')).toBeInTheDocument();
+
+      fireEvent.click(getByTestId('lineage-column-menu'));
+      fireEvent.click(await findByText('label.edit-upstream'));
+
+      expect(onColumnLineageEdit).toHaveBeenCalledWith(
+        'test.column',
+        LineageDirection.Upstream,
+        expect.anything()
+      );
+    });
+
+    it('does not select the column when the column menu trigger is clicked', () => {
+      const onColumnLineageEdit = jest.fn();
+      const { getByTestId } = render(
+        <ReactFlowProvider>
+          <ColumnContent
+            column={mockColumn}
+            isLoading={false}
+            showDataObservabilitySummary={false}
+            onColumnLineageEdit={onColumnLineageEdit}
+          />
+        </ReactFlowProvider>
+      );
+
+      fireEvent.click(getByTestId('lineage-column-menu'));
+
+      expect(mockSetSelectedColumn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getNodeClassNames base node fill', () => {
+    const classesFor = (state: {
+      isSelected?: boolean;
+      showDqTracing?: boolean;
+    }) =>
+      getNodeClassNames({
+        isBaseNode: true,
+        isSelected: false,
+        showDqTracing: false,
+        isTraced: false,
+        isChildrenListExpanded: false,
+        ...state,
+      });
+
+    it.each([{}, { showDqTracing: true }])(
+      'paints the base fill on an unselected base node (%o)',
+      (state) => {
+        expect(classesFor(state)).toContain(BASE_NODE_FILL_CLASS);
+      }
+    );
+
+    it.each([{ isSelected: true }, { isSelected: true, showDqTracing: true }])(
+      'leaves the fill to the selected state (%o)',
+      (state) => {
+        const classes = classesFor(state);
+
+        expect(classes).toContain('lineage-base-node');
+        expect(classes).not.toContain(BASE_NODE_FILL_CLASS);
+      }
+    );
   });
 });

@@ -11,40 +11,57 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Form, Input, Select } from 'antd';
+import {
+  Autocomplete,
+  Box,
+  Button,
+  FormField,
+  FormItemLabel,
+  HintText,
+  HookForm,
+  Input,
+  SelectItemType,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ADD_ROLE_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.constants';
 import { ERROR_MESSAGE } from '../../../constants/constants';
-import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
+import { NAME_FIELD_REGISTER_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { withPageLayout } from '../../../hoc/withPageLayout';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/APIUtils';
-import { getField } from '../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getRoleWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
-const { Option } = Select;
+interface AddRoleFormValues {
+  name: string;
+  policies: string[];
+}
+
 const rolesPath = getPath(GlobalSettingOptions.ROLES);
 
 const AddRolePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [policies, setPolicies] = useState<Policy[]>([]);
-  const [name, setName] = useState<string>('');
+  // Validate while typing, as the antd form did.
+  const form = useForm<AddRoleFormValues>({
+    mode: 'onChange',
+    defaultValues: { name: '', policies: [] },
+  });
   const [description, setDescription] = useState<string>('');
-  const [selectedPolicies, setSelectedPolicies] = useState<string[]>([]);
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
 
   const fetchPolicies = async () => {
@@ -66,12 +83,12 @@ const AddRolePage = () => {
     navigate(rolesPath);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async ({ name, policies }: AddRoleFormValues) => {
     setIsSaveLoading(true);
     const data = {
       name: trim(name),
       description,
-      policies: selectedPolicies.map((policy) => policy),
+      policies,
     };
 
     try {
@@ -94,24 +111,13 @@ const AddRolePage = () => {
     }
   };
 
-  const descriptionField: FieldProp = useMemo(
-    () => ({
-      name: 'description',
-      required: false,
-      label: `${t('label.description')}:`,
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: '',
-        style: {
-          margin: 0,
-        },
-        placeHolder: t('message.write-your-description'),
-        onTextChange: (value: string) => setDescription(value),
-      },
-    }),
-    []
+  const policyItems = useMemo<SelectItemType[]>(
+    () =>
+      policies.map((policy) => ({
+        id: policy.fullyQualifiedName ?? policy.name,
+        label: policy.displayName || policy.name,
+      })),
+    [policies]
   );
 
   useEffect(() => {
@@ -146,48 +152,81 @@ const AddRolePage = () => {
                   entity: t('label.role'),
                 })}
               </Typography>
-              <Form
+              <HookForm
+                className="tw:flex tw:flex-col tw:gap-4"
                 data-testid="role-form"
+                form={form}
                 id="role-form"
-                layout="vertical"
-                onFinish={handleSubmit}>
-                <Form.Item
-                  label={`${t('label.name')}:`}
+                onSubmit={form.handleSubmit(handleSubmit)}>
+                <FormField
+                  control={form.control}
                   name="name"
-                  rules={NAME_FIELD_RULES}>
-                  <Input
-                    data-testid="name"
-                    placeholder={t('label.role-name')}
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                  rules={NAME_FIELD_REGISTER_RULES}>
+                  {({ field, fieldState }) => (
+                    <Input
+                      isRequired
+                      hint={fieldState.error?.message}
+                      id="name"
+                      inputDataTestId="name"
+                      isInvalid={fieldState.invalid}
+                      label={t('label.name')}
+                      placeholder={t('label.role-name')}
+                      value={field.value}
+                      onBlur={field.onBlur}
+                      onChange={field.onChange}
+                    />
+                  )}
+                </FormField>
+                <Box direction="col" gap={1}>
+                  <FormItemLabel label={t('label.description')} />
+                  <RichTextEditor
+                    data-testid="description"
+                    initialValue=""
+                    placeHolder={t('message.write-your-description')}
+                    onTextChange={setDescription}
                   />
-                </Form.Item>
-                {getField(descriptionField)}
-
-                <Form.Item
-                  label={`${t('label.select-a-policy')}:`}
+                </Box>
+                <FormField
+                  control={form.control}
                   name="policies"
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.at-least-one-policy'),
-                    },
-                  ]}>
-                  <Select
-                    data-testid="policies"
-                    mode="multiple"
-                    placeholder={t('label.select-a-policy')}
-                    value={selectedPolicies}
-                    onChange={(values) => setSelectedPolicies(values)}>
-                    {policies.map((policy) => (
-                      <Option key={policy.fullyQualifiedName}>
-                        {policy.displayName || policy.name}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-
+                  rules={{
+                    validate: (value) =>
+                      value.length > 0 || t('message.at-least-one-policy'),
+                  }}>
+                  {({ field, fieldState }) => (
+                    <Box direction="col" gap={1}>
+                      <FormItemLabel
+                        required
+                        label={t('label.select-a-policy')}
+                      />
+                      <Autocomplete
+                        data-testid="policies"
+                        isInvalid={fieldState.invalid}
+                        items={policyItems}
+                        placeholder={t('label.select-a-policy')}
+                        selectedItems={policyItems.filter((item) =>
+                          field.value.includes(item.id)
+                        )}
+                        onItemCleared={(key) =>
+                          field.onChange(
+                            field.value.filter((id) => id !== String(key))
+                          )
+                        }
+                        onItemInserted={(key) =>
+                          field.onChange([...field.value, String(key)])
+                        }>
+                        {(item) => (
+                          <Autocomplete.Item id={item.id} label={item.label} />
+                        )}
+                      </Autocomplete>
+                      {fieldState.error && (
+                        <HintText isInvalid>
+                          {fieldState.error.message}
+                        </HintText>
+                      )}
+                    </Box>
+                  )}
+                </FormField>
                 <Box
                   inline
                   align="center"
@@ -195,7 +234,7 @@ const AddRolePage = () => {
                   gap={2}
                   itemClassName="layout-space-item">
                   <Button
-                    color="link-color"
+                    color="secondary"
                     data-testid="cancel-btn"
                     onClick={handleCancel}>
                     {t('label.cancel')}
@@ -209,7 +248,7 @@ const AddRolePage = () => {
                     {t('label.create')}
                   </Button>
                 </Box>
-              </Form>
+              </HookForm>
             </div>
           </div>
         ),

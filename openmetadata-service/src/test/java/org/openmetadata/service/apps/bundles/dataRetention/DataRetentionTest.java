@@ -15,13 +15,19 @@ package org.openmetadata.service.apps.bundles.dataRetention;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataRetentionConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.jdbi3.WorkflowDocStoreDAOs.WorkflowInstanceStateTimeSeriesDAO;
+import org.openmetadata.service.jdbi3.WorkflowDocStoreDAOs.WorkflowInstanceTimeSeriesDAO;
 
 class DataRetentionTest {
   @Test
@@ -43,6 +49,21 @@ class DataRetentionTest {
             "{\"changeEventRetentionPeriod\": 7}", DataRetentionConfiguration.class);
 
     assertEquals(30, config.getWorkflowRetentionPeriod());
+  }
+
+  /**
+   * Installs upgraded from a release without workflowInstanceRetentionPeriod have it missing from
+   * their stored configuration; it must read back as the 30-day default, not as null, which the app
+   * would take to mean "keep forever" and silently never clean the run history.
+   */
+  @Test
+  void workflowRunRetentionFallsBackToDefaultForConfigsSavedWithoutIt() {
+    DataRetentionConfiguration config =
+        JsonUtils.readValue(
+            "{\"changeEventRetentionPeriod\": 7}", DataRetentionConfiguration.class);
+
+    assertEquals(30, config.getWorkflowInstanceRetentionPeriod());
+    assertTrue(DataRetention.isRetentionEnabled(config.getWorkflowInstanceRetentionPeriod()));
   }
 
   /**
@@ -85,5 +106,29 @@ class DataRetentionTest {
       left.addAndGet(-deleted);
       return deleted;
     };
+  }
+
+  /**
+   * A workflow-run page that throws can have left at most one page of runs behind, so that is what
+   * the run's failed count is charged. The generic {@code BATCH_SIZE} charge would report ten times
+   * the runs one failed page could hold. The run DAO is the database boundary, so it is the mock.
+   */
+  @Test
+  void aFailedWorkflowRunPageIsChargedOnePageOfRuns() {
+    final WorkflowInstanceTimeSeriesDAO runDAO = mock(WorkflowInstanceTimeSeriesDAO.class);
+    when(runDAO.listExpiredRuns(any(), any()))
+        .thenThrow(new IllegalStateException("Lock wait timeout exceeded"));
+    final WorkflowRunRetention retention =
+        new WorkflowRunRetention(
+            runDAO,
+            mock(WorkflowInstanceStateTimeSeriesDAO.class),
+            0L,
+            DataRetention.WORKFLOW_RUN_PAGE_SIZE);
+
+    final BatchDrain.Result result = DataRetention.drainWorkflowRuns(retention);
+
+    assertNotNull(result.failure(), "the page failure must be reported");
+    assertEquals(DataRetention.WORKFLOW_RUN_PAGE_SIZE, result.failed());
+    assertEquals(0, result.deleted());
   }
 }

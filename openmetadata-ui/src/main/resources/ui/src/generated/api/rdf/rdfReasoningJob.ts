@@ -160,13 +160,16 @@ export interface Problem {
 
 /**
  * INVALID_REQUEST: the request failed validation. NOT_READY: reasoning is disabled or
- * cannot run safely. GENERATION_MISMATCH: the requested dataset generation no longer
- * serves. SUPERSEDED: a refresh with a later source revision has already published.
- * MISSING_IMPORT, PROFILE_VIOLATION and INCONSISTENT_ONTOLOGY: an import closure is missing
- * an import, is not OWL 2 DL, or has no model. LIMIT_EXCEEDED: a configured limit was
- * reached. MEMORY_BUDGET_EXHAUSTED: the worker ran out of heap. WORKER_LOST: the worker
- * exited without a result. RULE_FAILED: a governance rule failed to evaluate. INTERNAL: any
- * other error.
+ * cannot run safely now; retry once capabilities report READY. NOT_IMPLEMENTED: this build
+ * of the store cannot perform the operation or one of its steps, which capabilities report
+ * as NOT_IMPLEMENTED; retrying cannot succeed until the store is upgraded.
+ * GENERATION_MISMATCH: the requested dataset generation no longer serves. SUPERSEDED: a
+ * refresh with a later source revision has already published. MISSING_IMPORT,
+ * PROFILE_VIOLATION and INCONSISTENT_ONTOLOGY: an import closure is missing an import, is
+ * not OWL 2 DL, or has no model. LIMIT_EXCEEDED: a configured limit was reached.
+ * MEMORY_BUDGET_EXHAUSTED: the worker ran out of heap. WORKER_LOST: the worker exited
+ * without a result. RULE_FAILED: a governance rule failed to evaluate. INTERNAL: any other
+ * error.
  */
 export enum ProblemCode {
     GenerationMismatch = "GENERATION_MISMATCH",
@@ -176,6 +179,7 @@ export enum ProblemCode {
     LimitExceeded = "LIMIT_EXCEEDED",
     MemoryBudgetExhausted = "MEMORY_BUDGET_EXHAUSTED",
     MissingImport = "MISSING_IMPORT",
+    NotImplemented = "NOT_IMPLEMENTED",
     NotReady = "NOT_READY",
     ProfileViolation = "PROFILE_VIOLATION",
     RuleFailed = "RULE_FAILED",

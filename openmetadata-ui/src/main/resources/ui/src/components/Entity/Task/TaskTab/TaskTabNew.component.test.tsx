@@ -10,11 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
 import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
+import APIClient from '../../../../rest/axiosClient';
 import {
   Task,
   TaskCategory,
@@ -23,7 +30,14 @@ import {
   TaskPriority,
   TaskResolutionType,
 } from '../../../../rest/tasksAPI';
+import {
+  renderWithQueryClient,
+  runQueryNotificationsSynchronously,
+} from '../../../../test/unit/test-utils';
 import { TaskTabNew } from './TaskTabNew.component';
+
+jest.mock('../../../../rest/axiosClient', () => ({ get: jest.fn() }));
+runQueryNotificationsSynchronously();
 
 const MOCK_TASK: Task = {
   id: '8b5076bb-8284-46b0-b00d-5e43a184ba9b',
@@ -268,6 +282,14 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn(),
 }));
 
+jest.mock(
+  '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component',
+  () =>
+    jest.fn(({ changeRequestId }: { changeRequestId: string }) => (
+      <div data-testid="change-request-changes-by-id">{changeRequestId}</div>
+    ))
+);
+
 jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => ({
     isAdminUser: false,
@@ -455,6 +477,11 @@ jest.mock(
 jest.mock('../../../common/InlineEdit/InlineEdit.component', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(({ children }) => children),
+}));
+
+jest.mock('../MetadataCompletionTask/MetadataCompletionTask', () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue(<p>MetadataCompletionTask</p>),
 }));
 
 const mockProps = {
@@ -664,6 +691,46 @@ describe('TaskTabNew Component', () => {
     });
 
     expect(screen.getByText('label.action-required')).toBeInTheDocument();
+  });
+
+  it('offers no action on a Revise and resubmit task but keeps its comments', async () => {
+    const { useAuth } = require('../../../../hooks/authHooks');
+    const {
+      useApplicationStore,
+    } = require('../../../../hooks/useApplicationStore');
+
+    useAuth.mockReturnValue({ isAdminUser: true });
+    useApplicationStore.mockReturnValue({
+      currentUser: {
+        id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+        name: 'test-user',
+        teams: [],
+      },
+    });
+    const revisionTask = {
+      ...MOCK_TASK,
+      type: TaskEntityType.MetadataCompletion,
+      availableTransitions: [],
+      payload: {
+        missingFields: [],
+        revision: { comment: 'Add a definition', requestedBy: 'karan' },
+      },
+    } as Task;
+
+    await act(async () => {
+      render(<TaskTabNew {...mockProps} task={revisionTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      await screen.findByText('MetadataCompletionTask')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('label.action-required')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('edit-accept-task-dropdown')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('comments-input-field')).toBeInTheDocument();
   });
 
   it('should display comments section', async () => {
@@ -980,6 +1047,40 @@ describe('TaskTabNew Component', () => {
     expect(screen.getByText('label.assignee-plural')).toBeInTheDocument();
   });
 
+  it('shows the change request a review task names instead of its preview chips', async () => {
+    const {
+      isTagsTaskType,
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isTagsTaskType.mockReturnValue(false);
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              changeRequestId: 'cr-42',
+              proposedChanges: {
+                tags: { added: ['PII.Sensitive'], removed: [] },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.getByTestId('change-request-changes-by-id')
+    ).toHaveTextContent('cr-42');
+    expect(
+      screen.getByText('label.proposed-change-plural')
+    ).toBeInTheDocument();
+  });
+
   it('renders schema-driven payload details for custom tasks', async () => {
     const {
       getResolvedTaskFormSchema,
@@ -1285,6 +1386,148 @@ describe('TaskTabNew Component', () => {
         },
       });
     });
+  });
+
+  it.each([true, false])(
+    'restricts native ontology resolution to assigned reviewers (assigned: %s)',
+    async (assigned) => {
+      const { useAuth } = require('../../../../hooks/authHooks');
+      const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
+      const { resolveTask } = require('../../../../rest/tasksAPI');
+      useAuth.mockReturnValue({ isAdminUser: true });
+      isTagsTaskType.mockReturnValue(false);
+      const task: Task = {
+        ...MOCK_TASK,
+        type: TaskEntityType.RequestApproval,
+        category: TaskCategory.Approval,
+        about: { id: 'release-id', type: 'ontologyRelease' },
+        assignees: assigned
+          ? [{ id: 'test-user-id', type: 'user', name: 'test-user' }]
+          : [],
+        ontologyReview: {
+          entityId: 'release-id',
+          entityVersion: 0.2,
+          ontologyId: 'ontology-id',
+          author: 'author',
+          contentDigest: 'a'.repeat(64),
+        },
+        payload: { proposedChanges: { description: 'Captured release' } },
+        availableTransitions: [
+          {
+            id: 'approve',
+            label: 'Approve',
+            resolutionType: TaskResolutionType.Approved,
+            targetStageId: 'approved',
+            targetTaskStatus: TaskEntityStatus.Approved,
+          },
+        ],
+      };
+      (APIClient.get as jest.Mock).mockImplementation(async (path: string) => ({
+        data: path.endsWith('/diff')
+          ? { data: [], paging: { total: 0 } }
+          : { id: 'release-id', version: 0.2, name: 'Release' },
+      }));
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TaskTabNew {...mockProps} task={task} />
+          </MemoryRouter>
+        );
+      });
+
+      if (!assigned) {
+        const panel = await screen.findByTestId('ontology-review-panel');
+        await waitFor(() =>
+          expect(within(panel).queryByRole('status')).not.toBeInTheDocument()
+        );
+
+        expect(
+          screen.queryByTestId('workflow-task-action-primary')
+        ).not.toBeInTheDocument();
+        expect(resolveTask).not.toHaveBeenCalled();
+
+        return;
+      }
+
+      await waitFor(() =>
+        expect(screen.getByTestId('workflow-task-action-primary')).toBeEnabled()
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('workflow-task-action-primary'));
+      });
+
+      await waitFor(() =>
+        expect(resolveTask).toHaveBeenCalledWith(task.id, {
+          transitionId: 'approve',
+          resolutionType: TaskResolutionType.Approved,
+          comment: undefined,
+        })
+      );
+    }
+  );
+
+  it('disables release approval when the submitted content is unavailable', async () => {
+    const { useAuth } = require('../../../../hooks/authHooks');
+    const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
+    const { resolveTask } = require('../../../../rest/tasksAPI');
+    useAuth.mockReturnValue({ isAdminUser: true });
+    isTagsTaskType.mockReturnValue(false);
+    const task: Task = {
+      ...MOCK_TASK,
+      type: TaskEntityType.RequestApproval,
+      category: TaskCategory.Approval,
+      about: { id: 'release-id', type: 'ontologyRelease' },
+      assignees: [{ id: 'test-user-id', type: 'user', name: 'test-user' }],
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'Approve',
+          resolutionType: TaskResolutionType.Approved,
+          targetStageId: 'approved',
+          targetTaskStatus: TaskEntityStatus.Approved,
+        },
+      ],
+    };
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TaskTabNew {...mockProps} task={task} />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'message.ontology-review-unavailable'
+    );
+    expect(screen.getByTestId('workflow-task-action-primary')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('workflow-task-action-primary'));
+
+    expect(resolveTask).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to legacy approval while a native workflow is starting', async () => {
+    const { useAuth } = require('../../../../hooks/authHooks');
+    const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
+    useAuth.mockReturnValue({ isAdminUser: true });
+    isTagsTaskType.mockReturnValue(false);
+    const task: Task = {
+      ...MOCK_TASK,
+      type: TaskEntityType.RequestApproval,
+      category: TaskCategory.Approval,
+      about: { id: 'release-id', type: 'ontologyRelease' },
+      availableTransitions: [],
+    };
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TaskTabNew {...mockProps} task={task} />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.queryByTestId('task-cta-buttons')).not.toBeInTheDocument();
   });
 
   describe('task comments', () => {

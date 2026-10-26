@@ -10,17 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button } from '@openmetadata/ui-core-components';
-import { Form } from 'antd';
+import {
+  Box,
+  Button,
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HookForm,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -33,19 +40,31 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
 import { Settings, SettingType } from '../../../generated/settings/settings';
 import { withPageLayout } from '../../../hoc/withPageLayout';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import {
   getLoginConfig,
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
-import { generateFormFields } from '../../../utils/formUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+
+type LoginConfigField = keyof Pick<
+  LoginConfiguration,
+  'maxLoginFailAttempts' | 'accessBlockTime' | 'jwtTokenExpiryTime'
+>;
+
+// Number inputs hold strings; the configuration stores numbers.
+type LoginConfigFormValues = Record<LoginConfigField, string>;
+
+const LOGIN_CONFIG_FIELDS: LoginConfigField[] = [
+  'maxLoginFailAttempts',
+  'accessBlockTime',
+  'jwtTokenExpiryTime',
+];
 
 const EditLoginConfiguration = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [form] = Form.useForm<LoginConfiguration>();
+  const form = useForm<LoginConfigFormValues>();
   const [activeField, setActiveField] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [updating, setUpdating] = useState<boolean>(false);
@@ -56,7 +75,11 @@ const EditLoginConfiguration = () => {
 
       const data = await getLoginConfig();
 
-      form.setFieldsValue({ ...(data ?? {}) });
+      form.reset(
+        Object.fromEntries(
+          LOGIN_CONFIG_FIELDS.map((key) => [key, String(data?.[key] ?? '')])
+        ) as LoginConfigFormValues
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -87,52 +110,49 @@ const EditLoginConfiguration = () => {
     []
   );
 
+  const minZeroRule = (label: string) => ({
+    validate: (value: string) =>
+      isEmpty(value) ||
+      Number(value) >= 0 ||
+      t('message.entity-size-less-than', { entity: label, min: 0 }),
+  });
+
   const formFields: FieldProp[] = [
     {
       name: 'maxLoginFailAttempts',
       label: t('label.max-login-fail-attempt-plural'),
       type: FieldTypes.NUMBER,
-      required: false,
       id: 'root/maxLoginFailAttempts',
-      props: {
-        'data-testid': 'maxLoginFailAttempts',
-        size: 'default',
-        style: { width: '100%' },
-        autoFocus: true,
-      },
-      rules: [{ min: 0, type: 'number' }],
+      props: { inputDataTestId: 'maxLoginFailAttempts' },
+      rules: minZeroRule(t('label.max-login-fail-attempt-plural')),
     },
     {
       name: 'accessBlockTime',
       label: t('label.access-block-time'),
       type: FieldTypes.NUMBER,
-      required: false,
       id: 'root/accessBlockTime',
-      props: {
-        'data-testid': 'accessBlockTime',
-        size: 'default',
-        style: { width: '100%' },
-      },
-      rules: [{ min: 0, type: 'number' }],
+      props: { inputDataTestId: 'accessBlockTime' },
+      rules: minZeroRule(t('label.access-block-time')),
     },
     {
       name: 'jwtTokenExpiryTime',
       label: t('label.jwt-token-expiry-time'),
       type: FieldTypes.NUMBER,
-      required: false,
       id: 'root/jwtTokenExpiryTime',
-      props: {
-        'data-testid': 'jwtTokenExpiryTime',
-        size: 'default',
-        style: { width: '100%' },
-      },
-      rules: [{ min: 0, type: 'number' }],
+      props: { inputDataTestId: 'jwtTokenExpiryTime' },
+      rules: minZeroRule(t('label.jwt-token-expiry-time')),
     },
   ];
 
   const handleGoBack = () => navigate(-1);
 
-  const handleSubmit = async (configValues: LoginConfiguration) => {
+  const handleSubmit = async (formValues: LoginConfigFormValues) => {
+    const configValues = Object.fromEntries(
+      LOGIN_CONFIG_FIELDS.map((key) => [
+        key,
+        isEmpty(formValues[key]) ? undefined : Number(formValues[key]),
+      ])
+    ) as LoginConfiguration;
     try {
       setUpdating(true);
       const configData = {
@@ -160,39 +180,41 @@ const EditLoginConfiguration = () => {
   const firstPanelChildren = (
     <>
       <TitleBreadcrumb titleLinks={breadcrumb} />
-      <Form
-        className="m-t-md"
-        data-testid="custom-login-config-form"
-        form={form}
-        layout="vertical"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleSubmit}
+      {/* Tracks the focused field for the doc panel; focus events bubble. */}
+      <div
+        role="presentation"
         onFocus={(e) => {
           e.preventDefault();
           e.stopPropagation();
           setActiveField(e.target.id);
         }}>
-        {generateFormFields(formFields)}
-        <Box className="layout-row" justify="end" wrap="wrap">
-          <Box className="layout-column tw:block">
-            <Button
-              color="link-color"
-              data-testid="cancel-button"
-              onClick={handleGoBack}>
-              {t('label.cancel')}
-            </Button>
+        <HookForm
+          className="tw:mt-4 tw:flex tw:flex-col tw:gap-4"
+          data-testid="custom-login-config-form"
+          form={form}
+          onSubmit={form.handleSubmit(handleSubmit)}>
+          <FormFields fields={formFields} />
+          <Box className="layout-row" gap={3} justify="end" wrap="wrap">
+            <Box className="layout-column tw:block">
+              <Button
+                color="secondary"
+                data-testid="cancel-button"
+                onClick={handleGoBack}>
+                {t('label.cancel')}
+              </Button>
+            </Box>
+            <Box className="layout-column tw:block">
+              <Button
+                color="primary"
+                data-testid="save-button"
+                isLoading={updating}
+                type="submit">
+                {t('label.save')}
+              </Button>
+            </Box>
           </Box>
-          <Box className="layout-column tw:block">
-            <Button
-              color="primary"
-              data-testid="save-button"
-              isLoading={updating}
-              type="submit">
-              {t('label.save')}
-            </Button>
-          </Box>
-        </Box>
-      </Form>
+        </HookForm>
+      </div>
     </>
   );
 

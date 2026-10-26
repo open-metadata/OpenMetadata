@@ -104,18 +104,19 @@ const PersonalSpaceModal: React.FC = () => {
       <Modal>
         <Dialog
           showCloseButton
+          // Untitled, so My Data names the dialog for assistive tech.
+          aria-label={
+            activePanel === 'my-data'
+              ? t('label.my-data-and-following')
+              : undefined
+          }
           className={DIALOG_CLASS}
-          // Profile draws its own header; My Data has none of its own.
-          title={activePanel === 'my-data' ? t('label.my-data') : undefined}
           width={1600}
           onClose={requestClose}>
           <PersonalSpaceGate>
             {activePanel === 'profile' && <ProfilePage />}
-            {activePanel === 'my-data' && (
-              <div className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:p-4">
-                <MyData />
-              </div>
-            )}
+            {/* Both panels draw their own header, so the dialog has no title. */}
+            {activePanel === 'my-data' && <MyData />}
           </PersonalSpaceGate>
         </Dialog>
       </Modal>

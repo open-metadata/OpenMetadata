@@ -23,8 +23,8 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
+import { AlertType } from '../../generated/events/eventSubscription';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useIsAiMode } from '../../hooks/useAppMode';
 import { isLoginConfigurationApplicable } from '../../utils/AuthProvider.util';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
@@ -33,13 +33,12 @@ import {
   getSettingPathRelative,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
-import { NOTIFICATION_ALERT_KIND } from '../observability/Alerts/alertKinds';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
-const AddNotificationPage = withPageSuspenseFallback(
+const AddObservabilityPage = withPageSuspenseFallback(
   React.lazy(
-    () => import('../../pages/AddNotificationPage/AddNotificationPage')
+    () => import('../../pages/AddObservabilityPage/AddObservabilityPage')
   )
 );
 
@@ -350,14 +349,22 @@ const NotificationAlertDetailsPage = () => (
   <AlertDetailsPage isNotificationAlert />
 );
 
-// AI mode renders notification alerts with the same AI alert pages
-// Observability uses; only the alert kind differs.
-const AiAlertsPage = withPageSuspenseFallback(
-  React.lazy(() => import('../observability/Alerts/AlertsPage'))
+const SystemAnnouncementsPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/platform/settings/SystemAnnouncementsPage/SystemAnnouncementsPage'
+      )
+  )
 );
 
-const AiAlertDetailsPage = withPageSuspenseFallback(
-  React.lazy(() => import('../observability/Alerts/AlertDetailsPage'))
+const SystemAnnouncementFormPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/platform/settings/SystemAnnouncementFormPage/SystemAnnouncementFormPage'
+      )
+  )
 );
 
 /**
@@ -382,7 +389,6 @@ const SettingCategoryRoute = () => {
 const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const authProvider = useApplicationStore(
     (state) => state.authConfig?.provider
   );
@@ -505,6 +511,42 @@ const SettingsRouter = () => {
         }
         path={ROUTES.EDIT_POLICY_RULE.replace(ROUTES.SETTINGS, '')}
       />
+      {/* System announcements are admin-only: the server lets no one else write them. */}
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <SystemAnnouncementsPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.SETTINGS_ANNOUNCEMENTS.replace(ROUTES.SETTINGS, '')}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <SystemAnnouncementFormPage mode="create" />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.SETTINGS_ANNOUNCEMENT_ADD.replace(ROUTES.SETTINGS, '')}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <SystemAnnouncementFormPage mode="edit" />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.SETTINGS_ANNOUNCEMENT_EDIT.replace(ROUTES.SETTINGS, '')}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <SystemAnnouncementFormPage mode="duplicate" />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.SETTINGS_ANNOUNCEMENT_DUPLICATE.replace(
+          ROUTES.SETTINGS,
+          ''
+        )}
+      />
       {/*  Setting routes without any category will be places here */}
       <Route
         element={
@@ -513,11 +555,7 @@ const SettingsRouter = () => {
               ResourceEntity.EVENT_SUBSCRIPTION,
               permissions
             )}>
-            {isAiMode ? (
-              <AiAlertsPage kind={NOTIFICATION_ALERT_KIND} />
-            ) : (
-              <NotificationListPage />
-            )}
+            <NotificationListPage />
           </AdminProtectedRoute>
         }
         path={ROUTES.NOTIFICATION_ALERT_LIST.replace(ROUTES.SETTINGS, '')}
@@ -530,11 +568,7 @@ const SettingsRouter = () => {
               ResourceEntity.EVENT_SUBSCRIPTION,
               permissions
             )}>
-            {isAiMode ? (
-              <AiAlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />
-            ) : (
-              <NotificationAlertDetailsPage />
-            )}
+            <NotificationAlertDetailsPage />
           </AdminProtectedRoute>
         }
         path={ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB.replace(
@@ -544,7 +578,8 @@ const SettingsRouter = () => {
       />
       <Route
         element={
-          <AddNotificationPage
+          <AddObservabilityPage
+            alertType={AlertType.Notification}
             pageTitle={t('label.edit-entity', {
               entity: t('label.notification-alert'),
             })}
@@ -558,7 +593,8 @@ const SettingsRouter = () => {
       />
       <Route
         element={
-          <AddNotificationPage
+          <AddObservabilityPage
+            alertType={AlertType.Notification}
             pageTitle={t('label.add-entity', {
               entity: t('label.notification-alert'),
             })}
@@ -1095,6 +1131,9 @@ const SettingsRouter = () => {
           GlobalSettingOptions.TASK_FORMS
         )}
       />
+      {/* Without this an unknown settings URL (e.g. /settings/bots/<name>; bots live at
+          /bots/<name>) matches nothing and renders an empty page. */}
+      <Route element={<Navigate replace to={ROUTES.NOT_FOUND} />} path="*" />
     </Routes>
   );
 };

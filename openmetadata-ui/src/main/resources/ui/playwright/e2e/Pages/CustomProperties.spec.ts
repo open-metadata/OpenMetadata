@@ -111,6 +111,7 @@ import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { createTable } from '../../utils/KnowledgeCenter';
 import {
   openMatchingFieldsPanel,
+  selectSettingOption,
   setSliderValue,
 } from '../../utils/searchSettingUtils';
 import {
@@ -3441,7 +3442,14 @@ pickEntityMatrix(
           );
           await expect(customPropertyBadge).toBeVisible();
 
-          await fieldPanel.click();
+          // A newly added field opens on its own; a second click on its
+          // header would close it again.
+          const collapsedFieldHeader = fieldPanel.locator(
+            'button[aria-expanded="false"]'
+          );
+          if (await collapsedFieldHeader.isVisible()) {
+            await collapsedFieldHeader.click();
+          }
           await setSliderValue(
             page,
             'field-weight-slider',
@@ -3452,13 +3460,7 @@ pickEntityMatrix(
           );
 
           const matchTypeSelect = page.getByTestId('match-type-select');
-          await matchTypeSelect.click();
-          await page
-            .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
-            .waitFor({ state: 'visible' });
-          await page
-            .locator('.ant-select-item-option[title="Standard Match"]')
-            .click();
+          await selectSettingOption(page, matchTypeSelect, 'Standard Match');
 
           const searchSettingsSaveResponse = page.waitForResponse(
             '/api/v1/system/settings'
@@ -3586,7 +3588,14 @@ pickEntityMatrix(
           );
           await expect(customPropertyBadge).toBeVisible();
 
-          await fieldPanel.click();
+          // A newly added field opens on its own; a second click on its
+          // header would close it again.
+          const collapsedFieldHeader = fieldPanel.locator(
+            'button[aria-expanded="false"]'
+          );
+          if (await collapsedFieldHeader.isVisible()) {
+            await collapsedFieldHeader.click();
+          }
           await setSliderValue(
             page,
             'field-weight-slider',
@@ -3597,10 +3606,7 @@ pickEntityMatrix(
           );
 
           const matchTypeSelect = page.getByTestId('match-type-select');
-          await matchTypeSelect.click();
-          await page
-            .locator('.ant-select-item-option[title="Phrase Match"]')
-            .click();
+          await selectSettingOption(page, matchTypeSelect, 'Phrase Match');
 
           const searchSettingsSaveResponse = page.waitForResponse(
             '/api/v1/system/settings'

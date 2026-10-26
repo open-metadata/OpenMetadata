@@ -41,7 +41,6 @@
  */
 
 import {
-  EmptyPlaceholder,
   PaginationCardWithControls,
   Table as UntitledTable,
 } from '@openmetadata/ui-core-components';
@@ -81,6 +80,7 @@ import {
 } from '../../../utils/CustomizeColumnUtils';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import NoDataPlaceholder from '../EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar, {
@@ -740,6 +740,8 @@ const ExpandControl = <T extends object>({
   rowKey,
   onToggle,
 }: ExpandControlProps<T>) => {
+  const { t } = useTranslation();
+
   if (hasChildren) {
     if (ExpandIcon) {
       return (
@@ -759,6 +761,7 @@ const ExpandControl = <T extends object>({
     return (
       <button
         aria-expanded={isExpanded}
+        aria-label={isExpanded ? t('label.collapse') : t('label.expand')}
         className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
         data-testid="expand-icon"
         onClick={(e) => {
@@ -1889,7 +1892,7 @@ const TableV2 = <T extends object>(
                         toCellPaddingClass(rest.size),
                         // The same rule covers `th`: a header sits on the first
                         // line of a row its own cells may wrap past.
-                        'tw:align-top tw:text-sm tw:text-tertiary',
+                        'tw:align-top tw:text-xs tw:font-semibold tw:text-quaternary',
                         // The core Table.Head wraps the label in its own flex
                         // group (`& > div`); it needs min-w-0 too, or the inner
                         // truncating title has no shrinkable ancestor and a long
@@ -2034,12 +2037,11 @@ const TableV2 = <T extends object>(
                         // `locale.emptyText` still win — most hand in their own
                         // ErrorPlaceHolder or FilterTablePlaceHolder.
                         (rest.locale?.emptyText as ReactNode) ?? (
-                          <EmptyPlaceholder
+                          <NoDataPlaceholder
                             icon={
                               <Search className="tw:text-fg-brand-primary" />
                             }
                             title={t('label.no-data')}
-                            variant="blank"
                           />
                         )
                       }

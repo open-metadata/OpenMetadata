@@ -3,7 +3,6 @@ package org.openmetadata.sdk.services;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.flipkart.zjsonpatch.JsonDiff;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -16,6 +15,7 @@ import java.util.concurrent.CompletableFuture;
 import okhttp3.HttpUrl;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.JsonDiff;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.AllModels;
 import org.openmetadata.sdk.models.ListParams;
@@ -297,7 +297,7 @@ public abstract class EntityServiceBase<T> {
       removeComputedFields(updatedNode);
       normalizePatchNodes(originalNode, updatedNode, entity);
 
-      JsonNode patch = JsonDiff.asJson(originalNode, updatedNode);
+      JsonNode patch = JsonDiff.of(originalNode, updatedNode);
 
       RequestOptions options = null;
       if (etag != null) {

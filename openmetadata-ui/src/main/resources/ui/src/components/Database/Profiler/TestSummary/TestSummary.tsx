@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
   LineChartUp01,
@@ -39,9 +35,11 @@ import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
+import DateRangeFilter from '../../../common/DateRangeFilter/DateRangeFilter';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import RunDetailsCard from '../../../DataQuality/IncidentManager/RunDetailsCard/RunDetailsCard';
-import DqDateRangeFilter from '../../../observability/DataQuality/Dashboard/DqDateRangeFilter';
 import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import RunSummaryTiles from './RunSummaryTiles/RunSummaryTiles';
 import './test-summary.less';
@@ -202,11 +200,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
         <Box
           className="tw:relative tw:min-h-56 tw:w-full"
           data-testid="test-summary-load-error">
-          <EmptyPlaceholder
+          <SomethingWentWrongPlaceholder
             actions={[
               {
                 key: 'retry',
-                color: 'secondary',
+                color: 'primary',
                 label: t('label.retry'),
                 onPress: () => setRetryCount((count) => count + 1),
               },
@@ -225,7 +223,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
         <Box
           className="tw:relative tw:min-h-56 tw:w-full tw:rounded-xl tw:border tw:border-dashed tw:border-secondary"
           data-testid="test-summary-never-run">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             className="tw:px-5"
             description={t('message.test-case-results-after-first-run')}
             icon={LineChartUp01}
@@ -284,7 +282,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
             {caption}
           </Typography>
         </Box>
-        <DqDateRangeFilter
+        <DateRangeFilter
           endTs={dateRangeObject.endTs}
           size="sm"
           startTs={dateRangeObject.startTs}

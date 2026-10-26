@@ -160,6 +160,7 @@ class SearchClassBase {
       [EntityType.TEST_SUITE]: SearchIndex.TEST_SUITE,
       [EntityType.GLOSSARY]: SearchIndex.GLOSSARY,
       [EntityType.INGESTION_PIPELINE]: SearchIndex.INGESTION_PIPELINE,
+      [EntityType.DATA_CONTRACT]: SearchIndex.DATA_CONTRACT,
       [EntityType.API_SERVICE]: SearchIndex.API_SERVICE,
       [EntityType.API_COLLECTION]: SearchIndex.API_COLLECTION,
       [EntityType.API_ENDPOINT]: SearchIndex.API_ENDPOINT,
@@ -207,6 +208,7 @@ class SearchClassBase {
       [SearchIndex.TEST_SUITE]: EntityType.TEST_SUITE,
       [SearchIndex.GLOSSARY]: EntityType.GLOSSARY,
       [SearchIndex.INGESTION_PIPELINE]: EntityType.INGESTION_PIPELINE,
+      [SearchIndex.DATA_CONTRACT]: EntityType.DATA_CONTRACT,
       [SearchIndex.API_SERVICE]: EntityType.API_SERVICE,
       [SearchIndex.API_COLLECTION]: EntityType.API_COLLECTION,
       [SearchIndex.API_ENDPOINT]: EntityType.API_ENDPOINT,
@@ -456,25 +458,20 @@ class SearchClassBase {
     ];
   }
 
-  public getExploreTreeKey(tab: ExplorePageTabs) {
-    const tabMapping: Record<string, SearchIndex[]> = {
-      [ExplorePageTabs.TABLES]: [SearchIndex.DATABASE],
-      [ExplorePageTabs.COLUMNS]: [SearchIndex.DATABASE],
-      [ExplorePageTabs.DASHBOARDS]: [SearchIndex.DASHBOARD],
-      [ExplorePageTabs.TOPICS]: [SearchIndex.TOPIC],
-      [ExplorePageTabs.CONTAINERS]: [SearchIndex.CONTAINER],
-      [ExplorePageTabs.PIPELINES]: [SearchIndex.PIPELINE],
-      [ExplorePageTabs.MLMODELS]: [SearchIndex.MLMODEL],
-      [ExplorePageTabs.SEARCH_INDEX]: [SearchIndex.SEARCH_INDEX],
-      [ExplorePageTabs.API_ENDPOINT]: [SearchIndex.API_ENDPOINT],
-      [ExplorePageTabs.METRIC]: [SearchIndex.METRIC],
-      [ExplorePageTabs.DIRECTORIES]: [SearchIndex.DIRECTORY],
-      [ExplorePageTabs.FILES]: [SearchIndex.FILE],
-      [ExplorePageTabs.SPREADSHEETS]: [SearchIndex.SPREADSHEET],
-      [ExplorePageTabs.WORKSHEETS]: [SearchIndex.WORKSHEET],
-    };
+  /**
+   * The Browse Estate root to expand for an Explore tab: the root whose
+   * `childEntities` holds the tab's entity type. Derived from the tree so the
+   * two cannot drift; Databases is the fallback for a tab no root lists.
+   */
+  public getExploreTreeKey(tab: ExplorePageTabs): string[] {
+    const tabEntityType = Object.entries(this.getTabsInfo()).find(
+      ([, tabInfo]) => tabInfo.path === tab
+    )?.[0];
+    const root = this.getExploreTree().find((node) =>
+      node.data?.childEntities?.includes(tabEntityType as EntityType)
+    );
 
-    return tabMapping[tab] || [SearchIndex.DATABASE];
+    return [root?.key ?? SearchIndex.DATABASE];
   }
 
   public getTabsInfo(): Record<ExploreSearchIndex, TabsInfoData> {

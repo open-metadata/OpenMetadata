@@ -17,6 +17,7 @@ import {
   MessageTextSquare01,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
+import classNames from 'classnames';
 import type { TFunction } from 'i18next';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,7 +43,14 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { getEncodedFqn, getSafeHttpUrl } from '../../../../utils/StringUtils';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import {
+  TOPIC_BLUE_TILE_CLASSES,
+  TOPIC_ROW_CLASSES,
+  TOPIC_ROW_DIVIDER_CLASSES,
+  TOPIC_ROW_TILE_CLASSES,
+} from '../Common/TopicWidget/topicRowStyles';
+import {
   TopicEmptyStateConfig,
+  TopicIconTone,
   TopicKey,
 } from '../Common/TopicWidget/topics.types';
 
@@ -59,9 +67,9 @@ export const CONTEXT_CENTER_FETCH_LIMIT = 10;
 // The card is a digest; the footer link opens the full Context Center.
 const MAX_VISIBLE_ROWS = 6;
 
-const TONE = {
+const TONE: TopicIconTone = {
   icon: Articles,
-  tile: 'tw:bg-utility-gray-100 tw:text-utility-gray-700',
+  color: 'gray',
 };
 
 const PAGE_TYPE_LABEL_KEYS: Partial<Record<PageType, string>> = {
@@ -192,9 +200,7 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
       widgetKey={widgetKey}
       onRetry={() => void refetch()}>
       {!isError && pages.length > 0 && (
-        <ul
-          className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
-          data-testid="context-center-rows">
+        <ul className="tw:flex tw:flex-col" data-testid="context-center-rows">
           {pages.slice(0, MAX_VISIBLE_ROWS).map((page) => {
             const quickLinkUrl = getQuickLinkUrl(page);
             const openLabel = t('label.read');
@@ -202,26 +208,34 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
 
             return (
               <li
-                className="tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3"
+                className={classNames(
+                  'tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3',
+                  TOPIC_ROW_CLASSES,
+                  TOPIC_ROW_DIVIDER_CLASSES
+                )}
                 data-testid={`context-page-${page.id}`}
                 key={page.id}>
                 <div
                   aria-hidden
-                  className="tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-utility-blue-50 tw:text-utility-blue-600">
+                  className={classNames(
+                    'tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
+                    TOPIC_BLUE_TILE_CLASSES,
+                    TOPIC_ROW_TILE_CLASSES
+                  )}>
                   <Articles size={16} />
                 </div>
-                <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+                <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
                   <Typography
                     className="tw:min-w-0 tw:text-text-primary!"
                     ellipsis={{ rows: 1 }}
-                    size="text-sm"
+                    size="text-xs"
                     weight="medium">
                     {getEntityName(page)}
                   </Typography>
                   <Typography
                     className="tw:min-w-0 tw:text-text-tertiary!"
                     ellipsis={{ rows: 1 }}
-                    size="text-sm">
+                    size="text-xs">
                     {t('message.page-type-updated-time', {
                       pageType: t(
                         PAGE_TYPE_LABEL_KEYS[page.pageType] ?? 'label.page'
@@ -237,7 +251,7 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
                     data-testid={openTestId}
                     href={quickLinkUrl}
                     rel="noopener noreferrer"
-                    size="sm"
+                    size="xs"
                     target="_blank">
                     {openLabel}
                   </Button>
@@ -246,7 +260,7 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
                     className="tw:shrink-0"
                     color="link-color"
                     data-testid={openTestId}
-                    size="sm"
+                    size="xs"
                     onPress={() =>
                       navigate(
                         contextCenterClassBase.getArticlePath(

@@ -16,6 +16,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { CSVImportResult, Status } from '../../generated/type/csvImportResult';
+import { exportTestCasesInCSV } from '../../rest/testAPI';
+import { getBulkEditCSVExportEntityApi } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import BulkEditEntity from './BulkEditEntity.component';
 import { BulkEditEntityProps } from './BulkEditEntity.interface';
 
@@ -128,6 +130,10 @@ jest.mock('../common/Loader/Loader', () => {
   return jest.fn(() => <div data-testid="loader">Loading...</div>);
 });
 
+jest.mock('../../rest/testAPI', () => ({
+  exportTestCasesInCSV: jest.fn(),
+}));
+
 jest.mock('../../utils/EntityBulkEdit/EntityBulkEditUtils', () => ({
   getBulkEditCSVExportEntityApi: jest.fn(() => jest.fn()),
   getBulkEntityNavigationPath: jest.fn(
@@ -184,12 +190,19 @@ const defaultProps: BulkEditEntityProps = {
   handlePaste: jest.fn().mockReturnValue({}),
   pushToUndoStack: jest.fn(),
   handleOnRowsChange: jest.fn(),
+  searchText: '',
+  visibleRows: mockDataSource,
+  onSearchTextChange: jest.fn(),
 };
 
 const renderComponent = (props: Partial<BulkEditEntityProps> = {}) => {
   return render(
     <MemoryRouter>
-      <BulkEditEntity {...defaultProps} {...props} />
+      <BulkEditEntity
+        {...defaultProps}
+        visibleRows={props.dataSource ?? defaultProps.visibleRows}
+        {...props}
+      />
     </MemoryRouter>
   );
 };
@@ -614,6 +627,28 @@ describe('BulkEditEntity', () => {
       expect(mockTriggerExportForBulkEdit).toHaveBeenCalled();
     });
 
+    it('labels the rows of a table bulk edit as columns', () => {
+      mockEntityType = EntityType.TABLE;
+      renderComponent();
+
+      expect(
+        screen.getByText(
+          `label.edit ${mockDataSource.length} label.column-plural`
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('labels the rows of a glossary bulk edit as glossary terms', () => {
+      mockEntityType = EntityType.GLOSSARY;
+      renderComponent();
+
+      expect(
+        screen.getByText(
+          `label.edit ${mockDataSource.length} label.glossary-term-plural`
+        )
+      ).toBeInTheDocument();
+    });
+
     it('should handle DATABASE entity type', () => {
       mockEntityType = EntityType.DATABASE;
       renderComponent();
@@ -633,6 +668,38 @@ describe('BulkEditEntity', () => {
       renderComponent();
 
       expect(mockTriggerExportForBulkEdit).toHaveBeenCalled();
+    });
+
+    it('should load the test case grid with the filters the list was opened with', async () => {
+      mockEntityType = EntityType.TEST_CASE;
+      (getBulkEditCSVExportEntityApi as jest.Mock).mockImplementation(
+        jest.requireActual('../../utils/EntityBulkEdit/EntityBulkEditUtils')
+          .getBulkEditCSVExportEntityApi
+      );
+
+      try {
+        render(
+          <MemoryRouter
+            initialEntries={[
+              '/bulk/edit/testCase/test.entity.fqn?sourceEntityType=table&testCaseStatus=Failed,Aborted&q=nulls&currentPage=2',
+            ]}>
+            <BulkEditEntity {...defaultProps} />
+          </MemoryRouter>
+        );
+        const { name, onExport } =
+          mockTriggerExportForBulkEdit.mock.calls[0][0];
+        await onExport(name, { recursive: false });
+
+        expect(exportTestCasesInCSV).toHaveBeenCalledWith('test.entity.fqn', {
+          recursive: false,
+          testCaseStatus: ['Failed', 'Aborted'],
+          q: 'nulls',
+        });
+      } finally {
+        (getBulkEditCSVExportEntityApi as jest.Mock).mockImplementation(() =>
+          jest.fn()
+        );
+      }
     });
   });
 

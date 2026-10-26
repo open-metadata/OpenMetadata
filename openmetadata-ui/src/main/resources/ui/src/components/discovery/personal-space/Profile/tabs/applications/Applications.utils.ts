@@ -29,6 +29,7 @@ import {
   isCacheWarmupApplication,
   isMcpApplication,
 } from '../../../../../../utils/ApplicationUtils';
+import { safeDecodeURIComponent } from '../../../../../../utils/SettingsHashUtils';
 import type { ApplicationsView, InstallStep } from './Applications.types';
 
 export const APPLICATIONS_HASH_TAB = 'applications';
@@ -43,14 +44,14 @@ export const hashSubPathToView = (subPath: string): ApplicationsView => {
   const parts = subPath.split('/');
 
   if (parts[0] !== PATH_MARKETPLACE) {
-    return { type: 'detail', fqn: decodeURIComponent(parts[0]) };
+    return { type: 'detail', fqn: safeDecodeURIComponent(parts[0]) };
   }
 
   if (!parts[1]) {
     return { type: 'marketplace' };
   }
 
-  const fqn = decodeURIComponent(parts[1]);
+  const fqn = safeDecodeURIComponent(parts[1]);
 
   return parts[2] === PATH_INSTALL
     ? { type: 'install', fqn }

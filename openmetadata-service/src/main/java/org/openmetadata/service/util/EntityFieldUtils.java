@@ -18,13 +18,13 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.governance.EntityStatusAdapter;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
@@ -113,18 +114,17 @@ public class EntityFieldUtils {
         EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
         // The wildcard accepts any current ETag while selecting the version-guarded storage path.
         // This prevents an asynchronously loaded entity from overwriting a concurrent user patch.
-        entityRepository.patch(null, entity.getId(), user, patch, null, "*", impersonatedBy);
+        EntityInterface<?> patched =
+            (EntityInterface<?>)
+                entityRepository
+                    .patch(null, entity.getId(), user, patch, null, "*", impersonatedBy)
+                    .entity();
+        // Built from the patched entity so the event carries its changeDescription: alert and
+        // activity-feed filters match on the changed fields and drop events without one.
         ChangeEvent changeEvent =
-            new ChangeEvent()
-                .withId(UUID.randomUUID())
-                .withEventType(EventType.ENTITY_UPDATED)
-                .withEntityId(entity.getId())
+            ChangeEvents.createChangeEventForEntity(user, EventType.ENTITY_UPDATED, patched)
                 .withEntityType(entityType)
-                .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
-                .withUserName(user)
-                .withImpersonatedBy(impersonatedBy)
-                .withTimestamp(System.currentTimeMillis())
-                .withEntity(entity);
+                .withImpersonatedBy(impersonatedBy);
 
         Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
       }
@@ -158,6 +158,23 @@ public class EntityFieldUtils {
   }
 
   /**
+   * Reads a multi-value FQN field. FQNs may contain commas, so the UI writes a JSON array; a plain
+   * comma-separated string is still accepted for workflows saved before that.
+   * ADR:2026-10-13-set-action-multi-fqn-field-values-are-json-arrays
+   */
+  static List<String> parseFqnList(String value) {
+    String trimmed = value.trim();
+    if (trimmed.startsWith("[")) {
+      try {
+        return JsonUtils.readObjects(trimmed, String.class);
+      } catch (JsonParsingException e) {
+        LOG.debug("Field value {} is not a JSON array, reading it as comma-separated", trimmed);
+      }
+    }
+    return Arrays.asList(trimmed.split(","));
+  }
+
+  /**
    * Appends tags to the entity by fetching actual Tag entities.
    * If new tags are mutually exclusive with existing tags, replaces the conflicting tags.
    */
@@ -168,10 +185,8 @@ public class EntityFieldUtils {
 
     List<TagLabel> existingTags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
     List<TagLabel> newTagsToAdd = new ArrayList<>();
-    String[] fqns = tagFQNs.contains(",") ? tagFQNs.split(",") : new String[] {tagFQNs};
-
     // First, collect all new tags to add
-    for (String fqn : fqns) {
+    for (String fqn : parseFqnList(tagFQNs)) {
       String trimmedFQN = fqn.trim();
       if (!trimmedFQN.isEmpty()) {
         // Check if tag already exists
@@ -258,10 +273,8 @@ public class EntityFieldUtils {
     }
     List<TagLabel> existingTags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
     List<TagLabel> newTermsToAdd = new ArrayList<>();
-    String[] fqns = termFQNs.contains(",") ? termFQNs.split(",") : new String[] {termFQNs};
-
     // First, collect all new glossary terms to add
-    for (String fqn : fqns) {
+    for (String fqn : parseFqnList(termFQNs)) {
       String trimmedFQN = fqn.trim();
       if (!trimmedFQN.isEmpty()) {
         // Check if term already exists

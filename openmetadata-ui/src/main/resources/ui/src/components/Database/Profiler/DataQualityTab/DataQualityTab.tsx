@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   Skeleton,
   Table,
   Tooltip,
@@ -75,6 +74,8 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
@@ -169,6 +170,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   deletionMode = TEST_CASE_DELETION_MODE.HARD,
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
+  const EmptyStatePlaceholder = hasActiveFilters
+    ? NoFilteredResultsPlaceholder
+    : NoDataPlaceholder;
   const navigate = useNavigate();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
   const [isStatusLoading, setIsStatusLoading] = useState(true);
@@ -601,12 +605,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       // actually clip the cell height. Chromium/Firefox are unaffected.
       <div className="tw:max-h-11 tw:overflow-hidden">
         <Tooltip
-          containerClassName="tw:break-all"
+          containerClassName="tw:wrap-break-word"
           placement="top"
           title={result.result}>
           <TooltipTrigger>
             <Typography
-              className="tw:m-0 tw:max-w-54 tw:w-54 tw:line-clamp-2 tw:break-all tw:whitespace-normal"
+              className="tw:m-0 tw:max-w-54 tw:w-54 tw:line-clamp-2 tw:wrap-break-word tw:text-left tw:whitespace-normal"
               data-testid={`reason-text-${record.name}`}
               size="text-sm">
               {result.result}
@@ -848,7 +852,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}>
               <Link
-                className="break-word tw:min-w-0"
+                className="tw:block tw:min-w-0 tw:truncate"
                 data-testid="table-link"
                 title={tableFqn}
                 to={getEntityDetailsPath(
@@ -904,6 +908,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     return (
       <ConfirmationModal
+        isDestructive
         bodyText={t(
           'message.are-you-sure-you-want-to-remove-count-test-cases-from-parent',
           {
@@ -924,7 +929,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     );
   };
 
-  const renderSelectionToolbar = () => {
+  const renderSelectionToolbar = (isInHeader: boolean) => {
     if (!isSelectionEnabled || !hasSelection) {
       return null;
     }
@@ -932,17 +937,21 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     return (
       <Box
         align="center"
-        className="tw:mb-3 tw:rounded-md tw:bg-(--color-bg-secondary) tw:px-4 tw:py-2"
+        className={classNames(
+          isInHeader
+            ? 'tw:shrink-0'
+            : 'tw:mb-3 tw:rounded-md tw:bg-(--color-bg-secondary) tw:px-4 tw:py-2'
+        )}
+        data-testid="bulk-selection-toolbar"
         gap={3}
-        wrap="wrap">
-        <Box>
+        wrap={isInHeader ? 'nowrap' : 'wrap'}>
+        <Box align="center" gap={2}>
           <Typography size="text-sm">
             {t('label.bundle-test-case-selected-count', {
               count: selectedTestCases.length,
             })}
           </Typography>
           <Button
-            className="tw:ml-2"
             color="tertiary"
             data-testid="bulk-clear-test-case-selection"
             size="sm"
@@ -950,7 +959,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             {t('label.clear-selection')}
           </Button>
         </Box>
-        <Box align="center" className="tw:ml-auto" gap={3}>
+        <Box
+          align="center"
+          className={classNames({ 'tw:ml-auto': !isInHeader })}
+          gap={3}>
           {isBulkRemoveAllowed && (
             <Button
               color="primary-destructive"
@@ -1004,6 +1016,27 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     );
   };
 
+  // On a bundle suite page the header row holds only the search box, so the bar
+  // fits beside it and selecting a row no longer pushes the table down. The test
+  // case list header carries a title and description that the bar would crush,
+  // so there it stays above the table.
+  const renderTableHeader = () => {
+    const isSelectionToolbarInHeader =
+      !isUndefined(tableHeader) && !isUndefined(removeFromTestSuite);
+
+    return (
+      <>
+        {tableHeader && (
+          <Box align="center" className="data-quality-table-header" gap={4}>
+            {isSelectionToolbarInHeader && renderSelectionToolbar(true)}
+            <div className="tw:min-w-0 tw:flex-1">{tableHeader}</div>
+          </Box>
+        )}
+        {!isSelectionToolbarInHeader && renderSelectionToolbar(false)}
+      </>
+    );
+  };
+
   const renderTestCaseModals = () => (
     <>
       {enableBulkActions && (
@@ -1034,6 +1067,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
       {removeFromTestSuite && (
         <ConfirmationModal
+          isDestructive
           bodyText={t(
             'message.are-you-sure-you-want-to-remove-child-from-parent',
             {
@@ -1055,6 +1089,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         deletionMode === TEST_CASE_DELETION_MODE.SOFT && (
           <DeleteEntityModal
             allowSoftDelete
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             entityId={selectedTestCase?.data.id ?? ''}
             entityName={getEntityName(selectedTestCase?.data)}
@@ -1096,10 +1131,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       className={classNames({
         'data-quality-tab-container': !isUndefined(tableHeader),
       })}>
-      {tableHeader && (
-        <div className="data-quality-table-header">{tableHeader}</div>
-      )}
-      {renderSelectionToolbar()}
+      {renderTableHeader()}
       <div
         className={classNames('tw:overflow-x-auto', {
           'test-case-table-container': true,
@@ -1160,7 +1192,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 </div>
               ) : (
                 <Box className="tw:relative tw:min-h-80 tw:w-full">
-                  <EmptyPlaceholder
+                  <EmptyStatePlaceholder
                     actions={
                       !hasActiveFilters && emptyStateAction
                         ? [emptyStateAction]
@@ -1177,7 +1209,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                         ? 'message.no-matching-test-cases'
                         : 'message.no-test-cases-yet'
                     )}
-                    variant="blank"
                   />
                 </Box>
               )
@@ -1186,7 +1217,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           </Table.Body>
         </Table>
       </div>
-      {pagingData && showPagination && <NextPrevious {...pagingData} />}
+      {pagingData && showPagination && pagingData.paging.total > 0 && (
+        <NextPrevious {...pagingData} />
+      )}
       {renderTestCaseModals()}
     </div>
   );

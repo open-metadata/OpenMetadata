@@ -20,6 +20,7 @@ import {
   toastNotification,
   uuid,
 } from '../../../utils/common';
+import { expectFormHint } from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { enableAiAppMode, redirectToAiModeHomePage } from '../../Utils/appMode';
 
@@ -65,7 +66,7 @@ test.describe('AI mode Observability', () => {
       {
         name: 'Test Library',
         path: '/observability/test-library',
-        expectedText: 'Data Quality Rules',
+        expectedText: 'Test Library',
       },
     ];
 
@@ -85,8 +86,8 @@ test.describe('AI mode Observability', () => {
     }
   });
 
-  test.describe('Test Library — Add Test Definition (modal variant)', () => {
-    test('opens the form as a centered modal (no drawer doc panel) and cancels', async ({
+  test.describe('Test Library — Add Test Definition (drawer)', () => {
+    test('opens the form in the drawer with the Form Hint and cancels', async ({
       page,
     }) => {
       await page.goto('/observability/test-library', {
@@ -96,15 +97,16 @@ test.describe('AI mode Observability', () => {
 
       await page.getByTestId('add-test-definition-button').click();
 
-      // AI mode renders the migrated form as a centered modal: the shared form
-      // body + Create footer are present, and there is no drawer doc panel.
+      // AI mode opens the same drawer as classic mode: Show Hint is on and the
+      // Form Hint opens on the first field.
       await page
         .getByTestId('test-definition-form-body')
         .waitFor({ state: 'visible' });
 
-      await expect(page.getByTestId('create-btn')).toBeVisible();
+      await expect(page.getByTestId('save-test-definition')).toBeVisible();
       await expect(page.getByTestId('cancel-btn')).toBeVisible();
-      await expect(page.locator('.drawer-doc-panel')).toHaveCount(0);
+      await expect(page.getByTestId('show-hint-toggle')).toBeChecked();
+      await expectFormHint(page, 'Name');
       await expect(page.getByTestId('test-definition-name')).toBeVisible();
       await expect(page.getByTestId('entity-type')).toBeVisible();
 
@@ -115,8 +117,8 @@ test.describe('AI mode Observability', () => {
       ).not.toBeVisible();
     });
 
-    test('creates a test definition through the modal', async ({ page }) => {
-      const testDefinitionName = `AiModalTestDefinition${uuid()}`;
+    test('creates a test definition through the drawer', async ({ page }) => {
+      const testDefinitionName = `AiDrawerTestDefinition${uuid()}`;
 
       await page.goto('/observability/test-library', {
         waitUntil: 'domcontentloaded',
@@ -136,7 +138,7 @@ test.describe('AI mode Observability', () => {
           .locator('input')
           .fill(testDefinitionName);
 
-        // Entity type is a react-aria Select below the fold of the modal body. A bare click
+        // Entity type is a react-aria Select below the fold of the drawer body. A bare click
         // auto-scrolls it into view, and that scroll event lands after the listbox opens, so
         // react-aria closes the popover on scroll. The helper scrolls and settles first.
         await selectOptionWithRetry(
@@ -167,7 +169,7 @@ test.describe('AI mode Observability', () => {
             .getByText('VARCHAR', { exact: true })
         ).toBeVisible();
         // Dismiss the combobox popover by clicking another field inside the
-        // dismissable modal. Escape would close the modal itself.
+        // drawer. Escape would close the drawer itself.
         await page.getByTestId('test-definition-name').locator('input').click();
         await expect(page.getByRole('listbox')).toBeHidden();
         await expect(
@@ -180,7 +182,7 @@ test.describe('AI mode Observability', () => {
             response.request().method() === 'POST'
         );
 
-        await page.getByTestId('create-btn').click();
+        await page.getByTestId('save-test-definition').click();
 
         const response = await createResponse;
 
@@ -201,10 +203,10 @@ test.describe('AI mode Observability', () => {
       }
     });
 
-    test('edits a test definition through the modal', async ({ page }) => {
+    test('edits a test definition through the drawer', async ({ page }) => {
       // "Aaaa" prefix sorts the row to the first page so its edit action is
       // reliably rendered without paginating.
-      const testDefinitionName = `AaaaAiModalEditDefinition${uuid()}`;
+      const testDefinitionName = `AaaaAiDrawerEditDefinition${uuid()}`;
 
       // Load the app first so getApiContext picks up the admin auth token.
       await page.goto('/observability/test-library', {
@@ -220,7 +222,7 @@ test.describe('AI mode Observability', () => {
           '/api/v1/dataQuality/testDefinitions',
           {
             data: {
-              description: 'Seed for the AI modal edit test',
+              description: 'Seed for the AI drawer edit test',
               displayName: testDefinitionName,
               entityType: 'TABLE',
               name: testDefinitionName,
@@ -239,12 +241,11 @@ test.describe('AI mode Observability', () => {
           .getByTestId(`edit-test-definition-${testDefinitionName}`)
           .click();
 
-        // Edit opens the same migrated form as a centered modal (no drawer doc
-        // panel), pre-filled, with the immutable name disabled.
+        // Edit opens the same drawer, pre-filled, with the immutable name
+        // disabled.
         await page
           .getByTestId('test-definition-form-body')
           .waitFor({ state: 'visible' });
-        await expect(page.locator('.drawer-doc-panel')).toHaveCount(0);
 
         const nameInput = page
           .getByTestId('test-definition-name')
@@ -265,7 +266,7 @@ test.describe('AI mode Observability', () => {
             response.request().method() === 'PATCH'
         );
 
-        await page.getByTestId('create-btn').click();
+        await page.getByTestId('save-test-definition').click();
 
         const response = await patchResponse;
         expect(response.status()).toBe(200);
@@ -285,10 +286,10 @@ test.describe('AI mode Observability', () => {
     // remounts its child on every testCase/testSuite websocket invalidation.
     // Those types are broadcast to every connected client, so any parallel
     // spec (or any colleague) touching a test case tore this page down and
-    // took the open modal — and whatever had been typed into it — with it.
+    // took the open form — and whatever had been typed into it — with it.
     // The Test Library renders test DEFINITIONS and nothing derived from
     // testCase/testSuite, so it must not react to them at all.
-    test('modal survives a testCase/testSuite invalidation', async ({
+    test('drawer survives a testCase/testSuite invalidation', async ({
       page,
     }) => {
       await page.goto('/observability/test-library', {
@@ -436,7 +437,7 @@ test.describe('AI mode Observability', () => {
   });
 
   test.describe('Alerts Navigation', () => {
-    test('Add Alert button should open modal within AI mode', async ({
+    test('Add Alert button should open drawer within AI mode', async ({
       page,
     }) => {
       await page.goto('/observability/alerts', {
@@ -459,7 +460,7 @@ test.describe('AI mode Observability', () => {
       await expect(dialog.getByTestId('alert-name-input')).toBeVisible();
       await expect(dialog.getByTestId('source-select')).toBeVisible();
 
-      // The modal opens in place — the alerts route stays mounted under the
+      // The drawer opens in place — the alerts route stays mounted under the
       // AI shell rather than navigating to the classic add-alert page.
       await expect(page).toHaveURL(/\/observability\/alerts$/);
       await expect(page.getByTestId('ask-sidebar')).toBeVisible();

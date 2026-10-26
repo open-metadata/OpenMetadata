@@ -38,6 +38,7 @@ import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationTo
 import static org.openmetadata.service.util.UserUtil.getUser;
 import static org.openmetadata.service.util.UserUtil.reSyncUserRolesFromToken;
 import static org.openmetadata.service.util.UserUtil.validateAndGetRolesRef;
+import static org.openmetadata.service.util.UserUtil.validateEmailDomain;
 import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -197,7 +198,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final UserPreferencesRepository preferencesRepository;
   private final AuthenticatorHandler authHandler;
   static final String FIELDS =
-      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences,extension";
+      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,defaultDomain,personaPreferences,extension";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -710,6 +711,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       addAuthMechanismToBot(user, create, uriInfo);
       addRolesToBot(user, uriInfo);
     }
+    // Outside the try below, which would turn this 400 into a 409
+    validateEmailDomain(
+        user,
+        SecurityConfigurationManager.getCurrentAuthConfig(),
+        SecurityConfigurationManager.getCurrentAuthzConfig());
 
     try {
       validateEmailAlreadyExists(user.getEmail());
@@ -834,6 +840,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
     repository.prepareInternal(user, existingUser != null);
     if (existingUser == null) {
+      validateEmailDomain(
+          user,
+          SecurityConfigurationManager.getCurrentAuthConfig(),
+          SecurityConfigurationManager.getCurrentAuthzConfig());
       limits.enforceLimits(
           securityContext,
           getResourceContextByName(user.getFullyQualifiedName()),
@@ -1138,6 +1148,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         continue;
       }
       String path = patchOpObject.getString("path");
+      if (path.startsWith("/defaultDomain") && !isSelf) {
+        throw new AuthorizationException("Users can only update their own default domain");
+      }
       if (isPrivilegedUserPatchPath(path)) {
         authorizer.authorizeAdmin(securityContext);
         continue;
@@ -1174,16 +1187,20 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private static final String IS_BOT_PATCH_PATH = "/isBot";
   private static final String ROLES_FIELD = "roles";
   private static final String TEAMS_FIELD = "teams";
-  private static final String PRIVILEGED_FIELDS = ROLES_FIELD + "," + TEAMS_FIELD;
+  private static final String PRIVILEGED_FIELDS =
+      String.join(",", ROLES_FIELD, TEAMS_FIELD, Entity.FIELD_DOMAINS);
   private static final String ROLES_PATCH_PATH_SEGMENT = "/" + ROLES_FIELD;
+  private static final String DOMAINS_PATCH_PATH = "/" + Entity.FIELD_DOMAINS;
 
   // A root-level operation (path "") replaces the whole user document, so it covers the same
-  // fields as the explicit paths below.
+  // fields as the explicit paths below. Domains grant access through hasDomain(), so only an admin
+  // changes them: ADR:2026-10-21-only-admins-change-a-users-domains
   private static boolean isPrivilegedUserPatchPath(String path) {
     return path.isEmpty()
         || path.equals(IS_ADMIN_PATCH_PATH)
         || path.equals(IS_BOT_PATCH_PATH)
-        || path.contains(ROLES_PATCH_PATH_SEGMENT);
+        || path.contains(ROLES_PATCH_PATH_SEGMENT)
+        || path.startsWith(DOMAINS_PATCH_PATH);
   }
 
   // Fields on an update that only an admin may set, whoever the user being changed is. The teams
@@ -1194,19 +1211,22 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       return true;
     }
-    if (nullOrEmpty(updatedUser.getRoles()) && nullOrEmpty(create.getTeams())) {
+    if (nullOrEmpty(updatedUser.getRoles())
+        && nullOrEmpty(create.getTeams())
+        && nullOrEmpty(updatedUser.getDomains())) {
       return false;
     }
-    // Reading back what the user already holds only pays off once the request names a role or a
-    // team - nothing else can be an elevation.
+    // Reading back what the user already holds only pays off once the request names a role, a team
+    // or a domain - nothing else can be an elevation.
     User currentUser = loadPrivilegedFields(existingUser);
     return hasRoleElevation(currentUser, updatedUser)
-        || joinsClosedTeam(currentUser, create.getTeams());
+        || joinsClosedTeam(currentUser, create.getTeams())
+        || hasDomainElevation(currentUser, updatedUser);
   }
 
-  // findByNameOrNull() sets core fields only, so the roles and teams the user already holds have to
-  // be loaded before the request can be compared against them. A null existingUser means the user
-  // is being created, so everything the request asks for is new.
+  // findByNameOrNull() sets core fields only, so the roles, teams and domains the user already
+  // holds have to be loaded before the request can be compared against them. A null existingUser
+  // means the user is being created, so everything the request asks for is new.
   private User loadPrivilegedFields(User existingUser) {
     if (existingUser == null) {
       return null;
@@ -1226,6 +1246,20 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return !entityIds(currentUser.getRoles()).containsAll(updatedRoleIds);
   }
 
+  // True when the request asks for a domain the user does not already hold as their own. A domain
+  // inherited from a team goes away when the user leaves the team, so it does not count as held.
+  private boolean hasDomainElevation(final User currentUser, final User updatedUser) {
+    final Set<UUID> heldDomainIds = currentUser == null ? Set.of() : ownDomainIds(currentUser);
+    return !heldDomainIds.containsAll(entityIds(updatedUser.getDomains()));
+  }
+
+  private static Set<UUID> ownDomainIds(final User user) {
+    return listOrEmpty(user.getDomains()).stream()
+        .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+        .map(EntityReference::getId)
+        .collect(Collectors.toSet());
+  }
+
   // Members of a team hold the team's defaultRoles as inherited roles and are governed by its
   // policies, so joining a team that is not open to everyone grants privileges the same way naming
   // a role does. PATCH has always required an admin for it. Teams the user is already in are
@@ -1242,12 +1276,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   // Fields on CreateUser that only an admin may set, whoever the user being created is. Every team
-  // named on a create request is one the user is not a member of yet.
+  // and domain named on a create request is one the user does not hold yet.
   private boolean grantsPrivileges(CreateUser create) {
     return Boolean.TRUE.equals(create.getIsAdmin())
         || Boolean.TRUE.equals(create.getIsBot())
         || grantsRolesFromRequestBody(create)
-        || joinsClosedTeam(null, create.getTeams());
+        || joinsClosedTeam(null, create.getTeams())
+        || !nullOrEmpty(create.getDomains());
   }
 
   // updateUserRolesIfRequired() discards the request body roles in favour of the ones in the
@@ -1535,7 +1570,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssets(id, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    return Response.ok(
+            repository.getUserAssets(id, limit, offset, getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -1573,7 +1614,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssetsByName(name, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(name));
+    return Response.ok(
+            repository.getUserAssetsByName(name, limit, offset, getSubjectContext(securityContext)))
+        .build();
   }
 
   @POST

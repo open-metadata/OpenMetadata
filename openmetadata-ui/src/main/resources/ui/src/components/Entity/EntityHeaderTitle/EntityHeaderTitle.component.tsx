@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExclamationCircleFilled } from '@ant-design/icons';
 import {
   Badge,
   Button,
@@ -19,6 +18,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Copy01,
+  ExclamationCircleFilled,
   LinkExternal01,
   Star01,
 } from '@openmetadata/ui-core-components/icons';
@@ -129,7 +129,10 @@ const EntityHeaderTitle = ({
         {deleted && (
           <div className="text-xs tw:flex-[0_0_100px]">
             <span className="deleted-badge-button" data-testid="deleted-badge">
-              <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+              <ExclamationCircleFilled
+                className="tw:mr-1 tw:shrink-0"
+                size={12}
+              />
               {t('label.deleted')}
             </span>
           </div>
@@ -196,7 +199,7 @@ const EntityHeaderTitle = ({
           color="tertiary"
           data-testid="entity-follow-button"
           iconLeading={
-            <Star01 className="tw:size-3.5 tw:text-utility-brand-600" />
+            <Star01 className="tw:text-utility-brand-600" size={14} />
           }
           isDisabled={deleted}
           isLoading={isFollowingLoading}
@@ -211,7 +214,8 @@ const EntityHeaderTitle = ({
   const renderContent = () => (
     <div
       className={classNames(
-        'entity-header-title tw:flex tw:flex-nowrap tw:items-center tw:gap-3',
+        // min-w-0 lets a long name shrink so its ellipsis applies instead of overlapping the header actions.
+        'entity-header-title tw:flex tw:min-w-0 tw:flex-nowrap tw:items-center tw:gap-3',
         className
       )}
       data-testid={`${serviceName}-${name}`}>
@@ -281,7 +285,7 @@ const EntityHeaderTitle = ({
 
   return link && !isTourRoute ? (
     <Link
-      className="no-underline d-inline-block w-max-full entity-header-title-link"
+      className="no-underline d-inline-block w-max-full tw:min-w-0 entity-header-title-link"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}

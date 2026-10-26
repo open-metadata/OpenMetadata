@@ -26,62 +26,6 @@
   min-width: 12rem;
 }
 
-.bulk-edit-enum-select-dropdown.ant-select-dropdown,
-.bulk-edit-custom-property-select-dropdown.ant-select-dropdown {
-  background: var(--tw-color-bg-surface);
-  border: 1px solid var(--tw-color-border-secondary);
-  border-radius: var(--om-radius-10);
-  box-shadow: 0 12px 32px var(--om-legacy-color-16-24-40-0-14);
-  isolation: isolate;
-  opacity: 1 !important;
-  overflow: hidden;
-  padding: var(--om-space-6);
-  transform: none !important;
-  z-index: var(--om-z-1500);
-
-  &::before {
-    background: var(--tw-color-bg-surface);
-    border-radius: inherit;
-    content: '';
-    inset: 0;
-    position: absolute;
-    z-index: var(--om-z-0);
-  }
-
-  .rc-virtual-list {
-    background: var(--tw-color-bg-surface);
-    position: relative;
-    z-index: var(--om-z-1);
-  }
-
-  .ant-select-item {
-    align-items: center;
-    background: var(--tw-color-bg-surface);
-    border-radius: var(--om-radius-md);
-    color: var(--tw-color-text-primary);
-    display: flex;
-    font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
-    font-size: var(--om-font-size-13);
-    min-height: 38px;
-    padding: var(--om-space-8) var(--om-space-10);
-  }
-
-  .ant-select-item-option-content {
-    line-height: 20px;
-  }
-
-  .ant-select-item-option-active:not(.ant-select-item-option-disabled),
-  .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-    background: var(--tw-color-bg-brand-primary);
-    color: var(--tw-color-text-primary);
-    font-weight: @font-medium;
-  }
-
-  .ant-select-item-option-state {
-    color: var(--tw-color-fg-brand-primary);
-  }
-}
-
 .csv-import-page-stack {
   display: flex;
   flex-direction: column;
@@ -260,7 +204,6 @@
   display: flex;
   gap: var(--om-space-10);
   justify-content: flex-end;
-  margin: auto calc(-1 * var(--om-space-24)) 0;
   padding: var(--om-space-16) var(--om-space-24);
   position: sticky;
   z-index: var(--om-z-5);
@@ -367,16 +310,6 @@
       color: var(--tw-color-fg-brand-primary);
       font-weight: @font-semibold;
     }
-  }
-
-  .ant-alert {
-    background: var(--tw-color-bg-brand-primary);
-    border: 1px solid var(--tw-color-border-brand_alt);
-    border-radius: var(--om-radius-10);
-    color: var(--tw-color-text-brand-secondary);
-    font-size: var(--om-font-size-13);
-    margin-top: var(--om-space-18);
-    padding: var(--om-space-12) var(--om-space-14);
   }
 }
 
@@ -615,41 +548,6 @@
   .bulk-edit-select-cell-icon {
     color: var(--tw-color-fg-quaternary);
     flex-shrink: 0;
-  }
-
-  .bulk-edit-enum-select {
-    min-width: 0;
-    width: 100%;
-
-    &.ant-select-focused:not(.ant-select-disabled).ant-select:not(
-        .ant-select-customize-input
-      )
-      .ant-select-selector {
-      border-color: transparent;
-      box-shadow: none;
-    }
-
-    .ant-select-selector {
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      height: 24px;
-      padding: 0;
-    }
-
-    .ant-select-selection-item {
-      color: var(--tw-color-text-primary);
-      font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
-      font-size: var(--om-font-size-12_5);
-      line-height: 24px;
-      padding-right: var(--om-space-20);
-    }
-
-    .ant-select-arrow {
-      color: var(--tw-color-fg-quaternary);
-      margin-top: calc(-1 * var(--om-space-7));
-      right: 0;
-    }
   }
 
   .bulk-edit-text-cell-editor {
@@ -1301,24 +1199,6 @@
   }
 }
 
-.bulk-edit-custom-property-enum-select.ant-select {
-  width: 100%;
-
-  .ant-select-selector {
-    border-color: var(--tw-color-border-secondary);
-    border-radius: 6px;
-    min-height: 36px;
-  }
-
-  &.ant-select-focused:not(.ant-select-disabled).ant-select:not(
-      .ant-select-customize-input
-    )
-    .ant-select-selector {
-    border-color: var(--tw-color-border-brand);
-    box-shadow: 0 0 0 3px rgba(21, 112, 239, 0.14);
-  }
-}
-
 .bulk-edit-custom-property-time-interval {
   display: flex;
   flex-wrap: wrap;
@@ -1608,7 +1488,6 @@
   flex-shrink: 0;
   gap: var(--om-space-10);
   justify-content: space-between;
-  margin: auto calc(-1 * var(--om-space-24)) 0;
   padding: var(--om-space-12) var(--om-space-32);
   position: sticky;
   z-index: var(--om-z-5);

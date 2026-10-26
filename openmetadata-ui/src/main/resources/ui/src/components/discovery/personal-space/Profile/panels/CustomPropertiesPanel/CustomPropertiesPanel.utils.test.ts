@@ -22,10 +22,23 @@ import {
 } from './CustomPropertiesPanel.types';
 import {
   buildCustomPropertyConfig,
+  entityTypeDetailSubPath,
   getBreadcrumbItems,
+  getCustomPropertyTypeFlags,
   getPageTitle,
+  parseCustomPropertiesHash,
+  toCustomPropertyPayload,
   toId,
 } from './CustomPropertiesPanel.utils';
+
+describe('entityTypeDetailSubPath', () => {
+  it('opens that entity type in the custom properties panel', () => {
+    expect(parseCustomPropertiesHash(entityTypeDetailSubPath('user'))).toEqual({
+      entityFqn: 'user',
+      action: 'detail',
+    });
+  });
+});
 
 jest.mock('../../../../../../utils/EntityNameUtils', () => ({
   getEntityName: (entity: { displayName?: string; name?: string }) =>
@@ -296,6 +309,47 @@ describe('CustomPropertiesPanel utils', () => {
       );
 
       expect(result).toBe('My Property');
+    });
+  });
+});
+
+describe('toCustomPropertyPayload', () => {
+  const propertyTypes = [
+    { id: 'enum-id', name: 'enum' },
+    { id: 'date-id', name: 'date-cp' },
+  ] as Type[];
+
+  it('flags the config the selected type needs', () => {
+    expect(
+      getCustomPropertyTypeFlags(propertyTypes, { id: 'enum-id' })
+    ).toEqual(
+      expect.objectContaining({ hasEnumConfig: true, hasFormatConfig: false })
+    );
+    expect(
+      getCustomPropertyTypeFlags(propertyTypes, 'date-id').hasFormatConfig
+    ).toBe(true);
+  });
+
+  it('builds an enum property and drops an empty display name', () => {
+    expect(
+      toCustomPropertyPayload(
+        {
+          name: 'tier',
+          displayName: '',
+          description: 'Tier',
+          propertyType: { id: 'enum-id' },
+          enumConfig: [{ id: 'gold' }, { id: 'silver' }],
+          multiSelect: true,
+        },
+        propertyTypes
+      )
+    ).toEqual({
+      name: 'tier',
+      description: 'Tier',
+      propertyType: { id: 'enum-id', type: 'type' },
+      customPropertyConfig: {
+        config: { multiSelect: true, values: ['gold', 'silver'] },
+      },
     });
   });
 });

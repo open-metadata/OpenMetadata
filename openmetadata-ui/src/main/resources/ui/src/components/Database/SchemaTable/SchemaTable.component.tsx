@@ -13,14 +13,12 @@
 
 import {
   Button,
-  ButtonUtility,
   Dropdown,
   Grid,
   Label,
-  Tooltip,
+  Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
@@ -28,7 +26,6 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
 import {
@@ -98,8 +95,8 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import {
   ColumnsType,
@@ -108,6 +105,7 @@ import {
 } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
+import { WidgetEditButton } from '../../common/WidgetActionButton/WidgetActionButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -122,6 +120,8 @@ const ModalWithMarkdownEditor = withSuspenseFallback(
     )
   )
 );
+
+const NO_CONSTRAINT_KEY = 'none';
 
 const SchemaTable = () => {
   const { t } = useTranslation();
@@ -715,18 +715,15 @@ const SchemaTable = () => {
                 {renderHighlightedText(highlightSearchText(name, searchText))}
               </Typography>
             </div>
-            <div className="d-flex items-center">
+            <div className="d-flex items-center gap-2">
               {editDisplayNamePermission && (
-                <Tooltip arrow placement="top" title={t('label.edit')}>
-                  <ButtonUtility
-                    className="hover-cell-icon"
-                    color="tertiary"
-                    data-testid="edit-displayName-button"
-                    icon={IconEdit}
-                    size="xs"
-                    onClick={() => handleEditDisplayNameClick(record)}
-                  />
-                </Tooltip>
+                <WidgetEditButton
+                  compact
+                  className="hover-cell-icon"
+                  data-testid="edit-displayName-button"
+                  title={t('label.edit')}
+                  onClick={() => handleEditDisplayNameClick(record)}
+                />
               )}
               {record.fullyQualifiedName && (
                 <CopyLinkButton
@@ -910,18 +907,30 @@ const SchemaTable = () => {
         })}
       </Label>
       <Select
-        allowClear
+        aria-label={t('label.entity-type-plural', {
+          entity: t('label.constraint'),
+        })}
         data-testid="constraint-type-select"
-        getPopupContainer={(triggerNode) => triggerNode.parentElement}
-        options={constraintOptionsTranslated}
         placeholder={t('label.select-entity', {
           entity: t('label.entity-type-plural', {
             entity: t('label.constraint'),
           }),
         })}
-        value={editConstraint}
-        onChange={(value) => setEditConstraint(value)}
-      />
+        selectedKey={editConstraint ?? null}
+        onSelectionChange={(key) =>
+          setEditConstraint(
+            key === NO_CONSTRAINT_KEY ? undefined : (key as Constraint)
+          )
+        }>
+        <Select.Item id={NO_CONSTRAINT_KEY} label={t('label.none')} />
+        {constraintOptionsTranslated.map((option) => (
+          <Select.Item
+            id={option.value}
+            key={option.value}
+            label={option.label}
+          />
+        ))}
+      </Select>
     </div>
   );
 
@@ -1033,7 +1042,11 @@ const SchemaTable = () => {
           }
           loading={columnsLoading}
           locale={{
-            emptyText: <FilterTablePlaceHolder />,
+            emptyText: (
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+              </div>
+            ),
           }}
           pagination={false}
           rowClassName={getRowClassName}

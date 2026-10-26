@@ -14,6 +14,8 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import io.micrometer.core.instrument.Metrics;
@@ -22,11 +24,14 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
+import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -36,6 +41,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Reaction;
 import org.openmetadata.schema.type.ReactionType;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -115,11 +121,46 @@ public class ActivityStreamRepository {
       int limit) {
     long afterTimestamp = afterTimestamp(days);
     List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
-    if (limit == 0) {
-      int total = countByEntity(entityType, entityId, domainIds, afterTimestamp);
-      return new ResultList<>(List.of(), null, null, total);
-    }
-    return result(listByEntity(entityType, entityId, domainIds, afterTimestamp, limit));
+    List<EntityReference> sources = activitySourcesOf(entityType, entityId);
+    return limit == 0
+        ? new ResultList<>(List.of(), null, null, countAcross(sources, domainIds, afterTimestamp))
+        : result(listAcross(sources, domainIds, afterTimestamp, limit));
+  }
+
+  private int countAcross(
+      List<EntityReference> sources, List<UUID> domainIds, long afterTimestamp) {
+    return sources.stream()
+        .mapToInt(ref -> countByEntity(ref.getType(), ref.getId(), domainIds, afterTimestamp))
+        .sum();
+  }
+
+  // Newest first across all sources, capped at limit: each source is already capped at limit.
+  private List<ActivityEvent> listAcross(
+      List<EntityReference> sources, List<UUID> domainIds, long afterTimestamp, int limit) {
+    return sources.stream()
+        .flatMap(
+            ref ->
+                listByEntity(ref.getType(), ref.getId(), domainIds, afterTimestamp, limit).stream())
+        .sorted(Comparator.comparing(ActivityEvent::getTimestamp).reversed())
+        .limit(limit)
+        .toList();
+  }
+
+  /**
+   * An asset's activity includes its data contract's: the contract is edited and approved from
+   * the asset's Contract tab, so its changes belong in the asset's feed.
+   */
+  private static List<EntityReference> activitySourcesOf(String entityType, UUID entityId) {
+    List<EntityReference> sources = new ArrayList<>();
+    sources.add(new EntityReference().withType(entityType).withId(entityId));
+    Entity.getCollectionDAO()
+        .relationshipDAO()
+        .findTo(entityId, entityType, Relationship.CONTAINS.ordinal(), Entity.DATA_CONTRACT)
+        .forEach(
+            contract ->
+                sources.add(
+                    new EntityReference().withType(Entity.DATA_CONTRACT).withId(contract.getId())));
+    return sources;
   }
 
   public ResultList<ActivityEvent> getEntityActivityByFqn(
@@ -133,49 +174,46 @@ public class ActivityStreamRepository {
     return getEntityActivityById(securityContext, entityType, entity.getId(), domain, days, limit);
   }
 
+  /** The window shared by the user-scoped feeds: domain filter, look-back and page size. */
+  public record FeedWindow(String domain, int days, Long startTs, int limit) {}
+
+  /** Activity for entities owned by {@code subject} or one of their teams. */
   public ResultList<ActivityEvent> getMyFeed(
-      SecurityContext securityContext, String domain, int days, Long startTs, int limit) {
-    String userName = securityContext.getUserPrincipal().getName();
-    EntityReference user = Entity.getEntityReferenceByName(Entity.USER, userName, null);
+      SecurityContext securityContext, User subject, FeedWindow window) {
     return result(
         listByOwners(
-            user.getId().toString(),
-            getTeamIds(userName),
-            getEffectiveDomainsByFqn(securityContext, domain),
-            afterTimestamp(days, startTs),
-            limit));
+            subject.getId().toString(),
+            teamIds(subject),
+            getEffectiveDomainsByFqn(securityContext, window.domain()),
+            afterTimestamp(window.days(), window.startTs()),
+            window.limit()));
   }
 
+  /** Activity for entities {@code subject} follows. */
   public ResultList<ActivityEvent> getFollowingFeed(
-      SecurityContext securityContext, String domain, int days, Long startTs, int limit) {
-    EntityReference user = currentUser(securityContext);
+      SecurityContext securityContext, User subject, FeedWindow window) {
     return result(
         listByFollowers(
-            user.getId().toString(),
-            getEffectiveDomainsByFqn(securityContext, domain),
-            afterTimestamp(days, startTs),
-            limit));
+            subject.getId().toString(),
+            getEffectiveDomainsByFqn(securityContext, window.domain()),
+            afterTimestamp(window.days(), window.startTs()),
+            window.limit()));
   }
 
   /**
-   * Activity whose replies mention the current user or one of their teams, optionally only the
+   * Activity whose replies mention {@code subject} or one of their teams, optionally only the
    * activity about one entity (the entityLink's entity, matched as {@code /activity/about} does).
    */
   public ResultList<ActivityEvent> getMentionsFeed(
-      SecurityContext securityContext,
-      String domain,
-      String entityLink,
-      int days,
-      Long startTs,
-      int limit) {
-    String userName = securityContext.getUserPrincipal().getName();
+      SecurityContext securityContext, User subject, String entityLink, FeedWindow window) {
     MentionScope scope =
         new MentionScope(
-            currentUser(securityContext).getId().toString(),
-            getTeamIds(userName),
-            getEffectiveDomainsByFqn(securityContext, domain),
+            subject.getId().toString(),
+            teamIds(subject),
+            getEffectiveDomainsByFqn(securityContext, window.domain()),
             buildAboutFqnHash(entityLink));
-    return result(listByMentions(scope, afterTimestamp(days, startTs), limit));
+    return result(
+        listByMentions(scope, afterTimestamp(window.days(), window.startTs()), window.limit()));
   }
 
   public ResultList<ActivityEvent> getActivityByEntityLink(
@@ -753,21 +791,10 @@ public class ActivityStreamRepository {
     return new ResultList<>(events, null, null, events.size());
   }
 
-  private List<String> getTeamIds(String userName) {
-    List<String> teamIds = new ArrayList<>();
-    try {
-      org.openmetadata.schema.entity.teams.User user =
-          Entity.getEntityByName(Entity.USER, userName, "teams", null);
-      if (user.getTeams() != null) {
-        user.getTeams().stream()
-            .map(EntityReference::getId)
-            .map(UUID::toString)
-            .forEach(teamIds::add);
-      }
-    } catch (EntityNotFoundException exception) {
-      LOG.debug("Could not get team IDs for user {}: {}", userName, exception.getMessage());
-    }
-    return teamIds;
+  private List<String> teamIds(User user) {
+    return nullOrEmpty(user.getTeams())
+        ? List.of()
+        : user.getTeams().stream().map(EntityReference::getId).map(UUID::toString).toList();
   }
 
   private List<UUID> getEffectiveDomains(SecurityContext securityContext, String domainsParam) {
@@ -840,13 +867,32 @@ public class ActivityStreamRepository {
         .withEventType(eventType)
         .withEntity(entityRef)
         .withAbout(about)
-        .withDomains(entity.getDomains())
+        .withDomains(domainsOf(entity))
         .withActor(actorRef)
         .withTimestamp(changeEvent.getTimestamp())
         .withSummary(summary)
         .withFieldName(fieldName)
         .withOldValue(oldValue)
         .withNewValue(newValue);
+  }
+
+  // A data contract has no domains of its own. Its activity takes its asset's, so a feed filtered
+  // by domain (a selected domain, a domain-only role) keeps the contract's events with the asset's.
+  private static List<EntityReference> domainsOf(EntityInterface<?> entity) {
+    return entity instanceof DataContract contract && contract.getEntity() != null
+        ? assetDomainsOf(contract)
+        : entity.getDomains();
+  }
+
+  private static List<EntityReference> assetDomainsOf(DataContract contract) {
+    List<EntityReference> domains = null;
+    try {
+      EntityInterface<?> asset = Entity.getEntity(contract.getEntity(), FIELD_DOMAINS, Include.ALL);
+      domains = asset.getDomains();
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Asset of data contract {} not found: {}", contract.getId(), e.getMessage());
+    }
+    return domains;
   }
 
   private EntityReference buildActorReference(String userName) {
@@ -889,8 +935,14 @@ public class ActivityStreamRepository {
       case CUSTOM_PROPERTY_UPDATED -> fieldChange != null
           ? String.format("Custom property '%s' updated on %s", fieldChange.getName(), entityName)
           : String.format("Custom property updated on %s", entityName);
-      default -> String.format("Updated %s: %s", entityType, entityName);
+      default -> isStatusChange(fieldChange)
+          ? String.format("Status of %s changed to %s", entityName, fieldChange.getNewValue())
+          : String.format("Updated %s: %s", entityType, entityName);
     };
+  }
+
+  private static boolean isStatusChange(FieldChange fieldChange) {
+    return fieldChange != null && FIELD_ENTITY_STATUS.equals(fieldChange.getName());
   }
 
   private String getReadableEntityName(EntityReference entityRef, String fallbackFqn) {
@@ -969,6 +1021,9 @@ public class ActivityStreamRepository {
     }
     if (fieldName.startsWith("extension")) {
       return ActivityEventType.CUSTOM_PROPERTY_UPDATED;
+    }
+    if (fieldName.equals(FIELD_ENTITY_STATUS)) {
+      return ActivityEventType.ENTITY_UPDATED;
     }
 
     // Skip minor field changes to avoid noise

@@ -58,6 +58,10 @@ public class WorkflowInstanceStateRepository
       int limitParam,
       boolean latest) {
     ListFilter filter = new ListFilter(null);
+    // workflowInstanceId is the indexed lookup: no index starts with entityFQNHash, so the hash
+    // alone scans every state row in the window. The hash stays so a workflowDefinitionName that
+    // doesn't own the instance matches nothing.
+    filter.addQueryParam("workflowInstanceId", workflowInstanceId.toString());
     filter.addQueryParam(
         "entityFQNHash",
         FullyQualifiedName.buildHash(workflowDefinitionName, workflowInstanceId.toString()));
@@ -223,19 +227,25 @@ public class WorkflowInstanceStateRepository
    * WorkflowInstance's variables map, not in an exception field.
    */
   public void markInstanceStatesAsSuperseded(UUID workflowInstanceId, String reason) {
+    markInstanceStatesAs(workflowInstanceId, WorkflowInstance.WorkflowStatus.SUPERSEDED, reason);
+  }
+
+  /** Marks all states of a workflow instance with the status its run was ended with. */
+  public void markInstanceStatesAs(
+      UUID workflowInstanceId, WorkflowInstance.WorkflowStatus status, String reason) {
     try {
       List<WorkflowInstanceState> instanceStates = listAllStatesForInstance(workflowInstanceId);
 
       for (WorkflowInstanceState state : instanceStates) {
-        WorkflowInstanceState updatedState =
-            state.withStatus(WorkflowInstance.WorkflowStatus.SUPERSEDED);
+        WorkflowInstanceState updatedState = state.withStatus(status);
 
         getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedState), state.getId());
       }
 
     } catch (Exception e) {
       LOG.warn(
-          "Failed to mark states as superseded for instance {} (reason={}): {}",
+          "Failed to mark states as {} for instance {} (reason={}): {}",
+          status,
           workflowInstanceId,
           reason,
           e.getMessage());

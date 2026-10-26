@@ -37,6 +37,31 @@ jest.mock('./HomeLandingPageSkeleton', () => {
   return jest.fn().mockImplementation(() => <div>HomeLandingPageSkeleton</div>);
 });
 
+let mockHasLiveCritical = false;
+
+// Stands in for the banner's own query: either a live critical banner, or
+// whatever the page handed it to show in its place.
+jest.mock('./CriticalAnnouncements', () => ({
+  __esModule: true,
+  default: ({ fallback }: { fallback?: React.ReactNode }) =>
+    mockHasLiveCritical ? (
+      <div data-testid="critical-announcements" />
+    ) : (
+      <>{fallback}</>
+    ),
+}));
+
+jest.mock('./HomeLandingPageHeader', () => ({
+  __esModule: true,
+  default: () => <div data-testid="home-greeting" />,
+}));
+
+let mockIsAiMode = false;
+
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode,
+}));
+
 jest.mock('./AnnouncementsRail', () => {
   return jest
     .fn()
@@ -111,6 +136,8 @@ describe('HomeLandingPage', () => {
     });
     mockSelectedPersona = { fullyQualifiedName: mockPersonaName };
     mockCurrentUser = mockUserData;
+    mockHasLiveCritical = false;
+    mockIsAiMode = false;
     jest.clearAllMocks();
   });
 
@@ -121,6 +148,25 @@ describe('HomeLandingPage', () => {
     expect(screen.getByTestId('announcements-rail')).toBeInTheDocument();
   });
 
+  it('renders no Needs you now section when the deployment supplies none', async () => {
+    renderHome();
+
+    await screen.findByTestId('react-grid-layout');
+
+    expect(screen.queryByTestId('needs-you-now-slot')).not.toBeInTheDocument();
+  });
+
+  it('renders the deployment-supplied Needs you now section', async () => {
+    const NeedsYouNowSection = () => <div data-testid="needs-you-now-slot" />;
+    mockCustomizePageClassBase.getNeedsYouNowSection = () => NeedsYouNowSection;
+
+    renderHome();
+
+    expect(await screen.findByTestId('needs-you-now-slot')).toBeInTheDocument();
+
+    mockCustomizePageClassBase.getNeedsYouNowSection = () => null;
+  });
+
   it('always offers the Customize entry point', async () => {
     renderHome();
 
@@ -129,13 +175,43 @@ describe('HomeLandingPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders no greeting header above the announcements', async () => {
+  it('greets the user above the announcements', async () => {
+    renderHome();
+
+    expect(await screen.findByTestId('home-greeting')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('critical-announcements')
+    ).not.toBeInTheDocument();
+  });
+
+  it('gives the greeting slot to a live critical announcement', async () => {
+    mockHasLiveCritical = true;
+    renderHome();
+
+    expect(
+      await screen.findByTestId('critical-announcements')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('home-greeting')).not.toBeInTheDocument();
+  });
+
+  // AI mode's "Needs you now" heading greets the user instead.
+  it('opens on no greeting in AI mode', async () => {
+    mockIsAiMode = true;
     renderHome();
 
     await screen.findByTestId('react-grid-layout');
 
-    expect(screen.queryByTestId('page-header')).not.toBeInTheDocument();
-    expect(screen.queryByText('message.hi-user')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('home-greeting')).not.toBeInTheDocument();
+  });
+
+  it('still gives the top slot to a live critical announcement in AI mode', async () => {
+    mockIsAiMode = true;
+    mockHasLiveCritical = true;
+    renderHome();
+
+    expect(
+      await screen.findByTestId('critical-announcements')
+    ).toBeInTheDocument();
   });
 
   it('offers no Customize entry point without a persona to edit', async () => {

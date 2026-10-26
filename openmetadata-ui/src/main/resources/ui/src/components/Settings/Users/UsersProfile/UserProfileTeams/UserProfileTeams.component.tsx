@@ -12,8 +12,8 @@
  */
 
 import {
+  Box,
   Button,
-  ButtonUtility,
   Divider,
   Popover,
   PopoverTrigger,
@@ -21,7 +21,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
@@ -30,6 +29,7 @@ import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { getNonDeletedTeams } from '../../../../../utils/TeamUtils';
 import Chip from '../../../../common/Chip/Chip.component';
+import { WidgetEditButton } from '../../../../common/WidgetActionButton/WidgetActionButton';
 import TeamsSelectableNew from '../../../Team/TeamsSelectable/TeamsSelectableNew';
 import { UserProfileTeamsProps } from './UserProfileTeams.interface';
 
@@ -44,7 +44,6 @@ const UserProfileTeams = ({
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
   const [selectedTeams, setSelectedTeams] = useState<EntityReference[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const [popoverHeight, setPopoverHeight] = useState<number>(156);
   const teamsSelectableRef = useRef<HTMLDivElement | null>(null);
 
   const handleTeamsSave = async () => {
@@ -68,7 +67,7 @@ const UserProfileTeams = ({
         noDataPlaceholder={t('message.no-team-found')}
       />
     ),
-    [teams, getNonDeletedTeams]
+    [teams, t]
   );
 
   const setUserTeams = useCallback(() => {
@@ -92,51 +91,25 @@ const UserProfileTeams = ({
     setIsDropdownOpen(visible);
   };
 
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const dropdown = document.querySelector(
-        '.teams-custom-dropdown-class'
-      ) as HTMLElement;
-
-      if (dropdown) {
-        setPopoverHeight(dropdown.scrollHeight + 156);
-      }
-    });
-
-    const dropdown = document.querySelector('.teams-custom-dropdown-class');
-    if (dropdown) {
-      observer.observe(dropdown, {
-        attributes: true,
-        childList: true,
-        subtree: true,
-      });
-    }
-
-    return () => observer.disconnect();
-  }, [isDropdownOpen]);
-
   return (
     <div
-      className="d-flex flex-col w-full  p-[20px] user-profile-card"
+      className="tw:flex tw:w-full tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:pt-5 tw:pb-2.5 tw:mb-5"
       data-testid="user-profile-teams">
-      <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
-        <div>
-          <IconTeamsGrey height={16} />
+      <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
+        <div className="tw:m-0.5 tw:flex tw:size-4 tw:items-center tw:justify-center">
+          <IconTeamsGrey height={18} width={18} />
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography className="text-sm font-medium p-l-xss">
+          <Typography className="text-sm font-medium">
             {t('label.team-plural')}
           </Typography>
 
           {isAdminUser && !isDeletedUser && (
             <PopoverTrigger isOpen={isTeamsEdit} onOpenChange={setIsTeamsEdit}>
-              <ButtonUtility
-                color="tertiary"
+              <WidgetEditButton
                 data-testid="edit-teams-button"
-                icon={<EditIcon height={16} width={16} />}
-                size="xs"
-                tooltip={t('label.edit-entity', {
+                title={t('label.edit-entity', {
                   entity: t('label.team-plural'),
                 })}
               />
@@ -144,21 +117,18 @@ const UserProfileTeams = ({
                 className="profile-edit-popover-card"
                 containerClassName="tw:w-95 tw:p-5"
                 placement="top end">
-                <div
-                  className="user-profile-edit-popover-card relative"
+                {/* The team tree opens in its own overlay, so the card keeps a fixed height. */}
+                <Box
+                  className="tw:h-39"
                   data-testid="profile-teams-edit-popover"
-                  style={{
-                    height: `${popoverHeight}px`,
-                  }}>
-                  <div className="d-flex justify-start items-center gap-2 m-b-sm">
-                    <div className="d-flex flex-start items-center">
-                      <IconTeamsGrey height={16} />
-                    </div>
-
-                    <Typography className="user-profile-edit-popover-card-title">
+                  direction="col"
+                  gap={3}>
+                  <Box align="center" gap={2}>
+                    <IconTeamsGrey height={16} />
+                    <Typography size="text-sm" weight="semibold">
                       {t('label.team-plural')}
                     </Typography>
-                  </div>
+                  </Box>
 
                   <div
                     className="border p-2 bg-gray-100 rounded-md"
@@ -175,18 +145,13 @@ const UserProfileTeams = ({
                     />
                   </div>
 
-                  <div className="flex justify-end gap-2 mt-4">
+                  <Box className="tw:mt-auto" gap={2} justify="end">
                     <Button
                       aria-label={t('label.cancel')}
                       color="primary"
                       data-testid="teams-edit-close-btn"
                       iconLeading={<ClosePopoverIcon height={24} />}
                       size="xs"
-                      style={{
-                        position: 'absolute',
-                        bottom: '0px',
-                        right: '38px',
-                      }}
                       onClick={handleCloseEditTeam}
                     />
                     <Button
@@ -196,18 +161,17 @@ const UserProfileTeams = ({
                       iconLeading={<SavePopoverIcon height={24} />}
                       isLoading={isLoading}
                       size="xs"
-                      style={{ position: 'absolute', bottom: '0px' }}
                       onClick={handleTeamsSave}
                     />
-                  </div>
-                </div>
+                  </Box>
+                </Box>
               </Popover>
             </PopoverTrigger>
           )}
         </div>
       </div>
-      <div className="user-profile-card-body d-flex justify-start gap-2">
-        <div className="user-page-icon d-flex-center">
+      <div className="tw:mb-2.5 tw:flex tw:justify-start tw:gap-2">
+        <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center">
           <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
         </div>
         {teamsRenderElement}

@@ -44,10 +44,7 @@ import {
   openCustomPropertyEditModal,
 } from './customProperty';
 import { setDomain } from './domainPicker';
-import {
-  escapeESReservedCharacters,
-  waitForAllLoadersToDisappear,
-} from './entity';
+import { waitForAllLoadersToDisappear } from './entity';
 import { searchGlossaryPicker } from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
 import { waitForResponseWithStatus } from './waitHelpers';
@@ -55,6 +52,7 @@ import { waitForResponseWithStatus } from './waitHelpers';
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
   '.om-rdg .inovua-react-toolkit-load-mask__background-layer';
 const EDITOR_OPEN_TIMEOUT = 1500;
+const MAX_BULK_EDIT_COLUMN_STEPS = 20;
 const IMPORT_STATUS_TIMEOUT = 90000;
 
 type CsvExportResponse = {
@@ -397,9 +395,6 @@ const clickGridEditorSave = async (page: Page, testId: string) => {
   }).toPass({ timeout: 30_000 });
 };
 
-const clickInlineSave = async (page: Page) =>
-  clickGridEditorSave(page, 'inline-save-btn');
-
 const clickAssociatedTagSave = async (page: Page) =>
   clickGridEditorSave(page, 'saveAssociatedTag');
 
@@ -574,31 +569,42 @@ export const fillUserAndTeamOwnerDetails = async (
 };
 
 export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  const option = page.getByRole('option', { name: entityType, exact: true });
+  // A forced cell click can select without focusing, so a bare Enter may not open it.
+  await openActiveCellPopover(page, option, undefined);
 
-  await page.getByTestId('entity-type-select').click();
-  await page.getByTitle(entityType, { exact: true }).nth(0).click();
-  await clickInlineSave(page);
+  // Picking an option commits it.
+  await option.click();
+  await expect(page.getByTestId('entity-type-select')).toHaveCount(0);
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  const bulkPicker = page.getByTestId('bulk-edit-tags-picker-editor');
+  const tagsPicker = page.getByTestId('csv-tags-picker');
+  await openActiveCellPopover(page, bulkPicker.or(tagsPicker), undefined);
 
-  const tagSelectorInput = page
-    .locator('[data-testid="tag-selector"] input')
-    .first();
-  await tagSelectorInput.waitFor({ state: 'visible' });
+  if (await bulkPicker.isVisible()) {
+    await bulkPicker.getByRole('textbox').fill(tag);
+    await bulkPicker.getByTestId(`bulk-edit-picker-option-${tag}`).click();
+    await bulkPicker
+      .getByRole('button', { name: 'Update', exact: true })
+      .click();
+    await expect(bulkPicker).toHaveCount(0);
 
-  const waitForQueryResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(
-      escapeESReservedCharacters(tag)
-    )}*`
-  );
-  await page.keyboard.type(tag);
-  await waitForQueryResponse;
+    return;
+  }
 
-  await page.click(`[data-testid="tag-${tag}"]`);
-  await clickInlineSave(page);
+  // The search box lives in the popover; clicking the trigger would close the cell.
+  const popover = page.getByTestId('csv-tags-picker-popover');
+  await popover.getByRole('textbox').fill(tag);
+
+  const row = popover.getByTestId(`tree-node-${tag}`);
+  await expect(row).toBeVisible();
+  await row.click();
+
+  // No save button: each toggle is already on the row, so dismissing commits.
+  await page.keyboard.press('Escape');
+  await expect(popover).toHaveCount(0);
 };
 
 export const fillGlossaryTermDetails = async (
@@ -678,7 +684,11 @@ export const fillCertificationDetails = async (
 };
 
 export const fillStoredProcedureCode = async (page: Page) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  await openActiveCellPopover(
+    page,
+    page.getByTestId('code-mirror-container'),
+    undefined
+  );
 
   // Wait for the loader to disappear
   await expect(page.locator('.ant-skeleton-content')).toHaveCount(0);
@@ -1034,11 +1044,9 @@ export const uploadCSVAndWaitForGrid = async (
       .getByTestId('csv-workflow-stepper')
       .waitFor({ state: 'visible' });
   }
-  await expect(
-    page.getByText('Drag & Drop or Browse CSV file here')
-  ).toBeVisible();
+  await expect(page.getByTestId('upload-file-widget')).toBeVisible();
 
-  const uploadWidget = page.getByTestId('upload-file-widget');
+  const uploadWidget = page.getByTestId('upload-file-input');
   await uploadWidget.waitFor({ state: 'attached' });
   let actualFilePath = filePath;
   let tempFilePath: string | undefined;
@@ -1229,12 +1237,14 @@ export const fillRowDetails = async (
   }
 
   await selectActiveRowCellByColumn(page, 'domains');
-  // The grid cell opens its picker on Enter, and bulk edit stages the whole
-  // sheet, so there is no PATCH for this cell to wait on.
+  // Bulk edit stages the whole sheet, so there is no PATCH for this cell to
+  // wait on.
   await setDomain(page, row.domains, {
     trigger: async () => {
-      await page.keyboard.press('Enter');
-      await page.click('[data-testid="domain-selectable-tree-search"]');
+      const domainSearch = page.getByTestId('domain-selectable-tree-search');
+      // A forced cell click can select without focusing, so a bare Enter may not open it.
+      await openActiveCellPopover(page, domainSearch, undefined);
+      await domainSearch.click();
     },
     awaitPatch: false,
     verify: 'none',
@@ -1304,6 +1314,61 @@ export const fillColumnDetails = async (
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillGlossaryTermDetails(page, row.glossary);
+};
+
+/**
+ * A bulk edit grid cell by row name and CSV column key (e.g. `column.tags`).
+ * The row is pinned by its `rdg-row-<id>` test id, read once with its name
+ * scrolled into view: unlike `aria-rowindex` it survives a search re-filtering the rows,
+ * and unlike the name text it survives the grid scrolling the name column out
+ * of view. The cell is matched by column class because react-data-grid only
+ * renders the columns in view, so its header may be missing from the DOM.
+ */
+export const getBulkEditGridCell = async (
+  page: Page,
+  rowName: string,
+  columnKey: string
+) => {
+  // The name column is not frozen; bring it back into view to find the row.
+  await scrollGridHorizontally(page, 0);
+  const rowTestId = await page
+    .locator('.rdg-row')
+    .filter({ hasText: rowName })
+    .getAttribute('data-testid');
+
+  return page
+    .getByTestId(rowTestId ?? '')
+    .locator(`.${getGridColumnClass(columnKey)}`);
+};
+
+/**
+ * Selects a row's Column Tags cell without opening its tag picker (a click
+ * would, and the picker would take keyboard copy/paste). Starts on the name
+ * cell, where a click only selects, and moves right; the grid scrolls the
+ * selected cell into view.
+ */
+export const selectBulkEditTagsCell = async (page: Page, rowName: string) => {
+  const nameCell = await getBulkEditGridCell(page, rowName, 'column.name*');
+  const tagsCell = await getBulkEditGridCell(page, rowName, 'column.tags');
+  const tagsClass = getGridColumnClass('column.tags');
+  await nameCell.click();
+
+  for (let step = 0; step < MAX_BULK_EDIT_COLUMN_STEPS; step++) {
+    const isTagsCellActive = await page
+      .locator(RDG_ACTIVE_CELL_SELECTOR)
+      .evaluate(
+        (cell, className) => cell.classList.contains(className),
+        tagsClass
+      );
+    if (isTagsCellActive) {
+      break;
+    }
+    await moveToNextColumnWithVerification(page);
+  }
+
+  await expect(tagsCell).toHaveAttribute('aria-selected', 'true');
+
+  return tagsCell;
 };
 
 export const pressKeyXTimes = async (

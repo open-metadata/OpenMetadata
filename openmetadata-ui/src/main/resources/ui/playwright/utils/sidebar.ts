@@ -16,6 +16,10 @@ import {
   SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
 import { SidebarItem, SIDEBAR_LIST_ITEMS } from '../constant/sidebar';
+import {
+  disableAiAppMode,
+  stubUserPreferencesAppMode,
+} from '../e2e/Utils/appMode';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForAntOverlayToOpen } from './waitHelpers';
 
@@ -31,7 +35,7 @@ export const clickOnLogo = async (page: Page) => {
 export const clickSidebarLink = async (page: Page, testId: string) => {
   const navigation = page
     .getByTestId('left-sidebar')
-    .or(page.locator('.ant-menu-submenu-popup'));
+    .or(page.getByRole('menu'));
   const targetElement = navigation
     .getByTestId(testId)
     .filter({ visible: true });
@@ -62,15 +66,19 @@ export const clickSidebarLink = async (page: Page, testId: string) => {
 };
 
 export const sidebarClick = async (page: Page, id: string) => {
-  // Settings moved to the profile menu in the new shell; the legacy sidebar
-  // remains on routes that have not migrated yet.
+  // The /settings pages are classic-only and the AI shell does not serve them
+  // (ADR:2026-10-21-settings-pages-are-classic-only). Callers of SETTINGS —
+  // `settingClick` and the specs that follow it — drive the classic settings
+  // menu test ids, so switch this page's session to classic and open /settings
+  // rather than the AI settings modal. Specs for the modal open its hash.
   if (
     id === SidebarItem.SETTINGS &&
     (await page.getByTestId('ask-sidebar').count()) > 0
   ) {
-    await page.getByTestId('ask-ai-user-menu-trigger').click();
-    await page.getByTestId('ask-user-menu-settings').click();
-    await page.waitForURL('**/settings');
+    await disableAiAppMode(page);
+    await stubUserPreferencesAppMode(page, 'classic');
+    await page.goto('/settings', { waitUntil: 'domcontentloaded' });
+    await waitForAllLoadersToDisappear(page);
 
     return;
   }

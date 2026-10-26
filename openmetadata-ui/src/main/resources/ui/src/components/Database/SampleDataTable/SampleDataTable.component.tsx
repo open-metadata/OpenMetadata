@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Select } from 'antd';
+import { Box, Select, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -37,16 +36,16 @@ import {
   getSampleDataByTableId,
 } from '../../../rest/tableAPI';
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   ManageMenu,
   ManageMenuItem,
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TableComponent from '../../common/Table/TableV2';
@@ -132,11 +131,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       rowLimit
     );
 
-    downloadFile(
-      csvContent,
-      `sample_data_${rowLimit}_rows.csv`,
-      'text/csv;charset=utf-8;'
-    );
+    downloadCsv(csvContent, `sample_data_${rowLimit}_rows.csv`);
   }, [sampleData, rowLimit]);
 
   const getSampleDataWithType = (entity: Table | Container) => {
@@ -151,7 +146,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       return {
         name: column,
         title: (
-          <div className="d-flex flex-column">
+          <Box className="tw:text-start tw:wrap-anywhere" direction="col">
             <Typography> {column}</Typography>
             {matchedColumn?.dataType && (
               <Typography
@@ -160,7 +155,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
                 matchedColumn?.dataType ?? ''
               )})`}</Typography>
             )}
-          </div>
+          </Box>
         ),
         dataIndex: columnKey,
         key: columnKey,
@@ -294,25 +289,28 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
-      <ErrorPlaceHolder className="error-placeholder">
-        <Typography as="p" className="tw:mb-3.5!">
-          <Transi18next
-            i18nKey="message.view-sample-data-entity"
-            renderElement={
-              <a
-                aria-label={t('label.auto-classification')}
-                href={AUTO_CLASSIFICATION_DOCS}
-                rel="noreferrer"
-                style={{ color: theme.primaryColor }}
-                target="_blank"
-              />
-            }
-            values={{
-              entity: t('label.auto-classification'),
-            }}
-          />
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-[calc(100vh-255px)] tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:in-[.assistant-content]:min-h-60">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={
+            <Transi18next
+              i18nKey="message.view-sample-data-entity"
+              renderElement={
+                <a
+                  aria-label={t('label.auto-classification')}
+                  href={AUTO_CLASSIFICATION_DOCS}
+                  rel="noreferrer"
+                  style={{ color: theme.primaryColor }}
+                  target="_blank"
+                />
+              }
+              values={{
+                entity: t('label.auto-classification'),
+              }}
+            />
+          }
+        />
+      </div>
     );
   }
 
@@ -337,17 +335,20 @@ const SampleDataTable: FC<SampleDataProps> = ({
           itemClassName="layout-space-item">
           <Typography color="secondary">{t('label.row-limit')}:</Typography>
           <Select
-            className="w-28"
+            aria-label={t('label.row-limit')}
+            className="tw:w-28"
             data-testid="row-limit-select"
-            value={rowLimit}
-            onChange={setRowLimit}>
+            selectedKey={String(rowLimit)}
+            onSelectionChange={(key) =>
+              key !== null && setRowLimit(Number(key))
+            }>
             {ROW_LIMIT_OPTIONS.map((limit) => (
-              <Select.Option
+              <Select.Item
                 data-testid={`row-limit-option-${limit}`}
+                id={String(limit)}
                 key={limit}
-                value={limit}>
-                {limit}
-              </Select.Option>
+                label={String(limit)}
+              />
             ))}
           </Select>
         </Box>

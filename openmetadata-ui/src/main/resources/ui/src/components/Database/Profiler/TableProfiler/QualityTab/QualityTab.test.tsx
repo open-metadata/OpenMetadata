@@ -53,6 +53,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
@@ -257,10 +258,6 @@ jest.mock('../../../../common/SummaryCard/SummaryCardV1', () =>
       <span>{value}</span>
     </div>
   ))
-);
-
-jest.mock('../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
 );
 
 describe('QualityTab', () => {
@@ -610,6 +607,113 @@ describe('QualityTab', () => {
     expect(ExtraTestCaseDropdownOptions).toHaveBeenCalled();
   });
 
+  it('should open Bulk Edit with the search text and the type the tab shows', async () => {
+    const { ExtraTestCaseDropdownOptions } = jest.requireMock(
+      '../../../../../utils/TestCaseUtils'
+    );
+    const Searchbar = jest.requireMock(
+      '../../../../common/SearchBarComponent/SearchBar.component'
+    );
+
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        fullyQualifiedName: 'test.table.fqn',
+        deleted: false,
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+    await act(async () => {
+      Searchbar.mock.calls.at(-1)[0].onSearch('nulls');
+    });
+
+    expect(ExtraTestCaseDropdownOptions).toHaveBeenLastCalledWith(
+      'test.table.fqn',
+      expect.anything(),
+      false,
+      expect.anything(),
+      expect.anything(),
+      'table',
+      { testCaseType: 'all', q: 'nulls' }
+    );
+  });
+
+  it.each(['status', 'type', 'sort', 'page', 'delete', 'search'])(
+    'should keep list and export filters aligned after changing %s',
+    async (action) => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const { ExtraTestCaseDropdownOptions } = jest.requireMock(
+        '../../../../../utils/TestCaseUtils'
+      );
+      const Searchbar = jest.requireMock(
+        '../../../../common/SearchBarComponent/SearchBar.component'
+      );
+      const DataQualityTab = jest.requireMock(
+        '../../DataQualityTab/DataQualityTab'
+      );
+
+      (useTableProfiler as jest.Mock).mockReturnValue(mockUseTableProfiler);
+
+      await act(async () => {
+        render(<QualityTab />);
+      });
+      await act(async () => {
+        Searchbar.mock.calls.at(-1)[0].onSearch('nulls');
+      });
+      await user.click(screen.getByRole('button', { name: /label.type/ }));
+      await user.click(screen.getByRole('option', { name: 'label.column' }));
+      await user.click(screen.getByRole('button', { name: /label.status/ }));
+      await user.click(screen.getByRole('option', { name: 'label.failed' }));
+
+      const sortOptions = { sortField: 'name', sortType: 'asc' };
+      await act(async () => {
+        await DataQualityTab.mock.calls.at(-1)[0].fetchTestCases(sortOptions);
+      });
+      mockUseTableProfiler.fetchAllTests.mockClear();
+
+      if (action === 'status') {
+        await user.click(screen.getByRole('button', { name: /label.status/ }));
+        await user.click(screen.getByRole('option', { name: 'label.aborted' }));
+      } else if (action === 'type') {
+        await user.click(screen.getByRole('button', { name: /label.type/ }));
+        await user.click(screen.getByRole('option', { name: 'label.table' }));
+      } else {
+        await act(async () => {
+          const props = DataQualityTab.mock.calls.at(-1)[0];
+          if (action === 'sort') {
+            await props.fetchTestCases(sortOptions);
+          } else if (action === 'page') {
+            props.pagingData.pagingHandler({ currentPage: 2 });
+          } else if (action === 'delete') {
+            await props.afterDeleteAction();
+          } else {
+            Searchbar.mock.calls.at(-1)[0].onSearch('updated nulls');
+          }
+        });
+      }
+
+      const expectedFilters = {
+        testCaseType: action === 'type' ? 'table' : 'column',
+        testCaseStatus: action === 'status' ? 'Aborted' : 'Failed',
+        q: action === 'search' ? 'updated nulls' : 'nulls',
+      };
+
+      expect(mockUseTableProfiler.fetchAllTests).toHaveBeenLastCalledWith({
+        ...sortOptions,
+        ...expectedFilters,
+        ...(action === 'page' ? { offset: 10 } : {}),
+        ...(action === 'sort' ? { offset: 0 } : {}),
+      });
+      expect(ExtraTestCaseDropdownOptions.mock.calls.at(-1)[6]).toEqual(
+        expectedFilters
+      );
+    }
+  );
+
   it('should not call ExtraTestCaseDropdownOptions when table has no fullyQualifiedName', async () => {
     const { ExtraTestCaseDropdownOptions } = jest.requireMock(
       '../../../../../utils/TestCaseUtils'
@@ -709,7 +813,11 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('should forward showPagination=true from testCasePaging to DataQualityTab', async () => {

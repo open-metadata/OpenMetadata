@@ -17,6 +17,7 @@ import {
   Globe01 as Domain,
   Package,
 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -38,6 +39,16 @@ import { getDataProductDetailsPath } from '../../../../utils/RouterUtils';
 import FilterButton from '../Common/TopicWidget/FilterButton';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
+import TopicRowOwners from '../Common/TopicWidget/TopicRowOwners';
+import {
+  TOPIC_BLUE_TILE_CLASSES,
+  TOPIC_FILTERED_BODY_CLASSES,
+  TOPIC_FILTERED_LIST_CLASSES,
+  TOPIC_ROW_CLASSES,
+  TOPIC_ROW_DIVIDER_CLASSES,
+  TOPIC_ROW_STRETCHED_LINK_CLASSES,
+  TOPIC_ROW_TILE_CLASSES,
+} from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
@@ -59,7 +70,7 @@ const PRODUCT_SORTS = {
  * each one problem, and a product that is both outranks either.
  */
 const attentionScore = (product: DataProductSummary): number =>
-  (product.ownerName ? 0 : 1) + (product.assetCount === 0 ? 1 : 0);
+  (product.owners.length > 0 ? 0 : 1) + (product.assetCount === 0 ? 1 : 0);
 
 const BY_SORT: Record<
   string,
@@ -78,7 +89,7 @@ const NO_OWNER_LABEL_KEY = 'label.no-owner';
 
 const TONE = {
   icon: DataProduct,
-  tile: 'tw:bg-utility-blue-50 tw:text-utility-blue-600',
+  tile: TOPIC_BLUE_TILE_CLASSES,
 };
 
 export type DataProductsOverviewWidgetProps = WidgetCommonProps;
@@ -170,6 +181,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
         label: t('label.view-all-entity', { entity: t(PRODUCTS_LABEL_KEY) }),
         onPress: () => navigate(ROUTES.DATA_PRODUCT),
       }}
+      bodyClassName={TOPIC_FILTERED_BODY_CLASSES}
       emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
@@ -237,21 +249,33 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
           </div>
 
           <ul
-            className="tw:mt-3 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+            className={classNames(
+              'tw:flex tw:flex-col',
+              TOPIC_FILTERED_LIST_CLASSES
+            )}
             data-testid="data-product-rows">
             {visibleProducts.map((product) => (
               <li
+                className={classNames(
+                  'tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3',
+                  TOPIC_ROW_CLASSES,
+                  TOPIC_ROW_DIVIDER_CLASSES
+                )}
                 data-testid={`data-product-card-${product.id}`}
                 key={product.id}>
-                <Link
-                  className="tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3"
-                  to={getDataProductDetailsPath(product.fullyQualifiedName)}>
-                  <div
-                    aria-hidden
-                    className="tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-utility-blue-50 tw:text-utility-blue-600">
-                    <DataProduct size={16} />
-                  </div>
-                  <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+                <div
+                  aria-hidden
+                  className={classNames(
+                    'tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
+                    TOPIC_BLUE_TILE_CLASSES,
+                    TOPIC_ROW_TILE_CLASSES
+                  )}>
+                  <DataProduct size={16} />
+                </div>
+                <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:items-start tw:gap-1">
+                  <Link
+                    className={TOPIC_ROW_STRETCHED_LINK_CLASSES}
+                    to={getDataProductDetailsPath(product.fullyQualifiedName)}>
                     <Typography
                       className="tw:min-w-0 tw:text-text-primary!"
                       data-testid="data-product-name"
@@ -260,50 +284,43 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
                       weight="medium">
                       {product.name}
                     </Typography>
-                    <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-1.5">
-                      {product.domainName && (
-                        <>
-                          <Domain
-                            aria-hidden
-                            className="tw:shrink-0 tw:text-text-tertiary"
-                            size={12}
-                          />
-                          <Typography
-                            className="tw:min-w-0 tw:text-text-tertiary!"
-                            data-testid="data-product-domain"
-                            ellipsis={{ rows: 1 }}
-                            size="text-sm">
-                            {product.domainName}
-                          </Typography>
-                          {/* Drawn, not spliced into the owner's string. */}
-                          <span
-                            aria-hidden
-                            className="tw:size-1 tw:shrink-0 tw:rounded-full tw:bg-fg-quaternary"
-                          />
-                        </>
-                      )}
-                      <Typography
-                        className={
-                          product.ownerName
-                            ? 'tw:min-w-0 tw:text-text-tertiary!'
-                            : 'tw:min-w-0 tw:text-utility-warning-700!'
-                        }
-                        data-testid="data-product-owner"
-                        ellipsis={{ rows: 1 }}
-                        size="text-sm">
-                        {product.ownerName ?? t(NO_OWNER_LABEL_KEY)}
-                      </Typography>
-                    </span>
-                  </div>
-                  <Badge
-                    className="tw:shrink-0"
-                    color="gray"
-                    data-testid="data-product-asset-count"
-                    size="sm"
-                    type="pill-color">
-                    {t('label.count-asset', { count: product.assetCount })}
-                  </Badge>
-                </Link>
+                  </Link>
+                  <span className="tw:flex tw:min-w-0 tw:max-w-full tw:items-center tw:gap-1.5">
+                    {product.domainName && (
+                      <>
+                        <Domain
+                          aria-hidden
+                          className="tw:shrink-0 tw:text-text-tertiary"
+                          size={12}
+                        />
+                        <Typography
+                          className="tw:min-w-0 tw:text-text-tertiary!"
+                          data-testid="data-product-domain"
+                          ellipsis={{ rows: 1 }}
+                          size="text-xs">
+                          {product.domainName}
+                        </Typography>
+                        {/* Drawn, not spliced into the owners' text. */}
+                        <span
+                          aria-hidden
+                          className="tw:size-1 tw:shrink-0 tw:rounded-full tw:bg-fg-quaternary"
+                        />
+                      </>
+                    )}
+                    <TopicRowOwners
+                      dataTestId="data-product-owner"
+                      owners={product.owners}
+                    />
+                  </span>
+                </div>
+                <Badge
+                  className="tw:shrink-0"
+                  color="gray"
+                  data-testid="data-product-asset-count"
+                  size="sm"
+                  type="pill-color">
+                  {t('label.count-asset', { count: product.assetCount })}
+                </Badge>
               </li>
             ))}
           </ul>

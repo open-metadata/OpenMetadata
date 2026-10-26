@@ -18,7 +18,12 @@ import {
   useRef,
   useSyncExternalStore,
 } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  NavigationType,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+} from 'react-router-dom';
 import { ProfileNavId, PROFILE_NAV_IDS } from '../constants/Profile.constants';
 
 /**
@@ -149,6 +154,17 @@ const getStoreHash = (): string => storeHash;
 export const useSettingsHash = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const navigationType = useNavigationType();
+
+  // History entries a settings link pushed for the open modal: 1 when a link
+  // opened it over the page, +1 per link followed inside it. Closing pops them
+  // so the page's own entry is current again instead of a duplicate of it; 0
+  // (deep link, refresh, Back/Forward) closes by replacing as before. Each hook
+  // instance counts the pushes it sees, so the count belongs to whoever closes:
+  // `useSettingsHashSync` in PersonalSpaceModal, mounted for the whole AI
+  // shell. An instance mounted while the modal is open undercounts and closes
+  // by replacing, which leaves a duplicate entry but never pops past the page.
+  const pushedEntriesRef = useRef(0);
 
   // Keep navigate reachable from the stable callbacks below without listing it
   // (or location) as a dependency — an unstable `setHash` identity propagates
@@ -170,6 +186,11 @@ export const useSettingsHash = () => {
   );
 
   const state = useMemo(() => parseHash(hash), [hash]);
+  // This render's store value, read by the push effect below: it predates any
+  // instance adopting the push, so every instance decides alike whatever order
+  // their effects run in.
+  const renderedHashRef = useRef(hash);
+  renderedHashRef.current = hash;
 
   // The urgent `storeHash` is the single source of truth; `setHash`/`clearHash`
   // keep it correct for in-app navigation. Only GENUINE browser-driven changes
@@ -180,7 +201,10 @@ export const useSettingsHash = () => {
   // flip it to the previous tab/sub-path (infinite oscillation). `replace`
   // navigations do not emit `popstate`, so they never echo back.
   useEffect(() => {
-    const onPopState = () => setStoreHash(globalThis.location.hash);
+    const onPopState = () => {
+      pushedEntriesRef.current = 0;
+      setStoreHash(globalThis.location.hash);
+    };
     globalThis.addEventListener('popstate', onPopState);
 
     // Initial sync (not a real popstate event). A deep link opened in a new tab
@@ -214,6 +238,28 @@ export const useSettingsHash = () => {
     setStoreHash(globalThis.location.hash);
   }, [location.pathname]);
 
+  // A `<Link>`/`navigate()` to a settings hash from outside the modal (a
+  // mode-aware settings link, `getSettingsLink`) pushes a new entry on the same
+  // pathname, which neither effect above sees. Adopt the live hash on every
+  // push; `setHash`/`clearHash` replace, so in-modal navigation never echoes.
+  // Skip the mount run: the push that brought the page here is not a settings
+  // link, and its (often empty) hash would wipe the deep link the mount sync kept.
+  const didMountPushRef = useRef(false);
+  useEffect(() => {
+    if (!didMountPushRef.current) {
+      didMountPushRef.current = true;
+
+      return;
+    }
+    if (navigationType === NavigationType.Push) {
+      const liveHash = globalThis.location.hash;
+      const pushed = pushedEntriesRef.current;
+      pushedEntriesRef.current =
+        liveHash && (!renderedHashRef.current || pushed) ? pushed + 1 : 0;
+      setStoreHash(liveHash);
+    }
+  }, [location.key, navigationType]);
+
   // pathname/search are read from `globalThis.location` at call time (mirroring
   // useTableFilters) so these callbacks stay referentially stable.
   const setHash = useCallback(
@@ -240,7 +286,24 @@ export const useSettingsHash = () => {
   );
 
   const clearHash = useCallback(() => {
-    if (storeHash) {
+    // A close that follows a navigation away (e.g. a modal link to Explore,
+    // then `closePersonalSpace()`) runs while react-router's transition still
+    // holds the old location. The URL already moved on, so popping or replacing
+    // would undo that navigation: only drop the store. Compare through `URL` so
+    // a hash the browser percent-encoded still matches the one we wrote.
+    const urlStillOnModal =
+      storeHash !== '' &&
+      new URL(storeHash, globalThis.location.href).hash ===
+        globalThis.location.hash;
+
+    const entries = pushedEntriesRef.current;
+    pushedEntriesRef.current = 0;
+    if (!urlStillOnModal) {
+      setStoreHash('');
+    } else if (entries) {
+      setStoreHash('');
+      void navigateRef.current(-entries);
+    } else {
       setStoreHash('');
       void navigateRef.current(
         {

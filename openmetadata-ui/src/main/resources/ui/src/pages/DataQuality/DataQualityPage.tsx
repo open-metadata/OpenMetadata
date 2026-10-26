@@ -26,6 +26,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestCaseFormDrawer from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import BundleSuiteFormDrawer from '../../components/DataQuality/BundleSuiteForm/BundleSuiteFormDrawer';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -45,6 +46,7 @@ const DataQualityPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
+  const { showModal } = useEntityExportModalProvider();
   const { testSuite: testSuitePermission, testCase: testCasePermission } =
     permissions;
 
@@ -123,8 +125,12 @@ const DataQualityPage = () => {
   );
 
   const exportDataQualityDashboardButton = useMemo(
-    () => DataQualityClassBase.getExportDataQualityDashboardButton(activeTab),
-    [activeTab]
+    () =>
+      DataQualityClassBase.getExportDataQualityDashboardButton(
+        activeTab,
+        showModal
+      ),
+    [activeTab, showModal]
   );
 
   const handleTabChange = (activeKey: string) => {
@@ -212,7 +218,7 @@ const DataQualityPage = () => {
                       <Button
                         className="m-l-md"
                         data-testid="data-quality-add-button-menu"
-                        iconTrailing={<ChevronDown size={14} />}
+                        iconTrailing={ChevronDown}
                         size="sm">
                         {t('label.add')}
                       </Button>

@@ -64,8 +64,8 @@ export const pickDateInCorePicker = async (
 ) => {
   const [year, month, day] = isoDate.split('-').map(Number);
   // Cell labels follow the app locale ("Tuesday, 9 July 2024" or
-  // "Tuesday, July 9, 2024"); only the displayed month's days are rendered, so
-  // the day number alone identifies the cell.
+  // "Tuesday, July 9, 2024"). Days of the adjacent months are rendered too but
+  // disabled, so the day number plus `disabled: false` identifies the cell.
   const dayLabel = new RegExp(`(^|\\D)${day}(\\D|$)`);
 
   // The form this picker sits in is itself a dialog, so the calendar is
@@ -87,21 +87,27 @@ export const pickDateInCorePicker = async (
   const targetMonth = year * 12 + (month - 1);
   const MAX_MONTH_STEPS = 240;
   for (let step = 0; step < MAX_MONTH_STEPS; step++) {
-    const shown = new Date(`1 ${await heading.textContent()}`);
+    const shownText = (await heading.textContent()) ?? '';
+    const shown = new Date(`1 ${shownText}`);
     const shownMonth = shown.getFullYear() * 12 + shown.getMonth();
     if (shownMonth === targetMonth) {
       break;
     }
+    // react-aria renders a second, visually hidden "Next" button after the
+    // grid for touch screen readers, so the accessible name matches twice.
+    // The header chevrons are the ones carrying the `previous`/`next` slot,
+    // which also keeps this independent of react-aria's localized labels.
     await calendar
-      .getByRole('button', {
-        name: shownMonth > targetMonth ? 'Previous' : 'Next',
-      })
+      .locator(
+        `button[slot="${shownMonth > targetMonth ? 'previous' : 'next'}"]`
+      )
       .click();
+    await expect(heading).not.toHaveText(shownText);
   }
 
   await calendar
     .getByRole('gridcell')
-    .getByRole('button', { name: dayLabel })
+    .getByRole('button', { name: dayLabel, disabled: false })
     .click();
   await calendar.getByRole('button', { name: 'Apply' }).click();
 

@@ -13,14 +13,21 @@
 
 package org.openmetadata.service.tasks;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.REJECTED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.REJECTION_COMMENT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonPatch;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -43,19 +50,31 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskComment;
+import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.TaskStateConflictException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.approval.ApprovalDecisionService;
+import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
+import org.openmetadata.service.governance.approval.ChangeRequestReview;
+import org.openmetadata.service.governance.approval.ChangeRequestTasks;
+import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
+import org.openmetadata.service.governance.workflows.OntologyReviewReconciler;
+import org.openmetadata.service.governance.workflows.OntologyWorkflowDecision;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowHandler.TaskResolutionOutcome;
+import org.openmetadata.service.governance.workflows.metadata.MetadataCollectionService;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
@@ -138,6 +157,31 @@ public class TaskWorkflowHandler {
       Object resolvedPayload,
       String comment,
       String user) {
+    return resolveTask(
+        task,
+        transitionId,
+        requestedResolutionType,
+        newValue,
+        resolvedPayload,
+        comment,
+        user,
+        null);
+  }
+
+  /**
+   * Resolve a task, first recording the resolver's decision in the catalog when the task reviews a
+   * change request. {@code review} names the revision the resolver reviewed and, when they decided
+   * change by change, their decision on each.
+   */
+  public Task resolveTask(
+      Task task,
+      String transitionId,
+      TaskResolutionType requestedResolutionType,
+      String newValue,
+      Object resolvedPayload,
+      String comment,
+      String user,
+      ChangeRequestReview review) {
     UUID taskId = task.getId();
     TaskAvailableTransition selectedTransition =
         TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
@@ -150,16 +194,40 @@ public class TaskWorkflowHandler {
         effectiveResolutionType,
         user);
 
+    ReviewOutcome outcome =
+        ApprovalDecisionService.recordForTask(task, effectiveResolutionType, review, comment, user);
+    if (outcome == ReviewOutcome.WAIT) {
+      LOG.info(
+          "[TaskWorkflowHandler] Recorded {}'s decision on task '{}'; no change is agreed yet",
+          user,
+          taskId);
+      return refreshTask(taskId);
+    }
+    // A review decided change by change routes the workflow by what the reviewers agreed on: a
+    // partial outcome is settled inside the approval step without resolving the task, which stays
+    // open with the changes still pending.
+    String routedTransition = outcome == ReviewOutcome.NONE ? transitionId : outcome.transition();
+    TaskResolutionType routedResolution = routedResolution(outcome, effectiveResolutionType);
+    TaskAvailableTransition routedSelection =
+        outcome == ReviewOutcome.NONE ? selectedTransition : null;
+
     // During migration cutover, legacy workflow tasks can be converted to Task entities before
     // workflowInstanceId is backfilled. Runtime-task presence is the source of truth in that case.
     boolean isWorkflowManaged = isWorkflowManaged(task);
+    if (OntologyApprovalWorkflow.isReview(task)) {
+      if (!isWorkflowManaged || resolvedPayload != null || newValue != null) {
+        throw TaskStateConflictException.of(
+            "Ontology review must complete its workflow task without changing the reviewed content");
+      }
+      OntologyApprovalWorkflow.validate(task, user);
+    }
 
     if (isWorkflowManaged) {
       return resolveWorkflowTask(
           task,
-          transitionId,
-          effectiveResolutionType,
-          selectedTransition,
+          routedTransition,
+          routedResolution,
+          routedSelection,
           newValue,
           resolvedPayload,
           comment,
@@ -199,7 +267,8 @@ public class TaskWorkflowHandler {
     WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     List<EntityReference> payloadAssignees = extractAssigneesFromPayload(resolvedPayload);
-    boolean requiresRuntimeTaskReadiness = isMetricApprovalTask(task);
+    boolean ontologyReview = OntologyApprovalWorkflow.isReview(task);
+    boolean requiresRuntimeTaskReadiness = isMetricApprovalTask(task) || ontologyReview;
 
     if (requiresRuntimeTaskReadiness && TaskRepository.isTerminalStatus(task.getStatus())) {
       throw new IllegalStateException(
@@ -210,6 +279,9 @@ public class TaskWorkflowHandler {
           String.format(
               "Flowable runtime task for workflow-managed task '%s' is unavailable; retry the resolution",
               taskId));
+    }
+    if (ontologyReview) {
+      OntologyApprovalWorkflow.validateRuntime(task);
     }
 
     if (payloadAssignees != null && !payloadAssignees.isEmpty()) {
@@ -244,22 +316,62 @@ public class TaskWorkflowHandler {
           taskId, "taskAssignees", serializeWorkflowVariable(payloadAssignees));
     }
 
+    if (isRejection(resolutionType, selectedTransition)) {
+      final String reason =
+          nullOrEmpty(comment)
+              ? latestCommentBy(
+                  user,
+                  taskRepository
+                      .get(null, taskId, taskRepository.getFields("comments"))
+                      .getComments())
+              : comment;
+      recordRejection(workflowHandler, taskId, reason, user);
+    }
+
     // Resolve in Flowable workflow. A null namespace map means the runtime user task never
     // materialised (async advance timed out) — completing with no variables would drop the
     // transition result and mis-evaluate the outgoing gateway, so treat it as a failed resolve.
     Map<String, Object> namespacedVariables =
         workflowHandler.transformToNodeVariables(taskId, variables);
+    if (ontologyReview && namespacedVariables != null) {
+      TaskResolutionType decision =
+          resolutionType != null
+              ? resolutionType
+              : TaskWorkflowLifecycleResolver.isApproveTransition(selectedTransition)
+                  ? TaskResolutionType.Approved
+                  : TaskResolutionType.Rejected;
+      OntologyApprovalWorkflow.recordDecision(
+          task,
+          new OntologyWorkflowDecision(
+              taskId,
+              task.getOntologyReview(),
+              decision,
+              user,
+              List.of(user),
+              selectedTransition,
+              comment),
+          namespacedVariables);
+    }
+    TaskResolutionOutcome ontologyOutcome =
+        ontologyReview && namespacedVariables != null
+            ? workflowHandler.resolveTaskOutcome(taskId, namespacedVariables)
+            : null;
     boolean workflowSuccess =
-        namespacedVariables != null && workflowHandler.resolveTask(taskId, namespacedVariables);
+        ontologyReview
+            ? ontologyOutcome != null
+                && ontologyOutcome != TaskResolutionOutcome.RESOLUTION_FAILED
+                && ontologyOutcome != TaskResolutionOutcome.PROCESS_FAILED
+            : namespacedVariables != null
+                && workflowHandler.resolveTask(taskId, namespacedVariables);
 
     if (!workflowSuccess) {
       if (!workflowHandler.hasActiveRuntimeTask(taskId)) {
-        // Workflow-managed Metric tasks must not bypass their approval workflow when the runtime
+        // Governed approval tasks must not bypass their approval workflow when the runtime
         // task disappears between the readiness check and resolution.
         if (requiresRuntimeTaskReadiness) {
           throw TaskStateConflictException.of(
               String.format(
-                  "Flowable runtime task for workflow-managed Metric task '%s' disappeared while resolving transition '%s'; the task was not finalized",
+                  "Flowable runtime task for workflow-managed approval task '%s' disappeared while resolving transition '%s'; the task was not finalized",
                   taskId,
                   transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
         }
@@ -272,6 +384,14 @@ public class TaskWorkflowHandler {
         if (TaskRepository.isTerminalStatus(task.getStatus())) {
           throw TaskStateConflictException.of(
               String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
+        }
+        // The task row commits before the workflow's own transaction, so a live instance without
+        // its runtime task has not finished creating it. Closing the task directly would leave the
+        // workflow waiting on a task nobody can resolve any more.
+        if (isWorkflowStillRunning(task)) {
+          throw TaskStateConflictException.of(
+              String.format(
+                  "The workflow is still preparing task '%s'; retry the resolution", taskId));
         }
         LOG.warn(
             "[TaskWorkflowHandler] No active Flowable runtime task found for '{}'; applying direct task resolution fallback",
@@ -299,7 +419,9 @@ public class TaskWorkflowHandler {
     }
 
     // Check if multi-approval task is still waiting for more votes
-    if (workflowHandler.isAwaitingAdditionalVotes(taskId)) {
+    if (ontologyReview
+        ? ontologyOutcome == TaskResolutionOutcome.WAITING_FOR_VOTES
+        : workflowHandler.isAwaitingAdditionalVotes(taskId)) {
       LOG.info("[TaskWorkflowHandler] Task '{}' still open, waiting for more approvals", taskId);
       persistEditedWorkflowPayload(task, resolvedPayload, newValue, user);
       updateTaskVotes(task, user, isPositiveResolution(resolutionType));
@@ -307,8 +429,46 @@ public class TaskWorkflowHandler {
     }
 
     // Task threshold met, apply resolution
+    if (ontologyReview) {
+      new OntologyReviewReconciler(Entity.getCollectionDAO()).reconcile(taskId);
+      return refreshTask(taskId);
+    }
     return applyTaskResolution(
         task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
+  }
+
+  private static boolean isRejection(
+      final TaskResolutionType resolutionType, final TaskAvailableTransition selectedTransition) {
+    return resolutionType == TaskResolutionType.Rejected
+        || (selectedTransition != null
+            && selectedTransition.getTargetTaskStatus() == TaskEntityStatus.Rejected);
+  }
+
+  /**
+   * The user's latest comment on the task: a reviewer can explain in the task thread and then
+   * reject without a comment of their own.
+   */
+  static String latestCommentBy(final String user, final List<TaskComment> comments) {
+    return listOrEmpty(comments).stream()
+        .filter(posted -> posted.getAuthor() != null && user.equals(posted.getAuthor().getName()))
+        .max(
+            Comparator.comparing(
+                TaskComment::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder())))
+        .map(TaskComment::getMessage)
+        .orElse(null);
+  }
+
+  // The steps after a rejected approval read why it was rejected and by whom, e.g. to ask the
+  // asset's owners for a revision. A rejection without a reason clears an earlier one.
+  private static void recordRejection(
+      final WorkflowHandler workflowHandler,
+      final UUID taskId,
+      final String comment,
+      final String user) {
+    workflowHandler.setProcessVariable(
+        taskId, getNamespacedVariableName(GLOBAL_NAMESPACE, REJECTION_COMMENT_VARIABLE), comment);
+    workflowHandler.setProcessVariable(
+        taskId, getNamespacedVariableName(GLOBAL_NAMESPACE, REJECTED_BY_VARIABLE), user);
   }
 
   private boolean awaitActiveRuntimeTask(WorkflowHandler workflowHandler, UUID taskId) {
@@ -409,8 +569,15 @@ public class TaskWorkflowHandler {
       addResolutionComment(task, taskRepository, newValue, user);
     }
 
-    // Only positive resolutions should mutate the target entity.
-    if (approved && task.getAbout() != null) {
+    // A memory conflict review decides on rejection too, and a refused decision must fail the
+    // resolution. Other types mutate the target entity only on positive resolutions.
+    if (MemoryConflictResolution.decides(task)) {
+      MemoryConflictResolution.decide(task, resolutionType, comment, user, resolvedPayload);
+    } else if (MetadataCollectionService.decides(task)) {
+      // A metadata completion task changes no entity: resolving it re-checks the fields it asks
+      // for.
+      MetadataCollectionService.requireFilledIn(task);
+    } else if (approved && task.getAbout() != null) {
       applyEntityChanges(task, approved, newValue, resolvedPayload, user);
     } else {
       LOG.info(
@@ -570,6 +737,15 @@ public class TaskWorkflowHandler {
 
     if (aboutRef == null) {
       LOG.warn("[TaskWorkflowHandler] aboutRef is null, skipping entity changes");
+      return;
+    }
+
+    // A change request's task publishes through its workflow's commit step, which applies exactly
+    // the reviewed change, so the task form's own entity actions do not run.
+    if (ChangeRequestTasks.reviewsChangeRequest(task)) {
+      LOG.debug(
+          "[TaskWorkflowHandler] Task '{}' reviews a change request, skipping entity changes",
+          task.getId());
       return;
     }
 
@@ -818,7 +994,7 @@ public class TaskWorkflowHandler {
     }
     try {
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(user, changeType, entityInterface);
+          ChangeEvents.createChangeEventForEntity(user, changeType, entityInterface);
       Object entityForEvent = changeEvent.getEntity();
       changeEvent = ChangeEventHandler.copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entityForEvent));
@@ -1070,7 +1246,7 @@ public class TaskWorkflowHandler {
           entity.getEntityReference().getType(),
           user,
           action.entityField(),
-          value == null ? null : String.valueOf(value),
+          value == null || value instanceof String ? (String) value : JsonUtils.pojoToJson(value),
           true,
           WorkflowEventConsumer.GOVERNANCE_BOT);
     } catch (Exception e) {
@@ -1300,6 +1476,13 @@ public class TaskWorkflowHandler {
     return WorkflowHandler.getInstance().hasMultiApprovalSupport(task.getId());
   }
 
+  private static boolean isWorkflowStillRunning(Task task) {
+    return task.getWorkflowInstanceId() != null
+        && ((WorkflowInstanceRepository)
+                Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+            .isRunning(task.getWorkflowInstanceId());
+  }
+
   private boolean isWorkflowManaged(Task task) {
     if (task.getWorkflowInstanceId() != null) {
       return true;
@@ -1356,6 +1539,16 @@ public class TaskWorkflowHandler {
       case Revoked -> "revoke";
       case TimedOut -> "timeout";
       case Expired -> "expired";
+    };
+  }
+
+  private static TaskResolutionType routedResolution(
+      ReviewOutcome outcome, TaskResolutionType requested) {
+    return switch (outcome) {
+      case NONE -> requested;
+      case APPROVE -> TaskResolutionType.Approved;
+      case REJECT -> TaskResolutionType.Rejected;
+      case WAIT, PARTIAL_APPROVE, PARTIAL_REJECT -> null;
     };
   }
 

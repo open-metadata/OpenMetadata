@@ -10,30 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Dialog,
-  Modal,
-  ModalOverlay,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Announcement02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { confirmStateInitialValue } from '../../constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   AnnouncementEntity,
   listAnnouncements,
 } from '../../rest/announcementsAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   AnnouncementThreadBodyProp,
   ConfirmState,
 } from './Announcement.interface';
+import AnnouncementDeleteDialog from './AnnouncementDeleteDialog';
 import AnnouncementThreads from './AnnouncementThreads';
 
 const PAGE_SIZE = 100;
@@ -139,16 +133,17 @@ const AnnouncementThreadBody = ({
 
   if (isEmpty(announcements) && !isThreadLoading) {
     return (
-      <ErrorPlaceHolder
-        className="h-auto mt-24"
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography
-          as="p"
-          className="tw:text-secondary"
-          data-testid="announcement-error">
-          {t('message.no-announcement-message')}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={
+            <span data-testid="announcement-error">
+              {t('message.no-announcement-message')}
+            </span>
+          }
+          icon={<Announcement02 />}
+        />
+      </div>
     );
   }
 
@@ -163,41 +158,11 @@ const AnnouncementThreadBody = ({
         onConfirmation={onConfirmation}
       />
 
-      {/* A core Dialog rather than the shared antd ConfirmationModal: this
-          renders inside the drawer's react-aria overlay, and two scroll-lock
-          implementations on `document.body` fight each other every frame, so
-          the antd confirm never settles and its buttons stay unclickable. */}
-      <ModalOverlay
+      <AnnouncementDeleteDialog
         isOpen={confirmationState.state}
-        onOpenChange={(isOpen) => !isOpen && onDiscard()}>
-        <Modal>
-          <Dialog
-            data-testid="announcement-delete-confirm"
-            width={480}
-            onClose={onDiscard}>
-            <Dialog.Header title={t('message.delete-message-question-mark')} />
-            <Dialog.Content>
-              <Typography as="p" className="tw:text-secondary">
-                {t('message.confirm-delete-message')}
-              </Typography>
-            </Dialog.Content>
-            <Dialog.Footer>
-              <Button
-                color="secondary"
-                data-testid="cancel"
-                onClick={onDiscard}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary-destructive"
-                data-testid="save-button"
-                onClick={onPostDelete}>
-                {t('label.delete')}
-              </Button>
-            </Dialog.Footer>
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
+        onCancel={onDiscard}
+        onConfirm={onPostDelete}
+      />
     </div>
   );
 };

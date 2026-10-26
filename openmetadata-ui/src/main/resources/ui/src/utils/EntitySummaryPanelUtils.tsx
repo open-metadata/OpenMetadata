@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Grid, Typography } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from './common/layout.utils';
 
@@ -23,7 +22,7 @@ import { ReactComponent as IconExternalLink } from '../assets/svg/external-links
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { GenericProvider } from '../components/Customization/GenericProvider/GenericProvider';
 import type { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
-import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { CustomizeEntityType } from '../constants/Customize.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../enums/codemirror.enum';
@@ -185,7 +184,7 @@ export const getTitle = (
           ellipsis={{ tooltip: true }}>
           {title}
         </Typography>
-        <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+        <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
       </div>
     </Link>
   ) : (

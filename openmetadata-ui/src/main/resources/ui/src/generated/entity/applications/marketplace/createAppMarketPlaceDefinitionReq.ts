@@ -406,6 +406,12 @@ export interface CollateAIAppConfig {
      */
     testCaseResultsRetentionPeriod?: number;
     /**
+     * Enter the retention period in days for the run history of governance workflows. A
+     * finished run older than this is deleted with its stages, but the latest run of each
+     * workflow for every entity is always kept. Use 0 to retain the history forever.
+     */
+    workflowInstanceRetentionPeriod?: number;
+    /**
      * Enter the retention period in days for automation Workflows: the short-lived records left
      * behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them
      * forever.
@@ -1359,6 +1365,7 @@ export interface Resource {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ko = "KO",
     Ru = "RU",
     Zh = "ZH",
 }
@@ -1400,7 +1407,9 @@ export interface CreateEventSubscription {
      */
     batchSize?: number;
     /**
-     * Consumer Class for the Event Subscription. Will use 'AlertPublisher' if not provided.
+     * Id of the registered consumer that runs this Event Subscription. Will use `alert`, the
+     * consumer that sends its notifications, if not provided. A Java class name a consumer was
+     * once stored under is accepted and saved as its id; any other name is rejected.
      */
     className?: string;
     config?:    { [key: string]: any };

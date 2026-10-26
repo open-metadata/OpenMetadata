@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  EmptyPlaceholder,
-  HookForm,
-  Toggle,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, HookForm, Typography } from '@openmetadata/ui-core-components';
 import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
@@ -32,6 +26,10 @@ import {
 } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import {
+  FORM_DRAWER_WIDTH_WITHOUT_HINT,
+  FORM_DRAWER_WIDTH_WITH_HINT,
+} from '../../../../constants/common/formHint.constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
@@ -59,7 +57,9 @@ import { omitInapplicableDimensionParams } from '../../../../utils/observability
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import { ShowHintToggle } from '../../../common/atoms/drawer/ShowHintToggle';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
@@ -101,7 +101,9 @@ const getResolvedDrawerWidth = (
     return '52vw';
   }
 
-  return showHint ? '80vw' : '60vw';
+  return showHint
+    ? FORM_DRAWER_WIDTH_WITH_HINT
+    : FORM_DRAWER_WIDTH_WITHOUT_HINT;
 };
 
 const getDefaultDrawerTitle = (
@@ -429,18 +431,6 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const closeDrawerRef = useRef<() => void>(() => undefined);
 
-  const renderHintLabel = (label: string) => (
-    <>
-      <Lightbulb05 aria-hidden className="tw:size-4 tw:text-secondary" />
-      <Typography
-        className="tw:whitespace-nowrap tw:text-secondary"
-        size="text-sm"
-        weight="medium">
-        {label}
-      </Typography>
-    </>
-  );
-
   // Stable identity: the summary panel's permission lookup depends on it.
   const selectedTableDetails = useMemo(() => {
     const details = getSelectedTableSearchSource(
@@ -456,7 +446,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         // width="100%" is required: EmptyPlaceholder's 300px default is
         // wider than the hint column's 260px minimum and would overflow
         // once the column shrinks on a narrow viewport.
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           description={t('message.form-hint-empty-state')}
           icon={Lightbulb05}
           title={t('label.no-entity-selected', {
@@ -468,7 +458,13 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       fieldDocDisplay="panel"
       fieldDocHeader={
         <Box align="center" className="tw:gap-2" direction="row">
-          {renderHintLabel(t('label.form-hint'))}
+          <Lightbulb05 aria-hidden className="tw:size-4 tw:text-secondary" />
+          <Typography
+            className="tw:whitespace-nowrap tw:text-secondary"
+            size="text-sm"
+            weight="medium">
+            {t('label.form-hint')}
+          </Typography>
         </Box>
       }
       form={form}
@@ -506,15 +502,8 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   // pr-10 clears the header's absolutely positioned close button.
   const hintToggle = (
-    <Box align="center" className="tw:gap-2 tw:pr-10" direction="row">
-      {renderHintLabel(t('label.show-hint'))}
-      <Toggle
-        aria-label={t('label.show-hint')}
-        data-testid="show-hint-toggle"
-        isSelected={showHint}
-        size="sm"
-        onChange={setShowHint}
-      />
+    <Box className="tw:pr-10">
+      <ShowHintToggle isSelected={showHint} onChange={setShowHint} />
     </Box>
   );
 

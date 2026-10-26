@@ -49,7 +49,7 @@ const LENS_CONTAINER_LEVEL_KINDS = new Set<LineageLevelKind>([
   LineageLevelKind.DataProduct,
 ]);
 
-const COUNT_SUBTITLE_LEVEL_KINDS = new Set<LineageLevelKind>([
+const CONTAINER_LEVEL_KINDS = new Set<LineageLevelKind>([
   LineageLevelKind.Service,
   LineageLevelKind.Database,
   LineageLevelKind.Schema,
@@ -232,8 +232,10 @@ export const getSceneRequestFromSearch = (
   const band =
     Object.values(LineageBand).find((value) => value === params.lineageBand) ??
     defaultBand;
+  // An asset page's Layer band (its Service / Domain / Data Product view) stays
+  // focused on that asset; only the main Lineage page shows the whole hierarchy.
   const fallbackFocus: LineageSceneFocus =
-    band === LineageBand.Layer ? {} : defaultFocus;
+    band === LineageBand.Layer && isPlatformLineage ? {} : defaultFocus;
 
   return {
     lens,
@@ -301,6 +303,23 @@ export const getLensRootLabelKey = (lens: LineageLens) => {
     default:
       return 'label.all-service-plural';
   }
+};
+
+/**
+ * The root breadcrumb of a scene that has been drilled into, i.e. the way back
+ * to "All services" (or domains / data products). Undefined at the root itself.
+ */
+export const getDrilledRootBreadcrumb = (
+  scene?: Pick<LineageScene, 'breadcrumb' | 'band' | 'focusFqn'>
+): LineageSceneBreadcrumb | undefined => {
+  // An empty drilled scene comes back with only the root crumb, so whether it
+  // is drilled is read from its focus and band, not from the trail's length.
+  const isDrilled =
+    Boolean(scene?.focusFqn) || (scene && scene.band !== LineageBand.Layer);
+
+  return isDrilled
+    ? scene?.breadcrumb.find((breadcrumb) => !breadcrumb.fullyQualifiedName)
+    : undefined;
 };
 
 export const buildLineagePathHighlightIndex = (
@@ -476,11 +495,30 @@ const getLowercaseLabel = (
   ).toLocaleLowerCase();
 };
 
-export const getSceneNodeCountSubtitle = (
+export const isContainerSceneNode = (node: LineageSceneNode) =>
+  CONTAINER_LEVEL_KINDS.has(node.levelKind);
+
+// Container nodes (service, database, schema, domain, data product) say what
+// they are under the name and how many assets they hold in a count pill.
+export const getSceneNodeTypeSubtitle = (
   node: LineageSceneNode,
   t: TFunction
 ) => {
-  if (!COUNT_SUBTITLE_LEVEL_KINDS.has(node.levelKind)) {
+  if (!isContainerSceneNode(node)) {
+    return undefined;
+  }
+  const kind = getLowercaseLabel(t, node.levelKind);
+
+  return node.serviceType
+    ? t('label.lineage-map-node-type-subtitle', {
+        type: node.serviceType,
+        kind,
+      })
+    : kind;
+};
+
+export const getSceneNodeCount = (node: LineageSceneNode, t: TFunction) => {
+  if (!isContainerSceneNode(node)) {
     return undefined;
   }
 
@@ -493,17 +531,13 @@ export const getSceneNodeCountSubtitle = (
     return undefined;
   }
 
-  const totalCount = countEntries.reduce((sum, entry) => sum + entry.count, 0);
+  const count = countEntries.reduce((sum, entry) => sum + entry.count, 0);
   const countedLevelKind =
     countEntries.length === 1
       ? countEntries[0].levelKind
       : LineageLevelKind.Asset;
 
-  return t('label.lineage-map-node-count-subtitle', {
-    kind: getLowercaseLabel(t, node.levelKind),
-    count: totalCount,
-    entity: getLowercaseLabel(t, countedLevelKind, totalCount),
-  });
+  return { count, entity: getLowercaseLabel(t, countedLevelKind, count) };
 };
 
 const LEVEL_LABEL_KEYS: Partial<Record<LineageLevelKind, string>> = {
@@ -547,6 +581,82 @@ export const getSceneLevelLabelKey = (scene: LineageScene) => {
     : getBandLabelKey(scene.band);
 };
 
+// The level rail has three stops. Everything between the lens containers
+// (service / domain / data product) and fields — databases, schemas, tables —
+// reads as "Data Assets", whichever band the scene is drawn in.
+export const LINEAGE_MAP_RAIL_STOPS = [
+  LineageBand.Layer,
+  LineageBand.Asset,
+  LineageBand.Field,
+];
+
+export type LineageMapEmptyState = 'loading' | 'error' | 'empty';
+
+/** Which placeholder the map shows while it has no nodes to draw. */
+export const getLineageMapEmptyState = ({
+  scene,
+  loading,
+  hasError,
+}: {
+  scene?: LineageScene;
+  loading: boolean;
+  hasError: boolean;
+}): LineageMapEmptyState => {
+  if (scene) {
+    return 'empty';
+  }
+  if (loading) {
+    return 'loading';
+  }
+
+  return hasError ? 'error' : 'empty';
+};
+
+export const getRailStop = (scene: LineageScene): LineageBand => {
+  if (scene.band === LineageBand.Field) {
+    return LineageBand.Field;
+  }
+  const showsOnlyLensContainers = scene.nodes.every((node) =>
+    LENS_CONTAINER_LEVEL_KINDS.has(node.levelKind)
+  );
+
+  return scene.band === LineageBand.Layer && showsOnlyLensContainers
+    ? LineageBand.Layer
+    : LineageBand.Asset;
+};
+
+export const getRailStopLabelKey = (stop: LineageBand, lens: LineageLens) => {
+  if (stop === LineageBand.Field) {
+    return 'label.field-level-lineage';
+  }
+  if (stop === LineageBand.Asset) {
+    return 'label.data-asset-plural';
+  }
+  switch (lens) {
+    case LineageLens.Domain:
+      return 'label.domain';
+    case LineageLens.DataProduct:
+      return 'label.data-product';
+    default:
+      return 'label.service-level-view';
+  }
+};
+
+export const isSceneNodeDrillable = (
+  node?: LineageSceneNode
+): node is LineageSceneNode & {
+  fullyQualifiedName: string;
+  entityType: string;
+} => Boolean(node?.isExpandable && node.fullyQualifiedName && node.entityType);
+
+// The scene API marks every container expandable, even a service with no
+// assets left, so a blind rail drill prefers a node with children to land on.
+// The childrenCount check can go once the API stops marking empty containers.
+export const getRailDrillFallbackNode = (nodes: LineageSceneNode[]) =>
+  nodes.find(
+    (node) => isSceneNodeDrillable(node) && (node.childrenCount ?? 0) > 0
+  ) ?? nodes.find(isSceneNodeDrillable);
+
 export const getDrillBand = (node: LineageSceneNode) => {
   if (node.band === LineageBand.Layer) {
     return LineageBand.Asset;
@@ -579,6 +689,40 @@ export const getBreadcrumbSceneRequest = (
     focusFqn: breadcrumb.fullyQualifiedName,
     entityType: breadcrumb.entityType,
   };
+};
+
+export type DeleteKeyAction = 'node' | 'edge';
+
+export interface DeleteKeyActionContext {
+  canEdit: boolean;
+  hasSelectedNode: boolean;
+  hasSelectedEdge: boolean;
+}
+
+export const getDeleteKeyAction = (
+  event: KeyboardEvent,
+  { canEdit, hasSelectedNode, hasSelectedEdge }: DeleteKeyActionContext
+): DeleteKeyAction | undefined => {
+  if (!canEdit || (event.key !== 'Delete' && event.key !== 'Backspace')) {
+    return undefined;
+  }
+
+  // Only act while focus is on the page or the canvas: never while typing,
+  // and never from a drawer, modal or menu stacked over the canvas.
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    (target.closest('input, textarea, [contenteditable="true"]') ||
+      (target !== document.body && !target.closest('.react-flow')))
+  ) {
+    return undefined;
+  }
+
+  if (hasSelectedNode) {
+    return 'node';
+  }
+
+  return hasSelectedEdge ? 'edge' : undefined;
 };
 
 export const getParentSceneRequest = (
@@ -624,6 +768,83 @@ export const getParentSceneRequest = (
       lens: scene.lens,
       band: LineageBand.Layer,
     };
+  }
+
+  return undefined;
+};
+
+/**
+ * Kept out of LineageMap.component.tsx so the upstream/downstream branch does
+ * not nest inside the "both FQNs present" branch (sonarjs/no-nested-conditional).
+ */
+export const getLineageEditColumnPair = (
+  isUpstream: boolean,
+  requestColumnFqn?: string,
+  pickedColumnFqn?: string
+): { fromColumn: string; toColumn: string } | undefined => {
+  if (!requestColumnFqn || !pickedColumnFqn) {
+    return undefined;
+  }
+
+  return isUpstream
+    ? { fromColumn: pickedColumnFqn, toColumn: requestColumnFqn }
+    : { fromColumn: requestColumnFqn, toColumn: pickedColumnFqn };
+};
+
+// Semantic zoom switches level by how much of the screen the graph or a card
+// fills, not by a zoom value, so it behaves the same for 5 nodes or 500.
+export const ZOOM_OUT_SCREEN_FILL = 1 / 3;
+export const ZOOM_IN_SCREEN_FILL = 0.6;
+
+interface Size {
+  width: number;
+  height: number;
+}
+
+/** Largest share of the screen's width or height that `size` covers at `zoom`. */
+export const getScreenFill = (size: Size, zoom: number, screen: Size) =>
+  Math.max(
+    (size.width * zoom) / screen.width,
+    (size.height * zoom) / screen.height
+  );
+
+/**
+ * Zooming out goes up a level once the whole graph fits and fills less than a
+ * third of the screen, or once it reaches the minimum zoom (a graph too large
+ * to shrink that far); zooming in goes down a level once a card fills most of
+ * the screen, or once it reaches the maximum zoom (a card too narrow to fill
+ * a wide screen). Anything else is a plain zoom.
+ */
+export const getSemanticZoomDirection = ({
+  previousZoom,
+  zoom,
+  graph,
+  card,
+  screen,
+  minZoom,
+  maxZoom,
+}: {
+  previousZoom: number;
+  zoom: number;
+  minZoom: number;
+  maxZoom: number;
+  graph: Size;
+  card: Size;
+  screen: Size;
+}): 'in' | 'out' | undefined => {
+  if (
+    zoom > previousZoom &&
+    (getScreenFill(card, zoom, screen) >= ZOOM_IN_SCREEN_FILL ||
+      zoom >= maxZoom)
+  ) {
+    return 'in';
+  }
+  if (
+    zoom < previousZoom &&
+    (getScreenFill(graph, zoom, screen) < ZOOM_OUT_SCREEN_FILL ||
+      zoom <= minZoom)
+  ) {
+    return 'out';
   }
 
   return undefined;

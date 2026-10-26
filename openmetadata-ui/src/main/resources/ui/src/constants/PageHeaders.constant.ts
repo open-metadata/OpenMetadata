@@ -193,7 +193,7 @@ export const PAGE_HEADERS = {
   },
   INCIDENT_MANAGER: {
     header: 'label.incident-manager',
-    subHeader: 'message.page-sub-header-for-data-quality',
+    subHeader: 'message.incident-metrics-sub-header',
   },
   SETTING: {
     header: 'label.setting-plural',
