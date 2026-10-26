@@ -114,11 +114,15 @@ def test_every_setup_and_teardown_project_is_excluded_from_native_coverage():
     config = (
         Path(__file__).parents[3] / "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
     ).read_text()
-    projects = re.findall(r"name:\s*'([^']+)',\s*testMatch:\s*'([^']+)'", config)
-    fixtures = {
-        name
-        for name, test_match in projects
-        if re.search(r"(?:\.(?:setup|teardown)\.ts|dataInsightApp\.ts)$", test_match)
-    }
-    assert "ontology-rdf-setup" in fixtures
+    # Each project's fields run from its `name:` to the next one, in any order.
+    chunks = re.split(r"\n\s*name:\s*", config)[1:]
+    fixtures = set()
+    for chunk in chunks:
+        name = re.match(r"'([^']+)'", chunk)
+        test_match = re.search(r"testMatch:\s*'([^']+)'", chunk)
+        if name and test_match and re.search(
+            r"(?:\.(?:setup|teardown)\.ts|dataInsightApp\.ts)$", test_match.group(1)
+        ):
+            fixtures.add(name.group(1))
+    assert {"setup", "entity-data-setup", "data-insight-application", "ontology-rdf-setup"} <= fixtures
     assert fixtures - module.LIFECYCLE_PROJECTS == set()
