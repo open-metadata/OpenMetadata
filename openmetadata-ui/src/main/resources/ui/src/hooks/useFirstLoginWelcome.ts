@@ -18,9 +18,9 @@ import { updateUserDetail } from '../rest/userAPI';
 import { useApplicationStore } from './useApplicationStore';
 import { useWelcomeStore } from './useWelcomeStore';
 
-// ponytail: the welcome screen used to be remembered only in this localStorage
-// list. Still read so users who dismissed it before the backend field existed
-// are backfilled instead of shown it again; drop once that release has rolled out.
+// The legacy per-browser list of users who saw the welcome screen. Read so a
+// user it covers is recorded on the server instead of being shown it again,
+// including users the 2.1.0 migration had no login or activity time for.
 const isSeenInThisBrowser = (userName: string) =>
   (localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY) ?? '')
     .split(',')

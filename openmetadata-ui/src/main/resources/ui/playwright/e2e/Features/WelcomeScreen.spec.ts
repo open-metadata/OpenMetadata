@@ -26,25 +26,36 @@ import { enableAiAppMode } from '../Utils/appMode';
 // first login needs an account that has never reached a home route: a fresh
 // admin per test (admin so the connect button renders), signed in without the
 // `loggedInUsers` seed and landing away from home.
-const test = base.extend<{ firstLoginPage: Page }>({
-  firstLoginPage: async ({ browser }, use) => {
+const signInAsFirstLogin = async (page: Page, user: UserClass) => {
+  await installServerLoadReducers(page.context());
+  await user.signIn(page, undefined, undefined, {
+    suppressWelcomeScreen: false,
+    landingPath: '/explore',
+  });
+};
+
+const test = base.extend<{ firstLoginUser: UserClass; firstLoginPage: Page }>({
+  // eslint-disable-next-line no-empty-pattern -- Created through the worker's admin API context, not a browser.
+  firstLoginUser: async ({}, use) => {
     const apiContext = await getWorkerAdminAPIContext();
     const user = new UserClass(undefined, true);
     await user.create(apiContext);
 
+    try {
+      await use(user);
+    } finally {
+      await user.delete(apiContext);
+    }
+  },
+
+  firstLoginPage: async ({ browser, firstLoginUser }, use) => {
     const page = await browser.newPage();
 
     try {
-      await installServerLoadReducers(page.context());
-      await user.signIn(page, undefined, undefined, {
-        suppressWelcomeScreen: false,
-        landingPath: '/explore',
-      });
-
+      await signInAsFirstLogin(page, firstLoginUser);
       await use(page);
     } finally {
       await page.close();
-      await user.delete(apiContext);
     }
   },
 });
@@ -62,7 +73,9 @@ test.describe(
   { tag: ['@Features', DOMAIN_TAGS.PLATFORM] },
   () => {
     test('shows once on the classic home and closes to the landing page', async ({
+      browser,
       firstLoginPage: page,
+      firstLoginUser,
     }) => {
       await openHome(page, '/my-data');
 
@@ -84,6 +97,24 @@ test.describe(
 
         await expect(page.getByTestId('home-page-surface')).toBeVisible();
         await expect(page.getByTestId('welcome-screen')).toBeHidden();
+      });
+
+      await test.step('it does not come back in another browser', async () => {
+        const otherBrowserPage = await browser.newPage();
+
+        try {
+          await signInAsFirstLogin(otherBrowserPage, firstLoginUser);
+          await openHome(otherBrowserPage, '/my-data');
+
+          await expect(
+            otherBrowserPage.getByTestId('home-page-surface')
+          ).toBeVisible();
+          await expect(
+            otherBrowserPage.getByTestId('welcome-screen')
+          ).toBeHidden();
+        } finally {
+          await otherBrowserPage.close();
+        }
       });
     });
 

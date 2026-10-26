@@ -689,10 +689,9 @@ UPDATE test_definition
 SET json = JSON_SET(json, '$.description', 'Checks column values against an allowed set according to the matchEnum mode.')
 WHERE name = 'columnValuesToBeInSet';
 
--- The first-login welcome screen used to remember dismissal only in browser localStorage, so it
--- reappeared on every new browser. It is now tracked on the user as welcomeScreenSeenAt. Anyone
--- who has logged in before this upgrade is not a first-time user: mark them as having seen it.
+-- Users already seen signing in or active are not first-time users: mark the first-login welcome
+-- screen as seen for them. Public-client SSO and token sessions set only lastActivityTime.
 UPDATE user_entity
-SET json = JSON_SET(json, '$.welcomeScreenSeenAt', lastLoginTime)
-WHERE lastLoginTime IS NOT NULL
+SET json = JSON_SET(json, '$.welcomeScreenSeenAt', COALESCE(lastLoginTime, lastActivityTime))
+WHERE COALESCE(lastLoginTime, lastActivityTime) IS NOT NULL
   AND JSON_EXTRACT(json, '$.welcomeScreenSeenAt') IS NULL;

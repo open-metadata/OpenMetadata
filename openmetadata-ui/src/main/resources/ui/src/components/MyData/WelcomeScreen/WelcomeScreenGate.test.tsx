@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../../constants/constants';
 import { RouteVisibilityProvider } from '../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { updateUserDetail } from '../../../rest/userAPI';
@@ -128,13 +128,16 @@ describe('WelcomeScreenGate', () => {
     ]);
   });
 
-  it('keeps the welcome screen dismissed when recording it fails', async () => {
+  it('still shows the welcome screen once when recording it fails', async () => {
     (updateUserDetail as jest.Mock).mockRejectedValueOnce(new Error('down'));
     renderGate();
 
-    fireEvent.click(await screen.findByTestId('welcome'));
+    await waitFor(() => expect(updateUserDetail).toHaveBeenCalledTimes(1));
 
-    expect(screen.getByTestId('home')).toBeInTheDocument();
+    expect(await screen.findByTestId('welcome')).toBeInTheDocument();
+    expect(mockStore.updateCurrentUser).toHaveBeenCalledWith(
+      expect.objectContaining({ welcomeScreenSeenAt: expect.any(Number) })
+    );
   });
 
   it('skips the welcome screen on the tour', () => {
