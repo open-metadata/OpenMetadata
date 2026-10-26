@@ -191,6 +191,18 @@ describe('AppSchedule component', () => {
     );
   });
 
+  it('hands Edit to onEditSchedule instead of opening the dialog', () => {
+    const onEditSchedule = jest.fn();
+    render(<AppSchedule {...mockProps1} onEditSchedule={onEditSchedule} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
+
+    expect(onEditSchedule).toHaveBeenCalled();
+    expect(
+      screen.queryByTestId('update-schedule-modal')
+    ).not.toBeInTheDocument();
+  });
+
   it('should show application disable message if appData.deleted is true', () => {
     render(<AppSchedule {...mockProps3} />);
 
