@@ -154,6 +154,11 @@ export interface TaskReviewVote {
     comment?: string;
     decision: ReviewVoteDecision;
     /**
+     * Workflow stage the task was in when the vote was counted. A voter is recorded once per
+     * stage, so a task that moves through several approval stages keeps every stage's vote.
+     */
+    stage?: string;
+    /**
      * When the vote was counted.
      */
     timestamp: number;
