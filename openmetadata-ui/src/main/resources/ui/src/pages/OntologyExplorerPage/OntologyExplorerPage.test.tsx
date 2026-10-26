@@ -431,6 +431,24 @@ describe('OntologyExplorerPage', () => {
     );
   });
 
+  it('opens Releases from the version chip and Changes from Publish', async () => {
+    renderNativeStudio('?ontology=native-sales');
+    fireEvent.click(
+      await screen.findByTestId('ontology-release-history-trigger')
+    );
+
+    expect(
+      screen.getByTestId('ontology-publication-tab-releases')
+    ).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
+    fireEvent.click(screen.getByTestId('ontology-publication-trigger'));
+
+    expect(
+      screen.getByTestId('ontology-publication-tab-changes')
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('shows native list failure without falling back to glossary data', async () => {
     mockSearchParams = new URLSearchParams();
     mockUseOntologyStudioScopes.mockReturnValue({

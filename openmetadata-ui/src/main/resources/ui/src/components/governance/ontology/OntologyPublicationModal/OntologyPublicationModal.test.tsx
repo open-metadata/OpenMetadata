@@ -59,6 +59,57 @@ describe('OntologyPublicationModal', () => {
     });
   });
 
+  it('opens the named Releases tab from a history entry point', () => {
+    render(
+      <OntologyPublicationModal
+        canEdit
+        initialTab="releases"
+        ontology={ontology}
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId('ontology-publication-tab-releases')
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(mockReleasePanel).toHaveBeenLastCalledWith(
+      expect.objectContaining({ view: 'releases' })
+    );
+  });
+
+  it('discards the previous owner editor when choosing a different ontology and dismisses with Escape', () => {
+    const other = { ...ontology, id: 'other-owner', name: 'Other owner' };
+    const onClose = jest.fn();
+    render(
+      <OntologyPublicationModal
+        canEdit
+        initialOntology={ontology}
+        ontologies={[ontology, other]}
+        onClose={onClose}
+      />
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'draft notes' }), {
+      target: { value: 'First owner notes' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.change-ontology' })
+    );
+    fireEvent.click(
+      screen.getByTestId('ontology-publication-select-' + other.id)
+    );
+
+    expect(screen.getByRole('textbox', { name: 'draft notes' })).toHaveValue(
+      ''
+    );
+    expect(mockReleasePanel).toHaveBeenLastCalledWith(
+      expect.objectContaining({ ontology: other })
+    );
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('requires an explicit native owner before showing release contents', () => {
     const onSelectOntology = jest.fn();
     render(

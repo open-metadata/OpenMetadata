@@ -10,28 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
+import { OntologyApprovalRule } from '../../../../generated/entity/data/ontology';
+import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
+import { TaskType } from '../../../../generated/entity/tasks/task';
+import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../../generated/type/ontologyState';
+import type {
+  CurrentPublication,
+  PublicationRead,
+} from '../../../../hooks/governance/ontology/useOntologyPublication.types';
+import {
+  eligiblePublicationReviewers,
+  isReviewableCandidate,
+  readReviewLock,
+  reusablePublicationCandidate,
+} from '../../../../hooks/governance/ontology/useOntologyPublication.utils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getTaskDetailPath } from '../../../../utils/TaskUtils';
+import type {
+  ReleasePanelView,
+  ReleaseStage,
+} from './OntologyReleasePanel.types';
 
-export const nextSemanticVersion = (
-  version: string | undefined,
-  bump: VersionBump
-): string => {
-  const base = version ?? '0.0.0';
-  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(base)) {
-    throw new Error('Invalid ontology semantic version');
-  }
-  const [major, minor, patch] = base.split('.').map(BigInt);
-  const one = BigInt(1);
-  switch (bump) {
-    case VersionBump.Major:
-      return `${major + one}.0.0`;
-    case VersionBump.Minor:
-      return `${major}.${minor + one}.0`;
-    case VersionBump.Patch:
-      return `${major}.${minor}.${patch + one}`;
-  }
-};
+export { nextPublicationVersion as nextSemanticVersion } from '../../../../hooks/governance/ontology/useOntologyPublication.utils';
 
 export const isSameWorkingState = (
   first: OntologyState | undefined,
@@ -48,4 +49,142 @@ export const isSameWorkingState = (
     current.activeReleaseId === first.activeReleaseId,
     current.lastReleaseRevision === first.lastReleaseRevision,
   ].every(Boolean);
+};
+
+const releaseTaskLink = (review: CurrentPublication['review']) => {
+  if (!review?.taskId) {
+    return undefined;
+  }
+
+  return {
+    id: review.task.id,
+    label: review.taskId,
+    href: getTaskDetailPath({
+      id: review.task.id,
+      taskId: review.taskId,
+      type: TaskType.RequestApproval,
+      about: review.release,
+    }),
+  };
+};
+
+const rejectionDetails = (
+  decision: NonNullable<
+    NonNullable<CurrentPublication['review']>['latestDecision']
+  >
+) => ({
+  actor: getEntityName(decision.user),
+  reason: decision.reason ?? '',
+});
+
+const deriveReleaseStage = (
+  current: CurrentPublication
+): PublicationRead<ReleaseStage> => {
+  const { ontology, candidate, review } = current;
+  const stage = ontology.publicationStatus?.latest?.stage ?? Stage.Draft;
+  const task = releaseTaskLink(review);
+  if (stage === Stage.Draft) {
+    return { kind: 'ready', value: { stage, candidate } };
+  }
+  if (!candidate) {
+    return { kind: 'unavailable', reason: 'missing' };
+  }
+  if (stage === Stage.Published || stage === Stage.Approved) {
+    return { kind: 'ready', value: { stage, candidate, task } };
+  }
+  if (!task) {
+    return { kind: 'unavailable', reason: 'missing' };
+  }
+  if (stage === Stage.InReview) {
+    return { kind: 'ready', value: { stage, candidate, task } };
+  }
+  if (stage === Stage.ChangesRequested && review?.latestDecision) {
+    return {
+      kind: 'ready',
+      value: {
+        stage,
+        candidate,
+        task,
+        rejection: rejectionDetails(review.latestDecision),
+      },
+    };
+  }
+
+  return { kind: 'unavailable', reason: 'stale' };
+};
+
+const releaseReviewSettings = ({ ontology, review }: CurrentPublication) => ({
+  reviewers: review
+    ? review.assignees.map(({ assignee }) => assignee)
+    : ontology.reviewers ?? [],
+  approvalRule:
+    review?.approvalRule ??
+    ontology.approvalRule ??
+    OntologyApprovalRule.AnyReviewer,
+});
+
+export const deriveReleasePanelView = (
+  current: PublicationRead<CurrentPublication>,
+  permissions: {
+    canEdit: boolean;
+    canWrite: boolean;
+    userId?: string;
+    userName?: string;
+  }
+): ReleasePanelView => {
+  if (current.kind !== 'ready') {
+    return current;
+  }
+  const stage = deriveReleaseStage(current.value);
+  if (stage.kind !== 'ready') {
+    return stage;
+  }
+  const { ontology, review } = current.value;
+  const reusable = reusablePublicationCandidate(current.value);
+  const lock = readReviewLock(ontology.publicationStatus?.reviewLock);
+  const excludedIds = [permissions.userId].filter((id): id is string =>
+    Boolean(id)
+  );
+  const excludedNames = [
+    permissions.userName,
+    reusable?.reviewAuthor ?? reusable?.sealedBy,
+  ].filter((name): name is string => Boolean(name));
+  const settings = releaseReviewSettings(current.value);
+  const effective = eligiblePublicationReviewers(ontology.reviewers ?? [], {
+    ids: excludedIds,
+    names: excludedNames,
+  });
+  const unlocked = lock.kind === 'ready' && !lock.value.inReview;
+
+  return {
+    kind: 'ready',
+    value: {
+      ...stage.value,
+      settings,
+      lock,
+      excludedIds,
+      excludedNames,
+      assignees: review?.assignees ?? [],
+      unpublishedChanges: ontology.publicationStatus?.unpublishedChanges ?? 0,
+      canEditSettings: [
+        permissions.canEdit,
+        permissions.canWrite,
+        stage.value.stage === Stage.Draft,
+        unlocked,
+      ].every(Boolean),
+      canRequestReview:
+        permissions.canWrite &&
+        effective.length > 0 &&
+        isReviewableCandidate(current.value),
+    },
+  };
+};
+
+export const releaseChangeCount = (release: OntologyRelease) => {
+  const summary = release.changeSummary;
+  if (!summary || summary.deprecated === undefined) {
+    return undefined;
+  }
+
+  return summary.added + summary.changed + summary.removed + summary.deprecated;
 };
