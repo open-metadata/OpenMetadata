@@ -219,6 +219,26 @@ PY
   return 1
 }
 
+disable_app_schedule() {
+  local app_name=$1
+  local response
+  local http_code
+
+  response=$(curl -s -w "\n%{http_code}" --request PATCH "http://localhost:8585/api/v1/apps/name/${app_name}" \
+    --header "Authorization: Bearer $authorizationToken" \
+    --header 'Content-Type: application/json-patch+json' \
+    --data-raw '[{"op": "replace", "path": "/appSchedule", "value": {"scheduleTimeline": "None"}}]')
+  http_code=$(echo "$response" | tail -n1)
+
+  if [ "$http_code" != "200" ]; then
+    echo "✗ Failed to disable the ${app_name} schedule (HTTP ${http_code})"
+    echo "  Response: $(echo "$response" | sed '$d')"
+    return 1
+  fi
+
+  echo "✓ ${app_name} schedule disabled"
+}
+
 wait_for_app_run_completion() {
   local app_name=$1
   local trigger_timestamp_ms=$2
@@ -546,6 +566,16 @@ run_local_docker_main() {
     sleep 5
   done
 
+  # The seeded app carries the weekly recreate-reindex cron (Sunday 00:30 UTC).
+  # A run that fires while data is being written swaps in indexes rebuilt from
+  # an earlier read, so those writes vanish from search. The Playwright CI
+  # fixture is a copy of this stack's data, and on 2026-10-25 it was cached
+  # without six lineage edges. Reindexing here is triggered explicitly below.
+  ensure_app_installed "SearchIndexingApplication"
+  if ! disable_app_schedule "SearchIndexingApplication"; then
+    exit 1
+  fi
+
   if [[ $includeIngestion == "true" ]]; then
     unpause_dag() {
       local dag_id=$1
@@ -686,7 +716,6 @@ run_local_docker_main() {
   fi
 
   echo "✔running reindexing"
-  ensure_app_installed "SearchIndexingApplication"
   if ! trigger_app_and_wait "SearchIndexingApplication" "" "$APP_RUN_WAIT_TIMEOUT_SECONDS"; then
     exit 1
   fi

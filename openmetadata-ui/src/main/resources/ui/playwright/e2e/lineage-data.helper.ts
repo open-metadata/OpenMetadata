@@ -28,6 +28,7 @@
 import { APIRequestContext, expect } from '@playwright/test';
 import { LineageDataClass } from '../support/entity/LineageDataClass';
 import { SharedInfra } from '../support/entity/SharedInfra';
+import { okJson } from '../utils/apiResponse';
 import { getEntityTypeSearchIndexMapping } from '../utils/common';
 import { connectEdgeBetweenNodesViaAPI } from '../utils/lineage';
 import { waitForSearchIndexed } from '../utils/polling';
@@ -144,6 +145,41 @@ export async function seedLineageAndSharedInfra(
       );
     })
   );
+
+  // A searchable document does not mean its lineage edge is searchable: the
+  // edge is written to the downstream document separately. The CI fixture
+  // copies the search data as it is now, so wait until the lineage API, which
+  // reads from search, returns every depth-2 entity.
+  const depth2Ids = depth2.map((entity) => entity.entityResponseData.id);
+  await expect
+    .poll(
+      async () => {
+        const { nodes = {} } = await okJson<{
+          nodes?: Record<string, { entity?: { id?: string } }>;
+        }>(
+          await apiContext.get('/api/v1/lineage/getLineage', {
+            params: {
+              fqn: depth1.entityResponseData.fullyQualifiedName ?? '',
+              type: getEntityTypeSearchIndexMapping(depth1.type),
+              upstreamDepth: 0,
+              downstreamDepth: 1,
+            },
+          }),
+          'lineage-data seeding: getLineage'
+        );
+        const lineageIds = new Set(
+          Object.values(nodes).map((node) => node.entity?.id)
+        );
+
+        return depth2Ids.filter((id) => !lineageIds.has(id));
+      },
+      {
+        message: 'depth-2 entities missing from the depth-1 lineage',
+        intervals: [1_000, 2_000, 5_000],
+        timeout: 120_000,
+      }
+    )
+    .toEqual([]);
 
   expect(root.entityResponseData.id).toBeTruthy();
   LineageDataClass.saveResponseData();

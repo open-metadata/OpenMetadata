@@ -83,6 +83,11 @@ const SCARF_PIXEL = 'https://static.scarf.sh/**';
  *   asserts on. `AddIngestionPage` and `EditIngestionPage` also call the
  *   provider's `fetchAirflowStatus()` explicitly after a save — a refetch whose
  *   only purpose is to see a *newer* answer than the one already held.
+ * - `system/settings/lineageSettings` — a browser PUT only invalidates the
+ *   cache of the worker that made it. `LineageSettings.spec.ts` switches the
+ *   default layer to Column for a few seconds; a worker that booted inside
+ *   that window kept Column, and `LineageInteraction`'s layer toggle then
+ *   switched it off instead of on.
  */
 const CACHEABLE_BOOT_PATHS = [
   // No writer anywhere in the suite.
@@ -93,9 +98,9 @@ const CACHEABLE_BOOT_PATHS = [
   '/api/v1/system/search/nlq',
   '/api/v1/limits/config',
   // No API writer; the specs that change these do it through the UI, so the
-  // browser PUT invalidates the `/api/v1/system/` family.
+  // browser PUT invalidates the `/api/v1/system/` family — in the writing
+  // worker only.
   '/api/v1/system/config/customUiThemePreference',
-  '/api/v1/system/settings/lineageSettings',
   '/api/v1/system/settings/appConfiguration',
 ];
 
