@@ -13,9 +13,12 @@
 
 package org.openmetadata.service.migration.mysql.v207;
 
+import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
+
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v207.MigrationUtil;
+import org.openmetadata.service.migration.utils.v207.NegatedListRuleMigration;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -26,5 +29,24 @@ public class Migration extends MigrationProcessImpl {
   @Override
   public void runDataMigration() {
     MigrationUtil.addWorkflowRunEntityLinkIndexOnMySql(handle);
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        NegatedListRuleMigration.DATA_CONTRACT_STEP,
+        () -> NegatedListRuleMigration.rewriteDataContractRules(collectionDAO));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        NegatedListRuleMigration.ENTITY_RULES_STEP,
+        NegatedListRuleMigration::rewriteEntityRules);
+    // `migrate` runs data migrations before it starts Flowable, and this step deploys workflows.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        NegatedListRuleMigration.WORKFLOW_STEP,
+        () -> {
+          initializeWorkflowHandler();
+          NegatedListRuleMigration.rewriteWorkflowRules();
+        });
   }
 }

@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-10-26 (initial)
 - **Deciders:** Ram Narayan Balaji
 - **Guard:** `openmetadata-ui/src/main/resources/ui/src/utils/queryBuilder/jsonLogicNegation.test.ts`;
-  `playwright/e2e/Features/Workflows/WorkflowCheckConditionNegation.spec.ts`
+  `playwright/e2e/Features/Workflows/WorkflowCheckConditionNegation.spec.ts`;
+  `NegatedListRuleRewriterTest`, `NegatedListRuleMigrationIT`
 - **Related:** customer report on workflow tag rules (Collate issue 7854)
 
 ## Context
@@ -30,5 +31,10 @@ a NOT badge, never dropped.
 
 ## Consequences
 Anything that writes rules (API clients, seed data, Collate) should use the stored shapes above.
-Rules saved before this record keep their per-element meaning until re-saved, and load as the same
-row as the corrected shape. Revisit if the engine gains list-level negated operators.
+Rules stored before this record are rewritten once, by the 2.0.7 data migration
+(`migration/utils/v207/NegatedListRuleMigration.java`): workflow check conditions and event trigger
+filters (stored through the repository so each changed workflow is redeployed), data contract
+semantics and the entity rules settings. From the upgrade on, a rule runs as its row reads; a rule
+someone relied on in its old per-element meaning changes behaviour then, which the release notes
+must say. The migration and the editor use the same rewrite, tested against one case table, so a
+migrated rule saves back unchanged. Revisit if the engine gains list-level negated operators.
