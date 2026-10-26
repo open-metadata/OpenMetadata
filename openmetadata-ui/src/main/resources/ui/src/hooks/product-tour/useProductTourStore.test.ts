@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryObserver } from '@tanstack/react-query';
+import { queryClient } from '../../queryClient';
 import { isTourMockActive } from '../../rest/product-tour/productTourMock';
+import { useExploreCache } from '../useExploreCache';
 import { useProductTourStore } from './useProductTourStore';
 
 const HINT_KEY = 'omAppModeHint';
@@ -215,6 +218,27 @@ describe('useProductTourStore', () => {
       tourMode: 'default',
     });
     expect(persisted.state).not.toHaveProperty('lastPath');
+  });
+
+  it('drops server data the pages before the tour cached, keeping mounted queries', () => {
+    useExploreCache.getState().setCached('explore-search', { hits: ['real'] });
+    queryClient.setQueryData(['left-page'], 'real');
+    const shell = new QueryObserver(queryClient, {
+      queryKey: ['shell'],
+      queryFn: () => 'shell',
+    });
+    const unsubscribe = shell.subscribe(jest.fn());
+
+    getState().start('default');
+
+    expect(
+      useExploreCache.getState().getCached('explore-search')
+    ).toBeUndefined();
+    expect(queryClient.getQueryData(['left-page'])).toBeUndefined();
+    expect(queryClient.getQueryState(['shell'])).toBeDefined();
+
+    unsubscribe();
+    queryClient.clear();
   });
 
   it('serves the fixtures again after a reload mid-tour', async () => {

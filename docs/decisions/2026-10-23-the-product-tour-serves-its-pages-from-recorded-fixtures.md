@@ -1,7 +1,7 @@
 # The product tour walks the real pages and serves them from recorded fixtures
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (no recorder or seed script in the repo)
+- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (no recorder or seed script in the repo; starting a tour drops server data cached before it)
 - **Deciders:** UI team
 - **Guard:** `openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ProductTour.spec.ts` (no tour page request reaches the server),
   `openmetadata-ui/src/main/resources/ui/src/utils/product-tour/productTourMock.utils.test.ts`
@@ -34,8 +34,10 @@ page it visits, and would break the same way each time a page changes.
   worth maintaining. Re-capture them when a page or its API changes. Content that sample data does
   not ingest but a step shows (a glossary with related terms, Context Center articles and
   memories) is created on that instance first, so no step is captured as an empty state.
-- Ending the tour reloads the page, so nothing the fixtures put into in-memory caches or stores
-  outlives it. Code that writes fixture-derived data to persistent storage (localStorage) checks
+- Starting a tour drops what pages visited before it cached from the server (Explore's search
+  cache, inactive queries), or a tour step would open on those assets and request their details,
+  which no fixture holds. Ending the tour reloads the page, so nothing the fixtures put into
+  in-memory caches or stores outlives it. Code that writes fixture-derived data to persistent storage (localStorage) checks
   `isTourMockActive()` and skips the write, as pruning dismissed announcements does.
 - Components no longer check `isTourPage`.
 - The tour scrolls each target into view before react-tour measures it, and react-tour never

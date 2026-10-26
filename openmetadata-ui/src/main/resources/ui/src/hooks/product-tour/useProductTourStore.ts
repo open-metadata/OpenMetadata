@@ -22,8 +22,10 @@ import {
   activateTourMock,
   deactivateTourMock,
 } from '../../rest/product-tour/productTourMock';
+import { queryClient } from '../../queryClient';
 import productTourClassBase from '../../utils/ProductTourClassBase';
 import { useAppModeStore, writeAppMode } from '../useAppMode';
+import { useExploreCache } from '../useExploreCache';
 
 const getSessionStorage = () => sessionStorage;
 const getLocalStorage = () => localStorage;
@@ -89,6 +91,18 @@ interface ProductTourStore {
   /** Whether the current history entry is from before the tour started. */
   isBeforeTour: () => boolean;
 }
+
+/**
+ * Drops what pages visited before the tour cached from the server. Explore's
+ * search cache serves its last results at once, so a tour started from
+ * Explore would open its Explore step on the server's assets and request
+ * their details, which no fixture holds. Queries of mounted components (the
+ * shell) are active and stay.
+ */
+const dropServerDataCachedBeforeTour = () => {
+  useExploreCache.getState().clearCache();
+  queryClient.removeQueries({ type: 'inactive' });
+};
 
 const activateMockFor = (tourMode?: string) => {
   if (tourMode) {
@@ -156,6 +170,7 @@ export const useProductTourStore = create<ProductTourStore>()(
               }
             : undefined,
         });
+        dropServerDataCachedBeforeTour();
         activateMockFor(tour.mode);
         if (isOtherMode) {
           writeAppMode(tour.mode, undefined, { tabOnly: true });
