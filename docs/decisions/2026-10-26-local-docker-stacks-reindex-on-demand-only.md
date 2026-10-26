@@ -18,12 +18,15 @@ setup already disabled the schedule, but its PATCH landed 21 seconds after the r
 
 ## Decision
 `run_local_docker_common.sh` sets the `SearchIndexingApplication` schedule to `None` as soon as
-the server responds, before sample data, and reindexes only through its explicit trigger. That
-trigger fails if any run is still active, and the script exits, so seeding never starts while a
-reindex is running.
+the server responds, before sample data, and reindexes only through its explicit trigger, which it
+waits out before the Playwright seed runs. The PATCH does not stop a run that already started: it
+deletes the scheduled job, so the trigger's already-running check no longer sees that run. Such a
+run can only start in the seconds between the server coming up and the PATCH, and sample data takes
+minutes, so it ends long before the seed. The Guard is what catches it if it does not.
 
 ## Consequences
 Local stacks started with the script no longer reindex weekly; reindex from the Applications page
-or the trigger API when needed. A run that began in the few seconds before the PATCH now surfaces as
-a failed stack start instead of a silently incomplete fixture. To revisit, the fixture would need a
-reindex-safe way to write during a rebuild, such as a reindex that replays writes made while it ran.
+or the trigger API when needed. A reindex that still overlaps the seed now fails the fixture build
+at the Guard instead of producing a silently incomplete fixture. To revisit, the fixture would need
+a reindex-safe way to write during a rebuild, such as a reindex that replays writes made while it
+ran.

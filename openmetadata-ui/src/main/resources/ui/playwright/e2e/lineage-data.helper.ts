@@ -28,7 +28,6 @@
 import { APIRequestContext, expect } from '@playwright/test';
 import { LineageDataClass } from '../support/entity/LineageDataClass';
 import { SharedInfra } from '../support/entity/SharedInfra';
-import { okJson } from '../utils/apiResponse';
 import { getEntityTypeSearchIndexMapping } from '../utils/common';
 import { connectEdgeBetweenNodesViaAPI } from '../utils/lineage';
 import { waitForSearchIndexed } from '../utils/polling';
@@ -157,19 +156,22 @@ export async function seedLineageAndSharedInfra(
   await expect
     .poll(
       async () => {
-        const { nodes = {} } = await okJson<{
+        const response = await apiContext.get('/api/v1/lineage/getLineage', {
+          params: {
+            fqn: root.entityResponseData.fullyQualifiedName ?? '',
+            type: getEntityTypeSearchIndexMapping(root.type),
+            upstreamDepth: 0,
+            downstreamDepth: 2,
+          },
+        });
+        // expect.poll does not retry a callback that throws, so a transient
+        // error is reported as a value and polled through.
+        if (!response.ok()) {
+          return [`getLineage HTTP ${response.status()}`];
+        }
+        const { nodes = {} } = (await response.json()) as {
           nodes?: Record<string, { entity?: { id?: string } }>;
-        }>(
-          await apiContext.get('/api/v1/lineage/getLineage', {
-            params: {
-              fqn: root.entityResponseData.fullyQualifiedName ?? '',
-              type: getEntityTypeSearchIndexMapping(root.type),
-              upstreamDepth: 0,
-              downstreamDepth: 2,
-            },
-          }),
-          'lineage-data seeding: getLineage'
-        );
+        };
         const lineageIds = new Set(
           Object.values(nodes).map((node) => node.entity?.id)
         );
