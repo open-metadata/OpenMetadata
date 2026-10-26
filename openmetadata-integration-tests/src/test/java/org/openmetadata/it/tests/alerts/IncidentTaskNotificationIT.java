@@ -43,8 +43,10 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -170,7 +172,7 @@ public class IncidentTaskNotificationIT {
     ArgumentsInput mentionFilter =
         new ArgumentsInput()
             .withName("filterByMentionedName")
-            .withEffect(ArgumentsInput.Effect.INCLUDE)
+            .withEffect(Effect.INCLUDE)
             .withArguments(
                 List.of(new Argument().withName("userList").withInput(List.of(userName))));
 
@@ -187,7 +189,7 @@ public class IncidentTaskNotificationIT {
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("task_mention_alert"))
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("task"))
             .withEnabled(true)
             .withBatchSize(10)

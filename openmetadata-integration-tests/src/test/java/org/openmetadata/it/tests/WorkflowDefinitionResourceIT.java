@@ -137,6 +137,7 @@ import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -12419,9 +12420,7 @@ public class WorkflowDefinitionResourceIT {
               .withDisplayName("Workflow Event Consumer")
               .withDescription(
                   "Consumes EntityChange Events in order to trigger Workflows, if they exist.")
-              .withAlertType(
-                  org.openmetadata.schema.api.events.CreateEventSubscription.AlertType
-                      .GOVERNANCE_WORKFLOW_CHANGE_EVENT)
+              .withAlertType(AlertType.GOVERNANCE_WORKFLOW_CHANGE_EVENT)
               .withResources(List.of("all"))
               .withProvider(org.openmetadata.schema.type.ProviderType.SYSTEM)
               .withPollInterval(10)

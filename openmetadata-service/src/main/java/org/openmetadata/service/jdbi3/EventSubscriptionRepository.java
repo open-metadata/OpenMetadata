@@ -26,7 +26,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -293,7 +293,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       compareAndUpdate(
           "batchSize",
           () -> recordChange("batchSize", original.getBatchSize(), updated.getBatchSize()));
-      if (!original.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
+      if (!original.getAlertType().equals(AlertType.ACTIVITY_FEED)) {
         compareAndUpdate(
             "filteringRules",
             () ->

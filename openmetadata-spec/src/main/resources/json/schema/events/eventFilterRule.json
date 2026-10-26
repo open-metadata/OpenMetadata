@@ -7,6 +7,7 @@
   "javaType": "org.openmetadata.schema.entity.events.EventFilterRule",
   "definitions": {
     "effect" : {
+      "javaType": "org.openmetadata.schema.entity.events.Effect",
       "type" : "string",
       "enum" : [
         "include",
@@ -16,6 +17,7 @@
     },
     "prefixCondition": {
       "description": "Prefix Condition to be applied to the Condition.",
+      "javaType": "org.openmetadata.schema.entity.events.PrefixCondition",
       "type": "string",
       "enum": [
         "AND",
