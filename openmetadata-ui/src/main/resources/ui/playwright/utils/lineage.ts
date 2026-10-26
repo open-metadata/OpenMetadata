@@ -645,17 +645,17 @@ export const connectEdgeBetweenNodes = async (
 
 export const connectEntityEdgeBetweenNodesViaAPI = (
   apiContext: APIRequestContext,
-  fromNode: EntityClass,
-  toNode: EntityClass
+  fromNode: EntityClass & { entityResponseData: Pick<ResponseDataType, 'id'> },
+  toNode: EntityClass & { entityResponseData: Pick<ResponseDataType, 'id'> }
 ) => {
   return connectEdgeBetweenNodesViaAPI(
     apiContext,
     {
-      id: get(fromNode, 'entityResponseData.id'),
+      id: fromNode.entityResponseData.id,
       type: getEntityTypeSearchIndexMapping(fromNode.type),
     },
     {
-      id: get(toNode, 'entityResponseData.id'),
+      id: toNode.entityResponseData.id,
       type: getEntityTypeSearchIndexMapping(toNode.type),
     }
   );

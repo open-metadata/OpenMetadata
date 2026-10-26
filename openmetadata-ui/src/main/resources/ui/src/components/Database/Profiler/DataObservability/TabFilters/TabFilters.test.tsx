@@ -255,8 +255,7 @@ jest.mock('../../../../../hoc/LimitWrapper', () => {
 
 const renderComponent = () => {
   return render(
-    <MemoryRouter
-      future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+    <MemoryRouter>
       <TabFilters />
     </MemoryRouter>
   );

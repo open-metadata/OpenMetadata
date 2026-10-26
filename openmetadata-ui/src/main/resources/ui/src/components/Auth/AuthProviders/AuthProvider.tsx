@@ -977,8 +977,8 @@ export const AuthProvider = ({
     // fresh token, and fetching with a token left over from before a silent
     // re-authentication would 401 into a refresh that races it.
     if (
-      ![ROUTES.AUTH_CALLBACK, ROUTES.CALLBACK, ROUTES.SILENT_CALLBACK].includes(
-        location.pathname
+      ![ROUTES.AUTH_CALLBACK, ROUTES.CALLBACK, ROUTES.SILENT_CALLBACK].some(
+        (route) => route === location.pathname
       )
     ) {
       // Fire-and-forget: `getLoggedInUserDetails` now re-throws a

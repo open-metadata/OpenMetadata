@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  FieldErrorProps,
-  RJSFSchema,
-  TemplatesType,
-  WidgetProps,
-} from '@rjsf/utils';
+import { FieldErrorProps, WidgetProps } from '@rjsf/utils';
 import { render, screen } from '@testing-library/react';
 import ManifestJsonWidget, { validateManifestJson } from './ManifestJsonWidget';
 
@@ -65,9 +60,7 @@ const baseProps: Partial<WidgetProps> = {
   label: 'Default Manifest',
   schema: {},
   disabled: false,
-  options: {} as Partial<
-    Omit<TemplatesType<unknown, RJSFSchema, unknown>, 'ButtonTemplates'>
-  >,
+  options: {},
   registry: {} as FieldErrorProps['registry'],
 };
 

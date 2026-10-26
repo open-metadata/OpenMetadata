@@ -2105,6 +2105,12 @@ describe('AlertAi form field components', () => {
 
     it("keeps a legacy-shaped alert's rules listed when its sources change", () => {
       const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
+      const formValue: ModifiedCreateEventSubscription = {
+        ...seeded,
+        domains: seeded.domains?.map(
+          (domain) => domain.fullyQualifiedName ?? domain.id
+        ),
+      };
       const onChange = jest.fn();
 
       render(
@@ -2113,7 +2119,7 @@ describe('AlertAi form field components', () => {
           shouldShowFiltersSection
           alert={seeded}
           selection={selectionOf()}
-          value={seeded}
+          value={formValue}
           onChange={onChange}
         />
       );
@@ -2122,7 +2128,7 @@ describe('AlertAi form field components', () => {
         target: { value: 'pipeline' },
       });
 
-      expect(applyLastUpdater(onChange, seeded)).toEqual(
+      expect(applyLastUpdater(onChange, formValue)).toEqual(
         expect.objectContaining({
           input: seeded.input,
           resources: ['table', 'pipeline'],

@@ -872,7 +872,7 @@ const TableDetailsPageV1: React.FC = () => {
         const activeCol = findColumnByEntityLink(
           prev.fullyQualifiedName ?? '',
           prev.columns,
-          suggestion.entityLink
+          suggestion.entityLink ?? ''
         );
 
         if (!activeCol) {

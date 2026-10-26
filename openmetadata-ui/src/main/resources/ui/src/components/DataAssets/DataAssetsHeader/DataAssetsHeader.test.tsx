@@ -623,12 +623,16 @@ describe('DataAssetsHeader component', () => {
       entity: {
         id: 'current-entity',
         type: EntityType.TABLE,
+        columns: [],
+        entityType: EntityType.TABLE,
         fullyQualifiedName: 'fullyQualifiedName',
       },
       nodes: [
         {
           id: 'upstream-entity',
           type: EntityType.TABLE,
+          columns: [],
+          entityType: EntityType.TABLE,
           fullyQualifiedName: 'upstreamFullyQualifiedName',
         },
       ],

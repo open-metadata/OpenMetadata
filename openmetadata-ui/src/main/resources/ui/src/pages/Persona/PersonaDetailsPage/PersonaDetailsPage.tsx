@@ -123,7 +123,7 @@ export const PersonaDetailsPage = () => {
 
       if (category) {
         breadcrumbList.push({
-          name: category.label,
+          name: category.label ?? '',
           url: '',
         });
       }
