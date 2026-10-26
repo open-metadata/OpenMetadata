@@ -12,8 +12,8 @@
  */
 
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
-import { ReactNode } from 'react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { Profiler, ReactNode } from 'react';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
@@ -31,10 +31,69 @@ import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { showInfoToast } from '../../utils/ToastUtils';
 import OntologyExplorerPage from './OntologyExplorerPage';
 
+let mockUseRealDrawer = false;
+
+jest.mock(
+  '../../components/governance/ontology/OntologyTasksDrawer/OntologyTasksDrawer',
+  () => ({
+    __esModule: true,
+    default: ({
+      taskId,
+      onTaskChange,
+      children,
+    }: {
+      taskId?: string;
+      onTaskChange: (id?: string) => void;
+      children: (parts: {
+        tasksAction: ReactNode;
+        banner: ReactNode;
+      }) => ReactNode;
+    }) => {
+      if (mockUseRealDrawer) {
+        const Drawer = jest.requireActual<
+          typeof import('../../components/governance/ontology/OntologyTasksDrawer/OntologyTasksDrawer')
+        >(
+          '../../components/governance/ontology/OntologyTasksDrawer/OntologyTasksDrawer'
+        ).default;
+
+        return (
+          <Drawer taskId={taskId} onTaskChange={onTaskChange}>
+            {children}
+          </Drawer>
+        );
+      }
+
+      return (
+        <>
+          {children({
+            tasksAction: (
+              <button
+                data-testid="ontology-tasks-trigger"
+                onClick={() => onTaskChange('review-uuid')}>
+                Tasks
+              </button>
+            ),
+            banner: null,
+          })}
+          {taskId && (
+            <section data-testid="ontology-review-drawer">
+              <span>{taskId}</span>
+              <button onClick={() => onTaskChange(undefined)}>
+                Close task
+              </button>
+            </section>
+          )}
+        </>
+      );
+    },
+  })
+);
+
 const render = renderWithQueryClient;
 
 let mockSearchParams = new URLSearchParams('scope=glossary:all');
 let mockUseRealRouter = false;
+const mockDialogCommit = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -44,12 +103,20 @@ jest.mock('react-router-dom', () => ({
       : jest.requireActual('react').useState(mockSearchParams),
 }));
 
+jest.mock('../../rest/tasksAPI', () => ({
+  ...jest.requireActual('../../rest/tasksAPI'),
+  getTaskById: jest.fn(() => new Promise(() => {})),
+}));
+
 jest.mock('../../rest/ontologyAPI', () => ({
   ...jest.requireActual('../../rest/ontologyAPI'),
   getOntologyConceptBindings: jest
     .fn()
     .mockResolvedValue({ revision: 0, assets: [] }),
   getOntology: jest.fn(),
+  getOntologyReleaseReviews: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: { total: 0 } }),
   getOntologyWorkingDiff: jest.fn(),
   listOntologyAxioms: jest.fn(),
   listOntologies: jest.fn(),
@@ -290,7 +357,13 @@ jest.mock(
   '../../components/governance/ontology/OntologyReleasePanel/OntologyReleasePanel',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="ontology-release-panel" />,
+    default: ({ onOpenTask }: { onOpenTask?: (taskId: string) => void }) => (
+      <div data-testid="ontology-release-panel">
+        <button onClick={() => onOpenTask?.('review-uuid')}>
+          Open review task
+        </button>
+      </div>
+    ),
   })
 );
 
@@ -317,6 +390,7 @@ jest.mock(
 describe('OntologyExplorerPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseRealDrawer = false;
     (useEntityPermissions as jest.Mock).mockReturnValue({ canEditAll: true });
     mockUseRealRouter = false;
     mockSearchParams = new URLSearchParams('scope=glossary:all');
@@ -349,9 +423,28 @@ describe('OntologyExplorerPage', () => {
     namespace: 'urn:NativeSales:',
   };
 
-  const Location = () => (
-    <output data-testid="location">{useLocation().search}</output>
-  );
+  const Location = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    return (
+      <>
+        <output data-testid="location">{location.search}</output>
+        <button data-testid="history-back" onClick={() => navigate(-1)}>
+          History back
+        </button>
+        <button data-testid="history-forward" onClick={() => navigate(1)}>
+          History forward
+        </button>
+        <button
+          onClick={() =>
+            navigate('?ontology=native-sales&source=review&task=review-uuid')
+          }>
+          Task route
+        </button>
+      </>
+    );
+  };
 
   const renderNativeStudio = (search: string) => {
     (usePermissionProvider as jest.Mock).mockReturnValue({
@@ -410,11 +503,136 @@ describe('OntologyExplorerPage', () => {
 
     return renderWithQueryClient(
       <MemoryRouter initialEntries={[`/${search}`]}>
-        <OntologyExplorerPage />
+        <Profiler
+          id="studio"
+          onRender={() =>
+            mockDialogCommit(
+              screen.queryAllByRole('dialog', { hidden: true }).length
+            )
+          }>
+          <OntologyExplorerPage />
+        </Profiler>
         <Location />
       </MemoryRouter>
     );
   };
+
+  it.each(['back', 'forward'] as const)(
+    'hands publication to the task drawer on history %s without reopening publication',
+    async (direction) => {
+      mockUseRealDrawer = true;
+      renderNativeStudio(
+        direction === 'back'
+          ? '?ontology=native-sales&source=review&task=review-uuid'
+          : '?ontology=native-sales&source=review'
+      );
+
+      if (direction === 'back') {
+        fireEvent.click(await screen.findByTestId('ontology-tasks-close'));
+      } else {
+        fireEvent.click(screen.getByRole('button', { name: 'Task route' }));
+        await screen.findByTestId('ontology-tasks-close');
+        fireEvent.click(screen.getByTestId('history-back'));
+      }
+
+      expect(screen.getByTestId('location')).not.toHaveTextContent('task=');
+
+      fireEvent.click(
+        await screen.findByTestId('ontology-publication-trigger')
+      );
+
+      expect(
+        await screen.findByTestId('ontology-publication-modal')
+      ).toBeInTheDocument();
+      expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1);
+
+      fireEvent.click(screen.getByTestId('history-' + direction));
+
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'task=review-uuid'
+      );
+      expect(
+        await screen.findByTestId('ontology-tasks-close')
+      ).toBeInTheDocument();
+      expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1);
+      expect(mockDialogCommit.mock.calls.every(([count]) => count <= 1)).toBe(
+        true
+      );
+      expect(
+        screen.queryByTestId('ontology-publication-modal')
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('ontology-tasks-close'));
+
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'ontology=native-sales'
+      );
+      expect(screen.getByTestId('location')).toHaveTextContent('source=review');
+      expect(screen.getByTestId('location')).not.toHaveTextContent('task=');
+      expect(
+        screen.queryByTestId('ontology-publication-modal')
+      ).not.toBeInTheDocument();
+      expect(screen.queryAllByRole('dialog', { hidden: true })).toHaveLength(0);
+    }
+  );
+
+  it.each([
+    '?ontology=native-sales&source=review',
+    '?source=review',
+    '?ontology=native-sales&source=review&task=',
+  ])(
+    'hands publication task UUIDs to the drawer and preserves query context for %s',
+    async (search) => {
+      mockUseRealRouter = true;
+      renderNativeStudio(search);
+      fireEvent.click(
+        await screen.findByTestId('ontology-publication-trigger')
+      );
+      if (!search.includes('ontology=')) {
+        fireEvent.click(
+          screen.getByTestId('ontology-publication-select-native-sales')
+        );
+      }
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Open review task' })
+      );
+
+      expect(
+        screen.queryByTestId('ontology-publication-modal')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('ontology-review-drawer')).toHaveTextContent(
+        'review-uuid'
+      );
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'task=review-uuid'
+      );
+      expect(screen.getByTestId('location')).toHaveTextContent('source=review');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Close task' }));
+
+      expect(screen.getByTestId('location')).not.toHaveTextContent('task=');
+      expect(screen.getByTestId('location')).toHaveTextContent('source=review');
+    }
+  );
+
+  it('keeps UUID task selection while graph scope changes', async () => {
+    mockUseRealRouter = true;
+    renderNativeStudio('?ontology=native-sales&task=review-uuid&source=review');
+
+    expect(
+      await screen.findByTestId('ontology-review-drawer')
+    ).toHaveTextContent('review-uuid');
+
+    fireEvent.click(await screen.findByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(screen.getByTestId('ontology-scope-all-ontologies'));
+
+    expect(screen.getByTestId('ontology-review-drawer')).toHaveTextContent(
+      'review-uuid'
+    );
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      'task=review-uuid'
+    );
+  });
 
   it('shows the empty native catalog without glossary controls', async () => {
     mockSearchParams = new URLSearchParams();

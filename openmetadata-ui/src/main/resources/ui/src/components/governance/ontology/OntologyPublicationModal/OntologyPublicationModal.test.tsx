@@ -43,6 +43,36 @@ const ontology: Ontology = {
 };
 
 describe('OntologyPublicationModal', () => {
+  it('passes the Studio task callback through both publication owner modes', () => {
+    const onOpenTask = jest.fn();
+    const { rerender } = render(
+      <OntologyPublicationModal
+        canEdit
+        ontology={ontology}
+        onClose={jest.fn()}
+        onOpenTask={onOpenTask}
+      />
+    );
+
+    expect(mockReleasePanel).toHaveBeenLastCalledWith(
+      expect.objectContaining({ onOpenTask })
+    );
+
+    rerender(
+      <OntologyPublicationModal
+        canEdit
+        initialOntology={ontology}
+        ontologies={[ontology]}
+        onClose={jest.fn()}
+        onOpenTask={onOpenTask}
+      />
+    );
+
+    expect(mockReleasePanel).toHaveBeenLastCalledWith(
+      expect.objectContaining({ onOpenTask })
+    );
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     const permissions = {

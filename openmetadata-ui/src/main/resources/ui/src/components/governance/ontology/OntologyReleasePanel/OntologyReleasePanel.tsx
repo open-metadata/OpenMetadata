@@ -51,12 +51,14 @@ interface OntologyReleasePanelProps {
   ontology: Ontology;
   canEdit: boolean;
   view: 'changes' | 'releases';
+  onOpenTask?: (taskId: string) => void;
 }
 
 const OntologyReleasePanel = ({
   ontology,
   canEdit,
   view,
+  onOpenTask,
 }: OntologyReleasePanelProps) => {
   const { t } = useTranslation();
   const [editor, setEditor] = useState<{
@@ -316,7 +318,24 @@ const OntologyReleasePanel = ({
             </Badge>
             <Typography size="text-sm">{candidateLabel()}</Typography>
             {'task' in currentStage && currentStage.task && (
-              <Link to={currentStage.task.href}>{currentStage.task.label}</Link>
+              <>
+                {onOpenTask ? (
+                  <Button
+                    color="link-color"
+                    size="sm"
+                    onPress={() => {
+                      if (currentStage.task) {
+                        onOpenTask(currentStage.task.id);
+                      }
+                    }}>
+                    {t('label.open-task')} · {currentStage.task.label}
+                  </Button>
+                ) : (
+                  <Link to={currentStage.task.href}>
+                    {currentStage.task.label}
+                  </Link>
+                )}
+              </>
             )}
           </Box>
           {renderPublicationButtons()}

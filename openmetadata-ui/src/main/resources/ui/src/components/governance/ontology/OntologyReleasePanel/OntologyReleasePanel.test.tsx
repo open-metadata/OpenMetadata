@@ -988,6 +988,36 @@ describe('OntologyReleasePanel', () => {
     }
   );
 
+  it('opens the native task UUID through the Studio callback', async () => {
+    currentRelease = {
+      ...release,
+      entityStatus: EntityStatus.InReview,
+      reviewTask: 'native-task-uuid',
+    };
+    currentState = { ...initialState, lastReleaseRevision: 1 };
+    const onOpenTask = jest.fn();
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <OntologyReleasePanel
+            canEdit
+            ontology={ontology}
+            view="changes"
+            onOpenTask={onOpenTask}
+          />
+        </MemoryRouter>
+      );
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: /label.open-task/ })
+    );
+
+    expect(onOpenTask).toHaveBeenCalledWith('native-task-uuid');
+    expect(
+      screen.queryByRole('link', { name: 'TASK-00042' })
+    ).not.toBeInTheDocument();
+  });
+
   it('loads newest-first owner history with numeric cursors and release events', async () => {
     currentState = { ...currentState, lastReleaseRevision: 2 };
     currentRelease = { ...currentRelease, releaseRevision: 2 };

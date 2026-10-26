@@ -34,6 +34,7 @@ type PublicationTab = 'changes' | 'releases';
 type OntologyPublicationModalProps = {
   readonly canEdit: boolean;
   readonly onClose: () => void;
+  readonly onOpenTask?: (taskId: string) => void;
   readonly initialTab?: PublicationTab;
 } & (
   | {
@@ -57,6 +58,7 @@ const OntologyPublicationModal = ({
   initialOntology,
   initialTab = 'changes',
   onClose,
+  onOpenTask,
 }: OntologyPublicationModalProps) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<PublicationTab>(initialTab);
@@ -151,6 +153,7 @@ const OntologyPublicationModal = ({
                       key={owner.id}
                       ontology={owner}
                       view={activeTab}
+                      onOpenTask={onOpenTask}
                     />
                   </Tabs.Panel>
                 ) : (
