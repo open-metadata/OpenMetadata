@@ -21,8 +21,6 @@ form could own, so the form had to open in a drawer.
 - The contributed section (`getSparkAgentConfigComponent()`) receives the page's
   `PlatformSettingsPageProps` in the modal so it can navigate to those routes; on the classic
   settings page it gets none.
-- `SettingsFormLayout` takes an optional `contentClassName` so a form can set its column width;
-  the default stays `tw:max-w-240`.
 
 ## Consequences
 A downstream form gets the modal's header, breadcrumbs and pinned footer, and a deep link to it

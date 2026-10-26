@@ -87,7 +87,12 @@ test.describe(
 
       await clickIgnoringToasts(page.getByTestId('welcome-screen-tour-btn'));
 
-      await expect(page).toHaveURL(/\/tour/);
+      // /tour only starts the tour, which opens on Home with the welcome
+      // screen gone.
+      await expect(page.locator('.product-tour-helper')).toContainText(
+        'Topics to catch up on'
+      );
+      await expect(page.getByTestId('welcome-screen')).toHaveCount(0);
     });
 
     test('AI mode: shows on the home, opens every connector, and stays dismissed', async ({

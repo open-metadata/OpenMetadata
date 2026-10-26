@@ -965,7 +965,6 @@ export default [
       'src/**/*.mock.{ts,tsx}',
       'src/**/mocks/**/*.{ts,tsx}',
       'src/**/__mocks__/**/*.{ts,tsx}',
-      'src/constants/mockTourData.constants.ts',
     ],
     rules: {
       'openmetadata-i18n/no-duplicate-string': 'off',
@@ -990,17 +989,14 @@ export default [
   // production code paths. Test fixtures and mock data legitimately embed
   // sample http:// self-links (mirroring backend responses), localhost IPs, and
   // dummy credentials — exempt them, matching how SonarQube excludes test
-  // sources from security scanning. mockTourData is a 100%-mock guided-tour
-  // fixture whose sample links point at the local dev server (http://localhost),
-  // so it is exempt too; production constants files are NOT — their sample URLs
-  // were fixed to https and the rules stay enforced there.
+  // sources from security scanning. Production constants files are NOT exempt —
+  // their sample URLs were fixed to https and the rules stay enforced there.
   {
     files: [
       'src/**/*.test.{js,jsx,ts,tsx}',
       'src/**/*.mock.{ts,tsx}',
       'src/**/mocks/**/*.{ts,tsx}',
       'src/**/__mocks__/**/*.{ts,tsx}',
-      'src/constants/mockTourData.constants.ts',
     ],
     rules: {
       'sonarjs/no-clear-text-protocols': 'off',
