@@ -12,11 +12,11 @@
  */
 import classNames from 'classnames';
 import {
-    DEFAULT_HEADER_LAYOUT,
-    HEADER_ITEM_CLASS_NAME,
-    LIST_HEADER_ITEM_CLASS_NAME,
-    OPEN_THREAD_FOOTER_VISIBILITY,
-    PANEL_HEADER_LAYOUT
+  DEFAULT_HEADER_LAYOUT,
+  HEADER_ITEM_CLASS_NAME,
+  LIST_HEADER_ITEM_CLASS_NAME,
+  OPEN_THREAD_FOOTER_VISIBILITY,
+  PANEL_HEADER_LAYOUT,
 } from './ActivityFeedcardNew.constants';
 
 // Shared across both card variants: the top-level Card wrapper always mixes
