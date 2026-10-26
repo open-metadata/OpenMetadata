@@ -2867,7 +2867,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /**
    * Entity types whose FQNs sit under this entity's FQN and change with it on a rename or move,
-   * including this entity's own type.
+   * including this entity's own type. See ADR:2026-10-26-tasks-follow-fqn-changes-from-store-update.
    */
   protected Set<String> getFqnSubtreeEntityTypes() {
     return Set.of(entityType);
