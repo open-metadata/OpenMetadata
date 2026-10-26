@@ -324,7 +324,7 @@ class CredentialVerifierTest {
     verifier(DEFAULTS);
     source.failReads();
 
-    assertUnavailable(ALICE, TOKEN_A);
+    assertEquals(2, assertUnavailable(ALICE, TOKEN_A).retryAfterSeconds());
     assertEquals(0, verifier.cachedSubjects());
 
     source.heal();

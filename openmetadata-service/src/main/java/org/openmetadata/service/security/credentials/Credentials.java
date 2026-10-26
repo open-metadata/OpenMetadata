@@ -91,7 +91,7 @@ public final class Credentials {
   public static void awaitPropagation() {
     CredentialVerifier verifier = installed;
     if (verifier != null) {
-      sleep(verifier.maxStaleness().plus(PROPAGATION_MARGIN));
+      sleep(verifier.maxStaleness().plus(PROPAGATION_MARGIN), verifier.retryAfterSeconds());
     }
   }
 
@@ -116,13 +116,15 @@ public final class Credentials {
     }
   }
 
-  private static void sleep(Duration bound) {
+  private static void sleep(Duration bound, long retryAfterSeconds) {
     try {
       Thread.sleep(bound);
     } catch (InterruptedException interrupted) {
       Thread.currentThread().interrupt();
       throw new CredentialUnavailableException(
-          "Interrupted before the revocation had propagated to every server", interrupted);
+          "Interrupted before the revocation had propagated to every server",
+          retryAfterSeconds,
+          interrupted);
     }
   }
 

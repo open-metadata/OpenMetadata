@@ -817,7 +817,7 @@ public final class CredentialVerifier implements Managed {
   private CredentialUnavailableException unavailable(
       UnavailableCause cause, String message, Throwable failure) {
     metrics.recordUnavailable(cause);
-    return new CredentialUnavailableException(message, failure);
+    return new CredentialUnavailableException(message, retryAfterSeconds(), failure);
   }
 
   private void recordEviction(

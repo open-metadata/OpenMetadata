@@ -21,12 +21,15 @@ package org.openmetadata.service.security.credentials;
  * never treat it as "valid" (fail closed).
  */
 public final class CredentialUnavailableException extends RuntimeException {
+  private final long retryAfterSeconds;
 
-  public CredentialUnavailableException(String message, Throwable cause) {
+  public CredentialUnavailableException(String message, long retryAfterSeconds, Throwable cause) {
     super(message, cause);
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 
-  public CredentialUnavailableException(String message) {
-    super(message);
+  /** Seconds a client should wait before it retries: the verifier's sweep interval, rounded up. */
+  public long retryAfterSeconds() {
+    return retryAfterSeconds;
   }
 }

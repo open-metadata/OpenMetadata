@@ -165,9 +165,11 @@ class CredentialsTest {
   void awaitPropagationRestoresTheInterruptFlag() {
     Thread.currentThread().interrupt();
 
-    assertThrows(CredentialUnavailableException.class, Credentials::awaitPropagation);
+    CredentialUnavailableException unfinished =
+        assertThrows(CredentialUnavailableException.class, Credentials::awaitPropagation);
 
     assertTrue(Thread.interrupted(), "the interrupt flag was restored");
+    assertEquals(2, unfinished.retryAfterSeconds());
   }
 
   @Test
