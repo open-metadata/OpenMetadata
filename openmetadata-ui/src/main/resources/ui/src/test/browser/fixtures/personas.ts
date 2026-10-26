@@ -34,6 +34,8 @@ export interface Persona {
   ifOwner?: Operation[];
   /** Allow rules with a `noOwner()` condition. */
   ifNoOwner?: Operation[];
+  /** Unconditional deny rules on every resource; a deny beats any allow. */
+  denied?: Operation[];
 }
 
 /**
@@ -189,6 +191,9 @@ const accessFor = (
 ) => {
   if (persona.user.isAdmin) {
     return 'allow';
+  }
+  if (persona.denied?.includes(operation)) {
+    return 'deny';
   }
   const unconditional = [
     ...persona.allowed,

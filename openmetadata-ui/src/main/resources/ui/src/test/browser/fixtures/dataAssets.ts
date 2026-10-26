@@ -20,6 +20,7 @@ import {
   APIEndpoint,
   DataTypeTopic as ApiFieldType,
 } from '../../../generated/entity/data/apiEndpoint';
+import { Chart, ChartType } from '../../../generated/entity/data/chart';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import {
@@ -101,6 +102,7 @@ export const makeStoredProcedure = (): StoredProcedure => ({
 export const makeDashboard = (): Dashboard => ({
   ...asset(3, 'pw_dashboard_service', 'pw_dashboard'),
   service: ref(301, 'dashboardService', 'pw_dashboard_service'),
+  project: 'pw_project',
   charts: [],
   dataModels: [],
 });
@@ -169,6 +171,7 @@ export const makeDashboardDataModel = (): DashboardDataModel => ({
   ...asset(9, 'pw_dashboard_service.model', 'pw_data_model'),
   service: ref(901, 'dashboardService', 'pw_dashboard_service'),
   dataModelType: DataModelType.SupersetDataModel,
+  project: 'pw_project',
   columns: [
     {
       name: 'order_id',
@@ -205,4 +208,11 @@ export const makeWorksheet = (): Worksheet => ({
   ...asset(14, 'pw_drive_service.pw_spreadsheet', 'pw_worksheet'),
   service: ref(1401, 'driveService', 'pw_drive_service'),
   spreadsheet: ref(1402, 'spreadsheet', 'pw_drive_service.pw_spreadsheet'),
+});
+
+export const makeChart = (): Chart => ({
+  ...asset(15, 'pw_dashboard_service', 'pw_chart'),
+  service: ref(1501, 'dashboardService', 'pw_dashboard_service'),
+  chartType: ChartType.Bar,
+  dashboards: [],
 });

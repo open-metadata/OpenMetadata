@@ -39,6 +39,7 @@ import {
 } from '../fixtures/entityPage';
 import {
   makeApiEndpoint,
+  makeChart,
   makeContainer,
   makeDashboard,
   makeDashboardDataModel,
@@ -156,7 +157,8 @@ export type EntityLabel =
   | 'Directory'
   | 'File'
   | 'Spreadsheet'
-  | 'Worksheet';
+  | 'Worksheet'
+  | 'Chart';
 
 /** How one details page is served: its URL, API endpoint and fixture. */
 export interface PageConfig {
@@ -381,6 +383,13 @@ const ENTITIES: EntityConfig[] = [
     make: makeWorksheet,
     serveExtras: () => undefined,
   },
+  {
+    label: 'Chart',
+    url: at('chart', makeChart().fullyQualifiedName),
+    endpoint: 'charts',
+    make: makeChart,
+    serveExtras: () => undefined,
+  },
 ];
 
 export const header = () => page.getByTestId('data-assets-header');
@@ -393,13 +402,18 @@ export const openOwnerPicker = async (tab: 'Users' | 'Teams') => {
   );
 };
 
-/** Replaces the owners with `users` through the picker, as a user would. */
 /** Every search the mounted page sent; see `mountEntityPage`. */
 let searches: URLSearchParams[] = [];
 
-export const setUserOwners = async (users: typeof USERS) => {
+/**
+ * Replaces the owners with `users` through the picker, as a user would; with
+ * `clear: false`, adds them to the owners already picked.
+ */
+export const setUserOwners = async (users: typeof USERS, clear = true) => {
   await openOwnerPicker('Users');
-  await userEvent.click(usersPanel().getByTestId('clear-all-button'));
+  if (clear) {
+    await userEvent.click(usersPanel().getByTestId('clear-all-button'));
+  }
   for (const user of users) {
     await userEvent.fill(
       page.getByTestId('owner-select-users-search-bar'),
@@ -1225,6 +1239,83 @@ export const followThenUnfollow = async (
 
   await expect.poll(() => server.unfollowed).toEqual([userId]);
   await expect.element(follow).toHaveTextContent(/^Follow/);
+};
+
+/** Where a page goes after a hard delete, and what that page loads. */
+export interface DeleteTarget {
+  path: string;
+  serve: () => void;
+}
+
+const manageMenu = () => page.getByTestId('manage-dropdown-list-container');
+
+const openDeleteModal = async () => {
+  await userEvent.click(page.getByTestId('manage-button'));
+  await userEvent.click(manageMenu().getByTestId('delete-button'));
+
+  await expect.element(page.getByTestId('delete-modal')).toBeVisible();
+};
+
+/**
+ * Soft deletes the entity and, after a reload, finds it marked deleted with
+ * only restore and delete left in the manage menu (plus `whileDeleted`'s own
+ * checks); restores it; then hard deletes it and lands on `target`. Asserted
+ * up to the DELETE the page sends: that the server removes the entity (and
+ * cascades) is the server's job.
+ */
+export const softDeleteRestoreHardDelete = async (
+  entity: EntityPage,
+  target: DeleteTarget,
+  whileDeleted: () => Promise<void> = async () => undefined
+) => {
+  const { server } = entity;
+
+  await openDeleteModal();
+  await userEvent.click(page.getByTestId('confirm-button'));
+
+  await expect
+    .poll(() => server.deletes)
+    .toEqual(['?hardDelete=false&recursive=true']);
+
+  await entity.reload();
+
+  await expect
+    .element(page.getByTestId('deleted-badge'))
+    .toHaveTextContent('Deleted');
+
+  await whileDeleted();
+  await userEvent.click(page.getByTestId('manage-button'));
+
+  await expect
+    .element(manageMenu().getByTestId('announcement-button'))
+    .not.toBeInTheDocument();
+  await expect
+    .element(manageMenu().getByTestId('rename-button'))
+    .not.toBeInTheDocument();
+  await expect.element(manageMenu().getByTestId('delete-button')).toBeVisible();
+
+  await userEvent.click(manageMenu().getByTestId('restore-button'));
+  await userEvent.click(page.getByRole('button', { name: 'Restore' }));
+
+  await expect.poll(() => server.current().deleted).toBe(false);
+  await expect
+    .element(page.getByTestId('deleted-badge'))
+    .not.toBeInTheDocument();
+
+  target.serve();
+  await openDeleteModal();
+  await userEvent.click(page.getByTestId('hard-delete'));
+  await userEvent.click(page.getByTestId('confirm-button'));
+
+  await expect
+    .poll(() => server.deletes)
+    .toEqual([
+      '?hardDelete=false&recursive=true',
+      '?hardDelete=true&recursive=true',
+    ]);
+  await expect
+    .element(page.getByTestId('__location'))
+    .toHaveTextContent(target.path);
 };
 
 /** The first child's row on the children tab, keyed as the spec keys it. */

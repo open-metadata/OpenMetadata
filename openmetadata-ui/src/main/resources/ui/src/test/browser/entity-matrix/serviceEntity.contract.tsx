@@ -30,6 +30,7 @@ import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { serveAnnouncements } from '../fixtures/announcements';
+import { serveEntity } from '../fixtures/entityPage';
 import { serveEmptyLists } from '../fixtures/hierarchy';
 import { ADMIN } from '../fixtures/personas';
 import {
@@ -52,6 +53,7 @@ import {
   addReplaceRemoveUserOwners,
   addUpdateRemoveGlossaryTerms,
   addUpdateRemoveTags,
+  DeleteTarget,
   domainWithDataProducts,
   EntityLike,
   EntityPage,
@@ -61,6 +63,7 @@ import {
   scheduledAnnouncement,
   setReplaceClearCertification,
   setReplaceClearTier,
+  softDeleteRestoreHardDelete,
   tagFqns,
   updateDescription,
   updateDisplayName,
@@ -226,8 +229,30 @@ const SERVICES: ServiceConfig[] = [
   },
 ];
 
+const serviceConfigOf = (label: ServiceLabel) =>
+  SERVICES.find((s) => s.label === label) as ServiceConfig;
+
+/**
+ * `label`'s details page as the page a data asset leaves for once it is hard
+ * deleted: the entity at any FQN plus what the page lists. `path` is what the
+ * URL must contain (the service's own URL by default).
+ */
+export const landingOn = (
+  label: ServiceLabel,
+  path = serviceConfigOf(label).url
+): DeleteTarget => {
+  const config = serviceConfigOf(label);
+
+  return {
+    path,
+    serve: () => {
+      config.serveExtras(serveEntity(config.endpoint, config.make()));
+    },
+  };
+};
+
 export const describeServiceEntityFlows = (label: ServiceLabel) => {
-  const config = SERVICES.find((s) => s.label === label) as ServiceConfig;
+  const config = serviceConfigOf(label);
 
   describe(`Admin edits a ${label}`, { timeout: 60_000 }, () => {
     let entity: EntityPage;
@@ -285,61 +310,11 @@ export const describeServiceEntityFlows = (label: ServiceLabel) => {
 
     test('display name: update', () => updateDisplayName(server()));
 
-    test('delete: soft delete, restore, hard delete', async () => {
-      const menu = () => page.getByTestId('manage-dropdown-list-container');
-      const openDelete = async () => {
-        await userEvent.click(page.getByTestId('manage-button'));
-        await userEvent.click(menu().getByTestId('delete-button'));
-
-        await expect.element(page.getByTestId('delete-modal')).toBeVisible();
-      };
-
-      await openDelete();
-      await userEvent.click(page.getByTestId('confirm-button'));
-
-      await expect
-        .poll(() => server().deletes)
-        .toEqual(['?hardDelete=false&recursive=true']);
-
-      await entity.reload();
-
-      await expect
-        .element(page.getByTestId('deleted-badge'))
-        .toHaveTextContent('Deleted');
-
-      await userEvent.click(page.getByTestId('manage-button'));
-
-      await expect
-        .element(menu().getByTestId('announcement-button'))
-        .not.toBeInTheDocument();
-      await expect
-        .element(menu().getByTestId('rename-button'))
-        .not.toBeInTheDocument();
-      await expect.element(menu().getByTestId('delete-button')).toBeVisible();
-
-      await userEvent.click(menu().getByTestId('restore-button'));
-      await userEvent.click(page.getByRole('button', { name: 'Restore' }));
-
-      await expect.poll(() => server().current().deleted).toBe(false);
-      await expect
-        .element(page.getByTestId('deleted-badge'))
-        .not.toBeInTheDocument();
-
-      config.serveParent();
-      await openDelete();
-      await userEvent.click(page.getByTestId('hard-delete'));
-      await userEvent.click(page.getByTestId('confirm-button'));
-
-      await expect
-        .poll(() => server().deletes)
-        .toEqual([
-          '?hardDelete=false&recursive=true',
-          '?hardDelete=true&recursive=true',
-        ]);
-      await expect
-        .element(page.getByTestId('__location'))
-        .toHaveTextContent(config.parentPath);
-    });
+    test('delete: soft delete, restore, hard delete', () =>
+      softDeleteRestoreHardDelete(entity, {
+        path: config.parentPath,
+        serve: config.serveParent,
+      }));
 
     test.runIf(config.searchPlaceholder)(
       'children search placeholder',
