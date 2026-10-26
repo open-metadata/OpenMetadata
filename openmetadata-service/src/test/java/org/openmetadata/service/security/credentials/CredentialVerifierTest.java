@@ -33,6 +33,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -57,6 +58,7 @@ class CredentialVerifierTest {
       CredentialVerificationConfig.defaults();
   private static final long SECOND = TimeUnit.SECONDS.toNanos(1);
   private static final long MILLISECOND = TimeUnit.MILLISECONDS.toNanos(1);
+  private static final long MINUTE = TimeUnit.MINUTES.toNanos(1);
   private static final long MAX_STALENESS_NANOS = 5 * SECOND;
   private static final long DEEP_VERIFY_INTERVAL_NANOS = 10 * TimeUnit.MINUTES.toNanos(1);
   private static final String ALICE = "alice";
@@ -398,6 +400,35 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void aReadWhosePoolThreadCannotBeCreatedLeavesNothingForLaterChecksToJoin() {
+    source.withPats(ALICE, TOKEN_A);
+    AtomicBoolean failNextThread = new AtomicBoolean(true);
+    ThreadFactory threadsThatFailOnce =
+        task -> {
+          if (failNextThread.compareAndSet(true, false)) {
+            throw new OutOfMemoryError("unable to create native thread: possibly out of memory");
+          }
+          return Thread.ofPlatform().daemon().unstarted(task);
+        };
+    verifier =
+        new CredentialVerifier(
+            loadTimeoutOf(Duration.seconds(1)),
+            source,
+            ticker,
+            new CredentialMetrics(registry),
+            List.of(),
+            threadsThatFailOnce);
+
+    assertThrows(OutOfMemoryError.class, () -> verifier.require(stored(ALICE), TOKEN_A, REJECTED));
+    ticker.advanceNanos(5 * MINUTE);
+    assertAccepted(ALICE, TOKEN_A);
+    ticker.advanceNanos(5 * MINUTE);
+    assertAccepted(ALICE, TOKEN_A);
+
+    assertEquals(2, source.fullReadsOf(ALICE));
+  }
+
+  @Test
   void aCheckThatJoinsAnOldReadLackingItsTokenReadsAgainBeforeAnswering() throws Exception {
     source.withPats(ALICE, TOKEN_A);
     verifier(loadTimeoutOf(Duration.seconds(4)));
@@ -685,6 +716,42 @@ class CredentialVerifierTest {
 
     assertEquals(1.0, counter("om.credential.reads", "reason", "refresh", "outcome", "error"));
     assertAccepted(ALICE, TOKEN_A);
+  }
+
+  @Test
+  void aRefreshThatFailsAfterRegisteringLeavesNothingForLaterChecksToJoin() throws Exception {
+    source.withPats(ALICE, TOKEN_A);
+    AtomicReference<Thread> refresher = new AtomicReference<>();
+    Ticker failingOnTheRefresher =
+        () -> {
+          if (Thread.currentThread() == refresher.get()) {
+            throw new OutOfMemoryError("injected while the refresh read is stamped");
+          }
+          return ticker.read();
+        };
+    verifier =
+        new CredentialVerifier(
+            loadTimeoutOf(Duration.seconds(1)),
+            source,
+            failingOnTheRefresher,
+            new CredentialMetrics(registry),
+            List.of());
+    source.blockNextRead();
+    RunningCheck first = startCheck(ALICE, TOKEN_A);
+    source.awaitReadStarted();
+
+    Future<?> refresh =
+        threads.submit(
+            () -> {
+              refresher.set(Thread.currentThread());
+              verifier.refreshNow(subject(ALICE));
+            });
+    await().atMost(10, TimeUnit.SECONDS).until(refresh::isDone);
+    source.releaseReads();
+    first.result();
+
+    assertAccepted(ALICE, TOKEN_A);
+    assertEquals(2, source.fullReads());
   }
 
   @Test

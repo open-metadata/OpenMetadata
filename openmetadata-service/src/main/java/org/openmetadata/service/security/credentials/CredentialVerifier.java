@@ -38,6 +38,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -200,13 +201,23 @@ public final class CredentialVerifier implements Managed {
       Ticker ticker,
       CredentialMetrics metrics,
       List<RevocationListener> revocationListeners) {
+    this(config, source, ticker, metrics, revocationListeners, CredentialVerifier::readThread);
+  }
+
+  CredentialVerifier(
+      CredentialVerificationConfig config,
+      CredentialSource source,
+      Ticker ticker,
+      CredentialMetrics metrics,
+      List<RevocationListener> revocationListeners,
+      ThreadFactory readThreads) {
     this.config = config;
     this.source = source;
     this.ticker = ticker;
     this.metrics = metrics;
     this.policy = config.policy();
     this.revocationListeners = List.copyOf(revocationListeners);
-    this.requestReads = readPool(config.maxConcurrentRequestReads());
+    this.requestReads = readPool(config.maxConcurrentRequestReads(), readThreads);
     this.entries =
         Caffeine.newBuilder()
             .ticker(ticker)
@@ -390,14 +401,21 @@ public final class CredentialVerifier implements Managed {
    * missed may have installed its entry and left the registry between this check's lookup and its
    * registration; that decision keeps the new-token floor, since it is the same decision at a later
    * instant. A read is stamped after it is registered, so a read registered after some instant is
-   * stamped after it too, and before it waits for a pool slot.
+   * stamped after it too, and before it waits for a pool slot. A throwable before the read reaches
+   * the pool, such as a pool thread that cannot be created, fails the registration and then
+   * propagates, so no later check joins a read that never runs.
    */
   private InFlightRead joinOrStart(
       CredentialSubject subject, TokenDigest digest, ReadReason reason) {
     InFlightRead mine = new InFlightRead();
     InFlightRead running = inFlight.putIfAbsent(subject, mine);
     if (running == null) {
-      readUnlessCached(subject, mine, digest, reason);
+      try {
+        readUnlessCached(subject, mine, digest, reason);
+      } catch (Throwable failure) {
+        fail(subject, mine, failure);
+        throw failure;
+      }
     }
     return running == null ? mine : running;
   }
@@ -698,29 +716,35 @@ public final class CredentialVerifier implements Managed {
   /**
    * A refresh or nudge read. It registers for each subject, superseding the read in flight, and is
    * stamped after that, so a check that begins later joins it and no read registered earlier can
-   * create the subject's entry from then on.
+   * create the subject's entry from then on. A throwable of any kind fails every read it has
+   * registered, so no check is left joining a read that never runs.
    */
   private void rereadQuietly(List<CredentialSubject> subjects, ReadReason reason) {
     Map<CredentialSubject, InFlightRead> reads = new HashMap<>();
-    subjects.forEach(subject -> reads.put(subject, supersede(subject)));
     try {
+      subjects.forEach(subject -> supersede(subject, reads));
       readAndInstall(reads, ticker.read(), reason);
     } catch (RuntimeException failure) {
+      reads.forEach((subject, read) -> fail(subject, read, failure));
       LOG.warn(
           "Could not re-read {} credential subjects after a {}; the sweep converges within the bound",
           subjects.size(),
           reason,
           failure);
+    } catch (Error failure) {
+      reads.forEach((subject, read) -> fail(subject, read, failure));
+      throw failure;
     }
   }
 
-  private InFlightRead supersede(CredentialSubject subject) {
+  /** The read joins {@code reads} before it is registered, so a failure between strands nothing. */
+  private void supersede(CredentialSubject subject, Map<CredentialSubject, InFlightRead> reads) {
     InFlightRead mine = new InFlightRead();
+    reads.put(subject, mine);
     InFlightRead previous = inFlight.put(subject, mine);
     if (previous != null) {
       previous.superseded = true;
     }
-    return mine;
   }
 
   /**
@@ -828,7 +852,7 @@ public final class CredentialVerifier implements Managed {
    * holds QUEUED_READS_PER_THREAD reads per thread and sheds the rest, so a database that stops
    * answering cannot grow it without bound. Idle threads exit.
    */
-  private static ThreadPoolExecutor readPool(int threads) {
+  private static ThreadPoolExecutor readPool(int threads, ThreadFactory readThreads) {
     ThreadPoolExecutor pool =
         new ThreadPoolExecutor(
             threads,
@@ -836,9 +860,13 @@ public final class CredentialVerifier implements Managed {
             READ_THREAD_IDLE_SECONDS,
             TimeUnit.SECONDS,
             new ArrayBlockingQueue<>(threads * QUEUED_READS_PER_THREAD),
-            task -> daemon(task, READ_THREAD_NAME_PREFIX + READ_THREADS.incrementAndGet()));
+            readThreads);
     pool.allowCoreThreadTimeOut(true);
     return pool;
+  }
+
+  private static Thread readThread(Runnable task) {
+    return daemon(task, READ_THREAD_NAME_PREFIX + READ_THREADS.incrementAndGet());
   }
 
   private static Thread daemon(Runnable task, String name) {
