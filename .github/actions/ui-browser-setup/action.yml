@@ -20,7 +20,20 @@ runs:
       shell: bash
       working-directory: openmetadata-ui/src/main/resources/ui
       run: yarn install --frozen-lockfile
+    # Chromium is cached per Playwright version; the runner image already has
+    # headless Chromium's system libraries, so no `--with-deps` (its apt fetch
+    # from a slow mirror once cost a run ~10 minutes).
+    - name: Playwright version
+      id: playwright
+      shell: bash
+      working-directory: openmetadata-ui/src/main/resources/ui
+      run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+    - name: Cache Chromium
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: ms-playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
     - name: Install Chromium
       shell: bash
       working-directory: openmetadata-ui/src/main/resources/ui
-      run: npx playwright install --with-deps chromium
+      run: npx playwright install chromium
