@@ -385,6 +385,41 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void anErrorWhileAWithdrawnReadIsRecordedStillWithdrawsItsRegistration() throws Exception {
+    source.withPats(ALICE, TOKEN_A).withPats(BOB, TOKEN_B);
+    AtomicReference<Thread> armed = new AtomicReference<>();
+    Ticker failingOnceOnTheArmedThread =
+        () -> {
+          if (Thread.currentThread() == armed.get()) {
+            armed.set(null);
+            throw new OutOfMemoryError("injected while the withdrawn read is recorded");
+          }
+          return ticker.read();
+        };
+    verifier =
+        new CredentialVerifier(
+            new CredentialVerificationConfig(
+                null, null, null, Duration.seconds(1), 1, null, null, null, null),
+            source,
+            failingOnceOnTheArmedThread,
+            new CredentialMetrics(registry),
+            List.of());
+    source.blockNextRead();
+    RunningCheck holder = startCheck(ALICE, TOKEN_A);
+    source.awaitReadStarted();
+    RunningCheck waiter = startCheck(BOB, TOKEN_B);
+    awaitParked(waiter.thread());
+
+    armed.set(waiter.thread());
+    assertInstanceOf(OutOfMemoryError.class, waiter.result());
+    source.releaseReads();
+    holder.result();
+
+    assertAccepted(BOB, TOKEN_B);
+    assertEquals(1, source.fullReadsOf(BOB));
+  }
+
+  @Test
   void aBlockedReadAnswersCannotConfirmWithinLoadTimeoutAndStartsNoSecondRead() throws Exception {
     source.withPats(ALICE, TOKEN_A).withPats(BOB, TOKEN_B);
     verifier(

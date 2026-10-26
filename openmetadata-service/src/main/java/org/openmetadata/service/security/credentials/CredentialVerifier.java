@@ -158,9 +158,12 @@ public final class CredentialVerifier implements Managed {
      * subject backs off as after any read that produced no record.
      */
     private void reject(RejectedExecutionException why) {
-      metrics.recordRead(reason, ReadOutcome.NO_PERMIT, ticker.read() - stampNanos);
-      backoff.recordCheckFailure(subject, stampNanos);
-      fail(subject, read, why);
+      try {
+        metrics.recordRead(reason, ReadOutcome.NO_PERMIT, ticker.read() - stampNanos);
+        backoff.recordCheckFailure(subject, stampNanos);
+      } finally {
+        fail(subject, read, why);
+      }
     }
   }
 
