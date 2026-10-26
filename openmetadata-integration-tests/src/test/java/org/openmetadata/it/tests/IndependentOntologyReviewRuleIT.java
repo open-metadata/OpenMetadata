@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,7 +35,10 @@ import org.openmetadata.schema.type.OntologyApprovalRule;
 import org.openmetadata.schema.type.OntologyReviewAssignee;
 import org.openmetadata.schema.type.OntologyReviewAssigneeStatus;
 import org.openmetadata.schema.type.OntologyState;
+import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.TaskReviewVote;
 import org.openmetadata.schema.type.TaskReviewVoteDecision;
@@ -46,6 +48,7 @@ import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.OntologyWorkflowDecision;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -61,6 +64,8 @@ public class IndependentOntologyReviewRuleIT extends BaseOntologyApprovalIT {
   private static final String LOOKS_RIGHT = "Looks right";
   private static final String RENAME_FUNDS_TRANSFER = "Rename Funds Transfer";
   private static final String RELEASE = "ontologyRelease";
+  private static final String REVIEW_SETUP_CHANGED =
+      "The ontology's reviewers or approval rule changed while this review was being requested; submit the review again";
 
   @Test
   void anyReviewerDecidesOnTheFirstApproval(TestNamespace ns) {
@@ -269,32 +274,45 @@ public class IndependentOntologyReviewRuleIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void assignedReviewsRemainVisibleBeyondTheFirstScanBatch(TestNamespace ns) {
-    Ontology ontology = reviewedOntology(ns, OntologyApprovalRule.AllReviewers, user1(), user2());
+  void aRuleChangedAfterTheRequestWasPreparedRefusesToStartTheReview(TestNamespace ns) {
+    Ontology ontology = reviewedOntology(ns, OntologyApprovalRule.AnyReviewer, user1(), user2());
     OntologyRelease release = capture(ontology);
-    submit(ns, RELEASE, release.getFullyQualifiedName());
-    var releases = Entity.getCollectionDAO().ontologyReleaseDAO();
-    List<UUID> fillerIds = new ArrayList<>();
-    try {
-      for (int index = 0; index < 1001; index++) {
-        OntologyRelease filler =
-            JsonUtils.deepCopy(release, OntologyRelease.class)
-                .withId(UUID.randomUUID())
-                .withName("scan" + index)
-                .withFullyQualifiedName(ontology.getFullyQualifiedName() + ".scan" + index)
-                .withReleaseRevision(1000L + index)
-                .withReviewTask(null)
-                .withEntityStatus(EntityStatus.IN_REVIEW)
-                .withUpdatedAt(System.currentTimeMillis() + 1000);
-        releases.insert(filler, filler.getFullyQualifiedName());
-        fillerIds.add(filler.getId());
-      }
-      assertEquals(1, listed(SdkClients.user1Client(), "assigned", release));
-      assertEquals(1, listed(SdkClients.user1Client(), "pending", release));
-      assertEquals(1, listed(SdkClients.adminClient(), "created", release));
-    } finally {
-      releases.deleteByIds(fillerIds);
-    }
+    Task prepared = preparedReviewTask(ns, release);
+    assertEquals(OntologyApprovalRule.AnyReviewer, prepared.getOntologyReview().getApprovalRule());
+    updateRule(ontology, OntologyApprovalRule.AllReviewers);
+
+    TaskStateConflictException refused =
+        assertThrows(
+            TaskStateConflictException.class, () -> OntologyApprovalWorkflow.start(prepared));
+
+    assertEquals(REVIEW_SETUP_CHANGED, refused.getMessage());
+    assertEquals(EntityStatus.DRAFT, current(release).getEntityStatus());
+    assertNull(current(release).getReviewTask());
+    Task task = submit(ns, RELEASE, release.getFullyQualifiedName());
+    assertEquals(
+        OntologyApprovalRule.AllReviewers,
+        review(SdkClients.adminClient(), release).getApprovalRule());
+    vote(SdkClients.user1Client(), task, TaskResolutionType.Approved, LOOKS_RIGHT);
+    assertEquals(EntityStatus.IN_REVIEW, current(release).getEntityStatus());
+  }
+
+  @Test
+  void reviewersChangedAfterTheRequestWasPreparedRefuseToStartTheReview(TestNamespace ns) {
+    Ontology ontology = reviewedOntology(ns, OntologyApprovalRule.AllReviewers, user1());
+    OntologyRelease release = capture(ontology);
+    Task prepared = preparedReviewTask(ns, release);
+    assertEquals(Set.of(user1().getId()), ids(prepared.getReviewers()));
+    updateReviewers(ontology, List.of(user1(), user2()));
+
+    TaskStateConflictException refused =
+        assertThrows(
+            TaskStateConflictException.class, () -> OntologyApprovalWorkflow.start(prepared));
+
+    assertEquals(REVIEW_SETUP_CHANGED, refused.getMessage());
+    assertEquals(EntityStatus.DRAFT, current(release).getEntityStatus());
+    assertNull(current(release).getReviewTask());
+    Task task = submit(ns, RELEASE, release.getFullyQualifiedName());
+    assertEquals(Set.of(user1().getId(), user2().getId()), ids(task.getAssignees()));
   }
 
   @Test
@@ -330,6 +348,7 @@ public class IndependentOntologyReviewRuleIT extends BaseOntologyApprovalIT {
                     .withAssignee(user1())
                     .withDecision(TaskReviewVoteDecision.Approved)
                     .withComment(LOOKS_RIGHT)
+                    .withStage(snapshot.getWorkflowStageId())
                     .withTimestamp(firstVoteTime))));
 
     assertEquals(
@@ -420,6 +439,29 @@ public class IndependentOntologyReviewRuleIT extends BaseOntologyApprovalIT {
       assertEquals(0, listed(denied, "created", deniedRelease));
       assertEquals(0, reviews(denied, "created", null).path("paging").path("total").asInt());
     }
+  }
+
+  /**
+   * A review request as TaskRepository.prepare leaves it, before the create transaction stores it
+   * and starts the review: the point where the ontology can still change under the request.
+   */
+  private static Task preparedReviewTask(TestNamespace ns, OntologyRelease release) {
+    long now = System.currentTimeMillis();
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withName(ns.prefix("review"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.RequestApproval)
+            .withStatus(TaskEntityStatus.Open)
+            .withPriority(TaskPriority.Medium)
+            .withAbout(release.getEntityReference())
+            .withCreatedBy(SdkClients.adminClient().users().getByName("admin").getEntityReference())
+            .withCreatedAt(now)
+            .withUpdatedBy("admin")
+            .withUpdatedAt(now);
+    ((TaskRepository) Entity.getEntityRepository(Entity.TASK)).prepare(task, false);
+    return task;
   }
 
   private static Ontology reviewedOntology(

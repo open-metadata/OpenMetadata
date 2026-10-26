@@ -31,6 +31,7 @@ import {
   buildNativeRelationCatalog,
   buildNativeRelationGroups,
   CUSTOM_PREDICATE_NAMESPACE,
+  findNativeRelationTypeByLabel,
   getInverseRelationLabel,
   NativeRelationType,
   planNativeRelation,
@@ -566,15 +567,8 @@ describe('OntologyNativeRelation.utils', () => {
     });
   });
 
-  it('points the inverse back at the primary unless it already does', () => {
-    const governs = registryType(
-      'governs',
-      'governs',
-      `${CUSTOM_PREDICATE_NAMESPACE}governs`,
-      { category: Category.Custom }
-    );
-
-    expect(buildInverseBackLink(governs, governedBy)).toEqual([
+  it('points a new inverse back at the primary', () => {
+    expect(buildInverseBackLink(governedBy)).toEqual([
       {
         op: 'add',
         path: '/inverse',
@@ -586,18 +580,15 @@ describe('OntologyNativeRelation.utils', () => {
         },
       },
     ]);
-    expect(
-      buildInverseBackLink(
-        { ...governs, inverse: inverseRef('partOf') },
-        governedBy
-      )[0]
-    ).toEqual(expect.objectContaining({ op: 'replace', path: '/inverse' }));
-    expect(
-      buildInverseBackLink(
-        { ...governs, inverse: inverseRef('governedBy') },
-        governedBy
-      )
-    ).toEqual([]);
+  });
+
+  it('finds a catalog entry by label, ignoring case and surrounding spaces', () => {
+    const catalog = buildNativeRelationCatalog(model, types, labels);
+
+    expect(findNativeRelationTypeByLabel(catalog, '  governed BY ')?.id).toBe(
+      GOVERNED_BY
+    );
+    expect(findNativeRelationTypeByLabel(catalog, 'governs')).toBeUndefined();
   });
 
   it('reads an incoming relation through the inverse the ontology declares', () => {

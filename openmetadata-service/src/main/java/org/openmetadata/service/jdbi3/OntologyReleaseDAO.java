@@ -118,17 +118,6 @@ public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
       @BindUUID("ontologyId") UUID ontologyId, @Bind("entityStatus") String entityStatus);
 
   @SqlQuery(
-      "SELECT json FROM ontology_release_entity WHERE entityStatus = :entityStatus "
-          + "AND (deleted IS NULL OR deleted = false) "
-          + "AND (updatedAt < :afterUpdatedAt OR (updatedAt = :afterUpdatedAt AND id > :afterId)) "
-          + "ORDER BY updatedAt DESC, id LIMIT :limit")
-  List<String> listAllByStatus(
-      @Bind("entityStatus") String entityStatus,
-      @Bind("limit") int limit,
-      @Bind("afterUpdatedAt") long afterUpdatedAt,
-      @Bind("afterId") String afterId);
-
-  @SqlQuery(
       "SELECT COALESCE(MAX(releaseRevision), 0) FROM ontology_release_entity "
           + "WHERE ontologyId = :ontologyId AND sealedAt IS NOT NULL "
           + "AND (deleted IS NULL OR deleted = false)")

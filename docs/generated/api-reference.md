@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1983 endpoints** across 75 resource packages · 1973 carry a summary.
+**1985 endpoints** across 75 resource packages · 1975 carry a summary.
 
 ## (root)
 
@@ -1352,6 +1352,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/ontologies/name/{fqn}` | Delete an ontology definition by name |
 | `GET` | `/v1/ontologies/name/{fqn}` | Get an ontology by name |
 | `PUT` | `/v1/ontologies/restore` | Restore an ontology |
+| `GET` | `/v1/ontologies/reviews` | List the open release reviews the calling user is part of |
 | `DELETE` | `/v1/ontologies/{id}` | Delete an ontology |
 | `GET` | `/v1/ontologies/{id}` | Get an ontology |
 | `PATCH` | `/v1/ontologies/{id}` | Patch an ontology |
@@ -1444,6 +1445,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologyReleases/{id}/export` | Export the asserted content of a sealed ontology release |
 | `GET` | `/v1/ontologyReleases/{id}/members/{kind}` | Page through one release's immutable members |
 | `GET` | `/v1/ontologyReleases/{id}/members/{kind}/{memberId}` | Read an immutable release member |
+| `GET` | `/v1/ontologyReleases/{id}/review` | Read this release's review as the calling user sees it |
 | `GET` | `/v1/ontologyReleases/{id}/structure` | Check property declarations and axiom structure in a sealed release |
 | `GET` | `/v1/ontologyReleases/{id}/validation` | Validate a sealed ontology release |
 | `GET` | `/v1/ontologyReleases/{id}/versions/{version}` | Read the release header version submitted to an approval workflow |
