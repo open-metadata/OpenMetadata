@@ -16,17 +16,18 @@ import {
   Tab,
   TabList,
   Tabs,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { QueryBuilderGroupHeaderProps } from './QueryBuilderCanvas.types';
 import { toFieldNodes } from './QueryBuilderCanvas.utils';
+import QueryBuilderConjunctionHint from './QueryBuilderConjunctionHint';
 import QueryBuilderControl from './QueryBuilderControl';
 
 const QueryBuilderGroupHeader: FC<QueryBuilderGroupHeaderProps> = ({
   conjunction,
+  negated,
   groupField,
   path,
   context,
@@ -88,11 +89,10 @@ const QueryBuilderGroupHeader: FC<QueryBuilderGroupHeaderProps> = ({
         </div>
       )}
 
-      <Typography className="tw:text-tertiary" size="text-xs">
-        {conjunction === 'OR'
-          ? t('message.any-condition-can-match')
-          : t('message.all-conditions-must-match')}
-      </Typography>
+      <QueryBuilderConjunctionHint
+        conjunction={conjunction}
+        negated={negated}
+      />
 
       {canRemove && !readonly && (
         <Button
