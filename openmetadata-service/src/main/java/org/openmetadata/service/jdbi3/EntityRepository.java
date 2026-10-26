@@ -2890,7 +2890,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                 Relationship.MENTIONED_IN.ordinal(),
                 subtreeTypes);
     subtreeTypes.forEach(type -> repointWorkflowInstancesForFqnChange(type, oldFqn, newFqn));
-    LOG.info("[fqn-change] repointed tasks {} -> {} rows={}", oldFqn, newFqn, tasks);
+    if (tasks > 0) {
+      LOG.info("[fqn-change] repointed tasks {} -> {} rows={}", oldFqn, newFqn, tasks);
+    }
   }
 
   /**

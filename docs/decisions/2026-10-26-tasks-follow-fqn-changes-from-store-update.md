@@ -3,8 +3,9 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-26 (initial)
 - **Deciders:** Ram Narayan Balaji
-- **Guard:** `TaskAboutFqnChangeIT` (one test per renamable or movable entity, plus the same-FQN
-  domain/glossary collision)
+- **Guard:** `TaskAboutFqnChangeIT` (domain, tag, classification, data product and glossary
+  rename; tag and container move; the same-FQN domain/glossary collision) and
+  `GlossaryTermResourceIT#test_moveTermWithTaskToEighthLevel_repointsTask` (term move)
 - **Related:** #36215
 
 ## Context
