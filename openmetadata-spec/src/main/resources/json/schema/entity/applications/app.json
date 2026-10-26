@@ -301,10 +301,6 @@
       "type": "boolean",
       "default": false
     },
-    "eventSubscriptions": {
-      "description": "Event Subscriptions for the Application.",
-      "$ref": "../../type/entityReferenceList.json"
-    },
     "supportsIngestionRunner": {
       "description": "If the app support execution through the external runner.",
       "type": "boolean",

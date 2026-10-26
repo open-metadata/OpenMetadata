@@ -2466,10 +2466,6 @@ om:estimatedDuration a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "estimatedDuration" .
 
-om:eventSubscriptions a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "eventSubscriptions" .
-
 om:evidenceRequirements a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "evidenceRequirements" .
