@@ -298,6 +298,24 @@ public class JwtFilter implements ContainerRequestFilter {
     }
   }
 
+  /**
+   * Other distributions' tests build the filter through this signature. It checks tokens against
+   * the installed verifier, as the production constructor does.
+   */
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain) {
+    this(
+        jwkProvider,
+        jwtPrincipalClaims,
+        principalDomain,
+        enforcePrincipalDomain,
+        Credentials::verifier);
+  }
+
   @VisibleForTesting
   JwtFilter(
       JwkProvider jwkProvider,

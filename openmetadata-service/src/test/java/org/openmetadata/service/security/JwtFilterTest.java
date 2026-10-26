@@ -801,6 +801,26 @@ class JwtFilterTest {
     verify(context, never()).setSecurityContext(any());
   }
 
+  /** Other distributions' tests build the filter this way, over provider-signed tokens. */
+  @Test
+  void fourArgumentConstructorAcceptsAProviderTokenWithNoVerifierInstalled() {
+    JwtFilter filter =
+        new JwtFilter(jwkProvider, List.of("sub", "email"), "openmetadata.org", false);
+    String jwt = JWT.create().withExpiresAt(inOneDay()).withClaim("sub", USER).sign(algorithm);
+
+    assertEquals(USER, principalOf(filter, jwt));
+  }
+
+  @Test
+  void fourArgumentConstructorCannotConfirmAStoredTokenWithNoVerifierInstalled() {
+    JwtFilter filter =
+        new JwtFilter(
+            OpenMetadataSigningKey.keyLookup(), List.of("sub", "email"), "openmetadata.org", false);
+    String jwt = botToken(BOT);
+
+    assertThrows(CredentialUnavailableException.class, () -> filter.validateJwtAndGetClaims(jwt));
+  }
+
   @Test
   void verifySignatureOnlySkipsTheStoredCredentialCheck() {
     String neverStored = botToken(BOT);
