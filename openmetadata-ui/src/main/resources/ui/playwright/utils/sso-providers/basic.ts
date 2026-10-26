@@ -51,17 +51,6 @@ const buildValidConfig = () => ({
   },
 });
 
-const buildBrokenConfig = () => {
-  const cfg = buildValidConfig();
-  // Missing `providerName` — validateAuthFields checks for this before any
-  // client is instantiated, so the scenario 8 test can catch the specific
-  // "required field missing" branch cleanly.
-  delete (cfg.authenticationConfiguration as Record<string, unknown>)
-    .providerName;
-
-  return cfg;
-};
-
 /**
  * Basic (email+password) fixture. No external IdP — auth is fully handled
  * by the OpenMetadata backend, so `configureBackend` is a no-op restore

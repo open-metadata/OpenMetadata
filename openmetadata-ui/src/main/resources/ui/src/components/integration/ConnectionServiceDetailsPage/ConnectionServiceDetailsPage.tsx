@@ -474,8 +474,11 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   );
 
   const onUpdateDomain = useCallback(
-    async (domain: EntityReference | EntityReference[]) => {
-      const domains = Array.isArray(domain) ? domain : [domain];
+    async (domain: EntityReference | EntityReference[] | undefined) => {
+      const selectedDomains = domain ?? [];
+      const domains = Array.isArray(selectedDomains)
+        ? selectedDomains
+        : [selectedDomains];
       await saveUpdatedServiceData({
         ...serviceDetails,
         domains: domains as unknown as typeof serviceDetails.domains,

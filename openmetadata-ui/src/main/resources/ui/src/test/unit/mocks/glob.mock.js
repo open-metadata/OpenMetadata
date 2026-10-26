@@ -45,7 +45,7 @@ const applicationSchemaLoaders = new Proxy(
       try {
         const data = require(jsonPath);
 
-        return () => Promise.resolve(data);
+        return () => Promise.resolve({ default: data });
       } catch (error) {
         return undefined;
       }

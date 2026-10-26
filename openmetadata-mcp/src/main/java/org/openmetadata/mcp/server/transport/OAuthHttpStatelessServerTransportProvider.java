@@ -111,6 +111,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   // Public key set for the tokens JWTTokenGenerator signs, MCP access tokens included.
   private static final String JWKS_PATH = "/api/v1/system/config/jwks";
+  private static final String OPENID_CONFIGURATION_PATH = "/mcp/.well-known/openid-configuration";
 
   // In-memory rate limiters for registration and token endpoints.
   // These are per-JVM-instance; in clustered deployments the effective limit is N × limit per hour.
@@ -219,13 +220,14 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * it is correct, and appending it here would break that setup.
    * ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path
    */
-  public static void warnIfBaseUrlMissesContextPath(String baseUrl, String contextPath) {
-    boolean subPathContext = contextPath != null && contextPath.length() > 1;
-    String baseUrlPath = Objects.toString(URI.create(baseUrl).getPath(), "");
+  public static void warnIfBaseUrlMissesContextPath(
+      final String baseUrl, final String contextPath) {
+    final boolean hasSubPathContext = contextPath != null && contextPath.length() > 1;
+    final String baseUrlPath = Objects.toString(URI.create(baseUrl).getPath(), "");
     // Whole segments only, so /om-other does not pass for /om
-    boolean carriesContextPath =
+    final boolean carriesContextPath =
         baseUrlPath.equals(contextPath) || baseUrlPath.startsWith(contextPath + "/");
-    if (subPathContext && !carriesContextPath) {
+    if (hasSubPathContext && !carriesContextPath) {
       LOG.warn(
           "MCP base URL {} does not include the server base path {}. MCP OAuth endpoints will not"
               + " resolve unless a proxy adds it; set the MCP base URL to the external URL ending"
@@ -408,7 +410,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // openid-configuration appended to the issuer is the one authorization server discovery URL
     // the MCP spec lists that stays inside a non-root BASE_PATH; the others sit at the host root.
     if (path.equals("/mcp/.well-known/oauth-authorization-server")
-        || path.equals("/mcp/.well-known/openid-configuration")) {
+        || path.equals(OPENID_CONFIGURATION_PATH)) {
       handleMetadataRequest(request, response);
     } else if (path.equals("/mcp/.well-known/oauth-protected-resource")) {
       handleProtectedResourceMetadataRequest(request, response);
@@ -498,8 +500,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * the only discovery URL it can reach.
    * ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path
    */
-  private static void addOpenIdDiscoveryFields(OAuthMetadata metadata, String baseUrl) {
-    TokenValidationAlgorithm signingAlgorithm =
+  private static void addOpenIdDiscoveryFields(final OAuthMetadata metadata, final String baseUrl) {
+    final TokenValidationAlgorithm signingAlgorithm =
         Optional.ofNullable(SecurityConfigurationManager.getCurrentAuthConfig())
             .map(AuthenticationConfiguration::getTokenValidationAlgorithm)
             .orElse(TokenValidationAlgorithm.RS_256);

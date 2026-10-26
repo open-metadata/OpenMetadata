@@ -127,7 +127,7 @@ const FiltersConfigForm = forwardRef<
   );
 
   const filterSchema = useMemo<RJSFSchema>(() => {
-    const properties: Record<string, unknown> = {};
+    const properties: NonNullable<RJSFSchema['properties']> = {};
     filterEntries.forEach(([fieldName, property]) => {
       properties[fieldName as string] = property;
     });
