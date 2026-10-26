@@ -13581,14 +13581,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts",
-        "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
-        "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/SearchExport.spec.ts",
-        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
-        "playwright/e2e/Pages/DomainAdvanced.spec.ts",
-        "playwright/e2e/Pages/Domains.spec.ts",
-        "playwright/e2e/Pages/ExploreResilience.spec.ts",
-        "playwright/e2e/Pages/SearchSettings.spec.ts"
+        "playwright/e2e/Pages/ExploreResilience.spec.ts"
       ]
     },
     {
