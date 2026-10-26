@@ -32,6 +32,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -39,6 +40,8 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.tests.mcp.McpTestUtils;
 import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -54,6 +57,7 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.PersonalAccessToken;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -82,6 +86,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.TokenUtil;
 
 /**
@@ -3126,6 +3131,75 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertNotNull(getLoggedInUser(second));
   }
 
+  @Test
+  void test_patchBotAuthMechanism_revokesOldToken(TestNamespace ns) {
+    User botUser = createBotUser(ns, "patchedbot");
+    OpenMetadataClient oldClient = clientWithToken(generateBotToken(botUser, JWTTokenExpiry.Seven));
+    assertEquals(botUser.getId(), getLoggedInUser(oldClient).getId());
+    JWTAuthMechanism replacement =
+        JWTTokenGenerator.getInstance().generateJWTToken(botUser, JWTTokenExpiry.Thirty);
+    ArrayNode patch = PATCH_MAPPER.createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/authenticationMechanism")
+        .set(
+            "value",
+            PATCH_MAPPER.valueToTree(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                    .withConfig(replacement)));
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + botUser.getId(), patch);
+
+    assertUnauthorized(oldClient);
+    assertEquals(
+        botUser.getId(), getLoggedInUser(clientWithToken(replacement.getJWTToken())).getId());
+  }
+
+  @Test
+  void test_selfGeneratedToken_lifecycle(TestNamespace ns) {
+    User user = createRegularUser(ns, "selftoken");
+    String ownToken =
+        clientFor(user).users().generateToken(user.getId(), JWTTokenExpiry.Seven).getJWTToken();
+    OpenMetadataClient ownClient = clientWithToken(ownToken);
+    assertEquals(user.getId(), getLoggedInUser(ownClient).getId());
+
+    deleteEntity(user.getId().toString());
+
+    assertUnauthorized(ownClient);
+  }
+
+  @Test
+  void test_unrecognizedOmToken_rejected(TestNamespace ns) throws Exception {
+    User user = createRegularUser(ns, "unrecognized");
+    String loginToken = CredentialFixtures.loginToken(user);
+    // No issuing call pairs isBot=false with tokenType=BOT.
+    String unrecognized =
+        JWTTokenGenerator.getInstance()
+            .getJwtAuthMechanism(
+                user.getName(),
+                new HashSet<>(),
+                false,
+                user.getEmail(),
+                false,
+                ServiceTokenType.BOT,
+                JWTTokenGenerator.getExpiryDate(JWTTokenExpiry.Seven),
+                null)
+            .getJWTToken();
+    assertEquals(user.getId(), getLoggedInUser(clientWithToken(loginToken)).getId());
+    assertEquals(200, mcpInitializeStatus(loginToken));
+
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class, () -> getLoggedInUser(clientWithToken(unrecognized)));
+    assertEquals(401, rejected.getStatusCode());
+    assertEquals("Not Authorized! Unrecognized token type!", rejected.getMessage());
+    assertEquals(401, mcpInitializeStatus(unrecognized));
+  }
+
   private static int tokenRowCount(User user) {
     return Entity.getJdbi()
         .withHandle(
@@ -3194,6 +3268,24 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     OpenMetadataException exception =
         assertThrows(OpenMetadataException.class, () -> getLoggedInUser(client));
     assertEquals(401, exception.getStatusCode(), exception.getMessage());
+  }
+
+  private static final HttpClient MCP_HTTP_CLIENT = HttpClient.newHttpClient();
+
+  /** The MCP transport authenticates the bearer token before it reads the request. */
+  private static int mcpInitializeStatus(String token) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(TestSuiteBootstrap.getBaseUrl() + "/mcp"))
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json, text/event-stream")
+            .header("Authorization", "Bearer " + token)
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    JsonUtils.pojoToJson(McpTestUtils.createInitializeRequest())))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return MCP_HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
   }
 
   @Test
