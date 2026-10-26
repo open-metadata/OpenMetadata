@@ -126,10 +126,8 @@ class CredentialRedisDownIT {
         credential += counter.count() - afterControl;
       }
     }
-    assertEquals(
-        control,
-        credential,
-        "statements over " + MEASURED_REQUESTS + " requests, session token vs credential");
+    PerRequestCost.assertNoPerRequestCost(
+        "statements", MEASURED_REQUESTS, control, credential, "Redis paused");
   }
 
   private static void withRedisPaused(Runnable whilePaused) {

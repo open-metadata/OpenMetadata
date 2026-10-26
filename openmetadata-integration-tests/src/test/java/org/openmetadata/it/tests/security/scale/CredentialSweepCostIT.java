@@ -13,6 +13,8 @@
 
 package org.openmetadata.it.tests.security.scale;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import io.dropwizard.util.Duration;
 import io.micrometer.core.instrument.Timer;
 import java.util.ArrayList;
@@ -72,6 +74,7 @@ class CredentialSweepCostIT {
           null, null, null, null, null, null, 4000, null, Duration.seconds(DEEP_SECONDS));
 
   private final CredentialMeters server = CredentialMeters.ofServer();
+  private final List<String> unproven = new ArrayList<>();
 
   @Test
   void sweepCostByCachedPrincipalsAndPatsPerUser(TestNamespace ns) throws Exception {
@@ -94,6 +97,7 @@ class CredentialSweepCostIT {
     report.put("cells", cells);
     BenchmarkMetrics.write(report, "credential-sweep-cost.json");
     cells.forEach(cell -> LOG.info("{}", cell));
+    assertTrue(unproven.isEmpty(), "work the sweep cells did not show: " + unproven);
   }
 
   /** Every {@code BOT_EVERY}th principal is a bot, so any prefix has the same mix. */
@@ -142,6 +146,7 @@ class CredentialSweepCostIT {
     long wallNanos = System.nanoTime() - started;
     long cpuNanos = ContainerCpu.usedNanos(dbContainer) - cpuBefore;
     Counters after = counters(verifier);
+    recordUnproven(cached, pats, before, after, sweepMillis.size());
     Map<String, DatabaseStatementStats.Digest> dbChange =
         DatabaseStatementStats.delta(dbBefore, database.snapshot().orElse(Map.of()));
     return cell(
@@ -155,6 +160,20 @@ class CredentialSweepCostIT {
         cpuNanos,
         dbChange,
         database);
+  }
+
+  /** The cell swept, deep-verified when its window allows one, and cached every principal. */
+  private void recordUnproven(int cached, int pats, Counters before, Counters after, int sweeps) {
+    String cell = cached + " principals with " + pats + " PATs";
+    if (sweeps == 0 || after.fingerprintQueries() <= before.fingerprintQueries()) {
+      unproven.add(cell + ": no sweep ran");
+    }
+    if (IDLE_SECONDS > DEEP_SECONDS && after.deepReads() <= before.deepReads()) {
+      unproven.add(cell + ": no deep verify ran");
+    }
+    if (after.cached() != cached) {
+      unproven.add(cell + ": the cached-subjects gauge reads " + after.cached());
+    }
   }
 
   /** The verifier sweeps from start(); a sampler records the duration of each sweep it sees. */

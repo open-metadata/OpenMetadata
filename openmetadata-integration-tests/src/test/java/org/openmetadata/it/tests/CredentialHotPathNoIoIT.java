@@ -93,9 +93,11 @@ class CredentialHotPathNoIoIT {
         "the control reads its user on every request, so the counter must see at least one"
             + " statement each: "
             + measurement.controlStatements());
-    assertEquals(
+    PerRequestCost.assertNoPerRequestCost(
+        "statements",
+        MEASURED_REQUESTS,
         measurement.controlStatements(),
         measurement.credentialStatements(),
-        "statements over " + MEASURED_REQUESTS + " warm requests, login token vs credential");
+        "warm requests, login token vs credential");
   }
 }

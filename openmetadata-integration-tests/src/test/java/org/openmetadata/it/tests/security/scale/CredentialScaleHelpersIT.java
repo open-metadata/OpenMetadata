@@ -21,8 +21,10 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+@Tag("scale")
 class CredentialScaleHelpersIT {
   @Test
   void percentilesUseTheNearestRank() {

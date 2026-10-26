@@ -67,18 +67,12 @@ class CredentialRedisNoRoundTripIT {
     Map<String, Long> credential = commandsOf(credentialToken);
     Map<String, Long> controlAgain = commandsOf(controlToken);
 
-    assertEquals(
+    PerRequestCost.assertNoPerRequestCost(
+        "Redis calls",
+        MEASURED_REQUESTS,
         total(control),
         total(credential),
-        "Redis calls over "
-            + MEASURED_REQUESTS
-            + " warm requests. control "
-            + control
-            + ", credential "
-            + credential
-            + ", control again "
-            + controlAgain);
-    assertEquals(control, credential, "the same commands, not only the same total");
+        "control " + control + ", credential " + credential + ", control again " + controlAgain);
   }
 
   private static Map<String, Long> commandsOf(String token) {

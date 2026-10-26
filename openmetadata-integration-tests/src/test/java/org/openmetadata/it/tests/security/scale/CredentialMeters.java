@@ -24,12 +24,16 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Reads credential meters from a registry by name and tag, never through a class of the verifier,
- * so a benchmark that uses it compiles and runs against a server that has no verifier. An absent
- * meter reads as absent, which is how a caller tells such a server from a quiet one.
+ * so a benchmark that uses it compiles and runs against a server that has no verifier. Whether the
+ * server has one is decided by class name, not by its meters, so a meter that is renamed or not yet
+ * registered reads as zero and fails a proof check instead of passing as a build without one.
  *
  * <p>{@link #ofServer()} reads the global registry the in-process test server reports to.
  */
 final class CredentialMeters {
+  private static final String VERIFIER_CLASS =
+      "org.openmetadata.service.security.credentials.CredentialVerifier";
+
   private final MeterRegistry registry;
 
   CredentialMeters(MeterRegistry registry) {
@@ -40,9 +44,15 @@ final class CredentialMeters {
     return new CredentialMeters(Metrics.globalRegistry);
   }
 
-  /** True once the verifier has registered its meters. */
+  /** True when the server build contains the verifier, whether or not it has checked a token. */
   boolean verifierPresent() {
-    return !registry.find("om.credential.checks").counters().isEmpty();
+    boolean present = true;
+    try {
+      Class.forName(VERIFIER_CLASS, false, CredentialMeters.class.getClassLoader());
+    } catch (ClassNotFoundException absent) {
+      present = false;
+    }
+    return present;
   }
 
   /** Sum of the counters called {@code name} whose tags include every key and value pair given. */
