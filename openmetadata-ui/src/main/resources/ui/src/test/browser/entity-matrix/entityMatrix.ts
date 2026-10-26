@@ -964,6 +964,33 @@ const expectCreated = (
 };
 
 /**
+ * Picks `action` from the card's menu until `opened` shows. A late list
+ * refetch re-renders the card and can close the menu under the click (the
+ * Playwright helper retries for the same reason).
+ */
+const pickCardAction = async (card: Locator, action: string, opened: Locator) =>
+  expect
+    .poll(
+      async () => {
+        if (!opened.query()) {
+          const item = page.getByTestId(action);
+          await userEvent
+            .click(
+              item.query() ? item : card.getByTestId('announcement-actions'),
+              {
+                timeout: 2_000,
+              }
+            )
+            .catch(() => undefined);
+        }
+
+        return opened.query() !== null;
+      },
+      { timeout: 20_000, interval: 200 }
+    )
+    .toBe(true);
+
+/**
  * The spec's active announcement: create one running from today, see it on
  * the entity header after a reload, edit it in the drawer, then delete it.
  */
@@ -998,9 +1025,8 @@ export const announcementLifecycle = async (
     .toHaveTextContent(/Playwright Test Announcement Description/);
 
   await openAnnouncements();
-  await userEvent.click(card().getByTestId('announcement-actions'));
-  await userEvent.click(page.getByTestId('announcement-edit-action'));
   const edit = page.getByTestId('edit-announcement-dialog');
+  await pickCardAction(card(), 'announcement-edit-action', edit);
   await userEvent.fill(
     edit.getByCSS('#title'),
     'Edited Playwright Test Announcement'
@@ -1020,9 +1046,8 @@ export const announcementLifecycle = async (
     .toHaveTextContent(/Updated Playwright Test Announcement Description/);
   expect(announcements.patches).toHaveLength(1);
 
-  await userEvent.click(card().getByTestId('announcement-actions'));
-  await userEvent.click(page.getByTestId('announcement-delete-action'));
   const confirm = page.getByTestId('announcement-delete-confirm');
+  await pickCardAction(card(), 'announcement-delete-action', confirm);
 
   await expect
     .element(confirm)
