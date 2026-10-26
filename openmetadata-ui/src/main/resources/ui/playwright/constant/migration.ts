@@ -31,4 +31,14 @@ export const migratedTo = {
   browser: (testFile: string) => marker('@migrated-browser', testFile),
   /** API behaviour now covered by a Java integration test (`Class#method`). */
   javaIT: (testRef: string) => marker('@migrated-java-it', testRef),
+  /** UI part in a browser test, API part in a Java integration test. */
+  split: (testFile: string, testRef: string) => {
+    const ui = marker('@migrated-browser', testFile);
+    const api = marker('@migrated-java-it', testRef);
+
+    return {
+      tag: [ui.tag, api.tag],
+      annotation: [ui.annotation, api.annotation],
+    };
+  },
 };
