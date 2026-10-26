@@ -275,7 +275,9 @@ jest.mock('../../components/Entity/EntityLineage/LineageConfigModal', () => ({
 
 jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => ({
   __esModule: true,
-  default: () => null,
+  default: ({ title }: { title: string }) => (
+    <span data-testid="document-title">{title}</span>
+  ),
 }));
 
 jest.mock('../../components/common/Loader/Loader', () => ({
@@ -675,6 +677,9 @@ describe('PlatformLineage Component Logic', () => {
       expect(queryByText('PageHeader')).not.toBeInTheDocument();
       expect(getByTestId('page-layout-content')).toHaveTextContent('Lineage');
       expect(mockPageLayoutV1).not.toHaveBeenCalled();
+      expect(getByTestId('document-title')).toHaveTextContent(
+        'label.entity-lineage'
+      );
     });
   });
 

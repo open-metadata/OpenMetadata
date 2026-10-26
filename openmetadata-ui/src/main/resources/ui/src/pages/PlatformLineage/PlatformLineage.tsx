@@ -349,7 +349,6 @@ const PlatformLineage = () => {
       <PageLayout data-testid="platform-lineage-page">
         <DocumentTitle title={pageTitle} />
         {header}
-        {/* AI padding standard: 16px under the header band. */}
         <PageLayout.Content className="tw:pt-4">
           <div className="platform-lineage-container platform-lineage-container-fill">
             {lineageElement}
