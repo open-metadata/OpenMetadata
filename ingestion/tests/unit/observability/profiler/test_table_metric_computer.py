@@ -389,45 +389,126 @@ class TestExasolTableMetricComputer:
 
 
 class TestTeradataTableMetricComputer:
+    """DBC.TableSizeV is a space view and has no RowCount column (selecting it
+    fails with Teradata error 5628). Row counts come from DBC.TableStatsV,
+    populated by COLLECT STATISTICS; tables without collected stats fall back
+    to COUNT(*)."""
+
+    @staticmethod
+    def _exec_result(no_row=False, row_count=..., size_in_bytes=None):
+        """Mock execute() result; `.first()` returns a row mock with the given attrs."""
+        exec_result = MagicMock()
+        if no_row:
+            exec_result.first.return_value = None
+        else:
+            row = MagicMock()
+            if row_count is not ...:
+                row.rowCount = row_count
+            if size_in_bytes is not None:
+                row.sizeInBytes = size_in_bytes
+            exec_result.first.return_value = row
+        return exec_result
+
     def test_teradata_registration(self):
         assert table_metric_computer_factory._constructs.get(Dialects.Teradata) is TeradataTableMetricComputer
 
-    def test_compute_returns_result(self):
+    def test_size_query_does_not_select_rowcount_from_table_size_v(self):
+        """Regression #3032: `sum(RowCount)` against DBC.TableSizeV raises
+        Teradata error 5628. The size query must only touch CurrentPerm."""
         session = _build_mock_session()
-        mock_result = MagicMock()
-        mock_result.rowCount = 7500
-        session.execute.return_value.first.return_value = mock_result
+        session.execute.side_effect = [
+            self._exec_result(row_count=7500, size_in_bytes=12345),
+            self._exec_result(size_in_bytes=12345),
+        ]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        computer.compute()
+        size_sql = str(session.execute.call_args_list[1][0][0])
+        assert "TableSizeV" in size_sql, f"Expected size query on DBC.TableSizeV, got: {size_sql}"
+        assert "RowCount" not in size_sql, f"TableSizeV has no RowCount column, got: {size_sql}"
+
+    def test_row_count_query_targets_table_stats_v(self):
+        session = _build_mock_session()
+        session.execute.side_effect = [
+            self._exec_result(row_count=7500, size_in_bytes=12345),
+            self._exec_result(size_in_bytes=12345),
+        ]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        computer.compute()
+        stats_sql = str(session.execute.call_args_list[0][0][0])
+        assert "TableStatsV" in stats_sql, f"Expected row count query on DBC.TableStatsV, got: {stats_sql}"
+
+    def test_compute_returns_result_from_stats_and_size(self):
+        session = _build_mock_session()
+        session.execute.side_effect = [
+            self._exec_result(row_count=7500.0, size_in_bytes=12345),
+            self._exec_result(size_in_bytes=12345),
+        ]
         computer = _build_computer(session, TeradataTableMetricComputer)
         result = computer.compute()
-        assert result is mock_result
         assert result.rowCount == 7500
+        assert result.sizeInBytes == 12345
+        assert result.columnCount == 2
+        assert "id" in result.columnNames.split(",")
 
-    def test_compute_returns_none_when_no_result(self):
+    def test_compute_result_supports_asdict(self):
+        """TableMetricComputer.compute_table_entity calls row._asdict()."""
         session = _build_mock_session()
-        session.execute.return_value.first.return_value = None
+        session.execute.side_effect = [
+            self._exec_result(row_count=7500.0, size_in_bytes=12345),
+            self._exec_result(size_in_bytes=12345),
+        ]
         computer = _build_computer(session, TeradataTableMetricComputer)
         result = computer.compute()
-        assert result is None
+        row = result._asdict()
+        assert row["rowCount"] == 7500
+        assert row["sizeInBytes"] == 12345
 
-    def test_compute_fallback_on_none_row_count(self):
+    def test_compute_falls_back_when_no_stats_collected(self):
         session = _build_mock_session()
-        mock_result = MagicMock()
-        mock_result.rowCount = None
-        session.execute.return_value.first.return_value = mock_result
+        stats = MagicMock()
+        stats.first.return_value = None
+        session.execute.side_effect = [stats]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as mock_base:
+            result = computer.compute()
+        assert result == "fallback"
+        mock_base.assert_called_once_with()
+
+    def test_compute_falls_back_on_null_row_count_in_stats(self):
+        session = _build_mock_session()
+        session.execute.side_effect = [self._exec_result(row_count=None)]
         computer = _build_computer(session, TeradataTableMetricComputer)
         with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
             result = computer.compute()
-            assert result == "fallback"
+        assert result == "fallback"
 
-    def test_compute_fallback_on_zero_row_count_for_view(self):
+    def test_compute_falls_back_on_zero_row_count_for_view(self):
         session = _build_mock_session()
-        mock_result = MagicMock()
-        mock_result.rowCount = 0
-        session.execute.return_value.first.return_value = mock_result
+        session.execute.side_effect = [self._exec_result(row_count=0)]
         computer = _build_computer(session, TeradataTableMetricComputer, table_type=TableType.View)
         with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
             result = computer.compute()
-            assert result == "fallback"
+        assert result == "fallback"
+
+    def test_compute_returns_result_for_zero_row_count_regular_table(self):
+        session = _build_mock_session()
+        session.execute.side_effect = [
+            self._exec_result(row_count=0, size_in_bytes=0),
+            self._exec_result(size_in_bytes=0),
+        ]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 0
+
+    def test_compute_returns_none_size_when_table_absent_from_size_view(self):
+        """A stats row found but no TableSizeV entry (e.g. no PERM) still
+        yields the row count with sizeInBytes None."""
+        session = _build_mock_session()
+        session.execute.side_effect = [self._exec_result(row_count=7500), self._exec_result(no_row=True)]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 7500
+        assert result.sizeInBytes is None
 
     def test_compute_uppercases_schema_and_table_in_where_clause(self):
         """MockModel has lowercase schema='test_schema' and table='test_table'.

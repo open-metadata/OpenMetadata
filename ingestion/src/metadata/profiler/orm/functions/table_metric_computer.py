@@ -989,32 +989,52 @@ class TeradataTableMetricComputer(BaseTableMetricComputer):
     """Teradata Table Metric Computer"""
 
     def compute(self):
-        """Compute table metrics for Teradata using DBC.TableSizeV.
+        """Compute table metrics for Teradata.
 
-        TableSizeV may return one row per AMP, so we SUM the values
-        to get the total row count and size.
+        DBC.TableSizeV is a space view with no RowCount column (selecting one
+        raises Teradata error 5628). The approximate row count comes from
+        DBC.TableStatsV, populated by COLLECT STATISTICS; tables without any
+        collected statistics fall back to COUNT(*).
         """
-        columns = [
-            func.sum(Column("CurrentPerm")).label(SIZE_IN_BYTES),
-            func.sum(Column("RowCount")).cast(BigInteger).label(ROW_COUNT),
-            *self._get_col_names_and_count(),
-        ]
-        where_clause = [
-            func.trim(Column("DatabaseName")) == self.schema_name,
-            func.trim(Column("TableName")) == self.table_name,
-        ]
-        query = self._build_query(
-            columns,
-            self._build_table("TableSizeV", "DBC"),
-            where_clause,
+        Result = namedtuple("Result", [ROW_COUNT, SIZE_IN_BYTES, COLUMN_COUNT, COLUMN_NAMES])
+        stats_query = self._build_query(
+            [func.max(Column("RowCount")).cast(BigInteger).label(ROW_COUNT)],
+            self._build_table("TableStatsV", "DBC"),
+            [
+                # Primary-index (1) and table-level (0) statistics; column stats
+                # carry duplicates of the same count and would skew nothing but
+                # widen the scan unnecessarily.
+                Column("IndexNumber").in_((0, 1)),
+                func.trim(Column("DatabaseName")) == self.schema_name,
+                func.trim(Column("TableName")) == self.table_name,
+            ],
         )
-
-        res = self.runner._session.execute(query).first()
-        if not res:
-            return None
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        stats_res = self.runner._session.execute(stats_query).first()
+        if (
+            not stats_res
+            or stats_res.rowCount is None
+            or (stats_res.rowCount == 0 and self._entity.tableType == TableType.View)
+        ):
+            # no collected statistics: fall back to COUNT(*)
             return super().compute()
-        return res
+
+        size_query = self._build_query(
+            [func.sum(Column("CurrentPerm")).label(SIZE_IN_BYTES)],
+            self._build_table("TableSizeV", "DBC"),
+            [
+                func.trim(Column("DatabaseName")) == self.schema_name,
+                func.trim(Column("TableName")) == self.table_name,
+            ],
+        )
+        size_res = self.runner._session.execute(size_query).first()
+        size_in_bytes = size_res.sizeInBytes if size_res else None
+
+        return Result(
+            rowCount=stats_res.rowCount,
+            sizeInBytes=size_in_bytes,
+            columnNames=",".join(inspect(self.runner.raw_dataset).c.keys()),
+            columnCount=len(inspect(self.runner.raw_dataset).c),
+        )
 
 
 class _StatsBasedTableMetricComputer(BaseTableMetricComputer):
