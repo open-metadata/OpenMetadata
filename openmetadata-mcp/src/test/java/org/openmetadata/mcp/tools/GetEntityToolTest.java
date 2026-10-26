@@ -148,15 +148,7 @@ class GetEntityToolTest {
   /** A Query reference names the question its SQL answered; REST reduces it to id and type. */
   @Test
   void plainReadReducesAQueryTheCallerMayNotViewToIdAndType() throws Exception {
-    String fqn = "alices-note";
-    EntityReference query =
-        new EntityReference()
-            .withId(UUID.randomUUID())
-            .withType(Entity.QUERY)
-            .withName("payroll")
-            .withFullyQualifiedName("erp.payroll")
-            .withDisplayName("Who earns more than the CEO?");
-    ContextMemory memory = privateMemoryOwnedBy("alice", fqn).withRelatedEntities(List.of(query));
+    EntityReference query = queryReference();
     CatalogSecurityContext securityContext = securityContextFor("alice");
     Authorizer authorizer = mock(Authorizer.class);
     doThrow(new AuthorizationException("denied"))
@@ -165,8 +157,38 @@ class GetEntityToolTest {
             eq(securityContext),
             argThat(operation -> Entity.QUERY.equals(operation.getResource())),
             any());
-    Map<String, Object> result;
 
+    Map<String, Object> result = readMemoryCiting(query, authorizer, securityContext);
+
+    assertThat(result.get("relatedEntities"))
+        .isEqualTo(List.of(Map.of("id", query.getId().toString(), "type", Entity.QUERY)));
+  }
+
+  @Test
+  void plainReadKeepsAQueryTheCallerMayView() throws Exception {
+    EntityReference query = queryReference();
+
+    Map<String, Object> result =
+        readMemoryCiting(query, mock(Authorizer.class), securityContextFor("alice"));
+
+    assertThat(result.get("relatedEntities").toString()).contains("erp.payroll", "payroll");
+  }
+
+  private static EntityReference queryReference() {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(Entity.QUERY)
+        .withName("payroll")
+        .withFullyQualifiedName("erp.payroll")
+        .withDisplayName("Who earns more than the CEO?");
+  }
+
+  /** get_entity_details, as alice, of her private memory citing {@code query}. */
+  private Map<String, Object> readMemoryCiting(
+      EntityReference query, Authorizer authorizer, CatalogSecurityContext securityContext)
+      throws Exception {
+    String fqn = "alices-note";
+    ContextMemory memory = privateMemoryOwnedBy("alice", fqn).withRelatedEntities(List.of(query));
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
         MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
       entities
@@ -176,17 +198,10 @@ class GetEntityToolTest {
       subjects
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
           .thenReturn(new SubjectContext(new User().withName("alice"), null, null));
-
-      result =
-          new GetEntityTool()
-              .execute(
-                  authorizer,
-                  securityContext,
-                  Map.of("entityType", Entity.CONTEXT_MEMORY, "fqn", fqn));
+      return new GetEntityTool()
+          .execute(
+              authorizer, securityContext, Map.of("entityType", Entity.CONTEXT_MEMORY, "fqn", fqn));
     }
-
-    assertThat(result.get("relatedEntities"))
-        .isEqualTo(List.of(Map.of("id", query.getId().toString(), "type", Entity.QUERY)));
   }
 
   @Test
