@@ -18,31 +18,31 @@ import java.util.List;
 import java.util.Locale;
 
 /** Order statistics over raw samples; every figure comes from sorting, not from buckets. */
-final class Percentiles {
+public final class Percentiles {
   private Percentiles() {}
 
   /** The nearest-rank percentile of {@code samples}; {@code percent} is 0 to 100. */
-  static double of(double[] samples, double percent) {
+  public static double of(double[] samples, double percent) {
     double[] sorted = samples.clone();
     Arrays.sort(sorted);
     int rank = (int) Math.ceil(sorted.length * percent / 100.0);
     return sorted[Math.max(0, Math.min(sorted.length, rank) - 1)];
   }
 
-  static double median(List<Double> values) {
+  public static double median(List<Double> values) {
     return of(values.stream().mapToDouble(Double::doubleValue).toArray(), 50);
   }
 
-  static double min(List<Double> values) {
+  public static double min(List<Double> values) {
     return values.stream().mapToDouble(Double::doubleValue).min().orElse(Double.NaN);
   }
 
-  static double max(List<Double> values) {
+  public static double max(List<Double> values) {
     return values.stream().mapToDouble(Double::doubleValue).max().orElse(Double.NaN);
   }
 
   /** "median (min to max)" for a figure repeated across runs. */
-  static String spread(List<Double> values, String format) {
+  public static String spread(List<Double> values, String format) {
     return String.format(
         Locale.ROOT,
         format + " (" + format + " to " + format + ")",

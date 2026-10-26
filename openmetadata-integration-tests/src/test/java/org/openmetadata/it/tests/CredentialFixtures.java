@@ -126,12 +126,33 @@ public final class CredentialFixtures {
   }
 
   public static HttpResponse<String> get(String path, String bearerToken) {
+    return get(TestSuiteBootstrap.getBaseUrl(), path, bearerToken);
+  }
+
+  /** The same call against another server, for example a {@code ForkedServerNode}. */
+  public static HttpResponse<String> get(String baseUrl, String path, String bearerToken) {
     HttpRequest request =
-        HttpRequest.newBuilder(URI.create(TestSuiteBootstrap.getBaseUrl() + path))
+        HttpRequest.newBuilder(URI.create(baseUrl + path))
             .header("Authorization", "Bearer " + bearerToken)
             .timeout(Duration.ofSeconds(20))
             .GET()
             .build();
+    return send(request, path);
+  }
+
+  /** A JSON {@code PUT} to the suite's server; {@code path} may carry a query string. */
+  public static HttpResponse<String> put(String path, String bearerToken, String body) {
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(TestSuiteBootstrap.getBaseUrl() + path))
+            .header("Authorization", "Bearer " + bearerToken)
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(60))
+            .PUT(HttpRequest.BodyPublishers.ofString(body))
+            .build();
+    return send(request, path);
+  }
+
+  private static HttpResponse<String> send(HttpRequest request, String path) {
     try {
       return HTTP.send(request, HttpResponse.BodyHandlers.ofString());
     } catch (IOException failure) {
@@ -140,6 +161,10 @@ public final class CredentialFixtures {
       Thread.currentThread().interrupt();
       throw new IllegalStateException("Interrupted while calling " + path, interrupted);
     }
+  }
+
+  public static int status(String baseUrl, String path, String bearerToken) {
+    return get(baseUrl, path, bearerToken).statusCode();
   }
 
   public static int status(String path, String bearerToken) {

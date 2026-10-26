@@ -597,6 +597,7 @@
         "*Session*IT",
         "*Token*IT",
         "*Credential*IT",
+        "Revoke*IT",
         "*Login*IT",
         "*Privilege*IT",
         "*Isolation*IT",
