@@ -830,6 +830,17 @@ class JwtFilterTest {
     assertEquals(USER, principalOf(filter, jwt));
   }
 
+  /** Other distributions map the principal themselves once this has returned the claims. */
+  @Test
+  void claimsOfAProviderTokenWithNoConfiguredPrincipalClaimAreReturned() {
+    String jwt =
+        JWT.create().withExpiresAt(inOneDay()).withClaim("oid", "opaque-guid").sign(algorithm);
+
+    assertEquals("opaque-guid", jwtFilter.validateJwtAndGetClaims(jwt).get("oid").asString());
+    ContainerRequestContext request = createRequestContextWithJwt(jwt);
+    assertThrows(AuthenticationException.class, () -> jwtFilter.filter(request));
+  }
+
   @Test
   void fourArgumentConstructorCannotConfirmAStoredTokenWithNoVerifierInstalled() {
     JwtFilter filter =

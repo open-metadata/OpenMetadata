@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -65,7 +66,8 @@ class OmCredentialTest {
   @MethodSource("classificationRows")
   void classifyFollowsTheDecisionTable(
       boolean signedByOm, boolean isBot, String tokenType, Object expected) {
-    OmCredential credential = OmCredential.classify(signedByOm, isBot, tokenType, "ingestion-bot");
+    OmCredential credential =
+        OmCredential.classify(signedByOm, isBot, tokenType, () -> "ingestion-bot");
 
     if (expected instanceof Class<?> unrecognized) {
       assertInstanceOf(unrecognized, credential);
@@ -74,9 +76,27 @@ class OmCredentialTest {
     }
   }
 
+  @ParameterizedTest(name = "signedByOm={0} isBot={1} tokenType={2}")
+  @MethodSource("classificationRows")
+  void classifyAsksForThePrincipalOnlyForAStoredCredential(
+      boolean signedByOm, boolean isBot, String tokenType, Object expected) {
+    AtomicInteger principalReads = new AtomicInteger();
+
+    OmCredential.classify(
+        signedByOm,
+        isBot,
+        tokenType,
+        () -> {
+          principalReads.incrementAndGet();
+          return "ingestion-bot";
+        });
+
+    assertEquals(STORED.equals(expected) ? 1 : 0, principalReads.get());
+  }
+
   @Test
   void storedCredentialNamesTheCanonicalPrincipal() {
-    OmCredential credential = OmCredential.classify(true, true, "BOT", "Ingestion-Bot");
+    OmCredential credential = OmCredential.classify(true, true, "BOT", () -> "Ingestion-Bot");
 
     assertEquals(new Stored(CredentialSubject.of("ingestion-bot")), credential);
   }
@@ -84,11 +104,11 @@ class OmCredentialTest {
   @Test
   void unrecognizedReasonNamesTheThreeFacts() {
     Unrecognized credential =
-        (Unrecognized) OmCredential.classify(true, false, "BOT", "ingestion-bot");
+        (Unrecognized) OmCredential.classify(true, false, "BOT", () -> "ingestion-bot");
 
     assertEquals("signedByOpenMetadata=true, isBot=false, tokenType=BOT", credential.reason());
     assertTrue(
-        ((Unrecognized) OmCredential.classify(true, true, "SERVICE", "x"))
+        ((Unrecognized) OmCredential.classify(true, true, "SERVICE", () -> "x"))
             .reason()
             .endsWith("tokenType=UNKNOWN"));
   }

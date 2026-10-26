@@ -684,13 +684,20 @@ public class JwtFilter implements ContainerRequestFilter {
 
   /**
    * Verifies the token and returns its claims. This includes the stored-credential check, so a bot
-   * JWT or a personal access token is accepted only while the database stores it.
+   * JWT or a personal access token is accepted only while the database stores it. The principal is
+   * resolved only for those two kinds, so a caller that maps the principal itself still receives
+   * the claims of any other verified token, including one that carries no configured principal
+   * claim.
    *
    * @throws AuthenticationException the token is invalid, expired, unrecognized or not current
    * @throws CredentialUnavailableException the stored-credential check could not be confirmed
    */
   public Map<String, Claim> validateJwtAndGetClaims(String token) {
-    return authenticate(token).claims();
+    DecodedJWT jwt = decodeAndVerify(token);
+    Map<String, Claim> claims = extractClaims(jwt);
+    requireCurrentCredential(
+        token, jwt, claims, () -> resolveIdentity(claims, isBot(claims)).userName());
+    return claims;
   }
 
   /**
@@ -712,11 +719,17 @@ public class JwtFilter implements ContainerRequestFilter {
     Map<String, Claim> claims = extractClaims(jwt);
     boolean isBotUser = isBot(claims);
     ResolvedIdentity identity = resolveIdentity(claims, isBotUser);
+    requireCurrentCredential(token, jwt, claims, identity::userName);
+    return new AuthenticatedToken(jwt, claims, identity, isBotUser);
+  }
+
+  private void requireCurrentCredential(
+      String token, DecodedJWT jwt, Map<String, Claim> claims, Supplier<String> tokenPrincipal) {
+    boolean isBotUser = isBot(claims);
     OmCredential credential =
         OmCredential.classify(
-            isSignedWithOpenMetadataKey(jwt), isBotUser, tokenTypeOf(claims), identity.userName());
+            isSignedWithOpenMetadataKey(jwt), isBotUser, tokenTypeOf(claims), tokenPrincipal);
     credentialVerifier.get().require(credential, token, rejectionMessage(credential, isBotUser));
-    return new AuthenticatedToken(jwt, claims, identity, isBotUser);
   }
 
   private static String rejectionMessage(OmCredential credential, boolean isBotUser) {

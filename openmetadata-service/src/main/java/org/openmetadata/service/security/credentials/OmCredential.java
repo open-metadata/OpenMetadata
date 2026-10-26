@@ -15,6 +15,7 @@ package org.openmetadata.service.security.credentials;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.auth.ServiceTokenType;
 
@@ -82,13 +83,15 @@ public sealed interface OmCredential
    * </pre>
    *
    * @param tokenTypeClaim the raw {@code tokenType} claim, null when absent
-   * @param tokenPrincipal the user name the token was minted for, before any impersonation swap
+   * @param tokenPrincipal the user name the token was minted for, before any impersonation swap.
+   *     It is asked for only when the result is {@link Stored}, so a token whose principal the
+   *     caller has not resolved can still be classified.
    */
   static OmCredential classify(
       boolean signedByOpenMetadata,
       boolean isBotClaim,
       String tokenTypeClaim,
-      String tokenPrincipal) {
+      Supplier<String> tokenPrincipal) {
     TokenTypeClaim tokenType = TokenTypeClaim.parse(tokenTypeClaim);
     OmCredential credential;
     if (signedByOpenMetadata) {
@@ -101,7 +104,7 @@ public sealed interface OmCredential
 
   /** One case per row of the table; the ternary in each row is the isBot column. */
   private static OmCredential classifyOpenMetadataSigned(
-      boolean isBotClaim, TokenTypeClaim tokenType, String tokenPrincipal) {
+      boolean isBotClaim, TokenTypeClaim tokenType, Supplier<String> tokenPrincipal) {
     return switch (tokenType) {
       case ABSENT -> isBotClaim ? stored(tokenPrincipal) : new NotStored();
       case BOT -> isBotClaim ? stored(tokenPrincipal) : unrecognized(true, isBotClaim, tokenType);
@@ -113,8 +116,8 @@ public sealed interface OmCredential
     };
   }
 
-  private static Stored stored(String tokenPrincipal) {
-    return new Stored(CredentialSubject.of(tokenPrincipal));
+  private static Stored stored(Supplier<String> tokenPrincipal) {
+    return new Stored(CredentialSubject.of(tokenPrincipal.get()));
   }
 
   private static Unrecognized unrecognized(
