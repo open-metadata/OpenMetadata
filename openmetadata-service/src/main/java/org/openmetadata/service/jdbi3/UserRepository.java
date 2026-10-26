@@ -1674,12 +1674,25 @@ public class UserRepository extends EntityRepository<User> {
     testCaseResolutionStatusRepository.cleanUpAssignees(user.getFullyQualifiedName());
   }
 
+  /**
+   * Every delete path runs this, including the bulk soft delete that removes a deleted bot's user
+   * without calling {@link #postDelete}, so the credential change is announced here.
+   */
+  @Override
+  protected DeleteLifecycle beginDeleteLifecycle(User entity, String deletedBy) {
+    DeleteLifecycle parentLifecycle = super.beginDeleteLifecycle(entity, deletedBy);
+    return () -> {
+      try (parentLifecycle) {
+        Credentials.changed(entity.getName());
+      }
+    };
+  }
+
   @Override
   protected void postDelete(User entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
     JwtFilter.invalidateResolvedEmailIdentity(entity.getEmail());
     revokeLiveSessions(entity);
-    Credentials.changed(entity.getName());
     if (hardDelete) {
       // Lightweight app-managed table, no FK - clean up explicitly rather than via cascade.
       userPreferencesRepository.delete(entity.getId());
