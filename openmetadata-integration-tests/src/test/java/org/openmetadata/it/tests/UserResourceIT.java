@@ -2956,9 +2956,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     OpenMetadataClient firstClient = clientWithToken(firstToken);
     assertEquals(botUser.getId(), getLoggedInUser(firstClient).getId());
 
-    // JWT timestamps have second precision, so two tokens minted within the same second with the
-    // same expiry are byte-identical (and therefore both "current"). A different expiry makes the
-    // rotation observable without sleeping across a second boundary.
     String secondToken = generateBotToken(botUser, JWTTokenExpiry.Thirty);
     assertNotEquals(firstToken, secondToken);
 
