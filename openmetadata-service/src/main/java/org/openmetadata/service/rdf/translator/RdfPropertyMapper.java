@@ -11,6 +11,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -211,11 +212,38 @@ public class RdfPropertyMapper {
    * Convert all entity properties to RDF triples based on context mappings
    */
   public void mapEntityToRdf(EntityInterface<?> entity, Resource entityResource, Model model) {
+    JsonNode entityJson = document(Objects.requireNonNull(entity, "entity"));
+    liveReferences.apply(entityJson);
+    mapDocumentToRdf(entity, entityJson, entityResource, model);
+  }
+
+  /**
+   * Maps a reindex page entity whose labels {@code labels} resolved for the whole page, from the
+   * document {@link #document} built for it.
+   */
+  void mapEntityToRdf(
+      EntityInterface<?> entity,
+      JsonNode entityJson,
+      LiveTagLookup labels,
+      Resource entityResource,
+      Model model) {
+    liveReferences.apply(entityJson, labels);
+    mapDocumentToRdf(entity, entityJson, entityResource, model);
+  }
+
+  JsonNode document(EntityInterface<?> entity) {
+    return objectMapper.valueToTree(entity);
+  }
+
+  LiveTagLookup resolveLabelsTogether(Collection<JsonNode> documents) {
+    return liveReferences.resolveTogether(documents);
+  }
+
+  private void mapDocumentToRdf(
+      EntityInterface<?> entity, JsonNode entityJson, Resource entityResource, Model model) {
     EntityInterface<?> requiredEntity = Objects.requireNonNull(entity, "entity");
     Resource requiredResource = Objects.requireNonNull(entityResource, "entityResource");
     Model requiredModel = Objects.requireNonNull(model, "model");
-    JsonNode entityJson = objectMapper.valueToTree(requiredEntity);
-    liveReferences.apply(entityJson);
     String entityType = requiredEntity.getEntityReference().getType();
     String contextName = getContextName(entityType);
     Object context = contextCache.get(contextName);

@@ -662,6 +662,8 @@ public class RdfRepository {
       List<? extends EntityInterface<?>> entities) {
     List<RdfStorageInterface.EntityWriteRequest> requests = new ArrayList<>(entities.size());
     if (isEnabled()) {
+      // One label lookup per label type for the whole page, not per entity.
+      JsonLdTranslator.Page page = translator.page(entities);
       for (EntityInterface<?> entity : entities) {
         // Per-entity isolation: mapEntityToRdf propagates mapping failures, and the sink
         // translates a whole batch in one task, so an unguarded throw here would record
@@ -669,7 +671,7 @@ public class RdfRepository {
         // A skipped entity is reported as a single failure by the caller.
         try {
           String entityType = entity.getEntityReference().getType();
-          Model rdfModel = translator.toRdf(entity);
+          Model rdfModel = page.toRdf(entity);
           requests.add(
               new RdfStorageInterface.EntityWriteRequest(entityType, entity.getId(), rdfModel));
         } catch (RuntimeException translationFailure) {

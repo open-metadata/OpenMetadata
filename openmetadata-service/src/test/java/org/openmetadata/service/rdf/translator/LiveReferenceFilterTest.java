@@ -105,6 +105,20 @@ class LiveReferenceFilterTest {
     assertEquals(Set.of(Set.of(LIVE_TAG), Set.of(DELETED_TERM)), Set.copyOf(lookups));
   }
 
+  @Test
+  void aReindexPageTranslatesEachEntityAsTheLiveWritePathDoes() {
+    final JsonLdTranslator translator =
+        new JsonLdTranslator(new ObjectMapper(), BASE, lookup, ReferenceScope.LIVE);
+    final Model single = translator.toRdf(dashboard);
+    final Model paged = translator.page(List.of(dashboard)).toRdf(dashboard);
+    try {
+      assertTrue(paged.isIsomorphicWith(single));
+    } finally {
+      single.close();
+      paged.close();
+    }
+  }
+
   private Model translate(final ReferenceScope scope) {
     return new JsonLdTranslator(new ObjectMapper(), BASE, lookup, scope).toRdf(dashboard);
   }

@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,11 +51,37 @@ final class LiveReferenceFilter {
 
   /** Resolves, in place, the labels of {@code document} and drops what its scope excludes. */
   void apply(final JsonNode document) {
-    final Map<String, Set<String>> labelFqnsByType = new HashMap<>();
-    collectLabels(document, labelFqnsByType);
+    apply(document, tagLookup);
+  }
+
+  /** As {@link #apply(JsonNode)}, resolving labels through {@code labels}. */
+  void apply(final JsonNode document, final LiveTagLookup labels) {
     final Map<String, Map<String, UUID>> liveLabels = new HashMap<>();
-    labelFqnsByType.forEach((type, fqns) -> liveLabels.put(type, tagLookup.liveIds(type, fqns)));
+    labelFqnsByType(List.of(document))
+        .forEach((type, fqns) -> liveLabels.put(type, labels.liveIds(type, fqns)));
     retainLive(document, liveLabels);
+  }
+
+  /**
+   * Resolves the labels of every document with one lookup per label type. The result answers for
+   * these documents only and is dropped with them, so it never outlives the read it reflects.
+   */
+  LiveTagLookup resolveTogether(final Collection<JsonNode> documents) {
+    final Map<String, Map<String, UUID>> resolved = new HashMap<>();
+    labelFqnsByType(documents)
+        .forEach((type, fqns) -> resolved.put(type, tagLookup.liveIds(type, fqns)));
+    return (type, fqns) -> {
+      final Map<String, UUID> live = resolved.getOrDefault(type, Map.of());
+      final Map<String, UUID> requested = new HashMap<>();
+      fqns.stream().filter(live::containsKey).forEach(fqn -> requested.put(fqn, live.get(fqn)));
+      return requested;
+    };
+  }
+
+  private static Map<String, Set<String>> labelFqnsByType(final Collection<JsonNode> documents) {
+    final Map<String, Set<String>> labelFqnsByType = new HashMap<>();
+    documents.forEach(document -> collectLabels(document, labelFqnsByType));
+    return labelFqnsByType;
   }
 
   private static void collectLabels(
