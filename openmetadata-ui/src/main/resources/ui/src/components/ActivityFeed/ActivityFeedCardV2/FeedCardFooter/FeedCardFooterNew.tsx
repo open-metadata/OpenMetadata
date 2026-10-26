@@ -22,13 +22,13 @@ import {
   MessageDotsCircle,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import { TFunction } from 'i18next';
 import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import {
   ButtonProps as AriaButtonProps,
   PressEvent,
 } from 'react-aria-components';
-import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { FEED_FOOTER_AVATAR_SIZE } from '../../../../constants/Feeds.constants';
 import {
