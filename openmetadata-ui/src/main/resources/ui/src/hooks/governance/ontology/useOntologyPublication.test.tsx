@@ -383,6 +383,34 @@ it('keeps a lost capture unresolved when the bounded history cannot prove its id
   expect(post).toHaveBeenCalledTimes(1);
 });
 
+it.each([
+  ['working', { workingRevision: 9 }],
+  ['activation', { activationRevision: 4 }],
+] as const)(
+  'clears a lost capture that history does not show once the %s revision has moved',
+  async (_moved, change) => {
+    currentState = { ...currentState, workingRevision: 8 };
+    const hook = await setup();
+    post.mockRejectedValueOnce(new Error('Capture response lost'));
+    await act(async () => {
+      await hook.result.current.capture(currentState, {
+        versionBump: VersionBump.Minor,
+      });
+    });
+
+    expect(hook.result.current.recovery?.operation).toBe('capture');
+
+    currentState = { ...currentState, ...change };
+    await act(async () => {
+      await hook.result.current.retryRecovery();
+    });
+
+    expect(hook.result.current.recovery).toBeNull();
+    expect(hook.result.current.canWrite).toBe(true);
+    expect(post).toHaveBeenCalledTimes(1);
+  }
+);
+
 it('permits a deliberate new capture after the server definitively rejects the first capture', async () => {
   currentState = { ...currentState, workingRevision: 8 };
   const hook = await setup();

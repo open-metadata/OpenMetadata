@@ -248,6 +248,10 @@ const PART_OF = 'https://open-metadata.org/ontology/partOf';
 const HAS_PART = 'https://open-metadata.org/ontology/hasPart';
 const GOVERNED_BY = 'https://open-metadata.org/ontology/governedBy';
 const SUBCLASS_OF = 'http://www.w3.org/2000/01/rdf-schema#subClassOf';
+const APPROVES = 'https://open-metadata.org/ontology/approves';
+const APPROVED_BY = 'https://open-metadata.org/ontology/approvedBy';
+const GOVERNS = 'https://open-metadata.org/ontology/governs';
+const GOVERNS_2 = 'https://open-metadata.org/ontology/governs2';
 
 const relationshipType = (
   name: string,
@@ -478,28 +482,13 @@ describe('OntologyGraphView', () => {
     }
   );
 
-  it.each([
-    { status: 409, propertyIris: ['urn:existing:approvedBy'], errors: 0 },
-    { status: 503, propertyIris: [], errors: 1 },
-  ])(
-    'handles registry HTTP $status before creating native properties',
-    async ({ status, propertyIris, errors }) => {
+  it.each([409, 503])(
+    'reports registry HTTP %s instead of writing native properties',
+    async (status) => {
       (createRelationshipType as jest.Mock).mockRejectedValue({
         isAxiosError: true,
         response: { status },
       });
-      (getRelationshipTypeByName as jest.Mock).mockResolvedValue(
-        relationshipType(
-          'approvedBy',
-          'approved by',
-          'urn:existing:approvedBy',
-          {
-            category: Category.Custom,
-          }
-        )
-      );
-      (createOntologyAxiom as jest.Mock).mockResolvedValue({});
-      (createOntologyProperty as jest.Mock).mockResolvedValue({});
       render(
         <OntologyGraphView
           isEditing
@@ -524,16 +513,14 @@ describe('OntologyGraphView', () => {
         await creation;
       });
 
-      expect(
-        (createOntologyProperty as jest.Mock).mock.calls.map(
-          ([request]) => request.iri
-        )
-      ).toEqual(propertyIris);
-      expect(createOntologyAxiom).toHaveBeenCalledTimes(propertyIris.length);
-      expect(getRelationshipTypeByName).toHaveBeenCalledTimes(
-        propertyIris.length
+      expect(showErrorToast).toHaveBeenCalledTimes(1);
+      expect(showErrorToast).toHaveBeenCalledWith(
+        expect.objectContaining({ response: { status } })
       );
-      expect(showErrorToast).toHaveBeenCalledTimes(errors);
+      expect(getRelationshipTypeByName).not.toHaveBeenCalled();
+      expect(patchRelationshipType).not.toHaveBeenCalled();
+      expect(createOntologyProperty).not.toHaveBeenCalled();
+      expect(createOntologyAxiom).not.toHaveBeenCalled();
       expect(
         screen.queryByTestId('relationship-type-dialog')
       ).not.toBeInTheDocument();
@@ -929,11 +916,185 @@ describe('OntologyGraphView', () => {
       })
     );
 
-    await waitFor(() => expect(listRelationshipTypes).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(listRelationshipTypes).toHaveBeenCalledTimes(3));
 
     expect(
       screen.queryByTestId('relationship-type-dialog')
     ).not.toBeInTheDocument();
+  });
+
+  it('reuses a type registered since the list was cached, with its inverse', async () => {
+    const approves = relationshipType('approves', 'approves', APPROVES, {
+      category: Category.Custom,
+      inverse: inverseRef('approvedBy'),
+      systemDefined: false,
+    });
+    const approvedBy = relationshipType(
+      'approvedBy',
+      'approved by',
+      APPROVED_BY,
+      {
+        category: Category.Custom,
+        inverse: inverseRef('approves'),
+        systemDefined: false,
+      }
+    );
+    const fresh = [...registryTypes, approves, approvedBy];
+    (listRelationshipTypes as jest.Mock)
+      .mockResolvedValueOnce({
+        data: registryTypes,
+        paging: { total: registryTypes.length },
+      })
+      .mockResolvedValue({ data: fresh, paging: { total: fresh.length } });
+    (createRelationshipType as jest.Mock).mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 409 },
+    });
+    (getRelationshipTypeByName as jest.Mock).mockResolvedValue(approvedBy);
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    let creation: Promise<void> = Promise.resolve();
+    act(() => {
+      creation = latestGraphProps().onCreateRelation(
+        customer.id,
+        orphan.id,
+        'new:approved by'
+      );
+    });
+    await screen.findByTestId('relationship-type-dialog');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('relationship-type-submit'));
+      await creation;
+    });
+
+    expect(createRelationshipType).not.toHaveBeenCalled();
+    expect(getRelationshipTypeByName).not.toHaveBeenCalled();
+    expect(patchRelationshipType).not.toHaveBeenCalled();
+    expect(createOntologyProperty).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        inverse: undefined,
+        iri: APPROVES,
+        name: 'approves',
+      })
+    );
+    expect(createOntologyProperty).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        inverse: APPROVES,
+        iri: APPROVED_BY,
+        name: 'approvedBy',
+      })
+    );
+    expect(createOntologyAxiom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expressions: [expect.objectContaining({ propertyIri: APPROVED_BY })],
+      })
+    );
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('leaves a registered inverse name and its partner alone when the cached list missed them', async () => {
+    const governs = relationshipType('governs', 'governs', GOVERNS, {
+      category: Category.Custom,
+      inverse: inverseRef('governedBy'),
+      systemDefined: false,
+    });
+    const fresh = [
+      ...registryTypes.map((type) =>
+        type.name === 'governedBy'
+          ? { ...type, inverse: inverseRef('governs') }
+          : type
+      ),
+      governs,
+    ];
+    (listRelationshipTypes as jest.Mock)
+      .mockResolvedValueOnce({
+        data: registryTypes,
+        paging: { total: registryTypes.length },
+      })
+      .mockResolvedValue({ data: fresh, paging: { total: fresh.length } });
+    const register = (
+      createRelationshipType as jest.Mock
+    ).getMockImplementation();
+    (createRelationshipType as jest.Mock).mockImplementation((request) =>
+      request.name === 'governs'
+        ? Promise.reject({ isAxiosError: true, response: { status: 409 } })
+        : register?.(request)
+    );
+    (getRelationshipTypeByName as jest.Mock).mockResolvedValue(governs);
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    let creation: Promise<void> = Promise.resolve();
+    act(() => {
+      creation = latestGraphProps().onCreateRelation(
+        customer.id,
+        orphan.id,
+        'new:approved by'
+      );
+    });
+    await screen.findByTestId('relationship-type-dialog');
+    fireEvent.change(screen.getByTestId('relationship-type-inverse'), {
+      target: { value: 'governs' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('relationship-type-submit'));
+      await creation;
+    });
+
+    expect(getRelationshipTypeByName).not.toHaveBeenCalled();
+    expect(createRelationshipType).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ displayName: 'governs', name: 'governs2' })
+    );
+    expect(createRelationshipType).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ inverse: 'governs2', name: 'approvedBy' })
+    );
+    expect(patchRelationshipType).toHaveBeenCalledTimes(1);
+    expect(patchRelationshipType).toHaveBeenCalledWith('type-governs2', [
+      {
+        op: 'add',
+        path: '/inverse',
+        value: {
+          fullyQualifiedName: 'approvedBy',
+          id: 'type-approvedBy',
+          name: 'approvedBy',
+          type: 'relationshipType',
+        },
+      },
+    ]);
+    expect(createOntologyProperty).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        inverse: GOVERNS_2,
+        iri: APPROVED_BY,
+        name: 'approvedBy',
+      })
+    );
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 
   it('reuses a registry type whose label matches the requested new type', async () => {
