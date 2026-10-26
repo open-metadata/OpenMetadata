@@ -116,7 +116,6 @@ public class JwtFilter implements ContainerRequestFilter {
   private static final String AUTHORITY_VERSION_SEGMENT = "v2.0";
   private static final String EMAIL_SEPARATOR = "@";
 
-  // Integration tests match the first two word for word.
   private static final String BOT_TOKEN_MISMATCH =
       "The given token does not match the current bot's token!";
   private static final String INVALID_PERSONAL_ACCESS_TOKEN = "Invalid personal access token!";
