@@ -138,6 +138,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getSpreadsheetCondition(tableName));
     conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
+    conditions.add(getTaskReviewerOrAssigneeCondition());
     conditions.add(getCreatedByCondition());
     conditions.add(getUpdatedByCondition(tableName));
     conditions.add(getAboutEntityCondition());
@@ -406,6 +407,27 @@ public class ListFilter extends Filter<ListFilter> {
         Relationship.ASSIGNED_TO.ordinal(),
         inCondition,
         Relationship.ASSIGNED_TO.ordinal());
+  }
+
+  /**
+   * Tasks that any of the given users or teams review or are assigned, by comma-separated id. A
+   * vote removes the voter from a task's assignees, so a reviewer's own listing keeps the task
+   * through the reviewer relationship.
+   */
+  private String getTaskReviewerOrAssigneeCondition() {
+    String ids = queryParams.get("reviewerOrAssigneeIds");
+    if (nullOrEmpty(ids)) {
+      return "";
+    }
+    return String.format(
+        "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromEntity IN ('user', 'team') "
+            + "AND entity_relationship.fromId IN (%s) "
+            + "AND entity_relationship.toEntity = 'task' "
+            + "AND entity_relationship.relation IN (%d, %d)))",
+        buildIndexedBindParams("reviewerOrAssigneeId", ids),
+        Relationship.ASSIGNED_TO.ordinal(),
+        Relationship.REVIEWS.ordinal());
   }
 
   /**
