@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, Button, Grid } from '@openmetadata/ui-core-components';
 import { Plus, RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -45,6 +45,7 @@ import GlobalSearchSettings from './GlobalSearchSettings';
 import HybridWeightsSection from './HybridWeightsSection';
 import SearchEntityCards from './SearchEntityCards';
 import SearchSection from './SearchSection';
+import { TERM_BOOST_GRID_STYLE } from './SearchSettings.constants';
 import {
   complementWeight,
   getReturningSearchState,
@@ -312,7 +313,7 @@ const SearchSettingsView = ({
         count={termBoosts.length}
         testId="term-boosts"
         title={t('label.term-boost')}>
-        <div className="tw:grid tw:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] tw:gap-3">
+        <Grid gap="3" style={TERM_BOOST_GRID_STYLE}>
           {termBoosts.map((boost) => (
             <TermBoostCard
               className="tw:w-full"
@@ -329,7 +330,7 @@ const SearchSettingsView = ({
               onDelete={handleTermBoostDelete}
             />
           )}
-        </div>
+        </Grid>
       </SearchSection>
 
       <Box data-testid="field-value-boosts" direction="col">

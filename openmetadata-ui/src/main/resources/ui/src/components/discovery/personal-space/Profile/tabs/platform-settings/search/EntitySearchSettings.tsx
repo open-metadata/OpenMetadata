@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   Dropdown,
+  Grid,
   Select,
 } from '@openmetadata/ui-core-components';
 import { Plus, RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
@@ -59,6 +60,7 @@ import RankingSection, {
 } from './RankingSection';
 import SearchPreviewPanel from './SearchPreviewPanel';
 import SearchSection, { SearchSectionTitle } from './SearchSection';
+import { TERM_BOOST_GRID_STYLE } from './SearchSettings.constants';
 import {
   EntitySearchDraft,
   getReturningSearchState,
@@ -452,7 +454,7 @@ const EntitySearchSettings = ({
           count={draft.termBoosts.length}
           testId="term-boosts"
           title={t('label.term-boost')}>
-          <div className="tw:grid tw:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] tw:gap-3">
+          <Grid gap="3" style={TERM_BOOST_GRID_STYLE}>
             {draft.termBoosts.map((boost) => (
               <TermBoostCard
                 className="tw:w-full"
@@ -469,7 +471,7 @@ const EntitySearchSettings = ({
                 onDelete={handleTermBoostDelete}
               />
             )}
-          </div>
+          </Grid>
         </SearchSection>
 
         <Box data-testid="field-value-boosts" direction="col">
