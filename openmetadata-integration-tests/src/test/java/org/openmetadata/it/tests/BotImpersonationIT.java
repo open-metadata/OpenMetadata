@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -536,6 +537,43 @@ public class BotImpersonationIT {
     assertTrue(
         denied.getMessage().contains("Impersonated requests cannot grant privileges"),
         "Bot mint must be refused as a privileged mutation: " + denied.getMessage());
+  }
+
+  @Test
+  void test_impersonation_cannotGrantPrivilegesThroughUserPatch(TestNamespace ns) {
+    // PATCH reaches the same privileged fields as POST and PUT, so making a user admin or giving
+    // them a role while impersonating an admin is refused the same way.
+    User target = createRegularUser(ns, "patchgrant");
+    OpenMetadataClient asAdmin = grantedBotImpersonating(ns, "patchgrant", "admin");
+    Role dataSteward = SdkClients.adminClient().roles().getByName("DataSteward");
+    List<String> patches =
+        List.of(
+            "[{\"op\":\"replace\",\"path\":\"/isAdmin\",\"value\":true}]",
+            "[{\"op\":\"add\",\"path\":\"/roles/0\",\"value\":{\"id\":\""
+                + dataSteward.getId()
+                + "\",\"type\":\"role\"}}]");
+
+    for (String patch : patches) {
+      Exception denied =
+          assertThrows(
+              Exception.class,
+              () ->
+                  asAdmin
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.PATCH,
+                          "/v1/users/" + target.getId(),
+                          JsonUtils.readTree(patch)),
+              "An impersonated PATCH must not grant privileges: " + patch);
+      assertTrue(
+          denied.getMessage().contains("Impersonated requests cannot grant privileges"),
+          "Privileged PATCH must be refused: " + denied.getMessage());
+    }
+    User unchanged = SdkClients.adminClient().users().getByName(target.getName(), "roles");
+    assertFalse(Boolean.TRUE.equals(unchanged.getIsAdmin()), "Target must not become admin");
+    assertFalse(
+        unchanged.getRoles().stream().anyMatch(role -> role.getId().equals(dataSteward.getId())),
+        "Target must not gain the role");
   }
 
   @Test

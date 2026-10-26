@@ -25,6 +25,7 @@ import java.lang.annotation.Target;
  *
  * <p>The binding is resolved by Jersey against the method it actually dispatched to, so it holds
  * for every spelling of the URL that routes there (matrix parameters, trailing slashes, encoding).
+ * ADR:2026-10-26-impersonated-requests-never-reach-credentials-or-grant-privileges
  */
 @NameBinding
 @Retention(RetentionPolicy.RUNTIME)

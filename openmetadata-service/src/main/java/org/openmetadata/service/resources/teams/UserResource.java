@@ -1100,6 +1100,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @RequestBody(
@@ -1127,7 +1128,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
       String path = patchOpObject.getString("path");
       if (isPrivilegedUserPatchPath(path)) {
-        authorizer.authorizeAdmin(securityContext);
+        authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
         continue;
       }
       if (patchOpObject.containsKey("value")) {
@@ -1149,7 +1150,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
             String teamId = value.getString("id");
             repository.validateTeamAddition(id, UUID.fromString(teamId));
             if (!repository.isTeamJoinable(teamId)) {
-              authorizer.authorizeAdmin(securityContext); // Only admin can join closed teams
+              // Only admin can join closed teams
+              authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
             }
           }
         }
