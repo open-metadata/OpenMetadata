@@ -14,7 +14,6 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -41,9 +40,8 @@ import org.openmetadata.service.cache.CacheProvider;
 /**
  * A server still on the previous release reads {@code credential:bot:*} and {@code
  * credential:pat:*} from Redis on every request. A revoke on a new server must delete both, so the
- * old server's next request reloads from the database. The new server's own legacy path rewrites
- * the key of the kind it manages, so that key is checked for the planted value, and the other kind
- * for absence.
+ * old server's next request reloads from the database. A new server never writes either key, so
+ * both are absent after the revoke.
  */
 @Tag("multi-node")
 @ExtendWith(TestNamespaceExtension.class)
@@ -64,7 +62,7 @@ class CredentialLegacyKeyShimIT {
         .executeForString(
             HttpMethod.PUT, "/v1/users/revokeToken", "{\"id\":\"" + bot.getId() + "\"}");
 
-    assertNotEquals(Optional.of(PLANTED), provider().get(botKey));
+    assertEquals(Optional.empty(), provider().get(botKey));
     assertEquals(Optional.empty(), provider().get(patKey));
   }
 
@@ -87,7 +85,7 @@ class CredentialLegacyKeyShimIT {
             "{\"tokenIds\":[\"" + pat.getToken() + "\"]}");
 
     assertEquals(Optional.empty(), provider().get(botKey));
-    assertNotEquals(Optional.of(PLANTED), provider().get(patKey));
+    assertEquals(Optional.empty(), provider().get(patKey));
   }
 
   private static CacheProvider provider() {
