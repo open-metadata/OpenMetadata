@@ -20,15 +20,19 @@ concurrency:
 env:
   UI_DIR: openmetadata-ui/src/main/resources/ui
   STABILITY_RUNS: 5
+  # Each run (coverage and every stability run) is split across this many
+  # runners; one runner was taking ~10 min for the whole suite.
+  SHARDS: 3
 
 jobs:
   browser-tests:
-    name: browser tests + coverage
+    name: browser tests + coverage (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    permissions:
-      contents: read
-      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3] # keep in step with env.SHARDS
     steps:
       - uses: actions/checkout@v7
         with:
@@ -38,13 +42,58 @@ jobs:
         id: tests
         working-directory: ${{ env.UI_DIR }}
         continue-on-error: true
+        # The blob report carries this shard's results and coverage for the
+        # merge in browser-tests-report.
         run: |
-          start=$(date +%s)
-          status=0
-          yarn test:ui:coverage --reporter=default --reporter=junit \
-            --outputFile.junit=src/test/browser/junit.xml || status=$?
-          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
-          exit "$status"
+          yarn test:ui:coverage --shard=${{ matrix.shard }}/${{ env.SHARDS }} \
+            --reporter=default --reporter=blob
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: browser-blob-${{ matrix.shard }}
+          path: ${{ env.UI_DIR }}/.vitest-reports/*
+          include-hidden-files: true
+          retention-days: 1
+      - name: Upload failure screenshots
+        if: always() && steps.tests.outcome == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-browser-failures-${{ matrix.shard }}
+          path: |
+            ${{ env.UI_DIR }}/src/**/__screenshots__/**
+            ${{ env.UI_DIR }}/.vitest-attachments/**
+          if-no-files-found: ignore
+      - name: Fail if tests failed
+        if: always() && steps.tests.outcome == 'failure'
+        run: exit 1
+
+  # Merges the shards back into one coverage summary and one JUnit file, so the
+  # PR gets a single coverage comment as before.
+  browser-tests-report:
+    name: browser tests + coverage
+    needs: browser-tests
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/ui-browser-setup
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: browser-blob-*
+          merge-multiple: true
+          path: ${{ env.UI_DIR }}/.vitest-reports
+      - name: Merge shard reports
+        working-directory: ${{ env.UI_DIR }}
+        run: |
+          npx vitest --config vitest.browser.config.ts --merge-reports --coverage \
+            --reporter=default --reporter=junit \
+            --outputFile.junit=src/test/browser/junit.xml
       - name: Coverage comment
         if: github.event_name == 'pull_request'
         uses: MishaKav/jest-coverage-comment@v1.0.34
@@ -56,29 +105,21 @@ jobs:
           summary-title: UI browser tests summary
           badge-title: Browser coverage
           unique-id-for-comment: ui-browser-tests
-      - name: Upload failure screenshots
-        if: always() && steps.tests.outcome == 'failure'
-        uses: actions/upload-artifact@v7
-        with:
-          name: ui-browser-failures
-          path: |
-            ${{ env.UI_DIR }}/src/**/__screenshots__/**
-            ${{ env.UI_DIR }}/.vitest-attachments/**
-          if-no-files-found: ignore
-      - name: Fail if tests failed
-        if: always() && steps.tests.outcome == 'failure'
+      - name: Fail if any shard failed
+        if: always() && needs.browser-tests.result != 'success'
         run: exit 1
 
   # Runs the suite several times in random order, without coverage, to show
   # whether any test is order-dependent or flaky. No retries anywhere.
   stability:
-    name: stability run ${{ matrix.run }}
+    name: stability run ${{ matrix.run }} (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         run: [1, 2, 3, 4, 5]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -91,12 +132,13 @@ jobs:
           start=$(date +%s)
           status=0
           yarn test:ui:run --sequence.shuffle --sequence.seed=${{ matrix.run }} \
+            --shard=${{ matrix.shard }}/${{ env.SHARDS }} \
             --reporter=default --reporter=json --outputFile.json=results.json || status=$?
           echo "{\"run\": ${{ matrix.run }}, \"seconds\": $(( $(date +%s) - start ))}" > timing.json
           exit "$status"
       - uses: actions/upload-artifact@v7
         with:
-          name: stability-${{ matrix.run }}
+          name: stability-${{ matrix.run }}-${{ matrix.shard }}
           path: |
             ${{ env.UI_DIR }}/results.json
             ${{ env.UI_DIR }}/timing.json
@@ -115,18 +157,26 @@ jobs:
           pattern: stability-*
           path: runs
       - name: Summarize
+        # A run's wall time is its slowest shard; its counts are the shards' sum.
         run: |
           {
             echo "<!-- ui-browser-stability -->"
-            echo "### UI browser tests: stability (${STABILITY_RUNS} shuffled runs, no retries)"
+            echo "### UI browser tests: stability (${STABILITY_RUNS} shuffled runs × ${SHARDS} shards, no retries)"
             echo
-            echo "| Run | Wall | Passed | Failed |"
+            echo "| Run | Wall (slowest shard) | Passed | Failed |"
             echo "|---|---|---|---|"
             for i in $(seq 1 "$STABILITY_RUNS"); do
-              d=runs/stability-$i
-              jq -rs '.[0] as $r | .[1] as $t |
-                "| \($t.run) | \($t.seconds)s | \($r.numPassedTests) | \($r.numFailedTests) |"' \
-                "$d/results.json" "$d/timing.json" 2>/dev/null || echo "| $i | n/a | no results | |"
+              results=$(ls runs/stability-"$i"-*/results.json 2>/dev/null)
+              timings=$(ls runs/stability-"$i"-*/timing.json 2>/dev/null)
+              if [ "$(echo "$results" | grep -c .)" -ne "$SHARDS" ]; then
+                echo "| $i | n/a | missing shard results | |"
+                continue
+              fi
+              # shellcheck disable=SC2086 # file lists split on purpose
+              wall=$(jq -s 'map(.seconds) | max' $timings)
+              # shellcheck disable=SC2086
+              jq -rs --arg run "$i" --arg wall "$wall" \
+                '"| \($run) | \($wall)s | \(map(.numPassedTests) | add) | \(map(.numFailedTests) | add) |"' $results
             done
             echo
             failed=$(jq -rs '[.[].testResults[] | .name as $f | .assertionResults[]
