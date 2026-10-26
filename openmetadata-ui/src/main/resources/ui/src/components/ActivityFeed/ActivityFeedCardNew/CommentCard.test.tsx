@@ -76,6 +76,16 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditorNew', () => {
   ));
 });
 
+jest.mock('../../common/CommentComposer/CommentComposer', () => ({
+  CommentEditForm: jest.fn(({ message, onSave }) => (
+    <button
+      data-testid="comment-edit-form"
+      onClick={() => onSave(`${message} (edited)`)}>
+      Save
+    </button>
+  )),
+}));
+
 const mockActivityFeedActions = jest.fn();
 jest.mock('../Shared/ActivityFeedActions', () => {
   return jest.fn((props) => {
@@ -418,6 +428,40 @@ describe('CommentCard', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('feed-editor')).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe('in an activity thread panel', () => {
+    it('puts the actions in a menu and edits with the comment editor', async () => {
+      renderCommentCard({ isThreadPanel: true });
+
+      expect(mockActivityFeedActions).toHaveBeenLastCalledWith(
+        expect.objectContaining({ asMenu: true })
+      );
+
+      await hoverCard();
+      fireEvent.click(screen.getByTestId('edit-button'));
+      fireEvent.click(await screen.findByTestId('comment-edit-form'));
+
+      await waitFor(() =>
+        expect(onEdit).toHaveBeenCalledWith('Test comment message (edited)')
+      );
+
+      expect(screen.queryByTestId('feed-editor')).not.toBeInTheDocument();
+    });
+
+    it('keeps the hover actions and the old editor elsewhere', async () => {
+      renderCommentCard();
+
+      expect(mockActivityFeedActions).not.toHaveBeenLastCalledWith(
+        expect.objectContaining({ asMenu: true })
+      );
+
+      await hoverCard();
+      fireEvent.click(screen.getByTestId('edit-button'));
+
+      expect(await screen.findByTestId('feed-editor')).toBeInTheDocument();
+      expect(screen.queryByTestId('comment-edit-form')).not.toBeInTheDocument();
     });
   });
 });
