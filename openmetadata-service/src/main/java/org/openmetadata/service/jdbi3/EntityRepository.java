@@ -372,6 +372,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   private static final int BULK_HARD_DELETE_TXN_CHUNK_SIZE = 500;
 
+  /**
+   * How often a keyset page re-checks a boundary that keeps changing under it before it is returned
+   * uncut; see ADR:2026-10-26-reindex-partitions-are-key-ranges-fixed-at-job-creation.
+   */
+  private static final int MAX_BOUNDARY_CHECKS = 3;
+
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
   private static final int STRING_OBJECT_OVERHEAD_BYTES = 40;
@@ -3005,16 +3011,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     List<T> entities = new ArrayList<>();
     List<EntityError> errors = new ArrayList<>();
     if (limitParam > 0) {
-      String boundaryId = firstIdAfter(filter, end);
       Map<String, String> cursorMap = decodeKeysetCursor(after);
       String afterName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
       String afterId = cursorMap.get("id");
-      List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
-      int boundary = indexOfId(jsons, boundaryId);
-      if (boundary >= 0) {
-        jsons = jsons.subList(0, boundary);
-      }
-      boolean hasMoreData = boundary < 0 && jsons.size() > limitParam;
+      BoundedPage page = readBoundedPage(filter, limitParam + 1, afterName, afterId, end);
+      List<String> jsons = page.rows();
+      boolean hasMoreData = !page.reachedEnd() && jsons.size() > limitParam;
       List<String> jsonsToProcess = hasMoreData ? jsons.subList(0, limitParam) : jsons;
 
       Iterator<Either<T, EntityError>> iterator =
@@ -3066,6 +3068,34 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private Map<String, String> decodeKeysetCursor(String cursor) {
     return parseCursorMap(cursor == null || cursor.isEmpty() ? "" : RestUtil.decodeCursor(cursor));
+  }
+
+  private record BoundedPage(List<String> rows, boolean reachedEnd) {}
+
+  /**
+   * Reads the page and cuts it at the boundary (the first row after {@code end}). The boundary is
+   * looked up again after the read and the page re-read if it changed, so a boundary row deleted
+   * in between (e.g. a hard delete during a reindex) cannot let the page run past {@code end}.
+   */
+  private BoundedPage readBoundedPage(
+      ListFilter filter, int limit, String afterName, String afterId, String end) {
+    String boundaryId = firstIdAfter(filter, end);
+    List<String> jsons = dao.listAfter(filter, limit, afterName, afterId);
+    int boundary = indexOfId(jsons, boundaryId);
+    boolean settled = end == null || boundary >= 0;
+    for (int check = 0; !settled && check < MAX_BOUNDARY_CHECKS; check++) {
+      String latestId = firstIdAfter(filter, end);
+      settled = Objects.equals(latestId, boundaryId);
+      if (!settled) {
+        boundaryId = latestId;
+        jsons = dao.listAfter(filter, limit, afterName, afterId);
+        boundary = indexOfId(jsons, boundaryId);
+        settled = boundary >= 0;
+      }
+    }
+    return boundary >= 0
+        ? new BoundedPage(jsons.subList(0, boundary), true)
+        : new BoundedPage(jsons, false);
   }
 
   private String firstIdAfter(ListFilter filter, String cursor) {

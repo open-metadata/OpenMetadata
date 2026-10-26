@@ -1,12 +1,12 @@
 # Reindex partitions are key ranges fixed when the job is created, and every server reads them from the partition row
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial)
+- **Revisions:** v1 2026-10-26 (initial); v2 2026-10-26 (boundary re-checked after each page read)
 - **Deciders:** Sonika Shah
 - **Guard:** `DistributedReindexConcurrentWritesIT`, `PartitionWorkerTest`
   (`keyRangePartitionReadsFromItsStartKeyUntilTheReaderReportsNoMoreRows`,
   `keyRangePartitionIsRetriedFromItsStartKeyWhenARowReadFails`,
-  `keyRangePartitionContinuesAfterABatchItCouldNotWrite`)
+  `keyRangePartitionContinuesAfterABatchItCouldNotWrite`), `EntityRepositoryKeysetEndTest`
 - **Related:** #36203
 
 ## Context
@@ -30,7 +30,10 @@ no partition and disappeared from search when the new index was promoted, while 
   `SearchIndexPartition.FIRST_ROW` (empty); the last partition has no end key.
 - A partition with a start key reads after it until the first row the DAO lists after its end key,
   whatever server claims it. The boundary comes from the DAO's own `listAfter`, so it follows that
-  DAO's order and collation; no comparison happens in Java.
+  DAO's order and collation; no comparison happens in Java. The boundary is looked up again after
+  each page read, and the page re-read if it changed, so a boundary row deleted between the two
+  queries cannot carry the cursor past the end key. A boundary still changing after
+  `MAX_BOUNDARY_CHECKS` (3) checks returns the page uncut: rows may be read twice, never skipped.
 - A partition without a start key (time series, a type whose walk failed, a partition created
   before this change) keeps the offset range.
 - In a key range, a batch that was read but not written is counted failed and reading continues
@@ -42,5 +45,5 @@ no partition and disappeared from search when the new index was promoted, while 
   when it lands right at a boundary (both partitions upsert the same document); no existing row is
   skipped. Rows created after their range was read rely on the live write path, which is unchanged.
 - A partition no longer stops at its count, so its success count can exceed `estimatedCount`.
-- Each batch costs one extra single-row keyset query to find the boundary.
+- Each batch costs two extra single-row keyset queries to find and confirm the boundary.
 - Time-series types still page by offset and are not covered.
