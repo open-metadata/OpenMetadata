@@ -117,7 +117,7 @@ describe('MetricListHealth', () => {
       takeRecords: jest.fn().mockReturnValue([]),
       thresholds: [0],
       unobserve: jest.fn(),
-    } satisfies IntersectionObserver;
+    } as IntersectionObserver;
     const IntersectionObserverMock = jest.fn(
       (callback: IntersectionObserverCallback) => {
         intersectionCallback = callback;
@@ -173,7 +173,7 @@ describe('MetricListHealth', () => {
       takeRecords: jest.fn().mockReturnValue([]),
       thresholds: [0],
       unobserve: jest.fn(),
-    } satisfies IntersectionObserver;
+    } as IntersectionObserver;
     setIntersectionObserver(
       jest.fn((callback: IntersectionObserverCallback) => {
         intersectionCallback = callback;

@@ -43,6 +43,13 @@ The retained TypeScript 5 package supports API consumers; it does not define the
 compiler scripts. Editor integration is not automatically reconfigured. Revisit the
 dependency split when native TypeScript provides the APIs these tools require.
 
+Application source must still compile under TypeScript 5.9. Collate copies `src/**`
+into its own project and type-checks it with TypeScript 5.9 and its own compiler
+options, and the TypeScript 5 standard library types differ from TypeScript 7 (for
+example, `IntersectionObserver.scrollMargin` exists only in 7). A fix that only
+satisfies TypeScript 7, such as a `satisfies` against a DOM type, can break Collate
+without failing any check in this repository; prefer forms both versions accept.
+
 ## Amendment: optional tsrs checks
 
 Both UI packages also pin `tsrs@0.18.0-ts7.1.0-dev.20260929` for optional development
