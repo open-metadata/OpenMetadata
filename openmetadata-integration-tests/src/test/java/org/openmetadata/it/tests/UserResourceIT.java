@@ -3138,21 +3138,11 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertEquals(botUser.getId(), getLoggedInUser(oldClient).getId());
     JWTAuthMechanism replacement =
         JWTTokenGenerator.getInstance().generateJWTToken(botUser, JWTTokenExpiry.Thirty);
-    ArrayNode patch = PATCH_MAPPER.createArrayNode();
-    patch
-        .addObject()
-        .put("op", "replace")
-        .put("path", "/authenticationMechanism")
-        .set(
-            "value",
-            PATCH_MAPPER.valueToTree(
-                new AuthenticationMechanism()
-                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
-                    .withConfig(replacement)));
 
     SdkClients.adminClient()
         .getHttpClient()
-        .executeForString(HttpMethod.PATCH, "/v1/users/" + botUser.getId(), patch);
+        .executeForString(
+            HttpMethod.PATCH, "/v1/users/" + botUser.getId(), replaceJwtMechanism(replacement));
 
     assertUnauthorized(oldClient);
     assertEquals(
@@ -3176,19 +3166,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   void test_unrecognizedOmToken_rejected(TestNamespace ns) throws Exception {
     User user = createRegularUser(ns, "unrecognized");
     String loginToken = CredentialFixtures.loginToken(user);
-    // No issuing call pairs isBot=false with tokenType=BOT.
-    String unrecognized =
-        JWTTokenGenerator.getInstance()
-            .getJwtAuthMechanism(
-                user.getName(),
-                new HashSet<>(),
-                false,
-                user.getEmail(),
-                false,
-                ServiceTokenType.BOT,
-                JWTTokenGenerator.getExpiryDate(JWTTokenExpiry.Seven),
-                null)
-            .getJWTToken();
+    String unrecognized = userTokenOfBotType(user);
     assertEquals(user.getId(), getLoggedInUser(clientWithToken(loginToken)).getId());
     assertEquals(200, mcpInitializeStatus(loginToken));
 
@@ -3198,6 +3176,35 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertEquals(401, rejected.getStatusCode());
     assertEquals("Not Authorized! Unrecognized token type!", rejected.getMessage());
     assertEquals(401, mcpInitializeStatus(unrecognized));
+  }
+
+  private static ArrayNode replaceJwtMechanism(JWTAuthMechanism jwt) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ops.addObject()
+        .put("op", "replace")
+        .put("path", "/authenticationMechanism")
+        .set(
+            "value",
+            PATCH_MAPPER.valueToTree(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                    .withConfig(jwt)));
+    return ops;
+  }
+
+  /** Signed with the server key, but no issuing call pairs isBot=false with tokenType=BOT. */
+  private static String userTokenOfBotType(User user) {
+    return JWTTokenGenerator.getInstance()
+        .getJwtAuthMechanism(
+            user.getName(),
+            new HashSet<>(),
+            false,
+            user.getEmail(),
+            false,
+            ServiceTokenType.BOT,
+            JWTTokenGenerator.getExpiryDate(JWTTokenExpiry.Seven),
+            null)
+        .getJWTToken();
   }
 
   private static int tokenRowCount(User user) {

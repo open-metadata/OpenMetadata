@@ -38,8 +38,8 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 /**
  * Mints a token with each call the server issues tokens with, then checks it the way {@link
- * JwtFilter} does. The filter rejects a claim combination OpenMetadata never mints as an
- * unrecognized token, so a mint call that drifts from that table fails here.
+ * JwtFilter} does. The filter rejects as unrecognized any claim combination outside the table in
+ * {@code OmCredential.classify}, so a mint call that changes its claims fails here first.
  */
 class MintedTokensAreRecognizedTest {
   private static final String BOT = "ingestion-bot";
