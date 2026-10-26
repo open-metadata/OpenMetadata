@@ -129,7 +129,7 @@ class AlationSinkClient:
 
     def _client_config(self, api_version: str, get_verify_ssl, **overrides) -> ClientConfig:
         return ClientConfig(
-            base_url=clean_uri(self.config.hostPort),
+            base_url=clean_uri(str(self.config.hostPort)),
             auth_header="TOKEN",
             api_version=api_version,
             auth_token=self._auth_provider.get_access_token,
@@ -205,7 +205,7 @@ class AlationSinkClient:
         Method to write the entities to Alation, in batches, waiting for each batch's job to finish.
         Returns Alation's errors, empty when every entity was written
         """
-        route = ROUTES.get(type(create_requests))
+        route = ROUTES[type(create_requests)]
         url = f"/v2{route}/"
         if ds_id:
             url = f"{url}?ds_id={ds_id}"
@@ -246,7 +246,8 @@ class AlationSinkClient:
         # The deadline is checked before every poll, and no sleep runs past it
         while time.monotonic() < deadline:
             try:
-                job = self.jobs_client.get("/bulk_metadata/job/", data={"id": job_id}) or {}
+                response = self.jobs_client.get("/bulk_metadata/job/", data={"id": job_id})
+                job = response if isinstance(response, dict) else {}
             except Exception as exc:
                 # Polls do not retry, so a transient failure is retried by the next poll; the job
                 # itself may still succeed. Anything else would fail every poll, so stop now

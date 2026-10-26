@@ -321,10 +321,12 @@ class AlationsinkSource(Source):
                 )
             )
             create_requests = CreateTableRequestList(root=[])
+            included_tables = []
             for om_table in om_tables:
                 if filter_by_table(self.source_config.tableFilterPattern, model_str(om_table.name)):  # pyright: ignore[reportAttributeAccessIssue]
                     self.status.filter(model_str(om_table.name), "Table Filtered Out")
                     continue
+                included_tables.append(om_table)
                 create_table_request = self.create_table_request(
                     alation_datasource_id=alation_datasource_id,
                     schema_name=model_str(om_schema.name),
@@ -339,13 +341,7 @@ class AlationsinkSource(Source):
                     self._report_write_failure("tables", f"schema [{model_str(om_schema.name)}]", errors)
                 # Tables go out in batches, so a failure may cover only some of them: still write
                 # the columns, and any table Alation did not create fails its own column write
-                for om_table in om_tables:
-                    if filter_by_table(
-                        self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
-                        model_str(om_table.name),
-                    ):
-                        self.status.filter(model_str(om_table.name), "Table Filtered Out")
-                        continue
+                for om_table in included_tables:
                     self.ingest_columns(
                         alation_datasource_id=alation_datasource_id,
                         schema_name=model_str(om_schema.name),

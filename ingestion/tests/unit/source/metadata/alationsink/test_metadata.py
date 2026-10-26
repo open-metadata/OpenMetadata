@@ -97,3 +97,18 @@ def test_rejected_column_write_is_recorded_as_failure():
     assert [failure.name for failure in source.status.failures] == ["table [wide]"]
     assert "column rejected" in source.status.failures[0].error
     assert source.alation_sink_client.write_entities.call_count == 4
+
+
+def test_filtered_table_is_counted_once_and_gets_no_column_write():
+    source = _source()
+    source.source_config = DatabaseServiceMetadataPipeline(tableFilterPattern={"excludes": ["wide"]})
+
+    list(source.run())
+
+    assert source.status.filtered == [{"wide": "Table Filtered Out"}]
+    column_writes = [
+        call.args[1]
+        for call in source.alation_sink_client.write_entities.call_args_list
+        if isinstance(call.args[1], CreateColumnRequestList)
+    ]
+    assert [request.key for writes in column_writes for request in writes.root] == ["39.sch.narrow.col"]
