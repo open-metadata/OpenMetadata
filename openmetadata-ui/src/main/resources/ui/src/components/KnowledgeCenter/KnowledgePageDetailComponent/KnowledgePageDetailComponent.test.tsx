@@ -350,6 +350,23 @@ describe('KnowledgePageDetailComponent custom properties', () => {
     );
   });
 
+  it('denies viewing and editing custom properties without those permissions', async () => {
+    setMockPermissions({
+      ViewBasic: true,
+      EditAll: false,
+      EditCustomFields: false,
+      ViewAll: false,
+      ViewCustomFields: false,
+    });
+    renderComponent();
+
+    await screen.findByTestId('custom-property-table');
+
+    expect(mockCustomPropertyTable).toHaveBeenLastCalledWith(
+      expect.objectContaining({ hasEditAccess: false, hasPermission: false })
+    );
+  });
+
   it('renders full width without the properties panel', async () => {
     const onPageChange = jest.fn();
     renderComponent(onPageChange);
