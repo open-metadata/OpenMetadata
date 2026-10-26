@@ -15,10 +15,7 @@ import classNames from 'classnames';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import {
-  ReactionOperation,
-  ReactionsVariant,
-} from '../../../enums/reactions.enum';
+import { ReactionOperation } from '../../../enums/reactions.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
@@ -39,36 +36,7 @@ import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEdito
 import '../ActivityFeedTab/activity-feed-tab.less';
 import Reactions from '../Reactions/Reactions';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
-// In the thread panels a reply reads compactly, as in the Inbox: a small
-// avatar, no separator before the time, reactions close under the message and
-// no rule between replies.
-const getReplyLayout = (isThreadPanel?: boolean, isLastReply?: boolean) =>
-  isThreadPanel
-    ? {
-        root: 'd-flex items-start justify-start relative gap-3',
-        avatar: 'tw:shrink-0 tw:pt-0.5',
-        // Held to the row's width: an editor holding a long unbroken word
-        // would otherwise widen the reply past the card.
-        body: 'w-full tw:min-w-0',
-        avatarSize: 'xs' as const,
-        showSeparator: false,
-        reactions: 'tw:mt-1',
-        // Core icons that follow the theme, as in the Inbox.
-        reactionsVariant: ReactionsVariant.Pill,
-      }
-    : {
-        root: classNames(
-          'd-flex items-start justify-start relative reply-card gap-2',
-          { 'reply-card-border-bottom': !isLastReply }
-        ),
-        avatar: 'profile-picture',
-        body: 'w-full',
-        avatarSize: 'sm' as const,
-        showSeparator: true,
-        reactions: 'm-y-md',
-        reactionsVariant: ReactionsVariant.Default,
-      };
-
+import { getReplyLayout } from './CommentCard.utils';
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
 );
@@ -258,8 +226,12 @@ const CommentCard = ({
       </div>
       <div className={layout.body}>
         <div className="d-flex items-center gap-2 tw:justify-between">
-          <div className="d-flex items-center gap-2 flex-wrap">
-            <Typography className="activity-feed-user-name reply-card-user-name not-prose">
+          <div className={layout.header}>
+            <Typography
+              className={classNames(
+                'activity-feed-user-name reply-card-user-name not-prose',
+                layout.name
+              )}>
               <UserPopOverCard userName={authorName}>
                 <Link
                   className="reply-card-user-name"

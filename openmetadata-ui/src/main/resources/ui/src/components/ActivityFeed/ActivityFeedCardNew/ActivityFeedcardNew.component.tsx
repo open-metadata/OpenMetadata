@@ -62,6 +62,19 @@ import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedPro
 import '../ActivityFeedTab/activity-feed-tab.less';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import FeedFieldPath from '../Shared/FeedFieldPath/FeedFieldPath';
+import {
+  PANEL_HEADER_LAYOUT,
+  SPACE_ITEM_CLASS_NAME,
+} from './ActivityFeedcardNew.constants';
+import {
+  getActionsClassName,
+  getFooterVisibility,
+  getFullCardBaseClassName,
+  getFullCardBodyClassName,
+  getHeaderLayout,
+  getHeaderTagsClassName,
+  getHeaderTagsItemClassName,
+} from './ActivityFeedcardNew.utils';
 import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
@@ -72,22 +85,6 @@ const CommentComposer = withSuspenseFallback(
 );
 
 const POST_SKELETON_KEYS = ['first', 'second', 'third'];
-
-// The thread panel's menu sits in the card's top corner.
-const getActionsClassName = (isThreadPanel?: boolean) =>
-  isThreadPanel ? 'tw:absolute tw:end-3 tw:top-5' : undefined;
-
-// Each child of the antd Space this markup replaced sat in its own block
-// wrapper, which sets the line box the header text and avatars align in;
-// keep that wrapper, and hide it when empty as antd's did. min-w-0 lets the
-// entity link truncate (otherwise a long name pushed the field path past the
-// card edge); first:shrink-0 keeps the verb whole.
-const SPACE_ITEM_CLASS_NAME = 'tw:empty:hidden tw:min-w-0 tw:first:shrink-0';
-// The verb/entity row: the verb may wrap too, for cards narrower than it. In
-// list cards the entity item (last) takes the rest of the verb's line (basis
-// 0) and wraps under the verb only below min-w-24 (icon plus a few characters).
-const HEADER_ITEM_CLASS_NAME = 'tw:empty:hidden tw:min-w-0';
-const LIST_HEADER_ITEM_CLASS_NAME = `${HEADER_ITEM_CLASS_NAME} tw:last:min-w-24 tw:last:flex-1 tw:last:basis-0`;
 
 interface ActivityFeedCardNewProps {
   feed?: Conversation;
@@ -124,70 +121,6 @@ const getFeedCardWrapperClassName = (
     { 'activity-feed-reply-card': isPost },
     { 'active-card is-active': isActive }
   );
-
-const getHeaderTagsClassName = (
-  showThread: boolean | undefined,
-  isThreadPanel?: boolean
-): string => {
-  // In the thread panels the header's pieces share one line height: the
-  // inherited taller line box left "conversation" a little below the entity
-  // link beside it.
-  if (isThreadPanel) {
-    // Wraps only when even a short entity name and the field trail can't
-    // share the line (a long column on a narrow drawer).
-    return classNames(
-      'd-flex items-center tw:min-w-0 tw:flex-wrap tw:leading-5',
-      {
-        'header-container-card': !showThread,
-      }
-    );
-  }
-
-  return classNames('d-flex', {
-    'header-container-card': !showThread,
-    // Both wrap: when the verb leaves the entity less than its minimum, the
-    // entity moves to the next line instead of running past the card edge.
-    // List cards align to the first line; the thread panel always puts the
-    // entity under the verb (as in 1.13).
-    'flex-wrap': true,
-    'items-start': !showThread,
-    'items-center': showThread,
-  });
-};
-
-// Flex wrappers in the thread panels, so no line box adds descender space
-// under the entity link and the header's pieces centre on one line.
-const getHeaderTagsItemClassName = (
-  isPanelLayout: boolean,
-  isThreadPanel?: boolean
-): string => {
-  if (isThreadPanel) {
-    return `${HEADER_ITEM_CLASS_NAME} tw:flex tw:items-center`;
-  }
-
-  return isPanelLayout ? HEADER_ITEM_CLASS_NAME : LIST_HEADER_ITEM_CLASS_NAME;
-};
-
-// In the thread panels a long entity name must not push the header past the
-// card or under its menu: the row is held to the card's width, the name gives
-// way (ellipsis) and the field after it stays whole.
-const PANEL_HEADER_LAYOUT = {
-  row: 'tw:w-full tw:pe-8',
-  rowItem: `${SPACE_ITEM_CLASS_NAME} tw:last:min-w-0 tw:last:flex-1`,
-  // Fills what the line has left, up to its own width, and never narrower than
-  // a few characters, so it can't vanish.
-  entity: 'tw:min-w-16 tw:max-w-max tw:grow tw:basis-0',
-  // Never narrower than its separators, a capped column name and the field
-  // label, so only the entity name gives way.
-  field: 'tw:min-w-min',
-  fieldPath: 'tw:min-w-min',
-  // The author's name gives way to the time, which never wraps.
-  // Not SPACE_ITEM_CLASS_NAME: its first:shrink-0 would hold the name whole.
-  authorRowItem: 'tw:empty:hidden tw:min-w-0 tw:last:shrink-0',
-  authorName: 'tw:block tw:min-w-0',
-  authorLink: 'tw:block tw:truncate',
-  timestamp: 'tw:whitespace-nowrap',
-};
 
 interface ThreadPanelEntityLinkProps {
   about: string;
@@ -244,43 +177,6 @@ const ThreadPanelEntityLink = ({
     </Box>
   </Box>
 );
-
-const DEFAULT_HEADER_LAYOUT = {
-  row: undefined,
-  rowItem: SPACE_ITEM_CLASS_NAME,
-  authorRowItem: SPACE_ITEM_CLASS_NAME,
-  authorName: undefined,
-  authorLink: undefined,
-  timestamp: undefined,
-};
-
-// An open conversation in a thread panel already lists its replies, so its
-// reply count would only reopen the same conversation.
-const OPEN_THREAD_FOOTER_VISIBILITY = { showThreadIcon: false };
-
-const getFooterVisibility = (
-  isThreadPanel?: boolean,
-  isPanelLayout?: boolean
-) =>
-  isThreadPanel && isPanelLayout ? OPEN_THREAD_FOOTER_VISIBILITY : undefined;
-
-const getHeaderLayout = (isThreadPanel?: boolean) =>
-  isThreadPanel ? PANEL_HEADER_LAYOUT : DEFAULT_HEADER_LAYOUT;
-
-// The card's body is painted edge to edge in the surface colour; in the thread
-// panels its corners round with the card's, or they cover its border.
-const getFullCardBodyClassName = (isThreadPanel?: boolean): string =>
-  classNames('activity-feed-card-new-body tw:p-0', {
-    'tw:rounded-xl': isThreadPanel,
-  });
-
-// In the thread panels the card sits in a rounded frame; square corners would
-// paint over the frame's.
-const getFullCardBaseClassName = (isThreadPanel?: boolean): string =>
-  classNames(
-    'relative activity-feed-card-new activity-feed-card-new-surface tw:overflow-visible tw:border-primary tw:text-primary',
-    isThreadPanel ? 'tw:rounded-xl' : 'tw:rounded-none'
-  );
 
 // The side panel (a thread, or an activity opened from the list) has room for
 // the full entity name; list cards truncate it.

@@ -22,7 +22,6 @@ import {
   MessageDotsCircle,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { TFunction } from 'i18next';
 import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import {
@@ -31,42 +30,21 @@ import {
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { FEED_FOOTER_AVATAR_SIZE } from '../../../../constants/Feeds.constants';
-import {
-  ReactionOperation,
-  ReactionsVariant,
-} from '../../../../enums/reactions.enum';
+import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
 import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
+import { LABELLED_REPLY_CLASS } from './FeedCardFooterNew.constants';
+import {
+  getReactionsVariant,
+  getReplyCountLabel,
+  isReplyButtonShown,
+} from './FeedCardFooterNew.utils';
 
 const MAX_VISIBLE_AVATARS = 3;
-
-const isReplyButtonShown = (
-  isReply: boolean,
-  visibility: FeedCardFooterProps['componentsVisibility']
-): boolean => !isReply && visibility?.showThreadIcon !== false;
-
-const getReactionsVariant = (showReplyCount: boolean) =>
-  showReplyCount ? ReactionsVariant.Pill : ReactionsVariant.Default;
-
-// The Inbox footer's text button: a 16px icon in the reaction smiley's colour.
-// ADR:2026-10-26-conversation-drawers-style-the-reply-count-and-message-like-the-inbox
-const LABELLED_REPLY_CLASS =
-  'tw:px-2 tw:*:data-icon:size-4 tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover';
-
-// "Reply" while there are none, then how many: "1 Reply", "3 Replies".
-const getReplyCountLabel = (count: number, t: TFunction): string => {
-  if (!count) {
-    return t('label.reply');
-  }
-
-  return count === 1
-    ? t('label.one-reply')
-    : t('label.number-reply-plural', { number: count });
-};
 
 interface ReplyButtonProps {
   count: number;

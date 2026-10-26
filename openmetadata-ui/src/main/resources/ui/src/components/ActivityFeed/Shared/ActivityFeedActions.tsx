@@ -100,10 +100,15 @@ const ConversationActionsMenu = ({
   return (
     <Dropdown.Root>
       {/* The menu trigger stays pressed while the menu is open; only a
-          keyboard focus keeps the ring. */}
+          keyboard focus keeps the ring. size-6: a 24px target around the
+          20px glyph, which a long name beside it must not shrink. */}
       <Dropdown.DotsButton
         className={({ isFocusVisible, isPressed }) =>
-          classNames(isPressed && !isFocusVisible && 'tw:outline-0', className)
+          classNames(
+            'tw:size-6 tw:shrink-0',
+            isPressed && !isFocusVisible && 'tw:outline-0',
+            className
+          )
         }
         data-testid="conversation-actions"
       />
