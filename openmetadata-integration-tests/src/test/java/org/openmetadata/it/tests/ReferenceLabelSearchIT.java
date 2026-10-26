@@ -60,6 +60,33 @@ public class ReferenceLabelSearchIT {
   private static final String QUERY_INDEX = "query_search_index";
 
   @Test
+  void domainDisplayName_reachesSubdomainParent(TestNamespace ns) {
+    Domain parent = TeamHierarchyTestFactory.domain(ns, "parent");
+    Domain child =
+        client()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("child"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Child domain")
+                    .withParent(parent.getFullyQualifiedName()));
+    awaitDoc(
+        DOMAIN_INDEX,
+        child.getId(),
+        doc -> parent.getId().toString().equals(doc.path("parent").path("id").asText()));
+
+    Domain edited = client().domains().get(parent.getId().toString());
+    edited.setDisplayName("Renamed parent label");
+    client().domains().update(parent.getId().toString(), edited);
+
+    awaitDoc(
+        DOMAIN_INDEX,
+        child.getId(),
+        doc -> "Renamed parent label".equals(doc.path("parent").path("displayName").asText()));
+  }
+
+  @Test
   void userDisplayName_reachesOwnerReviewerAndExpertCopies(TestNamespace ns) {
     User user = UserTestFactory.createUser(ns, "labeled");
     EntityReference userRef = reference(user.getId(), "user");

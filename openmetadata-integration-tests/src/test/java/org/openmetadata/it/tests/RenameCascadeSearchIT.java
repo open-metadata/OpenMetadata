@@ -111,6 +111,32 @@ public class RenameCascadeSearchIT {
   }
 
   @Test
+  void glossaryRename_reindexesSoftDeletedTerms(TestNamespace ns) {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm deletedTerm = term(glossary, "Deleted", null);
+    client()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/glossaryTerms/" + deletedTerm.getId() + "?hardDelete=false",
+            null);
+    awaitDoc(GLOSSARY_TERM_INDEX, deletedTerm.getId(), doc -> doc.path("deleted").asBoolean());
+
+    Glossary renamed = client().glossaries().get(glossary.getId().toString());
+    renamed.setName(glossary.getName() + "Renamed");
+    client().glossaries().update(glossary.getId().toString(), renamed);
+
+    JsonNode doc =
+        awaitDoc(
+            GLOSSARY_TERM_INDEX,
+            deletedTerm.getId(),
+            written ->
+                FullyQualifiedName.add(renamed.getName(), "Deleted")
+                    .equals(written.path("fullyQualifiedName").asText()));
+    assertTrue(doc.path("deleted").asBoolean());
+  }
+
+  @Test
   void tagRename_reindexesChildTags(TestNamespace ns) {
     Classification classification = classification(ns.prefix("parents"));
     Tag parent = tag(classification, "Parent", null);
@@ -156,6 +182,30 @@ public class RenameCascadeSearchIT {
     assertEquals(
         siblingTag.getFullyQualifiedName(),
         awaitDoc(TAG_INDEX, siblingTag.getId(), doc -> true).path("fullyQualifiedName").asText());
+  }
+
+  @Test
+  void classificationRename_reindexesSoftDeletedTags(TestNamespace ns) {
+    Classification classification = classification(ns.prefix("deleted"));
+    Tag deletedTag = tag(classification, "Deleted", null);
+    client()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE, "/v1/tags/" + deletedTag.getId() + "?hardDelete=false", null);
+    awaitDoc(TAG_INDEX, deletedTag.getId(), doc -> doc.path("deleted").asBoolean());
+
+    Classification renamed = client().classifications().get(classification.getId().toString());
+    renamed.setName(classification.getName() + "Renamed");
+    client().classifications().update(classification.getId().toString(), renamed);
+
+    JsonNode doc =
+        awaitDoc(
+            TAG_INDEX,
+            deletedTag.getId(),
+            written ->
+                FullyQualifiedName.add(renamed.getName(), "Deleted")
+                    .equals(written.path("fullyQualifiedName").asText()));
+    assertTrue(doc.path("deleted").asBoolean());
   }
 
   @Test

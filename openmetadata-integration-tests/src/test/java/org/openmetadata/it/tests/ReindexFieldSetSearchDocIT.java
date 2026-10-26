@@ -1,7 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.openmetadata.it.util.SearchDocs.awaitDoc;
+import static org.openmetadata.it.util.SearchDocs.awaitDocAsserted;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
@@ -97,10 +97,11 @@ public class ReindexFieldSetSearchDocIT {
             .create(
                 new CreateQuery()
                     .withName(ns.prefix("query"))
-                    .withQuery("SELECT 1")
+                    .withQuery("SELECT '" + ns.prefix("query") + "'")
                     .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName())
                     .withUsers(List.of(SharedEntities.get().USER1.getName())));
-    awaitDoc(QUERY_INDEX, query.getId(), ReindexFieldSetSearchDocIT::assertQueryUserIndexed);
+    awaitDocAsserted(
+        QUERY_INDEX, query.getId(), ReindexFieldSetSearchDocIT::assertQueryUserIndexed);
 
     // Deleting the doc first makes its reappearance the marker that the reindex write landed.
     deleteSearchDoc(QUERY_INDEX, query.getId());
@@ -109,7 +110,8 @@ public class ReindexFieldSetSearchDocIT {
         .executeForString(
             HttpMethod.POST, "/v1/search/reindexEntities", List.of(query.getEntityReference()));
 
-    awaitDoc(QUERY_INDEX, query.getId(), ReindexFieldSetSearchDocIT::assertQueryUserIndexed);
+    awaitDocAsserted(
+        QUERY_INDEX, query.getId(), ReindexFieldSetSearchDocIT::assertQueryUserIndexed);
   }
 
   private static void assertUsageReachesSearchDoc(String entityType, String index, UUID id) {
@@ -120,7 +122,7 @@ public class ReindexFieldSetSearchDocIT {
             "/v1/usage/" + entityType + "/" + id,
             new DailyCount().withDate(LocalDate.now().toString()).withCount(DAILY_USAGE),
             EntityUsage.class);
-    awaitDoc(
+    awaitDocAsserted(
         index,
         id,
         doc ->

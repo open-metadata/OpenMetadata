@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import org.awaitility.Awaitility;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -16,6 +17,21 @@ import org.openmetadata.sdk.network.HttpMethod;
 public final class SearchDocs {
 
   private SearchDocs() {}
+
+  public static void awaitDocAsserted(String index, UUID id, Consumer<JsonNode> assertion) {
+    String docPath = "/v1/search/get/" + index + "/doc/" + id;
+    Awaitility.await(index + " doc " + id)
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(60))
+        .ignoreExceptionsInstanceOf(OpenMetadataException.class)
+        .untilAsserted(
+            () ->
+                assertion.accept(
+                    JsonUtils.readTree(
+                        SdkClients.adminClient()
+                            .getHttpClient()
+                            .executeForString(HttpMethod.GET, docPath, null))));
+  }
 
   /**
    * Polls the {@code index} document of {@code id} until {@code written} holds. Make {@code written}

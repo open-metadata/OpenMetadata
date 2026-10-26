@@ -508,7 +508,7 @@ public class SearchRepository {
                   "lastModifiedBy",
                   "users"),
           Entity.TEAM, List.of(FIELD_OWNERS, FIELD_REVIEWERS, "teams", "parents"),
-          Entity.DOMAIN, List.of(FIELD_DOMAINS),
+          Entity.DOMAIN, List.of(FIELD_DOMAINS, "parent"),
           Entity.DATA_PRODUCT, List.of(FIELD_DATA_PRODUCTS));
 
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
@@ -2229,6 +2229,10 @@ public class SearchRepository {
    * in {@link #deferIfFlushScopeActive} so the re-reads see committed rows.
    */
   public void updateEntitiesByReference(List<EntityReference> references) {
+    updateEntitiesByReference(references, Include.NON_DELETED);
+  }
+
+  public void updateEntitiesByReference(List<EntityReference> references, Include include) {
     if (nullOrEmpty(references)) {
       return;
     }
@@ -2257,7 +2261,7 @@ public class SearchRepository {
             List.copyOf(
                 ids.subList(start, Math.min(start + REFERENCE_REINDEX_BATCH_SIZE, ids.size())));
         final List<? extends EntityInterface<?>> entities =
-            entityRepository.get(null, chunk, fields, Include.NON_DELETED);
+            entityRepository.get(null, chunk, fields, include);
         entities.forEach(SearchRepository::clearChangeDescriptions);
         if (!entities.isEmpty()) {
           updateEntitiesIndex(entities);

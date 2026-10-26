@@ -824,6 +824,9 @@ public interface SearchClient
       """
       for (String field : params.fields) {
         def refs = ctx._source[field];
+        if (refs instanceof Map && refs.get('id') == params.id) {
+          refs.putAll(params.label);
+        }
         if (refs instanceof List) {
           for (def ref : refs) {
             if (ref instanceof Map && ref.get('id') == params.id) {

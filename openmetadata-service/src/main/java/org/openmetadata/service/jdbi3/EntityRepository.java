@@ -3884,7 +3884,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             .map(descendant -> new EntityReference().withId(descendant.id).withType(descendantType))
             .toList();
     searchRepository.deferIfFlushScopeActive(
-        () -> searchRepository.updateEntitiesByReference(references),
+        () -> searchRepository.updateEntitiesByReference(references, Include.ALL),
         "reindexRenamedDescendants",
         null,
         newFqn,
@@ -10804,12 +10804,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       if (!versionChanged && !entityChanged && !incrementalFieldsChanged()) {
         return;
       }
-      // A PATCH's post-update work, search included, sees the entity as a read returns it: one
-      // that drops its own domain is indexed, and hands down to its children, the domain it now
-      // inherits. A PUT fills inherited fields once it returns, as before.
-      if (operation.isPatch()) {
-        try (var ignored = phase("patchSetInheritedFields")) {
-          setInheritedFields(updated, patchFields);
+      if (operation.isPatch() || operation.isPut()) {
+        try (var ignored = phase("updateSetInheritedFields")) {
+          setInheritedFields(updated, operation.isPatch() ? patchFields : putFields);
         }
       }
       try (var ignored = phase("entityUpdatePostUpdate")) {
@@ -11010,6 +11007,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       } else { // PUT or PATCH operations
         updated.setId(original.getId());
         carryCreationAudit(original, updated);
+        if (operation.isPut()) {
+          updated.setFollowers(original.getFollowers());
+          updated.setVotes(original.getVotes());
+        }
         updateDeleted();
         compareAndUpdate(FIELD_DESCRIPTION, this::updateDescription);
         compareAndUpdate(FIELD_DISPLAY_NAME, this::updateDisplayName);
