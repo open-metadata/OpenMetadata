@@ -7,8 +7,7 @@ import java.util.UUID;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -22,8 +21,7 @@ import org.openmetadata.service.migration.utils.v210.WelcomeScreenSeenMigration;
  * Exercises the 2.1.0 backfill that marks the first-login welcome screen as seen for users who
  * signed in or were active before the upgrade, against the real database.
  */
-// The backfill rewrites every user_entity row it matches, so these tests must not interleave.
-@Execution(ExecutionMode.SAME_THREAD)
+@Isolated("runs the 2.1.0 welcome-screen backfill over the shared user_entity table")
 @ExtendWith(TestNamespaceExtension.class)
 class WelcomeScreenSeenMigrationIT {
 
