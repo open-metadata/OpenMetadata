@@ -126,3 +126,13 @@ WHERE entity_type = 'appMarketPlaceDefinition'
         ELSE false END
       ELSE false END
     ELSE false END;
+
+-- An app's alert list is filled from the app->alert relationship on every read and is no longer
+-- stored. The copy in the app JSON, and any alert written into it by hand, leaves stored apps and
+-- app versions; the relationship rows that record the app's own alerts stay.
+UPDATE installed_apps SET json = json - 'eventSubscriptions'
+WHERE json -> 'eventSubscriptions' IS NOT NULL;
+
+UPDATE entity_extension SET json = json - 'eventSubscriptions'
+WHERE extension LIKE 'app.version.%'
+  AND json -> 'eventSubscriptions' IS NOT NULL;
