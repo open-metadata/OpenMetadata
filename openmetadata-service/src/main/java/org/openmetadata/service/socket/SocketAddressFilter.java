@@ -35,6 +35,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
@@ -147,6 +148,9 @@ public class SocketAddressFilter implements Filter {
       stampIdentity(requestWrapper, authenticate(httpServletRequest));
       // Goes to default servlet.
       chain.doFilter(requestWrapper, response);
+    } catch (CredentialUnavailableException ex) {
+      LOG.debug("[SAFilter] WebSocket handshake token could not be confirmed", ex);
+      sendRetryLater(response, ex.retryAfterSeconds());
     } catch (AuthenticationException ex) {
       LOG.warn("[SAFilter] Rejected WebSocket handshake", ex);
       sendHandshakeError(
@@ -188,6 +192,15 @@ public class SocketAddressFilter implements Filter {
       throws IOException {
     if (response instanceof HttpServletResponse httpResponse && !httpResponse.isCommitted()) {
       httpResponse.sendError(status, message);
+    }
+  }
+
+  private void sendRetryLater(ServletResponse response, long retryAfterSeconds) throws IOException {
+    if (response instanceof HttpServletResponse httpResponse && !httpResponse.isCommitted()) {
+      httpResponse.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
+      httpResponse.sendError(
+          HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+          CredentialUnavailableException.CLIENT_MESSAGE);
     }
   }
 

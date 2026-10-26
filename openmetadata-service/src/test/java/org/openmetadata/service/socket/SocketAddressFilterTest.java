@@ -44,6 +44,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
@@ -235,6 +236,22 @@ class SocketAddressFilterTest {
     verify(response)
         .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
     verify(response, never()).getWriter();
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  @Test
+  void secureSocketAsksToRetryWhenTheTokenCannotBeConfirmed() throws Exception {
+    mockRequest("userId=" + UUID.randomUUID(), "Bearer token");
+    when(jwtFilter.validateJwtAndGetClaims("token"))
+        .thenThrow(new CredentialUnavailableException("No read slot for sam", 2, null));
+
+    filter.doFilter(request, response, chain);
+
+    verify(response).setHeader("Retry-After", "2");
+    verify(response)
+        .sendError(
+            HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+            "Credential verification is temporarily unavailable");
     verify(chain, never()).doFilter(any(), any());
   }
 

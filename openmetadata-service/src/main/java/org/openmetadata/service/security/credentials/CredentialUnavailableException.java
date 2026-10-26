@@ -19,8 +19,14 @@ package org.openmetadata.service.security.credentials;
  * {@link org.openmetadata.service.security.AuthenticationException}, which means the token is
  * confirmed not current. Callers must not treat this as "revoked" (a retry may succeed) and must
  * never treat it as "valid" (fail closed).
+ *
+ * <p>The REST, WebSocket and MCP transports answer it with 503, a {@code Retry-After} of {@link
+ * #retryAfterSeconds()} and {@link #CLIENT_MESSAGE}.
  */
 public final class CredentialUnavailableException extends RuntimeException {
+  /** What a client is told. The exception message names the principal, so it stays in the log. */
+  public static final String CLIENT_MESSAGE = "Credential verification is temporarily unavailable";
+
   private final long retryAfterSeconds;
 
   public CredentialUnavailableException(String message, long retryAfterSeconds, Throwable cause) {

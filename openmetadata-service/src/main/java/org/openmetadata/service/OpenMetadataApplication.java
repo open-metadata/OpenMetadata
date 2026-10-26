@@ -125,6 +125,7 @@ import org.openmetadata.service.events.consumer.schedule.EventSubscriptionSchedu
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
+import org.openmetadata.service.exception.CredentialUnavailableExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.fernet.Fernet;
@@ -828,6 +829,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new JsonProcessingExceptionMapper(false));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
+    environment.jersey().register(CredentialUnavailableExceptionMapper.class);
   }
 
   private void registerMicrometerFilter(
