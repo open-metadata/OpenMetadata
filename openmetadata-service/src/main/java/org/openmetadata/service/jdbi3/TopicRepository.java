@@ -480,20 +480,21 @@ public class TopicRepository extends EntityRepository<Topic> {
       return serviceMap;
     }
 
-    var records =
+    final var records =
         daoCollection
             .relationshipDAO()
             .findFromBatch(
                 entityListToStrings(topics),
                 org.openmetadata.schema.type.Relationship.CONTAINS.ordinal());
 
-    var serviceIds = records.stream().map(record -> UUID.fromString(record.getFromId())).toList();
-    var serviceRefs =
+    final var serviceIds =
+        records.stream().map(record -> UUID.fromString(record.getFromId())).toList();
+    final var serviceRefs =
         Entity.getEntityReferencesByIds(Entity.MESSAGING_SERVICE, serviceIds, NON_DELETED).stream()
             .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
-    for (var record : records) {
-      var serviceId = UUID.fromString(record.getFromId());
-      var serviceRef = serviceRefs.get(serviceId);
+    for (final var record : records) {
+      final var serviceId = UUID.fromString(record.getFromId());
+      final var serviceRef = serviceRefs.get(serviceId);
       if (serviceRef == null) {
         throw EntityNotFoundException.byMessage(
             CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, serviceId));
