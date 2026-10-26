@@ -23,8 +23,8 @@ import LogViewerModal from './LogViewerModal.component';
  * their REST deps stay out of the initial bundle.
  */
 const LogsViewerModalContainer: FunctionComponent<
-  OpenLogsParams & { onClose: () => void; inline?: boolean }
-> = ({ logEntityType, fqn, runId, onClose, inline }) => {
+  OpenLogsParams & { onClose: () => void }
+> = ({ logEntityType, fqn, runId, onClose }) => {
   const { t } = useTranslation();
   const {
     logs,
@@ -47,7 +47,6 @@ const LogsViewerModalContainer: FunctionComponent<
       open
       downloading={downloading}
       hasMore={hasMore}
-      inline={inline}
       loading={loading}
       loadingMore={loadingMore}
       logs={logs}

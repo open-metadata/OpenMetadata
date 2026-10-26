@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import type { RJSFSchema } from '@rjsf/utils';
+import type { App } from '../../../../../../generated/entity/applications/app';
+import type { AppRunRecordWithId } from '../../../../../Settings/Applications/AppRunsHistory/AppRunsHistory.interface';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 
 export type ApplicationsView =
@@ -31,11 +34,31 @@ export type ApplicationsHeader = Omit<
   'breadcrumbs' | 'onBreadcrumbAction'
 > & {
   crumb?: string;
-  // A page nested under the current view, e.g. one run's configuration.
+  /** A page nested under the current view, e.g. one run's configuration. */
   subPage?: { label: string; onBack: () => void };
 };
 
 export interface ApplicationsViewProps {
   onNavigate: (view: ApplicationsView) => void;
   onHeaderChange: (header: ApplicationsHeader) => void;
+}
+
+export interface AppScheduleEditProps {
+  appData: App;
+  isSaving: boolean;
+  onCancel: () => void;
+  onSave: (cron: string) => void;
+}
+
+export interface McpConfigFormProps {
+  appData: App;
+  jsonSchema: RJSFSchema;
+  showHint: boolean;
+  onCancel: () => void;
+}
+
+export interface RunConfigPageProps {
+  appData: App;
+  jsonSchema?: RJSFSchema;
+  runConfig: AppRunRecordWithId;
 }

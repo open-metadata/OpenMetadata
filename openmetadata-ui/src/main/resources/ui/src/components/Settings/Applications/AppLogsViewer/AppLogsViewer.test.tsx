@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
 import {
@@ -385,30 +385,6 @@ describe('AppLogsViewer component', () => {
     });
 
     expect(await screen.findByTestId('lazy-log-mock')).toBeInTheDocument();
-  });
-
-  it('shows the logs inline and toggles them when embedded', async () => {
-    render(<AppLogsViewer embedded {...mockProps6} />);
-
-    await act(async () => {
-      userEvent.click(screen.getByTestId('view-logs-button'));
-    });
-
-    expect(await screen.findByTestId('log-viewer-inline')).toBeInTheDocument();
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByTestId('view-logs-button')).toHaveTextContent(
-      'label.hide-log-plural'
-    );
-
-    fireEvent.click(screen.getByTestId('view-logs-button'));
-
-    expect(screen.queryByTestId('log-viewer-inline')).not.toBeInTheDocument();
-  });
-
-  it('shows an empty state for a run with no stats yet when embedded', () => {
-    render(<AppLogsViewer embedded {...mockProps5} />);
-
-    expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
   });
 
   it('should render process stats when processStats is present', () => {

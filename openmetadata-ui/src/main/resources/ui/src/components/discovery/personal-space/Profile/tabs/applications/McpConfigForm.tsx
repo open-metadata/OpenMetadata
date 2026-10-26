@@ -12,20 +12,12 @@
  */
 
 import { Box, Skeleton } from '@openmetadata/ui-core-components';
-import { RJSFSchema } from '@rjsf/utils';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { App } from '../../../../../../generated/entity/applications/app';
 import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import { useMcpConfiguration } from '../../../../../Settings/Applications/McpApplicationConfiguration/useMcpConfiguration';
 import AppConfigForm from './AppConfigForm';
-
-interface McpConfigFormProps {
-  appData: App;
-  jsonSchema: RJSFSchema;
-  showHint: boolean;
-  onCancel: () => void;
-}
+import type { McpConfigFormProps } from './Applications.types';
 
 /** The MCP server settings in the same form, hints and footer as every other app. */
 const McpConfigForm: FC<McpConfigFormProps> = ({

@@ -20,7 +20,6 @@ import { MCPConfiguration } from '../../../../generated/configuration/mcpConfigu
 import { SettingType } from '../../../../generated/settings/settings';
 import { useSettingsSource } from '../../../../hooks/platform/useSettingsSource';
 import { getMcpConfig, updateMcpConfig } from '../../../../rest/mcpConfigAPI';
-import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
   applyManagedPathsToUiSchema,
   findSettingSource,
@@ -29,6 +28,7 @@ import {
 } from '../../../../utils/platform/settingsSource.utils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
+
 /**
  * Base URL and allowed origins are the two settings an operator has to be able to correct from
  * the product: an empty allowlist makes the MCP server reject every cross-origin request, and a
@@ -109,12 +109,13 @@ export const useMcpConfiguration = () => {
   }, [fetchMcpConfig]);
 
   const saveMcpConfig = useCallback(
-    async (formData?: MCPConfiguration) => {
+    // Callers pass form data already run through `formatFormDataForSubmit`.
+    async (formData: MCPConfiguration) => {
       setIsSaving(true);
       try {
         const payload = {
           ...storedConfig.current,
-          ...formatFormDataForSubmit(formData as MCPConfiguration),
+          ...formData,
         };
         applyConfig(await updateMcpConfig(payload));
         showSuccessToast(

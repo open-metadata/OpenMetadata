@@ -16,8 +16,15 @@ import { App } from '../../../../generated/entity/applications/app';
 import { getCronDefaultValue } from '../../../../utils/CronExpressionUtils';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 
+export interface AppScheduleOptions {
+  /** Schedule periods the picker offers; `undefined` offers them all. */
+  initialOptions?: string[];
+  /** Cron the picker starts from when the app has no schedule. */
+  defaultCron: string;
+}
+
 /** The schedule choices an app allows under the current plan limits, and its default cron. */
-export const useAppScheduleOptions = (appData: App) => {
+export const useAppScheduleOptions = (appData: App): AppScheduleOptions => {
   const { config } = useLimitStore();
   const { pipelineSchedules } =
     config?.limits?.config.featureLimits.find(
@@ -31,7 +38,7 @@ export const useAppScheduleOptions = (appData: App) => {
         appData.appType,
         pipelineSchedules
       ),
-      defaultCron: getCronDefaultValue(appData?.name ?? ''),
+      defaultCron: getCronDefaultValue(appData.name),
     }),
     [appData.name, appData.appType, pipelineSchedules]
   );

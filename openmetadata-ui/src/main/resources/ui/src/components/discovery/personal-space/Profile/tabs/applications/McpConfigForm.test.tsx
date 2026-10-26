@@ -74,7 +74,7 @@ describe('McpConfigForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (getMcpConfig as jest.Mock).mockResolvedValue(storedConfig);
-    (getSettingsSource as jest.Mock).mockResolvedValue({ data: [] });
+    (getSettingsSource as jest.Mock).mockResolvedValue({ settings: [] });
     (updateMcpConfig as jest.Mock).mockImplementation(
       async (payload) => payload
     );

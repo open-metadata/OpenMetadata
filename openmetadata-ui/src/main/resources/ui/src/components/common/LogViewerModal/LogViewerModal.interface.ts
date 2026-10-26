@@ -57,8 +57,6 @@ export interface LogViewerModalBaseProps {
   streamTruncated?: boolean;
   // A message from the server explaining why the tail stopped.
   streamError?: string | null;
-  // Render in the page flow instead of a dialog, for hosts that are already a modal.
-  inline?: boolean;
 }
 
 export type LogViewerModalProps = LogViewerModalBaseProps;

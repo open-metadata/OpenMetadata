@@ -16,8 +16,6 @@ import { AppRunRecord } from '../../../../generated/entity/applications/appRunRe
 
 export interface AppLogsViewerProps {
   data: AppRunRecord;
-  // Inside the settings modal: logs open inline rather than in a stacked dialog.
-  embedded?: boolean;
 }
 
 export interface TotalRecords {

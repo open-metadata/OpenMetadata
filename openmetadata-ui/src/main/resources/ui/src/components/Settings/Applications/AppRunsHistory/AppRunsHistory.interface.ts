@@ -29,8 +29,6 @@ export interface AppRunsHistoryProps {
   appData?: App;
   showPagination?: boolean;
   jsonSchema?: RJSFSchema;
-  // Inside the settings modal: logs expand inline and nothing stacks a second dialog.
-  embedded?: boolean;
-  // Opens a run's configuration as a page instead of the built-in dialog.
+  /** Opens a run's configuration as a page instead of the built-in dialog. */
   onViewRunConfig?: (record: AppRunRecordWithId) => void;
 }

@@ -17,6 +17,7 @@ import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MCPConfiguration } from '../../../../generated/configuration/mcpConfiguration';
+import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import Loader from '../../../common/Loader/Loader';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
@@ -56,9 +57,6 @@ const McpApplicationConfiguration = ({
     }, 50);
   }, []);
 
-  const handleSubmit = ({ formData }: IChangeEvent<MCPConfiguration>) =>
-    saveMcpConfig(formData);
-
   if (isFetching) {
     return <Loader />;
   }
@@ -83,7 +81,9 @@ const McpApplicationConfiguration = ({
         schema={jsonSchema}
         uiSchema={formUiSchema}
         onFocus={handleFieldFocus}
-        onSubmit={handleSubmit}
+        onSubmit={({ formData }: IChangeEvent<MCPConfiguration>) =>
+          saveMcpConfig(formatFormDataForSubmit(formData ?? {}))
+        }
       />
     </>
   );

@@ -111,13 +111,6 @@ jest.mock('../../../common/LogViewerModal/LogViewerModal.component', () => ({
     open ? <div>LogViewerModalOpen</div> : null,
 }));
 
-jest.mock('../../../common/LogViewerModal/LogsViewerModalContainer', () => ({
-  __esModule: true,
-  default: ({ inline, runId }: { inline?: boolean; runId?: string }) => (
-    <div>{`InlineEntityLogs inline=${inline} runId=${runId}`}</div>
-  ),
-}));
-
 jest.mock('../../../../hooks/useLogsModal', () => ({
   useLogsModal: () => ({ openLogs: mockOpenLogs, logsModal: null }),
 }));
@@ -578,102 +571,27 @@ describe('AppRunsHistory', () => {
     expect(screen.queryByText('AppLogsViewer')).not.toBeInTheDocument();
   });
 
-  describe('embedded (settings modal)', () => {
-    const failedRun = {
-      ...mockApplicationData,
-      id: 'run-embedded',
-      status: Status.Failed,
-    };
-
-    beforeEach(() => {
-      mockGetApplicationRuns = jest.fn().mockReturnValue({
-        data: [failedRun],
-        paging: { offset: 0, total: 1 },
-      });
+  it('hands the run to onViewRunConfig instead of opening the config dialog', async () => {
+    const onViewRunConfig = jest.fn();
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [
+        { ...mockApplicationData, id: 'run-config', status: Status.Failed },
+      ],
+      paging: { offset: 0, total: 1 },
     });
 
-    it('expands a run without stats inline instead of opening a logs modal', async () => {
-      mockHasAppRunStats.mockReturnValue(false);
+    render(
+      <AppRunsHistory {...mockProps1} onViewRunConfig={onViewRunConfig} />
+    );
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-      render(<AppRunsHistory embedded {...mockProps1} />);
-      await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+    fireEvent.click(screen.getByText('label.config'));
 
-      fireEvent.click(screen.getByText('label.log-plural'));
-
-      expect(screen.getByText('AppLogsViewer')).toBeInTheDocument();
-      expect(screen.queryByText('LogViewerModalOpen')).not.toBeInTheDocument();
-    });
-
-    it('keeps the same expanded row when stats arrive over the websocket', async () => {
-      mockHasAppRunStats.mockReturnValue(false);
-
-      render(<AppRunsHistory embedded {...mockProps1} />);
-      await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
-
-      fireEvent.click(screen.getByText('label.log-plural'));
-      mockHasAppRunStats.mockReturnValue(true);
-
-      const searchIndexCallback = mockSocket.on.mock.calls.find(
-        ([eventName]) => eventName === 'searchIndexJobStatus'
-      )?.[1];
-      act(() => {
-        searchIndexCallback?.(JSON.stringify({ ...failedRun, id: undefined }));
-      });
-
-      expect(screen.getByText('AppLogsViewer')).toBeInTheDocument();
-
-      fireEvent.click(screen.getByText('label.log-plural'));
-
-      expect(screen.queryByText('AppLogsViewer')).not.toBeInTheDocument();
-    });
-
-    it('toggles the row from the expand chevron', async () => {
-      mockHasAppRunStats.mockReturnValue(true);
-
-      render(<AppRunsHistory embedded {...mockProps1} />);
-      await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
-
-      fireEvent.click(screen.getByTestId('expand-icon'));
-
-      expect(screen.getByText('AppLogsViewer')).toBeInTheDocument();
-
-      fireEvent.click(screen.getByTestId('expand-icon'));
-
-      expect(screen.queryByText('AppLogsViewer')).not.toBeInTheDocument();
-    });
-
-    it('shows external app logs inline in the expanded row', async () => {
-      render(<AppRunsHistory embedded {...mockProps2} />);
-      await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
-
-      fireEvent.click(screen.getAllByText('label.log-plural')[0]);
-
-      expect(
-        await screen.findByText(/InlineEntityLogs inline=true/)
-      ).toBeInTheDocument();
-      expect(mockOpenLogs).not.toHaveBeenCalled();
-    });
-
-    it('hands the run to onViewRunConfig instead of opening the config dialog', async () => {
-      const onViewRunConfig = jest.fn();
-
-      render(
-        <AppRunsHistory
-          embedded
-          {...mockProps1}
-          onViewRunConfig={onViewRunConfig}
-        />
-      );
-      await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
-
-      fireEvent.click(screen.getByText('label.config'));
-
-      expect(onViewRunConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ status: Status.Failed })
-      );
-      expect(
-        screen.queryByTestId('edit-table-type-property-modal')
-      ).not.toBeInTheDocument();
-    });
+    expect(onViewRunConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ status: Status.Failed })
+    );
+    expect(
+      screen.queryByTestId('edit-table-type-property-modal')
+    ).not.toBeInTheDocument();
   });
 });

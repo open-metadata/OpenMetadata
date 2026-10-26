@@ -380,10 +380,7 @@ describe('AppDetail', () => {
       .mockReturnValue(configForm);
     await renderDetail();
 
-    const { embedded, onViewRunConfig } = (AppSchedule as jest.Mock).mock
-      .calls[0][0];
-
-    expect(embedded).toBe(true);
+    const { onViewRunConfig } = (AppSchedule as jest.Mock).mock.calls[0][0];
 
     act(() => {
       onViewRunConfig({ id: 'run-1', config: { batchSize: 99 } });
@@ -403,7 +400,12 @@ describe('AppDetail', () => {
     );
     expect(lastHeader().subPage?.label).toBe('label.entity-configuration');
 
-    fireEvent.click(screen.getByTestId('app-run-config-back'));
+    expect(screen.queryByTestId('app-run-config-back')).not.toBeInTheDocument();
+
+    // The app crumb in the breadcrumb is the way back.
+    act(() => {
+      lastHeader().subPage?.onBack();
+    });
 
     expect(screen.getByTestId('app-schedule')).toBeInTheDocument();
     expect(lastHeader().subPage).toBeUndefined();
@@ -417,7 +419,7 @@ describe('AppDetail', () => {
       (AppSchedule as jest.Mock).mock.calls.at(-1)[0].onEditSchedule();
     });
 
-    expect(screen.getByTestId('update-schedule-form')).toHaveClass('tw:w-3/5');
+    expect(screen.getByTestId('update-schedule-form')).toBeInTheDocument();
     expect(screen.queryByTestId('app-schedule')).not.toBeInTheDocument();
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     expect(lastHeader().subPage?.label).toBe('label.update-entity');

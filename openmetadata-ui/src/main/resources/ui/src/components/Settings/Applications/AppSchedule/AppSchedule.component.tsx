@@ -29,6 +29,7 @@ import {
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
+import { getAppCronExpression } from '../../../../utils/ApplicationUtils';
 import Loader from '../../../common/Loader/Loader';
 import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
@@ -146,7 +147,6 @@ const AppSchedule = ({
   onSave,
   onDemandTrigger,
   onDeployTrigger,
-  embedded,
   onEditSchedule,
   onViewRunConfig,
 }: AppScheduleProps) => {
@@ -196,8 +196,7 @@ const AppSchedule = ({
   const [cronString, setCronString] = useState<string>('');
 
   useEffect(() => {
-    const cronExpression = (appData.appSchedule as AppScheduleClass)
-      ?.cronExpression;
+    const cronExpression = getAppCronExpression(appData.appSchedule);
     if (!cronExpression) {
       setCronString('');
 
@@ -224,9 +223,7 @@ const AppSchedule = ({
   };
 
   const onDialogOpen = () => {
-    setScheduleValue(
-      (appData.appSchedule as AppScheduleClass)?.cronExpression ?? undefined
-    );
+    setScheduleValue(getAppCronExpression(appData.appSchedule));
     setIsScheduleValid(true);
     setShowModal(true);
   };
@@ -255,7 +252,6 @@ const AppSchedule = ({
       return (
         <AppRunsHistory
           appData={appData}
-          embedded={embedded}
           jsonSchema={jsonSchema}
           maxRecords={1}
           ref={appRunsHistoryRef}
@@ -280,7 +276,6 @@ const AppSchedule = ({
     isAppDisabled,
     isPipelineDeployed,
     appRunsHistoryRef,
-    embedded,
     jsonSchema,
     onViewRunConfig,
     t,

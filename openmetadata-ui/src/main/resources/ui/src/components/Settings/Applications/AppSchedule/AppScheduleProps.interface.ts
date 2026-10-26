@@ -30,9 +30,8 @@ export interface AppScheduleProps {
   onSave: (cron: string) => Promise<void>;
   onDemandTrigger: () => Promise<void>;
   onDeployTrigger: () => Promise<void>;
-  // Inside the settings modal: run logs expand inline instead of in a stacked dialog.
-  embedded?: boolean;
-  // Opens schedule editing as a page instead of the built-in dialog.
+  /** Opens schedule editing as a page instead of the built-in dialog. */
   onEditSchedule?: () => void;
+  /** Opens a run's configuration as a page instead of the built-in dialog. */
   onViewRunConfig?: (record: AppRunRecordWithId) => void;
 }

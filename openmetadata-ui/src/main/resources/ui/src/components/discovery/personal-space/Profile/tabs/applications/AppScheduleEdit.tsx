@@ -14,20 +14,11 @@
 import { Box, Button } from '@openmetadata/ui-core-components';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  App,
-  AppScheduleClass,
-} from '../../../../../../generated/entity/applications/app';
+import { getAppCronExpression } from '../../../../../../utils/ApplicationUtils';
 import { useAppScheduleOptions } from '../../../../../Settings/Applications/AppSchedule/useAppScheduleOptions';
 import ScheduleInterval from '../../../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { AppFooter } from './AppFooter';
-
-interface AppScheduleEditProps {
-  appData: App;
-  isSaving: boolean;
-  onCancel: () => void;
-  onSave: (cron: string) => void;
-}
+import type { AppScheduleEditProps } from './Applications.types';
 
 /** Schedule editing as a page of the app detail, with its actions in the modal footer. */
 const AppScheduleEdit: FC<AppScheduleEditProps> = ({
@@ -38,14 +29,14 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
 }) => {
   const { t } = useTranslation();
   const { initialOptions, defaultCron } = useAppScheduleOptions(appData);
-  const [scheduleValue, setScheduleValue] = useState(
-    (appData.appSchedule as AppScheduleClass)?.cronExpression ?? undefined
+  const [scheduleValue, setScheduleValue] = useState(() =>
+    getAppCronExpression(appData.appSchedule)
   );
   const [isScheduleValid, setIsScheduleValid] = useState(true);
 
   return (
     <Box
-      className="tw:w-3/5"
+      className="tw:mx-auto tw:w-3/5"
       data-testid="update-schedule-form"
       direction="col">
       <ScheduleInterval

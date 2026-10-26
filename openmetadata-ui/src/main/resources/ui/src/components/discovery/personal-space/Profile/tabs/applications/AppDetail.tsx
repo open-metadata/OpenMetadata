@@ -21,7 +21,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  ArrowLeft,
   Clock,
   GridView,
   LinkExternal01,
@@ -33,7 +32,7 @@ import {
 import { RJSFSchema } from '@rjsf/utils';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, noop } from 'lodash';
+import { isEmpty } from 'lodash';
 import {
   FC,
   ReactNode,
@@ -101,6 +100,7 @@ import {
 } from './Applications.utils';
 import AppScheduleEdit from './AppScheduleEdit';
 import McpConfigForm from './McpConfigForm';
+import RunConfigPage from './RunConfigPage';
 
 type AppAction = 'restore' | 'disable' | 'uninstall';
 
@@ -203,45 +203,6 @@ const MetaItem: FC<{
     <Typography size="text-xs">{children}</Typography>
   </Box>
 );
-
-/** A past run's configuration, read-only, as a page under the app. */
-const RunConfigPage: FC<{
-  appData: App;
-  jsonSchema?: RJSFSchema;
-  runConfig: AppRunRecordWithId;
-  onBack: () => void;
-}> = ({ appData, jsonSchema, runConfig, onBack }) => {
-  const { t } = useTranslation();
-  const ConfigurationComponent =
-    applicationsClassBase.getModalAppConfigurationComponent();
-
-  return (
-    <Box data-testid="app-run-config" direction="col" gap={4}>
-      <Box>
-        <Button
-          noTextPadding
-          color="link-color"
-          data-testid="app-run-config-back"
-          iconLeading={ArrowLeft}
-          size="sm"
-          onPress={onBack}>
-          {t('label.back')}
-        </Button>
-      </Box>
-      {jsonSchema && (
-        <ConfigurationComponent
-          isReadOnly
-          appData={{ ...appData, appConfiguration: runConfig.config }}
-          isSaving={false}
-          jsonSchema={jsonSchema}
-          showHint={false}
-          submitLabel={t('label.save')}
-          onSave={noop}
-        />
-      )}
-    </Box>
-  );
-};
 
 const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   const { t } = useTranslation();
@@ -456,7 +417,6 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
         show: showSchedule,
         content: (
           <AppSchedule
-            embedded
             appData={appData}
             canDeploy={can(Operation.Deploy)}
             canEdit={canEditAll}
@@ -507,7 +467,6 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
         show: isAvailable && showSchedule,
         content: (
           <AppRunsHistory
-            embedded
             appData={appData}
             jsonSchema={jsonSchema}
             onViewRunConfig={handleViewRunConfig}
@@ -666,7 +625,6 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
           appData={appData}
           jsonSchema={jsonSchema}
           runConfig={subPage.record}
-          onBack={() => setSubPage(undefined)}
         />
       );
     }
