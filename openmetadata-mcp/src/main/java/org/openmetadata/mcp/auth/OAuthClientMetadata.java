@@ -17,8 +17,8 @@ public class OAuthClientMetadata {
 
   /**
    * Most scopes one authorization or refresh request may name. The granted list is stored with the
-   * code and refresh token, put in the JWT and compared on every refresh, so it must not grow with
-   * the request body. A registration (scope capped at 255 characters) cannot name more than this.
+   * code and refresh token, put in the JWT and compared on every refresh, so its length must not
+   * grow with the request body. A registration (scope capped at 255 characters) cannot name more than this.
    * ADR:2026-10-26-mcp-oauth-requests-name-at-most-128-scopes
    */
   public static final int MAX_REQUESTED_SCOPES = 128;
@@ -93,6 +93,7 @@ public class OAuthClientMetadata {
       throw new InvalidScopeException(
           "At most " + MAX_REQUESTED_SCOPES + " scopes can be requested");
     }
+    requestedScopes = requestedScopes.stream().distinct().toList();
 
     // If client didn't register specific scopes, allow any scope
     if (scope == null || scope.trim().isEmpty()) {

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class OAuthClientMetadataTest {
@@ -51,13 +53,25 @@ class OAuthClientMetadataTest {
   void testValidateScope_moreScopesThanTheLimitThrows() throws InvalidScopeException {
     OAuthClientMetadata metadata = new OAuthClientMetadata();
     metadata.setScope(null);
-    String atTheLimit = "s ".repeat(OAuthClientMetadata.MAX_REQUESTED_SCOPES).trim();
+    String atTheLimit =
+        IntStream.range(0, OAuthClientMetadata.MAX_REQUESTED_SCOPES)
+            .mapToObj(index -> "s" + index)
+            .collect(Collectors.joining(" "));
 
     assertThat(metadata.validateScope(atTheLimit))
         .hasSize(OAuthClientMetadata.MAX_REQUESTED_SCOPES);
-    assertThatThrownBy(() -> metadata.validateScope(atTheLimit + " s"))
+    assertThatThrownBy(() -> metadata.validateScope(atTheLimit + " extra"))
         .isInstanceOf(InvalidScopeException.class)
         .hasMessageContaining("At most");
+  }
+
+  @Test
+  void testValidateScope_repeatedScopesAreKeptOnce() throws InvalidScopeException {
+    OAuthClientMetadata metadata = new OAuthClientMetadata();
+    metadata.setScope(null);
+
+    assertThat(metadata.validateScope("openid openid profile openid"))
+        .containsExactly("openid", "profile");
   }
 
   @Test

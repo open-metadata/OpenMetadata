@@ -20,6 +20,7 @@ import java.lang.reflect.Field;
 import java.net.URI;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
@@ -383,27 +384,49 @@ class UserSSOOAuthProviderTest {
 
   @Test
   void exchangeRefreshToken_aGrantHoldingMoreScopesThanTheLimit_mustSignInAgain() throws Exception {
+    OAuthTokenRepository tokenRepo = mock(OAuthTokenRepository.class);
+
     TokenException refused =
-        refreshWith(
-            Collections.nCopies(OAuthClientMetadata.MAX_REQUESTED_SCOPES + 1, "openid"), null);
+        refreshFailure(
+            tokenRepo, distinctScopes(OAuthClientMetadata.MAX_REQUESTED_SCOPES + 1), null);
 
     assertThat(refused.getError()).isEqualTo("invalid_grant");
+    verify(tokenRepo).revokeRefreshToken("refresh-token");
+  }
+
+  @Test
+  void exchangeRefreshToken_aGrantAtTheLimit_stillRefreshes() throws Exception {
+    assertThat(
+            refreshFailure(
+                mock(OAuthTokenRepository.class),
+                distinctScopes(OAuthClientMetadata.MAX_REQUESTED_SCOPES),
+                null))
+        .isNull();
   }
 
   @Test
   void exchangeRefreshToken_askingForAScopeNeverGranted_isRefused() throws Exception {
-    TokenException refused = refreshWith(List.of("openid"), List.of("openid", "admin"));
+    TokenException refused =
+        refreshFailure(
+            mock(OAuthTokenRepository.class), List.of("openid"), List.of("openid", "admin"));
 
     assertThat(refused.getError()).isEqualTo("invalid_scope");
   }
 
-  /** Refreshes a live token granted {@code granted}, asking for {@code requested}. */
-  private TokenException refreshWith(List<String> granted, List<String> requested)
+  private static List<String> distinctScopes(int count) {
+    return IntStream.range(0, count).mapToObj(index -> "scope" + index).toList();
+  }
+
+  /**
+   * Refreshes a live token granted {@code granted}, asking for {@code requested}, and returns why
+   * it was refused, or null when it went through.
+   */
+  private TokenException refreshFailure(
+      OAuthTokenRepository tokenRepo, List<String> granted, List<String> requested)
       throws Exception {
     RefreshToken stored =
         new RefreshToken("refresh-token", CLIENT_ID, granted, System.currentTimeMillis() + 60_000L);
     stored.setUserName("alice");
-    OAuthTokenRepository tokenRepo = mock(OAuthTokenRepository.class);
     when(tokenRepo.findRefreshToken("refresh-token")).thenReturn(stored);
     JWTTokenGenerator jwtGenerator = mock(JWTTokenGenerator.class);
     when(jwtGenerator.generateJWTToken(
@@ -416,7 +439,8 @@ class UserSSOOAuthProviderTest {
     setField(provider, "jwtGenerator", jwtGenerator);
     RefreshToken presented = new RefreshToken();
     presented.setToken("refresh-token");
-    // A live user, so a refresh that passes the scope checks would succeed.
+    TokenException failure = null;
+    // A live user, so a refresh that passes the scope checks goes through.
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity
           .when(
@@ -424,10 +448,11 @@ class UserSSOOAuthProviderTest {
                   Entity.getEntityByName(
                       eq(Entity.USER), eq("alice"), anyString(), eq(Include.NON_DELETED)))
           .thenReturn(new User().withName("alice").withEmail("alice@example.com"));
-      return assertThrows(
-          TokenException.class,
-          () -> provider.exchangeRefreshToken(registeredClient(), presented, requested).join());
+      provider.exchangeRefreshToken(registeredClient(), presented, requested).join();
+    } catch (TokenException refused) {
+      failure = refused;
     }
+    return failure;
   }
 
   // ── reflection helpers (mirror AuthenticationCodeFlowHandlerTest) ─────────

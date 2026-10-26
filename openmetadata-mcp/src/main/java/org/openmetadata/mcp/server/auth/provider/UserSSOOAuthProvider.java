@@ -958,11 +958,14 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       if (originalScopes.size() > OAuthClientMetadata.MAX_REQUESTED_SCOPES) {
         // Granted before the limit; refreshing would carry the whole list forward on every
         // rotation.
+        tokenRepository.revokeRefreshToken(refreshTokenValue);
         throw new TokenException(
             "invalid_grant", "Refresh token carries too many scopes. Please sign in again.");
       }
       List<String> requestedScopes =
-          (scopes != null && !scopes.isEmpty()) ? scopes : originalScopes;
+          (scopes != null && !scopes.isEmpty())
+              ? scopes.stream().distinct().toList()
+              : originalScopes;
 
       if (!new HashSet<>(originalScopes).containsAll(requestedScopes)) {
         LOG.warn(
