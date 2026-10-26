@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -35,9 +36,11 @@ import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Database;
@@ -46,9 +49,14 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.type.AccessDetails;
+import org.openmetadata.schema.type.ActivityEventType;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -64,6 +72,8 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.StepFailure;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.VersionShape;
+import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.ActivityStreamRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -128,6 +138,134 @@ class DataInsightsEnricherBehaviorIT {
 
   private SharedEntities shared() {
     return SharedEntities.get();
+  }
+
+  @Test
+  void lifecycleOnlyBulkUpdate_keepsExistingTableInBothDailySnapshots(TestNamespace ns)
+      throws SearchIndexException {
+    Table table = createSnapshotTable(ns);
+    long today = TimestampUtils.getStartOfDayTimestamp(table.getUpdatedAt());
+    long yesterday = TimestampUtils.subtractDays(today, 1);
+    recordCreation(table, yesterday);
+    EntityRepository<Table> repository = tableRepository();
+    Table stored = repository.getDao().findEntityById(table.getId());
+    stored.setUpdatedAt(yesterday);
+    repository.getDao().update(stored);
+    EntityRepository.invalidateCacheForEntity(
+        "table", table.getId(), table.getFullyQualifiedName());
+
+    CreateTable request =
+        new CreateTable()
+            .withName(table.getName())
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(table.getColumns())
+            .withLifeCycle(new LifeCycle().withAccessed(new AccessDetails().withTimestamp(today)));
+    SdkClients.adminClient().tables().bulkCreateOrUpdate(List.of(request));
+    Table updated = repository.find(table.getId(), Include.NON_DELETED, false);
+    repository.setFieldsInBulk(repository.getFields("*"), List.of(updated));
+
+    assertEquals(0.1, updated.getVersion());
+    assertTrue(updated.getUpdatedAt() >= today);
+    assertEquals(today, updated.getLifeCycle().getAccessed().getTimestamp());
+    assertEquals(
+        1,
+        repository
+            .listVersionsWithOffset(table.getId(), 100, 0)
+            .entityHistory()
+            .getVersions()
+            .size());
+    assertEquals(List.of(today, yesterday), snapshotDays(updated, yesterday, today));
+  }
+
+  @Test
+  void tableCreatedToday_hasNoSnapshotBeforeCreation(TestNamespace ns) throws SearchIndexException {
+    Table table = createSnapshotTable(ns);
+    long today = TimestampUtils.getStartOfDayTimestamp(table.getUpdatedAt());
+    long yesterday = TimestampUtils.subtractDays(today, 1);
+
+    recordCreation(table, today);
+    assertEquals(List.of(today), snapshotDays(table, yesterday, today));
+  }
+
+  private Table createSnapshotTable(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.create(ns, "Postgres");
+    Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+    DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
+    return TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+  }
+
+  @SuppressWarnings("unchecked")
+  private EntityRepository<Table> tableRepository() {
+    return (EntityRepository<Table>) Entity.getEntityRepository("table");
+  }
+
+  private List<Long> snapshotDays(Table table, long start, long today) throws SearchIndexException {
+    EntityRepository<Table> repository = tableRepository();
+    Table loaded = repository.find(table.getId(), Include.NON_DELETED, false);
+    repository.setFieldsInBulk(repository.getFields("*"), List.of(loaded));
+    Map<String, Object> context =
+        Map.of(
+            ENTITY_TYPE_KEY,
+            "table",
+            START_TIMESTAMP_KEY,
+            start,
+            END_TIMESTAMP_KEY,
+            TimestampUtils.getEndOfDayTimestamp(today),
+            ENTITY_TYPE_FIELDS_KEY,
+            new ArrayList<>(TABLE_FIELDS));
+    return enricher.enrichSingle(loaded, context).stream()
+        .map(snapshot -> (Long) snapshot.get("@timestamp"))
+        .toList();
+  }
+
+  @Test
+  void missingHistoricalCreationEvidence_doesNotBackdateAnEntity(TestNamespace ns)
+      throws SearchIndexException {
+    Table table = createSnapshotTable(ns);
+    long today = TimestampUtils.getStartOfDayTimestamp(table.getUpdatedAt());
+    EntityRepository<Table> repository = tableRepository();
+    Table stored = repository.getDao().findEntityById(table.getId());
+    stored.setUpdatedAt(today + 3_600_000);
+    repository.getDao().update(stored);
+    EntityRepository.invalidateCacheForEntity(
+        "table", table.getId(), table.getFullyQualifiedName());
+    assertEquals(List.of(today), snapshotDays(table, TimestampUtils.subtractDays(today, 1), today));
+  }
+
+  @Test
+  void creationLookup_doesNotUseAnotherEntityOrAnUpdateEvent(TestNamespace ns) {
+    Table table = createSnapshotTable(ns);
+    long yesterday =
+        TimestampUtils.subtractDays(TimestampUtils.getStartOfDayTimestamp(table.getUpdatedAt()), 1);
+    new ActivityStreamRepository()
+        .createFromChangeEvent(
+            new ChangeEvent()
+                .withEventType(EventType.ENTITY_UPDATED)
+                .withTimestamp(yesterday)
+                .withUserName("admin"),
+            table);
+    recordCreation(table, table.getUpdatedAt());
+    assertNull(
+        Entity.getCollectionDAO()
+            .activityStreamDAO()
+            .findCreationTimestamp(
+                "table", UUID.randomUUID().toString(), ActivityEventType.ENTITY_CREATED.value()));
+  }
+
+  private void recordCreation(Table table, long timestamp) {
+    new ActivityStreamRepository()
+        .createFromChangeEvent(
+            new ChangeEvent()
+                .withEventType(EventType.ENTITY_CREATED)
+                .withTimestamp(timestamp)
+                .withUserName("admin"),
+            table);
+    assertEquals(
+        timestamp,
+        Entity.getCollectionDAO()
+            .activityStreamDAO()
+            .findCreationTimestamp(
+                "table", table.getId().toString(), ActivityEventType.ENTITY_CREATED.value()));
   }
 
   // ────────────────────────────── Test 1: snapshot content ──────────────────────────────
