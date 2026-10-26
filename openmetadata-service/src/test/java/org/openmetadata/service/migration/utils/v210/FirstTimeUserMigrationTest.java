@@ -33,9 +33,9 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 /**
  * Per-batch behavior of the backfill; the keyset walk itself is {@code IdBatchesTest}'s. Real SQL
- * behavior in both dialects is covered by {@code WelcomeScreenSeenMigrationIT}.
+ * behavior in both dialects is covered by {@code FirstTimeUserMigrationIT}.
  */
-class WelcomeScreenSeenMigrationTest {
+class FirstTimeUserMigrationTest {
 
   private static final String USER_IDS =
       "SELECT id FROM user_entity WHERE id > :afterId ORDER BY id LIMIT :limit";
@@ -51,7 +51,7 @@ class WelcomeScreenSeenMigrationTest {
     stubIdBatch(handle, firstBatch.getLast(), lastBatch);
     when(handle.createUpdate(argThat(this::isGuardedBatchUpdate))).thenReturn(update);
 
-    WelcomeScreenSeenMigration.backfillWelcomeScreenSeen(handle, connectionType);
+    FirstTimeUserMigration.backfillFirstTimeUser(handle, connectionType);
 
     verify(update).bindList("ids", firstBatch);
     verify(update).bindList("ids", lastBatch);
@@ -64,7 +64,7 @@ class WelcomeScreenSeenMigrationTest {
     final Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
     stubIdBatch(handle, "", List.of());
 
-    WelcomeScreenSeenMigration.backfillWelcomeScreenSeen(handle, connectionType);
+    FirstTimeUserMigration.backfillFirstTimeUser(handle, connectionType);
 
     verify(handle, never()).createUpdate(anyString());
   }
@@ -73,8 +73,8 @@ class WelcomeScreenSeenMigrationTest {
   private boolean isGuardedBatchUpdate(final String sql) {
     return sql.startsWith("UPDATE user_entity ")
         && sql.contains("id IN (<ids>)")
-        && (sql.contains("'$.welcomeScreenSeenAt') IS NULL")
-            || sql.contains("json->'welcomeScreenSeenAt' IS NULL"));
+        && (sql.contains("'$.isFirstTimeUser') IS NULL")
+            || sql.contains("json->'isFirstTimeUser' IS NULL"));
   }
 
   private void stubIdBatch(final Handle handle, final String afterId, final List<String> ids) {

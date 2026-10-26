@@ -82,7 +82,7 @@ jest.mock('../../hoc/LimitWrapper', () => {
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
-    currentUser: mockUserData,
+    currentUser: { ...mockUserData, isFirstTimeUser: true },
     updateCurrentUser: jest.fn(),
   })),
 }));

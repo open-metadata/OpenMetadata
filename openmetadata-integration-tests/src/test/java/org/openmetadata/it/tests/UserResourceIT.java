@@ -728,32 +728,31 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
-  void test_welcomeScreenSeenAtPersistsAcrossSessionsAndPut(TestNamespace ns) {
-    // The first-login welcome screen is remembered on the user, not in the browser, so a new
-    // browser must read it back; recording it is not an edit and must not version the user.
+  void test_isFirstTimeUserPersistsAcrossSessionsAndPut(TestNamespace ns) {
+    // Whether the user is accessing the product for the first time lives on the user, not in the
+    // browser, so a new browser must read it back; clearing it is not an edit and must not version
+    // the user.
     CreateUser create = selfLoginUserRequest();
     User user = createEntity(create);
-    assertNull(user.getWelcomeScreenSeenAt());
-    long seenAt = System.currentTimeMillis();
+    assertTrue(user.getIsFirstTimeUser());
 
     ArrayNode patch = PATCH_MAPPER.createArrayNode();
-    patch.addObject().put("op", "add").put("path", "/welcomeScreenSeenAt").put("value", seenAt);
+    patch.addObject().put("op", "add").put("path", "/isFirstTimeUser").put("value", false);
     clientFor(user)
         .getHttpClient()
         .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), patch);
 
     User reread = Users.get(user.getId().toString());
-    assertEquals(seenAt, reread.getWelcomeScreenSeenAt());
+    assertFalse(reread.getIsFirstTimeUser());
     assertEquals(user.getVersion(), reread.getVersion());
 
     SdkClients.adminClient()
         .getHttpClient()
         .execute(HttpMethod.PUT, "/v1/users", create.withDescription("updated by PUT"), User.class);
 
-    assertEquals(
-        seenAt,
-        Users.get(user.getId().toString()).getWelcomeScreenSeenAt(),
-        "a PUT must not bring the welcome screen back");
+    assertFalse(
+        Users.get(user.getId().toString()).getIsFirstTimeUser(),
+        "a PUT must not make a returning user first-time again");
   }
 
   @Test

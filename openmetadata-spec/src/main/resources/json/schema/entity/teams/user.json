@@ -193,9 +193,10 @@
       "description": "Last time the user was active in the system.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "welcomeScreenSeenAt": {
-      "description": "When the user was first shown the first-login welcome screen. Unset means the user has not seen it yet.",
-      "$ref": "../../type/basic.json#/definitions/timestamp"
+    "isFirstTimeUser": {
+      "description": "When true indicates the user is accessing the product for the first time. Turns false once the user first reaches the home page.",
+      "type": "boolean",
+      "default": true
     },
      "personaPreferences": {
       "description": "User's personal preferences for each persona. Users can customize certain UI elements per persona while inheriting base persona configuration.",

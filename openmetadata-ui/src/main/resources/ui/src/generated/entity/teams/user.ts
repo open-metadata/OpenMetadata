@@ -126,6 +126,11 @@ export interface User {
      */
     isEmailVerified?: boolean;
     /**
+     * When true indicates the user is accessing the product for the first time. Turns false
+     * once the user first reaches the home page.
+     */
+    isFirstTimeUser?: boolean;
+    /**
      * Last time the user was active in the system.
      */
     lastActivityTime?: number;
@@ -184,11 +189,6 @@ export interface User {
      * Metadata version of the entity.
      */
     version?: number;
-    /**
-     * When the user was first shown the first-login welcome screen. Unset means the user has
-     * not seen it yet.
-     */
-    welcomeScreenSeenAt?: number;
 }
 
 /**

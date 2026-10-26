@@ -19,10 +19,10 @@ import WelcomeScreenGate from './WelcomeScreenGate';
 const mockTour = { isTourPage: false };
 const mockWelcome = { isWelcomeVisible: true };
 const mockStore: {
-  currentUser: { id: string; name: string; welcomeScreenSeenAt?: number };
+  currentUser: { id: string; name: string; isFirstTimeUser?: boolean };
   updateCurrentUser: jest.Mock;
 } = {
-  currentUser: { id: 'alex-id', name: 'alex' },
+  currentUser: { id: 'alex-id', name: 'alex', isFirstTimeUser: true },
   updateCurrentUser: jest.fn(),
 };
 
@@ -61,7 +61,7 @@ describe('WelcomeScreenGate', () => {
   beforeEach(() => {
     localStorage.clear();
     jest.clearAllMocks();
-    mockStore.currentUser = { id: 'alex-id', name: 'alex' };
+    mockStore.currentUser = { id: 'alex-id', name: 'alex', isFirstTimeUser: true };
     mockTour.isTourPage = false;
     mockWelcome.isWelcomeVisible = true;
   });
@@ -72,10 +72,10 @@ describe('WelcomeScreenGate', () => {
     expect(await screen.findByTestId('welcome')).toBeInTheDocument();
     expect(screen.queryByTestId('home')).not.toBeInTheDocument();
     expect(updateUserDetail).toHaveBeenCalledWith('alex-id', [
-      expect.objectContaining({ op: 'add', path: '/welcomeScreenSeenAt' }),
+      { op: 'add', path: '/isFirstTimeUser', value: false },
     ]);
     expect(mockStore.updateCurrentUser).toHaveBeenCalledWith(
-      expect.objectContaining({ welcomeScreenSeenAt: expect.any(Number) })
+      expect.objectContaining({ isFirstTimeUser: false })
     );
   });
 
@@ -109,7 +109,7 @@ describe('WelcomeScreenGate', () => {
   });
 
   it('skips the welcome screen for a user who saw it in another browser', () => {
-    mockStore.currentUser.welcomeScreenSeenAt = 1;
+    mockStore.currentUser.isFirstTimeUser = false;
     renderGate();
 
     expect(screen.getByTestId('home')).toBeInTheDocument();
@@ -124,7 +124,7 @@ describe('WelcomeScreenGate', () => {
     expect(screen.getByTestId('home')).toBeInTheDocument();
     expect(screen.queryByTestId('welcome')).not.toBeInTheDocument();
     expect(updateUserDetail).toHaveBeenCalledWith('alex-id', [
-      expect.objectContaining({ path: '/welcomeScreenSeenAt' }),
+      { op: 'add', path: '/isFirstTimeUser', value: false },
     ]);
   });
 
@@ -136,7 +136,7 @@ describe('WelcomeScreenGate', () => {
 
     expect(await screen.findByTestId('welcome')).toBeInTheDocument();
     expect(mockStore.updateCurrentUser).toHaveBeenCalledWith(
-      expect.objectContaining({ welcomeScreenSeenAt: expect.any(Number) })
+      expect.objectContaining({ isFirstTimeUser: false })
     );
   });
 

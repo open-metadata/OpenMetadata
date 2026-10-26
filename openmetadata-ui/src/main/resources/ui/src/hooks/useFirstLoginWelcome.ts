@@ -29,7 +29,7 @@ const isSeenInThisBrowser = (userName: string) =>
 /**
  * Whether the home route should show the first-login welcome screen, shared by
  * the classic and AI-mode homes so both apply the same rule: once per user
- * (tracked on the user as `welcomeScreenSeenAt`, so it holds across browsers),
+ * (tracked on the user as `isFirstTimeUser`, so it holds across browsers),
  * only while `isWelcomeVisible` is on, and never on the tour, where it would
  * hide the step targets. Leaving the route dismisses it: by unmount on the
  * classic home, and by the route turning hidden where KeepAliveRoutes keeps the
@@ -43,15 +43,14 @@ export const useFirstLoginWelcome = () => {
 
   const [showWelcome, setShowWelcome] = useState(false);
 
-  const markWelcomeSeen = async () => {
-    if (!currentUser || currentUser.welcomeScreenSeenAt) {
+  const markReturningUser = async () => {
+    if (!currentUser?.isFirstTimeUser) {
       return;
     }
-    const welcomeScreenSeenAt = Date.now();
-    updateCurrentUser({ ...currentUser, welcomeScreenSeenAt });
+    updateCurrentUser({ ...currentUser, isFirstTimeUser: false });
     try {
       await updateUserDetail(currentUser.id, [
-        { op: 'add', path: '/welcomeScreenSeenAt', value: welcomeScreenSeenAt },
+        { op: 'add', path: '/isFirstTimeUser', value: false },
       ]);
     } catch {
       // Not worth an error toast: the worst case is the welcome screen showing
@@ -64,10 +63,9 @@ export const useFirstLoginWelcome = () => {
       return;
     }
     const isFirstVisit =
-      !currentUser.welcomeScreenSeenAt &&
-      !isSeenInThisBrowser(currentUser.name);
-    setShowWelcome(isFirstVisit && isWelcomeVisible && !isTourPage);
-    markWelcomeSeen();
+      currentUser.isFirstTimeUser && !isSeenInThisBrowser(currentUser.name);
+    setShowWelcome(Boolean(isFirstVisit) && isWelcomeVisible && !isTourPage);
+    markReturningUser();
   }, []);
 
   useEffect(() => {

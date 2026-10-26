@@ -15,49 +15,52 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.migration.utils.v210.WelcomeScreenSeenMigration;
+import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 
 /**
- * Exercises the 2.1.0 backfill that marks the first-login welcome screen as seen for users who
- * signed in or were active before the upgrade, against the real database.
+ * Exercises the 2.1.0 backfill that marks users who signed in or were active before the upgrade as
+ * no longer first-time users, against the real database.
  */
-@Isolated("runs the 2.1.0 welcome-screen backfill over the shared user_entity table")
+@Isolated("runs the 2.1.0 first-time-user backfill over the shared user_entity table")
 @ExtendWith(TestNamespaceExtension.class)
-class WelcomeScreenSeenMigrationIT {
+class FirstTimeUserMigrationIT {
 
-  private static final String FIELD = "welcomeScreenSeenAt";
+  private static final String FIELD = "isFirstTimeUser";
 
   @Test
-  void backfillUsesTheLoginTimeAndFallsBackToActivity(TestNamespace ns) {
-    UUID loggedIn = createUser(ns, "loggedin");
-    UUID activeOnly = createUser(ns, "activeonly");
-    UUID both = createUser(ns, "both");
-    setField(loggedIn, "lastLoginTime", 100L);
-    setField(activeOnly, "lastActivityTime", 200L);
-    setField(both, "lastLoginTime", 300L);
-    setField(both, "lastActivityTime", 400L);
+  void backfillMarksUsersWithALoginOrActivityTime(TestNamespace ns) {
+    UUID loggedIn = createPreUpgradeUser(ns, "loggedin");
+    UUID activeOnly = createPreUpgradeUser(ns, "activeonly");
+    setField(loggedIn, "lastLoginTime", "100");
+    setField(activeOnly, "lastActivityTime", "200");
 
     runBackfill();
 
-    assertEquals(100L, readField(loggedIn));
-    assertEquals(200L, readField(activeOnly), "SSO and token users set only lastActivityTime");
-    assertEquals(300L, readField(both), "the login time wins over activity");
+    assertEquals("false", readField(loggedIn));
+    assertEquals("false", readField(activeOnly), "SSO and token users set only lastActivityTime");
   }
 
   @Test
-  void backfillLeavesNewAndAlreadyMarkedUsersAloneAndIsIdempotent(TestNamespace ns) {
-    UUID neverSignedIn = createUser(ns, "never");
-    UUID alreadySeen = createUser(ns, "seen");
+  void backfillLeavesNewAndAlreadyFlaggedUsersAloneAndIsIdempotent(TestNamespace ns) {
+    UUID neverSignedIn = createPreUpgradeUser(ns, "never");
+    UUID alreadyFlagged = createPreUpgradeUser(ns, "flagged");
     setField(neverSignedIn, "lastLoginTime", null);
     setField(neverSignedIn, "lastActivityTime", null);
-    setField(alreadySeen, "lastLoginTime", 500L);
-    setField(alreadySeen, FIELD, 7L);
+    setField(alreadyFlagged, "lastLoginTime", "500");
+    setField(alreadyFlagged, FIELD, "true");
 
     runBackfill();
     runBackfill();
 
-    assertNull(readField(neverSignedIn), "a user who never signed in still sees the screen");
-    assertEquals(7L, readField(alreadySeen), "an existing value is left alone");
+    assertNull(readField(neverSignedIn), "a user who never signed in stays a first-time user");
+    assertEquals("true", readField(alreadyFlagged), "an existing value is left alone");
+  }
+
+  /** A user row as it was stored before 2.1.0, without the flag. */
+  private UUID createPreUpgradeUser(TestNamespace ns, String prefix) {
+    UUID id = createUser(ns, prefix);
+    setField(id, FIELD, null);
+    return id;
   }
 
   private UUID createUser(TestNamespace ns, String prefix) {
@@ -70,40 +73,36 @@ class WelcomeScreenSeenMigrationIT {
   }
 
   private void runBackfill() {
-    jdbi()
-        .useHandle(
-            handle -> WelcomeScreenSeenMigration.backfillWelcomeScreenSeen(handle, dialect()));
+    jdbi().useHandle(handle -> FirstTimeUserMigration.backfillFirstTimeUser(handle, dialect()));
   }
 
-  /** Writes the field straight into the stored row; {@code null} removes it. */
-  private void setField(UUID id, String field, Long value) {
+  /** Writes a JSON literal straight into the stored row; {@code null} removes the field. */
+  private void setField(UUID id, String field, String jsonValue) {
     String sql =
         switch (dialect()) {
-          case MYSQL -> value == null
+          case MYSQL -> jsonValue == null
               ? "UPDATE user_entity SET json = JSON_REMOVE(json, '$." + field + "') WHERE id = :id"
               : "UPDATE user_entity SET json = JSON_SET(json, '$."
                   + field
-                  + "', :value)"
-                  + " WHERE id = :id";
-          case POSTGRES -> value == null
+                  + "', CAST(:value AS JSON)) WHERE id = :id";
+          case POSTGRES -> jsonValue == null
               ? "UPDATE user_entity SET json = json - '" + field + "' WHERE id = :id"
               : "UPDATE user_entity SET json = jsonb_set(json, '{"
                   + field
-                  + "}',"
-                  + " to_jsonb(CAST(:value AS bigint))) WHERE id = :id";
+                  + "}', CAST(:value AS jsonb)) WHERE id = :id";
         };
     jdbi()
         .useHandle(
             handle -> {
               var update = handle.createUpdate(sql).bind("id", id.toString());
-              if (value != null) {
-                update.bind("value", value);
+              if (jsonValue != null) {
+                update.bind("value", jsonValue);
               }
               update.execute();
             });
   }
 
-  private Long readField(UUID id) {
+  private String readField(UUID id) {
     String projection =
         dialect() == ConnectionType.MYSQL
             ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$." + FIELD + "'))"
@@ -118,7 +117,7 @@ class WelcomeScreenSeenMigrationIT {
                         .mapTo(String.class)
                         .findOne()
                         .orElse(null));
-    return raw == null || "null".equals(raw) ? null : Long.valueOf(raw);
+    return "null".equals(raw) ? null : raw;
   }
 
   private Jdbi jdbi() {

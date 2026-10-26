@@ -140,7 +140,7 @@ public class UserRepository extends EntityRepository<User> {
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
-  private static final String WELCOME_SCREEN_SEEN_AT_FIELD = "welcomeScreenSeenAt";
+  private static final String IS_FIRST_TIME_USER_FIELD = "isFirstTimeUser";
   static final String USER_PATCH_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
   static final String USER_UPDATE_FIELDS =
@@ -1917,7 +1917,7 @@ public class UserRepository extends EntityRepository<User> {
                   false,
                   objectMatch,
                   false));
-      compareAndUpdate(WELCOME_SCREEN_SEEN_AT_FIELD, this::updateWelcomeScreenSeenAt);
+      compareAndUpdate(IS_FIRST_TIME_USER_FIELD, this::updateIsFirstTimeUser);
 
       compareAndUpdate("roles", () -> updateRoles(original, updated));
       compareAndUpdate("teams", () -> updateTeams(original, updated));
@@ -1959,16 +1959,16 @@ public class UserRepository extends EntityRepository<User> {
       JwtFilter.invalidateResolvedEmailIdentity(updated.getEmail());
     }
 
-    private void updateWelcomeScreenSeenAt() {
-      if (operation.isPut() && updated.getWelcomeScreenSeenAt() == null) {
-        // CreateUser does not carry welcomeScreenSeenAt; PUT must not bring the welcome screen back
-        updated.setWelcomeScreenSeenAt(original.getWelcomeScreenSeenAt());
+    private void updateIsFirstTimeUser() {
+      if (operation.isPut()) {
+        // CreateUser does not carry isFirstTimeUser; PUT must not make a returning user first-time
+        updated.setIsFirstTimeUser(original.getIsFirstTimeUser());
         return;
       }
       recordChange(
-          WELCOME_SCREEN_SEEN_AT_FIELD,
-          original.getWelcomeScreenSeenAt(),
-          updated.getWelcomeScreenSeenAt(),
+          IS_FIRST_TIME_USER_FIELD,
+          original.getIsFirstTimeUser(),
+          updated.getIsFirstTimeUser(),
           false,
           objectMatch,
           false);

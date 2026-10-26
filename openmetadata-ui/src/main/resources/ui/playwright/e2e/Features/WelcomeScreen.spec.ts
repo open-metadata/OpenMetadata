@@ -22,7 +22,7 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { expect, test as base } from '../fixtures/pages';
 import { enableAiAppMode } from '../Utils/appMode';
 
-// The welcome screen is remembered on the user (`welcomeScreenSeenAt`), so a
+// The welcome screen is remembered on the user (`isFirstTimeUser`), so a
 // first login needs an account that has never reached a home route: a fresh
 // admin per test (admin so the connect button renders), signed in without the
 // `loggedInUsers` seed and landing away from home.

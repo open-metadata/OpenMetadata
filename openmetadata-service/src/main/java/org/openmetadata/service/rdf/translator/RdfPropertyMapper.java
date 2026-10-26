@@ -73,8 +73,8 @@ public class RdfPropertyMapper {
   //      identityProviderSubject is the IdP's 'sub' claim, stored only to bind an account to one
   //      provider identity. It carries no discovery value and is an identity correlator. Contrast
   //      user email, which reaches the graph only through a deliberate foaf:mbox mapping.
-  //   4. Per-user UI state with no metadata meaning: welcomeScreenSeenAt only stops the first-login
-  //      welcome screen from showing twice.
+  //   4. Per-user UI state with no metadata meaning: isFirstTimeUser only decides whether the
+  //      first-login welcome screen shows.
   //
   // These must not be fetched at all — see isIndexableEntityField.
   private static final Set<String> NON_GRAPH_PROPERTIES =
@@ -83,7 +83,7 @@ public class RdfPropertyMapper {
           "votes",
           "testCaseResult",
           "identityProviderSubject",
-          "welcomeScreenSeenAt");
+          "isFirstTimeUser");
 
   // Properties that DO belong in the graph but are emitted by a dedicated structured-emission step
   // (emitStructuredProperties) rather than the generic field loop, so the generic loop must not
