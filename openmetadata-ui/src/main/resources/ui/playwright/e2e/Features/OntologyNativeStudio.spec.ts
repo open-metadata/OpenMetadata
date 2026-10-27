@@ -219,6 +219,10 @@ test.describe(
               conceptName: string,
               description: string
             ) => {
+              if (!ontology) {
+                throw new Error('ontology not created');
+              }
+              const { fullyQualifiedName, namespace } = ontology;
               if (
                 !(await page
                   .getByTestId('ontology-new-class-panel')
@@ -241,12 +245,12 @@ test.describe(
               ).toHaveCount(0);
               const concepts = await okJson<{ data: OntologyConcept[] }>(
                 await api.get('/api/v1/ontologyConcepts', {
-                  params: { ontology: ontology?.fullyQualifiedName },
+                  params: { ontology: fullyQualifiedName },
                 }),
                 `Read ${conceptName} in Studio`
               );
               const created = concepts.data.find(
-                (concept) => concept.iri === ontology?.namespace + conceptName
+                (concept) => concept.iri === namespace + conceptName
               );
               if (!created) {
                 throw new Error(

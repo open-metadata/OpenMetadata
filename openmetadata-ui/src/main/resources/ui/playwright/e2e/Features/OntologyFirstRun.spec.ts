@@ -27,8 +27,17 @@ const EMPTY_LIST = { data: [], paging: { total: 0 } };
 
 const hideCatalog = async (page: Page) => {
   const isCatalogList = (url: URL) => url.pathname === '/api/v1/ontologies';
+  let created = false;
+  page.on('request', (request) => {
+    if (
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/ontologies'
+    ) {
+      created = true;
+    }
+  });
   await page.route(isCatalogList, async (route) => {
-    if (route.request().method() === 'GET') {
+    if (route.request().method() === 'GET' && !created) {
       await route.fulfill({ json: EMPTY_LIST });
     } else {
       await route.fallback();
@@ -100,6 +109,7 @@ test.describe(
       await expect(
         page.getByTestId('ontology-import-export-trigger')
       ).toBeVisible();
+      await expect(page.getByTestId('ontology-tasks-trigger')).toBeVisible();
     });
 
     test('leaves the empty state after installing from the library', async ({
@@ -108,7 +118,7 @@ test.describe(
       test.slow();
       let installed: Ontology | undefined;
       try {
-        const showCatalog = await openEmptyStudio(page);
+        await openEmptyStudio(page);
         await page
           .getByRole('button', { name: 'Install from library' })
           .click();
@@ -126,13 +136,11 @@ test.describe(
           await created,
           'Install into a new ontology'
         );
-        await showCatalog();
         await expect(page.getByTestId('ontology-pack-fibo')).toContainText(
           'Installed'
         );
         await page.keyboard.press('Escape');
 
-        await page.reload();
         await expect(page.getByTestId('ontology-empty-state')).toHaveCount(0);
         await expect(page.getByTestId('mode-tab-view')).toBeVisible();
       } finally {
