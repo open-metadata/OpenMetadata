@@ -58,14 +58,13 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.hex.cell_lineage import (
     DATAFRAME_SQL_DIALECT,
-    MAX_INLINED_NODES,
     UNRESOLVED,
+    ChainedCells,
     HexCellColumn,
     HexCellLineage,
     get_output_columns,
     get_table_references,
     inline_upstream_cells,
-    node_count,
     parse_cell_sql,
     table_key,
 )
@@ -79,10 +78,13 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_datamodel
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 
 logger = ingestion_logger()
 
 HEX_TAG_CATEGORY = "HexCategories"
+# Distinct table references looked up per project; past it a reference is searched again
+MAX_RESOLVED_TABLES = 1_000
 
 
 class TableSearchError(Exception):
@@ -539,10 +541,8 @@ class HexSource(DashboardServiceSource):
         if data_connections is None:
             return None
         # Cells of a project tend to read the same tables, so look each one up once
-        resolved_tables: dict[tuple, tuple[Table, str | None] | None] = {}
-        # Result variable -> (connection, query) of the cells seen so far, for the chained
-        # SQL cells after them
-        upstream: dict[str, tuple[str | None, exp.Query | None]] = {}
+        resolved_tables: LRUCache[tuple[Table, str | None] | None] = LRUCache(MAX_RESOLVED_TABLES)
+        upstream = ChainedCells()
         cell_lineage: list[HexCellLineage] = []
         taken_names: set[str] = set()
         for cell in cells:
@@ -566,8 +566,8 @@ class HexSource(DashboardServiceSource):
         self,
         cell: Cell,
         data_connections: dict[str, DataConnection],
-        upstream: dict[str, tuple[str | None, exp.Query | None]],
-        resolved_tables: dict[tuple, tuple[Table, str | None] | None],
+        upstream: ChainedCells,
+        resolved_tables: LRUCache[tuple[Table, str | None] | None],
     ) -> HexCellLineage | None:
         if not cell.sql:
             return None
@@ -583,14 +583,10 @@ class HexSource(DashboardServiceSource):
             # the SQL cells it reads
             for reference in get_table_references(expression):
                 reference.meta[UNRESOLVED] = True
-        # Hex chains a warehouse cell only to cells on its own connection; SQL on
-        # dataframes reads any cell's result
-        readable = {
-            name: query
-            for name, (connection_id, query) in upstream.items()
-            if not cell.dataConnectionId or connection_id == cell.dataConnectionId
-        }
-        if not inline_upstream_cells(expression, readable) and not cell.dataConnectionId:
+        if (
+            not inline_upstream_cells(expression, upstream.readable_by(cell.dataConnectionId))
+            and not cell.dataConnectionId
+        ):
             return None
 
         cell_id = cell.staticId or cell.id
@@ -601,12 +597,12 @@ class HexSource(DashboardServiceSource):
             if reference.meta.get(UNRESOLVED):
                 continue
             # The connection is part of the key: it fills in what the reference leaves out
-            key = (cell.dataConnectionId, *table_key(reference))
+            key = repr((cell.dataConnectionId, *table_key(reference)))
             searched_database = reference.catalog or (connection.default_database if connection else None)
             searched_schema = reference.db or (connection.default_schema if connection else None)
             if key not in resolved_tables:
-                resolved_tables[key] = self._resolve_table(searched_database, searched_schema, reference.name)
-            resolved = resolved_tables[key]
+                resolved_tables.put(key, self._resolve_table(searched_database, searched_schema, reference.name))
+            resolved = resolved_tables.get(key)
             if not resolved:
                 # A later cell inlining this one lacks this connection's defaults and
                 # would search wider; what this cell couldn't resolve stays unresolved
@@ -628,10 +624,7 @@ class HexSource(DashboardServiceSource):
         # Stored once its references name the tables found, so a later cell inlining it
         # doesn't have to resolve them again without this cell's connection defaults
         if cell.resultVariableName:
-            stored = expression.copy() if node_count(expression) <= MAX_INLINED_NODES else None
-            if stored is None:
-                logger.debug("Hex cell %s is too large to trace the cells chained to it", cell.id)
-            upstream[cell.resultVariableName.lower()] = (cell.dataConnectionId, stored)
+            upstream.add(cell.resultVariableName, cell.dataConnectionId, expression)
 
         taken_names: set[str] = set()
         for output in get_output_columns(expression, schema):
