@@ -12,7 +12,6 @@
  */
 package org.openmetadata.service.security.auth;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -114,8 +113,12 @@ class LdapDirectoryValidationTest {
         LdapDirectoryValidation.validate(ldap(LOOKUP_PASSWORD, USERS_DN).withPort(closedPort));
 
     assertFalse(result.getPassed());
-    assertEquals(
-        "Could not connect to " + LOOPBACK + ":" + closedPort + ": Connection refused",
+    // The JDK owns any wording after the reason: 21.0.13 appends " (connect failed)".
+    assertTrue(
+        result
+            .getMessage()
+            .startsWith(
+                "Could not connect to " + LOOPBACK + ":" + closedPort + ": Connection refused"),
         result.getMessage());
   }
 
