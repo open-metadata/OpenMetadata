@@ -126,6 +126,29 @@ class OntologyPropertyInverseStorageTest {
   @EnumSource(
       value = ConnectionType.class,
       names = {"MYSQL", "POSTGRES"})
+  void restoringTheOntologyKeepsTheLinkBetweenItsProperties(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          final var properties = new OntologyPropertyRepository();
+          final var hasPart = properties.create(null, property(fixture, "hasPart"));
+          final var partOf =
+              properties.create(null, property(fixture, "partOf").withInverse(hasPart.getIri()));
+
+          fixture.ontologies.delete("admin", fixture.ontology.getId(), true, false);
+          fixture.ontologies.restoreEntity("admin", fixture.ontology.getId());
+
+          assertEquals(
+              partOf.getIri(), properties.find(hasPart.getId(), Include.NON_DELETED).getInverse());
+          assertEquals(
+              hasPart.getIri(), properties.find(partOf.getId(), Include.NON_DELETED).getInverse());
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
   void aSelfInverseSurvivesItsRestore(ConnectionType dialect) {
     withCapture(
         dialect,
