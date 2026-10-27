@@ -66,6 +66,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
 
   {
     supportsImportExport = true;
+    supportsAsyncDelete = true;
     supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsBatchImport = true;

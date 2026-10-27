@@ -80,6 +80,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
 
   {
     supportsImportExport = true;
+    supportsAsyncDelete = true;
     supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsBatchImport = true;

@@ -187,6 +187,7 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
   protected boolean supportsDataContract = false;
   protected boolean supportsSoftDelete = true;
   protected boolean supportsCustomExtension = false; // Type defined and extension accepted
+  protected boolean supportsRestore = true;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsPatch = true;
   // Whether the entity type has a lifecycle stage (its schema declares entityStatus). Opt out for
@@ -767,34 +768,32 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
   // DELETE RESTORE TESTS
   // ===================================================================
 
-  /**
-   * Test: Soft deleted entity can be restored
-   * Equivalent to: delete_restore_entity_200 in EntityResourceTest
-   *
-   * Note: This test verifies the restore functionality for soft-deleted entities.
-   * The original test uses a PUT request to restore. Since we're using the SDK,
-   * we'll verify that after soft delete, the entity can be restored and is functional.
-   */
+  /** A soft-deleted entity is hidden from a plain GET, and restoring it brings it back live. */
   @Test
   void delete_restore_entity_200(TestNamespace ns) {
-    if (!supportsSoftDelete) return;
-
-    // Create entity
-    K createRequest = createMinimalRequest(ns);
-    T created = createEntity(createRequest);
+    if (!supportsSoftDelete || !supportsRestore) return;
+    T created = createEntity(createMinimalRequest(ns));
     String entityId = created.getId().toString();
 
-    // Soft delete entity
     deleteEntity(entityId);
-
-    // Verify entity is deleted (should not be retrievable by default)
     assertThrows(
         Exception.class,
         () -> getEntity(entityId),
         "Deleted entity should not be retrievable without include=deleted");
 
-    // TODO: Add restore functionality once SDK supports it
-    // For now, this test verifies soft delete works correctly
+    restoreEntity(entityId);
+    T restored = getEntity(entityId);
+    assertEquals(created.getFullyQualifiedName(), restored.getFullyQualifiedName());
+    assertFalse(Boolean.TRUE.equals(restored.getDeleted()), "Restored entity is live again");
+  }
+
+  /** The raw entity JSON, whether or not it is soft-deleted. */
+  private JsonNode readIncludingDeleted(String id) {
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, getResourcePath() + id + "?include=all", null);
+    return JsonUtils.readTree(json);
   }
 
   // ===================================================================
@@ -2911,57 +2910,81 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
   }
 
   // ===================================================================
-  // ASYNC DELETE TESTS (Placeholder - requires WebSocket)
+  // ASYNC DELETE TESTS
   // ===================================================================
 
+  /** Subclasses whose resource exposes {@code DELETE <collection>/async/{id}} set this. */
   protected boolean supportsAsyncDelete = false;
 
-  /**
-   * Test: Async delete of non-existent entity returns 404
-   * Equivalent to: delete_async_nonExistentEntity_404 in EntityResourceTest
-   */
   @Test
   void delete_async_nonExistentEntity_404(TestNamespace ns) {
     if (!supportsAsyncDelete) return;
-
-    // Note: Async delete requires WebSocket connection to receive delete messages
-    // This is a placeholder test
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> deleteAsync(SdkClients.adminClient(), UUID.randomUUID().toString(), false));
+    assertEquals(404, error.getStatusCode());
   }
 
-  /**
-   * Test: Async delete as non-admin should fail
-   * Equivalent to: delete_async_entity_as_non_admin_401 in EntityResourceTest
-   */
   @Test
   void delete_async_entity_as_non_admin_401(TestNamespace ns) {
     if (!supportsAsyncDelete) return;
-
-    // Note: Async delete requires WebSocket connection
-    // This is a placeholder test
+    String entityId = createEntity(createMinimalRequest(ns)).getId().toString();
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> deleteAsync(SdkClients.user3Client(), entityId, true));
+    assertEquals(403, error.getStatusCode());
+    assertFalse(readIncludingDeleted(entityId).path("deleted").asBoolean(), "Still live");
   }
 
-  /**
-   * Test: Async delete with recursive hard delete
-   * Equivalent to: delete_async_with_recursive_hardDelete in EntityResourceTest
-   */
+  /** The job hard-deletes the entity: it is gone even with include=all. */
   @Test
   void delete_async_with_recursive_hardDelete(TestNamespace ns) {
     if (!supportsAsyncDelete) return;
-
-    // Note: Async delete requires WebSocket connection
-    // This is a placeholder test
+    T entity = createEntity(createMinimalRequest(ns));
+    JsonNode accepted = deleteAsync(SdkClients.adminClient(), entity.getId().toString(), true);
+    assertAsyncDeleteAccepted(accepted, entity, true);
+    Awaitility.await("async hard delete of " + entity.getName())
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              OpenMetadataException gone =
+                  assertThrows(
+                      OpenMetadataException.class,
+                      () -> readIncludingDeleted(entity.getId().toString()));
+              assertEquals(404, gone.getStatusCode());
+            });
   }
 
-  /**
-   * Test: Async soft delete
-   * Equivalent to: delete_async_soft_delete in EntityResourceTest
-   */
+  /** The job soft-deletes the entity, and the soft-deleted entity can then be restored. */
   @Test
   void delete_async_soft_delete(TestNamespace ns) {
-    if (!supportsAsyncDelete || !supportsSoftDelete) return;
+    if (!supportsAsyncDelete || !supportsSoftDelete || !supportsRestore) return;
+    T entity = createEntity(createMinimalRequest(ns));
+    String entityId = entity.getId().toString();
+    JsonNode accepted = deleteAsync(SdkClients.adminClient(), entityId, false);
+    assertAsyncDeleteAccepted(accepted, entity, false);
+    Awaitility.await("async soft delete of " + entity.getName())
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofMillis(500))
+        .until(() -> readIncludingDeleted(entityId).path("deleted").asBoolean());
 
-    // Note: Async delete requires WebSocket connection
-    // This is a placeholder test
+    restoreEntity(entityId);
+    assertFalse(Boolean.TRUE.equals(getEntity(entityId).getDeleted()), "Restored entity is live");
+  }
+
+  private JsonNode deleteAsync(OpenMetadataClient client, String id, boolean hardDelete) {
+    String path = getResourcePath() + "async/" + id + "?recursive=true&hardDelete=" + hardDelete;
+    return JsonUtils.readTree(
+        client.getHttpClient().executeForString(HttpMethod.DELETE, path, null));
+  }
+
+  private void assertAsyncDeleteAccepted(JsonNode accepted, T entity, boolean hardDelete) {
+    assertFalse(accepted.path("jobId").asText().isBlank(), "202 body names the delete job");
+    assertEquals(entity.getName(), accepted.path("entityName").asText());
+    assertEquals(hardDelete, accepted.path("hardDelete").asBoolean());
   }
 
   // ===================================================================

@@ -47,6 +47,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
   {
     supportsLifeCycle = true;
+    supportsAsyncDelete = true;
     supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;

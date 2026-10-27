@@ -61,6 +61,7 @@ public class DashboardDataModelResourceIT
 
   {
     supportsLifeCycle = true;
+    supportsAsyncDelete = true;
     supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;

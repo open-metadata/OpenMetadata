@@ -43,6 +43,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
 
   {
     supportsLifeCycle = true;
+    supportsAsyncDelete = true;
     supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;
