@@ -514,7 +514,11 @@ class HexSource(DashboardServiceSource):
         not read, so the dashboard stays linked to it. None when it can't be confirmed:
         linking a data model that doesn't exist would fail the dashboard.
         """
-        if not self.source_config.includeDataModels or self._get_cell_lineage(project) is not None:
+        if (
+            not self.source_config.includeDataModels
+            or filter_by_datamodel(self.source_config.dataModelFilterPattern, project.title)
+            or self._get_cell_lineage(project) is not None
+        ):
             return None
         data_model_fqn = self._build_fqn(DashboardDataModel, project)
         try:
