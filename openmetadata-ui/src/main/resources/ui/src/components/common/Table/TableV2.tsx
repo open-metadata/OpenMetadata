@@ -1972,7 +1972,7 @@ const TableV2 = <T extends object>(
                               // dropdown it replaced.
                               className={classNames(
                                 'tw:bg-overlay-surface tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg',
-                                'tw:max-h-[264px] tw:max-w-80 tw:overflow-auto',
+                                'tw:max-h-[264px] tw:max-w-80 tw:overflow-auto'
                               )}
                               data-testid="filter-dropdown"
                               style={{ minWidth: '200px' }}>

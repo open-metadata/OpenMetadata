@@ -1306,9 +1306,7 @@ pickEntityMatrix(
           await waitForAllLoadersToDisappear(page);
 
           const taggedRow = page.locator(`[${rowSelector}="${taggedKey}"]`);
-          const childTable = page
-            .locator('table')
-            .filter({ has: taggedRow });
+          const childTable = page.locator('table').filter({ has: taggedRow });
           const rows = childTable.locator(`[${rowSelector}]`);
 
           await test.step('Tag a child row', async () => {

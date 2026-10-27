@@ -28,7 +28,6 @@ import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
-  descriptionBoxReadOnly,
   fillDescriptionBox,
   getAuthContext,
   redirectToHomePage,

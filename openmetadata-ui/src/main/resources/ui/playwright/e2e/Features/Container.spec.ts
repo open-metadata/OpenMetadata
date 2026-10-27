@@ -137,7 +137,6 @@ test.describe('Container entity specific tests ', () => {
     await page.getByText('25 / Page').click();
     await childrenResponseSizeChange;
 
-
     await expect(page.getByTestId('next')).toBeDisabled();
     await expect(page.getByTestId('previous')).toBeDisabled();
     await expect(page.getByTestId('page-indicator')).toContainText(
@@ -153,7 +152,6 @@ test.describe('Container entity specific tests ', () => {
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('15 / Page').click();
     await childrenResponseSizeChange2;
-
 
     await expect(page.getByTestId('previous')).toBeDisabled();
     await expect(page.getByTestId('page-indicator')).toContainText(

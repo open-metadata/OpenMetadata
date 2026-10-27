@@ -70,9 +70,10 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // lookup, picking the bulk-import entity type by its option role removes
     // one more, editor-scoped bulk tag selection removes another
     // positional fallback, scoping the Topic nested copy-link button to its
-    // row removes two more, and deleting the unused task-count helper removes
-    // two more.
-    'om-playwright/no-positional-locator': 536,
+    // row removes two more, deleting the unused task-count helper removes
+    // two more, and deleting the unused antd reply-announcement helper
+    // removes two more.
+    'om-playwright/no-positional-locator': 534,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
