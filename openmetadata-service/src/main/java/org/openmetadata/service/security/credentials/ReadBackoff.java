@@ -31,15 +31,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * difference.
  *
  * <p>A second, independent window per subject paces the warning about a subject the source left
- * out, whichever read found it, so a log line comes at most once per window.
+ * out, whichever read found it. That window runs from the warning that started it, so a subject
+ * that keeps failing is reported once per warning interval, however often it is read.
  */
 final class ReadBackoff {
-  private final LatestStamps blocking;
-  private final LatestStamps warnings;
+  private final Windows blocking;
+  private final Windows warnings;
 
-  ReadBackoff(Ticker ticker, long windowNanos, int maxSubjects) {
-    this.blocking = new LatestStamps(ticker, windowNanos, maxSubjects);
-    this.warnings = new LatestStamps(ticker, windowNanos, maxSubjects);
+  ReadBackoff(Ticker ticker, long windowNanos, long warningIntervalNanos, int maxSubjects) {
+    this.blocking = new Windows(ticker, windowNanos, maxSubjects);
+    this.warnings = new Windows(ticker, warningIntervalNanos, maxSubjects);
   }
 
   boolean isBackingOff(CredentialSubject subject, long nowNanos) {
@@ -53,14 +54,14 @@ final class ReadBackoff {
 
   /**
    * The source left {@code subject} out of a read. Returns true when no warning window was open at
-   * {@code stampNanos}, so the caller reports a failing subject once per window rather than once
-   * per read.
+   * {@code stampNanos}, and starts one, so the caller reports a failing subject once per warning
+   * interval rather than once per read.
    */
   boolean recordLeftOut(CredentialSubject subject, long stampNanos, boolean fromCheck) {
     if (fromCheck) {
       blocking.record(subject, stampNanos);
     }
-    return warnings.record(subject, stampNanos);
+    return warnings.startUnlessOpen(subject, stampNanos);
   }
 
   /** Ends the windows of a failure stamped no later than this read, which produced a record. */
@@ -69,12 +70,12 @@ final class ReadBackoff {
     warnings.endIfNotNewer(subject, stampNanos);
   }
 
-  /** Per subject, the latest stamp of a failed read, for at most one window. */
-  private static final class LatestStamps {
+  /** Per subject, the stamp a window runs from, kept for at most one window. */
+  private static final class Windows {
     private final Cache<CredentialSubject, Long> stamps;
     private final long windowNanos;
 
-    private LatestStamps(Ticker ticker, long windowNanos, int maxSubjects) {
+    private Windows(Ticker ticker, long windowNanos, int maxSubjects) {
       this.windowNanos = windowNanos;
       this.stamps =
           Caffeine.newBuilder()
@@ -103,6 +104,21 @@ final class ReadBackoff {
                     : failedAtNanos;
               });
       return opensWindow.get();
+    }
+
+    /** Starts a window at {@code stampNanos} unless one is open there; true when it starts one. */
+    private boolean startUnlessOpen(CredentialSubject subject, long stampNanos) {
+      AtomicBoolean startsWindow = new AtomicBoolean();
+      stamps
+          .asMap()
+          .compute(
+              subject,
+              (key, startedAtNanos) -> {
+                startsWindow.set(
+                    startedAtNanos == null || stampNanos - startedAtNanos >= windowNanos);
+                return startsWindow.get() ? stampNanos : startedAtNanos;
+              });
+      return startsWindow.get();
     }
 
     private void endIfNotNewer(CredentialSubject subject, long stampNanos) {

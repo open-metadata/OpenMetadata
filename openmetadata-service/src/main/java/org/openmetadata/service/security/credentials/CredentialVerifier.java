@@ -84,6 +84,7 @@ public final class CredentialVerifier implements Managed {
   private static final AtomicInteger READ_THREADS = new AtomicInteger();
   private static final long NANOS_PER_SECOND = TimeUnit.SECONDS.toNanos(1);
   private static final long DEEP_RETRY_CAP_NANOS = TimeUnit.MINUTES.toNanos(1);
+  private static final long LEFT_OUT_WARNING_INTERVAL_NANOS = TimeUnit.MINUTES.toNanos(1);
   private static final long READ_THREAD_IDLE_SECONDS = 60;
   private static final int QUEUED_READS_PER_THREAD = 16;
   private static final BooleanSupplier NEVER_CREATES = () -> false;
@@ -231,7 +232,12 @@ public final class CredentialVerifier implements Managed {
     this.metrics = metrics;
     this.policy = config.policy();
     this.revocationListeners = List.copyOf(revocationListeners);
-    this.backoff = new ReadBackoff(ticker, config.missRefreshMinAgeNanos(), config.maxSubjects());
+    this.backoff =
+        new ReadBackoff(
+            ticker,
+            config.missRefreshMinAgeNanos(),
+            LEFT_OUT_WARNING_INTERVAL_NANOS,
+            config.maxSubjects());
     this.requestReads = readPool(config.maxConcurrentRequestReads(), readThreads);
     this.entries =
         Caffeine.newBuilder()
@@ -634,7 +640,7 @@ public final class CredentialVerifier implements Managed {
     }
   }
 
-  /** Warns once per backoff window, however many reads leave the subject out within it. */
+  /** Warns at most once a minute per subject, however many reads leave it out. */
   private void recordLeftOut(
       CredentialSubject subject, Throwable cause, ReadReason reason, long stampNanos) {
     if (backoff.recordLeftOut(subject, stampNanos, reason.startedByCheck())) {

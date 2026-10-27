@@ -21,9 +21,11 @@ import org.junit.jupiter.api.Test;
 /** Reads that finish out of order, which the verifier tests cannot stage deterministically. */
 class ReadBackoffTest {
   private static final long WINDOW = 500;
+  private static final long WARNING_INTERVAL = 60_000;
   private static final CredentialSubject ALICE = CredentialSubject.of("alice");
 
-  private final ReadBackoff backoff = new ReadBackoff(new FakeTicker(), WINDOW, 10);
+  private final ReadBackoff backoff =
+      new ReadBackoff(new FakeTicker(), WINDOW, WARNING_INTERVAL, 10);
 
   @Test
   void aFailureBacksItsSubjectOffForOneWindowFromItsStamp() {
@@ -43,11 +45,22 @@ class ReadBackoffTest {
   }
 
   @Test
-  void aFailureOpensAWindowOnlyOnceTheLatestOneHasPassed() {
+  void aCheckFailureBacksOffFromTheLatestFailure() {
+    backoff.recordLeftOut(ALICE, 0, true);
+    backoff.recordLeftOut(ALICE, 400, true);
+
+    assertTrue(backoff.isBackingOff(ALICE, 899));
+    assertFalse(backoff.isBackingOff(ALICE, 900));
+  }
+
+  @Test
+  void aSubjectLeftOutAtEveryBackoffWindowIsWarnedAboutOncePerWarningInterval() {
     assertTrue(backoff.recordLeftOut(ALICE, 0, true));
-    assertFalse(backoff.recordLeftOut(ALICE, 499, true));
-    assertFalse(backoff.recordLeftOut(ALICE, 998, true));
-    assertTrue(backoff.recordLeftOut(ALICE, 1498, true));
+    for (long stamp = WINDOW; stamp < WARNING_INTERVAL; stamp += WINDOW) {
+      assertFalse(backoff.recordLeftOut(ALICE, stamp, true), "left out again at " + stamp);
+    }
+    assertTrue(backoff.recordLeftOut(ALICE, WARNING_INTERVAL, true));
+    assertFalse(backoff.recordLeftOut(ALICE, WARNING_INTERVAL + WINDOW, true));
   }
 
   @Test
@@ -56,7 +69,16 @@ class ReadBackoffTest {
     assertFalse(backoff.recordLeftOut(ALICE, 200, false));
 
     assertFalse(backoff.isBackingOff(ALICE, 300));
-    assertTrue(backoff.recordLeftOut(ALICE, 700, false));
+    assertTrue(backoff.recordLeftOut(ALICE, WARNING_INTERVAL + 100, false));
+  }
+
+  @Test
+  void aSuccessEndsTheWarningWindowSoTheNextFailureIsReported() {
+    assertTrue(backoff.recordLeftOut(ALICE, 100, false));
+
+    backoff.recordSuccess(ALICE, 200);
+
+    assertTrue(backoff.recordLeftOut(ALICE, 300, false));
   }
 
   @Test

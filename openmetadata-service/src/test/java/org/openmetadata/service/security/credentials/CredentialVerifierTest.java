@@ -852,7 +852,7 @@ class CredentialVerifierTest {
   }
 
   @Test
-  void aSubjectLeftOutAgainWithinItsBackoffIsWarnedAboutOnce() {
+  void aSubjectLeftOutAgainAndAgainIsWarnedAboutOnceAMinute() {
     Logger logger = (Logger) LoggerFactory.getLogger(CredentialVerifier.class);
     ListAppender<ILoggingEvent> events = new ListAppender<>();
     events.start();
@@ -869,9 +869,14 @@ class CredentialVerifierTest {
       verifier.refreshNow(subject(ALICE));
       ticker.advanceNanos(MISS_REFRESH_MIN_AGE);
       verifier.refreshNow(subject(ALICE));
-
       assertEquals(4, source.fullReadsOf(ALICE));
-      assertEquals(2, conversionWarningsAbout(events, ALICE));
+      assertEquals(1, conversionWarningsAbout(events, ALICE), "one warning for three reads");
+
+      ticker.advanceNanos(MINUTE);
+      verifier.refreshNow(subject(ALICE));
+
+      assertEquals(5, source.fullReadsOf(ALICE));
+      assertEquals(2, conversionWarningsAbout(events, ALICE), "and one more a minute later");
     } finally {
       logger.detachAppender(events);
       events.stop();
