@@ -22,9 +22,11 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -33,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.MetricAssetDirection;
 import org.openmetadata.schema.api.data.MetricHierarchyItem;
 import org.openmetadata.schema.entity.data.Metric;
@@ -41,6 +44,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 class MetricRepositoryTest {
@@ -367,6 +371,101 @@ class MetricRepositoryTest {
 
       assertEquals(2, parentWithChildren.getChildrenCount());
       assertEquals(0, leaf.getChildrenCount());
+    }
+  }
+
+  @Test
+  void metricGroupSingleHydrationClearsAGroupDeletedAfterMembershipLookup() {
+    final UUID groupId = UUID.randomUUID();
+    final Metric metric =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withMetricGroup(new EntityReference().withId(groupId).withType(Entity.METRIC_GROUP));
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      when(fixture.metricDAO().findActiveGroupId(metric.getId(), Relationship.HAS.ordinal()))
+          .thenReturn(groupId.toString());
+      entity
+          .when(() -> Entity.getEntityReferenceById(Entity.METRIC_GROUP, groupId, NON_DELETED))
+          .thenThrow(EntityNotFoundException.byId(groupId.toString()));
+
+      fixture.repository().setFields(metric, new Fields(Set.of("metricGroup")), null);
+
+      assertNull(metric.getMetricGroup());
+    }
+  }
+
+  @Test
+  void metricGroupBulkHydrationSkipsDeletedGroupsAndKeepsActiveGroups() {
+    final UUID deletedGroupId = UUID.randomUUID();
+    final EntityReference activeGroup =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.METRIC_GROUP);
+    final Metric metricWithDeletedGroup =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withMetricGroup(
+                new EntityReference().withId(deletedGroupId).withType(Entity.METRIC_GROUP));
+    final Metric metricWithActiveGroup = new Metric().withId(UUID.randomUUID());
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      when(fixture
+              .metricDAO()
+              .findActiveGroups(
+                  List.of(
+                      metricWithDeletedGroup.getId().toString(),
+                      metricWithActiveGroup.getId().toString()),
+                  Relationship.HAS.ordinal()))
+          .thenReturn(
+              List.of(
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(deletedGroupId.toString())
+                      .toId(metricWithDeletedGroup.getId().toString())
+                      .build(),
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(activeGroup.getId().toString())
+                      .toId(metricWithActiveGroup.getId().toString())
+                      .build()));
+      entity
+          .when(
+              () -> Entity.getEntityReferenceById(Entity.METRIC_GROUP, deletedGroupId, NON_DELETED))
+          .thenThrow(EntityNotFoundException.byId(deletedGroupId.toString()));
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferenceById(
+                      Entity.METRIC_GROUP, activeGroup.getId(), NON_DELETED))
+          .thenReturn(activeGroup);
+
+      fixture
+          .repository()
+          .setFieldsInBulk(
+              new Fields(Set.of("metricGroup")),
+              List.of(metricWithDeletedGroup, metricWithActiveGroup));
+
+      assertNull(metricWithDeletedGroup.getMetricGroup());
+      assertEquals(activeGroup, metricWithActiveGroup.getMetricGroup());
+    }
+  }
+
+  @Test
+  void metricGroupHydrationPropagatesUnexpectedLookupFailures() {
+    final UUID groupId = UUID.randomUUID();
+    final Metric metric = new Metric().withId(UUID.randomUUID());
+    final IllegalStateException failure = new IllegalStateException("Group lookup unavailable");
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      when(fixture.metricDAO().findActiveGroupId(metric.getId(), Relationship.HAS.ordinal()))
+          .thenReturn(groupId.toString());
+      entity
+          .when(() -> Entity.getEntityReferenceById(Entity.METRIC_GROUP, groupId, NON_DELETED))
+          .thenThrow(failure);
+
+      assertSame(
+          failure,
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  fixture.repository().setFields(metric, new Fields(Set.of("metricGroup")), null)));
     }
   }
 

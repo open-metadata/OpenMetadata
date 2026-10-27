@@ -25,7 +25,7 @@ export interface SettingMenuItem {
   key: string;
   icon: SvgComponent;
   // Draws `icon` (a plain core glyph) on a tinted tile, for icons without a baked-in background.
-  iconColor?: 'blue';
+  iconColor?: 'blue' | 'green';
   description: string;
   category?: string;
   label?: string;

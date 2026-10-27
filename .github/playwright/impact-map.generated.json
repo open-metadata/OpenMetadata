@@ -3397,6 +3397,7 @@
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts",
         "playwright/e2e/Features/PersonaAppLayout.spec.ts",
+        "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
@@ -10704,38 +10705,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertiesAddPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertiesDetailPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertiesEditPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertiesLandingPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlAddPolicyForm.tsx"
       ],
       "specs": [
@@ -10990,6 +10959,38 @@
       ],
       "specs": [
         "playwright/e2e/Pages/BotsProfile.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesAddPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesDetailPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesEditPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesLandingPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
       ]
     },
     {
@@ -12542,7 +12543,8 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/entity/data/query.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts"
+        "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
+        "playwright/e2e/Features/QueryEntity.spec.ts"
       ]
     },
     {

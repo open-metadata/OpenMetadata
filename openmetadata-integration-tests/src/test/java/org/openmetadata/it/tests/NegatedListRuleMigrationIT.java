@@ -39,10 +39,10 @@ import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
-import org.openmetadata.service.migration.utils.v207.MigrationUtil;
+import org.openmetadata.service.migration.utils.v208.MigrationUtil;
 
 /**
- * Runs the 2.0.7 rewrite of negated list rules on one stored contract and one stored workflow, so
+ * Runs the 2.0.8 rewrite of negated list rules on one stored contract and one stored workflow, so
  * a rule saved as "has a tag other than X" runs as the "Is Not X" its row shows, against the real
  * database, rule engine and Flowable. The migration's full scans are not run here: they would
  * rewrite and redeploy other suites' workflows mid-test.
