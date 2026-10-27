@@ -20,10 +20,12 @@ import {
 } from '../../../../../../generated/entity/applications/app';
 import {
   getApplicationByName,
+  patchApplication,
   uninstallApp,
 } from '../../../../../../rest/applicationAPI';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppSchedule from '../../../../../Settings/Applications/AppSchedule/AppSchedule.component';
 import AppDetail from './AppDetail';
@@ -97,6 +99,14 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock(
+  '../../../../../Settings/Services/AddIngestion/Steps/ScheduleInterval',
+  () =>
+    jest.fn(({ onChange }: { onChange: (cron: string) => void }) => (
+      <button onClick={() => onChange('0 12 * * *')}>Change schedule</button>
+    ))
+);
+
+jest.mock(
   '../../../../../Settings/Applications/AppSchedule/AppSchedule.component',
   () => jest.fn(() => <div data-testid="app-schedule" />)
 );
@@ -108,9 +118,8 @@ jest.mock(
   '../../../../../Settings/Applications/AppLiveIndexing/AppLiveIndexing.component',
   () => jest.fn(() => <div data-testid="app-live-indexing" />)
 );
-jest.mock(
-  '../../../../../Settings/Applications/McpApplicationConfiguration/McpApplicationConfiguration',
-  () => jest.fn(() => <div data-testid="mcp-config" />)
+jest.mock('./McpConfigForm', () =>
+  jest.fn(() => <div data-testid="mcp-config" />)
 );
 
 const baseApp = {
@@ -362,5 +371,98 @@ describe('AppDetail', () => {
       expect.objectContaining({ isReadOnly: true }),
       expect.anything()
     );
+  });
+
+  it('opens a run configuration as a sub-page and returns to the tabs', async () => {
+    const configForm = jest.fn(() => <div data-testid="config-form" />);
+    jest
+      .spyOn(applicationsClassBase, 'getModalAppConfigurationComponent')
+      .mockReturnValue(configForm);
+    await renderDetail();
+
+    const { onViewRunConfig } = (AppSchedule as jest.Mock).mock.calls[0][0];
+
+    act(() => {
+      onViewRunConfig({ id: 'run-1', config: { batchSize: 99 } });
+    });
+
+    expect(screen.getByTestId('config-form')).toBeInTheDocument();
+    expect(screen.queryByTestId('app-schedule')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(configForm).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        isReadOnly: true,
+        appData: expect.objectContaining({
+          appConfiguration: { batchSize: 99 },
+        }),
+      }),
+      expect.anything()
+    );
+    expect(lastHeader().subPage?.label).toBe('label.entity-configuration');
+
+    // The app crumb in the breadcrumb is the way back.
+    act(() => {
+      lastHeader().subPage?.onBack();
+    });
+
+    expect(screen.getByTestId('app-schedule')).toBeInTheDocument();
+    expect(lastHeader().subPage).toBeUndefined();
+  });
+
+  it('edits the schedule as a sub-page and returns to the tabs after saving', async () => {
+    (patchApplication as jest.Mock).mockResolvedValue(baseApp);
+    await renderDetail();
+
+    act(() => {
+      (AppSchedule as jest.Mock).mock.calls.at(-1)[0].onEditSchedule();
+    });
+
+    expect(screen.getByTestId('update-schedule-form')).toBeInTheDocument();
+    expect(screen.queryByTestId('app-schedule')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(lastHeader().subPage?.label).toBe('label.update-entity');
+
+    fireEvent.click(screen.getByText('Change schedule'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(patchApplication).toHaveBeenCalledWith(
+      'app-1',
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: '/appSchedule',
+          value: expect.objectContaining({ cronExpression: '0 12 * * *' }),
+        }),
+      ])
+    );
+    expect(screen.getByTestId('app-schedule')).toBeInTheDocument();
+    expect(lastHeader().subPage).toBeUndefined();
+  });
+
+  it('leaves the schedule sub-page on cancel without saving', async () => {
+    await renderDetail();
+
+    act(() => {
+      (AppSchedule as jest.Mock).mock.calls.at(-1)[0].onEditSchedule();
+    });
+    fireEvent.click(screen.getByTestId('cancel-button'));
+
+    expect(patchApplication).not.toHaveBeenCalled();
+    expect(screen.getByTestId('app-schedule')).toBeInTheDocument();
+  });
+
+  it('shows an empty state with the reason when the app has no schema and no tabs', async () => {
+    jest
+      .spyOn(applicationsClassBase, 'importSchema')
+      .mockRejectedValue(new Error('missing'));
+    await renderDetail({ scheduleType: ScheduleType.NoSchedule });
+
+    expect(screen.getByTestId('app-detail-empty')).toBeInTheDocument();
+    expect(
+      screen.getByText('server.no-application-schema-found')
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 });

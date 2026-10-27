@@ -207,6 +207,10 @@ describe('GlobalSettingsUtils', () => {
           option: GlobalSettingOptions.DATA_PRODUCT,
         },
         { entity: EntityType.METRIC, option: GlobalSettingOptions.METRICS },
+        {
+          entity: EntityType.KNOWLEDGE_PAGE,
+          option: GlobalSettingOptions.ARTICLES,
+        },
       ];
 
       it.each(supportedEntities)(
@@ -217,7 +221,7 @@ describe('GlobalSettingsUtils', () => {
       );
 
       it('should have all entities that support custom properties covered', () => {
-        expect(supportedEntities).toHaveLength(18);
+        expect(supportedEntities).toHaveLength(19);
       });
     });
   });

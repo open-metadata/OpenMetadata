@@ -1463,6 +1463,9 @@ public class TableRepository extends EntityRepository<Table> {
     EntityRepository.invalidateCacheForEntity(
         entityType, table.getId(), table.getFullyQualifiedName());
     RdfUpdater.updateEntity(table);
+    // Skipping postUpdate skips the search update as well: rebuild the table's document from the
+    // merged row, so that its tags, owners and column tags show the model.
+    searchRepository.updateEntity(table.getEntityReference());
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;

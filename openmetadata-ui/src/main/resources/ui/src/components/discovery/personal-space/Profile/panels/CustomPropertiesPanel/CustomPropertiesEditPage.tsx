@@ -81,7 +81,7 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
       data-testid="custom-properties-edit-page"
       direction="col">
       <div className="tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0">
-        <Box className="tw:max-w-[50%]" direction="col">
+        <Box className="tw:max-w-[50%] tw:w-full tw:mx-auto" direction="col">
           <CustomPropertyEditForm
             formId="edit-custom-property-form"
             property={property}

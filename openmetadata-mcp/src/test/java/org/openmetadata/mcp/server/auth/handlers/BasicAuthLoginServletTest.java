@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -18,11 +20,16 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.core.Response;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
@@ -39,6 +46,7 @@ import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
+import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
@@ -56,9 +64,8 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 @MockitoSettings(strictness = Strictness.LENIENT)
 class BasicAuthLoginServletTest {
 
-  // Mirrors of the private session-attribute keys used by the servlet.
-  private static final String SESSION_CSRF_TOKEN = "mcp.login.csrf";
-  private static final String SESSION_AUTH_REQUEST_ID = "mcp.login.auth_request_id";
+  // Mirror of the private session-attribute key used by the servlet.
+  private static final String SESSION_LOGIN_FORM = "mcp.login.form";
 
   private static final String CSRF_TOKEN = "csrf-token-abc";
   private static final String AUTH_REQUEST_ID = "auth-req-123";
@@ -109,8 +116,8 @@ class BasicAuthLoginServletTest {
     // Common request / session / CSRF stubs shared by every doPost scenario.
     when(request.getSession(false)).thenReturn(session);
     when(request.getSession(true)).thenReturn(session);
-    when(session.getAttribute(SESSION_CSRF_TOKEN)).thenReturn(CSRF_TOKEN);
-    when(session.getAttribute(SESSION_AUTH_REQUEST_ID)).thenReturn(AUTH_REQUEST_ID);
+    when(session.getAttribute(SESSION_LOGIN_FORM))
+        .thenReturn(new BasicAuthLoginServlet.LoginForm(CSRF_TOKEN, AUTH_REQUEST_ID));
     when(request.getParameter("csrf_token")).thenReturn(CSRF_TOKEN);
     when(request.getParameter("username")).thenReturn(EMAIL);
     when(request.getParameter("password")).thenReturn(PASSWORD);
@@ -177,6 +184,109 @@ class BasicAuthLoginServletTest {
     assertThat(responseBody.toString()).contains("action=\"login\"");
     // The catch block records the failed attempt exactly once.
     verify(authenticator).recordFailedLoginAttempt(EMAIL, EMAIL);
+  }
+
+  // ── the re-rendered form stays bound to its auth request ─────────────────
+
+  @Test
+  void doPost_otherAuthRequestOpenedWhilePasswordIsChecked_retryCompletesItsOwnRequest()
+      throws Exception {
+    // Another tab can GET /mcp/login?auth_request_id=<its own> while a POST is in flight. The form
+    // shown after the failed login must still complete the request it names, not the other one.
+    Map<String, Object> attributes = sessionAttributes();
+    HttpServletRequest otherTab = loginPageRequest("other-auth-req", "other-client");
+    HttpServletResponse otherTabResponse = mock(HttpServletResponse.class);
+    when(otherTabResponse.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+    User user = mock(User.class);
+    when(user.getName()).thenReturn("user");
+    when(authenticator.lookUserInProvider(EMAIL, PASSWORD)).thenReturn(user);
+    when(authProvider.createAuthorizationCode(eq("user"), any(), any(), any(), any()))
+        .thenAnswer(call -> "code-for-" + call.getArgument(0));
+    doAnswer(
+            whilePasswordIsChecked -> {
+              servlet.doGet(otherTab, otherTabResponse);
+              throw new AuthenticationException("invalid username or password");
+            })
+        .doNothing()
+        .when(authenticator)
+        .validatePassword(any(String.class), any(String.class), any(User.class));
+
+    try (MockedStatic<SecurityConfigurationManager> scm =
+            mockStatic(SecurityConfigurationManager.class);
+        MockedStatic<LoginAttemptCache> attempts = mockStatic(LoginAttemptCache.class)) {
+      scm.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(authConfig);
+      attempts.when(LoginAttemptCache::getInstance).thenReturn(mock(LoginAttemptCache.class));
+
+      servlet.doPost(request, response);
+      when(request.getParameter("csrf_token")).thenReturn(csrfTokenOf(responseBody.toString()));
+      servlet.doPost(request, response);
+    }
+
+    ArgumentCaptor<String> redirect = ArgumentCaptor.forClass(String.class);
+    verify(response).sendRedirect(redirect.capture());
+    assertThat(redirect.getValue())
+        .startsWith("https://client.example.com/callback?")
+        .contains("code=code-for-user", "state=state-123");
+    assertThat(attributes).doesNotContainKey(SESSION_LOGIN_FORM);
+  }
+
+  @Test
+  void doPost_withoutTokenAfterARefusedSubmit_isRejectedBeforeAuthentication() throws Exception {
+    // A refused submit consumes the form, so a following submit with no token at all has nothing
+    // to match and no auth request left to complete.
+    sessionAttributes();
+    when(request.getParameter("csrf_token")).thenReturn("not-the-token");
+    servlet.doPost(request, response);
+    when(request.getParameter("csrf_token")).thenReturn(null);
+
+    servlet.doPost(request, response);
+
+    verify(response).sendError(eq(HttpServletResponse.SC_FORBIDDEN), anyString());
+    verify(response).sendError(eq(HttpServletResponse.SC_BAD_REQUEST), anyString());
+    verify(authenticator, never()).lookUserInProvider(anyString(), anyString());
+  }
+
+  /** Backs the session mock with a map holding the form the user was shown. */
+  private Map<String, Object> sessionAttributes() {
+    Map<String, Object> attributes = new HashMap<>();
+    attributes.put(
+        SESSION_LOGIN_FORM, new BasicAuthLoginServlet.LoginForm(CSRF_TOKEN, AUTH_REQUEST_ID));
+    when(session.getAttribute(anyString()))
+        .thenAnswer(call -> attributes.get(call.<String>getArgument(0)));
+    doAnswer(call -> attributes.put(call.getArgument(0), call.getArgument(1)))
+        .when(session)
+        .setAttribute(anyString(), any());
+    doAnswer(call -> attributes.remove(call.<String>getArgument(0)))
+        .when(session)
+        .removeAttribute(anyString());
+    return attributes;
+  }
+
+  private HttpServletRequest loginPageRequest(String authRequestId, String clientId) {
+    when(pendingRepo.findByAuthRequestId(authRequestId))
+        .thenReturn(
+            new McpPendingAuthRequest(
+                authRequestId,
+                clientId,
+                "other-code-challenge",
+                "S256",
+                "https://other.example.com/callback",
+                null,
+                List.of("openid"),
+                null,
+                null,
+                null,
+                System.currentTimeMillis() + 600_000L));
+    HttpServletRequest pageRequest = mock(HttpServletRequest.class);
+    when(pageRequest.getParameter("auth_request_id")).thenReturn(authRequestId);
+    when(pageRequest.getSession(true)).thenReturn(session);
+    return pageRequest;
+  }
+
+  private static String csrfTokenOf(String html) {
+    Matcher token = Pattern.compile("name=\"csrf_token\" value=\"([^\"]+)\"").matcher(html);
+    assertThat(token.find()).as("csrf_token field in %s", html).isTrue();
+    return token.group(1);
   }
 
   // ── type-specificity guard for the import fix ────────────────────────────

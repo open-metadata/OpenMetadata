@@ -12,7 +12,7 @@
  */
 import React, { ReactNode } from 'react';
 import { EntityStatus } from '../generated/entity/data/glossaryTerm';
-import { PageProcessingStatus } from '../generated/entity/data/page';
+import { Page, PageProcessingStatus } from '../generated/entity/data/page';
 import { ChangeDescription, EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
 import { Votes } from '../generated/type/votes';
@@ -60,6 +60,7 @@ export interface KnowledgePage {
   entityStatus?: EntityStatus;
   processingStatus?: PageProcessingStatus;
   processingError?: string;
+  extension?: Page['extension'];
 }
 
 export type CreateKnowledgePage = Pick<

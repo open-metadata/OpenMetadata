@@ -29,4 +29,6 @@ export interface AppRunsHistoryProps {
   appData?: App;
   showPagination?: boolean;
   jsonSchema?: RJSFSchema;
+  /** Opens a run's configuration as a page instead of the built-in dialog. */
+  onViewRunConfig?: (record: AppRunRecordWithId) => void;
 }

@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  APIRequestContext,
-  Browser,
-  Locator,
-  Page,
-  Response,
-} from '@playwright/test';
+import { APIRequestContext, Locator, Page, Response } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import {
   expect,
@@ -40,7 +34,6 @@ import {
   waitForTaskTransitions,
 } from '../../../utils/inbox';
 import { waitForSearchIndexed } from '../../../utils/polling';
-import { performUserLogin } from '../../../utils/user';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { enableAiAppMode } from '../../Utils/appMode';
 
@@ -298,56 +291,38 @@ const backToUserTasks = async (page: Page, userName: string) => {
   await listFetch;
 };
 
-/** The user acts on their own table, so the event is theirs. */
+/**
+ * Seed an activity authored by the user. Real activity is written by the async
+ * ActivityFeedAlert consumer, which runs minutes behind on a loaded AUT; its
+ * delivery is covered by ActivityResourceIT.
+ */
 const recordActivityAs = async (
-  browser: Browser,
   seeded: Seeded,
   table: TableClass,
   description: string
 ) => {
-  const { apiContext, afterAction } = await performUserLogin(
-    browser,
-    seeded.subject
+  const { subject, apiContext } = seeded;
+  await insertActivityEventForTest(
+    apiContext,
+    table,
+    description,
+    'DescriptionUpdated',
+    subject.responseData
   );
-  try {
-    await okJson(
-      await apiContext.patch(`/api/v1/tables/${table.entityResponseData.id}`, {
-        data: [{ op: 'add', path: '/description', value: description }],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      }),
-      'The user describes their table'
-    );
-  } finally {
-    await afterAction();
-  }
-
-  // Activity is written after the change event, not with the PATCH, and lags
-  // further while other runs load the server.
   await expect
     .poll(
       async () =>
         JSON.stringify(
           await okJson(
-            await seeded.apiContext.get(
-              `/api/v1/activity/user/${seeded.subject.responseData.id}?days=30`
+            await apiContext.get(
+              `/api/v1/activity/user/${subject.responseData.id}?days=30`
             ),
             'Read the user activity'
           )
         ),
-      { timeout: 120_000, intervals: [1_000, 2_000, 5_000] }
+      { timeout: 30_000, intervals: [1_000, 2_000] }
     )
-    .toContain(table.entityResponseData.name);
-};
-
-const isOwnedAssetsSearch = (ownerId: string) => (response: Response) => {
-  const url = new URL(response.url());
-
-  return (
-    response.request().method() === 'GET' &&
-    url.pathname === '/api/v1/search/query' &&
-    url.searchParams.get('size') !== '0' &&
-    url.searchParams.get('query_filter')?.includes(ownerId) === true
-  );
+    .toContain(description);
 };
 
 test.describe('AI Profile Members user detail', () => {
@@ -389,14 +364,12 @@ test.describe('AI Profile Members user detail', () => {
   });
 
   test('shows the activity the user generated', async ({
-    browser,
     isolatedUserPage: page,
     seeded,
   }) => {
-    test.slow();
-    const table = await createOwnedTable(seeded);
+    const table = await createTable(seeded);
     const description = `Described by its owner ${uuid()}`;
-    await recordActivityAs(browser, seeded, table, description);
+    await recordActivityAs(seeded, table, description);
 
     await test.step('The Activity tab lists the user’s event', async () => {
       const activityFetch = waitForResponseWithStatus(
@@ -412,9 +385,8 @@ test.describe('AI Profile Members user detail', () => {
 
       const event = page
         .getByTestId('activity-feed-item')
-        .filter({ hasText: shownName(table) });
+        .filter({ hasText: description });
       await expect(event).toBeVisible();
-      await expect(event).toContainText(description);
       await expect(event).toContainText(
         seeded.subject.responseData.displayName ??
           seeded.subject.responseData.name
@@ -462,7 +434,7 @@ test.describe('AI Profile Members user detail', () => {
     });
 
     await test.step('Mentions reads the subject’s mentions feed', async () => {
-      await openUserDetail(page, seeded.subject.responseData.name, 'activity');
+      // The Activity tab prefetches every feed on load, so listen before opening it.
       const mentionsFetch = waitForResponseWithStatus(
         page,
         (response) => {
@@ -476,6 +448,7 @@ test.describe('AI Profile Members user detail', () => {
         },
         200
       );
+      await openUserDetail(page, seeded.subject.responseData.name, 'activity');
       await switchActivityFeed(page, 'Mentions');
       await mentionsFetch;
 

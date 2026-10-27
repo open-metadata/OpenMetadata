@@ -17,6 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.mcp.AuthEnrichedMcpContextExtractor;
 import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
@@ -31,6 +32,7 @@ import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
+import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor;
@@ -109,6 +111,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   // Public key set for the tokens JWTTokenGenerator signs, MCP access tokens included.
   private static final String JWKS_PATH = "/api/v1/system/config/jwks";
+  private static final String OPENID_CONFIGURATION_PATH = "/mcp/.well-known/openid-configuration";
 
   // In-memory rate limiters for registration and token endpoints.
   // These are per-JVM-instance; in clustered deployments the effective limit is N × limit per hour.
@@ -217,13 +220,14 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * it is correct, and appending it here would break that setup.
    * ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path
    */
-  public static void warnIfBaseUrlMissesContextPath(String baseUrl, String contextPath) {
-    boolean subPathContext = contextPath != null && contextPath.length() > 1;
-    String baseUrlPath = Objects.toString(URI.create(baseUrl).getPath(), "");
+  public static void warnIfBaseUrlMissesContextPath(
+      final String baseUrl, final String contextPath) {
+    final boolean hasSubPathContext = contextPath != null && contextPath.length() > 1;
+    final String baseUrlPath = Objects.toString(URI.create(baseUrl).getPath(), "");
     // Whole segments only, so /om-other does not pass for /om
-    boolean carriesContextPath =
+    final boolean carriesContextPath =
         baseUrlPath.equals(contextPath) || baseUrlPath.startsWith(contextPath + "/");
-    if (subPathContext && !carriesContextPath) {
+    if (hasSubPathContext && !carriesContextPath) {
       LOG.warn(
           "MCP base URL {} does not include the server base path {}. MCP OAuth endpoints will not"
               + " resolve unless a proxy adds it; set the MCP base URL to the external URL ending"
@@ -406,7 +410,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // openid-configuration appended to the issuer is the one authorization server discovery URL
     // the MCP spec lists that stays inside a non-root BASE_PATH; the others sit at the host root.
     if (path.equals("/mcp/.well-known/oauth-authorization-server")
-        || path.equals("/mcp/.well-known/openid-configuration")) {
+        || path.equals(OPENID_CONFIGURATION_PATH)) {
       handleMetadataRequest(request, response);
     } else if (path.equals("/mcp/.well-known/oauth-protected-resource")) {
       handleProtectedResourceMetadataRequest(request, response);
@@ -496,8 +500,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * the only discovery URL it can reach.
    * ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path
    */
-  private static void addOpenIdDiscoveryFields(OAuthMetadata metadata, String baseUrl) {
-    TokenValidationAlgorithm signingAlgorithm =
+  private static void addOpenIdDiscoveryFields(final OAuthMetadata metadata, final String baseUrl) {
+    final TokenValidationAlgorithm signingAlgorithm =
         Optional.ofNullable(SecurityConfigurationManager.getCurrentAuthConfig())
             .map(AuthenticationConfiguration::getTokenValidationAlgorithm)
             .orElse(TokenValidationAlgorithm.RS_256);
@@ -628,6 +632,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       handleRevocationRequest(request, response);
     } else if (path.equals("/mcp/login") && basicAuthLoginServlet != null) {
       basicAuthLoginServlet.doPost(request, response);
+    } else if (path.equals(UserSSOOAuthProvider.CONSENT_PATH)
+        && authProvider instanceof UserSSOOAuthProvider ssoProvider) {
+      handleConsentRequest(ssoProvider, request, response);
     } else {
       // The MCP message endpoint. Everything below this line is written by the base transport,
       // which knows nothing about CORS: the 401 challenge, the JSON-RPC response, the SSE stream.
@@ -1154,6 +1161,37 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       LOG.error("Unexpected error during token revocation", ex);
       sendOAuthError(
           request, response, 500, "server_error", "Unexpected error during token revocation");
+    }
+  }
+
+  /**
+   * Browser-facing like /mcp/login: the consent page served after an SSO sign-in posts the user's
+   * decision here. The provider answers the browser itself; this turns the two failures it can
+   * raise into a plain error page instead of a raw container one.
+   */
+  private void handleConsentRequest(
+      UserSSOOAuthProvider ssoProvider, HttpServletRequest request, HttpServletResponse response)
+      throws IOException {
+    try {
+      ssoProvider.handleConsentDecision(request, response);
+    } catch (IllegalStateException ex) {
+      // The client was removed or its redirect URI changed after the consent page was served.
+      LOG.warn("MCP consent no longer matches a registered client: {}", ex.getMessage());
+      sendConsentError(
+          response,
+          HttpServletResponse.SC_BAD_REQUEST,
+          "This application is no longer registered. Please restart the authorization flow.");
+    } catch (JdbiException ex) {
+      LOG.error("MCP consent processing failed", ex);
+      sendConsentError(
+          response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Consent processing failed");
+    }
+  }
+
+  private static void sendConsentError(HttpServletResponse response, int status, String message)
+      throws IOException {
+    if (!response.isCommitted()) {
+      response.sendError(status, message);
     }
   }
 

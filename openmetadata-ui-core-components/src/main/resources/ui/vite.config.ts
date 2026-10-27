@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
@@ -42,6 +43,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     dts({
+      compilerOptions: { noCheck: true },
       include: ['src'],
       outDir: 'dist/types',
       exclude: [
@@ -53,9 +55,37 @@ export default defineConfig({
       ],
     }),
     {
+      name: 'native-type-check',
+      apply: 'build',
+      // vite-plugin-dts caches its program, while Rollup prunes watches missing from later builds.
+      buildStart: {
+        order: 'post',
+        sequential: true,
+        handler() {
+          const srcPath = resolve(__dirname, 'src');
+          this.addWatchFile(srcPath);
+          for (const file of readdirSync(srcPath, { recursive: true })) {
+            this.addWatchFile(resolve(srcPath, file));
+          }
+          execFileSync(
+            process.execPath,
+            [
+              resolve(__dirname, 'node_modules/typescript-native/bin/tsc'),
+              '--project',
+              resolve(__dirname, 'tsconfig.json'),
+              '--noEmit',
+            ],
+            { stdio: 'inherit' }
+          );
+        },
+      },
+    },
+    {
       name: 'emit-styles-css',
       apply: 'build',
-      async closeBundle() {
+      async closeBundle(error) {
+        if (error) return;
+
         // Build globals.css as a standalone CSS file using a separate Vite build pass.
         // This produces dist/ui-core-components.css which is exported as `./styles.css`.
         const { build } = await import('vite');

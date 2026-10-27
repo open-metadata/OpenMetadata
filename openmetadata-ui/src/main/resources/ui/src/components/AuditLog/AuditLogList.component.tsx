@@ -44,6 +44,7 @@ import {
 import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import { isValidJSONString } from '../../utils/StringUtils';
 import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import {
@@ -770,7 +771,7 @@ const AuditLogList: FC<AuditLogListProps> = ({
       );
     } else if (hasActiveFilters) {
       emptyContent = (
-        <NoSearchResultsPlaceholder
+        <NoFilteredResultsPlaceholder
           actions={clearAction}
           description={t('message.no-results-for-filters-description')}
           icon={<NoSearch />}
@@ -788,7 +789,7 @@ const AuditLogList: FC<AuditLogListProps> = ({
 
     return (
       <div data-testid="audit-log-list">
-        <div className="tw:p-8">{emptyContent}</div>
+        <div className="tw:relative tw:min-h-80 tw:p-8">{emptyContent}</div>
       </div>
     );
   }

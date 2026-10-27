@@ -55,23 +55,19 @@ const stubIngestionSchedulerStatus = (page: Page) =>
     })
   );
 
-// Only the two agents this spec seeded — the tab lists every database agent.
-const seededRowOrder = async (page: Page) => {
-  const renderedNames = await page
-    .getByTestId('pipeline-name')
-    .allTextContents();
+const renderedRowOrder = async (page: Page) =>
+  (await page.getByTestId('pipeline-name').allTextContents()).map((name) =>
+    name.trim()
+  );
 
-  return renderedNames
-    .map((name) => name.trim())
-    .filter((name) => name.endsWith(token));
-};
-
-// The Name column renders `displayName ?? name`, so the listing response is what the cells should
-// show — and in the order the response returned them.
+// The Name column renders `getEntityName` (`displayName || name`), so the listing response is what
+// the cells should show — and in the order the response returned them.
 const renderedNames = (body: {
   data?: { displayName?: string; name: string }[];
 }): string[] =>
-  (body.data ?? []).map((pipeline) => pipeline.displayName ?? pipeline.name);
+  (body.data ?? []).map((pipeline) =>
+    (pipeline.displayName || pipeline.name).trim()
+  );
 
 const waitForSortedListing = (page: Page, { cursored = false } = {}) =>
   waitForResponseWithStatus(
@@ -90,6 +86,9 @@ const waitForSortedListing = (page: Page, { cursored = false } = {}) =>
  * the click issues a request carrying the sort params, and the rendered rows mirror that response
  * in order. Whether the ordering itself is correct is the endpoint's contract, covered by
  * IngestionPipelineSortIT.
+ *
+ * The whole page is compared, not just the seeded rows: the tab lists every database agent paged
+ * at 15, so on a shared server the seeded agents need not land on the first sorted page.
  */
 const expectSortDelegatedToServer = async (
   page: Page,
@@ -108,14 +107,12 @@ const expectSortDelegatedToServer = async (
 
   await nameHeader.click();
 
-  const serverOrder = renderedNames(await (await sortedResponse).json()).filter(
-    (name) => name.endsWith(token)
-  );
+  const serverOrder = renderedNames(await (await sortedResponse).json());
 
-  expect(serverOrder).toHaveLength(agents.length);
+  expect(serverOrder.length).toBeGreaterThan(0);
 
   await waitForAllLoadersToDisappear(page);
-  await expect.poll(() => seededRowOrder(page)).toEqual(serverOrder);
+  await expect.poll(() => renderedRowOrder(page)).toEqual(serverOrder);
 };
 
 test.describe('Ingestion agent list Name column sorting', () => {
@@ -172,14 +169,7 @@ test.describe('Ingestion agent list Name column sorting', () => {
       });
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page
-          .getByTestId('pipeline-name')
-          .filter({ hasText: firstByDisplayName })
-      ).toBeVisible();
-      await expect(
-        page.getByTestId('pipeline-name').filter({ hasText: lastByDisplayName })
-      ).toBeVisible();
+      await expect(page.getByTestId('pipeline-name')).not.toHaveCount(0);
     });
 
     const nameHeader = page.locator('th:has-text("Name")').first();

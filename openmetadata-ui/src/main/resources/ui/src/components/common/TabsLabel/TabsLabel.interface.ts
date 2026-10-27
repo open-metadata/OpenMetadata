@@ -22,13 +22,11 @@ export interface TabProps {
 }
 
 export interface TabsLabelProps {
-  name: string;
+  name: React.ReactNode;
   id: string;
   count?: number;
   isActive?: boolean;
   description?: string;
   isBeta?: boolean;
   isLoading?: boolean;
-  /** Items under the tab that wait for review, shown as a purple count after the tab's own. */
-  proposedCount?: number;
 }

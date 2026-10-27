@@ -40,6 +40,7 @@ import {
   TEAMS_ADD,
   TEAMS_IMPORT,
   TEAM_DETAIL,
+  TEAM_TAB_SUBPAGE,
   USER_DETAIL,
 } from './membersRoute.utils';
 
@@ -222,6 +223,7 @@ export const getMembersIcons = (
   [TEAM_DETAIL]: Users01,
   [TEAMS_ADD]: Users01,
   [TEAMS_IMPORT]: Users01,
+  [TEAM_TAB_SUBPAGE]: Users01,
   users: User01,
   [USER_DETAIL]: User01,
   admins: ShieldTick,
@@ -240,6 +242,7 @@ export const getMembersDescriptions = (
   [TEAM_DETAIL]: t('message.members-teams-description'),
   [TEAMS_ADD]: t('message.members-teams-description'),
   [TEAMS_IMPORT]: t('message.members-teams-description'),
+  [TEAM_TAB_SUBPAGE]: t('message.members-teams-description'),
   users: t('message.members-users-description'),
   // The user-detail header supplies its own `@username · email` line.
   [USER_DETAIL]: '',
@@ -258,8 +261,15 @@ export const USER_DETAIL_BACK_TO_USERS = new Set<Key>([
 
 // The fetched display name wins once known; until then the sub-path's raw FQN
 // stands in.
-const getTeamDetailName = (view: MembersView, resolvedName: string) =>
-  view.type === TEAM_DETAIL ? resolvedName || view.name : '';
+// A contributed tab's sub-page is titled after its team too, so the header
+// keeps naming the team the page belongs to; its route carries only the fqn.
+const getTeamDetailName = (view: MembersView, resolvedName: string) => {
+  if (view.type === TEAM_DETAIL) {
+    return resolvedName || view.name;
+  }
+
+  return view.type === TEAM_TAB_SUBPAGE ? resolvedName || view.fqn : '';
+};
 
 export const makeBreadcrumbAction =
   (onNavigate: (view: MembersView) => void, view?: MembersView) =>
@@ -370,6 +380,11 @@ export const buildMembersHeaderMaps = (
     [TEAM_DETAIL]: [...base, teamsItem, { id: 'current', label: teamName }],
     [TEAMS_ADD]: [...base, teamsItem, { id: 'current', label: addTeamLabel }],
     [TEAMS_IMPORT]: [...base, teamsItem, { id: 'current', label: importLabel }],
+    [TEAM_TAB_SUBPAGE]: [
+      ...base,
+      teamsItem,
+      { id: 'current', label: teamName },
+    ],
     users: [...base, { id: 'current', label: usersLabel }],
     [USER_DETAIL]: [...base, usersItem, ...userDetailCrumbs(view, t)],
     admins: [...base, { id: 'current', label: adminsLabel }],
@@ -388,6 +403,7 @@ export const buildMembersHeaderMaps = (
     [TEAM_DETAIL]: teamName,
     [TEAMS_ADD]: addTeamLabel,
     [TEAMS_IMPORT]: importLabel,
+    [TEAM_TAB_SUBPAGE]: teamName,
     users: usersLabel,
     [USER_DETAIL]: userDetailName(view),
     admins: adminsLabel,
@@ -488,6 +504,7 @@ const VIEW_ACCESS: Partial<Record<MembersView['type'], keyof MembersAccess>> = {
   teams: 'teams',
   'team-detail': 'teams',
   'teams-add': 'teams',
+  [TEAM_TAB_SUBPAGE]: 'teams',
   users: 'users',
   admins: 'users',
   'user-detail': 'users',

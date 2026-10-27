@@ -417,46 +417,67 @@ const isCustomPropertyEnumMultiSelect = (
   return isRecord(config) && Boolean(config.multiSelect);
 };
 
-const isEntityReferenceValue = (
-  value: ExtensionDataTypes | undefined
-): value is EntityReference =>
-  isRecord(value) &&
-  typeof value.type === 'string' &&
-  Boolean(value.fullyQualifiedName ?? value.name ?? value.id);
+type CsvEntityReference = Omit<EntityReference, 'id'> & { id?: string };
 
-const getEntityReferenceOptionValue = (reference: EntityReference) =>
-  reference.fullyQualifiedName ?? reference.name ?? reference.id;
+const isEntityReferenceValue = (
+  value: unknown
+): value is CsvEntityReference => {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return false;
+  }
+
+  const validStrings = [
+    'id',
+    'name',
+    'fullyQualifiedName',
+    'displayName',
+    'description',
+    'href',
+  ].every((key) => value[key] === undefined || typeof value[key] === 'string');
+  const validFlags = ['deleted', 'inherited'].every(
+    (key) => value[key] === undefined || typeof value[key] === 'boolean'
+  );
+
+  return (
+    validStrings &&
+    validFlags &&
+    Boolean(value.fullyQualifiedName ?? value.name ?? value.id)
+  );
+};
+
+const getEntityReferenceOptionValue = (reference: CsvEntityReference) =>
+  reference.fullyQualifiedName ?? reference.name ?? reference.id ?? '';
 
 const getEntityReferenceOption = (
-  reference: EntityReference
+  reference: CsvEntityReference
 ): DataAssetOption => {
   const label = getEntityName(reference);
+  const value = getEntityReferenceOptionValue(reference);
 
   return {
     displayName: label,
     label,
     name: reference.name,
-    reference,
-    value: getEntityReferenceOptionValue(reference),
+    reference: { ...reference, id: reference.id ?? value },
+    value,
   };
 };
 
 const getEntityReferenceInitialOptions = (
   value: ExtensionDataTypes | undefined
 ) => {
-  const singleReference = isEntityReferenceValue(value) ? [value] : [];
-  const references = Array.isArray(value)
-    ? value.filter(isEntityReferenceValue)
-    : singleReference;
+  const values: unknown[] = Array.isArray(value) ? value : [value];
 
-  return references.map(getEntityReferenceOption);
+  return values.filter(isEntityReferenceValue).map(getEntityReferenceOption);
 };
 
 const getEntityReferenceSelectValue = (
   value: ExtensionDataTypes | undefined
 ) => {
   if (Array.isArray(value)) {
-    return value
+    const references: unknown[] = value;
+
+    return references
       .filter(isEntityReferenceValue)
       .map(getEntityReferenceOptionValue);
   }
@@ -2138,8 +2159,8 @@ const getCsvOwnerEditor: CSVEditorFactory = ({
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row?.[column.key];
-    const owners = value?.split(';') ?? [];
+    const value = String(row[column.key] ?? '');
+    const owners = value.split(';').filter(Boolean);
     const ownerEntityRef = owners.map((owner: string) => {
       const [type, user] = owner.split(':');
 
@@ -2228,7 +2249,7 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const handleSave = async (description: string) => {
       onRowChange({ ...row, [column.key]: description }, true);
       focusActiveGridCell();
@@ -2480,7 +2501,7 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const handleChange = async (tag?: Tag) => {
       onRowChange(
         {
@@ -2517,7 +2538,7 @@ const getCsvCertificationEditor: CSVEditorFactory =
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     // eslint-disable-next-line sonarjs/no-identical-functions -- distinct editor closure
     const handleChange = async (tag?: Tag) => {
       onRowChange(
@@ -2556,7 +2577,7 @@ const getCsvDomainsEditor: CSVEditorFactory = ({ entityType, options }) => {
     onRowChange,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const domains = value
       ? (value?.split(';') ?? []).map((domain: string) => {
           const fqn = removeOuterEscapes(domain.trim());
@@ -2623,8 +2644,8 @@ const getCsvReviewersEditor: CSVEditorFactory = ({ entityType, options }) => {
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
-    const reviewers = value?.split(';') ?? [];
+    const value = String(row[column.key] ?? '');
+    const reviewers = value.split(';').filter(Boolean);
     const reviewersEntityRef = reviewers.map((reviewer: string) => {
       const [type, user] = reviewer.split(':');
 
@@ -2689,7 +2710,7 @@ const getCsvExtensionEditor: CSVEditorFactory = ({ entityType, options }) => {
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const handleSave = async (extension?: string) => {
       onRowChange({ ...row, [column.key]: extension }, true);
     };
@@ -2718,7 +2739,7 @@ const getCsvEntityTypeEditor: CSVEditorFactory =
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const handleChange = (typeValue: string) =>
       onRowChange({ ...row, [column.key]: typeValue }, true);
     const translatedEntityTypeOptions = () =>
@@ -2762,7 +2783,7 @@ const getCsvMultiSelectEditor: CSVEditorFactory = ({
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const selected = value ? String(value).split(';').filter(Boolean) : [];
     const handleChange = (values: string[]) => {
       onRowChange({ ...row, [column.key]: values.join(';') }, true);
@@ -2827,7 +2848,9 @@ const getCsvExpressionCodeEditor: CSVEditorFactory =
 
     return (
       <>
-        <ValueRendererOnEditCell>{row[column.key]}</ValueRendererOnEditCell>
+        <ValueRendererOnEditCell>
+          {String(row[column.key] ?? '')}
+        </ValueRendererOnEditCell>
         <ExpressionCodeCell
           language={language}
           value={String(row[column.key] ?? '')}
@@ -2846,7 +2869,7 @@ const getCsvEnumEditor: CSVEditorFactory =
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const handleChange = (selectedValue: string) => {
       onRowChange({ ...row, [column.key]: selectedValue }, true);
       onClose(true);
@@ -2880,7 +2903,7 @@ const getCsvCodeEditor: CSVEditorFactory = ({ options }) => {
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const handleChange = (value: string) => {
       onRowChange({ ...row, [column.key]: value });
     };

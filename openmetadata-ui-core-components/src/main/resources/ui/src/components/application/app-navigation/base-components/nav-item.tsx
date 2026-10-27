@@ -85,7 +85,9 @@ interface NavItemBaseProps {
   /** Type of the nav item. */
   type: 'link' | 'collapsible' | 'collapsible-child';
   /** Icon component to display. */
-  icon?: FC<HTMLAttributes<HTMLOrSVGElement>>;
+  icon?: FC<
+    Pick<HTMLAttributes<HTMLOrSVGElement>, 'className' | 'aria-hidden'>
+  >;
   /** Badge to display. */
   badge?: ReactNode;
   /** Whether the nav item is currently active. */

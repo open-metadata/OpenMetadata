@@ -670,7 +670,7 @@ test.describe('Large Table Column Search & Copy Link', () => {
     Parameters<TableClass['createAdditionalTable']>[0]['columns']
   >[number];
   type ColumnDataType = TableColumn['dataType'];
-  let createdTable: Record<string, ColumnDataType | string | number>;
+  let createdTable: Awaited<ReturnType<TableClass['createAdditionalTable']>>;
 
   test.beforeAll('Setup large table', async ({ browser }) => {
     // fullyParallel can rerun this hook in the same worker, so the name must be

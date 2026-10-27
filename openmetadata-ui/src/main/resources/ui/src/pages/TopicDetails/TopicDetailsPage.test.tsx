@@ -162,7 +162,7 @@ describe('Test TopicDetailsPage component', () => {
     );
   });
 
-  it('renders the entity-missing placeholder (not a stuck loader) when the topic fetch returns 404', async () => {
+  it('renders the entity-missing headline (not a stuck loader) when the topic fetch returns 404', async () => {
     (getTopicByFqn as jest.Mock).mockImplementation(() =>
       Promise.reject({ response: { status: ClientErrors.NOT_FOUND } })
     );
@@ -174,7 +174,9 @@ describe('Test TopicDetailsPage component', () => {
     );
 
     expect(screen.getByText('sample_kafka.sales')).toBeInTheDocument();
-    expect(screen.getByText(/label\.not-found-lowercase/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/label\.not-found-lowercase/).parentElement
+    ).toHaveClass('tw:text-sm', 'tw:font-semibold');
     expect(
       screen.queryByText('server.entity-details-fetch-error')
     ).not.toBeInTheDocument();

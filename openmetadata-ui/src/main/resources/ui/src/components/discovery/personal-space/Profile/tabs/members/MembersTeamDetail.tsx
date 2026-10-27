@@ -1188,7 +1188,24 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     if (activePluginTab) {
       const PluginTabComponent = activePluginTab.component;
 
-      return <PluginTabComponent teamId={team.id} />;
+      // Lets the tab promote one of its own routes to a panel-level sub-page,
+      // which replaces this team detail rather than nesting inside the tab.
+      return (
+        <PluginTabComponent
+          teamId={team.id}
+          onNavigate={(subPath?: string) =>
+            subPath
+              ? onNavigate({
+                  type: 'team-tab-subpage',
+                  fqn: team.fullyQualifiedName ?? fqn,
+                  teamId: team.id,
+                  key: activePluginTab.key,
+                  subPath,
+                })
+              : undefined
+          }
+        />
+      );
     }
 
     if (activeTab === CUSTOM_PROPERTIES) {
