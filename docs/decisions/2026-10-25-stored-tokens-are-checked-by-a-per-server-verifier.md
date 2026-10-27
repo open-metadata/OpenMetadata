@@ -94,11 +94,14 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
 - While the secrets manager cannot decrypt a bot's secret, the bot's requests answer 503 from the
   next deep pass on, so within `deepVerifyInterval`, until a read decrypts the secret again. On
   each server, each bot that keeps sending requests costs about two check reads a second, each
-  with a decrypt, and once its stored rows change, a decrypt on every sweep as well. A decrypt
-  that hangs holds a request-read thread until the secrets manager answers, so with more such bots
-  than request-read threads, other checks that need a read wait for a thread or answer 503. The
-  warning about a principal whose credentials cannot be converted is logged at most once a minute
-  per server.
+  with a decrypt, and once its stored rows change, a decrypt on every sweep as well. Nothing bounds
+  how long a decrypt takes. One that hangs during the deep read holds the sweep thread, so no sweep
+  completes until the secrets manager answers. After `maxStaleness`, every bot and PAT check then
+  needs a read, and the sweep-age gauge alerts. One that hangs in a check read holds a
+  request-read thread, so with more such bots than request-read threads, other checks that need a
+  read wait for a thread or answer 503. The next step named below takes the secrets manager out of
+  these reads. The warning about a principal whose credentials cannot be converted is logged at
+  most once a minute per principal on each server, and sooner only after a read converted it.
 - Operators alert when `om.credential.sweep.last.complete.age.seconds` (Prometheus name
   `om_credential_sweep_last_complete_age_seconds`) exceeds `maxStaleness`, and watch
   `om.credential.unavailable`. The gauge is the age of the last sweep that re-confirmed every

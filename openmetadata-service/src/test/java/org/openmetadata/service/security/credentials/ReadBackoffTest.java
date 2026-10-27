@@ -73,6 +73,23 @@ class ReadBackoffTest {
   }
 
   @Test
+  void aWarningStampedBeforeTheOpenWindowFinishingLaterDoesNotMoveItsStart() {
+    assertTrue(backoff.recordLeftOut(ALICE, 1_000, false));
+    assertFalse(backoff.recordLeftOut(ALICE, 0, false));
+    assertFalse(backoff.recordLeftOut(ALICE, WARNING_INTERVAL + 999, false));
+    assertTrue(backoff.recordLeftOut(ALICE, WARNING_INTERVAL + 1_000, false));
+  }
+
+  @Test
+  void aWarningWindowOpenedJustBeforeTheWrapLastsTheWholeInterval() {
+    long nearWrap = Long.MAX_VALUE - 100;
+    assertTrue(backoff.recordLeftOut(ALICE, nearWrap, false));
+    assertFalse(backoff.recordLeftOut(ALICE, nearWrap + 1, false));
+    assertFalse(backoff.recordLeftOut(ALICE, nearWrap + WARNING_INTERVAL - 1, false));
+    assertTrue(backoff.recordLeftOut(ALICE, nearWrap + WARNING_INTERVAL, false));
+  }
+
+  @Test
   void aSuccessEndsTheWarningWindowSoTheNextFailureIsReported() {
     assertTrue(backoff.recordLeftOut(ALICE, 100, false));
 

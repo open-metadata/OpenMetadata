@@ -640,7 +640,7 @@ public final class CredentialVerifier implements Managed {
     }
   }
 
-  /** Warns at most once a minute per subject, however many reads leave it out. */
+  /** Warns at most once a minute per subject, unless a read converts it in between. */
   private void recordLeftOut(
       CredentialSubject subject, Throwable cause, ReadReason reason, long stampNanos) {
     if (backoff.recordLeftOut(subject, stampNanos, reason.startedByCheck())) {

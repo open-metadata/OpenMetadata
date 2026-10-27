@@ -70,7 +70,10 @@ final class ReadBackoff {
     warnings.endIfNotNewer(subject, stampNanos);
   }
 
-  /** Per subject, the stamp a window runs from, kept for at most one window. */
+  /**
+   * Per subject, the stamp a window runs from. An entry lasts at least one window after its last
+   * write; the stamp comparison, not expiry, decides whether a window is open.
+   */
   private static final class Windows {
     private final Cache<CredentialSubject, Long> stamps;
     private final long windowNanos;
