@@ -15,6 +15,8 @@ package org.openmetadata.it.tests;
 
 import static org.openmetadata.it.tests.MetricMigrationSqlFixture.currentConnectionType;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Metrics;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -22,6 +24,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Set;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.tests.mcp.McpTestUtils;
@@ -55,6 +58,7 @@ public final class CredentialFixtures {
 
   public static final String MCP = "/mcp";
 
+  private static final Set<String> CHECK_READ_REASONS = Set.of("miss", "stale", "unknown_token");
   private static final long LOGIN_TOKEN_TTL_SECONDS = 3600;
   private static final HttpClient HTTP =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
@@ -104,6 +108,11 @@ public final class CredentialFixtures {
             HttpMethod.PUT, "/v1/users/revokeToken", "{\"id\":\"" + bot.getId() + "\"}");
   }
 
+  /** A soft delete through the suite server's API, the way an administrator removes a user. */
+  public static void softDeleteUser(User user) {
+    SdkClients.adminClient().users().delete(user.getId().toString());
+  }
+
   public static PersonalAccessToken createPat(User owner, String tokenName) {
     String response =
         clientFor(owner)
@@ -128,6 +137,27 @@ public final class CredentialFixtures {
   public static String loginToken(User user) {
     return JwtAuthProvider.tokenFor(
         user.getEmail(), user.getEmail(), new String[] {}, LOGIN_TOKEN_TTL_SECONDS);
+  }
+
+  /**
+   * How many reads the suite server's verifier has started on behalf of a check. They run on the
+   * verifier's own read threads, which carry no request context, so a statement counter scoped to
+   * requests does not see them; this counter does. Fails when the server reports no such meter,
+   * so a renamed one cannot read as zero.
+   */
+  public static double checkStartedReads() {
+    double reads = 0;
+    int series = 0;
+    for (Counter counter : Metrics.globalRegistry.find("om.credential.reads").counters()) {
+      if (CHECK_READ_REASONS.contains(counter.getId().getTag("reason"))) {
+        reads += counter.count();
+        series++;
+      }
+    }
+    if (series == 0) {
+      throw new IllegalStateException("The server reports no om.credential.reads meter");
+    }
+    return reads;
   }
 
   public static HttpResponse<String> get(String path, String bearerToken) {

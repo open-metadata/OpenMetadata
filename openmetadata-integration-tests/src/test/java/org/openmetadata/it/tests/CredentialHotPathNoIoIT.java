@@ -34,8 +34,9 @@ import org.openmetadata.service.Entity;
  * identical and any difference is the credential check.
  *
  * <p>{@link SqlQueryCounter#forRequests} counts the statements of every in-flight request, so the
- * class runs {@link Isolated}: no other test's request can be counted. Server background threads
- * carry no request context and are not counted.
+ * class runs {@link Isolated}: no other test's request can be counted. The verifier reads on its own
+ * threads, which carry no request context, so those statements are not counted there; the class
+ * therefore also asserts that the verifier started no read for a check during the measured loop.
  */
 @Isolated
 @ExtendWith(TestNamespaceExtension.class)
@@ -63,7 +64,8 @@ class CredentialHotPathNoIoIT {
     assertSameStatements(measurement);
   }
 
-  private record Measurement(int controlStatements, int credentialStatements) {}
+  private record Measurement(
+      int controlStatements, int credentialStatements, double checkStartedReads) {}
 
   /** Alternates control and credential requests so a drifting background load hits both alike. */
   private static Measurement measure(String credentialToken, String controlToken) {
@@ -74,6 +76,7 @@ class CredentialHotPathNoIoIT {
     }
     int controlStatements = 0;
     int credentialStatements = 0;
+    double readsBefore = CredentialFixtures.checkStartedReads();
     try (SqlQueryCounter counter = SqlQueryCounter.forRequests(Entity.getJdbi(), "")) {
       for (int i = 0; i < MEASURED_REQUESTS; i++) {
         int before = counter.count();
@@ -84,7 +87,8 @@ class CredentialHotPathNoIoIT {
         credentialStatements += counter.count() - afterControl;
       }
     }
-    return new Measurement(controlStatements, credentialStatements);
+    double checkStartedReads = CredentialFixtures.checkStartedReads() - readsBefore;
+    return new Measurement(controlStatements, credentialStatements, checkStartedReads);
   }
 
   private static void assertSameStatements(Measurement measurement) {
@@ -99,5 +103,9 @@ class CredentialHotPathNoIoIT {
         measurement.controlStatements(),
         measurement.credentialStatements(),
         "warm requests, login token vs credential");
+    assertEquals(
+        0,
+        measurement.checkStartedReads(),
+        "the verifier started no read for any of the warm requests");
   }
 }

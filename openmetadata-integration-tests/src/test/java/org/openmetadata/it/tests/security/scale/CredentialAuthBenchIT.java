@@ -190,9 +190,14 @@ class CredentialAuthBenchIT {
   private Reading read() {
     return new Reading(
         meters.counterSum("om.credential.checks", "decision", "accept"),
-        meters.counterSum("om.credential.reads", "reason", "miss")
-            + meters.counterSum("om.credential.reads", "reason", "stale"),
+        checkStartedReads(),
         meters.timerTotals("request.latency.auth"));
+  }
+
+  private double checkStartedReads() {
+    return meters.counterSum("om.credential.reads", "reason", "miss")
+        + meters.counterSum("om.credential.reads", "reason", "stale")
+        + meters.counterSum("om.credential.reads", "reason", "unknown_token");
   }
 
   private static double authMeanMillis(Reading from, Reading to) {
@@ -215,6 +220,7 @@ class CredentialAuthBenchIT {
     }
     int control = 0;
     int credential = 0;
+    double readsBefore = checkStartedReads();
     try (SqlQueryCounter counter = SqlQueryCounter.forRequests(Entity.getJdbi(), "")) {
       for (int i = 0; i < STATEMENT_REQUESTS; i++) {
         int before = counter.count();
@@ -227,6 +233,10 @@ class CredentialAuthBenchIT {
     }
     if (meters.verifierPresent()) {
       expectEqual("statements per " + STATEMENT_REQUESTS + " requests", control, credential);
+      expectEqual(
+          "check-started reads over " + STATEMENT_REQUESTS + " requests",
+          0,
+          checkStartedReads() - readsBefore);
     }
     return Map.of("controlStatements", control, "credentialStatements", credential);
   }
