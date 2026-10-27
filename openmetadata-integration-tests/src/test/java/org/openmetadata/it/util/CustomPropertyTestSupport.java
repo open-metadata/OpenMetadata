@@ -1,8 +1,12 @@
 package org.openmetadata.it.util;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.CustomProperty;
@@ -41,23 +45,46 @@ public final class CustomPropertyTestSupport {
         .execute(HttpMethod.PUT, "/v1/metadata/types/" + owningType.getId(), property, Type.class);
   }
 
+  /** Best-effort {@link #deleteProperty} for cleanup: logs instead of failing. */
   public static void removeProperty(
       OpenMetadataClient client, String entityType, String propertyName) {
     try {
-      Type owningType = getTypeByName(client, entityType);
-      client
-          .getHttpClient()
-          .execute(
-              HttpMethod.DELETE,
-              "/v1/metadata/types/" + owningType.getId() + "/" + propertyName,
-              null,
-              Void.class);
+      deleteProperty(client, entityType, propertyName);
     } catch (OpenMetadataException | JsonProcessingException cleanupFailure) {
       log.warn(
           "Failed to remove custom property '{}' from type '{}'",
           propertyName,
           entityType,
           cleanupFailure);
+    }
+  }
+
+  /**
+   * Removes the property definition by JSON Patch on the type's {@code customProperties}, as the
+   * UI does; the {@code test} op makes a concurrent change to the list fail instead of removing
+   * the wrong property. No-op when the property is already gone.
+   */
+  public static void deleteProperty(
+      OpenMetadataClient client, String entityType, String propertyName)
+      throws JsonProcessingException {
+    Type owningType = getTypeByName(client, entityType + "?fields=customProperties");
+    List<CustomProperty> properties = listOrEmpty(owningType.getCustomProperties());
+    int index =
+        IntStream.range(0, properties.size())
+            .filter(position -> properties.get(position).getName().equals(propertyName))
+            .findFirst()
+            .orElse(-1);
+    if (index >= 0) {
+      String path = "/customProperties/" + index;
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PATCH,
+              "/v1/metadata/types/" + owningType.getId(),
+              OBJECT_MAPPER.valueToTree(
+                  List.of(
+                      Map.of("op", "test", "path", path + "/name", "value", propertyName),
+                      Map.of("op", "remove", "path", path))));
     }
   }
 

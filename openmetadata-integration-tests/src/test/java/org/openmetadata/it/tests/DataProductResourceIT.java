@@ -97,6 +97,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   // DataProduct API doesn't expose include parameter for soft delete operations
   {
     supportsDataProducts = false;
+    supportsCustomExtension = true;
     supportsPatchDomains = true; // Domain change is now supported with asset migration
     supportsSoftDelete = false;
     supportsListHistoryByTimestamp = true;

@@ -42,6 +42,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
 
   {
     supportsLifeCycle = true;
+    supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;

@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -34,6 +35,7 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.ApiAssertions;
 import org.openmetadata.it.util.BulkApi;
+import org.openmetadata.it.util.CustomPropertyValueContract;
 import org.openmetadata.it.util.EntityValidation;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -184,7 +186,7 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
   protected boolean supportsDataProductAssetsSearch = true;
   protected boolean supportsDataContract = false;
   protected boolean supportsSoftDelete = true;
-  protected boolean supportsCustomExtension = true;
+  protected boolean supportsCustomExtension = false; // Type defined and extension accepted
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsPatch = true;
   // Whether the entity type has a lifecycle stage (its schema declares entityStatus). Opt out for
@@ -2797,24 +2799,62 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
   // ===================================================================
 
   /**
-   * Test: Add custom extension attributes to entity
-   * Equivalent to: put_addEntityCustomAttributes in EntityResourceTest
+   * For each of the 16 custom property types: define a property on this entity type, set a value
+   * on an instance via JSON Patch on {@code /extension}, replace it, remove it, then delete the
+   * property definition.
    */
   @Test
   void put_addEntityCustomAttributes(TestNamespace ns) {
     if (!supportsCustomExtension) return;
+    T entity = createEntity(createMinimalRequest(ns));
+    String entityPath = getResourcePath() + entity.getId();
+    CustomPropertyValueContract.exercise(
+        SdkClients.adminClient(),
+        getEntityType(),
+        "cp" + ns.uniqueShortId(),
+        CustomPropertyValueContract.variants(testUser1Ref(), testUser2Ref()),
+        new ExtensionPatchTarget(entityPath));
+  }
 
-    // Create entity without extension
-    K createRequest = createMinimalRequest(ns);
-    T entity = createEntity(createRequest);
+  /** Reads an entity's extension and writes it with JSON Patch, as the UI does. */
+  private record ExtensionPatchTarget(String entityPath)
+      implements CustomPropertyValueContract.ValueTarget {
+    @Override
+    public JsonNode extension() {
+      String json =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, entityPath + "?fields=extension", null);
+      return JsonUtils.readTree(json).path("extension");
+    }
 
-    // Note: Full custom attributes test requires:
-    // 1. Adding custom property to entity type via Type API
-    // 2. Creating entity with extension
-    // 3. Updating extension via PUT and PATCH
-    // This is a placeholder that verifies the entity can be created
+    @Override
+    public void setValue(String propertyName, Object value) {
+      JsonNode current = extension();
+      Map<String, Object> operation =
+          current.isObject() && !current.isEmpty()
+              ? Map.of(
+                  "op",
+                  current.has(propertyName) ? "replace" : "add",
+                  "path",
+                  "/extension/" + propertyName,
+                  "value",
+                  value)
+              : Map.of("op", "add", "path", "/extension", "value", Map.of(propertyName, value));
+      patch(operation);
+    }
 
-    assertNotNull(entity.getId(), "Entity should be created");
+    @Override
+    public void removeValue(String propertyName) {
+      patch(Map.of("op", "remove", "path", "/extension/" + propertyName));
+    }
+
+    private void patch(Map<String, Object> operation) {
+      SdkClients.adminClient()
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PATCH, entityPath, JsonUtils.valueToTree(List.of(operation)));
+    }
   }
 
   // ===================================================================

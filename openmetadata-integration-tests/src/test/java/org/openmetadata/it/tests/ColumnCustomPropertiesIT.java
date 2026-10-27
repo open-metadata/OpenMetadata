@@ -24,14 +24,17 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.BulkApi;
+import org.openmetadata.it.util.CustomPropertyValueContract;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.it.util.UriTestUtils;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.UpdateColumn;
@@ -1129,6 +1132,60 @@ public class ColumnCustomPropertiesIT {
       deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, strProp);
       deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, intProp);
       deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, mdProp);
+    }
+  }
+
+  /**
+   * All 16 property types through the columns API: define on {@code tableColumn}, set, replace and
+   * clear the value with {@code PUT /v1/columns/name/{fqn}}, then delete the definition.
+   */
+  @Test
+  void test_tableColumn_allPropertyTypes_crudViaColumnsApi(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    String columnPath =
+        "/v1/columns/name/"
+            + UriTestUtils.encodeURIComponent(table.getColumns().getFirst().getFullyQualifiedName())
+            + "?entityType=table";
+    SharedEntities shared = SharedEntities.get();
+    CustomPropertyValueContract.exercise(
+        SdkClients.adminClient(),
+        TABLE_COLUMN,
+        "cp" + ns.uniqueShortId(),
+        CustomPropertyValueContract.variants(shared.USER1_REF, shared.USER2_REF),
+        new ColumnExtensionTarget(columnPath));
+  }
+
+  /** Reads a column's extension and writes it whole with the columns API, as the UI does. */
+  private record ColumnExtensionTarget(String columnPath)
+      implements CustomPropertyValueContract.ValueTarget {
+    @Override
+    public JsonNode extension() {
+      String json =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, columnPath + "&fields=extension", null);
+      return JsonUtils.readTree(json).path("extension");
+    }
+
+    @Override
+    public void setValue(String propertyName, Object value) {
+      write(
+          CustomPropertyValueContract.withChange(
+              extension(), extension -> extension.put(propertyName, value)));
+    }
+
+    @Override
+    public void removeValue(String propertyName) {
+      write(
+          CustomPropertyValueContract.withChange(
+              extension(), extension -> extension.remove(propertyName)));
+    }
+
+    private void write(Map<String, Object> extension) {
+      SdkClients.adminClient()
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT, columnPath, new UpdateColumn().withExtension(extension));
     }
   }
 
