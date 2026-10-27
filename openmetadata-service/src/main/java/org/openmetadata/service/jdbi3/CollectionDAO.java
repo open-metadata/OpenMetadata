@@ -14630,6 +14630,14 @@ public interface CollectionDAO {
       String json) {}
 
   interface ActivityStreamDAO {
+    @SqlQuery(
+        "SELECT MIN(timestamp) FROM activity_stream WHERE entityType = :entityType "
+            + "AND entityId = :entityId AND eventType = :eventType")
+    Long findCreationTimestamp(
+        @Bind("entityType") String entityType,
+        @Bind("entityId") String entityId,
+        @Bind("eventType") String eventType);
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO activity_stream(id, eventType, entityType, entityId, entityFqnHash, "
