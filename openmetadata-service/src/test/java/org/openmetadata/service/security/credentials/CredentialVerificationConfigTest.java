@@ -34,6 +34,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.AuditExcludeFilterFactory;
@@ -228,13 +230,18 @@ class CredentialVerificationConfigTest {
 
   private static final Path SHIPPED_CONFIG = Path.of("../conf/openmetadata.yaml");
   private static final String BLOCK_START = "\ncredentialVerification:";
+  private static final Pattern TOP_LEVEL_LINE = Pattern.compile("^\\S", Pattern.MULTILINE);
 
   private static String shippedWithBlock(String replacement) throws IOException {
     String yaml = Files.readString(SHIPPED_CONFIG);
     int start = yaml.indexOf(BLOCK_START);
     assertTrue(start >= 0, "conf/openmetadata.yaml has no credentialVerification block");
-    String tail = replacement == null ? yaml.substring(start) : "\n" + replacement;
-    return yaml.substring(0, start) + tail;
+    if (replacement == null) {
+      return yaml;
+    }
+    Matcher nextKey = TOP_LEVEL_LINE.matcher(yaml);
+    int end = nextKey.find(start + BLOCK_START.length()) ? nextKey.start() : yaml.length();
+    return yaml.substring(0, start) + "\n" + replacement + yaml.substring(end);
   }
 
   private static OpenMetadataApplicationConfig parseShipped(String yaml)

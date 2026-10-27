@@ -1728,22 +1728,24 @@ class CredentialVerifierTest {
     source.withPats(ALICE, TOKEN_A);
     verifier(DEFAULTS);
     assertAccepted(ALICE, TOKEN_A);
+    Set<Thread> before = Set.copyOf(sweepThreads());
 
     verifier.start();
     verifier.start();
 
     await().atMost(10, TimeUnit.SECONDS).until(() -> source.fingerprintReads() >= 1);
-    List<Thread> sweepThreads = sweepThreads();
-    assertEquals(1, sweepThreads.size());
-    assertTrue(sweepThreads.getFirst().isDaemon());
+    List<Thread> started = sweepThreadsSince(before);
+    assertEquals(1, started.size());
+    assertTrue(started.getFirst().isDaemon());
 
     verifier.stop();
-    await().atMost(10, TimeUnit.SECONDS).until(() -> sweepThreads().isEmpty());
+    await().atMost(10, TimeUnit.SECONDS).until(() -> sweepThreadsSince(before).isEmpty());
   }
 
   @Test
   void concurrentStartsAndStopsLeaveNoSweepThreadAfterAFinalStop() throws Exception {
     verifier(DEFAULTS);
+    Set<Thread> before = Set.copyOf(sweepThreads());
     Runnable start = verifier::start;
     Runnable stop = verifier::stop;
     for (int round = 0; round < 200; round++) {
@@ -1758,7 +1760,7 @@ class CredentialVerifierTest {
 
     verifier.stop();
 
-    await().atMost(10, TimeUnit.SECONDS).until(() -> sweepThreads().isEmpty());
+    await().atMost(10, TimeUnit.SECONDS).until(() -> sweepThreadsSince(before).isEmpty());
   }
 
   @Test
@@ -1984,5 +1986,13 @@ class CredentialVerifierTest {
     return Thread.getAllStackTraces().keySet().stream()
         .filter(thread -> thread.getName().equals("om-credential-verifier"))
         .toList();
+  }
+
+  /**
+   * The sweep threads alive now that {@code before} lacks, so a verifier that another test in this
+   * JVM still runs does not count.
+   */
+  private static List<Thread> sweepThreadsSince(Set<Thread> before) {
+    return sweepThreads().stream().filter(thread -> !before.contains(thread)).toList();
   }
 }
