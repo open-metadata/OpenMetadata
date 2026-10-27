@@ -185,30 +185,27 @@ export const LeftPanelContainer = ({
   useGridLayoutDirection();
 
   if (isEditView) {
-    // containerPadding is symmetric, so it is zeroed (widgets flush with the
-    // top and left edges, level with the right-panel widgets) and the right
-    // gutter comes from the wrapper; WidthProvider measures inside it.
+    // No container padding: the widgets sit flush with the panel's edges,
+    // level with the right-panel widgets.
     return (
-      <div className="tw:pr-4">
-        <ReactGridLayout
-          autoSize
-          useCSSTransforms
-          verticalCompact
-          className="grid-container"
-          cols={editColumns}
-          containerPadding={[0, 0]}
-          isDraggable={isEditView}
-          isResizable={isEditView}
-          layout={editLayout}
-          margin={[type === PageType.GlossaryTerm ? 16 : 0, 16]}
-          preventCollision={false}
-          rowHeight={100}
-          onDrag={onDrag}
-          onDragStop={onDragStop}
-          onLayoutChange={handleLayoutChange}>
-          {widgets}
-        </ReactGridLayout>
-      </div>
+      <ReactGridLayout
+        autoSize
+        useCSSTransforms
+        verticalCompact
+        className="grid-container"
+        cols={editColumns}
+        containerPadding={[0, 0]}
+        isDraggable={isEditView}
+        isResizable={isEditView}
+        layout={editLayout}
+        margin={[type === PageType.GlossaryTerm ? 16 : 0, 16]}
+        preventCollision={false}
+        rowHeight={100}
+        onDrag={onDrag}
+        onDragStop={onDragStop}
+        onLayoutChange={handleLayoutChange}>
+        {widgets}
+      </ReactGridLayout>
     );
   }
 
