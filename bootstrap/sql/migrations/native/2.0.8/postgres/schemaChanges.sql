@@ -1,0 +1,1 @@
+-- Connection secrets are encrypted by the 2.0.8 Java data migration; no DDL is required.
