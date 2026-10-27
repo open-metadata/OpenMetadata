@@ -428,6 +428,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
               isRunLoading: Boolean(loading.run),
               isDeployLoading: Boolean(loading.deploy),
             }}
+            runsHistoryVariant="muted"
             onDemandTrigger={handleRunNow}
             onDeployTrigger={handleDeploy}
             onEditSchedule={() => setSubPage({ type: SUB_PAGE_EDIT_SCHEDULE })}
@@ -470,6 +471,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
             appData={appData}
             jsonSchema={jsonSchema}
             onViewRunConfig={handleViewRunConfig}
+            variant="muted"
           />
         ),
       },

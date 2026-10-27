@@ -510,6 +510,12 @@ const getRowInteractionProps = (
  * unique among themselves. Both are internal: `columnKeys` carries the original
  * key for anything reported back to the call site.
  */
+// `.table-container` paints bg-surface from unlayered LESS, so only an
+// `!important` utility can lift it onto the muted step; the bg-secondary row
+// hover is the same step as the muted rows, hence the translucent hover.
+const MUTED_CONTAINER_CLASSES =
+  'tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt! tw:dark:[&_table:not(table_table)]:bg-primary_alt tw:[&_tbody_tr:hover_td]:bg-primary_hover';
+
 /**
  * AntD's `bordered` draws a full grid. Rows already carry their own horizontal
  * rule, so this adds the outer frame and the vertical separators, dropping the
@@ -1747,8 +1753,9 @@ const TableV2 = <T extends object>(
     <div
       className={twMerge(
         'table-container',
-        'tw:border tw:border-utility-gray-200',
-        'tw:[&_tbody_tr:hover_td]:bg-secondary',
+        rest.variant === 'muted'
+          ? MUTED_CONTAINER_CLASSES
+          : 'tw:border tw:border-utility-gray-200 tw:[&_tbody_tr:hover_td]:bg-secondary',
         rest.containerClassName
       )}
       ref={ref}>

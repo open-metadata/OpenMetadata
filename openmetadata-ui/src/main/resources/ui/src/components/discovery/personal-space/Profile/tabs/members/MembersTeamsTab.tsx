@@ -129,6 +129,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
             typingInterval: 500,
           }}
           size="small"
+          variant="muted"
         />
       </DropZone>
 

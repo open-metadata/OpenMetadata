@@ -93,6 +93,7 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
   property,
   formId,
   showHint = false,
+  fieldDocVariant,
   onSubmit,
 }) => {
   const { t } = useTranslation();
@@ -215,6 +216,7 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
       className="tw:flex tw:flex-col tw:gap-6"
       data-testid="edit-custom-property-form"
       fieldDocDisplay="popover"
+      fieldDocVariant={fieldDocVariant}
       form={form}
       id={formId}
       renderFieldDoc={(text) => (

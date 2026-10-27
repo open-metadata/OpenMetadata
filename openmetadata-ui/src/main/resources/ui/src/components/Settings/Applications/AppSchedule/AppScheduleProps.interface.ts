@@ -13,6 +13,7 @@
 import { RJSFSchema } from '@rjsf/utils';
 import { App } from '../../../../generated/entity/applications/app';
 import { AppRunRecordWithId } from '../AppRunsHistory/AppRunsHistory.interface';
+import { TableComponentProps } from '../../../common/Table/Table.interface';
 
 export interface AppScheduleProps {
   appData: App;
@@ -27,6 +28,8 @@ export interface AppScheduleProps {
   canEdit?: boolean;
   canTrigger?: boolean;
   canDeploy?: boolean;
+  /** Table variant for the latest-run history. */
+  runsHistoryVariant?: TableComponentProps<unknown>['variant'];
   onSave: (cron: string) => Promise<void>;
   onDemandTrigger: () => Promise<void>;
   onDeployTrigger: () => Promise<void>;

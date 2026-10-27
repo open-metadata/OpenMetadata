@@ -243,4 +243,18 @@ describe('TableCard theme roles', () => {
     );
     expect(header).toHaveClass('tw:bg-surface', 'tw:border-subtle');
   });
+
+  it('muted variant sits on primary_alt with a visible edge and row hover', () => {
+    render(<TableCard.Root data-testid="table-card" variant="muted" />);
+    const card = screen.getByTestId('table-card');
+
+    expect(card).toHaveClass(
+      'tw:bg-primary_alt',
+      'tw:after:outline-secondary',
+      'tw:dark:after:outline-primary',
+      'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
+      'tw:[&_tbody_tr:hover]:bg-primary_hover'
+    );
+    expect(card).not.toHaveClass('tw:bg-surface', 'tw:after:outline-subtle');
+  });
 });

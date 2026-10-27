@@ -449,7 +449,10 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
       data-testid="roles-list-container"
       direction="col"
       gap={4}>
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col"
+        size="compact"
+        variant="muted">
         <div className="tw:overflow-y-auto">
           <Table
             aria-label={t('label.role-plural')}

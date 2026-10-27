@@ -529,7 +529,8 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
       gap={4}>
       <TableCard.Root
         className="tw:flex tw:flex-col tw:rounded-xl tw:shadow-none"
-        size="compact">
+        size="compact"
+        variant="muted">
         <Box
           align="center"
           className="tw:border-b tw:border-subtle tw:px-4 tw:py-3"

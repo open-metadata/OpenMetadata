@@ -240,7 +240,7 @@ const AppLayoutEditor = ({
                     'tw:flex-1 tw:cursor-pointer tw:rounded-xl tw:border tw:p-4 tw:transition-colors',
                     isSelected
                       ? 'tw:border-brand tw:bg-brand-primary'
-                      : 'tw:border-secondary tw:bg-primary_alt'
+                      : 'tw:border-secondary tw:bg-surface'
                   )
                 }
                 data-testid={`app-mode-option-${option.value}`}
@@ -303,10 +303,7 @@ const AppLayoutEditor = ({
         <PreferenceRow
           description={t('message.view-mode-description')}
           title={t('label.view-mode')}>
-          <Card
-            className="tw:flex tw:flex-col"
-            data-testid="view-mode-pages"
-            variant="muted">
+          <Card className="tw:flex tw:flex-col" data-testid="view-mode-pages">
             {configuredPages.map(({ page, labelKey, views }) => (
               <Box
                 align="center"

@@ -82,6 +82,7 @@ const ApplicationCard: FC<ApplicationCardProps> = ({
       role={isClickable ? 'button' : undefined}
       size="md"
       tabIndex={isClickable ? 0 : undefined}
+      variant="muted"
       onClick={isClickable ? onClick : undefined}
       onKeyDown={(e) => {
         if (isClickable && (e.key === 'Enter' || e.key === ' ')) {

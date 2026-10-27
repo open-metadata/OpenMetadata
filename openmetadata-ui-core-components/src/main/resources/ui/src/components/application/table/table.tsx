@@ -146,12 +146,28 @@ const TableContext = createContext<{
   stickyHeader: boolean;
 } | null>(null);
 
+export type TableCardVariant = 'default' | 'muted';
+
+// `muted` matches a muted Card: rows sit one step below the surface in dark
+// mode, so the default `bg-secondary` row hover (same step) would be invisible,
+// and an 8%-white edge over them lands on the modal's own colour, so the frame
+// (header top included) takes the header divider's solid border-primary.
+const TABLE_CARD_VARIANTS: Record<TableCardVariant, string> = {
+  default: 'tw:bg-surface tw:after:outline-subtle',
+  muted:
+    'tw:bg-primary_alt tw:after:outline-secondary tw:dark:after:outline-primary tw:dark:[&_table:not(table_table)]:bg-primary_alt tw:[&_tbody_tr:hover]:bg-primary_hover tw:[&_tbody_tr:hover_td]:bg-primary_hover',
+};
+
 const TableCardRoot = ({
   children,
   className,
   size = 'md',
+  variant = 'default',
   ...props
-}: HTMLAttributes<HTMLDivElement> & { size?: TableSize }) => {
+}: HTMLAttributes<HTMLDivElement> & {
+  size?: TableSize;
+  variant?: TableCardVariant;
+}) => {
   return (
     <TableContext.Provider value={{ size, stickyHeader: false }}>
       <div
@@ -161,7 +177,8 @@ const TableCardRoot = ({
           // card itself is painted over by a `stickyHeader` thead (sticky,
           // z-10, opaque), so the frame vanished along the header. `isolate`
           // keeps the overlay's z-index inside the card.
-          'tw:relative tw:isolate tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:after:z-20 tw:after:outline-subtle',
+          'tw:relative tw:isolate tw:overflow-hidden tw:rounded-xl tw:shadow-card tw:after:z-20',
+          TABLE_CARD_VARIANTS[variant],
           borderAfter,
           className
         )}>

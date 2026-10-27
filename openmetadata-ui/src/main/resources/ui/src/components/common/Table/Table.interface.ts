@@ -344,6 +344,8 @@ export interface TableProps<RecordType> {
 
 export interface TableComponentProps<T> extends TableProps<T> {
   containerClassName?: string; // Applied to the table container
+  /** `muted` matches a muted Card / `TableCard.Root variant="muted"`. */
+  variant?: 'default' | 'muted';
   /**
    * Applied to the inner div that owns `scroll.x`/`scroll.y`'s overflow.
    * Only pass this alongside `tw:flex tw:flex-col` on `containerClassName`

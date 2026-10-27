@@ -823,7 +823,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     () => (
       <Box className="tw:w-full" direction="col">
         {isAddingPolicy && (
-          <Card className="tw:m-4" variant="muted">
+          <Card className="tw:m-4">
             <Card.Content className="tw:flex tw:flex-col tw:gap-4">
               <Typography
                 className="tw:text-primary"
@@ -995,7 +995,10 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         onStartEdit={() => setIsEditingDesc(true)}
       />
 
-      <TableCard.Root className="tw:rounded-xl tw:shadow-none" size="compact">
+      <TableCard.Root
+        className="tw:rounded-xl tw:shadow-none"
+        size="compact"
+        variant="muted">
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(k) => setActiveTab(k as RoleTab)}>

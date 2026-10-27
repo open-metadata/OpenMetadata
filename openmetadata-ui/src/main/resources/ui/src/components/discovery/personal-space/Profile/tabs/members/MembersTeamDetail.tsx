@@ -1213,6 +1213,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         <CustomPropertiesList
           canEdit={Boolean(canEditCustomFields) && !team.deleted}
           canView={Boolean(canViewCustomFields)}
+          cardVariant="default"
           entityType={EntityType.TEAM}
           extension={team.extension as Record<string, unknown> | undefined}
           onUpdate={handleTeamExtensionUpdate}
@@ -1386,7 +1387,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         <div className="tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-y-auto tw:py-4">
           <TableCard.Root
             className="tw:rounded-xl tw:shadow-none"
-            size="compact">
+            size="compact"
+            variant="muted">
             <Tabs
               selectedKey={activeTab}
               onSelectionChange={(key: Key) => {

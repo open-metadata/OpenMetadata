@@ -16,6 +16,7 @@ import {
   ButtonUtility,
   Table,
   TableCard,
+  TableCardVariant,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -66,6 +67,7 @@ interface RelationshipTypeTableProps {
   usageCounts: Record<string, number>;
   onDelete: (relationshipType: RelationshipType) => void;
   onEdit: (relationshipType: RelationshipType) => void;
+  variant?: TableCardVariant;
 }
 
 const getColumnLabels = (t: TFunction): string[] => [
@@ -275,11 +277,12 @@ const RelationshipTypeTable = ({
   usageCounts,
   onDelete,
   onEdit,
+  variant,
 }: RelationshipTypeTableProps) => {
   const { t } = useTranslation();
 
   return (
-    <TableCard.Root size="sm">
+    <TableCard.Root size="sm" variant={variant}>
       <Table
         aria-label={t('label.glossary-term-relation-plural')}
         data-testid="relation-types-table">

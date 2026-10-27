@@ -14,6 +14,7 @@
 import { RJSFSchema } from '@rjsf/utils';
 import { App } from '../../../../generated/entity/applications/app';
 import { AppRunRecord } from '../../../../generated/entity/applications/appRunRecord';
+import { TableComponentProps } from '../../../common/Table/Table.interface';
 
 export interface AppRunRecordWithId extends AppRunRecord {
   id: string;
@@ -31,4 +32,5 @@ export interface AppRunsHistoryProps {
   jsonSchema?: RJSFSchema;
   /** Opens a run's configuration as a page instead of the built-in dialog. */
   onViewRunConfig?: (record: AppRunRecordWithId) => void;
+  variant?: TableComponentProps<unknown>['variant'];
 }

@@ -12,6 +12,7 @@
  */
 import { ReactNode } from 'react';
 import { CustomProperty } from '../../../generated/type/customProperty';
+import { TableComponentProps } from '../../common/Table/Table.interface';
 
 export interface CustomPropertiesListTableProps {
   customProperties: CustomProperty[];
@@ -20,6 +21,7 @@ export interface CustomPropertiesListTableProps {
   canDelete: boolean;
   emptyText: ReactNode;
   containerClassName?: string;
+  variant?: TableComponentProps<unknown>['variant'];
   'data-testid'?: string;
   onEdit: (property: CustomProperty) => void;
   onDelete: (property: CustomProperty) => void;

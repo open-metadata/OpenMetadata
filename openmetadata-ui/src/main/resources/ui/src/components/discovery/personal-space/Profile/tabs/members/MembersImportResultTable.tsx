@@ -84,7 +84,7 @@ const MembersImportResultTable: FC<MembersImportResultTableProps> = ({
     <Table
       stickyHeader
       aria-label={t('label.import-entity', { entity: t('label.result') })}
-      containerClassName="tw:rounded-lg tw:border tw:border-secondary"
+      containerClassName="tw:rounded-lg tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt tw:dark:[&_table]:bg-primary_alt tw:[&_tbody_tr:hover]:bg-primary_hover"
       data-testid="import-result-table"
       size="sm">
       <Table.Header>

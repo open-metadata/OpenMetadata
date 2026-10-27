@@ -160,7 +160,7 @@ const DataQualitySettings = ({
 
   return (
     <Box data-testid="data-quality-settings" direction="col" gap={4}>
-      <TableCard.Root size="compact">
+      <TableCard.Root size="compact" variant="muted">
         <Box className="tw:border-b tw:border-secondary tw:px-4 tw:py-3">
           <Input
             className="tw:max-w-xs"

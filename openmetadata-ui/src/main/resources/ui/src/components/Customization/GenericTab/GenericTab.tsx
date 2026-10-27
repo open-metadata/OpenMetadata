@@ -83,7 +83,7 @@ export const GenericTab = ({ type }: GenericTabProps) => {
       autoSize
       useCSSTransforms
       verticalCompact
-      className={classNames('grid-container flat-left-panel', {
+      className={classNames('grid-container', {
         'custom-tab': !leftSideWidgetPresent,
         'height-auto': type === PageType.Glossary,
       })}

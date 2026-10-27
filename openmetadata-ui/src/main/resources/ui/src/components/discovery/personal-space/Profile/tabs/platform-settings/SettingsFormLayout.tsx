@@ -83,6 +83,7 @@ const SettingsFormLayout = <T extends FieldValues>({
       className="tw:flex tw:h-full tw:min-h-0 tw:flex-col"
       data-testid={testId}
       fieldDocDisplay="popover"
+      fieldDocVariant="muted"
       form={form}
       renderFieldDoc={(text) => (
         <Typography className="tw:text-tertiary" size="text-sm">
@@ -128,8 +129,15 @@ const SettingsFormLayout = <T extends FieldValues>({
 
 export default SettingsFormLayout;
 
-export const SettingsSkeleton = ({ rows = 4 }: { rows?: number }) => (
-  <Card data-testid="settings-skeleton" variant="muted">
+export const SettingsSkeleton = ({
+  rows = 4,
+  variant = 'muted',
+}: {
+  rows?: number;
+  /** `default` when rendered inside another muted container. */
+  variant?: 'default' | 'muted';
+}) => (
+  <Card data-testid="settings-skeleton" variant={variant}>
     <Card.Content className="tw:flex tw:flex-col tw:gap-4">
       {Array.from({ length: rows }, (_, index) => (
         <Skeleton height={20} key={index} variant="rounded" width="100%" />

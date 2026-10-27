@@ -865,7 +865,10 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         onStartEdit={() => setIsEditingDesc(true)}
       />
 
-      <TableCard.Root className="tw:rounded-xl tw:shadow-none" size="compact">
+      <TableCard.Root
+        className="tw:rounded-xl tw:shadow-none"
+        size="compact"
+        variant="muted">
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(k) => setActiveTab(k as PolicyTab)}>

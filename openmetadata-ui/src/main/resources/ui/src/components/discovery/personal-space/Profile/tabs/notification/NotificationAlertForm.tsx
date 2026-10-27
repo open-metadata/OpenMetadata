@@ -261,6 +261,7 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
           <AlertAiForm
             alert={alert}
             fieldDocDisplay="popover"
+            fieldDocVariant="muted"
             formId={ALERT_AI_FORM_MODAL_ID}
             inlineAlert={
               inlineAlertDetails
