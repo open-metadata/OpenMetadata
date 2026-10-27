@@ -298,7 +298,7 @@ class AirflowLineageRunner:
             # Fetch DAG runs. `run_after` is never null, unlike `logical_date` on manually
             # triggered runs, which the database would sort first or last depending on its engine.
             logger.info(f"Fetching DAG runs from: {api_url}")
-            logger.info(f"Params: limit={self.max_status}, order_by=-run_after")
+            logger.info("Params: limit=%s, order_by=-run_after", self.max_status)
             response = requests.get(
                 api_url,
                 params={"limit": self.max_status, "order_by": "-run_after"},
@@ -405,7 +405,7 @@ class AirflowLineageRunner:
                     except Exception:
                         pass
                 if execution_timestamp is None:
-                    logger.info(f"Skipping DAG run {dag_run_id}: it has neither a logical_date nor a start_date")
+                    logger.info("Skipping DAG run %s: it has neither a logical_date nor a start_date", dag_run_id)
                     continue
 
                 pipeline_status = PipelineStatus(
@@ -542,7 +542,7 @@ class AirflowLineageRunner:
             or task_instances[0].dag_run.start_date
         )
         if execution_date is None:
-            logger.info(f"Skipping DAG run {task_instances[0].run_id}: it has neither a logical_date nor a start_date")
+            logger.info("Skipping DAG run %s: it has neither a logical_date nor a start_date", task_instances[0].run_id)
             return None
 
         return PipelineStatus(
