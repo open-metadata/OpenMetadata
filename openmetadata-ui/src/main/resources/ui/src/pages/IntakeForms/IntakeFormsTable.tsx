@@ -17,6 +17,7 @@ import {
   Button,
   Table,
   TableCard,
+  TableCardVariant,
   Toggle,
   Tooltip,
   Typography,
@@ -49,6 +50,7 @@ interface IntakeFormsTableProps {
   onDelete: (form: IntakeForm, trigger?: HTMLElement) => void;
   onEdit: (form: IntakeForm) => void;
   onToggleEnabled: (form: IntakeForm, enabled: boolean) => void;
+  variant?: TableCardVariant;
 }
 
 const IntakeFormsTable: FC<IntakeFormsTableProps> = ({
@@ -58,6 +60,7 @@ const IntakeFormsTable: FC<IntakeFormsTableProps> = ({
   onDelete,
   onEdit,
   onToggleEnabled,
+  variant,
 }) => {
   const { t } = useTranslation();
 
@@ -85,7 +88,7 @@ const IntakeFormsTable: FC<IntakeFormsTableProps> = ({
   );
 
   return (
-    <TableCard.Root size="sm">
+    <TableCard.Root size="sm" variant={variant}>
       <Table
         aria-label={t('label.intake-form-plural')}
         data-testid="intake-forms-table">

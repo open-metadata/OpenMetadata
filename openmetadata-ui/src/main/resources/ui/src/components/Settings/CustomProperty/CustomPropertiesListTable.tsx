@@ -172,6 +172,7 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
   canDelete,
   emptyText,
   containerClassName,
+  variant,
   'data-testid': dataTestId = 'entity-custom-properties-table',
   onEdit,
   onDelete,
@@ -327,6 +328,7 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
         typingInterval: 300,
         onSearch: setSearchText,
       }}
+      variant={variant}
     />
   );
 };

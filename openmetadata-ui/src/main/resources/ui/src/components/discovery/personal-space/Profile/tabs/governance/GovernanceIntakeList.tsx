@@ -208,6 +208,7 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
             compactActionColumns
             forms={forms}
             loading={loading}
+            variant="muted"
             onDelete={openDeleteConfirm}
             onEdit={(form) => onNavigate({ type: 'intake-edit', id: form.id })}
             onToggleEnabled={handleToggleEnabled}

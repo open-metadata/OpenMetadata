@@ -146,12 +146,44 @@ const TableContext = createContext<{
   stickyHeader: boolean;
 } | null>(null);
 
+export type TableCardVariant = 'default' | 'muted';
+
+/**
+ * Row surface of a muted table, shared by every muted table container so a fix
+ * lands once (ADR:2026-10-27-settings-modal-surfaces-use-the-muted-step). Only
+ * the outermost table is repainted; tables nested in an expanded row keep theirs.
+ * The default `bg-secondary` hover is the muted row's own step, hence the
+ * translucent one, painted on the cells only so it never stacks with a row
+ * tint. Clamped markdown fades into `--markdown-clamp-fade-color`,
+ * which the unlayered tbody LESS default pins to bg-surface (hence the `!`).
+ */
+export const MUTED_TABLE_SURFACE_CLASSES = [
+  'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
+  'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover',
+  'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!',
+  'tw:dark:[&_tbody:not(table_table_tbody)>tr:hover]:[--markdown-clamp-fade-color:color-mix(in_srgb,var(--tw-color-bg-secondary),white_6%)]!',
+].join(' ');
+
+// An 8%-white muted edge lands on the modal's own colour, so the frame (header
+// top included) takes the header divider's solid border-primary in dark.
+const TABLE_CARD_VARIANTS: Record<TableCardVariant, string> = sortCx({
+  default: 'tw:bg-surface tw:after:outline-subtle',
+  muted: cx(
+    'tw:bg-primary_alt tw:after:outline-secondary tw:dark:after:outline-primary',
+    MUTED_TABLE_SURFACE_CLASSES
+  ),
+});
+
 const TableCardRoot = ({
   children,
   className,
   size = 'md',
+  variant = 'default',
   ...props
-}: HTMLAttributes<HTMLDivElement> & { size?: TableSize }) => {
+}: HTMLAttributes<HTMLDivElement> & {
+  size?: TableSize;
+  variant?: TableCardVariant;
+}) => {
   return (
     <TableContext.Provider value={{ size, stickyHeader: false }}>
       <div
@@ -161,7 +193,8 @@ const TableCardRoot = ({
           // card itself is painted over by a `stickyHeader` thead (sticky,
           // z-10, opaque), so the frame vanished along the header. `isolate`
           // keeps the overlay's z-index inside the card.
-          'tw:relative tw:isolate tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:after:z-20 tw:after:outline-subtle',
+          'tw:relative tw:isolate tw:overflow-hidden tw:rounded-xl tw:shadow-card tw:after:z-20',
+          TABLE_CARD_VARIANTS[variant],
           borderAfter,
           className
         )}>
@@ -235,6 +268,12 @@ interface TableRootProps
   stickyHeader?: boolean;
   containerStyle?: React.CSSProperties;
   containerClassName?: string;
+  /**
+   * `muted` frames the table's own container on the muted step, for a table
+   * that cannot sit in a `TableCard` (whose overflow-hidden stops a
+   * `stickyHeader` sticking).
+   */
+  variant?: TableCardVariant;
 }
 
 const TableRoot = ({
@@ -243,6 +282,7 @@ const TableRoot = ({
   stickyHeader = false,
   containerStyle,
   containerClassName,
+  variant = 'default',
   ...props
 }: TableRootProps) => {
   const context = useContext(TableContext);
@@ -252,7 +292,15 @@ const TableRoot = ({
   return (
     <TableContext.Provider value={{ size: resolvedSize, stickyHeader }}>
       <div
-        className={cx('tw:overflow-x-auto', containerClassName)}
+        className={cx(
+          'tw:overflow-x-auto',
+          variant === 'muted' &&
+            cx(
+              'tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt',
+              MUTED_TABLE_SURFACE_CLASSES
+            ),
+          containerClassName
+        )}
         style={containerStyle}>
         <AriaTable
           className={(state) =>

@@ -23,6 +23,7 @@ import {
   Skeleton,
   Table,
   TableCard,
+  TableCardVariant,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -94,6 +95,7 @@ interface SystemAnnouncementsTableProps {
   onAdd: () => void;
   onDuplicate: (announcement: AnnouncementEntity) => void;
   onEdit: (announcement: AnnouncementEntity) => void;
+  variant?: TableCardVariant;
 }
 
 // Announcements are scheduled by day, so the cell shows the day alone.
@@ -199,6 +201,7 @@ const SystemAnnouncementsTable = ({
   onAdd,
   onDuplicate,
   onEdit,
+  variant,
 }: SystemAnnouncementsTableProps) => {
   const { t } = useTranslation();
   // The modal branch reads the same pending row; only the popover anchors to the pressed menu.
@@ -397,7 +400,8 @@ const SystemAnnouncementsTable = ({
       <TableCard.Root
         className="tw:flex tw:flex-col"
         data-testid="system-announcements-table"
-        size="sm">
+        size="sm"
+        variant={variant}>
         <Box
           align="center"
           className="tw:border-b tw:border-subtle tw:px-4 tw:py-3"

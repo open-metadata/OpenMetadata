@@ -97,6 +97,7 @@ const AnnouncementsNotificationSection = ({
         <SystemAnnouncementsTable
           deleteConfirmation="popover"
           list={list}
+          variant="muted"
           onAdd={openAdd}
           onDuplicate={openRow('DUPLICATE')}
           onEdit={openRow('EDIT')}

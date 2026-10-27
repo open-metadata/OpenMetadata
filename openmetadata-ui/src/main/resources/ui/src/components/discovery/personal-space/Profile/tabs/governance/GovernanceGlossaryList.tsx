@@ -165,6 +165,7 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
           isAdminUser
           relationshipTypes={visibleItems}
           usageCounts={usageCounts}
+          variant="muted"
           onDelete={openDeleteConfirm}
           onEdit={(item) =>
             onNavigate({ type: 'glossary-edit', name: item.name })

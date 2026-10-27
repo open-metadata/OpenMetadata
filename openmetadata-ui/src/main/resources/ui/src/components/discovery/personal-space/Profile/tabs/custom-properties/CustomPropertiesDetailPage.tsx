@@ -156,7 +156,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
 
   return (
     <>
-      <TableCard.Root className="tw:rounded-xl tw:shadow-none">
+      <TableCard.Root className="tw:rounded-xl tw:shadow-none" variant="muted">
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(k) => setActiveTab(k as string)}>
@@ -202,6 +202,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
                 </div>
               }
               isLoading={isLoading}
+              variant="muted"
               onDelete={openDeleteConfirm}
               onEdit={onEditProperty}
             />
@@ -209,7 +210,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
 
           <Tabs.Panel id="schema">
             <SchemaEditor
-              className="custom-properties-schemaEditor"
+              className="custom-properties-schemaEditor tw:dark:[&_.cm-editor]:bg-primary_alt!"
               editorClass="custom-entity-schema"
               value={typeDetail?.schema ?? '{}'}
             />
