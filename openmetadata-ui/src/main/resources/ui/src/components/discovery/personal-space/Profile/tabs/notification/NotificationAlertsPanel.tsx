@@ -54,11 +54,10 @@ import {
   getAlertsFromName,
   getAllAlerts,
 } from '../../../../../../rest/alertsAPI';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { NotificationView } from './Notification.types';
@@ -86,8 +85,6 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   const pageSize = hashPageSize || PAGE_SIZE_BASE;
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
-  const [isDeleting, setIsDeleting] = useState(false);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const [cursorCache, setCursorCache] = useState<Map<number, Paging>>(
     new Map()
@@ -235,22 +232,6 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
     fetchAlertsRef.current(undefined, 1);
   }, [setHashPage, pageSize]);
 
-  const handleAlertDelete = useCallback(async () => {
-    setIsDeleting(true);
-    const isSuccess = await hardDeleteEntity(
-      getEntityName(selectedAlert).toString(),
-      selectedAlert?.id ?? '',
-      EntityType.SUBSCRIPTION
-    );
-
-    if (isSuccess) {
-      handleAfterDeleteAction();
-    }
-
-    setSelectedAlert(undefined);
-    setIsDeleting(false);
-  }, [selectedAlert, handleAfterDeleteAction]);
-
   const navigateSequentially = async (newPage: number) => {
     const requestId = ++fetchRequestIdRef.current;
     setIsLoading(true);
@@ -386,14 +367,24 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
           />
         )}
         {hasDelete && (
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`alert-delete-${getEntityName(alert)}`}
-            icon={Delete}
-            size="xs"
-            tooltip={t('label.delete')}
-            onPress={() => setSelectedAlert(alert)}
-          />
+          <DeleteEntityPopover
+            afterDeleteAction={handleAfterDeleteAction}
+            allowSoftDelete={false}
+            data-testid="delete-alert-popover"
+            description={t('message.permanently-delete-common-message', {
+              entity: t('label.alert-lowercase'),
+            })}
+            entityId={alert.id}
+            entityName={getEntityName(alert)}
+            entityType={EntityType.SUBSCRIPTION}>
+            <ButtonUtility
+              color="tertiary"
+              data-testid={`alert-delete-${getEntityName(alert)}`}
+              icon={Delete}
+              size="xs"
+              tooltip={t('label.delete')}
+            />
+          </DeleteEntityPopover>
         )}
       </Box>
     );
@@ -530,19 +521,6 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
           />
         )}
       </TableCard.Root>
-
-      {selectedAlert && (
-        <DeleteModal
-          open
-          entityTitle={getEntityName(selectedAlert).toString()}
-          isDeleting={isDeleting}
-          message={t('message.permanently-delete-common-message', {
-            entity: getEntityName(selectedAlert).toString().toLowerCase(),
-          })}
-          onCancel={() => setSelectedAlert(undefined)}
-          onDelete={handleAlertDelete}
-        />
-      )}
     </Box>
   );
 };

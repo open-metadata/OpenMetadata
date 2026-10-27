@@ -15,6 +15,7 @@ import {
   BadgeWithIcon,
   Box,
   Button,
+  ConfirmPopover,
   Dropdown,
   FilterSelect,
   Input,
@@ -35,7 +36,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { DateTime } from 'luxon';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   SYSTEM_ANNOUNCEMENT_PAGE_SIZES,
@@ -50,6 +51,7 @@ import {
   SystemAnnouncementsListState,
   useDeleteSystemAnnouncement,
 } from '../../../../../hooks/platform/useSystemAnnouncements';
+import { useAnchoredConfirm } from '../../../../../hooks/popover/useAnchoredConfirm';
 import { AnnouncementEntity } from '../../../../../rest/announcementsAPI';
 import {
   ANNOUNCEMENT_STATUS_COLORS,
@@ -59,6 +61,7 @@ import {
   getAnnouncementTypeConfig,
   getAnnouncementTypeLabel,
 } from '../../../../../utils/AnnouncementsUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import AnnouncementDeleteDialog from '../../../../Announcement/AnnouncementDeleteDialog';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
@@ -81,6 +84,12 @@ interface Column {
 }
 
 interface SystemAnnouncementsTableProps {
+  /**
+   * How a row delete is confirmed. The settings modal is already an overlay,
+   * so it confirms in a popover anchored to the row's menu instead of a modal.
+   * @default 'modal'
+   */
+  deleteConfirmation?: 'modal' | 'popover';
   list: SystemAnnouncementsListState;
   onAdd: () => void;
   onDuplicate: (announcement: AnnouncementEntity) => void;
@@ -182,14 +191,21 @@ const RowActions = ({
  * Duplicate lead, so the same table serves Classic and AI mode.
  */
 const SystemAnnouncementsTable = ({
+  deleteConfirmation = 'modal',
   list,
   onAdd,
   onDuplicate,
   onEdit,
 }: SystemAnnouncementsTableProps) => {
   const { t } = useTranslation();
-  const [pendingDelete, setPendingDelete] = useState<AnnouncementEntity>();
-  const closeDelete = useCallback(() => setPendingDelete(undefined), []);
+  // The modal branch reads the same pending row; only the popover anchors to the pressed menu.
+  const {
+    containerRef,
+    target: pendingDelete,
+    open: setPendingDelete,
+    close: closeDelete,
+    popoverProps,
+  } = useAnchoredConfirm<AnnouncementEntity>();
   const deleteMutation = useDeleteSystemAnnouncement(closeDelete);
 
   const {
@@ -434,7 +450,7 @@ const SystemAnnouncementsTable = ({
             />
           </Box>
         </Box>
-        <div className="tw:overflow-x-auto">
+        <div className="tw:overflow-x-auto" ref={containerRef}>
           <Table
             aria-label={t('label.announcement-plural')}
             // Below this the fixed columns would squeeze Title to nothing and
@@ -494,14 +510,30 @@ const SystemAnnouncementsTable = ({
         )}
       </TableCard.Root>
 
-      <AnnouncementDeleteDialog
-        isDeleting={deleteMutation.isPending}
-        isOpen={Boolean(pendingDelete)}
-        onCancel={closeDelete}
-        onConfirm={() =>
-          pendingDelete && deleteMutation.mutate(pendingDelete.id)
-        }
-      />
+      {deleteConfirmation === 'popover' ? (
+        pendingDelete && (
+          <ConfirmPopover
+            {...popoverProps}
+            data-testid="announcement-delete-popover"
+            description={t('message.confirm-delete-message')}
+            title={t('label.delete-entity', {
+              entity: getEntityName(pendingDelete),
+            })}
+            onConfirm={async () => {
+              await deleteMutation.mutateAsync(pendingDelete.id);
+            }}
+          />
+        )
+      ) : (
+        <AnnouncementDeleteDialog
+          isDeleting={deleteMutation.isPending}
+          isOpen={Boolean(pendingDelete)}
+          onCancel={closeDelete}
+          onConfirm={() =>
+            pendingDelete && deleteMutation.mutate(pendingDelete.id)
+          }
+        />
+      )}
     </>
   );
 };

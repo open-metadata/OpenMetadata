@@ -25,7 +25,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -52,7 +52,6 @@ import { EntityReference } from '../../../../../../generated/entity/type';
 import { Paging } from '../../../../../../generated/type/paging';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getRoles } from '../../../../../../rest/rolesAPIV1';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   checkPermission,
@@ -60,7 +59,7 @@ import {
   userPermissions,
 } from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { AccessControlView } from './AccessControl.types';
@@ -89,8 +88,6 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<Role>();
-  const [isDeleting, setIsDeleting] = useState(false);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const [cursorCache, setCursorCache] = useState<Map<number, Paging>>(
     new Map()
@@ -180,22 +177,6 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     fetchRoles(undefined, 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setHashPage, pageSize]);
-
-  const handleRoleDelete = useCallback(async () => {
-    setIsDeleting(true);
-    const isSuccess = await hardDeleteEntity(
-      getEntityName(selectedRole).toString(),
-      selectedRole?.id ?? '',
-      EntityType.ROLE
-    );
-
-    if (isSuccess) {
-      handleAfterDeleteAction();
-    }
-
-    setSelectedRole(undefined);
-    setIsDeleting(false);
-  }, [selectedRole, handleAfterDeleteAction]);
 
   const handleRoleClick = (role: Role) => {
     onNavigate({
@@ -397,20 +378,27 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
       case 'actions':
         return (
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`delete-action-${getEntityName(role)}`}
-            icon={Trash01}
-            isDisabled={!deleteRolePermission}
-            size="xs"
-            tooltip={
-              deleteRolePermission
-                ? t('label.delete-entity', { entity: t('label.role') })
-                : t(NO_PERMISSION_FOR_ACTION)
-            }
-            tooltipPlacement="left"
-            onPress={() => setSelectedRole(role)}
-          />
+          <DeleteEntityPopover
+            afterDeleteAction={handleAfterDeleteAction}
+            allowSoftDelete={false}
+            data-testid="delete-role-popover"
+            entityId={role.id}
+            entityName={getEntityName(role)}
+            entityType={EntityType.ROLE}>
+            <ButtonUtility
+              color="tertiary"
+              data-testid={`delete-action-${getEntityName(role)}`}
+              icon={Trash01}
+              isDisabled={!deleteRolePermission}
+              size="xs"
+              tooltip={
+                deleteRolePermission
+                  ? t('label.delete-entity', { entity: t('label.role') })
+                  : t(NO_PERMISSION_FOR_ACTION)
+              }
+              tooltipPlacement="left"
+            />
+          </DeleteEntityPopover>
         );
 
       default:
@@ -501,19 +489,6 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
           />
         )}
       </TableCard.Root>
-
-      {selectedRole && (
-        <DeleteModal
-          entityTitle={getEntityName(selectedRole).toString()}
-          isDeleting={isDeleting}
-          message={t('message.permanently-delete-common-message', {
-            entity: getEntityName(selectedRole).toString().toLowerCase(),
-          })}
-          open={!isUndefined(selectedRole)}
-          onCancel={() => setSelectedRole(undefined)}
-          onDelete={handleRoleDelete}
-        />
-      )}
     </Box>
   );
 };

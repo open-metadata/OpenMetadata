@@ -402,13 +402,15 @@ test.describe('Custom Properties Panel — AI Mode', () => {
       page.getByRole('menuitem', { name: 'Delete' })
     );
 
-    // Wait for the confirmation modal.
-    await page.getByTestId('delete-modal').waitFor();
+    // Wait for the confirmation popover.
+    await page.getByTestId('delete-custom-property-popover').waitFor();
 
     const saves = recordCustomPropertySaves(page);
-    await page.getByTestId('confirm-button').click();
+    await page.getByTestId('delete-custom-property-popover-confirm').click();
 
-    await page.getByTestId('delete-modal').waitFor({ state: 'hidden' });
+    await page
+      .getByTestId('delete-custom-property-popover')
+      .waitFor({ state: 'hidden' });
     await waitForAllLoadersToDisappear(page);
 
     await expect(

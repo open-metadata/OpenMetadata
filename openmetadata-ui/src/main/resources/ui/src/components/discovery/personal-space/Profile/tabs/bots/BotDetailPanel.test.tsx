@@ -12,6 +12,7 @@
  */
 
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -25,6 +26,7 @@ import {
   getUserByName,
   updateUserDetail,
 } from '../../../../../../rest/userAPI';
+import { deleteEntity } from '../../../../../../rest/miscAPI';
 import BotDetailPanel from './BotDetailPanel';
 
 jest.mock('react-i18next', () => {
@@ -36,6 +38,7 @@ jest.mock('react-i18next', () => {
 });
 
 jest.mock('react-aria', () => ({
+  ...jest.requireActual('react-aria'),
   useFilter: () => ({ contains: () => true }),
 }));
 
@@ -43,8 +46,11 @@ jest.mock('../../../../../../hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: true }),
 }));
 
+// Stable like the real zustand action: the header effect keys on it.
+const mockGetResourceLimit = jest.fn();
+
 jest.mock('../../../../../../context/LimitsProvider/useLimitsStore', () => ({
-  useLimitStore: () => ({ getResourceLimit: jest.fn() }),
+  useLimitStore: () => ({ getResourceLimit: mockGetResourceLimit }),
 }));
 
 jest.mock(
@@ -71,7 +77,29 @@ jest.mock('../../../../../../rest/rolesAPIV1', () => ({
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
+
+jest.mock('../../../../../../rest/miscAPI', () => ({
+  deleteEntity: jest.fn().mockResolvedValue({ status: 200, data: {} }),
+}));
+
+jest.mock('../../../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({ currentUser: { name: 'admin' } })),
+}));
+
+jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: jest.fn(() => ({ onLogoutHandler: jest.fn() })),
+}));
+
+jest.mock(
+  '../../../../../../context/AsyncDeleteProvider/AsyncDeleteProvider',
+  () => ({
+    useAsyncDeleteProvider: jest.fn(() => ({
+      handleOnAsyncEntityDeleteConfirm: jest.fn(),
+    })),
+  })
+);
 
 jest.mock('../../../../../../utils/EntityNameUtils', () => ({
   getEntityName: (entity?: { displayName?: string; name?: string }) =>
@@ -98,12 +126,6 @@ jest.mock(
   '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1',
   () => () => <div data-testid="rich-text-previewer" />
 );
-
-jest.mock('../../../../../common/DeleteWidget/DeleteEntityModal', () => ({
-  __esModule: true,
-  default: ({ visible }: { visible: boolean }) =>
-    visible ? <div data-testid="delete-modal" /> : null,
-}));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Delete: () => <span />,
@@ -160,23 +182,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
-  ButtonUtility: ({
-    onPress,
-    isDisabled,
-    'data-testid': testId,
-  }: {
-    onPress?: () => void;
-    isDisabled?: boolean;
-    'data-testid'?: string;
-  }) => (
-    <button
-      aria-label={testId}
-      data-testid={testId}
-      disabled={isDisabled}
-      type="button"
-      onClick={onPress}
-    />
-  ),
+  // Real ones, so the delete confirmation opens from its trigger as in the app.
+  ButtonUtility: jest.requireActual('@openmetadata/ui-core-components')
+    .ButtonUtility,
+  ConfirmPopover: jest.requireActual('@openmetadata/ui-core-components')
+    .ConfirmPopover,
   EmptyPlaceholder: ({ title }: { title?: string }) => (
     <div data-testid="empty-placeholder">{title}</div>
   ),
@@ -333,7 +343,7 @@ describe('BotDetailPanel', () => {
     );
   });
 
-  it('should open the delete modal from the injected header action', async () => {
+  it('hard-deletes the bot from the header popover and returns to the list', async () => {
     render(<HeaderHarness />);
 
     await waitFor(() =>
@@ -341,7 +351,40 @@ describe('BotDetailPanel', () => {
     );
 
     fireEvent.click(screen.getByTestId('delete-bot-btn'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('delete-bot-popover-hard-delete'));
+    });
 
-    expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
+    expect(deleteEntity).toHaveBeenCalledWith('bots', 'bot-1', false, true);
+    expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+  });
+
+  it('keeps the header delete popover open and stays on the bot when the delete fails', async () => {
+    (deleteEntity as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    render(<HeaderHarness />);
+
+    fireEvent.click(await screen.findByTestId('delete-bot-btn'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('delete-bot-popover-confirm'));
+    });
+
+    expect(deleteEntity).toHaveBeenCalledWith('bots', 'bot-1', false, false);
+    expect(screen.getByTestId('delete-bot-popover')).toBeInTheDocument();
+    expect(mockOnNavigate).not.toHaveBeenCalled();
+  });
+
+  it('keeps the bot when the header delete popover is cancelled', async () => {
+    render(<HeaderHarness />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('delete-bot-btn')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('delete-bot-btn'));
+    fireEvent.click(screen.getByTestId('delete-bot-popover-cancel'));
+
+    expect(screen.queryByTestId('delete-bot-popover')).not.toBeInTheDocument();
+    expect(deleteEntity).not.toHaveBeenCalled();
+    expect(mockOnNavigate).not.toHaveBeenCalled();
   });
 });

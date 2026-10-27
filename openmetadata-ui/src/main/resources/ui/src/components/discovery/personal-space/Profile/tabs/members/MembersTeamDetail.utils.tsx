@@ -11,12 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  ButtonUtility,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import type { TFunction } from 'i18next';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';
@@ -28,6 +24,7 @@ import type { MembersView } from './Members.types';
 import type { TeamTab } from './MembersTeamDetail.types';
 import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
 import { profileHash, ProfileHashTarget } from './profileHash.utils';
+import RemoveFromTeamButton from './RemoveFromTeamButton';
 
 const CUSTOM_PROPERTIES = 'custom-properties' as const;
 
@@ -207,13 +204,14 @@ export const getChildTeamColumns = (
 ];
 
 export const getUserColumns = (
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
   canEditAll: boolean,
   goTo: (target: ProfileHashTarget) => void,
-  onRemoveUser: (record: User) => void
+  parentName: string,
+  onRemoveUser: (record: User) => Promise<boolean>
 ): ColumnsType<User> => [
   {
-    title: t('label.username'),
+    title: t<string>('label.username'),
     dataIndex: 'name',
     key: 'username',
     ellipsis: true,
@@ -222,7 +220,7 @@ export const getUserColumns = (
     ),
   },
   {
-    title: t('label.name'),
+    title: t<string>('label.name'),
     dataIndex: 'displayName',
     key: 'name',
     ellipsis: true,
@@ -233,7 +231,7 @@ export const getUserColumns = (
     ),
   },
   {
-    title: t('label.role-plural'),
+    title: t<string>('label.role-plural'),
     dataIndex: 'roles',
     key: 'roles',
     render: (_: unknown, record: User) => (
@@ -253,14 +251,11 @@ export const getUserColumns = (
           key: 'actions',
           width: 80,
           render: (_: unknown, record: User) => (
-            <ButtonUtility
-              color="tertiary"
+            <RemoveFromTeamButton
+              childName={getEntityName(record)}
               data-testid={`remove-user-${record.name}`}
-              icon={Trash01}
-              size="xs"
-              tooltip={t('label.remove')}
-              tooltipPlacement="left"
-              onClick={() => onRemoveUser(record)}
+              parentName={parentName}
+              onConfirm={() => onRemoveUser(record)}
             />
           ),
         },
@@ -269,15 +264,16 @@ export const getUserColumns = (
 ];
 
 export const getEntityRefColumns = (
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
   canEditAll: boolean,
   isSavingInline: boolean,
   goTo: (target: ProfileHashTarget) => void,
-  onRemove: (ref: EntityReference) => void,
+  parentName: string,
+  onRemove: (ref: EntityReference) => Promise<boolean>,
   nameHashOf: (ref: EntityReference) => ProfileHashTarget
 ): ColumnsType<EntityReference> => [
   {
-    title: t('label.name'),
+    title: t<string>('label.name'),
     dataIndex: 'name',
     key: 'name',
     width: '30%',
@@ -295,7 +291,7 @@ export const getEntityRefColumns = (
     ),
   },
   {
-    title: t('label.description'),
+    title: t<string>('label.description'),
     dataIndex: 'description',
     key: 'description',
     render: (_: unknown, record: EntityReference) => record.description || '--',
@@ -308,15 +304,12 @@ export const getEntityRefColumns = (
           key: 'actions',
           width: 80,
           render: (_: unknown, record: EntityReference) => (
-            <ButtonUtility
-              color="tertiary"
+            <RemoveFromTeamButton
+              childName={getEntityName(record)}
               data-testid={`remove-${getEntityName(record)}`}
-              icon={Trash01}
               isDisabled={isSavingInline}
-              size="xs"
-              tooltip={t('label.remove')}
-              tooltipPlacement="left"
-              onClick={() => onRemove(record)}
+              parentName={parentName}
+              onConfirm={() => onRemove(record)}
             />
           ),
         },

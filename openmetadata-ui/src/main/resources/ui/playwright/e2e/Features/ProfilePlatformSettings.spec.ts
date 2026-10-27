@@ -343,13 +343,16 @@ test.describe(
       await openCard(page, 'email');
 
       await header(page).getByTestId('test-email-button').click();
-      const modal = page.getByTestId('test-email-modal');
-      await expect(modal).toBeVisible();
+      const popover = page.getByTestId('test-email-popover');
+      await expect(popover).toBeVisible();
 
-      await modal.getByTestId('test-email-input').locator('input').fill('nope');
-      await modal.getByTestId('test-email-submit').click();
+      await popover
+        .getByTestId('test-email-input')
+        .locator('input')
+        .fill('nope');
+      await popover.getByTestId('test-email-popover-confirm').click();
 
-      await expect(modal.getByText('Email is invalid.')).toBeVisible();
+      await expect(popover.getByText('Email is invalid.')).toBeVisible();
     });
 
     test('health check: shows every status step and refreshes', async ({
@@ -665,10 +668,12 @@ test.describe(
         await expect(row).toContainText('PW Renamed');
 
         await page.getByTestId(`delete-${name}`).click();
-        await expect(page.getByTestId('delete-dimension-dialog')).toBeVisible();
+        await expect(
+          page.getByTestId('delete-dimension-popover')
+        ).toBeVisible();
         await clickAndWaitFor(
           page,
-          page.getByTestId('confirm-delete-dimension'),
+          page.getByTestId('delete-dimension-popover-confirm'),
           '**/api/v1/dataQuality/dimensions/*'
         );
         await expect(row).toHaveCount(0);
@@ -806,7 +811,7 @@ test.describe(
         await page.getByTestId(`delete-${name}`).click();
         await clickAndWaitFor(
           page,
-          page.getByTestId('confirm-button'),
+          page.getByTestId('delete-learning-resource-popover-confirm'),
           '**/api/v1/learning/resources/*'
         );
         await expect(row).toHaveCount(0);
@@ -898,13 +903,13 @@ test.describe(
       });
 
       await header(page).getByTestId('reset-search-settings-btn').click();
-      await page.getByTestId('reset-search-settings-dialog-cancel').click();
+      await page.getByTestId('reset-search-settings-popover-cancel').click();
       expect(resets).toBe(0);
 
       await header(page).getByTestId('reset-search-settings-btn').click();
       await clickAndWaitFor(
         page,
-        page.getByTestId('reset-search-settings-dialog-confirm'),
+        page.getByTestId('reset-search-settings-popover-confirm'),
         '**/api/v1/system/settings/reset/searchSettings'
       );
       expect(resets).toBe(1);

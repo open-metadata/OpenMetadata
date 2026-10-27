@@ -56,7 +56,7 @@ import {
 } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
@@ -74,7 +74,7 @@ function useDetailHeaderInjection({
   handleSaveRename,
   setIsRenaming,
   setRenameValue,
-  setIsDeleteOpen,
+  afterDelete,
   onSetHeaderActions,
   onSetHeaderTitleInput,
   onSetHeaderTitleSuffix,
@@ -88,7 +88,7 @@ function useDetailHeaderInjection({
   handleSaveRename: () => void;
   setIsRenaming: (v: boolean) => void;
   setRenameValue: (v: string) => void;
-  setIsDeleteOpen: (v: boolean) => void;
+  afterDelete: () => Promise<void>;
   onSetHeaderActions?: (node: React.ReactNode) => void;
   onSetHeaderTitleInput?: (node: React.ReactNode) => void;
   onSetHeaderTitleSuffix?: (node: React.ReactNode) => void;
@@ -147,17 +147,23 @@ function useDetailHeaderInjection({
     );
 
     const deleteButtonNode: React.ReactNode = isRenaming ? undefined : (
-      <ButtonUtility
-        color="tertiary"
-        data-testid="delete-bot-btn"
-        icon={Trash01}
-        isDisabled={!canDelete}
-        size="xs"
-        tooltip={String(
-          canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
-        )}
-        onPress={() => setIsDeleteOpen(true)}
-      />
+      <DeleteEntityPopover
+        afterDeleteAction={afterDelete}
+        data-testid="delete-bot-popover"
+        entityId={botData.id ?? ''}
+        entityName={getEntityName(botData)}
+        entityType={EntityType.BOT}>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="delete-bot-btn"
+          icon={Trash01}
+          isDisabled={!canDelete}
+          size="xs"
+          tooltip={String(
+            canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
+          )}
+        />
+      </DeleteEntityPopover>
     );
 
     onSetHeaderTitleSuffix?.(renameButtonNode);
@@ -174,7 +180,7 @@ function useDetailHeaderInjection({
     onSetHeaderTitleInput,
     onSetHeaderTitleSuffix,
     renameValue,
-    setIsDeleteOpen,
+    afterDelete,
     setIsRenaming,
     setRenameValue,
     t,
@@ -457,8 +463,6 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
   const [renameValue, setRenameValue] = useState('');
   const [isSavingRename, setIsSavingRename] = useState(false);
 
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-
   const [roles, setRoles] = useState<Role[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [isRolesLoading, setIsRolesLoading] = useState(false);
@@ -590,7 +594,6 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
 
   const handleDeleteAction = useCallback(async () => {
     await getResourceLimit('bot', true, true);
-    setIsDeleteOpen(false);
     onNavigate({ type: 'list' });
   }, [onNavigate, getResourceLimit]);
 
@@ -662,7 +665,7 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
     handleSaveRename,
     setIsRenaming,
     setRenameValue,
-    setIsDeleteOpen,
+    afterDelete: handleDeleteAction,
     onSetHeaderActions,
     onSetHeaderTitleInput,
     onSetHeaderTitleSuffix,
@@ -725,15 +728,6 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
         selectedRoleItems={selectedRoleItems}
         setIsRolesEdit={setIsRolesEdit}
         setSelectedRoles={setSelectedRoles}
-      />
-
-      <DeleteEntityModal
-        afterDeleteAction={handleDeleteAction}
-        entityId={botData.id ?? ''}
-        entityName={getEntityName(botData)}
-        entityType={EntityType.BOT}
-        visible={isDeleteOpen}
-        onCancel={() => setIsDeleteOpen(false)}
       />
     </Box>
   );

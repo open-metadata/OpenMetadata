@@ -12,6 +12,7 @@
  */
 
 import type { SelectItemType } from '@openmetadata/ui-core-components';
+import type { RefObject } from 'react';
 import type { DragAndDropHooks } from 'react-aria-components';
 import type { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import type { Team } from '../../../../../../generated/entity/teams/team';
@@ -38,11 +39,6 @@ export type AssetsQueryFilter = ReturnType<typeof getTermQuery>;
 export interface MovedTeam {
   from: Team;
   to?: Team;
-}
-
-export interface RemoveEntity {
-  ref: EntityReference;
-  kind: 'user' | 'role' | 'policy';
 }
 
 export interface MembersTeamInfoWidgetsProps {
@@ -170,5 +166,7 @@ export interface UseMembersTeamHeaderParams {
   onJoinTeam: () => void;
   onLeaveTeam: () => void;
   onDelete: () => void;
+  /** Anchor for confirmations launched from the team's "..." menu. */
+  menuTriggerRef?: RefObject<HTMLButtonElement>;
   onSetHeader?: (patch: MembersHeaderPatch) => void;
 }

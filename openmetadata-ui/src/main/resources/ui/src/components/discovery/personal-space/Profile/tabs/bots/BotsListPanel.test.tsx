@@ -23,6 +23,7 @@ import { ProviderType } from '../../../../../../generated/entity/bot';
 import { Include } from '../../../../../../generated/type/include';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { getBots } from '../../../../../../rest/botsAPI';
+import { deleteEntity } from '../../../../../../rest/miscAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import BotsListPanel from './BotsListPanel';
 
@@ -63,7 +64,29 @@ jest.mock('../../../../../../utils/APIUtils', () => ({
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
+
+jest.mock('../../../../../../rest/miscAPI', () => ({
+  deleteEntity: jest.fn().mockResolvedValue({ status: 200, data: {} }),
+}));
+
+jest.mock('../../../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({ currentUser: { name: 'admin' } })),
+}));
+
+jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: jest.fn(() => ({ onLogoutHandler: jest.fn() })),
+}));
+
+jest.mock(
+  '../../../../../../context/AsyncDeleteProvider/AsyncDeleteProvider',
+  () => ({
+    useAsyncDeleteProvider: jest.fn(() => ({
+      handleOnAsyncEntityDeleteConfirm: jest.fn(),
+    })),
+  })
+);
 
 jest.mock('../../../../../../utils/EntityNameUtils', () => ({
   getEntityName: (entity?: { displayName?: string; name?: string }) =>
@@ -75,23 +98,13 @@ jest.mock(
   () => () => <div data-testid="rich-text-previewer" />
 );
 
-jest.mock('../../../../../common/DeleteWidget/DeleteEntityModal', () => ({
-  __esModule: true,
-  default: ({
-    visible,
-    entityName,
-  }: {
-    visible: boolean;
-    entityName: string;
-  }) => (visible ? <div data-testid="delete-modal">{entityName}</div> : null),
-}));
-
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Delete: () => <span />,
   NoSearch: () => <span />,
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
   const MockTable = ({
     children,
     'data-testid': testId,
@@ -148,23 +161,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
-    ButtonUtility: ({
-      onPress,
-      isDisabled,
-      'data-testid': testId,
-    }: {
-      onPress?: () => void;
-      isDisabled?: boolean;
-      'data-testid'?: string;
-    }) => (
-      <button
-        aria-label={testId}
-        data-testid={testId}
-        disabled={isDisabled}
-        type="button"
-        onClick={onPress}
-      />
-    ),
+    // Real ones, so the delete confirmation opens from its trigger as in the app.
+    ButtonUtility: actual.ButtonUtility,
+    ConfirmPopover: actual.ConfirmPopover,
     Input: ({
       onChange,
       value,
@@ -412,7 +411,7 @@ describe('BotsListPanel', () => {
     expect(screen.queryAllByTestId('skeleton')).toHaveLength(0);
   });
 
-  it('should open the delete modal when delete is clicked', async () => {
+  it('hard-deletes a bot from the row popover and reloads the list', async () => {
     renderPanel();
 
     await waitFor(() =>
@@ -421,7 +420,47 @@ describe('BotsListPanel', () => {
 
     fireEvent.click(screen.getByTestId('bot-delete-ingest'));
 
-    expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('delete-bot-popover-title')).toHaveTextContent(
+      'label.delete-entity'
+    );
+
+    (getBots as jest.Mock).mockClear();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('delete-bot-popover-hard-delete'));
+    });
+
+    expect(deleteEntity).toHaveBeenCalledWith('bots', 'b1', false, true);
+
+    await waitFor(() => expect(getBots).toHaveBeenCalled());
+
+    expect(screen.queryByTestId('delete-bot-popover')).not.toBeInTheDocument();
+  });
+
+  it('keeps the row popover open when the delete fails', async () => {
+    (deleteEntity as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    renderPanel();
+
+    fireEvent.click(await screen.findByTestId('bot-delete-ingest'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('delete-bot-popover-confirm'));
+    });
+
+    expect(deleteEntity).toHaveBeenCalledWith('bots', 'b1', false, false);
+    expect(screen.getByTestId('delete-bot-popover')).toBeInTheDocument();
+  });
+
+  it('does not delete when the row popover is cancelled', async () => {
+    renderPanel();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('bot-delete-ingest')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('bot-delete-ingest'));
+    fireEvent.click(screen.getByTestId('delete-bot-popover-cancel'));
+
+    expect(screen.queryByTestId('delete-bot-popover')).not.toBeInTheDocument();
+    expect(deleteEntity).not.toHaveBeenCalled();
   });
 
   it('should show an add-bot action in the empty state', async () => {

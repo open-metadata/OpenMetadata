@@ -182,7 +182,7 @@ describe('SearchSettingsView', () => {
     expect(updateSettingsConfig).not.toHaveBeenCalled();
 
     fireEvent.click(
-      await screen.findByTestId('disable-column-indexing-dialog-confirm')
+      await screen.findByTestId('disable-column-indexing-popover-confirm')
     );
 
     await waitFor(() =>
@@ -392,10 +392,38 @@ describe('SearchSettingsView', () => {
     await renderView();
     clickToggle('enable-column-indexing-switch');
     fireEvent.click(
-      await screen.findByTestId('disable-column-indexing-dialog-cancel')
+      await screen.findByTestId('disable-column-indexing-popover-cancel')
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('disable-column-indexing-popover')
+      ).not.toBeInTheDocument()
     );
 
     expect(updateSettingsConfig).not.toHaveBeenCalled();
+    expect(
+      screen.getByTestId('enable-column-indexing-switch').querySelector('input')
+    ).toBeChecked();
+  });
+
+  it('keeps the column indexing confirmation open when turning it off fails', async () => {
+    (updateSettingsConfig as jest.Mock).mockRejectedValue(new Error('boom'));
+    await renderView();
+    clickToggle('enable-column-indexing-switch');
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByTestId('disable-column-indexing-popover-confirm')
+      );
+    });
+
+    expect(showErrorToast).toHaveBeenCalled();
+    expect(
+      screen.getByTestId('disable-column-indexing-popover')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('enable-column-indexing-switch').querySelector('input')
+    ).toBeChecked();
   });
 
   it('restores the defaults after confirmation', async () => {
@@ -403,23 +431,40 @@ describe('SearchSettingsView', () => {
     render(<>{headerActions}</>);
     fireEvent.click(screen.getByTestId('reset-search-settings-btn'));
     fireEvent.click(
-      await screen.findByTestId('reset-search-settings-dialog-confirm')
+      await screen.findByTestId('reset-search-settings-popover-confirm')
     );
 
     await waitFor(() => expect(restoreSettingsConfig).toHaveBeenCalled());
     await waitFor(() => expect(getSettingsByType).toHaveBeenCalledTimes(2));
   });
 
+  it('keeps the reset confirmation open when the reset fails', async () => {
+    (restoreSettingsConfig as jest.Mock).mockRejectedValue(new Error('boom'));
+    await renderView();
+    render(<>{headerActions}</>);
+    fireEvent.click(screen.getByTestId('reset-search-settings-btn'));
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByTestId('reset-search-settings-popover-confirm')
+      );
+    });
+
+    expect(showErrorToast).toHaveBeenCalled();
+    expect(
+      screen.getByTestId('reset-search-settings-popover')
+    ).toBeInTheDocument();
+  });
+
   it('closes the reset confirmation with Escape without resetting', async () => {
     await renderView();
     render(<>{headerActions}</>);
     fireEvent.click(screen.getByTestId('reset-search-settings-btn'));
-    const dialog = await screen.findByTestId('reset-search-settings-dialog');
+    const dialog = await screen.findByTestId('reset-search-settings-popover');
     fireEvent.keyDown(dialog, { key: 'Escape' });
 
     await waitFor(() =>
       expect(
-        screen.queryByTestId('reset-search-settings-dialog')
+        screen.queryByTestId('reset-search-settings-popover')
       ).not.toBeInTheDocument()
     );
 
@@ -432,7 +477,7 @@ describe('SearchSettingsView', () => {
     render(<>{headerActions}</>);
     fireEvent.click(screen.getByTestId('reset-search-settings-btn'));
     fireEvent.click(
-      await screen.findByTestId('reset-search-settings-dialog-confirm')
+      await screen.findByTestId('reset-search-settings-popover-confirm')
     );
 
     await waitFor(() => expect(showErrorToast).toHaveBeenCalled());

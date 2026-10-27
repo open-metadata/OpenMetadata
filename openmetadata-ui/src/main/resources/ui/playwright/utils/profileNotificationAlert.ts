@@ -679,11 +679,12 @@ export const deleteAlertFromList = async (
   const displayName = getEntityDisplayName(alertDetails);
 
   await page.getByTestId(`alert-delete-${displayName}`).click();
+  await expect(page.getByTestId('delete-alert-popover')).toBeVisible();
 
   const deleteResponse = page.waitForResponse(
     (response) => response.request().method() === 'DELETE'
   );
-  await page.getByTestId('confirm-button').click();
+  await page.getByTestId('delete-alert-popover-confirm').click();
   expect((await deleteResponse).status()).toBe(200);
   await toastNotification(page, `"${displayName}" deleted successfully!`);
 };

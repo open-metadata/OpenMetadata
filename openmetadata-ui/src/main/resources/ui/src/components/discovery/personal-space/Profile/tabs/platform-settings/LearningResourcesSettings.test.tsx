@@ -28,7 +28,10 @@ import {
   LearningResource,
   updateLearningResource,
 } from '../../../../../../rest/learningResourceAPI';
-import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
 import {
   toLearningResourceFormValues,
   toLearningResourcePayload,
@@ -255,10 +258,62 @@ describe('Learning resources settings', () => {
 
     fireEvent.click(await screen.findByTestId('delete-intro-video'));
     await act(async () => {
-      fireEvent.click(await screen.findByTestId('confirm-button'));
+      fireEvent.click(
+        await screen.findByTestId('delete-learning-resource-popover-confirm')
+      );
     });
 
     expect(deleteLearningResource).toHaveBeenCalled();
+    expect(showSuccessToast).toHaveBeenCalled();
+  });
+
+  it('does not delete a resource when the confirmation is cancelled', async () => {
+    render(
+      <MemoryRouter>
+        <LearningResourcesSettings
+          onNavigate={onNavigate}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByTestId('delete-intro-video'));
+    fireEvent.click(
+      await screen.findByTestId('delete-learning-resource-popover-cancel')
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-learning-resource-popover')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(deleteLearningResource).not.toHaveBeenCalled();
+  });
+
+  it('keeps the confirmation open and reports the error when the delete fails', async () => {
+    (deleteLearningResource as jest.Mock).mockRejectedValue(new Error('boom'));
+    render(
+      <MemoryRouter>
+        <LearningResourcesSettings
+          onNavigate={onNavigate}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByTestId('delete-intro-video'));
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByTestId('delete-learning-resource-popover-confirm')
+      );
+    });
+
+    expect(showErrorToast).toHaveBeenCalled();
+    expect(showSuccessToast).not.toHaveBeenCalled();
+    expect(
+      screen.getByTestId('delete-learning-resource-popover')
+    ).toBeInTheDocument();
   });
 
   it('edit loads the resource, locks its name and saves an update', async () => {

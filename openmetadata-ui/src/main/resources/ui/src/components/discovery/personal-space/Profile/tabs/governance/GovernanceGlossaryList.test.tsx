@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 jest.mock('react-i18next', () => {
@@ -44,99 +49,9 @@ jest.mock(
     ))
 );
 
-jest.mock(
-  '../../../../../../pages/GlossaryTermRelationSettings/RelationshipTypeTable',
-  () =>
-    jest.fn(
-      ({
-        relationshipTypes,
-        onEdit,
-        onDelete,
-      }: {
-        relationshipTypes: Array<{ id: string; name: string }>;
-        onEdit: (item: { name: string }) => void;
-        onDelete: (item: { id: string; name: string }) => void;
-      }) => (
-        <div data-testid="relation-types-table">
-          {relationshipTypes.map((rt) => (
-            <div key={rt.id}>
-              <span data-testid={`relation-name-${rt.name}`}>{rt.name}</span>
-              <button
-                data-testid={`edit-${rt.name}-btn`}
-                onClick={() => onEdit(rt)}>
-                Edit
-              </button>
-              <button
-                data-testid={`delete-${rt.name}-btn`}
-                onClick={() => onDelete(rt)}>
-                Delete
-              </button>
-            </div>
-          ))}
-        </div>
-      )
-    )
-);
-
-jest.mock('@openmetadata/ui-core-components', () => {
-  const DialogContent = ({ children }: { children?: React.ReactNode }) => (
-    <div>{children}</div>
-  );
-  const DialogFooter = ({ children }: { children?: React.ReactNode }) => (
-    <div>{children}</div>
-  );
-  const Dialog = Object.assign(
-    ({
-      children,
-      title,
-      'data-testid': testId,
-    }: {
-      children?: React.ReactNode;
-      title?: string;
-      'data-testid'?: string;
-    }) => (
-      <div data-testid={testId ?? 'dialog'} role="dialog">
-        <span>{title}</span>
-        {children}
-      </div>
-    ),
-    { Content: DialogContent, Footer: DialogFooter }
-  );
-
-  return {
-    Button: ({
-      children,
-      onPress,
-      'data-testid': testId,
-    }: {
-      children?: React.ReactNode;
-      onPress?: () => void;
-      'data-testid'?: string;
-    }) => (
-      <button data-testid={testId} onClick={onPress}>
-        {children}
-      </button>
-    ),
-    Dialog,
-    Modal: ({ children }: { children?: React.ReactNode }) => (
-      <div>{children}</div>
-    ),
-    ModalOverlay: ({
-      children,
-      isOpen,
-    }: {
-      children?: React.ReactNode;
-      isOpen?: boolean;
-    }) => (isOpen ? <div data-testid="modal-overlay">{children}</div> : null),
-    PaginationCardWithControls: () => <div data-testid="pagination-controls" />,
-    Typography: ({ children }: { children?: React.ReactNode }) => (
-      <span>{children}</span>
-    ),
-  };
-});
-
 // Import AFTER mocks are defined so jest.requireMock returns the mocked module
 import { getRelationTypeUsageCounts } from '../../../../../../rest/glossaryAPI';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import {
   deleteRelationshipType,
   listRelationshipTypes,
@@ -223,33 +138,65 @@ describe('GovernanceGlossaryList', () => {
     });
   });
 
-  it('opens the delete confirm dialog when delete is clicked', async () => {
+  it('cannot delete a system-defined relation type', async () => {
+    await renderAndWaitForTable();
+
+    expect(screen.getByTestId('delete-broader-btn')).toBeDisabled();
+  });
+
+  it('opens the delete confirmation popover when delete is clicked', async () => {
     await renderAndWaitForTable();
     fireEvent.click(screen.getByTestId('delete-relatedTo-btn'));
 
-    expect(screen.getByTestId('modal-overlay')).toBeInTheDocument();
     expect(
-      screen.getByTestId('delete-relation-type-confirmation')
+      await screen.findByTestId('delete-relation-type-popover')
     ).toBeInTheDocument();
   });
 
-  it('calls deleteRelationshipType on confirm delete', async () => {
+  it('deletes the relation type on confirm and drops it from the list', async () => {
     await renderAndWaitForTable();
     fireEvent.click(screen.getByTestId('delete-relatedTo-btn'));
     await act(async () => {
-      fireEvent.click(screen.getByTestId('confirm-delete-btn'));
+      fireEvent.click(
+        await screen.findByTestId('delete-relation-type-popover-confirm')
+      );
     });
 
     expect(mockDeleteRelationshipType).toHaveBeenCalledWith('rt-2');
+    expect(
+      screen.queryByTestId('relation-name-relatedTo')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the popover open and the row listed when the delete fails', async () => {
+    mockDeleteRelationshipType.mockRejectedValue(new Error('boom'));
+    await renderAndWaitForTable();
+    fireEvent.click(screen.getByTestId('delete-relatedTo-btn'));
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByTestId('delete-relation-type-popover-confirm')
+      );
+    });
+
+    expect(showErrorToast).toHaveBeenCalled();
+    expect(
+      screen.getByTestId('delete-relation-type-popover')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('relation-name-relatedTo')).toBeInTheDocument();
   });
 
   it('does not call deleteRelationshipType on cancel', async () => {
     await renderAndWaitForTable();
     fireEvent.click(screen.getByTestId('delete-relatedTo-btn'));
+    fireEvent.click(
+      await screen.findByTestId('delete-relation-type-popover-cancel')
+    );
 
-    expect(screen.getByTestId('modal-overlay')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('label.cancel'));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-relation-type-popover')
+      ).not.toBeInTheDocument()
+    );
 
     expect(mockDeleteRelationshipType).not.toHaveBeenCalled();
   });

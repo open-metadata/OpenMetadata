@@ -143,6 +143,7 @@ test.describe('AI mode — notification alerts live in the settings modal', () =
     await openAlertDetail(page, deletableAlert);
 
     await page.getByTestId('delete-alert-btn').click();
+    await expect(page.getByTestId('delete-alert-popover')).toBeVisible();
 
     const deleteResponse = page.waitForResponse(
       (response) =>
@@ -152,7 +153,7 @@ test.describe('AI mode — notification alerts live in the settings modal', () =
             `/api/v1/events/subscriptions/${deletableAlert.responseData.id}`
           ) && response.request().method() === 'DELETE'
     );
-    await page.getByTestId('confirm-button').click();
+    await page.getByTestId('delete-alert-popover-confirm').click();
 
     expect((await deleteResponse).status()).toBe(200);
     await expect(page).toHaveURL(/\/my-data#notification\/alerts$/);

@@ -28,15 +28,14 @@ import {
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
 import { ReactNode, useEffect, useRef } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Team } from '../../../../../../generated/entity/teams/team';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import type { UseMembersTeamHeaderParams } from './MembersTeamDetail.types';
 
-type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
-
 const buildTitleSuffix = (
-  t: TranslateFn,
+  t: TFunction,
   team: Team,
   canEdit: boolean,
   isEditingName: boolean,
@@ -52,7 +51,7 @@ const buildTitleSuffix = (
     <Box align="center" direction="row" gap={2}>
       {team.deleted && (
         <Badge color="error" data-testid="deleted-badge" size="sm">
-          {t('label.deleted')}
+          {t<string>('label.deleted')}
         </Badge>
       )}
       {canEdit && (
@@ -72,7 +71,7 @@ const buildTitleSuffix = (
 };
 
 const buildTitleInput = (
-  t: TranslateFn,
+  t: TFunction,
   isEditingName: boolean,
   editNameValue: string,
   onEditNameValueChange: (value: string) => void,
@@ -99,19 +98,19 @@ const buildTitleInput = (
         data-testid="save-display-name"
         size="xs"
         onPress={onSaveDisplayName}>
-        {t('label.save')}
+        {t<string>('label.save')}
       </Button>
       <Button
         color="tertiary"
         data-testid="cancel-display-name"
         size="xs"
         onPress={onCancelEditName}>
-        {t('label.cancel')}
+        {t<string>('label.cancel')}
       </Button>
     </Box>
   ) : undefined;
 
-const getJoinableLabel = (t: TranslateFn, team: Team): string =>
+const getJoinableLabel = (t: TFunction, team: Team): string =>
   team.isJoinable ? t('label.make-private') : t('label.make-public');
 
 interface TeamMenuItems {
@@ -153,7 +152,7 @@ const getTeamMenuItems = (
 
 // Renders only the items getTeamMenuItems allows, in menu order.
 const buildTeamActionsMenu = (
-  t: TranslateFn,
+  t: TFunction,
   items: TeamMenuItems,
   team: Team,
   params: UseMembersTeamHeaderParams
@@ -173,7 +172,7 @@ const buildTeamActionsMenu = (
           data-testid="export-team"
           icon={Download01}
           onAction={onTeamExport}>
-          {t('label.export-entity', {
+          {t<string>('label.export-entity', {
             entity: t('label.team'),
           })}
         </Dropdown.Item>
@@ -183,7 +182,7 @@ const buildTeamActionsMenu = (
           data-testid="import-team"
           icon={Upload01}
           onAction={onTeamImport}>
-          {t('label.import-entity', {
+          {t<string>('label.import-entity', {
             entity: t('label.team'),
           })}
         </Dropdown.Item>
@@ -201,7 +200,7 @@ const buildTeamActionsMenu = (
           data-testid="restore-team"
           icon={Restore}
           onAction={onRestoreTeam}>
-          {t('label.restore-entity', {
+          {t<string>('label.restore-entity', {
             entity: t('label.team'),
           })}
         </Dropdown.Item>
@@ -211,7 +210,7 @@ const buildTeamActionsMenu = (
           data-testid="delete-team"
           icon={Trash01}
           onAction={onDelete}>
-          {t('label.delete')}
+          {t<string>('label.delete')}
         </Dropdown.Item>
       )}
     </Dropdown.Menu>
@@ -229,11 +228,12 @@ const canJoinOrLeave = (
   Boolean(isCurrentUserMember || team.isJoinable || canEditAll);
 
 const buildHeaderActions = (
-  t: TranslateFn,
+  t: TFunction,
   team: Team,
   params: UseMembersTeamHeaderParams
 ): ReactNode => {
-  const { isCurrentUserMember, onJoinTeam, onLeaveTeam } = params;
+  const { isCurrentUserMember, menuTriggerRef, onJoinTeam, onLeaveTeam } =
+    params;
   const showJoinLeave = canJoinOrLeave(team, params);
   const menuItems = getTeamMenuItems(team, params);
   const hasMenu = Object.values(menuItems).some(Boolean);
@@ -248,12 +248,14 @@ const buildHeaderActions = (
           }
           size="xs"
           onPress={isCurrentUserMember ? onLeaveTeam : onJoinTeam}>
-          {isCurrentUserMember ? t('label.leave-team') : t('label.join-team')}
+          {isCurrentUserMember
+            ? t<string>('label.leave-team')
+            : t<string>('label.join-team')}
         </Button>
       )}
       {hasMenu && (
         <Dropdown.Root>
-          <Dropdown.DotsButton />
+          <Dropdown.DotsButton ref={menuTriggerRef} />
           <Dropdown.Popover className="tw:w-min">
             {buildTeamActionsMenu(t, menuItems, team, params)}
           </Dropdown.Popover>

@@ -180,9 +180,8 @@ test.describe('AI Profile Users', () => {
         response.url().includes('hardDelete=false')
     );
     await page.getByTestId(`delete-user-btn-${userName}`).click();
-    await page.getByTestId('delete-modal').waitFor();
-    await page.getByTestId('soft-delete').click();
-    await page.getByTestId('confirm-button').click();
+    await expect(page.getByTestId('delete-user-popover')).toBeVisible();
+    await page.getByTestId('delete-user-popover-confirm').click();
     await softDelete;
 
     // Show deleted users, then restore.
@@ -193,10 +192,8 @@ test.describe('AI Profile Users', () => {
       response.url().includes('/api/v1/users/restore')
     );
     await page.getByTestId(`restore-user-btn-${userName}`).click();
-    await page
-      .getByTestId('restore-user-modal')
-      .getByRole('button', { name: 'Restore' })
-      .click();
+    await expect(page.getByTestId('restore-user-popover')).toBeVisible();
+    await page.getByTestId('restore-user-popover-confirm').click();
     await restore;
   });
 
@@ -215,9 +212,8 @@ test.describe('AI Profile Users', () => {
         response.url().includes('hardDelete=true')
     );
     await page.getByTestId(`delete-user-btn-${userName}`).click();
-    await page.getByTestId('delete-modal').waitFor();
-    await page.getByTestId('hard-delete').click();
-    await page.getByTestId('confirm-button').click();
+    await expect(page.getByTestId('delete-user-popover')).toBeVisible();
+    await page.getByTestId('delete-user-popover-hard-delete').click();
     await hardDelete;
   });
 

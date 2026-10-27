@@ -11,13 +11,21 @@
  *  limitations under the License.
  */
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { compare } from 'fast-json-patch';
+import { ReactNode, useState } from 'react';
 import { EntityReference } from '../../../../../../generated/entity/data/table';
 import {
   getAlertsFromName,
   updateNotificationAlert,
 } from '../../../../../../rest/alertsAPI';
+import { deleteEntity } from '../../../../../../rest/miscAPI';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import NotificationAlertDetail from './NotificationAlertDetail';
 
@@ -33,11 +41,12 @@ const NEW_OWNER: EntityReference = {
   name: 'added',
 };
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}));
+jest.mock('react-i18next', () => {
+  // Stable t identity: the header-injection effect depends on t.
+  const t = (key: string) => key;
+
+  return { useTranslation: () => ({ t }) };
+});
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
@@ -49,11 +58,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest.fn().mockImplementation(({ children, onPress, ...props }) => (
     <button {...props} onClick={onPress}>
       {children}
-    </button>
-  )),
-  ButtonUtility: jest.fn().mockImplementation(({ onPress, ...props }) => (
-    <button {...props} onClick={onPress}>
-      {props['data-testid']}
     </button>
   )),
   Typography: jest
@@ -172,8 +176,12 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../../../../../utils/DeleteWidget/DeleteWidgetUtils', () => ({
-  hardDeleteEntity: jest.fn().mockResolvedValue(true),
+jest.mock('../../../../../../rest/miscAPI', () => ({
+  deleteEntity: jest.fn().mockResolvedValue({ status: 200, data: {} }),
+}));
+
+jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: () => ({ onLogoutHandler: jest.fn() }),
 }));
 
 jest.mock('../../../../../../constants/HelperTextUtil', () => ({
@@ -182,18 +190,6 @@ jest.mock('../../../../../../constants/HelperTextUtil', () => ({
 
 jest.mock('../../../../../common/Loader/Loader', () =>
   jest.fn(() => <div data-testid="loader" />)
-);
-
-jest.mock('../../../../../common/DeleteModal/DeleteModal', () =>
-  jest.fn(({ open, onDelete }) =>
-    open ? (
-      <div data-testid="delete-modal">
-        <button data-testid="confirm-delete" onClick={onDelete}>
-          confirm
-        </button>
-      </div>
-    ) : null
-  )
 );
 
 jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
@@ -234,6 +230,26 @@ jest.mock('./NotificationRecentEvents', () =>
 jest.mock('fast-json-patch', () => ({
   compare: jest.fn().mockReturnValue([]),
 }));
+
+// Renders the header actions the detail injects, as the settings modal does.
+const DetailWithHeader = ({
+  onNavigate,
+}: {
+  onNavigate: (view: unknown) => void;
+}) => {
+  const [actions, setActions] = useState<ReactNode>();
+
+  return (
+    <>
+      {actions}
+      <NotificationAlertDetail
+        fqn="test-alert"
+        onNavigate={onNavigate}
+        onSetHeaderActions={setActions}
+      />
+    </>
+  );
+};
 
 describe('NotificationAlertDetail', () => {
   const mockOnNavigate = jest.fn();
@@ -346,5 +362,44 @@ describe('NotificationAlertDetail', () => {
     // The whole owners array should not be replaced; existing owner is preserved.
     expect(patchedOwners).toBeUndefined();
     expect(patch).toEqual([{ op: 'add', path: '/owners/1', value: NEW_OWNER }]);
+  });
+
+  it('deletes the alert and returns to the list once the popover is confirmed', async () => {
+    render(<DetailWithHeader onNavigate={mockOnNavigate} />);
+
+    fireEvent.click(await screen.findByTestId('delete-alert-btn'));
+
+    expect(
+      await screen.findByTestId('delete-alert-popover-title')
+    ).toHaveTextContent('label.delete-entity');
+
+    fireEvent.click(screen.getByTestId('delete-alert-popover-confirm'));
+
+    await waitFor(() =>
+      expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' })
+    );
+
+    expect(deleteEntity).toHaveBeenCalledWith(
+      'events/subscriptions',
+      'alert-1',
+      false,
+      true
+    );
+  });
+
+  it('does not delete the alert when the popover is cancelled', async () => {
+    render(<DetailWithHeader onNavigate={mockOnNavigate} />);
+
+    fireEvent.click(await screen.findByTestId('delete-alert-btn'));
+    fireEvent.click(await screen.findByTestId('delete-alert-popover-cancel'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-alert-popover')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(deleteEntity).not.toHaveBeenCalled();
+    expect(mockOnNavigate).not.toHaveBeenCalled();
   });
 });

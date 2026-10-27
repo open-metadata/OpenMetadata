@@ -170,7 +170,7 @@ describe('Data Quality settings', () => {
     await renderList();
 
     fireEvent.click(screen.getByTestId('delete-freshness'));
-    const dialog = await screen.findByTestId('delete-dimension-dialog');
+    const dialog = await screen.findByTestId('delete-dimension-popover');
 
     expect(dialog).toHaveTextContent('message.dimension-in-use-count');
     expect(dialog).toHaveTextContent(
@@ -178,11 +178,44 @@ describe('Data Quality settings', () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('confirm-delete-dimension'));
+      fireEvent.click(screen.getByTestId('delete-dimension-popover-confirm'));
     });
 
     expect(deleteDataQualityDimension).toHaveBeenCalledWith('cust-1');
     expect(getDataQualityDimensions).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not delete when the confirmation is cancelled', async () => {
+    await renderList();
+    fireEvent.click(screen.getByTestId('delete-freshness'));
+    fireEvent.click(
+      await screen.findByTestId('delete-dimension-popover-cancel')
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-dimension-popover')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(deleteDataQualityDimension).not.toHaveBeenCalled();
+  });
+
+  it('keeps the confirmation open and reports the error when the delete fails', async () => {
+    (deleteDataQualityDimension as jest.Mock).mockRejectedValue(
+      new Error('boom')
+    );
+    await renderList();
+    fireEvent.click(screen.getByTestId('delete-freshness'));
+    await screen.findByTestId('delete-dimension-popover');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('delete-dimension-popover-confirm'));
+    });
+
+    expect(showErrorToast).toHaveBeenCalled();
+    expect(screen.getByTestId('delete-dimension-popover')).toBeInTheDocument();
+    expect(screen.getByTestId('dimension-freshness')).toBeInTheDocument();
   });
 
   it('cannot be closed while the delete is in flight', async () => {
@@ -195,23 +228,21 @@ describe('Data Quality settings', () => {
     );
     await renderList();
     fireEvent.click(screen.getByTestId('delete-freshness'));
-    await screen.findByTestId('delete-dimension-dialog');
-
-    expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument();
+    await screen.findByTestId('delete-dimension-popover');
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('confirm-delete-dimension'));
+      fireEvent.click(screen.getByTestId('delete-dimension-popover-confirm'));
     });
 
     expect(
-      screen.queryByRole('button', { name: /close/i })
-    ).not.toBeInTheDocument();
+      screen.getByTestId('delete-dimension-popover-cancel')
+    ).toBeDisabled();
 
-    fireEvent.keyDown(screen.getByTestId('delete-dimension-dialog'), {
+    fireEvent.keyDown(screen.getByTestId('delete-dimension-popover'), {
       key: 'Escape',
     });
 
-    expect(screen.getByTestId('delete-dimension-dialog')).toBeInTheDocument();
+    expect(screen.getByTestId('delete-dimension-popover')).toBeInTheDocument();
 
     await act(async () => {
       finishDelete();
@@ -219,7 +250,7 @@ describe('Data Quality settings', () => {
 
     await waitFor(() =>
       expect(
-        screen.queryByTestId('delete-dimension-dialog')
+        screen.queryByTestId('delete-dimension-popover')
       ).not.toBeInTheDocument()
     );
   });

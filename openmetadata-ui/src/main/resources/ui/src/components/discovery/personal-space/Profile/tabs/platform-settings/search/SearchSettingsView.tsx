@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, Button, ConfirmPopover } from '@openmetadata/ui-core-components';
 import { Plus, RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -38,7 +38,6 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
-import ConfirmDialog from '../ConfirmDialog';
 import type { PlatformSettingsPageProps } from '../PlatformSettings.types';
 import { SettingsSkeleton } from '../SettingsFormLayout';
 import FieldValueBoostDialog from './FieldValueBoostDialog';
@@ -73,9 +72,6 @@ const SearchSettingsView = ({
   const [editingBoost, setEditingBoost] = useState<{
     boost?: FieldValueBoost;
   } | null>(null);
-  const [confirm, setConfirm] = useState<'reset' | 'disable-columns' | null>(
-    null
-  );
 
   const applyConfig = useCallback(
     (next: SearchSettings, keepTermBoostDraft = false) => {
@@ -156,7 +152,8 @@ const SearchSettingsView = ({
     }
   };
 
-  const handleReset = async () => {
+  /** Resolves `false` when the restore failed, keeping the confirmation open. */
+  const handleReset = useCallback(async (): Promise<boolean> => {
     setIsUpdating(true);
     try {
       await restoreSettingsConfig(SettingType.SearchSettings);
@@ -167,32 +164,42 @@ const SearchSettingsView = ({
           })
         );
       }
+
+      return true;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return false;
     } finally {
       setIsUpdating(false);
-      setConfirm(null);
     }
-  };
+  }, [fetchConfig, t]);
 
   useEffect(() => {
     if (!isAdminUser) {
       return undefined;
     }
     onSetHeaderActions(
-      <Button
-        color="secondary"
-        data-testid="reset-search-settings-btn"
-        iconLeading={RefreshCcw01}
-        isDisabled={isUpdating}
-        size="xs"
-        onPress={() => setConfirm('reset')}>
-        {t('label.reset')}
-      </Button>
+      <ConfirmPopover
+        confirmText={t('label.reset')}
+        data-testid="reset-search-settings-popover"
+        description={t('message.reset-search-settings-confirmation')}
+        title={t('label.reset')}
+        variant="primary"
+        onConfirm={handleReset}>
+        <Button
+          color="secondary"
+          data-testid="reset-search-settings-btn"
+          iconLeading={RefreshCcw01}
+          isDisabled={isUpdating}
+          size="xs">
+          {t('label.reset')}
+        </Button>
+      </ConfirmPopover>
     );
 
     return () => onSetHeaderActions(undefined);
-  }, [isAdminUser, isUpdating, onSetHeaderActions, t]);
+  }, [handleReset, isAdminUser, isUpdating, onSetHeaderActions, t]);
 
   // A new boost joins the list once it has both a tag and a boost.
   const handleTermBoostChange = (boost: TermBoost) => {
@@ -248,7 +255,6 @@ const SearchSettingsView = ({
       <GlobalSearchSettings
         globalSettings={global}
         isDisabled={isUpdating}
-        onDisableColumnIndexing={() => setConfirm('disable-columns')}
         onUpdate={updateGlobalSettings}
       />
 
@@ -344,31 +350,6 @@ const SearchSettingsView = ({
           onSave={handleSaveFieldValueBoost}
         />
       )}
-
-      <ConfirmDialog
-        confirmLabel={t('label.reset')}
-        isLoading={isUpdating}
-        isOpen={confirm === 'reset'}
-        message={t('message.reset-search-settings-confirmation')}
-        testId="reset-search-settings-dialog"
-        title={t('label.reset')}
-        onCancel={() => setConfirm(null)}
-        onConfirm={handleReset}
-      />
-      <ConfirmDialog
-        isDestructive
-        confirmLabel={t('label.disable')}
-        isLoading={isUpdating}
-        isOpen={confirm === 'disable-columns'}
-        message={t('message.disable-column-indexing-confirmation')}
-        testId="disable-column-indexing-dialog"
-        title={t('label.column-indexing')}
-        onCancel={() => setConfirm(null)}
-        onConfirm={async () => {
-          await updateGlobalSettings({ enableColumnIndexing: false });
-          setConfirm(null);
-        }}
-      />
     </Box>
   );
 };

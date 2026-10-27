@@ -24,7 +24,9 @@ import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import type { Key, ReactNode } from 'react';
 import { useEffect, useMemo } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../../../../enums/entity.enum';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { getTaskById } from '../../../../../../rest/tasksAPI';
@@ -33,6 +35,7 @@ import {
   getUserOnlineStatus,
   getVisibleEmail,
 } from '../../../../../../utils/UsersPureUtils';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import { TASK_ID_PREFIX } from '../../../../../MyData/Widgets/MyTasksWidget/MyTasksWidget.constants';
 import { useUserActivityCount } from '../../../InboxPage/useInboxActivity';
 import { useUserOpenTaskCount } from '../../../InboxPage/useUserTasks';
@@ -49,10 +52,6 @@ import type {
 } from './Members.types';
 import { buildMembersHeaderMaps } from './Members.utils';
 
-export type TranslateFn = (
-  key: string,
-  options?: Record<string, unknown>
-) => string;
 type TabCounts = Partial<Record<UserDetailTab, number>>;
 
 const buildLoadingHeader = (): Partial<ProfileHeaderOverride> => ({
@@ -70,7 +69,7 @@ const buildLoadingHeader = (): Partial<ProfileHeaderOverride> => ({
 });
 
 const buildStatusBadges = (
-  t: TranslateFn,
+  t: TFunction,
   user: User,
   isSelf: boolean
 ): ReactNode => {
@@ -84,17 +83,17 @@ const buildStatusBadges = (
           data-testid="user-you-badge"
           size="sm"
           type="pill-color">
-          {t('label.you')}
+          {t<string>('label.you')}
         </Badge>
       )}
       {user.isAdmin && !user.isBot && (
         <Badge color="brand" size="sm" type="pill-color">
-          {t('label.admin')}
+          {t<string>('label.admin')}
         </Badge>
       )}
       {user.isBot && (
         <Badge color="gray-blue" size="sm" type="pill-color">
-          {t('label.bot')}
+          {t<string>('label.bot')}
         </Badge>
       )}
       {user.deleted && (
@@ -103,7 +102,7 @@ const buildStatusBadges = (
           data-testid="user-deleted-badge"
           size="sm"
           type="pill-color">
-          {t('label.deleted')}
+          {t<string>('label.deleted')}
         </Badge>
       )}
       {onlineStatus && (
@@ -117,36 +116,44 @@ const buildStatusBadges = (
   );
 };
 
-// Legacy parity: soft and hard delete share one entry point (the modal offers
+// Legacy parity: soft and hard delete share one entry point (the popover offers
 // both); a deleted user can only be purged, since Restore lives in its banner.
 const buildDeleteAction = (
-  t: TranslateFn,
+  t: TFunction,
   user: User,
-  onDelete: () => void
+  afterDelete: (isSoftDelete?: boolean) => void
 ): ReactNode => {
   const label = user.deleted
     ? t('label.delete-permanently')
     : t('label.delete');
 
   return (
-    <ButtonUtility
-      aria-label={label}
-      color="tertiary"
-      data-testid={
-        user.deleted
-          ? 'user-detail-delete-permanently-button'
-          : 'user-detail-delete-button'
-      }
-      icon={Trash01}
-      size="sm"
-      tooltip={label}
-      onClick={onDelete}
-    />
+    <DeleteEntityPopover
+      isRecursiveDelete
+      afterDeleteAction={afterDelete}
+      allowSoftDelete={!user.deleted}
+      data-testid="delete-user-popover"
+      entityId={user.id}
+      entityName={getEntityName(user)}
+      entityType={EntityType.USER}>
+      <ButtonUtility
+        aria-label={label}
+        color="tertiary"
+        data-testid={
+          user.deleted
+            ? 'user-detail-delete-permanently-button'
+            : 'user-detail-delete-button'
+        }
+        icon={Trash01}
+        size="sm"
+        tooltip={label}
+      />
+    </DeleteEntityPopover>
   );
 };
 
 const buildTabs = (
-  t: TranslateFn,
+  t: TFunction,
   activeTab: UserDetailTab,
   counts: TabCounts,
   hiddenTabs: ReadonlySet<UserDetailTab>,
@@ -164,7 +171,7 @@ const buildTabs = (
           data-testid={`user-detail-tab-${id}`}
           id={id}
           key={id}>
-          {t(USER_DETAIL_TAB_LABEL_KEYS[id])}
+          {t<string>(USER_DETAIL_TAB_LABEL_KEYS[id])}
         </Tabs.Item>
       ))}
     </Tabs.List>
@@ -176,7 +183,7 @@ const buildTabs = (
  * user-detail header and your own Profile header. A masked email is left out.
  */
 export const buildUserIdentityHeader = (
-  t: TranslateFn,
+  t: TFunction,
   user: User,
   isSelf: boolean
 ): Partial<ProfileHeaderOverride> => {
@@ -222,7 +229,7 @@ interface UseMembersUserDetailHeaderParams {
   canDelete: boolean;
   hiddenTabs: ReadonlySet<UserDetailTab>;
   onTabChange: (key: Key) => void;
-  onDelete: () => void;
+  afterDelete: (isSoftDelete?: boolean) => void;
   onSetHeader: MembersUserDetailProps['onSetHeader'];
 }
 
@@ -239,7 +246,7 @@ export const useMembersUserDetailHeader = ({
   canDelete,
   hiddenTabs,
   onTabChange,
-  onDelete,
+  afterDelete,
   onSetHeader,
 }: UseMembersUserDetailHeaderParams) => {
   const { t } = useTranslation();
@@ -281,7 +288,7 @@ export const useMembersUserDetailHeader = ({
     }
     onSetHeader({
       ...buildUserIdentityHeader(t, user, isSelf),
-      actions: canDelete ? buildDeleteAction(t, user, onDelete) : undefined,
+      actions: canDelete ? buildDeleteAction(t, user, afterDelete) : undefined,
       tabs: buildTabs(t, activeTab, counts, hiddenTabs, onTabChange),
     });
   }, [
@@ -295,7 +302,7 @@ export const useMembersUserDetailHeader = ({
     canDelete,
     hiddenTabs,
     onTabChange,
-    onDelete,
+    afterDelete,
     onSetHeader,
     t,
   ]);

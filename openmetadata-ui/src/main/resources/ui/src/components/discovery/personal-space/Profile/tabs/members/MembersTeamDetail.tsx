@@ -86,8 +86,7 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
-import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import type { ExpandableConfig } from '../../../../../common/Table/Table.interface';
@@ -99,11 +98,7 @@ import type { MembersTeamDetailProps } from './Members.types';
 import MembersAssetsTab from './MembersAssetsTab';
 import MembersInlineEntityTab from './MembersInlineEntityTab';
 import MembersTeamDescription from './MembersTeamDescription';
-import type {
-  MovedTeam,
-  RemoveEntity,
-  TeamTab,
-} from './MembersTeamDetail.types';
+import type { MovedTeam, TeamTab } from './MembersTeamDetail.types';
 import {
   getAvailableTabs,
   getChildTeamColumns,
@@ -182,7 +177,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     useState<EntityDetailsObjectInterface>();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeletePopoverOpen, setIsDeletePopoverOpen] = useState(false);
+  // The team menu lives in the page header; the delete popover anchors to it.
+  const teamMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [usersSearchTerm, setUsersSearchTerm] = useState('');
   const [isTableHovered, setIsTableHovered] = useState(false);
@@ -211,9 +208,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const [isDescEditing, setIsDescEditing] = useState(false);
   const [isDescSaving, setIsDescSaving] = useState(false);
   const descEditorRef = useRef<EditorContentRef>(null);
-
-  // Remove confirmation (user / role / policy)
-  const [removeEntity, setRemoveEntity] = useState<RemoveEntity>();
 
   // Team users tab (full user objects with roles)
   const [teamUsers, setTeamUsers] = useState<User[]>([]);
@@ -711,9 +705,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   }, [team, showModal]);
 
   const handleRemoveUser = useCallback(
-    async (userId: string) => {
+    async (userId: string): Promise<boolean> => {
       if (!team) {
-        return;
+        return false;
       }
       try {
         await deleteUserFromTeam(team.id, userId);
@@ -725,8 +719,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         // during a search doesn't drop the search term: the refetch runs the
         // backend search when a term is active, the page fetch otherwise.
         refetchTeamUsers.current();
+
+        return true;
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        return false;
       }
     },
     [team, t, fetchTeam]
@@ -917,47 +915,32 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     [handleTeamExpand]
   );
 
+  const teamName = team ? getEntityName(team) : '';
+
   const userColumns = useMemo(
     () =>
-      getUserColumns(t, canEditAll, goTo, (record) =>
-        setRemoveEntity({
-          ref: record as unknown as EntityReference,
-          kind: 'user',
-        })
+      getUserColumns(t, canEditAll, goTo, teamName, (record) =>
+        handleRemoveUser(record.id)
       ),
-    [t, canEditAll, goTo]
+    [t, canEditAll, goTo, teamName, handleRemoveUser]
   );
 
   const handleRemoveEntity = useCallback(
-    async (field: InlineAddField, ref: EntityReference) => {
+    async (field: InlineAddField, ref: EntityReference): Promise<boolean> => {
       if (!team) {
-        return;
+        return false;
       }
       setIsSavingInline(true);
-      await handlePatchTeam({
+      const ok = await handlePatchTeam({
         ...team,
         [field]: (team[field] ?? []).filter((e) => e.id !== ref.id),
       });
       setIsSavingInline(false);
+
+      return ok;
     },
     [team, handlePatchTeam]
   );
-
-  const handleConfirmRemove = useCallback(async () => {
-    if (!removeEntity) {
-      return;
-    }
-    const { ref, kind } = removeEntity;
-    if (kind === 'user') {
-      await handleRemoveUser(ref.id);
-    } else {
-      await handleRemoveEntity(
-        kind === 'role' ? 'defaultRoles' : 'policies',
-        ref
-      );
-    }
-    setRemoveEntity(undefined);
-  }, [removeEntity, handleRemoveUser, handleRemoveEntity]);
 
   const roleColumns = useMemo(
     () =>
@@ -966,10 +949,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         canEditAll,
         isSavingInline,
         goTo,
-        (ref) => setRemoveEntity({ ref, kind: 'role' }),
+        teamName,
+        (ref) => handleRemoveEntity('defaultRoles', ref),
         (ref) => profileHash.role(ref.fullyQualifiedName ?? ref.name ?? '')
       ),
-    [t, canEditAll, isSavingInline, goTo]
+    [t, canEditAll, isSavingInline, goTo, teamName, handleRemoveEntity]
   );
 
   const policyColumns = useMemo(
@@ -979,10 +963,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         canEditAll,
         isSavingInline,
         goTo,
-        (ref) => setRemoveEntity({ ref, kind: 'policy' }),
+        teamName,
+        (ref) => handleRemoveEntity('policies', ref),
         (ref) => profileHash.policy(ref.fullyQualifiedName ?? ref.name ?? '')
       ),
-    [t, canEditAll, isSavingInline, goTo]
+    [t, canEditAll, isSavingInline, goTo, teamName, handleRemoveEntity]
   );
 
   const availableTabs = useMemo(
@@ -1167,7 +1152,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     onRestoreTeam: handleRestoreTeam,
     onJoinTeam: handleJoinTeam,
     onLeaveTeam: handleLeaveTeam,
-    onDelete: () => setIsDeleting(true),
+    onDelete: () => setIsDeletePopoverOpen(true),
+    menuTriggerRef: teamMenuTriggerRef,
     onSetHeader,
   });
 
@@ -1421,34 +1407,18 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         </div>
       </Box>
 
-      {isDeleting && (
-        <DeleteEntityModal
-          isRecursiveDelete
-          afterDeleteAction={() => onNavigate({ type: 'teams' })}
-          allowSoftDelete={!team.deleted}
-          entityId={team.id}
-          entityName={getEntityName(team)}
-          entityType={EntityType.TEAM}
-          visible={isDeleting}
-          onCancel={() => setIsDeleting(false)}
-        />
-      )}
-
-      {removeEntity && (
-        <DeleteModal
-          open
-          entityTitle={getEntityName(removeEntity.ref)}
-          message={t(
-            'message.are-you-sure-you-want-to-remove-child-from-parent',
-            {
-              child: getEntityName(removeEntity.ref),
-              parent: getEntityName(team),
-            }
-          )}
-          onCancel={() => setRemoveEntity(undefined)}
-          onDelete={handleConfirmRemove}
-        />
-      )}
+      <DeleteEntityPopover
+        isRecursiveDelete
+        afterDeleteAction={() => onNavigate({ type: 'teams' })}
+        allowSoftDelete={!team.deleted}
+        data-testid="delete-team-popover"
+        entityId={team.id}
+        entityName={teamName}
+        entityType={EntityType.TEAM}
+        isOpen={isDeletePopoverOpen}
+        triggerRef={teamMenuTriggerRef}
+        onOpenChange={setIsDeletePopoverOpen}
+      />
     </Box>
   );
 };

@@ -23,15 +23,15 @@ import {
   deepClone,
   Operation as JsonPatchOperation,
 } from 'fast-json-patch';
-import React, { useState } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { deleteEntity } from '../../../../../../rest/miscAPI';
 import {
   getPersonaByName,
   updatePersona,
 } from '../../../../../../rest/PersonaAPI';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import {
   showErrorToast,
@@ -52,8 +52,12 @@ jest.mock('../../../../../../rest/PersonaAPI', () => ({
   updatePersona: jest.fn(),
 }));
 
-jest.mock('../../../../../../utils/DeleteWidget/DeleteWidgetUtils', () => ({
-  hardDeleteEntity: jest.fn(),
+jest.mock('../../../../../../rest/miscAPI', () => ({
+  deleteEntity: jest.fn(),
+}));
+
+jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: () => ({ onLogoutHandler: jest.fn() }),
 }));
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
@@ -87,30 +91,6 @@ jest.mock(
   () =>
     ({ markdown }: { markdown: string }) =>
       <div data-testid="description-preview">{markdown}</div>
-);
-
-jest.mock(
-  '../../../../../common/DeleteModal/DeleteModal',
-  () =>
-    ({
-      onCancel,
-      onDelete,
-      open,
-    }: {
-      onCancel: () => void;
-      onDelete: () => void;
-      open: boolean;
-    }) =>
-      open ? (
-        <div data-testid="delete-modal">
-          <button data-testid="confirm-delete" type="button" onClick={onDelete}>
-            delete
-          </button>
-          <button data-testid="cancel-delete" type="button" onClick={onCancel}>
-            cancel
-          </button>
-        </div>
-      ) : null
 );
 
 jest.mock(
@@ -212,25 +192,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
-    ButtonUtility: ({
-      'data-testid': testId,
-      isDisabled,
-      onPress,
-      tooltip,
-    }: {
-      'data-testid'?: string;
-      isDisabled?: boolean;
-      onPress?: () => void;
-      tooltip?: string;
-    }) => (
-      <button
-        aria-label={tooltip}
-        data-testid={testId}
-        disabled={isDisabled}
-        type="button"
-        onClick={onPress}
-      />
-    ),
+    // Real trigger + popover: the delete confirmation is wired through react-aria's press context.
+    ButtonUtility: jest.requireActual('@openmetadata/ui-core-components')
+      .ButtonUtility,
+    ConfirmPopover: jest.requireActual('@openmetadata/ui-core-components')
+      .ConfirmPopover,
     Card: Object.assign(
       ({ children }: React.PropsWithChildren) => <div>{children}</div>,
       {
@@ -559,42 +525,65 @@ describe('PersonaDetail', () => {
     ]);
   });
 
-  it('hard-deletes the persona from the delete modal and notifies the parent', async () => {
-    (hardDeleteEntity as jest.Mock).mockResolvedValueOnce(true);
+  it('hard-deletes the persona from the delete popover and notifies the parent', async () => {
+    (deleteEntity as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      data: {},
+    });
     await renderDetail();
 
-    expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('delete-persona-popover')
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('delete-persona-btn'));
-    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    expect(
+      await screen.findByTestId('delete-persona-popover-title')
+    ).toHaveTextContent('label.delete-entity');
+
+    fireEvent.click(screen.getByTestId('delete-persona-popover-confirm'));
 
     await waitFor(() => expect(mockOnDeleted).toHaveBeenCalled());
 
-    expect(hardDeleteEntity).toHaveBeenCalledWith(
-      'Analyst',
+    expect(deleteEntity).toHaveBeenCalledWith(
+      'personas',
       'persona-1',
-      'persona'
+      false,
+      true
     );
-    expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-persona-popover')
+      ).not.toBeInTheDocument()
+    );
   });
 
   it('does not notify the parent when deletion fails or is cancelled', async () => {
-    (hardDeleteEntity as jest.Mock).mockResolvedValueOnce(false);
+    (deleteEntity as jest.Mock).mockRejectedValueOnce(new Error('boom'));
     await renderDetail();
 
     fireEvent.click(screen.getByTestId('delete-persona-btn'));
-    fireEvent.click(screen.getByTestId('cancel-delete'));
-
-    expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('delete-persona-btn'));
-    fireEvent.click(screen.getByTestId('confirm-delete'));
+    fireEvent.click(await screen.findByTestId('delete-persona-popover-cancel'));
 
     await waitFor(() =>
-      expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument()
+      expect(
+        screen.queryByTestId('delete-persona-popover')
+      ).not.toBeInTheDocument()
     );
 
-    expect(hardDeleteEntity).toHaveBeenCalledTimes(1);
+    expect(deleteEntity).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('delete-persona-btn'));
+    fireEvent.click(
+      await screen.findByTestId('delete-persona-popover-confirm')
+    );
+
+    await waitFor(() => expect(deleteEntity).toHaveBeenCalledTimes(1));
+
+    // A failed delete keeps the confirmation open so the user can retry.
+    expect(screen.getByTestId('delete-persona-popover')).toBeInTheDocument();
     expect(mockOnDeleted).not.toHaveBeenCalled();
   });
 

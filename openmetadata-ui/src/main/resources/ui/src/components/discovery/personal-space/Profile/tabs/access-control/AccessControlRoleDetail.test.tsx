@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React, { ReactNode, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
 const mockRole = {
@@ -38,8 +38,12 @@ jest.mock('../../../../../../rest/rolesAPIV1', () => ({
   patchRole: jest.fn().mockImplementation(() => Promise.resolve(mockRole)),
 }));
 
-jest.mock('../../../../../../utils/DeleteWidget/DeleteWidgetUtils', () => ({
-  hardDeleteEntity: jest.fn().mockResolvedValue(true),
+jest.mock('../../../../../../rest/miscAPI', () => ({
+  deleteEntity: jest.fn().mockResolvedValue({ status: 200, data: {} }),
+}));
+
+jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: () => ({ onLogoutHandler: jest.fn() }),
 }));
 
 jest.mock(
@@ -82,38 +86,12 @@ jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
   })
 );
 
-jest.mock('../../../../../common/DeleteModal/DeleteModal', () => ({
-  __esModule: true,
-  default: ({
-    open,
-    onCancel,
-    onDelete,
-    entityTitle,
-  }: {
-    open: boolean;
-    onCancel: () => void;
-    onDelete: () => void;
-    entityTitle: string;
-  }) =>
-    open ? (
-      <div data-testid="delete-modal">
-        <span>{entityTitle}</span>
-        <button data-testid="delete-confirm" onClick={onDelete}>
-          Delete
-        </button>
-        <button data-testid="delete-cancel" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    ) : null,
-}));
-
 // Override Tabs and Tooltip to avoid react-aria timer interactions with fake timers.
 // react-aria uses internal timers (hover/open/close delays) that fire when waitFor
 // calls jest.advanceTimersByTime(), causing MutationObserver loops.
 jest.mock('@openmetadata/ui-core-components', () => {
   const actual = jest.requireActual('@openmetadata/ui-core-components');
-  const React = jest.requireActual('react');
+  const React = jest.requireActual<typeof import('react')>('react');
 
   const TabsContext = React.createContext<{
     selected: unknown;
@@ -192,10 +170,26 @@ import AccessControlRoleDetail from './AccessControlRoleDetail';
 
 const mockOnNavigate = jest.fn();
 
+// Renders the header actions the detail injects, as the settings modal does.
+const RoleDetailWithHeader = ({ fqn }: { fqn: string }) => {
+  const [actions, setActions] = useState<ReactNode>();
+
+  return (
+    <>
+      {actions}
+      <AccessControlRoleDetail
+        fqn={fqn}
+        onNavigate={mockOnNavigate}
+        onSetHeaderActions={setActions}
+      />
+    </>
+  );
+};
+
 const renderComponent = (fqn = 'DataSteward') =>
   render(
     <MemoryRouter>
-      <AccessControlRoleDetail fqn={fqn} onNavigate={mockOnNavigate} />
+      <RoleDetailWithHeader fqn={fqn} />
     </MemoryRouter>
   );
 
@@ -241,18 +235,89 @@ describe('AccessControlRoleDetail', () => {
     });
   });
 
-  it('navigates to roles on delete role confirm', async () => {
-    const { hardDeleteEntity } = jest.requireMock(
-      '../../../../../../utils/DeleteWidget/DeleteWidgetUtils'
-    );
-
+  it('permanently deletes the role and returns to the list once the popover is confirmed', async () => {
+    const { deleteEntity } = jest.requireMock('../../../../../../rest/miscAPI');
     renderComponent();
 
-    await waitFor(() => {
-      expect(screen.getByTestId('role-detail-container')).toBeInTheDocument();
-    });
+    fireEvent.click(await screen.findByTestId('delete-role-btn'));
 
-    // Open manage dropdown and click delete - we simulate by directly triggering hardDeleteEntity
-    expect(hardDeleteEntity).not.toHaveBeenCalled();
+    expect(
+      await screen.findByTestId('delete-role-popover-title')
+    ).toHaveTextContent('label.delete-entity');
+    expect(
+      screen.queryByTestId('delete-role-popover-hard-delete')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('delete-role-popover-confirm'));
+
+    await waitFor(() =>
+      expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'roles' })
+    );
+
+    expect(deleteEntity).toHaveBeenCalledWith('roles', 'role-1', false, true);
+  });
+
+  it('keeps the delete popover open and stays on the role when the delete fails', async () => {
+    const { deleteEntity } = jest.requireMock('../../../../../../rest/miscAPI');
+    (deleteEntity as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    renderComponent();
+
+    fireEvent.click(await screen.findByTestId('delete-role-btn'));
+    fireEvent.click(await screen.findByTestId('delete-role-popover-confirm'));
+
+    await waitFor(() => expect(deleteEntity).toHaveBeenCalled());
+
+    expect(screen.getByTestId('delete-role-popover')).toBeInTheDocument();
+    expect(mockOnNavigate).not.toHaveBeenCalled();
+  });
+
+  it('removes a policy from the role only once the popover is confirmed', async () => {
+    const { patchRole } = jest.requireMock('../../../../../../rest/rolesAPIV1');
+    renderComponent();
+
+    fireEvent.click(await screen.findByTestId('remove-DataStewardPolicy'));
+    fireEvent.click(await screen.findByTestId('remove-entity-popover-cancel'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('remove-entity-popover')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(patchRole).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('remove-DataStewardPolicy'));
+
+    expect(
+      await screen.findByTestId('remove-entity-popover-confirm')
+    ).toHaveTextContent('label.remove');
+
+    fireEvent.click(screen.getByTestId('remove-entity-popover-confirm'));
+
+    await waitFor(() =>
+      expect(patchRole).toHaveBeenCalledWith(
+        [{ op: 'remove', path: '/policies/0' }],
+        'role-1'
+      )
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('remove-DataStewardPolicy')
+      ).not.toBeInTheDocument()
+    );
+  });
+
+  it('keeps the remove popover open and the policy listed when the removal fails', async () => {
+    const { patchRole } = jest.requireMock('../../../../../../rest/rolesAPIV1');
+    (patchRole as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    renderComponent();
+
+    fireEvent.click(await screen.findByTestId('remove-DataStewardPolicy'));
+    fireEvent.click(await screen.findByTestId('remove-entity-popover-confirm'));
+
+    await waitFor(() => expect(patchRole).toHaveBeenCalled());
+
+    expect(screen.getByTestId('remove-entity-popover')).toBeInTheDocument();
+    expect(screen.getByTestId('remove-DataStewardPolicy')).toBeInTheDocument();
   });
 });

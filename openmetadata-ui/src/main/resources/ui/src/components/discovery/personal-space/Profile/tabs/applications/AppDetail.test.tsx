@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { ReactElement, useCallback, useState } from 'react';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
@@ -20,10 +26,12 @@ import {
 } from '../../../../../../generated/entity/applications/app';
 import {
   getApplicationByName,
+  restoreApp,
   uninstallApp,
 } from '../../../../../../rest/applicationAPI';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppSchedule from '../../../../../Settings/Applications/AppSchedule/AppSchedule.component';
 import AppDetail from './AppDetail';
@@ -87,8 +95,9 @@ jest.mock('../../../../../../hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: true }),
 }));
 
+const mockGetResourceLimit = jest.fn().mockResolvedValue(undefined);
 jest.mock('../../../../../../context/LimitsProvider/useLimitsStore', () => ({
-  useLimitStore: () => ({ getResourceLimit: jest.fn() }),
+  useLimitStore: () => ({ getResourceLimit: mockGetResourceLimit }),
 }));
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
@@ -328,6 +337,74 @@ describe('AppDetail', () => {
     });
 
     expect(uninstallApp).toHaveBeenCalledWith('DataInsightsApplication', true);
+    expect(mockGetResourceLimit).toHaveBeenCalledWith('app', true, true);
+    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
+  });
+
+  it('treats the uninstall as done when only the usage-count refresh fails', async () => {
+    (uninstallApp as jest.Mock).mockResolvedValue({});
+    mockGetResourceLimit.mockRejectedValueOnce(new Error('limits down'));
+    await renderDetail();
+    render(lastHeader().actions as ReactElement);
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.uninstall' }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('app-action-confirm-confirm'));
+    });
+
+    expect(uninstallApp).toHaveBeenCalledTimes(1);
+    expect(showErrorToast).not.toHaveBeenCalled();
+    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
+  });
+
+  it('keeps the confirmation open when uninstall fails', async () => {
+    (uninstallApp as jest.Mock).mockRejectedValue(new Error('boom'));
+    await renderDetail();
+    render(lastHeader().actions as ReactElement);
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.uninstall' }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('app-action-confirm-confirm'));
+    });
+
+    expect(screen.getByTestId('app-action-confirm')).toBeInTheDocument();
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when the confirmation is cancelled', async () => {
+    await renderDetail();
+    render(lastHeader().actions as ReactElement);
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.disable' }));
+    fireEvent.click(screen.getByTestId('app-action-confirm-cancel'));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('app-action-confirm')).not.toBeInTheDocument()
+    );
+
+    expect(uninstallApp).not.toHaveBeenCalled();
+  });
+
+  it('restores a disabled app after confirmation', async () => {
+    (restoreApp as jest.Mock).mockResolvedValue({});
+    await renderDetail({ deleted: true });
+    render(lastHeader().actions as ReactElement);
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.restore' }));
+
+    expect(screen.getByTestId('app-action-confirm-confirm')).toHaveTextContent(
+      'label.restore'
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('app-action-confirm-confirm'));
+    });
+
+    expect(restoreApp).toHaveBeenCalledWith('app-1');
     expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
   });
 

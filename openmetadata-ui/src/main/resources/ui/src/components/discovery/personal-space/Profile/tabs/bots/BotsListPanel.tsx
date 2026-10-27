@@ -59,7 +59,7 @@ import { formatUsersResponse } from '../../../../../../utils/APIUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { escapeESReservedCharacters } from '../../../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -99,7 +99,6 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const [bots, setBots] = useState<Bot[]>([]);
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedBot, setSelectedBot] = useState<Bot>();
   const [showDeleted, setShowDeleted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [paging, setPaging] = useState<Paging>({ total: 0 });
@@ -322,7 +321,6 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
 
   const handleDeleteAction = useCallback(() => {
     getResourceLimit('bot', true, true);
-    setSelectedBot(undefined);
     botMapLoadPromiseRef.current = null;
     botsByUserNameRef.current = new Map();
     setReloadKey((k) => k + 1);
@@ -437,21 +435,28 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
         }
 
         return (
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`bot-delete-${bot.name}`}
-            icon={Trash01}
-            isDisabled={isDisabled}
-            size="xs"
-            tooltip={tooltipContent}
-            onPress={() => setSelectedBot(bot)}
-          />
+          <DeleteEntityPopover
+            afterDeleteAction={handleDeleteAction}
+            allowSoftDelete={!showDeleted}
+            data-testid="delete-bot-popover"
+            entityId={bot.id}
+            entityName={getEntityName(bot)}
+            entityType={EntityType.BOT}>
+            <ButtonUtility
+              color="tertiary"
+              data-testid={`bot-delete-${bot.name}`}
+              icon={Trash01}
+              isDisabled={isDisabled}
+              size="xs"
+              tooltip={tooltipContent}
+            />
+          </DeleteEntityPopover>
         );
       }
 
       return null;
     },
-    [isAdminUser, onNavigate, t]
+    [isAdminUser, onNavigate, t, showDeleted, handleDeleteAction]
   );
 
   const renderEmptyState = useCallback(() => {
@@ -606,16 +611,6 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
           />
         )}
       </TableCard.Root>
-
-      <DeleteEntityModal
-        afterDeleteAction={handleDeleteAction}
-        allowSoftDelete={!showDeleted}
-        entityId={selectedBot?.id ?? ''}
-        entityName={getEntityName(selectedBot)}
-        entityType={EntityType.BOT}
-        visible={Boolean(selectedBot)}
-        onCancel={() => setSelectedBot(undefined)}
-      />
     </Box>
   );
 };

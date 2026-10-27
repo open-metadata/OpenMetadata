@@ -15,8 +15,8 @@ import {
   Box,
   Button,
   ButtonUtility,
+  ConfirmPopover,
   PaginationCardWithControls,
-  SimpleModal,
   TableCard,
   Toggle,
 } from '@openmetadata/ui-core-components';
@@ -62,7 +62,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
@@ -90,10 +90,6 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleted, setShowDeleted] = useState(false);
   const [searchValue, setSearchValue] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User>();
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
   const latestSearchIdRef = useRef(0);
 
   const {
@@ -220,25 +216,24 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     void fetchUsers({ [cursorType]: cursor });
   };
 
-  const handleRestoreUser = useCallback(async () => {
-    if (!selectedUser) {
-      return;
-    }
-    setIsRestoring(true);
-    try {
-      await restoreUser(selectedUser.id);
-      showSuccessToast(
-        t('message.entity-restored-success', { entity: t('label.user') })
-      );
-      void fetchUsers();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsRestoring(false);
-      setShowRestoreModal(false);
-      setSelectedUser(undefined);
-    }
-  }, [selectedUser, t, fetchUsers]);
+  const handleRestoreUser = useCallback(
+    async (user: User): Promise<boolean> => {
+      try {
+        await restoreUser(user.id);
+        showSuccessToast(
+          t('message.entity-restored-success', { entity: t('label.user') })
+        );
+        void fetchUsers();
+
+        return true;
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+
+        return false;
+      }
+    },
+    [t, fetchUsers]
+  );
 
   // Latest refetch closure. The pageSize/deleted effect runs on those keys only
   // (plus mount) and must use the *current* search term + fetchers without
@@ -338,46 +333,56 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       render: (_: unknown, record: User) => (
         <Box align="center" direction="row" gap={2}>
           {showDeleted && (
+            <ConfirmPopover
+              confirmText={t('label.restore')}
+              data-testid="restore-user-popover"
+              description={t('message.are-you-want-to-restore', {
+                entity: getEntityName(record),
+              })}
+              title={t('label.restore-entity', { entity: t('label.user') })}
+              variant="primary"
+              onConfirm={() => handleRestoreUser(record)}>
+              <ButtonUtility
+                aria-label={t('label.restore')}
+                color="tertiary"
+                data-testid={`restore-user-btn-${record.name}`}
+                icon={<RefreshCcw01 className="tw:size-4" />}
+                isDisabled={!isAdminUser}
+                size="sm"
+                tooltip={
+                  isAdminUser
+                    ? t('label.restore-entity', {
+                        entity: t('label.user'),
+                      })
+                    : t(ADMIN_ONLY_ACTION)
+                }
+              />
+            </ConfirmPopover>
+          )}
+
+          <DeleteEntityPopover
+            afterDeleteAction={() => handleSearch('')}
+            allowSoftDelete={!showDeleted}
+            data-testid="delete-user-popover"
+            entityId={record.id}
+            entityName={getEntityName(record)}
+            entityType={EntityType.USER}>
             <ButtonUtility
-              aria-label={t('label.restore')}
+              aria-label={t('label.delete')}
               color="tertiary"
-              data-testid={`restore-user-btn-${record.name}`}
-              icon={<RefreshCcw01 className="tw:size-4" />}
+              data-testid={`delete-user-btn-${record.name}`}
+              icon={<Trash01 className="tw:size-4" />}
               isDisabled={!isAdminUser}
               size="sm"
               tooltip={
                 isAdminUser
-                  ? t('label.restore-entity', {
+                  ? t('label.delete-entity', {
                       entity: t('label.user'),
                     })
                   : t(ADMIN_ONLY_ACTION)
               }
-              onPress={() => {
-                setSelectedUser(record);
-                setShowRestoreModal(true);
-              }}
             />
-          )}
-
-          <ButtonUtility
-            aria-label={t('label.delete')}
-            color="tertiary"
-            data-testid={`delete-user-btn-${record.name}`}
-            icon={<Trash01 className="tw:size-4" />}
-            isDisabled={!isAdminUser}
-            size="sm"
-            tooltip={
-              isAdminUser
-                ? t('label.delete-entity', {
-                    entity: t('label.user'),
-                  })
-                : t(ADMIN_ONLY_ACTION)
-            }
-            onPress={() => {
-              setSelectedUser(record);
-              setShowDeleteModal(true);
-            }}
-          />
+          </DeleteEntityPopover>
         </Box>
       ),
     };
@@ -391,7 +396,15 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     baseColumns.push(actionColumn);
 
     return baseColumns;
-  }, [showDeleted, isAdminUser, isAdmin, t, goTo]);
+  }, [
+    showDeleted,
+    isAdminUser,
+    isAdmin,
+    t,
+    goTo,
+    handleRestoreUser,
+    handleSearch,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
 
@@ -463,40 +476,6 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
           />
         )}
       </TableCard.Root>
-      {showDeleteModal && selectedUser && (
-        <DeleteEntityModal
-          afterDeleteAction={() => {
-            handleSearch('');
-          }}
-          allowSoftDelete={!showDeleted}
-          entityId={selectedUser.id}
-          entityName={getEntityName(selectedUser)}
-          entityType={EntityType.USER}
-          visible={showDeleteModal}
-          onCancel={() => {
-            setShowDeleteModal(false);
-            setSelectedUser(undefined);
-          }}
-        />
-      )}
-
-      {showRestoreModal && selectedUser && (
-        <SimpleModal
-          data-testid="restore-user-modal"
-          isOkLoading={isRestoring}
-          isOpen={showRestoreModal}
-          okText={t('label.restore')}
-          title={t('label.restore-entity', { entity: t('label.user') })}
-          onCancel={() => {
-            setShowRestoreModal(false);
-            setSelectedUser(undefined);
-          }}
-          onOk={handleRestoreUser}>
-          {t('message.are-you-want-to-restore', {
-            entity: getEntityName(selectedUser),
-          })}
-        </SimpleModal>
-      )}
     </Box>
   );
 };

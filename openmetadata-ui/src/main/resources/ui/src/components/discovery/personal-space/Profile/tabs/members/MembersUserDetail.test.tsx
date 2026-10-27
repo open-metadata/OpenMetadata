@@ -12,7 +12,13 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useCallback, useState } from 'react';
 import type { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
@@ -26,12 +32,32 @@ const mockGetLoggedInUser = jest.fn();
 const mockRestoreUser = jest.fn();
 const mockSetHash = jest.fn();
 const mockGetTaskById = jest.fn();
+const mockDeleteEntity = jest.fn();
 
 jest.mock('rest/userAPI', () => ({
   getLoggedInUser: (...a: unknown[]) => mockGetLoggedInUser(...a),
   getUserByName: (...a: unknown[]) => mockGetUserByName(...a),
   restoreUser: (...a: unknown[]) => mockRestoreUser(...a),
   updateUserDetail: jest.fn(),
+}));
+
+jest.mock('rest/miscAPI', () => ({
+  deleteEntity: (...a: unknown[]) => mockDeleteEntity(...a),
+}));
+
+jest.mock('utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
+jest.mock('components/Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: () => ({ onLogoutHandler: jest.fn() }),
+}));
+
+jest.mock('context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
+  useAsyncDeleteProvider: () => ({
+    handleOnAsyncEntityDeleteConfirm: jest.fn(),
+  }),
 }));
 
 jest.mock('rest/tasksAPI', () => ({
@@ -139,25 +165,6 @@ jest.mock('../../../UserAssets/useUserAssetCount', () => ({
   useUserAssetCount: (_user: unknown, kind: string) =>
     kind === 'owned' ? 3 : 0,
 }));
-jest.mock(
-  '../../../../../common/DeleteWidget/DeleteEntityModal',
-  () =>
-    ({
-      allowSoftDelete,
-      isRecursiveDelete,
-    }: {
-      allowSoftDelete: boolean;
-      isRecursiveDelete?: boolean;
-    }) =>
-      (
-        <div
-          data-allow-soft-delete={String(allowSoftDelete)}
-          data-recursive={String(Boolean(isRecursiveDelete))}
-          data-testid="delete-entity-modal"
-        />
-      )
-);
-
 const mockNavigate = jest.fn();
 
 // Renders the header slots the detail pushes up next to it, and follows its
@@ -220,6 +227,7 @@ describe('MembersUserDetail', () => {
     mockUserGrants = { ...ALL_GRANTS };
     mockIsPermissionLoading = false;
     mockGetUserByName.mockResolvedValue(ALICE);
+    mockDeleteEntity.mockResolvedValue({ status: 200, data: {} });
     Object.assign(mockCustomPropertyAccess, {
       canView: true,
       isLoading: false,
@@ -249,18 +257,46 @@ describe('MembersUserDetail', () => {
     expect(await screen.findByTestId('tab-access')).toBeInTheDocument();
   });
 
-  it('opens a soft-or-hard, recursive delete from the Delete button', async () => {
+  it('soft-deletes recursively from the Delete popover and reloads the user', async () => {
     renderDetail();
     await screen.findByTestId('tab-overview');
 
     expect(screen.queryByTestId('user-detail-kebab')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('user-detail-delete-button'));
+    mockGetUserByName.mockClear();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('delete-user-popover-confirm'));
+    });
 
-    const modal = await screen.findByTestId('delete-entity-modal');
+    expect(mockDeleteEntity).toHaveBeenCalledWith(
+      'users',
+      'u-alice',
+      true,
+      false
+    );
 
-    expect(modal).toHaveAttribute('data-allow-soft-delete', 'true');
-    expect(modal).toHaveAttribute('data-recursive', 'true');
+    await waitFor(() => expect(mockGetUserByName).toHaveBeenCalled());
+
+    expect(mockNavigate).not.toHaveBeenCalledWith({ type: 'users' });
+  });
+
+  it('hard-deletes from the Delete popover and returns to the users list', async () => {
+    renderDetail();
+    await screen.findByTestId('tab-overview');
+
+    fireEvent.click(screen.getByTestId('user-detail-delete-button'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('delete-user-popover-hard-delete'));
+    });
+
+    expect(mockDeleteEntity).toHaveBeenCalledWith(
+      'users',
+      'u-alice',
+      true,
+      true
+    );
+    expect(mockNavigate).toHaveBeenCalledWith({ type: 'users' });
   });
 
   it('offers permanent delete in the header and restore in the banner for a deleted user', async () => {
@@ -279,10 +315,16 @@ describe('MembersUserDetail', () => {
       screen.getByTestId('user-detail-delete-permanently-button')
     );
 
-    expect(await screen.findByTestId('delete-entity-modal')).toHaveAttribute(
-      'data-allow-soft-delete',
-      'false'
-    );
+    expect(
+      await screen.findByTestId('delete-user-popover-confirm')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('delete-user-popover-hard-delete')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('delete-user-popover-cancel'));
+
+    expect(mockDeleteEntity).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByTestId('banner-restore-user'));
 

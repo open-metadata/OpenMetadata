@@ -697,7 +697,7 @@ test.describe(
       await openPersonaSettings(page, personaToDelete.data.name);
       await page.getByTestId('delete-persona-btn').click();
 
-      await expect(page.getByTestId('delete-modal')).toBeVisible();
+      await expect(page.getByTestId('delete-persona-popover')).toBeVisible();
 
       const deleteResponse = waitForResponseWithStatus(
         page,
@@ -708,10 +708,7 @@ test.describe(
           response.request().method() === 'DELETE',
         200
       );
-      await page
-        .getByTestId('delete-modal')
-        .getByTestId('confirm-button')
-        .click();
+      await page.getByTestId('delete-persona-popover-confirm').click();
       await deleteResponse;
 
       await expect(page.getByTestId('personas-landing')).toBeVisible();

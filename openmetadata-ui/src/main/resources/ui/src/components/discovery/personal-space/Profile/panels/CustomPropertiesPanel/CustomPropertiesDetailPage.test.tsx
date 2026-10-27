@@ -184,32 +184,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../../../../common/DeleteModal/DeleteModal', () => ({
-  __esModule: true,
-  default: ({
-    open,
-    onDelete,
-    onCancel,
-    entityTitle,
-  }: {
-    open: boolean;
-    onDelete: () => void;
-    onCancel: () => void;
-    entityTitle?: string;
-  }) =>
-    open ? (
-      <div data-testid="delete-modal">
-        <span>{entityTitle}</span>
-        <button data-testid="confirm-delete-btn" onClick={onDelete}>
-          Confirm Delete
-        </button>
-        <button data-testid="cancel-delete-btn" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    ) : null,
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => {
   const TableCard = ({
     children,
@@ -319,6 +293,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
         ))}
       </div>
     ),
+    ConfirmPopover: jest.requireActual('@openmetadata/ui-core-components')
+      .ConfirmPopover,
     TableCard,
     Tabs,
   };
@@ -418,7 +394,7 @@ describe('CustomPropertiesDetailPage', () => {
     expect(mockOnEditProperty).toHaveBeenCalledWith(mockProperty1);
   });
 
-  it('opens delete modal when delete button is clicked', async () => {
+  it('opens the delete popover when delete button is clicked', async () => {
     render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
@@ -428,7 +404,12 @@ describe('CustomPropertiesDetailPage', () => {
     const deleteButtons = screen.getAllByLabelText('label.delete');
     fireEvent.click(deleteButtons[0]);
 
-    expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('delete-custom-property-popover')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('delete-custom-property-popover-title')
+    ).toHaveTextContent('label.delete-entity');
   });
 
   it('deletes the selected property by name when delete is confirmed', async () => {
@@ -440,7 +421,9 @@ describe('CustomPropertiesDetailPage', () => {
 
     const deleteButtons = screen.getAllByLabelText('label.delete');
     fireEvent.click(deleteButtons[0]);
-    fireEvent.click(screen.getByTestId('confirm-delete-btn'));
+    fireEvent.click(
+      await screen.findByTestId('delete-custom-property-popover-confirm')
+    );
 
     await waitFor(() => {
       expect(mockDeleteCustomPropertyByName).toHaveBeenCalledWith(
@@ -450,7 +433,7 @@ describe('CustomPropertiesDetailPage', () => {
     });
   });
 
-  it('closes delete modal when cancel is clicked', async () => {
+  it('closes the popover without deleting when cancel is clicked', async () => {
     render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
@@ -459,12 +442,17 @@ describe('CustomPropertiesDetailPage', () => {
 
     const deleteButtons = screen.getAllByLabelText('label.delete');
     fireEvent.click(deleteButtons[0]);
+    fireEvent.click(
+      await screen.findByTestId('delete-custom-property-popover-cancel')
+    );
 
-    expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('delete-custom-property-popover')
+      ).not.toBeInTheDocument();
+    });
 
-    fireEvent.click(screen.getByTestId('cancel-delete-btn'));
-
-    expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
+    expect(mockDeleteCustomPropertyByName).not.toHaveBeenCalled();
   });
 
   it('shows error toast when getTypeByFQN fails', async () => {
@@ -488,7 +476,9 @@ describe('CustomPropertiesDetailPage', () => {
     });
 
     fireEvent.click(screen.getAllByLabelText('label.delete')[0]);
-    fireEvent.click(screen.getByTestId('confirm-delete-btn'));
+    fireEvent.click(
+      await screen.findByTestId('delete-custom-property-popover-confirm')
+    );
 
     await waitFor(() => {
       expect(screen.queryByTestId('row-stringProp')).not.toBeInTheDocument();
@@ -509,11 +499,18 @@ describe('CustomPropertiesDetailPage', () => {
 
     const deleteButtons = screen.getAllByLabelText('label.delete');
     fireEvent.click(deleteButtons[0]);
-    fireEvent.click(screen.getByTestId('confirm-delete-btn'));
+    fireEvent.click(
+      await screen.findByTestId('delete-custom-property-popover-confirm')
+    );
 
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(mockError);
     });
+
+    // A failed delete keeps the confirmation open so the user can retry.
+    expect(
+      screen.getByTestId('delete-custom-property-popover')
+    ).toBeInTheDocument();
   });
 
   it('shows empty placeholder when entity has no custom properties', async () => {

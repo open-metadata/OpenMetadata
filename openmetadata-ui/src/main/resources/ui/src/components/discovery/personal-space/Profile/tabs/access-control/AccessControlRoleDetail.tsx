@@ -31,7 +31,6 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
 import React, {
   FC,
   useCallback,
@@ -64,7 +63,6 @@ import {
   patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
 import { getUserById, updateUserDetail } from '../../../../../../rest/userAPI';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
@@ -72,7 +70,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
@@ -81,6 +79,7 @@ import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/Rich
 import { profileHash } from '../members/profileHash.utils';
 import type { AccessControlView } from './AccessControl.types';
 import { getCountLabel } from './AccessControl.utils';
+import RemoveFromParentButton from './RemoveFromParentButton';
 
 type RoleTab = 'policies' | 'teams' | 'users';
 type DetailColumnId = 'name' | 'description' | 'actions';
@@ -103,7 +102,7 @@ const DescriptionCell: FC<{ value: string | undefined }> = ({ value }) => {
 // ─── Cell renderer (outside component to keep component complexity low) ────────
 
 interface RenderEntityCellContext {
-  t: ReturnType<typeof useTranslation>['t'];
+  parentName: string;
   onNavigateToDetail?: (item: EntityReference) => void;
 }
 
@@ -113,10 +112,10 @@ const renderEntityCell = (
   showRemove: boolean,
   canEditAll: boolean,
   isLoadingOnSave: boolean,
-  onRemove: (item: EntityReference) => void,
+  onRemove: (item: EntityReference) => Promise<boolean>,
   ctx: RenderEntityCellContext
 ) => {
-  const { t, onNavigateToDetail } = ctx;
+  const { parentName, onNavigateToDetail } = ctx;
   if (colId === 'name') {
     const name = getEntityName(item);
     if (onNavigateToDetail) {
@@ -145,15 +144,11 @@ const renderEntityCell = (
 
   if (colId === 'actions' && showRemove) {
     return (
-      <ButtonUtility
-        color="tertiary"
-        data-testid={`remove-${getEntityName(item)}`}
-        icon={Delete}
+      <RemoveFromParentButton
         isDisabled={!canEditAll || isLoadingOnSave}
-        size="xs"
-        tooltip={t('label.remove')}
-        tooltipPlacement="left"
-        onPress={() => onRemove(item)}
+        name={getEntityName(item)}
+        parentName={parentName}
+        onRemove={() => onRemove(item)}
       />
     );
   }
@@ -170,10 +165,10 @@ interface EntityTableProps {
   emptyTitle: string;
   isLoadingOnSave: boolean;
   items: EntityReference[] | undefined;
+  parentName: string;
   showRemove: boolean;
   onNavigateToDetail?: (item: EntityReference) => void;
-  onRemove: (item: EntityReference) => void;
-  t: ReturnType<typeof useTranslation>['t'];
+  onRemove: (item: EntityReference) => Promise<boolean>;
 }
 
 const EntityTable: FC<EntityTableProps> = ({
@@ -183,10 +178,10 @@ const EntityTable: FC<EntityTableProps> = ({
   emptyTitle,
   isLoadingOnSave,
   items,
+  parentName,
   showRemove,
   onNavigateToDetail,
   onRemove,
-  t,
 }) => (
   <Table aria-label={ariaLabel} className="tw:table-fixed" size="compact">
     <Table.Header columns={columns}>
@@ -201,7 +196,13 @@ const EntityTable: FC<EntityTableProps> = ({
       )}
     </Table.Header>
     <Table.Body
-      dependencies={[showRemove, canEditAll, isLoadingOnSave]}
+      dependencies={[
+        showRemove,
+        canEditAll,
+        isLoadingOnSave,
+        onRemove,
+        parentName,
+      ]}
       items={items ?? []}
       renderEmptyState={() => (
         <Box
@@ -215,7 +216,13 @@ const EntityTable: FC<EntityTableProps> = ({
         <Table.Row
           columns={columns}
           data-testid={getEntityName(item)}
-          dependencies={[showRemove, canEditAll, isLoadingOnSave]}
+          dependencies={[
+            showRemove,
+            canEditAll,
+            isLoadingOnSave,
+            onRemove,
+            parentName,
+          ]}
           id={item.fullyQualifiedName ?? item.name ?? item.id}
           key={item.fullyQualifiedName ?? item.name ?? item.id}>
           {(col) => (
@@ -227,7 +234,7 @@ const EntityTable: FC<EntityTableProps> = ({
                 canEditAll,
                 isLoadingOnSave,
                 onRemove,
-                { t, onNavigateToDetail }
+                { parentName, onNavigateToDetail }
               )}
             </Table.Cell>
           )}
@@ -397,8 +404,6 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   const [activeTab, setActiveTab] = useState<RoleTab>('policies');
   const [rolePermission, setRolePermission] =
     useState<OperationPermission | null>(null);
-  const [selectedEntity, setSelectedEntity] = useState<EntityReference>();
-
   // Inline description editing
   const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [isSavingDesc, setIsSavingDesc] = useState(false);
@@ -409,19 +414,11 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   const [renameValue, setRenameValue] = useState('');
   const [isSavingRename, setIsSavingRename] = useState(false);
 
-  // Delete role modal
-  const [isDeleteRoleOpen, setIsDeleteRoleOpen] = useState(false);
-  const [isDeletingRole, setIsDeletingRole] = useState(false);
-
   // Add policy state
   const [isAddingPolicy, setIsAddingPolicy] = useState(false);
   const [availablePolicies, setAvailablePolicies] = useState<Policy[]>([]);
   const [selectedNewPolicies, setSelectedNewPolicies] = useState<string[]>([]);
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(false);
-
-  const [removeKind, setRemoveKind] = useState<'policy' | 'user' | 'team'>(
-    'policy'
-  );
 
   const columns = useMemo<DetailColumn[]>(
     () => [
@@ -480,6 +477,11 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     }
   }, [role, renameValue, t, fetchRole, onRename]);
 
+  const handleAfterDeleteRole = useCallback(
+    () => onNavigate({ type: 'roles' }),
+    [onNavigate]
+  );
+
   // Inject rename/delete actions + optional inline title into the page header.
   useEffect(() => {
     if (!role) {
@@ -534,18 +536,25 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     );
 
     const deleteButtonNode: React.ReactNode = isRenameOpen ? undefined : (
-      <ButtonUtility
-        color="tertiary"
-        data-testid="delete-role-btn"
-        icon={Delete}
-        isDisabled={!canDelete}
-        size="xs"
-        tooltip={String(
-          canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
-        )}
-        tooltipPlacement="left"
-        onPress={() => setIsDeleteRoleOpen(true)}
-      />
+      <DeleteEntityPopover
+        afterDeleteAction={handleAfterDeleteRole}
+        allowSoftDelete={false}
+        data-testid="delete-role-popover"
+        entityId={role.id}
+        entityName={getEntityName(role)}
+        entityType={EntityType.ROLE}>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="delete-role-btn"
+          icon={Delete}
+          isDisabled={!canDelete}
+          size="xs"
+          tooltip={String(
+            canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
+          )}
+          tooltipPlacement="left"
+        />
+      </DeleteEntityPopover>
     );
 
     onSetHeaderTitleSuffix?.(titleSuffixNode);
@@ -559,6 +568,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     renameValue,
     isSavingRename,
     handleSaveRename,
+    handleAfterDeleteRole,
     t,
     hasCopied,
     onCopyToClipBoard,
@@ -590,29 +600,10 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     }
   }, [role, t, fetchRole]);
 
-  const handleDeleteRole = useCallback(async () => {
-    if (!role) {
-      return;
-    }
-
-    setIsDeletingRole(true);
-    const isSuccess = await hardDeleteEntity(
-      getEntityName(role),
-      role.id ?? '',
-      EntityType.ROLE
-    );
-    setIsDeletingRole(false);
-    setIsDeleteRoleOpen(false);
-
-    if (isSuccess) {
-      onNavigate({ type: 'roles' });
-    }
-  }, [role, onNavigate]);
-
   const handleRemovePolicy = useCallback(
     async (policyRef: EntityReference) => {
       if (!role) {
-        return;
+        return false;
       }
 
       const updatedRole = {
@@ -629,8 +620,12 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         showSuccessToast(
           t('server.entity-updated-success', { entity: t('label.role') })
         );
+
+        return true;
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        return false;
       } finally {
         setIsLoadingOnSave(false);
       }
@@ -641,13 +636,13 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   const handleRemoveUser = useCallback(
     async (userRef: EntityReference) => {
       if (!role) {
-        return;
+        return false;
       }
 
       const userId = userRef.id;
 
       if (!userId) {
-        return;
+        return false;
       }
 
       setIsLoadingOnSave(true);
@@ -666,8 +661,12 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         showSuccessToast(
           t('server.entity-updated-success', { entity: t('label.role') })
         );
+
+        return true;
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        return false;
       } finally {
         setIsLoadingOnSave(false);
       }
@@ -678,7 +677,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   const handleRemoveTeam = useCallback(
     async (teamRef: EntityReference) => {
       if (!role) {
-        return;
+        return false;
       }
 
       setIsLoadingOnSave(true);
@@ -707,8 +706,12 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         showSuccessToast(
           t('server.entity-updated-success', { entity: t('label.role') })
         );
+
+        return true;
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        return false;
       } finally {
         setIsLoadingOnSave(false);
       }
@@ -811,14 +814,6 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     setSelectedNewPolicies((prev) => prev.filter((id) => id !== String(key)));
   }, []);
 
-  const handleEntityRemove = useCallback(
-    (item: EntityReference, kind: 'policy' | 'user' | 'team') => {
-      setSelectedEntity(item);
-      setRemoveKind(kind);
-    },
-    []
-  );
-
   const renderPoliciesTab = useCallback(
     () => (
       <Box className="tw:w-full" direction="col">
@@ -884,8 +879,8 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           })}
           isLoadingOnSave={isLoadingOnSave}
           items={role?.policies}
+          parentName={getEntityName(role)}
           showRemove={canEditAll}
-          t={t}
           onNavigateToDetail={(item) =>
             onNavigate({
               type: 'policies-detail',
@@ -893,7 +888,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
               name: getEntityName(item),
             })
           }
-          onRemove={(item) => handleEntityRemove(item, 'policy')}
+          onRemove={handleRemovePolicy}
         />
       </Box>
     ),
@@ -902,8 +897,8 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
       columns,
       contains,
       handleConfirmAddPolicies,
-      handleEntityRemove,
       handlePolicyItemCleared,
+      handleRemovePolicy,
       handlePolicyItemInserted,
       isAddingPolicy,
       isLoadingOnSave,
@@ -928,15 +923,15 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         })}
         isLoadingOnSave={isLoadingOnSave}
         items={role?.teams}
+        parentName={getEntityName(role)}
         showRemove={Boolean(isAdminUser)}
-        t={t}
         onNavigateToDetail={(item) =>
           goTo(profileHash.team(item.fullyQualifiedName ?? item.name ?? ''))
         }
-        onRemove={(item) => handleEntityRemove(item, 'team')}
+        onRemove={handleRemoveTeam}
       />
     ),
-    [columns, goTo, handleEntityRemove, isAdminUser, isLoadingOnSave, role, t]
+    [columns, goTo, handleRemoveTeam, isAdminUser, isLoadingOnSave, role, t]
   );
 
   const renderUsersTab = useCallback(
@@ -950,15 +945,15 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         })}
         isLoadingOnSave={isLoadingOnSave}
         items={role?.users}
+        parentName={getEntityName(role)}
         showRemove={Boolean(isAdminUser)}
-        t={t}
         onNavigateToDetail={(item) =>
           goTo(profileHash.user(item.name ?? item.fullyQualifiedName ?? ''))
         }
-        onRemove={(item) => handleEntityRemove(item, 'user')}
+        onRemove={handleRemoveUser}
       />
     ),
-    [columns, goTo, handleEntityRemove, isAdminUser, isLoadingOnSave, role, t]
+    [columns, goTo, handleRemoveUser, isAdminUser, isLoadingOnSave, role, t]
   );
 
   if (isLoading) {
@@ -968,8 +963,6 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   if (!role) {
     return null;
   }
-
-  const roleName = getEntityName(role);
 
   const tabRenderers: Record<RoleTab, () => React.ReactNode> = {
     policies: renderPoliciesTab,
@@ -1029,45 +1022,6 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         </Tabs>
         {tabRenderers[activeTab]()}
       </TableCard.Root>
-
-      {selectedEntity && (
-        <DeleteModal
-          entityTitle={t('label.remove-entity', {
-            entity: getEntityName(selectedEntity),
-          })}
-          isDeleting={isLoadingOnSave}
-          message={t(
-            'message.are-you-sure-you-want-to-remove-child-from-parent',
-            {
-              child: getEntityName(selectedEntity),
-              parent: roleName,
-            }
-          )}
-          open={!isUndefined(selectedEntity)}
-          onCancel={() => setSelectedEntity(undefined)}
-          onDelete={async () => {
-            if (removeKind === 'user') {
-              await handleRemoveUser(selectedEntity);
-            } else if (removeKind === 'team') {
-              await handleRemoveTeam(selectedEntity);
-            } else {
-              await handleRemovePolicy(selectedEntity);
-            }
-            setSelectedEntity(undefined);
-          }}
-        />
-      )}
-
-      <DeleteModal
-        entityTitle={roleName}
-        isDeleting={isDeletingRole}
-        message={t('message.permanently-delete-common-message', {
-          entity: roleName.toLowerCase(),
-        })}
-        open={isDeleteRoleOpen}
-        onCancel={() => setIsDeleteRoleOpen(false)}
-        onDelete={handleDeleteRole}
-      />
     </Box>
   );
 };

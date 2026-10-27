@@ -12,7 +12,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
+import React, { ReactNode, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
 const mockPolicy = {
@@ -54,10 +54,24 @@ jest.mock('../../../../../../rest/rolesAPIV1', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockPolicy)),
   patchPolicy: jest.fn().mockImplementation(() => Promise.resolve(mockPolicy)),
+  getRoleByName: jest.fn().mockResolvedValue({
+    id: 'role-1',
+    name: 'DataSteward',
+    policies: [{ id: 'policy-1', type: 'policy' }],
+  }),
+  patchRole: jest.fn().mockResolvedValue({}),
 }));
 
-jest.mock('../../../../../../utils/DeleteWidget/DeleteWidgetUtils', () => ({
-  hardDeleteEntity: jest.fn().mockResolvedValue(true),
+jest.mock('../../../../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: true }),
+}));
+
+jest.mock('../../../../../../rest/miscAPI', () => ({
+  deleteEntity: jest.fn().mockResolvedValue({ status: 200, data: {} }),
+}));
+
+jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: () => ({ onLogoutHandler: jest.fn() }),
 }));
 
 jest.mock(
@@ -100,32 +114,6 @@ jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
   })
 );
 
-jest.mock('../../../../../common/DeleteModal/DeleteModal', () => ({
-  __esModule: true,
-  default: ({
-    open,
-    onCancel,
-    onDelete,
-    entityTitle,
-  }: {
-    open: boolean;
-    onCancel: () => void;
-    onDelete: () => void;
-    entityTitle: string;
-  }) =>
-    open ? (
-      <div data-testid="delete-modal">
-        <span>{entityTitle}</span>
-        <button data-testid="delete-confirm" onClick={onDelete}>
-          Confirm
-        </button>
-        <button data-testid="delete-cancel" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    ) : null,
-}));
-
 jest.mock('./AccessControlRuleForm', () => () => (
   <div data-testid="rule-form" />
 ));
@@ -134,10 +122,26 @@ import AccessControlPolicyDetail from './AccessControlPolicyDetail';
 
 const mockOnNavigate = jest.fn();
 
+// Renders the header actions the detail injects, as the settings modal does.
+const PolicyDetailWithHeader = ({ fqn }: { fqn: string }) => {
+  const [actions, setActions] = useState<ReactNode>();
+
+  return (
+    <>
+      {actions}
+      <AccessControlPolicyDetail
+        fqn={fqn}
+        onNavigate={mockOnNavigate}
+        onSetHeaderActions={setActions}
+      />
+    </>
+  );
+};
+
 const renderComponent = (fqn = 'TestPolicy') =>
   render(
     <MemoryRouter>
-      <AccessControlPolicyDetail fqn={fqn} onNavigate={mockOnNavigate} />
+      <PolicyDetailWithHeader fqn={fqn} />
     </MemoryRouter>
   );
 
@@ -205,5 +209,100 @@ describe('AccessControlPolicyDetail', () => {
       ruleName: 'AllowViewRule',
     });
     expect(screen.queryByTestId('rule-form')).not.toBeInTheDocument();
+  });
+
+  it('permanently deletes the policy and returns to the list once the popover is confirmed', async () => {
+    const { deleteEntity } = jest.requireMock('../../../../../../rest/miscAPI');
+    renderComponent();
+
+    fireEvent.click(await screen.findByTestId('delete-policy-btn'));
+
+    expect(
+      await screen.findByTestId('delete-policy-popover-title')
+    ).toHaveTextContent('label.delete-entity');
+    expect(
+      screen.queryByTestId('delete-policy-popover-hard-delete')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('delete-policy-popover-confirm'));
+
+    await waitFor(() =>
+      expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'policies' })
+    );
+
+    expect(deleteEntity).toHaveBeenCalledWith(
+      'policies',
+      'policy-1',
+      false,
+      true
+    );
+  });
+
+  it('keeps the delete popover open and stays on the policy when the delete fails', async () => {
+    const { deleteEntity } = jest.requireMock('../../../../../../rest/miscAPI');
+    (deleteEntity as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    renderComponent();
+
+    fireEvent.click(await screen.findByTestId('delete-policy-btn'));
+    fireEvent.click(await screen.findByTestId('delete-policy-popover-confirm'));
+
+    await waitFor(() => expect(deleteEntity).toHaveBeenCalled());
+
+    expect(screen.getByTestId('delete-policy-popover')).toBeInTheDocument();
+    expect(mockOnNavigate).not.toHaveBeenCalled();
+  });
+
+  it('removes a role from the policy only once the popover is confirmed', async () => {
+    const { patchRole } = jest.requireMock('../../../../../../rest/rolesAPIV1');
+    renderComponent();
+
+    fireEvent.click(
+      await screen.findByRole('tab', { name: /label.role-plural/ })
+    );
+    fireEvent.click(await screen.findByTestId('remove-DataSteward'));
+    fireEvent.click(await screen.findByTestId('remove-entity-popover-cancel'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('remove-entity-popover')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(patchRole).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('remove-DataSteward'));
+
+    expect(
+      await screen.findByTestId('remove-entity-popover-confirm')
+    ).toHaveTextContent('label.remove');
+
+    fireEvent.click(screen.getByTestId('remove-entity-popover-confirm'));
+
+    await waitFor(() =>
+      expect(patchRole).toHaveBeenCalledWith(
+        [{ op: 'remove', path: '/policies/0' }],
+        'role-1'
+      )
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId('remove-DataSteward')).not.toBeInTheDocument()
+    );
+  });
+
+  it('keeps the remove popover open and the role listed when the removal fails', async () => {
+    const { patchRole } = jest.requireMock('../../../../../../rest/rolesAPIV1');
+    (patchRole as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    renderComponent();
+
+    fireEvent.click(
+      await screen.findByRole('tab', { name: /label.role-plural/ })
+    );
+    fireEvent.click(await screen.findByTestId('remove-DataSteward'));
+    fireEvent.click(await screen.findByTestId('remove-entity-popover-confirm'));
+
+    await waitFor(() => expect(patchRole).toHaveBeenCalled());
+
+    expect(screen.getByTestId('remove-entity-popover')).toBeInTheDocument();
+    expect(screen.getByTestId('remove-DataSteward')).toBeInTheDocument();
   });
 });

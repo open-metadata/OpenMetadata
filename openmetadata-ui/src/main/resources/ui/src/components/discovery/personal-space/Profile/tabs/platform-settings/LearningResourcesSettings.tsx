@@ -17,6 +17,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  ConfirmPopover,
   Grid,
   Input,
   Table,
@@ -29,6 +30,7 @@ import {
   Search,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
@@ -46,14 +48,19 @@ import {
 import { VIEW_MODE_PAGE } from '../../../../../../constants/platform/personaAppLayout.constants';
 import { PageViewMode } from '../../../../../../generated/type/personaPreferences';
 import { usePersonaViewMode } from '../../../../../../hooks/platform/usePersonaViewMode';
-import { useLearningResourceActions } from '../../../../../../pages/LearningResourcesPage/hooks/useLearningResourceActions';
 import {
   LearningResourceFilterState,
   useLearningResourceFilters,
 } from '../../../../../../pages/LearningResourcesPage/hooks/useLearningResourceFilters';
 import { useLearningResources } from '../../../../../../pages/LearningResourcesPage/hooks/useLearningResources';
-import { LearningResource } from '../../../../../../rest/learningResourceAPI';
-import { DeleteModal } from '../../../../../common/DeleteModal/DeleteModal';
+import {
+  deleteLearningResource,
+  LearningResource,
+} from '../../../../../../rest/learningResourceAPI';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
 import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
 import ViewToggle from '../../../../../common/ViewToggle/ViewToggle';
 import {
@@ -79,6 +86,9 @@ const getCategoryLabel = (category: string) =>
 
 const getCategoryColor = (category: string) =>
   CATEGORY_BADGE_COLORS[category as ResourceCategory] ?? 'gray';
+
+const getResourceName = (resource: LearningResource) =>
+  resource.displayName || resource.name;
 
 const getContextLabel = (pageId: string) =>
   PAGE_IDS.find((page) => page.value === pageId)?.label ?? pageId;
@@ -129,14 +139,6 @@ const LearningResourcesSettings = ({
     pageSize,
     currentPage,
   });
-  const {
-    isDeleteModalOpen,
-    isDeleting,
-    deletingResource,
-    handleDelete,
-    handleDeleteConfirm,
-    handleDeleteCancel,
-  } = useLearningResourceActions({ onRefetch: refetch });
   const { quickFilters, filterSelectionDisplay } = useLearningResourceFilters({
     filterState,
     onFilterChange: setFilterState,
@@ -202,6 +204,25 @@ const LearningResourcesSettings = ({
       ...(resource ? { itemId: resource.id } : {}),
     });
 
+  /** Resolves `false` when the delete failed, keeping the confirmation open. */
+  const handleDelete = async (resource: LearningResource) => {
+    try {
+      await deleteLearningResource(resource.id);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: t('label.learning-resource'),
+        })
+      );
+      void refetch();
+
+      return true;
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return false;
+    }
+  };
+
   useEffect(() => {
     onSetHeaderActions(
       <Button
@@ -249,9 +270,9 @@ const LearningResourcesSettings = ({
               as="span"
               className="tw:min-w-0 tw:text-secondary"
               size="text-sm"
-              title={record.displayName || record.name}
+              title={getResourceName(record)}
               weight="medium">
-              {record.displayName || record.name}
+              {getResourceName(record)}
             </Typography>
           </Box>
         );
@@ -298,14 +319,23 @@ const LearningResourcesSettings = ({
               tooltip={t('label.edit')}
               onPress={() => openForm(record)}
             />
-            <ButtonUtility
-              color="tertiary"
-              data-testid={`delete-${record.name}`}
-              icon={Trash01}
-              size="xs"
-              tooltip={t('label.delete')}
-              onPress={() => handleDelete(record)}
-            />
+            <ConfirmPopover
+              data-testid="delete-learning-resource-popover"
+              description={t('message.delete-entity-permanently', {
+                entityType: t('label.learning-resource'),
+              })}
+              title={t('label.delete-entity', {
+                entity: getResourceName(record),
+              })}
+              onConfirm={() => handleDelete(record)}>
+              <ButtonUtility
+                color="tertiary"
+                data-testid={`delete-${record.name}`}
+                icon={Trash01}
+                size="xs"
+                tooltip={t('label.delete')}
+              />
+            </ConfirmPopover>
           </Box>
         );
     }
@@ -418,19 +448,6 @@ const LearningResourcesSettings = ({
         )}
         {pagination}
       </TableCard.Root>
-
-      {deletingResource && (
-        <DeleteModal
-          entityTitle={deletingResource.displayName || deletingResource.name}
-          isDeleting={isDeleting}
-          message={t('message.delete-entity-permanently', {
-            entityType: t('label.learning-resource'),
-          })}
-          open={isDeleteModalOpen}
-          onCancel={handleDeleteCancel}
-          onDelete={handleDeleteConfirm}
-        />
-      )}
     </Box>
   );
 };
