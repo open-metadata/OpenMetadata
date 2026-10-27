@@ -156,3 +156,11 @@ export const canManageConversation = (
   isRoot: boolean
 ): feed is Conversation =>
   Boolean(feed) && isRoot && canManageFeedPost(currentUser, feed?.createdBy);
+
+// The thread panels open the comment editor straight away when a reply was
+// asked for (the message icon); elsewhere it waits for a click on its trigger.
+export const isCommentEditorOpen = (
+  showFeedEditor: boolean,
+  isThreadPanel?: boolean,
+  focusReplyEditor?: boolean
+): boolean => showFeedEditor || Boolean(isThreadPanel && focusReplyEditor);

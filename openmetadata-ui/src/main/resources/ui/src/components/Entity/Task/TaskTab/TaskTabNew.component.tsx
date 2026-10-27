@@ -1985,7 +1985,10 @@ export const TaskTabNew = ({
                   data-testid="comments-input-field"
                   size="sm"
                   onPress={() => setShowFeedEditor(true)}>
-                  {t('message.input-placeholder')}
+                  {/* Placeholder copy: lighter than the button's own label colour. */}
+                  <span className="tw:text-tertiary">
+                    {t('message.input-placeholder')}
+                  </span>
                 </Button>
               </div>
             )

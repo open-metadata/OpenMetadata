@@ -76,14 +76,11 @@ import {
   getHeaderLayout,
   getHeaderTagsClassName,
   getHeaderTagsItemClassName,
+  isCommentEditorOpen,
 } from './ActivityFeedcardNew.utils';
 import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
-);
-
-const CommentComposer = withSuspenseFallback(
-  lazy(() => import('../../common/CommentComposer/CommentComposer'))
 );
 
 const POST_SKELETON_KEYS = ['first', 'second', 'third'];
@@ -701,6 +698,54 @@ const ActivityFeedCardNew = ({
     isOpenInDrawer
   );
 
+  const isFeedEditorOpen = isCommentEditorOpen(
+    showFeedEditor,
+    isThreadPanel,
+    focusReplyEditor
+  );
+
+  const renderCommentInput = (editorClassName?: string) =>
+    isFeedEditorOpen ? (
+      <ActivityFeedEditorNew
+        // Revealed by a click on its trigger, or by a reply request, so it
+        // takes focus.
+        focused
+        className={classNames(
+          'feed-editor activity-feed-editor-container-new',
+          editorClassName
+        )}
+        onSave={onSave}
+      />
+    ) : (
+      <Box gap={2}>
+        <div>
+          <UserPopOverCard userName={currentUser?.name ?? ''}>
+            <Box align="center">
+              <ProfilePicture
+                key={feedId}
+                name={currentUser?.name ?? ''}
+                width="32"
+              />
+            </Box>
+          </UserPopOverCard>
+        </div>
+
+        {/* Only opens the editor, so it is a button rather than an input. */}
+        <Button
+          ellipsis
+          className="tw:w-full tw:justify-start"
+          color="secondary"
+          data-testid="comments-input-field"
+          size="sm"
+          onPress={() => setShowFeedEditor(true)}>
+          {/* Placeholder copy: lighter than the button's own label colour. */}
+          <span className="tw:text-tertiary">
+            {t('message.input-placeholder')}
+          </span>
+        </Button>
+      </Box>
+    );
+
   const renderCommentsSection = () => (
     <Box className="activity-feed-comments-container" direction="col">
       {(showActivityFeedEditor || isOpenInDrawer) && (
@@ -708,43 +753,8 @@ const ActivityFeedCardNew = ({
           {t('label.comment-plural')}
         </Typography>
       )}
-      {showFeedEditor ? (
-        <ActivityFeedEditorNew
-          // Revealed by a click on its placeholder, so it takes focus.
-          focused
-          className={classNames(
-            'm-t-md feed-editor activity-feed-editor-container-new',
-            {
-              'm-b-md': shouldAddBottomMargin,
-            }
-          )}
-          onSave={onSave}
-        />
-      ) : (
-        <Box gap={2}>
-          <div>
-            <UserPopOverCard userName={currentUser?.name ?? ''}>
-              <Box align="center">
-                <ProfilePicture
-                  key={feedId}
-                  name={currentUser?.name ?? ''}
-                  width="32"
-                />
-              </Box>
-            </UserPopOverCard>
-          </div>
-
-          {/* Only opens the editor, so it is a button rather than an input. */}
-          <Button
-            ellipsis
-            className="tw:w-full tw:justify-start"
-            color="secondary"
-            data-testid="comments-input-field"
-            size="sm"
-            onPress={() => setShowFeedEditor(true)}>
-            {t('message.input-placeholder')}
-          </Button>
-        </Box>
+      {renderCommentInput(
+        classNames('m-t-md', { 'm-b-md': shouldAddBottomMargin })
       )}
 
       {posts}
@@ -753,18 +763,12 @@ const ActivityFeedCardNew = ({
 
   const renderThreadPanelComments = () => (
     <Box
-      // Out to the card's edges past the body's 20px padding, so the rule
-      // spans the whole card; the content keeps its inset.
-      className="tw:-mx-5 tw:mt-4 tw:border-t tw:border-secondary tw:px-5 tw:pt-4"
+      className="tw:mt-4"
       data-testid="thread-panel-comments"
       direction="col"
       gap={4}>
       {posts}
-      <CommentComposer
-        focused={focusReplyEditor}
-        placeHolder={t('label.reply-in-conversation')}
-        onSave={onSave}
-      />
+      {renderCommentInput()}
     </Box>
   );
 

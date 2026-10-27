@@ -41,6 +41,7 @@ const mockProviderValue = {
   updateFeed: jest.fn(),
   deleteFeed: jest.fn(),
   updateReactions: jest.fn(),
+  focusReplyEditor: false,
 };
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -194,6 +195,7 @@ const activityReply: ConversationReply = {
 describe('ActivityFeedCardNew', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockProviderValue.focusReplyEditor = false;
     mockProviderValue.activityReplies = [];
   });
 
@@ -523,7 +525,7 @@ describe('ActivityFeedCardNew', () => {
     expect(screen.getByTestId('entity-link')).toBeInTheDocument();
   });
 
-  it('shows the replies above an open composer in the activity thread panel', async () => {
+  it('shows the replies above the comment input in the activity thread panel', async () => {
     render(
       <MemoryRouter>
         <ActivityFeedCardNew
@@ -551,19 +553,53 @@ describe('ActivityFeedCardNew', () => {
       </MemoryRouter>
     );
 
-    const composer = await screen.findByTestId('thread-composer');
+    const commentInput = screen.getByTestId('comments-input-field');
+    const replies = screen.getAllByTestId('reply-message');
 
-    expect(composer).toHaveTextContent('label.reply-in-conversation');
+    expect(commentInput).toHaveTextContent('message.input-placeholder');
+    expect(screen.queryByTestId('thread-composer')).not.toBeInTheDocument();
+    expect(replies.map((reply) => reply.textContent)).toEqual([
+      'Older',
+      'Newer',
+    ]);
+    expect(replies[1].compareDocumentPosition(commentInput)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+
+    fireEvent.click(commentInput);
+    const editor = await screen.findByTestId('reply-editor');
+
+    expect(editor).toHaveAttribute('data-focused', 'true');
+
+    mockProviderValue.postFeed.mockResolvedValueOnce(undefined);
+    fireEvent.click(within(editor).getByTestId('reply-editor-save'));
+
+    expect(mockProviderValue.postFeed).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByTestId('comments-input-field')
+    ).toBeInTheDocument();
+  });
+
+  it('opens the thread panel editor focused when a reply was requested', async () => {
+    mockProviderValue.focusReplyEditor = true;
+
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          isOpenInDrawer
+          isThreadPanel
+          showThread
+          feed={conversation}
+        />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId('reply-editor')).toHaveAttribute(
+      'data-focused',
+      'true'
+    );
     expect(
       screen.queryByTestId('comments-input-field')
     ).not.toBeInTheDocument();
-    expect(
-      screen.getAllByTestId('reply-message').map((reply) => reply.textContent)
-    ).toEqual(['Older', 'Newer']);
-
-    mockProviderValue.postFeed.mockResolvedValueOnce(undefined);
-    fireEvent.click(composer);
-
-    expect(mockProviderValue.postFeed).toHaveBeenCalledWith('hi', '');
   });
 });

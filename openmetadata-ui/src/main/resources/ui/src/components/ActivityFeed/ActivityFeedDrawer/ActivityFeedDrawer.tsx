@@ -28,7 +28,7 @@ import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedPro
 import './activity-feed-drawer.less';
 
 const PANEL_HEADER_CLASS_NAME =
-  'tw:px-4 tw:shrink-0 tw:text-md tw:font-medium tw:leading-snug tw:text-(color:--om-heading-color)';
+  'tw:px-4 tw:shrink-0 tw:text-lg tw:font-medium tw:leading-snug tw:text-(color:--om-heading-color)';
 
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
