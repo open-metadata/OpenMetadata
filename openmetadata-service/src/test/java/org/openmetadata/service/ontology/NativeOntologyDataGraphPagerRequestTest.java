@@ -3,6 +3,7 @@ package org.openmetadata.service.ontology;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -47,6 +48,7 @@ import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.LiveAsset;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.jdbi3.OntologyDAO;
 import org.openmetadata.service.jdbi3.OntologyDAO.LineagePosition;
+import org.openmetadata.service.jdbi3.OntologyDAO.PrefixLineageQuery;
 import org.openmetadata.service.jdbi3.OntologyDAO.PrefixLineageRow;
 import org.openmetadata.service.jdbi3.OntologyReferenceDAO;
 import org.openmetadata.service.jdbi3.OntologyReferenceDAO.AxiomPosition;
@@ -99,6 +101,22 @@ class NativeOntologyDataGraphPagerRequestTest {
     final var pager =
         unreadPager(NativeOntologyTopologyCursorCodec.forServerKeys(List.of(serverKey)));
     assertEquals(refusal(pager, loaded, randomToken()), refusal(pager, loaded, sealed));
+  }
+
+  @Test
+  void withoutAServerKeyAContinuedTopologyIssuesACursorTheNextRequestAccepts() {
+    final var loaded = List.of(prefix(1, new UUID(0, 999)));
+    givenVisible(1, 1);
+    final var scanned = edge(new UUID(0, 11), new UUID(0, 12));
+    final var continued = edge(new UUID(0, 13), new UUID(0, 14));
+    givenLineageInTwoBatches(scanned, continued);
+    final var pager = pager(NativeOntologyTopologyCursorCodec.forServerKeys(null));
+    final var first = pager.page(READER, ONTOLOGY, request(loaded, clusters(0, 12)));
+    final var after = first.getTopology().getAfter();
+    final var next = pager.page(READER, ONTOLOGY, request(first.getLoaded(), topology(after)));
+    assertEquals(List.of(scanned), first.getTopology().getLineageEdges());
+    assertEquals(List.of(continued), next.getTopology().getLineageEdges());
+    assertNull(next.getTopology().getAfter());
   }
 
   @Test
@@ -156,8 +174,12 @@ class NativeOntologyDataGraphPagerRequestTest {
   }
 
   private NativeOntologyDataGraphPager pager() {
+    return pager(CODEC);
+  }
+
+  private NativeOntologyDataGraphPager pager(final NativeOntologyTopologyCursorCodec codec) {
     return new NativeOntologyDataGraphPager(
-        graph, dao, store, mock(OntologyConceptBindingService.class), CODEC);
+        graph, dao, store, mock(OntologyConceptBindingService.class), codec);
   }
 
   private static NativeOntologyDataGraphPager unreadPager(
@@ -190,6 +212,26 @@ class NativeOntologyDataGraphPagerRequestTest {
         .thenReturn(rows);
     when(graph.visibleAssets(any(), anyList()))
         .thenReturn(Map.of(from, new LiveAsset(from, "Mysql"), to, new LiveAsset(to, "Mysql")));
+  }
+
+  private void givenLineageInTwoBatches(final Edge scanned, final Edge continued) {
+    final var first =
+        IntStream.range(0, 500)
+            .mapToObj(
+                index -> lineageRow(scanned.getFromEntity(), scanned.getToEntity(), "seen" + index))
+            .toList();
+    final var second = lineageRow(continued.getFromEntity(), continued.getToEntity(), "later");
+    final Map<LineagePosition, List<PrefixLineageRow>> batches =
+        Map.of(LineagePosition.FIRST, first, first.getLast().position(), List.of(second));
+    when(lineage.listLineageForPrefixes(anyString(), anyString(), anyMap(), any()))
+        .thenAnswer(
+            call ->
+                batches.getOrDefault(call.<PrefixLineageQuery>getArgument(3).after(), List.of()));
+    when(graph.visibleAssets(any(), anyList()))
+        .thenReturn(
+            Stream.of(scanned, continued)
+                .flatMap(edge -> Stream.of(edge.getFromEntity(), edge.getToEntity()))
+                .collect(Collectors.toMap(Function.identity(), id -> new LiveAsset(id, "Mysql"))));
   }
 
   private static List<String> forgedTokens(final String digest) {
@@ -282,6 +324,10 @@ class NativeOntologyDataGraphPagerRequestTest {
 
   private static PrefixLineageRow lineageRow(final UUID from, final UUID to, final String type) {
     return new PrefixLineageRow(from.toString(), to.toString(), "table", "table", type);
+  }
+
+  private static Edge edge(final UUID from, final UUID to) {
+    return new Edge().withFromEntity(from).withToEntity(to);
   }
 
   private static Cluster cluster(final OntologyConcept concept) {

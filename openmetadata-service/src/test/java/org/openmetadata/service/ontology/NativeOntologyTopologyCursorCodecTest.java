@@ -95,11 +95,15 @@ class NativeOntologyTopologyCursorCodecTest {
   }
 
   @Test
-  void withoutAKeyNoCursorIsIssuedAndNoneIsAccepted() {
-    final var keyless = new NativeOntologyTopologyCursorCodec(List.of());
-    assertThrows(IllegalStateException.class, () -> keyless.encode(cursor()));
-    assertRefused(keyless, CODEC.encode(cursor()));
-    assertRefused(keyless, unsigned(cursor()));
+  void withoutAServerKeyOneKeyHeldForTheProcessSealsAndOpensCursors() {
+    final var sealed = forServerKeys(null).encode(cursor());
+    assertEquals(cursor(), forServerKeys(List.of()).decode(sealed, "context"));
+  }
+
+  @Test
+  void aCursorFromAnotherProcessKeyGetsTheSameRefusal() {
+    final var anotherProcess = new NativeOntologyTopologyCursorCodec(List.of(Key.generateKey()));
+    assertRefused(forServerKeys(null), anotherProcess.encode(cursor()));
   }
 
   static String unsigned(final Cursor cursor) {

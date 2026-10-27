@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.ontology;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.macasaet.fernet.Key;
 import com.macasaet.fernet.StringValidator;
@@ -40,13 +40,14 @@ import org.openmetadata.service.ontology.NativeOntologyDataGraphPager.Cursor;
 /**
  * Seals a topology cursor into the opaque {@code topology.after} token with keys derived from the
  * servers' shared Fernet keys, and opens it again. The first key seals; any key opens, so rotating
- * keys keeps open cursors. Without a key no cursor is issued and none is accepted. Cursors do not
- * expire, because binding revisions and the axiom position check already retire stale ones.
+ * keys keeps open cursors. Cursors do not expire, because binding revisions and the axiom position
+ * check already retire stale ones.
  */
 public final class NativeOntologyTopologyCursorCodec {
   private static final int MAX_LENGTH = 8192;
   private static final int VERSION = 1;
   private static final String CURSOR_KEY_LABEL = "native-ontology-topology-cursor/v1";
+  private static final Key PROCESS_KEY = Key.generateKey(new SecureRandom());
   private static final Validator<String> NO_EXPIRY =
       new StringValidator() {
         @Override
@@ -63,13 +64,14 @@ public final class NativeOntologyTopologyCursorCodec {
 
   /**
    * Derives one cursor key from each of the server's Fernet keys, in order, so no other value the
-   * server seals opens as a cursor.
+   * server seals opens as a cursor. Without a Fernet key, a key generated once for this process
+   * seals cursors, so another server or a restart refuses them like any other invalid cursor.
    */
   public static NativeOntologyTopologyCursorCodec forServerKeys(final List<Key> serverKeys) {
     return new NativeOntologyTopologyCursorCodec(
-        listOrEmpty(serverKeys).stream()
-            .map(NativeOntologyTopologyCursorCodec::cursorKey)
-            .toList());
+        nullOrEmpty(serverKeys)
+            ? List.of(PROCESS_KEY)
+            : serverKeys.stream().map(NativeOntologyTopologyCursorCodec::cursorKey).toList());
   }
 
   static Key cursorKey(final Key serverKey) {
@@ -79,10 +81,6 @@ public final class NativeOntologyTopologyCursorCodec {
   }
 
   String encode(final Cursor cursor) {
-    if (keys.isEmpty()) {
-      throw new IllegalStateException(
-          "Set fernetConfiguration.fernetKey to page a native graph topology");
-    }
     return Token.generate(random, keys.getFirst(), JsonUtils.pojoToJson(WireCursor.of(cursor)))
         .serialise();
   }
