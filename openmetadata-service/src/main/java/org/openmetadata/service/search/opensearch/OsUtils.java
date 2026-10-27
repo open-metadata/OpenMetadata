@@ -29,6 +29,7 @@ import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
@@ -193,6 +194,9 @@ public class OsUtils {
             0,
             1,
             fieldsToRemove);
+    if (result.isEmpty()) {
+      throw EntityNotFoundException.byName(hasToFqnPair.getRight());
+    }
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());
     } else {
