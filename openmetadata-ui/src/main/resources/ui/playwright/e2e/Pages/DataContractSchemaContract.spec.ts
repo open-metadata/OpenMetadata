@@ -258,9 +258,14 @@ test.describe(
       } (seed ${uuid()})`;
       const { apiContext, afterAction } = await performAdminLogin(browser);
       try {
-        await seedContractActivity(apiContext, approvedSchemaContract, summary, {
-          eventType: 'EntityCreated',
-        });
+        await seedContractActivity(
+          apiContext,
+          approvedSchemaContract,
+          summary,
+          {
+            eventType: 'EntityCreated',
+          }
+        );
       } finally {
         await afterAction();
       }
