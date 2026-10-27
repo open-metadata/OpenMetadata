@@ -36,12 +36,23 @@ import org.openmetadata.service.rdf.OwlEntityDeclarations.EntityKind;
 /** The ontology-release-v1 RDF projection reads sealed SQL members without any live lookup. */
 public final class OntologyReleaseProjection {
   public Model build(final OntologyRelease release, final List<OntologyReleaseMember> members) {
+    return build(release, members, true);
+  }
+
+  /** {@code includeInverses} false leaves out every {@code owl:inverseOf} the properties state. */
+  public Model build(
+      final OntologyRelease release,
+      final List<OntologyReleaseMember> members,
+      final boolean includeInverses) {
     OntologyReleaseManifest.verify(release, members);
     final List<Definition> definitions =
         members.stream()
             .map(
                 member -> new Definition(member, OntologyReleaseReader.definition(release, member)))
             .toList();
+    if (!includeInverses) {
+      withoutInverses(definitions);
+    }
     final Ontology ontology = root(definitions);
     final Set<String> dataProperties =
         definitions.stream()
@@ -64,6 +75,14 @@ public final class OntologyReleaseProjection {
       model.close();
       throw exception;
     }
+  }
+
+  private static void withoutInverses(final List<Definition> definitions) {
+    definitions.stream()
+        .map(Definition::value)
+        .filter(OntologyProperty.class::isInstance)
+        .map(OntologyProperty.class::cast)
+        .forEach(property -> property.setInverse(null));
   }
 
   private static Ontology root(final List<Definition> definitions) {

@@ -2,8 +2,10 @@ package org.openmetadata.service.resources.ontology;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -16,6 +18,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.OntologyReleaseDiff;
 import org.openmetadata.schema.api.data.OntologyReleaseReview;
@@ -32,13 +35,16 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.ontology.OntologyBoundAssetLinks;
 import org.openmetadata.service.ontology.OntologyConceptBindingService;
+import org.openmetadata.service.ontology.OntologyExportGate;
 import org.openmetadata.service.ontology.OntologyReleaseComparison;
 import org.openmetadata.service.ontology.OntologyReleaseReader;
 import org.openmetadata.service.ontology.OntologyReleaseStructure;
 import org.openmetadata.service.ontology.OntologyReleaseValidationService;
+import org.openmetadata.service.rdf.OntologyExportFormat;
+import org.openmetadata.service.rdf.OntologyExportOptions;
 import org.openmetadata.service.rdf.OntologyReleaseExporter;
-import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -55,20 +61,20 @@ public final class OntologyReleaseResource
   private final OntologyReleaseStructure structure;
   private final OntologyReleaseComparison comparison;
   private final OntologyReleaseValidationService validation;
+  private final OntologyConceptBindingService bindings;
 
   public OntologyReleaseResource(final Authorizer authorizer, final Limits limits) {
     super(Entity.ONTOLOGY_RELEASE, authorizer, limits);
     exporter = new OntologyReleaseExporter(repository);
     structure = new OntologyReleaseStructure(repository);
     comparison = new OntologyReleaseComparison(repository);
-    validation =
-        new OntologyReleaseValidationService(
-            repository,
-            new OntologyConceptBindingService(
-                new OntologyConceptBindingStore(
-                    Entity.getCollectionDAO(), OntologyConceptBindingStore.registeredAssetTables()),
-                authorizer,
-                Entity::getEntityRepository));
+    bindings =
+        new OntologyConceptBindingService(
+            new OntologyConceptBindingStore(
+                Entity.getCollectionDAO(), OntologyConceptBindingStore.registeredAssetTables()),
+            authorizer,
+            Entity::getEntityRepository);
+    validation = new OntologyReleaseValidationService(repository, bindings);
   }
 
   public static class OntologyReleaseList extends ResultList<OntologyRelease> {}
@@ -164,7 +170,11 @@ public final class OntologyReleaseResource
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id) {
-    final OntologyRelease release = get(uriInfo, securityContext, id);
+    return validate(uriInfo, securityContext, get(uriInfo, securityContext, id));
+  }
+
+  private OntologyReleaseValidation validate(
+      final UriInfo uriInfo, final SecurityContext securityContext, final OntologyRelease release) {
     final OntologyRelease base =
         release.getBaseReleaseId() == null
             ? null
@@ -178,30 +188,81 @@ public final class OntologyReleaseResource
 
   @GET
   @Path("/{id}/export")
-  @Produces({"text/turtle", "application/rdf+xml", "application/n-triples", "application/ld+json"})
+  @Produces({
+    "text/turtle",
+    "application/rdf+xml",
+    "application/n-triples",
+    "application/ld+json",
+    "text/csv",
+    MediaType.APPLICATION_JSON
+  })
   @Operation(
       operationId = "exportOntologyRelease",
       summary = "Export the asserted content of a sealed ontology release",
       description =
-          "Exports the captured definitions, independently of working edits and RDF service availability. Export does not approve or activate a candidate.")
+          "Exports the captured definitions as Turtle, RDF/XML, N-Triples, JSON-LD, SKOS, SKOS-XL or the native CSV, independently of working edits and RDF service availability. Bound asset links are current operational metadata and are opt-in. With shaclGate, a release whose validation is not valid returns 422 with the validation report and no file. Export does not approve or activate a candidate.")
   public Response export(
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
-      @QueryParam("format") @DefaultValue("turtle") final String requestedFormat) {
+      @Valid @BeanParam final ExportQuery query) {
     final OntologyRelease release = get(uriInfo, securityContext, id);
-    final RdfSerializationFormat format = RdfSerializationFormat.parse(requestedFormat);
+    final OntologyExportFormat format = OntologyExportFormat.parse(query.format);
+    final Optional<OntologyReleaseValidation> refusal =
+        OntologyExportGate.refusal(
+            query.shaclGate, () -> validate(uriInfo, securityContext, release));
+    return refusal.isPresent()
+        ? Response.status(422).type(MediaType.APPLICATION_JSON).entity(refusal.get()).build()
+        : download(uriInfo, securityContext, release, format, query.options());
+  }
+
+  private Response download(
+      final UriInfo uriInfo,
+      final SecurityContext securityContext,
+      final OntologyRelease release,
+      final OntologyExportFormat format,
+      final OntologyExportOptions options) {
     final String content =
         exporter.export(
             release,
             format,
+            options,
             definition ->
-                OntologyResourceAccess.requireView(authorizer, securityContext, definition));
+                OntologyResourceAccess.requireView(authorizer, securityContext, definition),
+            new OntologyBoundAssetLinks(
+                bindings, new OntologyConceptBindingService.Access(uriInfo, securityContext)));
     return Response.ok(content, format.mediaType())
         .header(
             "Content-Disposition",
-            "attachment; filename=\"ontology-release-" + id + "." + format.extension() + "\"")
+            "attachment; filename=\"ontology-release-"
+                + release.getId()
+                + "."
+                + format.extension()
+                + "\"")
         .build();
+  }
+
+  /** The export query shape; JAX-RS fills the fields, so they cannot be final. */
+  public static final class ExportQuery {
+    @QueryParam("format")
+    @DefaultValue("turtle")
+    private String format;
+
+    @QueryParam("includeInverses")
+    @DefaultValue("true")
+    private boolean includeInverses;
+
+    @QueryParam("includeBoundAssets")
+    @DefaultValue("false")
+    private boolean includeBoundAssets;
+
+    @QueryParam("shaclGate")
+    @DefaultValue("false")
+    private boolean shaclGate;
+
+    OntologyExportOptions options() {
+      return new OntologyExportOptions(includeInverses, includeBoundAssets);
+    }
   }
 
   @GET

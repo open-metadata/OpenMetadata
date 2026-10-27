@@ -17,8 +17,9 @@ final class OntologyRdfVocabulary {
   static final Property IDENTIFIER_INTENT =
       ResourceFactory.createProperty("https://open-metadata.org/ontology/identifierIntent");
   static final Property ABSTRACT = ResourceFactory.createProperty(NAMESPACE + "abstract");
+  static final Property BOUND_ASSET = ResourceFactory.createProperty(NAMESPACE + "boundAsset");
   static final Set<Resource> ANNOTATIONS =
-      Set.of(DCTerms.source, DCTerms.isReplacedBy, UNIT, IDENTIFIER_INTENT, ABSTRACT);
+      Set.of(DCTerms.source, DCTerms.isReplacedBy, UNIT, IDENTIFIER_INTENT, ABSTRACT, BOUND_ASSET);
 
   private OntologyRdfVocabulary() {}
 

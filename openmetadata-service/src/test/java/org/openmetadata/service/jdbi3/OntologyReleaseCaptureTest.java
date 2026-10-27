@@ -33,8 +33,10 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.OntologyValidationException;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.rdf.BoundAssetLinks;
+import org.openmetadata.service.rdf.OntologyExportFormat;
+import org.openmetadata.service.rdf.OntologyExportOptions;
 import org.openmetadata.service.rdf.OntologyReleaseExporter;
-import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 class OntologyReleaseCaptureTest {
   @ParameterizedTest
@@ -278,7 +280,12 @@ class OntologyReleaseCaptureTest {
           assertEquals(2L, second.getReleaseRevision());
           String exported =
               new OntologyReleaseExporter(fixture.releases)
-                  .export(first, RdfSerializationFormat.N_TRIPLES, member -> {});
+                  .export(
+                      first,
+                      OntologyExportFormat.N_TRIPLES,
+                      OntologyExportOptions.DEFAULTS,
+                      member -> {},
+                      BoundAssetLinks.NONE);
           var model = ModelFactory.createDefaultModel();
           try {
             RDFParser.fromString(exported, Lang.NTRIPLES).parse(model);
