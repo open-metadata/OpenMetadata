@@ -591,6 +591,13 @@ versions come from `ingestion/uv.lock`. Use an installed Python 3.10, 3.11 or 3.
 validated local profiles. Native build prerequisites and ANTLR remain necessary; use
 `./scripts/dev_setup.sh` to prepare the toolchain.
 
+`requires-python = ">=3.10"` has no upper bound, so newer interpreters remain available
+for experimentation. `tool.uv.required-environments` requires wheel availability for
+binary-only dependencies on the validated targets; it does not exclude newer Python
+versions. Use Nox `install --python` to select another interpreter, or `PYTHON_VERSIONS`
+to override the default Nox test matrix. Dependency and native-build compatibility on
+newer interpreters is not guaranteed.
+
 | Profile | Installed selection | Default environment | Usual entry point |
 | --- | --- | --- | --- |
 | `runtime` | Base ingestion framework/SDK | `env/` | `make install` |
