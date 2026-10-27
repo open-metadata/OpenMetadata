@@ -95,14 +95,6 @@ export const getOptionalFields = (
       return (
         <>
           <div className="m-b-xss truncate" data-testid="additional-field">
-            <span className="m-b-0">{t('label.registry')}:</span>
-            <span
-              className="m-l-xss font-normal text-grey-body"
-              data-testid="pipeline-url">
-              {mlmodel.connection?.config?.registryUri || '--'}
-            </span>
-          </div>
-          <div className="m-b-xss truncate" data-testid="additional-field">
             <span className="m-b-0">{t('label.tracking')}:</span>
             <span
               className="m-l-xss font-normal text-grey-body"
