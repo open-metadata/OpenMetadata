@@ -1452,6 +1452,11 @@ export interface AppScheduleClass {
      */
     cronExpression?:  string;
     scheduleTimeline: ScheduleTimeline;
+    /**
+     * IANA timezone the schedule runs in, for example Europe/Berlin. When unset the server
+     * timezone applies, which is UTC in the official images.
+     */
+    timezone?: string;
 }
 
 /**

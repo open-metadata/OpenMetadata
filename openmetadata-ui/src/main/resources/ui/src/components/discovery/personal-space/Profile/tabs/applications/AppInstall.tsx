@@ -48,7 +48,10 @@ import {
   getCronDefaultValue,
   getDefaultScheduleValue,
 } from '../../../../../../utils/CronExpressionUtils';
-import { getRelativeTime } from '../../../../../../utils/date-time/DateTimeUtils';
+import {
+  getBrowserTimezone,
+  getRelativeTime,
+} from '../../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../../../utils/i18next/LocalUtil';
 import {
@@ -228,6 +231,9 @@ const AppInstall: FC<AppInstallProps> = ({
     useState<Record<string, unknown>>();
   const [ingestionRunner, setIngestionRunner] = useState<EntityReference>();
   const [scheduleValue, setScheduleValue] = useState<string>();
+  const [timezoneValue, setTimezoneValue] = useState<string>(
+    getBrowserTimezone
+  );
   const [isScheduleValid, setIsScheduleValid] = useState(true);
   // `undefined` is a valid on-demand selection, so initialization needs its own flag.
   const isScheduleInitialized = useRef(false);
@@ -346,6 +352,7 @@ const AppInstall: FC<AppInstallProps> = ({
       app: appData,
       configuration,
       cron: steps.includes('schedule') ? scheduleValue ?? '' : undefined,
+      timezone: steps.includes('schedule') ? timezoneValue : undefined,
       ingestionRunner: runner,
     });
 
@@ -458,8 +465,10 @@ const AppInstall: FC<AppInstallProps> = ({
             <ScheduleInterval
               defaultSchedule={defaultCron}
               includePeriodOptions={initialOptions}
+              timezone={timezoneValue}
               value={scheduleValue}
               onChange={setScheduleValue}
+              onTimezoneChange={setTimezoneValue}
               onValidityChange={setIsScheduleValid}
             />
             <StepFooter

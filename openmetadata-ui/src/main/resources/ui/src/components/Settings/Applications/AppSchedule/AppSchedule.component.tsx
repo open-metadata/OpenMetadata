@@ -29,7 +29,11 @@ import {
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
-import { getAppCronExpression } from '../../../../utils/ApplicationUtils';
+import {
+  getAppCronExpression,
+  getAppScheduleTimezone,
+} from '../../../../utils/ApplicationUtils';
+import { getBrowserTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import Loader from '../../../common/Loader/Loader';
 import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
@@ -47,6 +51,7 @@ const AppScheduleSummary = ({
   cronString: string;
 }) => {
   const { t } = useTranslation();
+  const timezone = getAppScheduleTimezone(appSchedule);
 
   if (!appSchedule) {
     return null;
@@ -70,6 +75,17 @@ const AppScheduleSummary = ({
           </Typography>
           <Typography className="font-medium" data-testid="cron-string">
             {cronString}
+          </Typography>
+        </Box>
+      )}
+
+      {!isEmpty(cronString) && timezone && (
+        <Box align="center" direction="row" gap={2}>
+          <Typography className="right-panel-label">
+            {t('label.timezone')}
+          </Typography>
+          <Typography className="font-medium" data-testid="schedule-timezone">
+            {timezone}
           </Typography>
         </Box>
       )}
@@ -157,6 +173,7 @@ const AppSchedule = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const [scheduleValue, setScheduleValue] = useState<string>();
+  const [timezoneValue, setTimezoneValue] = useState<string>();
   const [isScheduleValid, setIsScheduleValid] = useState(true);
   const isAppDisabled = disabled || Boolean(appData.deleted);
 
@@ -224,13 +241,16 @@ const AppSchedule = ({
 
   const onDialogOpen = () => {
     setScheduleValue(getAppCronExpression(appData.appSchedule));
+    setTimezoneValue(
+      getAppScheduleTimezone(appData.appSchedule) ?? getBrowserTimezone()
+    );
     setIsScheduleValid(true);
     setShowModal(true);
   };
 
   const onDialogSave = async () => {
     setIsSaveLoading(true);
-    await onSave(scheduleValue ?? '');
+    await onSave(scheduleValue ?? '', timezoneValue);
     setIsSaveLoading(false);
     setShowModal(false);
   };
@@ -337,8 +357,10 @@ const AppSchedule = ({
               <ScheduleInterval
                 defaultSchedule={defaultCron}
                 includePeriodOptions={initialOptions}
+                timezone={timezoneValue}
                 value={scheduleValue}
                 onChange={setScheduleValue}
+                onTimezoneChange={setTimezoneValue}
                 onValidityChange={setIsScheduleValid}
               />
             </Dialog.Content>

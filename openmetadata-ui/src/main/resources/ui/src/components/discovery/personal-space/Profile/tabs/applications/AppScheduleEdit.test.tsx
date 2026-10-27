@@ -29,18 +29,28 @@ jest.mock('../../../../../../context/LimitsProvider/useLimitsStore', () => ({
 
 interface ScheduleIntervalStubProps {
   onChange: (cron: string) => void;
+  onTimezoneChange: (timezone: string) => void;
   onValidityChange: (isValid: boolean) => void;
 }
 
 jest.mock(
   '../../../../../Settings/Services/AddIngestion/Steps/ScheduleInterval',
   () =>
-    jest.fn(({ onChange, onValidityChange }: ScheduleIntervalStubProps) => (
-      <>
-        <button onClick={() => onChange('0 12 * * 3')}>Change schedule</button>
-        <button onClick={() => onValidityChange(false)}>Make invalid</button>
-      </>
-    ))
+    jest.fn(
+      ({
+        onChange,
+        onTimezoneChange,
+        onValidityChange,
+      }: ScheduleIntervalStubProps) => (
+        <>
+          <button onClick={() => onChange('0 12 * * 3')}>Change schedule</button>
+          <button onClick={() => onTimezoneChange('Asia/Tokyo')}>
+            Change timezone
+          </button>
+          <button onClick={() => onValidityChange(false)}>Make invalid</button>
+        </>
+      )
+    )
 );
 
 const app = {
@@ -49,6 +59,7 @@ const app = {
   appSchedule: {
     scheduleTimeline: ScheduleTimeline.Custom,
     cronExpression: '30 0 * * 0',
+    timezone: 'Europe/Tallinn',
   },
 } as App;
 
@@ -79,6 +90,7 @@ describe('AppScheduleEdit', () => {
     expect(ScheduleInterval).toHaveBeenLastCalledWith(
       expect.objectContaining({
         value: '30 0 * * 0',
+        timezone: 'Europe/Tallinn',
         defaultSchedule: '0 0 * * *',
         includePeriodOptions: undefined,
       }),
@@ -92,7 +104,16 @@ describe('AppScheduleEdit', () => {
     fireEvent.click(screen.getByText('Change schedule'));
     fireEvent.click(screen.getByTestId('save-button'));
 
-    expect(onSave).toHaveBeenCalledWith('0 12 * * 3');
+    expect(onSave).toHaveBeenCalledWith('0 12 * * 3', 'Europe/Tallinn');
+  });
+
+  it('saves the timezone the user picked', () => {
+    const { onSave } = renderEdit({});
+
+    fireEvent.click(screen.getByText('Change timezone'));
+    fireEvent.click(screen.getByTestId('save-button'));
+
+    expect(onSave).toHaveBeenCalledWith('30 0 * * 0', 'Asia/Tokyo');
   });
 
   it('saves an empty cron for an app that has no schedule yet', () => {
@@ -107,7 +128,7 @@ describe('AppScheduleEdit', () => {
 
     fireEvent.click(screen.getByTestId('save-button'));
 
-    expect(onSave).toHaveBeenCalledWith('');
+    expect(onSave).toHaveBeenCalledWith('', expect.any(String));
   });
 
   it('blocks saving while the schedule is invalid', () => {

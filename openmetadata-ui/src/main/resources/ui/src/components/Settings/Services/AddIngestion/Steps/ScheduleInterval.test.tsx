@@ -97,6 +97,33 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </div>
   ),
+  ComboBox: ({
+    items,
+    selectedKey,
+    onSelectionChange,
+    isDisabled,
+    label,
+    ...rest
+  }: {
+    items?: { id: string; label: string }[];
+    selectedKey?: string | null;
+    onSelectionChange?: (key: string) => void;
+    isDisabled?: boolean;
+    label?: string;
+  } & Record<string, unknown>) => (
+    <select
+      aria-label={label}
+      data-testid={rest['data-testid'] as string}
+      disabled={isDisabled}
+      value={selectedKey ?? ''}
+      onChange={(event) => onSelectionChange?.(event.target.value)}>
+      {(items ?? []).map((item) => (
+        <option key={item.id} value={item.id}>
+          {item.label}
+        </option>
+      ))}
+    </select>
+  ),
   Grid: Object.assign(
     ({ children, ...rest }: Record<string, unknown>) => (
       <div data-testid={rest['data-testid'] as string}>
@@ -584,5 +611,52 @@ describe('ScheduleInterval', () => {
     expect(
       screen.getByText('label.entity-scheduled-to-run-value')
     ).toBeInTheDocument();
+  });
+
+  it('should not render the timezone picker when the owner stores no timezone', async () => {
+    await renderComponent({ value: '0 0 * * *' });
+
+    expect(screen.queryByTestId('timezone-select')).not.toBeInTheDocument();
+    expect(screen.getByTestId('schedule-description')).not.toHaveTextContent(
+      '('
+    );
+  });
+
+  it('should render the timezone picker and name the zone in the description', async () => {
+    await renderComponent({
+      value: '0 0 * * *',
+      timezone: 'Europe/Tallinn',
+      onTimezoneChange: jest.fn(),
+    });
+
+    expect(screen.getByTestId('timezone-select')).toHaveValue('Europe/Tallinn');
+    expect(screen.getByTestId('schedule-description')).toHaveTextContent(
+      '(Europe/Tallinn)'
+    );
+  });
+
+  it('should emit the chosen timezone', async () => {
+    const onTimezoneChange = jest.fn();
+    await renderComponent({
+      value: '0 0 * * *',
+      timezone: 'Europe/Tallinn',
+      onTimezoneChange,
+    });
+
+    fireEvent.change(screen.getByTestId('timezone-select'), {
+      target: { value: 'Asia/Tokyo' },
+    });
+
+    expect(onTimezoneChange).toHaveBeenCalledWith('Asia/Tokyo');
+  });
+
+  it('should not render the timezone picker for an on-demand schedule', async () => {
+    await renderComponent({
+      value: '',
+      timezone: 'Europe/Tallinn',
+      onTimezoneChange: jest.fn(),
+    });
+
+    expect(screen.queryByTestId('timezone-select')).not.toBeInTheDocument();
   });
 });

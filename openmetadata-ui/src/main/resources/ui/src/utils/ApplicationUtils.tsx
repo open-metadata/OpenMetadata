@@ -39,6 +39,11 @@ export const getAppCronExpression = (
 ): string | undefined =>
   isAppScheduleClass(appSchedule) ? appSchedule.cronExpression : undefined;
 
+export const getAppScheduleTimezone = (
+  appSchedule: App['appSchedule']
+): string | undefined =>
+  isAppScheduleClass(appSchedule) ? appSchedule.timezone : undefined;
+
 export const isCacheWarmupApplication = (appName?: string) =>
   appName === CACHE_WARMUP_APPLICATION_NAME;
 

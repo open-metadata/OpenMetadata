@@ -1448,6 +1448,69 @@ public class AppsResourceIT {
     }
   }
 
+  @Test
+  void test_externalAppScheduleTimezone_syncsToPipelineAndRejectsUnknownZone(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedTz");
+    RequestOptions patchOptions =
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression("17 4 * * *")
+                      .withTimezone("Europe/Tallinn"));
+
+      App installedApp = httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+      assertEquals("Europe/Tallinn", installedApp.getAppSchedule().getTimezone());
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipeline =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertEquals(
+          "Europe/Tallinn",
+          pipeline.getAirflowConfig().getPipelineTimezone(),
+          "Bound pipeline must run in the app schedule timezone");
+
+      String appId = installedApp.getId().toString();
+      String changeZonePatch =
+          "[{\"op\":\"replace\",\"path\":\"/appSchedule/timezone\",\"value\":\"America/New_York\"}]";
+      httpClient.executeForString(
+          HttpMethod.PATCH, "/v1/apps/" + appId, changeZonePatch, patchOptions);
+
+      IngestionPipeline pipelineAfterChange =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertEquals(
+          "America/New_York", pipelineAfterChange.getAirflowConfig().getPipelineTimezone());
+
+      String badZonePatch =
+          "[{\"op\":\"replace\",\"path\":\"/appSchedule/timezone\",\"value\":\"Mars/Olympus\"}]";
+      assertThrows(
+          Exception.class,
+          () ->
+              httpClient.executeForString(
+                  HttpMethod.PATCH, "/v1/apps/" + appId, badZonePatch, patchOptions),
+          "An unknown zone id must be rejected");
+      assertEquals(
+          "America/New_York",
+          Apps.getByName(appName).getAppSchedule().getTimezone(),
+          "A rejected patch must leave the stored timezone untouched");
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
   private AppMarketPlaceDefinition createExternalAppMarketplace(
       HttpClient httpClient, String appName) throws Exception {
     CreateAppMarketPlaceDefinitionReq req =

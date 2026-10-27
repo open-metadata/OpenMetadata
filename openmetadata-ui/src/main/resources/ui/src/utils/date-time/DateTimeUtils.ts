@@ -198,6 +198,23 @@ export const getTimeZone = (): string => {
 export const getUtcOffsetLabel = (): string =>
   DateTime.local().toFormat("'UTC'ZZ");
 
+/** The viewer's IANA zone, the natural default for a new schedule. */
+export const getBrowserTimezone = (): string =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+// Intl.supportedValuesOf is ES2022, above the lib target, and absent in older
+// browsers: the list then holds only UTC and the zone already saved.
+export const getTimezoneOptions = (current?: string): string[] => {
+  const intl = Intl as unknown as {
+    supportedValuesOf?: (key: 'timeZone') => string[];
+  };
+  const zones = intl.supportedValuesOf?.('timeZone') ?? [];
+
+  return Array.from(
+    new Set(['UTC', ...zones, ...(current ? [current] : [])])
+  ).sort();
+};
+
 /**
  * @param timeStamp EPOCH millis
  * @returns Formatted date with timezone

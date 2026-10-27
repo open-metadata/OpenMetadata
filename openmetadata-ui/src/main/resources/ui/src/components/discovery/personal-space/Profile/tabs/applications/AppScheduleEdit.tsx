@@ -14,7 +14,11 @@
 import { Box, Button } from '@openmetadata/ui-core-components';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAppCronExpression } from '../../../../../../utils/ApplicationUtils';
+import {
+  getAppCronExpression,
+  getAppScheduleTimezone,
+} from '../../../../../../utils/ApplicationUtils';
+import { getBrowserTimezone } from '../../../../../../utils/date-time/DateTimeUtils';
 import { useAppScheduleOptions } from '../../../../../Settings/Applications/AppSchedule/useAppScheduleOptions';
 import ScheduleInterval from '../../../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { AppFooter } from './AppFooter';
@@ -32,6 +36,9 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
   const [scheduleValue, setScheduleValue] = useState(() =>
     getAppCronExpression(appData.appSchedule)
   );
+  const [timezoneValue, setTimezoneValue] = useState(
+    () => getAppScheduleTimezone(appData.appSchedule) ?? getBrowserTimezone()
+  );
   const [isScheduleValid, setIsScheduleValid] = useState(true);
 
   return (
@@ -42,8 +49,10 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
       <ScheduleInterval
         defaultSchedule={defaultCron}
         includePeriodOptions={initialOptions}
+        timezone={timezoneValue}
         value={scheduleValue}
         onChange={setScheduleValue}
+        onTimezoneChange={setTimezoneValue}
         onValidityChange={setIsScheduleValid}
       />
       <AppFooter testId="app-schedule-footer">
@@ -59,7 +68,7 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
           data-testid="save-button"
           isDisabled={!isScheduleValid}
           isLoading={isSaving}
-          onPress={() => onSave(scheduleValue ?? '')}>
+          onPress={() => onSave(scheduleValue ?? '', timezoneValue)}>
           {t('label.save')}
         </Button>
       </AppFooter>
