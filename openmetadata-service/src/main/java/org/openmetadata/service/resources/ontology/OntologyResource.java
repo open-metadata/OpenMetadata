@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.ontology;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
@@ -143,7 +141,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
           Entity.getCollectionDAO(),
           bindingStore,
           new OntologyConceptBindingService(bindingStore, authorizer, Entity::getEntityRepository),
-          new NativeOntologyTopologyCursorCodec(listOrEmpty(Fernet.getInstance().getCachedKeys())));
+          NativeOntologyTopologyCursorCodec.forServerKeys(Fernet.getInstance().getCachedKeys()));
 
   public OntologyResource(final Authorizer authorizer, final Limits limits) {
     super(Entity.ONTOLOGY, authorizer, limits);

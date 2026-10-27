@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.ontology;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import com.macasaet.fernet.Key;
 import com.macasaet.fernet.StringValidator;
 import com.macasaet.fernet.Token;
@@ -23,8 +25,11 @@ import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.TemporalAmount;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
+import org.apache.commons.codec.digest.HmacAlgorithms;
+import org.apache.commons.codec.digest.HmacUtils;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
@@ -33,14 +38,15 @@ import org.openmetadata.service.jdbi3.OntologyReferenceDAO.AxiomPosition;
 import org.openmetadata.service.ontology.NativeOntologyDataGraphPager.Cursor;
 
 /**
- * Seals a topology cursor into the opaque {@code topology.after} token with the servers' shared
- * Fernet keys, and opens it again. The first key seals; any key opens, so rotating keys keeps open
- * cursors. Without a key no cursor is issued and none is accepted. Cursors do not expire, because
- * binding revisions and the axiom position check already retire stale ones.
+ * Seals a topology cursor into the opaque {@code topology.after} token with keys derived from the
+ * servers' shared Fernet keys, and opens it again. The first key seals; any key opens, so rotating
+ * keys keeps open cursors. Without a key no cursor is issued and none is accepted. Cursors do not
+ * expire, because binding revisions and the axiom position check already retire stale ones.
  */
 public final class NativeOntologyTopologyCursorCodec {
   private static final int MAX_LENGTH = 8192;
   private static final int VERSION = 1;
+  private static final String CURSOR_KEY_LABEL = "native-ontology-topology-cursor/v1";
   private static final Validator<String> NO_EXPIRY =
       new StringValidator() {
         @Override
@@ -51,8 +57,25 @@ public final class NativeOntologyTopologyCursorCodec {
   private final List<Key> keys;
   private final SecureRandom random = new SecureRandom();
 
-  public NativeOntologyTopologyCursorCodec(final List<Key> keys) {
+  NativeOntologyTopologyCursorCodec(final List<Key> keys) {
     this.keys = List.copyOf(keys);
+  }
+
+  /**
+   * Derives one cursor key from each of the server's Fernet keys, in order, so no other value the
+   * server seals opens as a cursor.
+   */
+  public static NativeOntologyTopologyCursorCodec forServerKeys(final List<Key> serverKeys) {
+    return new NativeOntologyTopologyCursorCodec(
+        listOrEmpty(serverKeys).stream()
+            .map(NativeOntologyTopologyCursorCodec::cursorKey)
+            .toList());
+  }
+
+  static Key cursorKey(final Key serverKey) {
+    final byte[] serverKeyBytes = Base64.getUrlDecoder().decode(serverKey.serialise());
+    return new Key(
+        new HmacUtils(HmacAlgorithms.HMAC_SHA_256, serverKeyBytes).hmac(CURSOR_KEY_LABEL));
   }
 
   String encode(final Cursor cursor) {

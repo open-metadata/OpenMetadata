@@ -4,6 +4,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.openmetadata.service.ontology.NativeOntologyTopologyCursorCodec.forServerKeys;
 
 import com.macasaet.fernet.Key;
 import java.util.Base64;
@@ -74,6 +75,26 @@ class NativeOntologyTopologyCursorCodecTest {
   }
 
   @Test
+  void aCursorKeyIsTheHmacOfItsServerKeyAndTheCursorLabel() {
+    final var serverKey = new Key("AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=");
+    assertEquals(
+        "5H51Nb1jsJ1CTJAbhZw9249s2y9z_FfBGbYGxa-UY5w=",
+        NativeOntologyTopologyCursorCodec.cursorKey(serverKey).serialise());
+  }
+
+  @Test
+  void aCursorSealedUnderTheDerivedSecondKeyOfARotatedListStillOpens() {
+    final var older = Key.generateKey();
+    final var newer = Key.generateKey();
+    final var sealed = forServerKeys(List.of(older)).encode(cursor());
+    final var rotated = forServerKeys(List.of(newer, older));
+    assertEquals(cursor(), rotated.decode(sealed, "context"));
+    final var resealed = rotated.encode(cursor());
+    assertEquals(cursor(), forServerKeys(List.of(newer)).decode(resealed, "context"));
+    assertRefused(forServerKeys(List.of(older)), resealed);
+  }
+
+  @Test
   void withoutAKeyNoCursorIsIssuedAndNoneIsAccepted() {
     final var keyless = new NativeOntologyTopologyCursorCodec(List.of());
     assertThrows(IllegalStateException.class, () -> keyless.encode(cursor()));
@@ -81,30 +102,25 @@ class NativeOntologyTopologyCursorCodecTest {
     assertRefused(keyless, unsigned(cursor()));
   }
 
-  @Test
-  void aRotatedKeyListStillOpensCursorsSealedWithAnOlderKey() {
-    final var older = Key.generateKey();
-    final var sealed = new NativeOntologyTopologyCursorCodec(List.of(older)).encode(cursor());
-    final var rotated = new NativeOntologyTopologyCursorCodec(List.of(Key.generateKey(), older));
-    assertEquals(cursor(), rotated.decode(sealed, "context"));
+  static String unsigned(final Cursor cursor) {
+    return RestUtil.encodeCursor(json(cursor));
   }
 
-  static String unsigned(final Cursor cursor) {
-    return RestUtil.encodeCursor(
-        """
+  static String json(final Cursor cursor) {
+    return """
         {"version":%d,"contextDigest":"%s","semanticAfterId":"%s","targetOffset":%d,\
         "lineageAfter":{"fromId":"%s","toId":"%s","relationType":"%s"},\
         "semanticDone":%b,"lineageDone":%b}"""
-            .formatted(
-                cursor.version(),
-                cursor.contextDigest(),
-                cursor.semanticAfter().id(),
-                cursor.targetOffset(),
-                cursor.lineageAfter().fromId(),
-                cursor.lineageAfter().toId(),
-                cursor.lineageAfter().relationType(),
-                cursor.semanticDone(),
-                cursor.lineageDone()));
+        .formatted(
+            cursor.version(),
+            cursor.contextDigest(),
+            cursor.semanticAfter().id(),
+            cursor.targetOffset(),
+            cursor.lineageAfter().fromId(),
+            cursor.lineageAfter().toId(),
+            cursor.lineageAfter().relationType(),
+            cursor.semanticDone(),
+            cursor.lineageDone());
   }
 
   private static void assertRefused(

@@ -14,6 +14,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.macasaet.fernet.Key;
+import com.macasaet.fernet.Token;
 import java.net.URI;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -85,14 +86,24 @@ class NativeOntologyDataGraphPagerRequestTest {
   }
 
   @Test
-  void aRefusedCursorIsAnsweredBeforeAnyRead() {
+  void aTokenTheServerKeySealedGetsTheRandomBytesRefusalBeforeAnyRead() {
+    final var serverKey = Key.generateKey();
+    final var loaded = List.of(prefix(1, null));
+    final var cursor = semanticAt(digest(loaded), HIDDEN_AXIOM);
+    final var sealed =
+        Token.generate(
+                new SecureRandom(), serverKey, NativeOntologyTopologyCursorCodecTest.json(cursor))
+            .serialise();
+    final var rawKeyCodec = new NativeOntologyTopologyCursorCodec(List.of(serverKey));
+    assertEquals(cursor, rawKeyCodec.decode(sealed, digest(loaded)));
     final var pager =
-        new NativeOntologyDataGraphPager(
-            unread(NativeOntologyDataGraphService.class),
-            unread(CollectionDAO.class),
-            unread(OntologyConceptBindingStore.class),
-            unread(OntologyConceptBindingService.class),
-            CODEC);
+        unreadPager(NativeOntologyTopologyCursorCodec.forServerKeys(List.of(serverKey)));
+    assertEquals(refusal(pager, loaded, randomToken()), refusal(pager, loaded, sealed));
+  }
+
+  @Test
+  void aRefusedCursorIsAnsweredBeforeAnyRead() {
+    final var pager = unreadPager(CODEC);
     final var loaded = List.of(prefix(1, null));
     final var foreign = CODEC.encode(semanticAt(digest(new UUID(0, 9), loaded), HIDDEN_AXIOM));
     final var tokens = Stream.concat(forgedTokens(digest(loaded)).stream(), Stream.of(foreign));
@@ -147,6 +158,16 @@ class NativeOntologyDataGraphPagerRequestTest {
   private NativeOntologyDataGraphPager pager() {
     return new NativeOntologyDataGraphPager(
         graph, dao, store, mock(OntologyConceptBindingService.class), CODEC);
+  }
+
+  private static NativeOntologyDataGraphPager unreadPager(
+      final NativeOntologyTopologyCursorCodec codec) {
+    return new NativeOntologyDataGraphPager(
+        unread(NativeOntologyDataGraphService.class),
+        unread(CollectionDAO.class),
+        unread(OntologyConceptBindingStore.class),
+        unread(OntologyConceptBindingService.class),
+        codec);
   }
 
   private void givenVisible(final int first, final int last) {
