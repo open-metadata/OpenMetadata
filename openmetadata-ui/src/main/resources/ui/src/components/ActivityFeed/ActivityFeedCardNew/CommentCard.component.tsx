@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -36,8 +36,16 @@ import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEdito
 import '../ActivityFeedTab/activity-feed-tab.less';
 import Reactions from '../Reactions/Reactions';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
+import { getReplyLayout } from './CommentCard.utils';
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
+);
+const CommentEditForm = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/CommentComposer/CommentComposer').then((module) => ({
+      default: module.CommentEditForm,
+    }))
+  )
 );
 
 /**
@@ -74,6 +82,11 @@ interface CommentCardProps {
    * outside the activity feed have no second editor to close.
    */
   closeFeedEditor?: () => void;
+  /**
+   * In the activity thread panels: Edit / Delete sit in a menu, and the reply
+   * is edited in the comment edit form.
+   */
+  isThreadPanel?: boolean;
 }
 
 const CommentCard = ({
@@ -85,6 +98,7 @@ const CommentCard = ({
   onDelete,
   onReaction,
   closeFeedEditor,
+  isThreadPanel,
 }: CommentCardProps) => {
   // Unpacked once here so the rest of the component reads the same field names
   // regardless of which comment shape the caller handed over.
@@ -148,7 +162,27 @@ const CommentCard = ({
     [message]
   );
 
+  const handleFormSave = useCallback(
+    async (updatedMessage: string) => {
+      await onEdit(updatedMessage);
+      setIsEditPost(false);
+    },
+    [onEdit]
+  );
+
   const feedBodyRender = useMemo(() => {
+    if (isEditPost && isThreadPanel) {
+      return (
+        <Box direction="col" ref={editorRef}>
+          <CommentEditForm
+            message={message}
+            testId="edit-message"
+            onCancel={() => setIsEditPost(false)}
+            onSave={handleFormSave}
+          />
+        </Box>
+      );
+    }
     if (isEditPost) {
       return (
         <div ref={editorRef}>
@@ -170,28 +204,34 @@ const CommentCard = ({
         markdown={getFrontEndFormat(message)}
       />
     );
-  }, [isEditPost, postMessage, handleSave]);
+  }, [
+    isEditPost,
+    isThreadPanel,
+    message,
+    defaultValue,
+    handleSave,
+    handleFormSave,
+  ]);
+
+  const layout = getReplyLayout(isThreadPanel, isLastReply);
 
   return (
-    <div
-      className={classNames(
-        'd-flex items-start justify-start relative reply-card gap-2',
-        {
-          'reply-card-border-bottom': !isLastReply,
-        }
-      )}
-      data-testid="feed-reply-card">
-      <div className="profile-picture">
+    <div className={layout.root} data-testid="feed-reply-card">
+      <div className={layout.avatar}>
         <UserPopOverCard userName={authorName}>
           <div className="d-flex items-center">
-            <ProfilePicture name={authorName} width="32" />
+            <ProfilePicture name={authorName} size={layout.avatarSize} />
           </div>
         </UserPopOverCard>
       </div>
-      <div className="w-full">
+      <div className={layout.body}>
         <div className="d-flex items-center gap-2 tw:justify-between">
-          <div className="d-flex items-center gap-2 flex-wrap">
-            <Typography className="activity-feed-user-name reply-card-user-name not-prose">
+          <div className={layout.header}>
+            <Typography
+              className={classNames(
+                'activity-feed-user-name reply-card-user-name not-prose',
+                layout.name
+              )}>
               <UserPopOverCard userName={authorName}>
                 <Link
                   className="reply-card-user-name"
@@ -200,13 +240,15 @@ const CommentCard = ({
                 </Link>
               </UserPopOverCard>
             </Typography>
-            <Typography
-              className="m-b-xss"
-              color="secondary"
-              size="text-lg"
-              weight="bold">
-              {seperator}
-            </Typography>
+            {layout.showSeparator && (
+              <Typography
+                className="m-b-xss"
+                color="secondary"
+                size="text-lg"
+                weight="bold">
+                {seperator}
+              </Typography>
+            )}
             <Tooltip
               excludeTriggerFromTabOrder
               title={formatDateTime(createdAt)}>
@@ -221,6 +263,7 @@ const CommentCard = ({
           </div>
           <ActivityFeedActions
             isReply
+            asMenu={isThreadPanel}
             canDelete={canDelete}
             canEdit={canEdit}
             onDelete={onDelete}
@@ -230,11 +273,12 @@ const CommentCard = ({
         {feedBodyRender}
 
         {onReaction && (
-          <div className="m-y-md">
+          <div className={layout.reactions}>
             <div className="w-full" data-testid="feed-card-footer">
               <div className="d-flex items-center gap-2 w-full">
                 <Reactions
                   reactions={reactions ?? []}
+                  variant={layout.reactionsVariant}
                   onReactionSelect={onReaction}
                 />
               </div>

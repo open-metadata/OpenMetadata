@@ -21,7 +21,9 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
+  EntityIdentity,
   okJson,
+  requireEntityIdentity,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
@@ -47,6 +49,8 @@ export type ApiEndpointClassOptions = {
   collection?: ApiCollectionClass;
   sharedInfraKey?: string;
 };
+
+type APIEndpointResponseData = APIEndpoint & EntityIdentity;
 
 export class ApiEndpointClass extends EntityClass {
   service: ApiServiceClass['entity'];
@@ -79,7 +83,7 @@ export class ApiEndpointClass extends EntityClass {
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   apiCollectionResponseData: APIEndpoint = {} as APIEndpoint;
-  entityResponseData: APIEndpoint = {} as APIEndpoint;
+  entityResponseData: APIEndpointResponseData = {} as APIEndpointResponseData;
 
   private readonly parentOverrides: Pick<
     ApiEndpointClassOptions,
@@ -230,16 +234,19 @@ export class ApiEndpointClass extends EntityClass {
     this.serviceResponseData = service;
     this.apiCollectionResponseData = collection as unknown as APIEndpoint;
 
-    this.entityResponseData = await createOrFetch(apiContext, {
-      label: 'ApiEndpointClass.create apiEndpoint',
-      createPath: '/api/v1/apiEndpoints',
-      fqnSegments: [
-        this.service.name,
-        this.apiCollection.name,
-        this.entity.name,
-      ],
-      data: this.entity,
-    });
+    this.entityResponseData = requireEntityIdentity(
+      await createOrFetch<APIEndpoint>(apiContext, {
+        label: 'ApiEndpointClass.create apiEndpoint',
+        createPath: '/api/v1/apiEndpoints',
+        fqnSegments: [
+          this.service.name,
+          this.apiCollection.name,
+          this.entity.name,
+        ],
+        data: this.entity,
+      }),
+      'ApiEndpointClass.create'
+    );
 
     this.childrenSelectorId =
       this.entityResponseData.requestSchema?.schemaFields?.[0]
@@ -284,7 +291,10 @@ export class ApiEndpointClass extends EntityClass {
       )
     );
 
-    this.entityResponseData = await okJson(response, 'ApiEndpointClass.patch');
+    this.entityResponseData = requireEntityIdentity(
+      await okJson<APIEndpoint>(response, 'ApiEndpointClass.patch'),
+      'ApiEndpointClass.patch'
+    );
 
     return {
       entity: this.entityResponseData,
@@ -306,7 +316,10 @@ export class ApiEndpointClass extends EntityClass {
     apiCollection: APIEndpoint;
     ownedRootPath?: string;
   }): void {
-    this.entityResponseData = data.entity;
+    this.entityResponseData = requireEntityIdentity(
+      data.entity,
+      'ApiEndpointClass.set'
+    );
     this.serviceResponseData = data.service;
     this.apiCollectionResponseData = data.apiCollection;
     this.ownedRootPath = data.ownedRootPath;
