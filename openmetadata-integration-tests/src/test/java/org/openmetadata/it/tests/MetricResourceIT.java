@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -2301,6 +2302,98 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
         .get("data")
         .forEach(link -> linkedIds.add(link.get("asset").get("id").asText()));
     assertEquals(Set.of(firstSource.getId().toString(), laterSource.getId().toString()), linkedIds);
+  }
+
+  @Test
+  void put_reingestingRelatedMetricsIsANoOp(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.ingestionBotClient();
+    String referencedName = ns.prefix("reingested_referenced_metric");
+    String referencingName = ns.prefix("reingested_referencing_metric");
+    Metric referenced = createEntity(createRequest(referencedName, ns));
+    Metric referencing =
+        createEntity(
+            createRequest(referencingName, ns)
+                .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
+
+    for (int run = 0; run < 2; run++) {
+      client
+          .getHttpClient()
+          .execute(HttpMethod.PUT, "/v1/metrics", createRequest(referencedName, ns), Metric.class);
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/metrics",
+              createRequest(referencingName, ns)
+                  .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())),
+              Metric.class);
+    }
+
+    Metric fetchedReferenced = getEntityWithFields(referenced.getId().toString(), "relatedMetrics");
+    Metric fetchedReferencing =
+        getEntityWithFields(referencing.getId().toString(), "relatedMetrics");
+    assertEquals(referenced.getVersion(), fetchedReferenced.getVersion());
+    assertEquals(referencing.getVersion(), fetchedReferencing.getVersion());
+    assertEquals(
+        List.of(referencing.getId()),
+        fetchedReferenced.getRelatedMetrics().stream().map(EntityReference::getId).toList());
+    assertEquals(
+        List.of(referenced.getId()),
+        fetchedReferencing.getRelatedMetrics().stream().map(EntityReference::getId).toList());
+  }
+
+  @Test
+  void csvImport_clearingRelatedMetricsRemovesThemFromBothSides(TestNamespace ns) throws Exception {
+    Metric referenced = createEntity(createRequest(ns.prefix("csv_referenced_metric"), ns));
+    Metric referencing =
+        createEntity(
+            createRequest(ns.prefix("csv_referencing_metric"), ns)
+                .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
+    String row =
+        referencing.getName() + ",,Re-imported without related metrics,,,,,,,,,,,,,,,Approved,,,,";
+    String csv = METRIC_CSV_HEADER + "\n" + row + "\n";
+
+    CsvImportResult result =
+        new ObjectMapper()
+            .readValue(
+                SdkClients.adminClient().metrics().importCsv("*", csv, false),
+                CsvImportResult.class);
+    assertEquals(1, result.getNumberOfRowsPassed(), result.getImportResultsCsv());
+
+    assertTrue(
+        listOrEmpty(
+                getEntityWithFields(referencing.getId().toString(), "relatedMetrics")
+                    .getRelatedMetrics())
+            .isEmpty());
+    assertTrue(
+        listOrEmpty(
+                getEntityWithFields(referenced.getId().toString(), "relatedMetrics")
+                    .getRelatedMetrics())
+            .isEmpty());
+  }
+
+  @Test
+  void patch_removesRelatedMetricFromBothSides(TestNamespace ns) {
+    Metric referenced = createEntity(createRequest(ns.prefix("patch_referenced_metric"), ns));
+    Metric referencing =
+        createEntity(
+            createRequest(ns.prefix("patch_referencing_metric"), ns)
+                .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
+
+    Metric toPatch = getEntityWithFields(referencing.getId().toString(), "relatedMetrics");
+    toPatch.setRelatedMetrics(List.of());
+    patchEntity(referencing.getId().toString(), toPatch);
+
+    assertTrue(
+        listOrEmpty(
+                getEntityWithFields(referencing.getId().toString(), "relatedMetrics")
+                    .getRelatedMetrics())
+            .isEmpty());
+    assertTrue(
+        listOrEmpty(
+                getEntityWithFields(referenced.getId().toString(), "relatedMetrics")
+                    .getRelatedMetrics())
+            .isEmpty());
   }
 
   @Test

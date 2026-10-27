@@ -969,7 +969,11 @@ public class MetricRepository extends EntityRepository<Metric> {
 
     private void updateRelatedMetrics(Metric original, Metric updated) {
       List<EntityReference> originalRelatedMetrics = listOrEmpty(original.getRelatedMetrics());
-      List<EntityReference> updatedRelatedMetrics = listOrEmpty(updated.getRelatedMetrics());
+      List<EntityReference> updatedRelatedMetrics =
+          operation.isPut() && isUpdatedByBot(updated)
+              ? withUnrequestedRelatedMetrics(originalRelatedMetrics, updated.getRelatedMetrics())
+              : listOrEmpty(updated.getRelatedMetrics());
+      updated.setRelatedMetrics(updatedRelatedMetrics);
       validateRelatedTerms(updated, updatedRelatedMetrics);
       updateToRelationships(
           "relatedMetrics",
@@ -980,6 +984,27 @@ public class MetricRepository extends EntityRepository<Metric> {
           originalRelatedMetrics,
           updatedRelatedMetrics,
           true);
+    }
+
+    /**
+     * A related-metric edge is one undirected relationship read from both ends, but ingestion PUTs
+     * each metric with only the metrics it references. A bot PUT therefore never drops an edge the
+     * request did not repeat; otherwise every re-ingestion deletes and re-adds each edge, versioning
+     * both ends. User PUTs (CSV import, API) and PATCH still replace the list. The cost: an edge
+     * removed at the source is not removed by re-ingestion.
+     */
+    private List<EntityReference> withUnrequestedRelatedMetrics(
+        List<EntityReference> original, List<EntityReference> requested) {
+      List<EntityReference> merged = new ArrayList<>(listOrEmpty(requested));
+      Set<UUID> requestedIds =
+          merged.stream().map(EntityReference::getId).collect(Collectors.toSet());
+      original.stream().filter(ref -> !requestedIds.contains(ref.getId())).forEach(merged::add);
+      return merged;
+    }
+
+    private boolean isUpdatedByBot(Metric metric) {
+      return !nullOrEmpty(metric.getUpdatedBy())
+          && SubjectContext.getSubjectContext(metric.getUpdatedBy()).isBot();
     }
   }
 
