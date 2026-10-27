@@ -15,7 +15,7 @@ import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelea
 import type {
   OntologyReleaseExportContentState,
   OntologyReleaseExportSelection,
-} from './OntologyReleaseExportContent';
+} from './OntologyReleaseExportModal.types';
 
 interface OntologyReleasePreviewState {
   readonly content?: string;

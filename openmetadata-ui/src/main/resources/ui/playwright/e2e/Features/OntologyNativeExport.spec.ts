@@ -15,6 +15,7 @@ import { Page } from '@playwright/test';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
+import { Task } from '../../../src/generated/entity/tasks/task';
 import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
@@ -36,14 +37,58 @@ const EXPORT_CARDS = [
 const exportPath = (release: OntologyRelease) =>
   `/api/v1/ontologyReleases/${release.id}/export`;
 
-const openExport = async (page: Page, ontology: Ontology, active: string) => {
-  const state = await page.request.get(
-    `/api/v1/ontologies/${ontology.id}/state`
+const approveAndActivate = async (
+  page: Page,
+  ontology: Ontology,
+  release: OntologyRelease,
+  tasks: string[]
+) => {
+  const api = await getWorkerAdminAPIContext();
+  const task = await okJson<Task>(
+    await api.post('/api/v1/tasks', {
+      data: {
+        name: `Review ${release.fullyQualifiedName}`,
+        category: 'Approval',
+        type: 'RequestApproval',
+        about: `<#E::ontologyRelease::${release.fullyQualifiedName}>`,
+      },
+    }),
+    'Submit release review'
   );
-  const current = await okJson<OntologyState>(state, 'Read ontology state');
-  await page.route(`**/api/v1/ontologies/${ontology.id}/state`, (route) =>
-    route.fulfill({ json: { ...current, activeReleaseId: active } })
+  tasks.push(task.id);
+  await expect
+    .poll(async () => {
+      const ready = await okJson<Task>(
+        await api.get(`/api/v1/tasks/${task.id}`),
+        'Read release review'
+      );
+
+      return ready.availableTransitions?.length;
+    })
+    .toBe(2);
+  await okJson(
+    await page.request.post(`/api/v1/tasks/${task.id}/resolve`, {
+      data: { resolutionType: 'Approved' },
+    }),
+    'Approve release review'
   );
+  const state = await okJson<OntologyState>(
+    await api.get(`/api/v1/ontologies/${ontology.id}/state`),
+    'Read ontology state'
+  );
+  const activated = await okJson<OntologyState>(
+    await page.request.put(`/api/v1/ontologies/${ontology.id}/activation`, {
+      data: {
+        releaseId: release.id,
+        expectedActivationRevision: state.activationRevision,
+      },
+    }),
+    'Activate release'
+  );
+  expect(activated.activeReleaseId).toBe(release.id);
+};
+
+const openExport = async (page: Page, ontology: Ontology) => {
   await page.goto(`/governance/ontology?ontology=${ontology.id}`);
   await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
   await page.getByTestId('ontology-import-export-trigger').click();
@@ -61,6 +106,7 @@ test.describe(
     }, testInfo) => {
       test.slow();
       const api = await getWorkerAdminAPIContext();
+      const tasks: string[] = [];
       const name = `pw_native_export_${uuid()}`;
       const namespace = `urn:${name}:`;
       const ontology = await okJson<Ontology>(
@@ -121,7 +167,8 @@ test.describe(
           }),
           'Capture release'
         );
-        await openExport(page, ontology, release.id);
+        await approveAndActivate(page, ontology, release, tasks);
+        await openExport(page, ontology);
 
         for (const { card, extension, marker } of EXPORT_CARDS) {
           await test.step(`Download ${card}`, async () => {
@@ -155,6 +202,24 @@ test.describe(
           });
         }
 
+        await test.step('A gated download of the valid release completes', async () => {
+          await page.getByTestId('ontology-export-shacl-gate').click();
+          const fetched = page.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname === exportPath(release) &&
+              new URL(response.url()).searchParams.get('shaclGate') === 'true'
+          );
+          const downloaded = page.waitForEvent('download');
+          await clickIgnoringToasts(
+            page.getByTestId('ontology-run-release-export')
+          );
+          expect((await fetched).ok()).toBeTruthy();
+          expect((await downloaded).suggestedFilename()).toBe(
+            `${name}-release-${release.releaseRevision}.rdf`
+          );
+          await page.getByTestId('ontology-import-export-trigger').click();
+        });
+
         await test.step('SKOS-XL gives every label its own node', async () => {
           await page.getByTestId('ontology-release-format-skos').click();
           await page.getByTestId('ontology-export-skos-xl').click();
@@ -163,7 +228,7 @@ test.describe(
           await expect(preview).toContainText('Client');
         });
 
-        await test.step('The gate blocks the download while the report has a violation', async () => {
+        await test.step('The gate blocks the download while the stubbed report has a violation', async () => {
           const report = {
             valid: false,
             shacl: {
@@ -199,6 +264,9 @@ test.describe(
           ).toBeEnabled();
         });
       } finally {
+        for (const id of tasks) {
+          await deleteFixtureEntity(api, `/api/v1/tasks/${id}?hardDelete=true`);
+        }
         await deleteFixtureEntity(
           api,
           `/api/v1/ontologies/${ontology.id}?recursive=true`

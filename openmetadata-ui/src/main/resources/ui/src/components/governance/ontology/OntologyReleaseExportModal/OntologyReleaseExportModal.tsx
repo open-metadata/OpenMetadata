@@ -35,13 +35,12 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { downloadFile } from '../../../../utils/Export/ExportUtils';
 import OntologyNativeImportPanel from './OntologyNativeImportPanel';
-import OntologyReleaseExportContent, {
-  OntologyReleaseExportSelection,
-} from './OntologyReleaseExportContent';
+import OntologyReleaseExportContent from './OntologyReleaseExportContent';
 import {
   resolveExportFormat,
   resolvePreviewFormat,
 } from './OntologyReleaseExportModal.constants';
+import { OntologyReleaseExportSelection } from './OntologyReleaseExportModal.types';
 import {
   resolveContentOptions,
   resolveContentState,

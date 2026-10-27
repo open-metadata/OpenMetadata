@@ -12,7 +12,7 @@
  */
 
 import { useMutation } from '@tanstack/react-query';
-import { AxiosError, isAxiosError } from 'axios';
+import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import { OntologyReleaseExportOptions } from '../../../generated/api/data/ontologyReleaseExportOptions';
 import { OntologyReleaseValidation } from '../../../generated/api/data/ontologyReleaseValidation';
@@ -37,8 +37,12 @@ const gateReport = (error: unknown): OntologyReleaseValidation | undefined => {
   return isValidationReport(data) ? data : undefined;
 };
 
+const showFailure = (error: Error) =>
+  showErrorToast(isAxiosError(error) ? error : error.message);
+
 export const useOntologyReleaseShacl = (releaseId?: string) => {
-  const [report, setReport] = useState<OntologyReleaseValidation>();
+  const [lastReport, setReport] = useState<OntologyReleaseValidation>();
+  const report = lastReport?.releaseId === releaseId ? lastReport : undefined;
   const run = useMutation({
     mutationFn: () => {
       if (!releaseId) {
@@ -47,7 +51,7 @@ export const useOntologyReleaseShacl = (releaseId?: string) => {
 
       return getOntologyReleaseValidation(releaseId);
     },
-    onError: (error) => showErrorToast(error as AxiosError),
+    onError: showFailure,
     onSuccess: setReport,
   });
   const download = useMutation({
@@ -74,7 +78,7 @@ export const useOntologyReleaseShacl = (releaseId?: string) => {
         return undefined;
       }
     },
-    onError: (error) => showErrorToast(error as AxiosError),
+    onError: showFailure,
   });
 
   return {

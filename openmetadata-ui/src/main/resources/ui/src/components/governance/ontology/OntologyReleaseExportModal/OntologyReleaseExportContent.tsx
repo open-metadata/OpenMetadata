@@ -23,32 +23,18 @@ import {
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { OntologyReleaseExportOptions } from '../../../../generated/api/data/ontologyReleaseExportOptions';
 import { OntologyReleaseValidation } from '../../../../generated/api/data/ontologyReleaseValidation';
 import { NATIVE_EXPORT_EXTENSIONS } from '../../../../rest/ontologyExport.constants';
 import {
   ONTOLOGY_RELEASE_EXPORT_FORMATS,
   ONTOLOGY_RELEASE_PREVIEW_LIMIT,
-  OntologyReleaseExportCard,
   resolveExportFormat,
 } from './OntologyReleaseExportModal.constants';
+import {
+  OntologyReleaseExportContentState,
+  OntologyReleaseExportSelection,
+} from './OntologyReleaseExportModal.types';
 import OntologyReleaseExportShacl from './OntologyReleaseExportShacl';
-
-export interface OntologyReleaseExportSelection {
-  readonly card: OntologyReleaseExportCard;
-  readonly options: Required<OntologyReleaseExportOptions>;
-  readonly skosXl: boolean;
-}
-
-export type OntologyReleaseExportContentState =
-  | { readonly kind: 'empty' }
-  | { readonly kind: 'error'; readonly onRetry: () => void }
-  | { readonly kind: 'loading' }
-  | {
-      readonly content?: string;
-      readonly isPreviewLoading: boolean;
-      readonly kind: 'ready';
-    };
 
 interface OntologyReleaseExportContentProps {
   readonly isShaclRunning: boolean;
