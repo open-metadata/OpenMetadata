@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
 import {
@@ -94,6 +95,30 @@ describe('OntologyImportExportMenu', () => {
 
     expect(
       screen.queryByTestId('ontology-import-export-modal-stub')
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens Import with a new-ontology target when no ontology exists yet', () => {
+    render(
+      <MemoryRouter>
+        <OntologyImportExportMenu
+          kind="allOntologies"
+          ontologies={[]}
+          onApplied={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
+
+    expect(screen.getByTestId('ontology-native-import-file')).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-native-import-target')
+    ).toHaveTextContent('label.new-ontology');
+    expect(
+      screen.queryByTestId('ontology-import-target-picker')
     ).not.toBeInTheDocument();
   });
 

@@ -56,6 +56,7 @@ import {
   getSavedSparqlQueries,
   getSparqlQueryTemplates,
 } from '../../rest/rdfAPI';
+import { showSuccessToast } from '../../utils/ToastUtils';
 import OntologyExplorerPage from './OntologyExplorerPage';
 
 jest.mock('../../hooks/authHooks', () => ({
@@ -113,6 +114,10 @@ jest.mock('../../components/OntologyExplorer/OntologyGraphG6', () => {
 jest.mock('@uiw/react-codemirror', () => ({
   __esModule: true,
   default: () => <div data-testid="query-editor" />,
+}));
+jest.mock('../../utils/ToastUtils', () => ({
+  ...jest.requireActual('../../utils/ToastUtils'),
+  showSuccessToast: jest.fn(),
 }));
 jest.mock('../../rest/glossaryAPI');
 jest.mock('../../rest/metricsAPI');
@@ -473,15 +478,16 @@ describe('Ontology Studio mode-switch integration', () => {
     );
   });
 
-  it('includes a newly created native ontology when returning to All', async () => {
+  it('guides the first run from the empty state to Edit with the New class panel open', async () => {
     const ontology: Ontology = {
       id: 'new-native',
-      name: 'NewNative',
-      fullyQualifiedName: 'NewNative',
-      iri: 'urn:new',
-      namespace: 'urn:new:',
+      name: 'Finance Core',
+      fullyQualifiedName: 'FinanceCore',
+      iri: 'https://open-metadata.org/onto/financec',
+      namespace: 'https://open-metadata.org/onto/financec#',
     };
     let catalog: Ontology[] = [];
+    mockFetchRdfConfig.mockResolvedValue(rdfStatus);
     mockListOntologies.mockImplementation(async () => ({
       data: catalog,
       paging: { total: catalog.length },
@@ -500,27 +506,45 @@ describe('Ontology Studio mode-switch integration', () => {
       </QueryClientProvider>
     );
 
-    expect(await screen.findByTestId('all-ontologies-empty')).toBeVisible();
+    expect(await screen.findByTestId('ontology-empty-state')).toBeVisible();
+    expect(screen.queryByTestId('mode-tab-view')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'label.new-entity' }));
-    await screen.findByTestId('ontology-create-form');
-    fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
-      target: { value: ontology.name },
+    fireEvent.click(screen.getByTestId('ontology-empty-scratch'));
+    fireEvent.change(await screen.findByTestId('ontology-create-name'), {
+      target: { value: 'Finance Core' },
     });
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'label.ontology-iri' }),
-      { target: { value: ontology.iri } }
-    );
-    fireEvent.change(screen.getByRole('textbox', { name: 'label.namespace' }), {
-      target: { value: ontology.namespace },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
     await waitFor(() =>
-      expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
-        'data-scope-key',
-        'ontology:new-native'
-      )
+      expect(
+        screen.getByTestId('ontology-create-iri-preview')
+      ).toHaveTextContent('https://open-metadata.org/onto/financec#')
     );
+
+    fireEvent.click(screen.getByTestId('ontology-create-submit'));
+
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+    expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+      'data-scope-key',
+      'ontology:new-native'
+    );
+    expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(mockCreateOntology).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Finance Core',
+        iri: ontology.iri,
+        namespace: ontology.namespace,
+        layer: 'L3',
+      })
+    );
+    expect(showSuccessToast).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('ontology-new-class-close'));
+
+    expect(await screen.findByTestId('ontology-empty-card')).toBeVisible();
+
     fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
     fireEvent.click(screen.getByTestId('ontology-scope-all-ontologies'));
 

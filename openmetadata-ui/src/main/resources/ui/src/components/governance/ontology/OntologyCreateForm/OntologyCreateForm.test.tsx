@@ -133,7 +133,7 @@ describe('OntologyCreateForm', () => {
         name: 'Sales',
         iri: 'urn:sales',
         namespace: 'urn:sales:',
-        layer: Layer.L1,
+        layer: Layer.L3,
         owners: [{ id: 'author', type: 'user' }],
         reviewers: [],
       })
