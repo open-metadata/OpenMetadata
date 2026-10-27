@@ -105,6 +105,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.PipelineStatusUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -1010,15 +1011,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
   private static final Set<String> SCHEDULE_OR_CONFIG_FIELDS =
       Set.of("appSchedule", "appConfiguration");
 
-  /** Whether a patch changes the schedule or configuration the app is installed with. */
-  private static boolean touchesScheduleOrConfig(JsonPatch patch) {
-    Set<String> patchedFields = JsonUtils.extractPatchedFields(patch);
-    // A whole-document replace (path "/") names no top-level field, so treat it as touching the
-    // schedule and config — it may change either, and must still require EditAll and reschedule.
-    if (patchedFields.isEmpty() && !patch.toJsonArray().isEmpty()) {
-      return true;
-    }
-    return patchedFields.stream().anyMatch(SCHEDULE_OR_CONFIG_FIELDS::contains);
+  /**
+   * Whether a patch changes the schedule or configuration the app is installed with. A whole-document
+   * replace may change either, also when other operations in the same patch name only other fields,
+   * so it must still require EditAll and reschedule.
+   */
+  static boolean touchesScheduleOrConfig(JsonPatch patch) {
+    return JsonPatchUtils.replacesWholeDocument(patch)
+        || JsonUtils.extractPatchedFields(patch).stream()
+            .anyMatch(SCHEDULE_OR_CONFIG_FIELDS::contains);
   }
 
   @PATCH

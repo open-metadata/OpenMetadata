@@ -54,6 +54,7 @@ import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.JsonPatchUtils;
 
 public abstract class ServiceEntityResource<
         T extends ServiceEntityInterface,
@@ -208,12 +209,17 @@ public abstract class ServiceEntityResource<
     return subject.isAdmin() || subject.isBot();
   }
 
-  /** A patch with no field names replaces the whole document, connection included. */
   private static boolean mayRetargetConnection(SecurityContext securityContext, JsonPatch patch) {
-    Set<String> patchedFields = JsonUtils.extractPatchedFields(patch);
-    return (patchedFields.contains("connection")
-            || (patchedFields.isEmpty() && !patch.toJsonArray().isEmpty()))
-        && !readsStoredSecrets(securityContext);
+    return patchMayChangeConnection(patch) && !readsStoredSecrets(securityContext);
+  }
+
+  /**
+   * Whether a patch can change the connection: it edits {@code connection}, or it replaces the whole
+   * document - also when other operations in the same patch name only other fields.
+   */
+  static boolean patchMayChangeConnection(JsonPatch patch) {
+    return JsonPatchUtils.replacesWholeDocument(patch)
+        || JsonUtils.extractPatchedFields(patch).contains("connection");
   }
 
   private void requireSecretsReenteredOnRetarget(T original, JsonPatch patch) {

@@ -95,6 +95,24 @@ public class JsonPatchUtils {
             operation -> operation instanceof JsonObject object && object.containsKey(FROM_MEMBER));
   }
 
+  /**
+   * Whether an operation of {@code jsonPatch} targets the document root ({@code ""} or {@code "/"}),
+   * so it can change any field. {@link JsonUtils#extractPatchedFields} skips root paths, which makes
+   * a root replace bundled with, say, a {@code /description} edit look like a description edit alone;
+   * a check that keys off the patched fields must ask this as well.
+   */
+  public static boolean replacesWholeDocument(JsonPatch jsonPatch) {
+    return jsonPatch.toJsonArray().stream()
+        .anyMatch(
+            operation -> {
+              if (!(operation instanceof JsonObject object)) {
+                return false;
+              }
+              String path = object.getString("path", null);
+              return path == null || path.isEmpty() || path.equals("/");
+            });
+  }
+
   private static Set<TagLabel> extractTags(JsonNode entityJson) {
     Set<TagLabel> tags = new HashSet<>();
     traverseForTags(entityJson, tags);

@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
@@ -394,6 +395,36 @@ class JsonPatchUtilsTest {
         """;
 
     assertFalse(JsonPatchUtils.readsFromAnotherPath(jsonPatch(patch)));
+  }
+
+  /**
+   * extractPatchedFields skips root paths, so a root replace bundled with a field edit looks like
+   * that field edit alone; replacesWholeDocument must still see it.
+   */
+  @Test
+  void replacesWholeDocumentSeesARootOperationEvenAlongsideFieldEdits() {
+    JsonPatch rootAndDescription =
+        jsonPatch(
+            "[{\"op\":\"replace\",\"path\":\"\",\"value\":{\"name\":\"svc\"}},"
+                + "{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"tidy up\"}]");
+
+    assertEquals(Set.of("description"), JsonUtils.extractPatchedFields(rootAndDescription));
+    assertTrue(JsonPatchUtils.replacesWholeDocument(rootAndDescription));
+    assertTrue(
+        JsonPatchUtils.replacesWholeDocument(
+            jsonPatch("[{\"op\":\"replace\",\"path\":\"\",\"value\":{}}]")));
+    assertTrue(
+        JsonPatchUtils.replacesWholeDocument(
+            jsonPatch("[{\"op\":\"replace\",\"path\":\"/\",\"value\":{}}]")));
+  }
+
+  @Test
+  void fieldEditsDoNotReplaceTheWholeDocument() {
+    assertFalse(
+        JsonPatchUtils.replacesWholeDocument(
+            jsonPatch(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"tidy up\"},"
+                    + "{\"op\":\"add\",\"path\":\"/connection/config/hostPort\",\"value\":\"h:1\"}]")));
   }
 
   private static JsonPatch jsonPatch(String patch) {
