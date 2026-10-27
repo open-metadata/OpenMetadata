@@ -14,7 +14,8 @@ the intermediate nodes of a property path, so in `?x om:upstream+ ?y` a deleted 
 its live neighbours.
 
 ## Decision
-A soft-deleted entity and every edge to it are absent from the graph, as after a hard delete. This
+A soft-deleted entity and every edge to it are absent from the graph, as after a hard delete, and
+so are the lineage details of those edges, whose column lineage names the entity's columns. This
 holds for a cascade as for its root, and for the reindex, which reads live entities only.
 
 A restore rebuilds the entity from the database: its own triples, its relationship rows (lineage

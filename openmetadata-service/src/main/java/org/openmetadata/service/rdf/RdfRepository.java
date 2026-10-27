@@ -987,14 +987,21 @@ public class RdfRepository {
         buildPredicateInList(RELATIONSHIP_HOOK_PREDICATES));
   }
 
-  /** Builds one update that removes both incoming and outgoing triples for an entity. */
+  /**
+   * Builds one update that removes an entity's incoming and outgoing triples, its owned resources
+   * and the lineage details of its edges.
+   */
   public static String buildEntityDeleteUpdate(String entityUri) {
     return String.format(
         "DELETE { GRAPH <%1$s> { ?subject ?p ?o } } WHERE { GRAPH <%1$s> { "
             + "VALUES ?entity { <%2$s> } "
             + "{ ?entity ?p ?o . BIND(?entity AS ?subject) } UNION "
-            + "{ ?subject ?p ?entity . BIND(?entity AS ?o) } UNION { %3$s } } }",
-        KNOWLEDGE_GRAPH, entityUri, RdfOwnedResources.ownedTriplesPattern());
+            + "{ ?subject ?p ?entity . BIND(?entity AS ?o) } UNION { %3$s } UNION { %4$s } } }",
+        KNOWLEDGE_GRAPH,
+        entityUri,
+        RdfOwnedResources.ownedTriplesPattern(),
+        RdfLineage.incidentDetailsTriplesPattern(
+            entityUri.substring(entityUri.lastIndexOf('/') + 1)));
   }
 
   private static String buildIriValues(Collection<String> iris) {

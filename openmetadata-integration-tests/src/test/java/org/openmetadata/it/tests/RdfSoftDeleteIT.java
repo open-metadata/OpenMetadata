@@ -61,11 +61,14 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChartType;
+import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.rdf.RdfUtils;
 
 /**
  * The graph projects the live catalog only (#36277): a soft-deleted entity leaves it with every
@@ -76,6 +79,7 @@ public class RdfSoftDeleteIT {
   private static final Map<String, String> RECURSIVE = Map.of("recursive", "true");
   private static final Map<String, String> HARD_DELETE =
       Map.of("hardDelete", "true", "recursive", "true");
+  private static final String LINEAGE_COLUMN = "id";
 
   private final OpenMetadataClient client = SdkClients.adminClient();
 
@@ -117,6 +121,37 @@ public class RdfSoftDeleteIT {
     awaitPresent(iri("table", downstream) + " " + om("upstream") + " " + iri("table", middle));
     awaitPresent(iri("databaseSchema", schema) + " " + om("contains") + " " + iri("table", middle));
     awaitPresent(path);
+  }
+
+  @Test
+  void softDeletingATableBreaksTheColumnLineageThroughItAndRestoringItMendsIt(
+      final TestNamespace namespace) {
+    final DatabaseSchema schema = schema(namespace);
+    final Table upstream = table(namespace, schema, "colUpstream");
+    final Table middle = table(namespace, schema, "colMiddle");
+    final Table downstream = table(namespace, schema, "colDownstream");
+    columnLineage(upstream, middle);
+    columnLineage(middle, downstream);
+    final String columnPath =
+        column(upstream)
+            + " (^"
+            + om("fromColumn")
+            + "/"
+            + om("toColumn")
+            + ")+ "
+            + column(downstream);
+    final String middleColumnLineage =
+        "?columnLineage a " + om("ColumnLineage") + " ; ?p " + column(middle);
+    awaitPresent(columnPath);
+
+    client.tables().delete(middle.getId().toString());
+    awaitAbsent(iri("table", middle));
+    awaitCount(columnPath, 0);
+    awaitCount(middleColumnLineage, 0);
+
+    client.tables().restore(middle.getId());
+    awaitPresent(columnPath);
+    awaitCount(middleColumnLineage, 2);
   }
 
   @Test
@@ -305,6 +340,33 @@ public class RdfSoftDeleteIT {
                     new EntitiesEdge()
                         .withFromEntity(from.getEntityReference())
                         .withToEntity(to.getEntityReference())));
+  }
+
+  private void columnLineage(final Table from, final Table to) {
+    client
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(from.getEntityReference())
+                        .withToEntity(to.getEntityReference())
+                        .withLineageDetails(
+                            new LineageDetails()
+                                .withSource(LineageDetails.Source.MANUAL)
+                                .withColumnsLineage(
+                                    List.of(
+                                        new ColumnLineage()
+                                            .withFromColumns(List.of(columnFqn(from)))
+                                            .withToColumn(columnFqn(to)))))));
+  }
+
+  private static String columnFqn(final Table table) {
+    return table.getFullyQualifiedName() + "." + LINEAGE_COLUMN;
+  }
+
+  private static String column(final Table table) {
+    return "<" + RdfUtils.columnUri(BASE_URI, columnFqn(table)) + ">";
   }
 
   private Chart chart(
