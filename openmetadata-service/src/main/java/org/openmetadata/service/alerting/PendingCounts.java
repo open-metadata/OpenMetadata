@@ -60,17 +60,26 @@ public final class PendingCounts implements AutoCloseable {
   }
 
   PendingCount get(Key key, Supplier<PendingCount> count) {
+    CompletableFuture<PendingCount> pending = sharedCount(key, count);
     try {
-      return counts
-          .get(key, (unused, cacheExecutor) -> CompletableFuture.supplyAsync(count, counters))
-          .join();
+      return pending.join();
+    } catch (CompletionException e) {
+      // Forgotten before the failure is answered: the cache would drop it a moment later, and a
+      // request arriving in that moment would get this failure instead of counting again.
+      counts.asMap().remove(key, pending);
+      throw unwrapped(e);
+    }
+  }
+
+  private CompletableFuture<PendingCount> sharedCount(Key key, Supplier<PendingCount> count) {
+    try {
+      return counts.get(
+          key, (unused, cacheExecutor) -> CompletableFuture.supplyAsync(count, counters));
     } catch (RejectedExecutionException e) {
       throw new WebApplicationException(
           "Too many alert counts are running; try again shortly",
           e,
           Response.Status.TOO_MANY_REQUESTS);
-    } catch (CompletionException e) {
-      throw unwrapped(e);
     }
   }
 
