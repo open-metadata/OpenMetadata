@@ -13,6 +13,7 @@ Nox sessions for testing and formatting checks.
 """
 
 import os
+from pathlib import Path
 
 import nox
 from nox.virtualenv import PassthroughEnv
@@ -156,14 +157,11 @@ def unit_tests(session):
     install(session, ".[all]")
     install(session, ".[test]")
 
-    # Separate test paths from pytest flags in posargs
-    args = list(session.posargs)
-    test_paths = [a for a in args if not a.startswith("-")]
-    extra_flags = [a for a in args if a.startswith("-")]
-
     pytest_args = [
         "-c",
         "pyproject.toml",
+        "-o",
+        "testpaths=tests/unit/",
         "--cov=metadata",
         "--cov-branch",
         "--cov-config=pyproject.toml",
@@ -177,8 +175,7 @@ def unit_tests(session):
         "--durations=20",
     ]
 
-    pytest_args.extend(test_paths or ["tests/unit/"])
-    pytest_args.extend(extra_flags)
+    pytest_args.extend(session.posargs)
 
     session.run("pytest", *pytest_args)
 
@@ -216,13 +213,11 @@ def integration_tests(session):
         workers = args[idx + 1]
         args = args[:idx] + args[idx + 2 :]
 
-    # Separate test paths from pytest flags in posargs
-    test_paths = [a for a in args if not a.startswith("-")]
-    extra_flags = [a for a in args if a.startswith("-")]
-
     pytest_args = [
         "-c",
         "pyproject.toml",
+        "-o",
+        "testpaths=tests/integration/",
         "--cov=metadata",
         "--cov-branch",
         "--cov-config=pyproject.toml",
@@ -235,8 +230,7 @@ def integration_tests(session):
     if use_xdist:
         pytest_args.extend([f"-n{workers}", "--dist=loadgroup"])
 
-    pytest_args.extend(test_paths or ["tests/integration/"])
-    pytest_args.extend(extra_flags)
+    pytest_args.extend(args)
 
     session.run("pytest", *pytest_args)
 
@@ -258,13 +252,13 @@ def combine_coverage(session):
     Example:
         nox -s combine-coverage
     """
+    session.chdir(Path(__file__).resolve().parent)
     install(session, "coverage[toml]")
     session.run("coverage", "combine")
     session.run(
         "coverage",
         "report",
         "--rcfile=pyproject.toml",
-        success_codes=[0, 1],
     )
     session.run(
         "coverage",
@@ -272,6 +266,5 @@ def combine_coverage(session):
         "--rcfile=pyproject.toml",
         "-o",
         "coverage.xml",
-        success_codes=[0, 1],
     )
     session.run("mv", "coverage.xml", "ci-coverage.xml", external=True)

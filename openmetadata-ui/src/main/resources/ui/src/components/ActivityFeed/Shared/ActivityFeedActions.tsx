@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -63,7 +64,80 @@ interface ActivityFeedActionsProps {
    * never by unmounting them.
    */
   className?: string;
+  /**
+   * The actions as a kebab menu holding only Edit and Delete, as the activity
+   * thread panels show them, instead of the hover bar.
+   */
+  asMenu?: boolean;
 }
+
+type ConversationAction = 'edit' | 'delete';
+
+interface ConversationActionsMenuProps {
+  showEdit: boolean;
+  showDelete: boolean;
+  className?: string;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+const ConversationActionsMenu = ({
+  showEdit,
+  showDelete,
+  className,
+  onEdit,
+  onDelete,
+}: ConversationActionsMenuProps) => {
+  const { t } = useTranslation();
+  if (!showEdit && !showDelete) {
+    return null;
+  }
+  const handlers: Record<ConversationAction, () => void> = {
+    edit: onEdit,
+    delete: onDelete,
+  };
+
+  return (
+    <Dropdown.Root>
+      {/* The menu trigger stays pressed while the menu is open; only a
+          keyboard focus keeps the ring. size-6: a 24px target around the
+          20px glyph, which a long name beside it must not shrink. */}
+      <Dropdown.DotsButton
+        className={({ isFocusVisible, isPressed }) =>
+          classNames(
+            'tw:size-6 tw:shrink-0',
+            isPressed && !isFocusVisible && 'tw:outline-0',
+            className
+          )
+        }
+        data-testid="conversation-actions"
+      />
+      <Dropdown.Popover className="tw:w-min">
+        <Dropdown.Menu
+          aria-label={t('label.action-plural')}
+          selectionMode="none"
+          onAction={(key) => handlers[key as ConversationAction]()}>
+          {showEdit ? (
+            <Dropdown.Item
+              data-testid="edit-message"
+              icon={Edit01}
+              id="edit"
+              label={t('label.edit')}
+            />
+          ) : null}
+          {showDelete ? (
+            <Dropdown.Item
+              data-testid="delete-message"
+              icon={Trash01}
+              id="delete"
+              label={t('label.delete')}
+            />
+          ) : null}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
 
 /**
  * Fall back to the feed's own author-or-admin rule for whichever action the
@@ -122,6 +196,7 @@ const ActivityFeedActions = ({
   onEditPost,
   onDelete,
   className,
+  asMenu,
 }: ActivityFeedActionsProps) => {
   const { t, i18n } = useTranslation();
   const dir = i18n.dir();
@@ -204,9 +279,20 @@ const ActivityFeedActions = ({
     ]);
   };
 
+  const showMenu = Boolean(asMenu);
+
   return (
     <>
-      {hasActions && (
+      {showMenu && (
+        <ConversationActionsMenu
+          className={className}
+          showDelete={showDelete}
+          showEdit={showEdit}
+          onDelete={() => setShowDeleteDialog(true)}
+          onEdit={() => onEditPost?.()}
+        />
+      )}
+      {!showMenu && hasActions && (
         <Box
           align="center"
           aria-label={t('label.action-plural')}

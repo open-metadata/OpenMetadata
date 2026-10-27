@@ -105,7 +105,6 @@ import {
   getClassificationTagPath,
   getDomainDetailsPath,
   getGlossaryTermDetailsPath,
-  getUserPath,
 } from '../../../../utils/RouterUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import {
@@ -171,6 +170,7 @@ import {
   computeTaskEditAccessFlags,
   computeTaskOwnershipFlags,
   computeWorkflowTaskAccess,
+  getTaskCreatorLink,
 } from './TaskTab.utils';
 
 const FeedbackApprovalTask = withSuspenseFallback(
@@ -643,6 +643,8 @@ export const TaskTabNew = ({
     return hasTaskFormFields(taskFormSchema?.formSchema);
   }, [taskFormSchema?.formSchema]);
 
+  const createdByLink = getTaskCreatorLink(task);
+
   const darHeaderRows = useMemo(() => {
     if (
       !isWorkflowDrivenTask ||
@@ -659,7 +661,7 @@ export const TaskTabNew = ({
         value: (
           <Link
             className="no-underline flex items-center gap-2"
-            to={getUserPath(task.createdBy?.name ?? '')}>
+            to={createdByLink}>
             <UserPopOverCard userName={task.createdBy?.name ?? ''}>
               <ProfilePicture name={task.createdBy?.name ?? ''} width="24" />
             </UserPopOverCard>
@@ -674,6 +676,7 @@ export const TaskTabNew = ({
       },
     ];
   }, [
+    createdByLink,
     isWorkflowDrivenTask,
     shouldRenderTaskPayload,
     t,
@@ -1591,7 +1594,7 @@ export const TaskTabNew = ({
             <Grid.Item span={15}>
               <Link
                 className="no-underline flex items-center gap-2"
-                to={getUserPath(task.createdBy?.name ?? '')}>
+                to={createdByLink}>
                 <UserPopOverCard userName={task.createdBy?.name ?? ''}>
                   <div className="d-flex items-center">
                     <ProfilePicture

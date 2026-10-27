@@ -135,7 +135,7 @@ const RolesListPage = () => {
           </Link>
         ),
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<Role>(),
       {
         title: t('label.policy-plural').toString(),
         dataIndex: 'policies',

@@ -52,6 +52,7 @@ import { waitForResponseWithStatus } from './waitHelpers';
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
   '.om-rdg .inovua-react-toolkit-load-mask__background-layer';
 const EDITOR_OPEN_TIMEOUT = 1500;
+const MAX_BULK_EDIT_COLUMN_STEPS = 20;
 const IMPORT_STATUS_TIMEOUT = 90000;
 
 type CsvExportResponse = {
@@ -373,29 +374,6 @@ export const fillDescriptionDetails = async (
     await clickMarkdownEditorSave(page);
   }
 };
-
-/**
- * Press an inline-editor save button and wait for the editor to close.
- *
- * `force` used to be the remedy here, for "grid cells and the fixed import
- * footer can overlap inline editors" — but force does not resolve an overlap,
- * it only skips the check for one. The press still lands on whatever is on
- * top, the button below never reacts, and the detach wait then burns the whole
- * test: 1026 polls over nine minutes on 084f07e7. A real click either lands or
- * names the element intercepting it, and a transient overlap is what the retry
- * is for.
- */
-const clickGridEditorSave = async (page: Page, testId: string) => {
-  const saveButton = page.getByTestId(testId);
-
-  await expect(async () => {
-    await saveButton.click({ timeout: 5_000 });
-    await expect(saveButton).toHaveCount(0, { timeout: 5_000 });
-  }).toPass({ timeout: 30_000 });
-};
-
-const clickAssociatedTagSave = async (page: Page) =>
-  clickGridEditorSave(page, 'saveAssociatedTag');
 
 // The owner cell mounts a react-aria picker that is force-opened on mount
 // (popoverProps={{ open: true }} in getCsvOwnerEditor). react-aria needs a
@@ -1313,6 +1291,61 @@ export const fillColumnDetails = async (
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillGlossaryTermDetails(page, row.glossary);
+};
+
+/**
+ * A bulk edit grid cell by row name and CSV column key (e.g. `column.tags`).
+ * The row is pinned by its `rdg-row-<id>` test id, read once with its name
+ * scrolled into view: unlike `aria-rowindex` it survives a search re-filtering the rows,
+ * and unlike the name text it survives the grid scrolling the name column out
+ * of view. The cell is matched by column class because react-data-grid only
+ * renders the columns in view, so its header may be missing from the DOM.
+ */
+export const getBulkEditGridCell = async (
+  page: Page,
+  rowName: string,
+  columnKey: string
+) => {
+  // The name column is not frozen; bring it back into view to find the row.
+  await scrollGridHorizontally(page, 0);
+  const rowTestId = await page
+    .locator('.rdg-row')
+    .filter({ hasText: rowName })
+    .getAttribute('data-testid');
+
+  return page
+    .getByTestId(rowTestId ?? '')
+    .locator(`.${getGridColumnClass(columnKey)}`);
+};
+
+/**
+ * Selects a row's Column Tags cell without opening its tag picker (a click
+ * would, and the picker would take keyboard copy/paste). Starts on the name
+ * cell, where a click only selects, and moves right; the grid scrolls the
+ * selected cell into view.
+ */
+export const selectBulkEditTagsCell = async (page: Page, rowName: string) => {
+  const nameCell = await getBulkEditGridCell(page, rowName, 'column.name*');
+  const tagsCell = await getBulkEditGridCell(page, rowName, 'column.tags');
+  const tagsClass = getGridColumnClass('column.tags');
+  await nameCell.click();
+
+  for (let step = 0; step < MAX_BULK_EDIT_COLUMN_STEPS; step++) {
+    const isTagsCellActive = await page
+      .locator(RDG_ACTIVE_CELL_SELECTOR)
+      .evaluate(
+        (cell, className) => cell.classList.contains(className),
+        tagsClass
+      );
+    if (isTagsCellActive) {
+      break;
+    }
+    await moveToNextColumnWithVerification(page);
+  }
+
+  await expect(tagsCell).toHaveAttribute('aria-selected', 'true');
+
+  return tagsCell;
 };
 
 export const pressKeyXTimes = async (

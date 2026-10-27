@@ -35,6 +35,7 @@ import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import { okJson } from './apiResponse';
 import {
+  clickIgnoringToasts,
   clickOutside,
   closeFirstPopupAlert,
   descriptionBox,
@@ -1456,7 +1457,7 @@ export const approveTagsTask = async (
   await taskFeeds;
 
   const taskResolve = waitForTaskResolveResponse(page);
-  await page.getByTestId('approve-button').first().click();
+  await clickIgnoringToasts(page.getByTestId('approve-button').first());
   await taskResolve;
 
   await redirectToHomePage(page);

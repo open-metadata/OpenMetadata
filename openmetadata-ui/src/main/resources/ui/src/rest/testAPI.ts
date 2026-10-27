@@ -19,6 +19,7 @@ import { DataQualityDimensions } from '../enums/DataQuality.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import {
   BundleSuiteBulkAddRequestClass,
+  Filter as BundleSuiteBulkAddFilter,
   Mode as BundleSuiteBulkAddMode,
 } from '../generated/api/tests/bundleSuiteBulkAddRequest';
 import type { BundleSuiteBulkRemoveRequest } from '../generated/api/tests/bundleSuiteBulkRemoveRequest';
@@ -276,14 +277,10 @@ export const addTestCaseToLogicalTestSuite = async (
   return response.data;
 };
 
-export type AddTestCaseListFilter = {
-  q?: string;
-  testCaseStatus?: string;
-  testCaseType?: string;
-  entityLink?: string;
-  includeAllTests?: boolean;
-  columnName?: string;
-};
+export type AddTestCaseListFilter = Omit<
+  BundleSuiteBulkAddFilter,
+  'excludeIds'
+>;
 
 export type AddTestCaseListSubmitPayload = {
   selectAll: boolean;

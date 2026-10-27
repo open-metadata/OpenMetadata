@@ -35,7 +35,7 @@ install_all:  ## Install the ingestion module with all dependencies
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
-	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ setuptools~=70.3.0
+	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ "setuptools>=83"
 
 .PHONY: static-checks
 static-checks:  ## Run basedpyright type checks (delegates to nox so local matches CI)
@@ -69,7 +69,7 @@ check_import_layers:  ## Fail if a module imports a higher layer (import-cost gu
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
-	pytest -c $(INGESTION_DIR)/pyproject.toml --cov=metadata --cov-branch --cov-config=$(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml -n auto $(INGESTION_DIR)/tests/unit
+	cd $(INGESTION_DIR) && pytest -c pyproject.toml --cov=metadata --cov-branch --cov-config=pyproject.toml --junitxml=junit/test-results-unit.xml -n auto tests/unit
 
 # FIXME: This is a workaround to exclude the tests that require dependencies that are not straightforward to install
 # and might be omitted in unless the we are developing them. This only must be used for local development!
@@ -84,14 +84,14 @@ unit_ingestion_dev_env:  ## Run Python unit tests except some specific ones. Onl
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	pytest -c $(INGESTION_DIR)/pyproject.toml --cov=metadata --cov-branch --cov-append --cov-config=$(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration
+	cd $(INGESTION_DIR) && pytest -c pyproject.toml --cov=metadata --cov-branch --cov-append --cov-config=pyproject.toml --junitxml=junit/test-results-integration.xml tests/integration
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
-	coverage erase
+	cd $(INGESTION_DIR) && coverage erase --rcfile pyproject.toml
 	$(MAKE) unit_ingestion
 	$(MAKE) run_ometa_integration_tests
-	coverage report --rcfile $(INGESTION_DIR)/pyproject.toml || true
+	cd $(INGESTION_DIR) && coverage report --rcfile pyproject.toml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
@@ -119,7 +119,7 @@ coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 .PHONY: coverage
 coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
-	coverage xml --rcfile $(INGESTION_DIR)/pyproject.toml -o $(INGESTION_DIR)/coverage.xml || true
+	cd $(INGESTION_DIR) && coverage xml --rcfile pyproject.toml -o coverage.xml
 	sed 's|filename="[^"]*/site-packages/metadata/|filename="src/metadata/|g' $(INGESTION_DIR)/coverage.xml > $(INGESTION_DIR)/ci-coverage.xml
 
 .PHONY: clean-nox

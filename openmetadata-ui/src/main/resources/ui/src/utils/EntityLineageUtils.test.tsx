@@ -1460,7 +1460,7 @@ describe('parseLineageData', () => {
     jest.clearAllMocks();
 
     // Setup default mock implementations
-    mockUniqWith.mockImplementation((array) => array ?? []);
+    mockUniqWith.mockImplementation((array) => Array.from(array ?? []));
     mockIsEqual.mockImplementation((a, b) => a === b);
     mockGet.mockImplementation((obj, path, defaultValue?) => {
       if (!obj || !path) {

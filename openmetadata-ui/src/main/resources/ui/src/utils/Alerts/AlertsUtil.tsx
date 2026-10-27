@@ -37,6 +37,7 @@ import { EventsRecord } from '../../generated/events/api/eventsRecord';
 import { Status } from '../../generated/events/api/typedEvent';
 import { SubscriptionType } from '../../generated/events/eventSubscription';
 import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
+import { SearchIndexSearchSourceMapping } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import alertsClassBase from '../AlertsClassBase';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
@@ -66,6 +67,20 @@ export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
 
 export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
 
+const getSearchEntityName = (
+  source: SearchIndexSearchSourceMapping[SearchIndex]
+) =>
+  getEntityName({
+    name:
+      'name' in source && typeof source.name === 'string'
+        ? source.name
+        : undefined,
+    displayName:
+      'displayName' in source && typeof source.displayName === 'string'
+        ? source.displayName
+        : undefined,
+  });
+
 export const searchEntity = async ({
   searchText,
   searchIndex,
@@ -92,13 +107,18 @@ export const searchEntity = async ({
 
     return uniqBy(
       response.hits.hits.map((d) => {
+        const fullyQualifiedName =
+          'fullyQualifiedName' in d._source
+            ? d._source.fullyQualifiedName ?? ''
+            : '';
+
         // Providing an option to hide display names, for inputs like 'fqnList',
         // where users can input text alongside selection options.
         // This helps avoid displaying the same option twice
         // when using regular expressions as inputs in the same field.
         const displayName = showDisplayNameAsLabel
-          ? getEntityName(d._source)
-          : d._source.fullyQualifiedName ?? '';
+          ? getSearchEntityName(d._source)
+          : fullyQualifiedName;
 
         // Container options (a type that has in-scope descendants) show a display-only ".*" hint
         // to convey "matches everything under this FQN"; the stored value stays the plain FQN.
@@ -112,7 +132,7 @@ export const searchEntity = async ({
               ...d._source,
               type: d._source.entityType,
             })
-          : d._source.fullyQualifiedName ?? '';
+          : fullyQualifiedName;
 
         return {
           label,
@@ -221,8 +241,11 @@ export const getEntityByIdOptions = async (
 
     return uniqBy(
       response.hits.hits.map((d) => {
-        const id = d._source.id ?? '';
-        const fqn = d._source.fullyQualifiedName ?? '';
+        const id = 'id' in d._source ? d._source.id ?? '' : '';
+        const fqn =
+          'fullyQualifiedName' in d._source
+            ? d._source.fullyQualifiedName ?? ''
+            : '';
 
         return { label: `${id} (${fqn})`, value: id };
       }),

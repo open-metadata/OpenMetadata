@@ -12,6 +12,34 @@
  */
 import { APIRequestContext, APIResponse } from '@playwright/test';
 
+export type EntityIdentity = { id: string; fullyQualifiedName: string };
+
+export const requireEntityIdentity = <T extends object>(
+  entity: T,
+  label: string
+): T & EntityIdentity => {
+  if (
+    !entity ||
+    typeof entity !== 'object' ||
+    !('id' in entity) ||
+    typeof entity.id !== 'string' ||
+    !entity.id ||
+    !('fullyQualifiedName' in entity) ||
+    typeof entity.fullyQualifiedName !== 'string' ||
+    !entity.fullyQualifiedName
+  ) {
+    throw new Error(
+      `${label}: entity response is missing id or fullyQualifiedName`
+    );
+  }
+
+  return {
+    ...entity,
+    id: entity.id,
+    fullyQualifiedName: entity.fullyQualifiedName,
+  };
+};
+
 // Preserved for the many support classes that still call withNotFoundRetry
 // against just-created entity ids where the server occasionally answers 404
 // briefly (row is committed, reference lookup lags ~15ms). See withNotFoundRetry

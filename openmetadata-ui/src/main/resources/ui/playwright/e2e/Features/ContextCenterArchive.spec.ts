@@ -452,7 +452,11 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
-      await waitForDocumentInArchive(apiContext, documentId);
+      try {
+        await waitForDocumentInArchive(apiContext, documentId);
+      } finally {
+        await afterAction();
+      }
       await navigateToArchive(page);
       const archiveRow = page.getByTestId(`archive-row-${documentId}`);
       if (!(await archiveRow.isVisible())) {

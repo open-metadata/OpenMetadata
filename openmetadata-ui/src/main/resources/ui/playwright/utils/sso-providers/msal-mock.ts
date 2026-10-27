@@ -108,18 +108,6 @@ const buildValidConfig = () => ({
   },
 });
 
-const buildBrokenConfig = () => {
-  const cfg = buildValidConfig();
-  // Set top-level clientId to '' — the client validator's `isFieldMissing`
-  // flags empty strings as missing, but the server's Bean-Validation
-  // accepts a non-null empty string, so the PUT still returns 200 and the
-  // SPA gets to see the broken config. Deleting fields makes the server's
-  // `@NotNull` reject the PUT before the client validator ever runs.
-  (cfg.authenticationConfiguration as Record<string, unknown>).clientId = '';
-
-  return cfg;
-};
-
 /**
  * Installs the `window.__omTestMsal` shim + a valid stored token before the
  * app mounts. `MsalAuthenticator` picks up the shim on first render and

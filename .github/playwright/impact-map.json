@@ -79,6 +79,7 @@
     "docker/run_local_docker_common.sh",
     "openmetadata-ui/src/main/resources/ui/playwright.config.ts",
     "openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts",
+    "openmetadata-ui/src/main/resources/ui/playwright/e2e/lineage-data.helper.ts",
     "openmetadata-ui/src/main/resources/ui/playwright/fixtures/**",
     "openmetadata-ui/src/main/resources/ui/playwright/reporters/**",
     "openmetadata-ui/src/main/resources/ui/playwright/support/user/**",
@@ -105,6 +106,8 @@
         "openmetadata-ui/src/main/resources/ui/src/rest/feedsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/tasksAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/Task.constant.ts",
+        "openmetadata-ui/src/main/resources/ui/src/constants/Feeds.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useCloseOnNavigation*",
         "openmetadata-service/src/main/java/org/openmetadata/service/tasks/**"
       ],
       "specs": [
@@ -119,7 +122,9 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/**",
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityLineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/LineageTable/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/PlatformLineage/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityLineage*",
         "openmetadata-ui/src/main/resources/ui/src/utils/Lineage/**",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useLineageStore.ts"
@@ -821,6 +826,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Metric/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/MetricEntityUtils/**",
         "openmetadata-ui/src/main/resources/ui/src/components/BulkEditEntity/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useGridEditController.ts",
+        "openmetadata-ui/src/main/resources/ui/src/pages/EntityImport/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/metricsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/customMetricAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts",
@@ -836,6 +843,7 @@
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditOperationBadges.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
+        "playwright/e2e/Features/BulkEditTableGridInteractions.spec.ts",
         "playwright/e2e/Features/ClassificationImportExport.spec.ts",
         "playwright/e2e/Features/CsvJobsTray.spec.ts"
       ]
@@ -889,12 +897,28 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/CustomizeAppModeSidebarPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/CustomizeDetailsPage/**",
-        "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/**"
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Customization/GenericTab/**",
+        "openmetadata-ui/src/main/resources/ui/src/constants/CustomizeWidgets.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/enums/CustomizeDetailPage.enum.ts"
       ],
       "projects": ["chromium", "Data Insight"],
       "specs": [
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Default glossary and glossary-term page layouts and their widget registry. Persona customization edits these layouts, and the glossary pages render them.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeGlossaryPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeGlossaryTerm/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
+        "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
+        "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
     {
@@ -1185,6 +1209,29 @@
       ]
     },
     {
+      "_comment": "ConfirmationModal, its props and unit test. The generated map sends ConfirmationModal.tsx to the first three specs (through its testIds); TestSuiteDetailsPage.spec.ts is added because it asserts the destructive confirm on bulk remove.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.interface.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.test.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
+        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts",
+        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The AI-mode bundle test suite page and its test case search. TestSuiteDetailsPage.spec.ts runs the suite search in Classic and AI mode; the generated map reaches only the shared classic components it renders.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestSuiteDetail/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"]
+    },
+    {
       "_comment": "The AI-mode test case Run now / Retry controls. Only the AI-mode detail page and the run execution error banner render them, so the generated map does not reach them.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/observability/TestCaseDetail/RunTestCaseButton/**"
@@ -1271,6 +1318,37 @@
       "specs": [
         "playwright/e2e/Features/WelcomeScreen.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The product tour: its engine, the Classic tour's steps and recorded fixtures, the request mock that serves them, the page code it loads up front, the recording tools, and the pages carrying its data-tour-step markers. ProductTour.spec.ts walks the tour, closes it early, follows Back/Forward and a reload, and fails on any tour page request that reaches the server; WelcomeScreen.spec.ts starts the tour from the welcome screen.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/constants/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/interface/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ProductTourClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/ProductTourPagesClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/@types/regenerator-runtime.d.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/constant/productTour.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/TopicsSectionHeader.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/ExploreV1/ExploreV1.component.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/Services.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/GlossaryLeftPanel/GlossaryLeftPanel.component.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyStudioHeader/OntologyStudioHeader.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/DataQualityDashboard/DataQualityDashboard.component.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/ContextCenterDashboardPage/ContextCenterDashboardPage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/ContextCenterMemoriesPage/ContextCenterMemoriesPage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/useDismissedAnnouncements.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Flow/ProductTour.spec.ts",
+        "playwright/e2e/Features/WelcomeScreen.spec.ts"
       ]
     },
     {
@@ -1424,6 +1502,22 @@
       ],
       "projects": ["chromium"],
       "specs": ["playwright/e2e/Flow/Navbar.spec.ts"]
+    },
+    {
+      "_comment": "The lineage seed behind LineageDataClass: LineageFilters.spec.ts reads its entities and edges. The helper also writes shared-infra.json, which most specs read through ParentResolver, so it is listed under sharedInfrastructure as well.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/e2e/lineage-data.helper.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"]
+    },
+    {
+      "_comment": "Browser helper tests run under playwright/browser-helper-tests.config.ts, not in any e2e project, so no change to them can alter a spec outcome. Mapped to no specs rather than left unmapped, so a change does not escalate to a full-suite run.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/browser-tests/**"
+      ],
+      "projects": [],
+      "specs": []
     }
   ]
 }

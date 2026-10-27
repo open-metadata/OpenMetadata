@@ -33,6 +33,7 @@ import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { TestDefinitionTableProps } from './TestDefinitionTable.interface';
@@ -59,6 +60,9 @@ const TestDefinitionTable = ({
   onClearFilters,
 }: TestDefinitionTableProps) => {
   const { t } = useTranslation();
+  const EmptyStatePlaceholder = hasActiveFilters
+    ? NoFilteredResultsPlaceholder
+    : NoDataPlaceholder;
 
   // react-aria reports the new descriptor; the listing state upstream is keyed
   // by column id and asc/desc, so translate here rather than teaching every
@@ -297,7 +301,7 @@ const TestDefinitionTable = ({
                 loadingSkeletons
               ) : (
                 <Box className="tw:relative tw:min-h-80 tw:w-full">
-                  <NoDataPlaceholder
+                  <EmptyStatePlaceholder
                     actions={
                       hasActiveFilters && onClearFilters
                         ? [

@@ -29,6 +29,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   showThread = true,
   onFeedClick,
   isActive,
+  isThreadPanel,
 }) => {
   const handleFeedClick = useCallback(() => {
     if (feed) {
@@ -47,6 +48,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         isOpenInDrawer
         feed={feed}
         isActive={isActive}
+        isThreadPanel={isThreadPanel}
         showThread={showThread}
       />
     );

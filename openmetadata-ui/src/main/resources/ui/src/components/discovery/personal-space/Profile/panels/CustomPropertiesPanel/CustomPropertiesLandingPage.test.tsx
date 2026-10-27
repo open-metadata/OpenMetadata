@@ -73,6 +73,7 @@ jest.mock('../../../../../../constants/constants', () => ({
     table: 'table',
     pipeline: 'pipeline',
     dashboard: 'dashboard',
+    articles: 'page',
   },
 }));
 
@@ -92,7 +93,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     children?: ReactNode;
     onClick?: () => void;
     'data-testid'?: string;
-    'aria-busy'?: boolean | string;
+    'aria-busy'?: React.AriaAttributes['aria-busy'];
   }) => (
     <div
       aria-busy={ariaBusy}
@@ -171,6 +172,32 @@ describe('CustomPropertiesLandingPage', () => {
 
     expect(screen.getByTestId('entity-type-card-table')).toBeInTheDocument();
     expect(screen.getByTestId('entity-type-card-pipeline')).toBeInTheDocument();
+  });
+
+  it('renders the Articles card under Governance', () => {
+    jest
+      .requireMock('../../../../../../utils/GlobalSettingsClassBase')
+      .default.getGlobalSettingsMenuWithPermission.mockReturnValue([
+        {
+          key: 'customProperties',
+          items: [
+            {
+              key: 'customProperties.articles',
+              label: 'Articles',
+              description: '',
+              isProtected: true,
+            },
+          ],
+        },
+      ]);
+
+    render(
+      <CustomPropertiesLandingPage
+        onSelectEntityType={mockOnSelectEntityType}
+      />
+    );
+
+    expect(screen.getByTestId('entity-type-card-page')).toBeInTheDocument();
   });
 
   it('renders the entity label for each card', () => {
@@ -288,5 +315,35 @@ describe('CustomPropertiesLandingPage', () => {
         'true'
       );
     });
+  });
+
+  it('lists user and team custom properties under their own group', () => {
+    const globalSettingsClassBase = jest.requireMock(
+      '../../../../../../utils/GlobalSettingsClassBase'
+    ).default;
+    globalSettingsClassBase.getGlobalSettingsMenuWithPermission.mockReturnValue(
+      [
+        {
+          key: 'customProperties',
+          items: [
+            mockTableItem,
+            { ...mockTableItem, key: 'customProperties.user', label: 'Users' },
+            { ...mockTableItem, key: 'customProperties.team', label: 'Teams' },
+          ],
+        },
+      ]
+    );
+
+    render(
+      <CustomPropertiesLandingPage
+        onSelectEntityType={mockOnSelectEntityType}
+      />
+    );
+
+    expect(
+      screen.getByText('label.entity-group-users-and-teams')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('entity-type-card-user')).toBeInTheDocument();
+    expect(screen.getByTestId('entity-type-card-team')).toBeInTheDocument();
   });
 });

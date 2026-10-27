@@ -86,10 +86,6 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
-import type {
-  CustomPropertyProps,
-  ExtentionEntitiesKeys,
-} from '../../../../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
 import Loader from '../../../../../common/Loader/Loader';
@@ -129,19 +125,11 @@ import { useMembersTeamHeader } from './useMembersTeamHeader';
 
 const CUSTOM_PROPERTIES = 'custom-properties' as const;
 
-// Lazy-loaded for the same reason TeamDetailsV1 does it: the custom-property
-// table pulls in the RJSF form stack, which no other team tab needs.
-const CustomPropertyTable = withSuspenseFallback(
-  lazy(() =>
-    import(
-      '../../../../../common/CustomPropertyTable/CustomPropertyTable'
-    ).then((module) => ({ default: module.CustomPropertyTable }))
-  )
-  // withSuspenseFallback erases the component's generic; restore it the same
-  // way TeamDetailsV1 does so `entityDetails` narrows to Team.
-) as <T extends ExtentionEntitiesKeys>(
-  props: CustomPropertyProps<T>
-) => JSX.Element;
+// Lazy-loaded: the per-type value editors pull in the SQL and rich-text
+// editors, which no other team tab needs.
+const CustomPropertiesList = withSuspenseFallback(
+  lazy(() => import('../../customProperties/CustomPropertiesList'))
+);
 
 // The global `.drag-icon { width: 6px }` LESS rule is tuned for the legacy 8×15
 // drag.svg; the square 20×20 Reorder icon collapses to ~6px there. An inline
@@ -599,13 +587,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     [team, t]
   );
 
-  // CustomPropertyTable hands back the whole team with `extension` replaced;
-  // handlePatchTeam diffs it, so no separate extension-only path is needed.
+  // handlePatchTeam diffs the whole team, so an extension-only save is just a
+  // team with `extension` replaced.
   const handleTeamExtensionUpdate = useCallback(
-    async (updatedTeam: Team): Promise<void> => {
-      await handlePatchTeam(updatedTeam);
-    },
-    [handlePatchTeam]
+    async (extension: Record<string, unknown> | undefined) =>
+      team ? handlePatchTeam({ ...team, extension }) : false,
+    [team, handlePatchTeam]
   );
 
   const handleDescriptionSave = useCallback(async () => {
@@ -1201,17 +1188,34 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     if (activePluginTab) {
       const PluginTabComponent = activePluginTab.component;
 
-      return <PluginTabComponent teamId={team.id} />;
+      // Lets the tab promote one of its own routes to a panel-level sub-page,
+      // which replaces this team detail rather than nesting inside the tab.
+      return (
+        <PluginTabComponent
+          teamId={team.id}
+          onNavigate={(subPath?: string) =>
+            subPath
+              ? onNavigate({
+                  type: 'team-tab-subpage',
+                  fqn: team.fullyQualifiedName ?? fqn,
+                  teamId: team.id,
+                  key: activePluginTab.key,
+                  subPath,
+                })
+              : undefined
+          }
+        />
+      );
     }
 
     if (activeTab === CUSTOM_PROPERTIES) {
       return (
-        <CustomPropertyTable<EntityType.TEAM>
-          entityDetails={team}
+        <CustomPropertiesList
+          canEdit={Boolean(canEditCustomFields) && !team.deleted}
+          canView={Boolean(canViewCustomFields)}
           entityType={EntityType.TEAM}
-          hasEditAccess={Boolean(canEditCustomFields) && !team.deleted}
-          hasPermission={Boolean(canViewCustomFields)}
-          onEntityUpdate={handleTeamExtensionUpdate}
+          extension={team.extension as Record<string, unknown> | undefined}
+          onUpdate={handleTeamExtensionUpdate}
         />
       );
     }
@@ -1381,7 +1385,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             height and scroll. `min-h-0` keeps the flex parent from growing. */}
         <div className="tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-y-auto tw:py-4">
           <TableCard.Root
-            className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
+            className="tw:rounded-xl tw:shadow-none"
             size="compact">
             <Tabs
               selectedKey={activeTab}

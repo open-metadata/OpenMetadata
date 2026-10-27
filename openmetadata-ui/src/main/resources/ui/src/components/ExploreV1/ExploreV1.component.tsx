@@ -63,7 +63,6 @@ import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
-import { useFillViewportHeight } from '../../hooks/useFillViewportHeight';
 import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
 import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
@@ -631,7 +630,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   onTreeSelect = noop,
 }) => {
   const { t, i18n } = useTranslation();
-  const panelsRef = useFillViewportHeight<HTMLDivElement>();
   // getTabsInfo() bakes translated labels into its result, so recompute on a
   // language switch rather than freezing the first language for the mount.
   const tabsInfo = useMemo(
@@ -1250,7 +1248,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   return (
     <div className="explore-page bg-grey" data-testid="explore-page">
-      <CoreCard className="m-b-box tw:block tw:border-utility-gray-blue-100 tw:p-2 tw:dark:border-subtle">
+      <CoreCard
+        className="m-b-box tw:block tw:border-utility-gray-blue-100 tw:p-2 tw:dark:border-subtle"
+        data-tour-step="explore-search">
         <div className="tw:mr-2 tw:flex tw:flex-wrap tw:gap-y-2">
           {/* Zero flex-basis: with flex-wrap, a max-content basis would place
               the sort controls on their own row before shrinking is even
@@ -1391,7 +1391,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
         </div>
       </CoreCard>
 
-      <div ref={panelsRef}>
+      <div className="content-height-with-resizable-panel">
         <ResizableLeftPanels
           showLearningIcon
           className="tw:h-full"

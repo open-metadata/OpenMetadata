@@ -88,7 +88,9 @@ const buildDataAsset = (entityType: EntityType) => ({
   apiCollection: API_COLLECTION,
 });
 
-const ENTITY_TYPES: Array<[string, EntityType]> = [
+type DataAssetType = Parameters<typeof getDataAssetsHeaderInfo>[0];
+
+const ENTITY_TYPES: Array<[string, DataAssetType]> = [
   ['Database', EntityType.DATABASE],
   ['Database Schema', EntityType.DATABASE_SCHEMA],
   ['Metric', EntityType.METRIC],
@@ -112,7 +114,7 @@ const ENTITY_TYPES: Array<[string, EntityType]> = [
 
 // The ancestor crumbs produced by the builder, before DataAssetsHeader appends
 // the current entity. Only the CONTAINER builder consumes parentContainers.
-const getAncestorCrumbNames = (entityType: EntityType): string[] => {
+const getAncestorCrumbNames = (entityType: DataAssetType): string[] => {
   const { breadcrumbs } = getDataAssetsHeaderInfo(
     entityType,
     buildDataAsset(entityType) as never,
