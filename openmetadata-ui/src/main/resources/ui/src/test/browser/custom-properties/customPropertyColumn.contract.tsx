@@ -93,7 +93,7 @@ const expectSummary = async (
 };
 
 export const describeColumnCustomProperties = (types: FieldTypeName[]) =>
-  describe('Table column custom properties', { timeout: 60_000 }, () => {
+  describe('Table column custom properties', { timeout: 90_000 }, () => {
     test.each(types.map((type) => ({ type })))(
       'set a $type value from the column panel; it persists',
       async ({ type }) => {

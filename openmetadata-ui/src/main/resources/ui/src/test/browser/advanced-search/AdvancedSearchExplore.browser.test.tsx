@@ -124,13 +124,14 @@ describe('Explore advanced search', { timeout: 60_000 }, () => {
     await openExplore();
     await userEvent.click(page.getByTestId('search-dropdown-Data Assets'));
     await userEvent.fill(page.getByTestId('search-input'), 'table');
+    // Picking the option may already search; count from before it.
+    const from = explore.searches.length;
     await userEvent.click(page.getByTestId('table'));
 
     await expect
       .element(page.getByTestId('table'))
       .toHaveAttribute('aria-checked', 'true');
 
-    const from = explore.searches.length;
     const update = page.getByTestId('update-btn');
     if (update.query()) {
       await userEvent.click(update);

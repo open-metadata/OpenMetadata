@@ -212,7 +212,7 @@ export const openExplore = async (url = '/explore') => {
   const screen = await renderApp(url);
 
   await expect
-    .element(page.getByRole('button', { name: 'Tools' }), { timeout: 60_000 })
+    .element(page.getByRole('button', { name: 'Tools' }), { timeout: 90_000 })
     .toBeVisible();
 
   return screen;

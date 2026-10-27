@@ -60,7 +60,6 @@ const serveProperty = (type: FieldTypeName, name: string, config?: unknown) =>
 
 /** Opens the modal on rule 0's `Custom Properties › Table › <label>`. */
 const openOnProperty = async (label: string) => {
-  await openExplore();
   await openAdvancedSearch();
   await pickField(0, ['Custom Properties', 'Table', label]);
 };
@@ -108,6 +107,7 @@ describe('Custom properties in advanced search', { timeout: 60_000 }, () => {
   test('a number between two bounds sends both (#27482)', async () => {
     const name = 'pwNumberBetweenTest';
     const explore = serveProperty('number', name);
+    await openExplore();
 
     for (const [operator, [start, end]] of [
       ['Between', [50, 60]],
@@ -135,6 +135,7 @@ describe('Custom properties in advanced search', { timeout: 60_000 }, () => {
   test('a duration matches exactly with == and partially with Contains', async () => {
     const name = 'cp-duration';
     const explore = serveProperty('duration', name);
+    await openExplore();
 
     for (const [operator, text, clause] of [
       [
@@ -174,6 +175,7 @@ describe('Custom properties in advanced search', { timeout: 60_000 }, () => {
       (_, i) => `enum_val_${String(i).padStart(3, '0')}`
     );
     serveProperty('enum', 'enum-lazy', { values, multiSelect: true });
+    await openExplore();
     await openOnProperty('enum-lazy');
     await pickOperator(0, 'Equals');
     const input = rule(0)

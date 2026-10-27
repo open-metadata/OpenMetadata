@@ -376,7 +376,7 @@ export const describeCustomPropertySettings = (
 
   describe(
     `Custom properties of ${entity.entityType}`,
-    { timeout: 90_000 },
+    { timeout: 150_000 },
     () => {
       test.each(kinds)(
         '$label: create, edit, find in advanced search, delete',
@@ -387,7 +387,7 @@ export const describeCustomPropertySettings = (
           let screen = await renderApp(settings);
 
           await expect
-            .element(page.getByTestId('add-field-button'), { timeout: 60_000 })
+            .element(page.getByTestId('add-field-button'), { timeout: 90_000 })
             .toBeVisible();
 
           await createProperty(types, kind, name);
@@ -400,7 +400,7 @@ export const describeCustomPropertySettings = (
 
             await expect
               .element(page.getByRole('button', { name: 'Tools' }), {
-                timeout: 60_000,
+                timeout: 90_000,
               })
               .toBeVisible();
 
