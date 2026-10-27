@@ -425,6 +425,7 @@ def build_patch(  # noqa: C901
         # content changed.  The merge in _sort_array_entity_fields already
         # applied the restrict_update_fields / override_metadata logic, so
         # the replacement value is ready to use as-is.
+        operations = list(patch.patch)
         for field in active_array_fields:
             if hasattr(source, field) and hasattr(destination, field):
                 src_json = json.loads(
@@ -442,7 +443,7 @@ def build_patch(  # noqa: C901
                     )
                 )
                 if src_json.get(field) != dst_json.get(field):
-                    patch.patch.append(
+                    operations.append(
                         {
                             "op": "replace",
                             "path": f"/{field}",
@@ -450,6 +451,7 @@ def build_patch(  # noqa: C901
                         }
                     )
 
+        patch.patch = operations
         if not patch.patch:
             return None
 
