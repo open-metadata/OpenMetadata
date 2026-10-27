@@ -26,11 +26,11 @@ from metadata.generated.schema.security.credentials.awsCredentials import AWSCre
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.glue.connection import (
-    DEFAULT_LIST_LIMIT,
     GLUE_ERRORS,
     MAX_DATABASES_TO_PROBE,
     GlueChecks,
     GlueConnection,
+    GlueFilters,
     list_databases,
 )
 
@@ -61,8 +61,8 @@ def _paginator(pages: list[dict]) -> MagicMock:
     return paginator
 
 
-def _checks(client=None, schema_filter_pattern: FilterPattern | None = None) -> GlueChecks:
-    return GlueChecks(catalog=Borrowed.of(client), schema_filter_pattern=schema_filter_pattern)
+def _checks(client=None, **filters: FilterPattern) -> GlueChecks:
+    return GlueChecks(catalog=Borrowed.of(client), filters=GlueFilters(**filters))
 
 
 def _check_names() -> set[str]:
@@ -252,7 +252,7 @@ def test_get_tables_never_probes_a_database_the_schema_filter_excludes():
         tables={"sales": [{"Name": "orders"}]},
     )
 
-    evidence = _checks(client, FilterPattern(includes=["^sales$"])).get_tables()
+    evidence = _checks(client, schema=FilterPattern(includes=["^sales$"])).get_tables()
 
     assert evidence.summary == "1 table in database 'sales'"
     assert evidence.command == "glue:GetTables (DatabaseName=sales)"
@@ -279,7 +279,7 @@ def test_get_tables_reaches_a_targeted_database_past_the_probe_cap():
         tables={"sales": [{"Name": "orders"}]},
     )
 
-    evidence = _checks(client, FilterPattern(excludes=["^other_"])).get_tables()
+    evidence = _checks(client, schema=FilterPattern(excludes=["^other_"])).get_tables()
 
     assert evidence.summary == "1 table in database 'sales'"
 
@@ -294,28 +294,87 @@ def test_get_tables_names_the_database_catalog():
 
     _checks(client).get_tables()
 
-    tables_paginator.paginate.assert_called_once_with(
-        PaginationConfig={"MaxItems": DEFAULT_LIST_LIMIT + 1}, DatabaseName="sales", CatalogId="111"
-    )
+    tables_paginator.paginate.assert_called_once_with(DatabaseName="sales", CatalogId="111")
 
 
 def test_get_tables_warns_when_the_schema_filter_excludes_every_database():
     client = _client({"get_databases": [{"DatabaseList": [{"Name": "a"}, {"Name": "b"}]}]})
 
-    evidence = _checks(client, FilterPattern(includes=["^missing$"])).get_tables()
+    evidence = _checks(client, schema=FilterPattern(includes=["^missing$"])).get_tables()
 
     assert evidence.summary == "no databases available to probe"
     assert evidence.caveat is not None
     assert "schemaFilterPattern" in evidence.caveat.remediation
 
 
-def test_glue_connection_hands_its_schema_filter_to_the_checks():
-    pattern = FilterPattern(includes=["^sales$"])
-    config = GlueConnectionConfig(awsConfig=AWSCredentials(awsRegion="us-east-1"), schemaFilterPattern=pattern)
+def test_get_tables_never_probes_a_catalog_the_database_filter_excludes():
+    # Glue's database level is the catalog ID; the excluded catalog's database is denied.
+    client = _client_denying(
+        denied="linked_db",
+        databases=[{"Name": "linked_db", "CatalogId": "222"}, {"Name": "sales", "CatalogId": "111"}],
+        tables={"sales": [{"Name": "orders"}]},
+    )
 
-    checks = GlueConnection(config).checks()
+    evidence = _checks(client, database=FilterPattern(includes=["^111$"])).get_tables()
 
-    assert checks._schema_filter_pattern == pattern
+    assert evidence.summary == "1 table in database 'sales'"
+
+
+def test_get_tables_counts_only_tables_the_table_filter_keeps():
+    client = _client_denying(
+        denied="",
+        databases=[{"Name": "sales"}],
+        tables={"sales": [{"Name": "orders"}, {"Name": "tmp_orders"}, {"Name": "customers"}]},
+    )
+
+    evidence = _checks(client, table=FilterPattern(excludes=["^tmp_"])).get_tables()
+
+    assert evidence.summary == "2 tables in database 'sales'"
+
+
+def test_get_tables_moves_past_a_database_whose_tables_are_all_filtered_out():
+    client = _client_denying(
+        denied="",
+        databases=[{"Name": "staging"}, {"Name": "sales"}],
+        tables={"staging": [{"Name": "tmp_load"}], "sales": [{"Name": "orders"}]},
+    )
+
+    evidence = _checks(client, table=FilterPattern(excludes=["^tmp_"])).get_tables()
+
+    assert evidence.summary == "1 table in database 'sales'"
+
+
+def test_get_tables_warns_when_the_table_filter_excludes_every_table():
+    client = _client_denying(denied="", databases=[{"Name": "sales"}], tables={"sales": [{"Name": "orders"}]})
+
+    evidence = _checks(client, table=FilterPattern(includes=["^missing$"])).get_tables()
+
+    assert evidence.summary == "no tables in the first 1 database"
+    assert evidence.caveat is not None
+    assert "tableFilterPattern" in evidence.caveat.remediation
+
+
+def test_glue_filters_take_the_connection_patterns():
+    database, schema, table = (FilterPattern(includes=[f"^{name}$"]) for name in ("111", "sales", "orders"))
+    config = GlueConnectionConfig(
+        awsConfig=AWSCredentials(awsRegion="us-east-1"),
+        databaseFilterPattern=database,
+        schemaFilterPattern=schema,
+        tableFilterPattern=table,
+    )
+
+    assert GlueFilters.of(config) == GlueFilters(database=database, schema=schema, table=table)
+
+
+def test_glue_filters_skip_the_database_filter_when_database_name_is_set():
+    # Ingestion labels every catalog with databaseName and does not filter by catalog ID then.
+    config = GlueConnectionConfig(
+        awsConfig=AWSCredentials(awsRegion="us-east-1"),
+        databaseName="analytics",
+        databaseFilterPattern=FilterPattern(includes=["^111$"]),
+    )
+
+    assert GlueFilters.of(config).database is None
 
 
 def test_error_pack_access_denied():
