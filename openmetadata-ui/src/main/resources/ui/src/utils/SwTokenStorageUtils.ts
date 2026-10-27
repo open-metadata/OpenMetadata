@@ -190,6 +190,7 @@ const clearAppState = async (): Promise<void> => {
 /**
  * Bot tokens (including bot impersonation tokens) and personal access tokens
  * are meant for API clients; only tokens from a user login flow may drive the UI.
+ * ADR:2026-10-27-ui-runs-only-on-user-login-tokens
  */
 export const isApiOnlyToken = (token: string) => {
   try {
