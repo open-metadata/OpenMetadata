@@ -2,14 +2,20 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * Sliding-window circuit breaker for bulk search-index requests.
  *
- * <p>State transitions: CLOSED → OPEN (after N failures in window) → HALF_OPEN (probe after
- * interval) → CLOSED (on probe success) or back to OPEN (on probe failure).
+ * <p>State transitions: CLOSED → OPEN (after N failed bulk requests in the window) → HALF_OPEN
+ * (after the probe interval, one request probes the cluster) → CLOSED (probe succeeded) or back to
+ * OPEN (probe failed).
+ *
+ * <p>An open circuit pauses bulks rather than failing them: callers hold a rejected bulk and offer
+ * it again when {@link #millisUntilProbe()} says a probe may run, and record it as failed only once
+ * {@link #hasPausedTooLong(long)}. ADR:2026-10-27-bulk-requests-never-outnumber-search-connections
  */
 @Slf4j
 public class BulkCircuitBreaker {
@@ -20,15 +26,36 @@ public class BulkCircuitBreaker {
     HALF_OPEN
   }
 
+  /**
+   * How long a bulk may wait for an open circuit before it is recorded as failed. Long enough to
+   * ride out a node restart or a long GC pause; shorter than the ~3 minutes after which a
+   * PartitionWorker reconciles sink operations that are still pending.
+   */
+  static final long DEFAULT_MAX_PAUSE_MS = 120_000;
+
+  /**
+   * A probe that has not reported back within this many probe intervals is presumed lost (its
+   * callback may never fire), and another request may probe instead.
+   */
+  private static final int PROBE_TIMEOUT_INTERVALS = 3;
+
   private final int failureThreshold;
   private final long windowMs;
   private final long halfOpenProbeMs;
+  private final long maxPauseMs;
 
   private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
   private final ConcurrentLinkedDeque<Long> failureTimestamps = new ConcurrentLinkedDeque<>();
+  private final AtomicBoolean probeInFlight = new AtomicBoolean(false);
   private volatile long openedAt;
+  private volatile long probeStartedAt;
 
   public BulkCircuitBreaker(int failureThreshold, long windowMs, long halfOpenProbeMs) {
+    this(failureThreshold, windowMs, halfOpenProbeMs, DEFAULT_MAX_PAUSE_MS);
+  }
+
+  public BulkCircuitBreaker(
+      int failureThreshold, long windowMs, long halfOpenProbeMs, long maxPauseMs) {
     if (failureThreshold <= 0) {
       throw new IllegalArgumentException("failureThreshold must be > 0");
     }
@@ -38,33 +65,28 @@ public class BulkCircuitBreaker {
     if (halfOpenProbeMs <= 0) {
       throw new IllegalArgumentException("halfOpenProbeMs must be > 0");
     }
+    if (maxPauseMs <= 0) {
+      throw new IllegalArgumentException("maxPauseMs must be > 0");
+    }
     this.failureThreshold = failureThreshold;
     this.windowMs = windowMs;
     this.halfOpenProbeMs = halfOpenProbeMs;
+    this.maxPauseMs = maxPauseMs;
   }
 
+  /** CLOSED admits everything; an open circuit admits one probe once the probe interval passes. */
   public boolean allowRequest() {
-    State current = state.get();
-    if (current == State.CLOSED) {
-      return true;
-    }
-    if (current == State.HALF_OPEN) {
-      return true;
-    }
-    // OPEN: check if probe interval has elapsed
-    if (System.currentTimeMillis() - openedAt >= halfOpenProbeMs) {
-      if (state.compareAndSet(State.OPEN, State.HALF_OPEN)) {
-        LOG.warn("Circuit breaker transitioning OPEN → HALF_OPEN (probe request allowed)");
-        recordTransition("open_to_half_open");
-      }
-      return true;
-    }
-    return false;
+    return switch (state.get()) {
+      case CLOSED -> true;
+      case OPEN -> isProbeDue() && enterHalfOpen() && claimProbe();
+      case HALF_OPEN -> claimProbe();
+    };
   }
 
   public void recordSuccess() {
     if (state.compareAndSet(State.HALF_OPEN, State.CLOSED)) {
       failureTimestamps.clear();
+      probeInFlight.set(false);
       LOG.warn("Circuit breaker transitioning HALF_OPEN → CLOSED (probe succeeded)");
       recordTransition("half_open_to_closed");
     }
@@ -77,6 +99,7 @@ public class BulkCircuitBreaker {
     if (current == State.HALF_OPEN) {
       if (state.compareAndSet(State.HALF_OPEN, State.OPEN)) {
         openedAt = now;
+        probeInFlight.set(false);
         LOG.warn("Circuit breaker transitioning HALF_OPEN → OPEN (probe failed)");
         recordTransition("half_open_to_open");
       }
@@ -97,6 +120,31 @@ public class BulkCircuitBreaker {
     }
   }
 
+  /**
+   * Records a failed send attempt. A request that only timed out waiting for a pooled connection
+   * never reached the cluster, so it says nothing about cluster health and frees the probe slot.
+   * Otherwise a bulk request counts once, on its first attempt, so one bulk's retries cannot open
+   * the circuit on their own; a failure while half-open is the probe's verdict and always counts.
+   */
+  public void recordBulkFailure(Throwable error, int attemptNumber) {
+    if (BulkConnectionBudget.isPoolWaitTimeout(error)) {
+      probeInFlight.set(false);
+    } else if (attemptNumber == 0 || state.get() == State.HALF_OPEN) {
+      recordFailure();
+    }
+  }
+
+  /** Milliseconds until an open circuit lets a probe through; 0 when it is not open. */
+  public long millisUntilProbe() {
+    long remaining = openedAt + halfOpenProbeMs - System.currentTimeMillis();
+    return state.get() == State.OPEN ? Math.max(0, remaining) : 0;
+  }
+
+  /** True once a bulk paused since {@code pausedSinceMillis} has waited out the pause limit. */
+  public boolean hasPausedTooLong(long pausedSinceMillis) {
+    return System.currentTimeMillis() - pausedSinceMillis >= maxPauseMs;
+  }
+
   public State getState() {
     return state.get();
   }
@@ -104,6 +152,29 @@ public class BulkCircuitBreaker {
   public void reset() {
     state.set(State.CLOSED);
     failureTimestamps.clear();
+    probeInFlight.set(false);
+  }
+
+  private boolean isProbeDue() {
+    return System.currentTimeMillis() - openedAt >= halfOpenProbeMs;
+  }
+
+  private boolean enterHalfOpen() {
+    if (state.compareAndSet(State.OPEN, State.HALF_OPEN)) {
+      LOG.warn("Circuit breaker transitioning OPEN → HALF_OPEN (probe request allowed)");
+      recordTransition("open_to_half_open");
+    }
+    return state.get() == State.HALF_OPEN;
+  }
+
+  private boolean claimProbe() {
+    long now = System.currentTimeMillis();
+    boolean previousProbeLost = now - probeStartedAt >= PROBE_TIMEOUT_INTERVALS * halfOpenProbeMs;
+    boolean claimed = probeInFlight.compareAndSet(false, true) || previousProbeLost;
+    if (claimed) {
+      probeStartedAt = now;
+    }
+    return claimed;
   }
 
   private void pruneOldFailures(long now) {

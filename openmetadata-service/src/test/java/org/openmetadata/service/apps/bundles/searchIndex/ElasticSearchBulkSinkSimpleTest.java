@@ -39,6 +39,9 @@ class ElasticSearchBulkSinkSimpleTest {
   @BeforeEach
   void setUp() {
     lenient().when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    lenient()
+        .when(searchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     lenient().when(searchClient.getNewClient()).thenReturn(restHighLevelClient);
     lenient().when(searchRepository.getClusterAlias()).thenReturn("default");
     lenient().when(indexMapping.getIndexName("default")).thenReturn("test_index");
@@ -112,7 +115,8 @@ class ElasticSearchBulkSinkSimpleTest {
 
     processor.setSemaphoreAcquireTimeoutSecondsForTesting(0L);
 
-    Semaphore semaphore = getField(processor, "concurrentRequestSemaphore", Semaphore.class);
+    BulkSendPermits sendPermits = getField(processor, "sendPermits", BulkSendPermits.class);
+    Semaphore semaphore = getField(sendPermits, "processorSlots", Semaphore.class);
     semaphore.acquire(2);
     int permitsBefore = semaphore.availablePermits();
 

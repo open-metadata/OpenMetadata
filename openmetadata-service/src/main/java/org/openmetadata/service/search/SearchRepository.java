@@ -152,6 +152,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkRetryPolicy;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
@@ -5200,11 +5201,30 @@ public class SearchRepository {
 
   public BulkSink createBulkSink(
       int batchSize, int maxConcurrentRequests, long maxPayloadSizeBytes) {
+    return newBulkSink(
+        batchSize, maxConcurrentRequests, maxPayloadSizeBytes, BulkRetryPolicy.DEFAULT);
+  }
+
+  public BulkSink createBulkSink(
+      int batchSize,
+      int maxConcurrentRequests,
+      long maxPayloadSizeBytes,
+      BulkRetryPolicy retryPolicy) {
+    return newBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes, retryPolicy);
+  }
+
+  private BulkSink newBulkSink(
+      int batchSize,
+      int maxConcurrentRequests,
+      long maxPayloadSizeBytes,
+      BulkRetryPolicy retryPolicy) {
     ElasticSearchConfiguration.SearchType searchType = getSearchType();
     if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
-      return new OpenSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+      return new OpenSearchBulkSink(
+          this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes, retryPolicy);
     } else {
-      return new ElasticSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+      return new ElasticSearchBulkSink(
+          this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes, retryPolicy);
     }
   }
 

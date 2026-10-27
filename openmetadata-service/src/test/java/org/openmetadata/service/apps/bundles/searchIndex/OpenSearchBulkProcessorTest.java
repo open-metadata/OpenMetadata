@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -33,6 +35,21 @@ import os.org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import os.org.opensearch.client.util.ObjectBuilder;
 
 class OpenSearchBulkProcessorTest {
+
+  @Test
+  void transportThatThrowsBeforeSendingReleasesItsPermitsAndRecordsTheBulk() throws Exception {
+    try (ProcessorHarness harness = newHarness(1, 1)) {
+      when(harness.asyncClient.bulk(anyBulkRequestBuilder()))
+          .thenThrow(new IOException("I/O reactor has been shut down"))
+          .thenReturn(CompletableFuture.completedFuture(successResponse()));
+
+      harness.processor.add(indexOperation("table_search_index", "doc-1"));
+      harness.processor.add(indexOperation("table_search_index", "doc-2"));
+
+      assertEquals(1, harness.totalFailed.get(), "the bulk that never left is recorded as failed");
+      assertEquals(1, harness.totalSuccess.get(), "its send permits came back for the next bulk");
+    }
+  }
 
   @Test
   void addReportsSuccessByEntityTypeAndCleansTrackingMaps() throws Exception {
@@ -122,7 +139,7 @@ class OpenSearchBulkProcessorTest {
   }
 
   @Test
-  void addFailsFastWhenCircuitBreakerIsOpenAndReportsDroppedRecords() throws Exception {
+  void addRecordsBulksAsFailedOnceAnOpenCircuitOutlastsThePauseLimit() throws Exception {
     try (ProcessorHarness harness = newHarness(2, 1)) {
       StageStatsTracker tableTracker = mock(StageStatsTracker.class);
       StageStatsTracker mlModelTracker = mock(StageStatsTracker.class);
@@ -132,6 +149,7 @@ class OpenSearchBulkProcessorTest {
 
       when(harness.circuitBreaker.allowRequest()).thenReturn(false);
       when(harness.circuitBreaker.getState()).thenReturn(BulkCircuitBreaker.State.OPEN);
+      when(harness.circuitBreaker.hasPausedTooLong(anyLong())).thenReturn(true);
       harness.processor.setFailureCallback(failureCallback);
       harness.processor.setStatsCallback(statsCallback);
 
@@ -262,6 +280,8 @@ class OpenSearchBulkProcessorTest {
     os.org.opensearch.client.opensearch.OpenSearchClient restClient =
         mock(os.org.opensearch.client.opensearch.OpenSearchClient.class, RETURNS_DEEP_STUBS);
     when(searchClient.getNewClient()).thenReturn(restClient);
+    when(searchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
 
     BulkCircuitBreaker circuitBreaker = mock(BulkCircuitBreaker.class);
     when(circuitBreaker.allowRequest()).thenReturn(true);
@@ -279,17 +299,14 @@ class OpenSearchBulkProcessorTest {
     OpenSearchBulkSink.CustomBulkProcessor processor =
         new OpenSearchBulkSink.CustomBulkProcessor(
             searchClient,
-            bulkActions,
-            4096L,
-            concurrentRequests,
-            60_000L,
-            5L,
-            1,
-            totalSubmitted,
-            totalSuccess,
-            totalFailed,
-            totalWarnings,
-            statsUpdates::incrementAndGet,
+            new BulkProcessorSettings(
+                bulkActions, 4096L, concurrentRequests, 60_000L, new BulkRetryPolicy(1, 5L, 5L)),
+            new BulkProcessorCounters(
+                totalSubmitted,
+                totalSuccess,
+                totalFailed,
+                totalWarnings,
+                statsUpdates::incrementAndGet),
             circuitBreaker);
 
     return new ProcessorHarness(

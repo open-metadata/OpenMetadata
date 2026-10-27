@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -33,6 +34,21 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 
 class ElasticSearchBulkProcessorTest {
+
+  @Test
+  void transportThatThrowsBeforeSendingReleasesItsPermitsAndRecordsTheBulk() throws Exception {
+    try (ProcessorHarness harness = newHarness(1, 1)) {
+      when(harness.asyncClient.bulk(anyBulkRequestBuilder()))
+          .thenThrow(new IllegalStateException("I/O reactor has been shut down"))
+          .thenReturn(CompletableFuture.completedFuture(successResponse()));
+
+      harness.processor.add(indexOperation("table_search_index", "doc-1"));
+      harness.processor.add(indexOperation("table_search_index", "doc-2"));
+
+      assertEquals(1, harness.totalFailed.get(), "the bulk that never left is recorded as failed");
+      assertEquals(1, harness.totalSuccess.get(), "its send permits came back for the next bulk");
+    }
+  }
 
   @Test
   void addReportsSuccessAndCleansTrackingMaps() throws Exception {
@@ -112,7 +128,7 @@ class ElasticSearchBulkProcessorTest {
   }
 
   @Test
-  void addFailsFastWhenCircuitBreakerIsOpenAndReportsDroppedRecords() throws Exception {
+  void addRecordsBulksAsFailedOnceAnOpenCircuitOutlastsThePauseLimit() throws Exception {
     try (ProcessorHarness harness = newHarness(2, 1)) {
       StageStatsTracker tableTracker = mock(StageStatsTracker.class);
       StageStatsTracker mlModelTracker = mock(StageStatsTracker.class);
@@ -120,6 +136,7 @@ class ElasticSearchBulkProcessorTest {
 
       when(harness.circuitBreaker.allowRequest()).thenReturn(false);
       when(harness.circuitBreaker.getState()).thenReturn(BulkCircuitBreaker.State.OPEN);
+      when(harness.circuitBreaker.hasPausedTooLong(anyLong())).thenReturn(true);
       harness.processor.setFailureCallback(failureCallback);
 
       harness.processor.add(
@@ -240,6 +257,8 @@ class ElasticSearchBulkProcessorTest {
     es.co.elastic.clients.elasticsearch.ElasticsearchClient restClient =
         mock(es.co.elastic.clients.elasticsearch.ElasticsearchClient.class, RETURNS_DEEP_STUBS);
     when(searchClient.getNewClient()).thenReturn(restClient);
+    when(searchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
 
     BulkCircuitBreaker circuitBreaker = mock(BulkCircuitBreaker.class);
     when(circuitBreaker.allowRequest()).thenReturn(true);
@@ -257,17 +276,14 @@ class ElasticSearchBulkProcessorTest {
     ElasticSearchBulkSink.CustomBulkProcessor processor =
         new ElasticSearchBulkSink.CustomBulkProcessor(
             searchClient,
-            bulkActions,
-            4096L,
-            concurrentRequests,
-            60_000L,
-            5L,
-            1,
-            totalSubmitted,
-            totalSuccess,
-            totalFailed,
-            totalWarnings,
-            statsUpdates::incrementAndGet,
+            new BulkProcessorSettings(
+                bulkActions, 4096L, concurrentRequests, 60_000L, new BulkRetryPolicy(1, 5L, 5L)),
+            new BulkProcessorCounters(
+                totalSubmitted,
+                totalSuccess,
+                totalFailed,
+                totalWarnings,
+                statsUpdates::incrementAndGet),
             circuitBreaker);
 
     return new ProcessorHarness(

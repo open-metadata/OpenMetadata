@@ -38,6 +38,9 @@ class OpenSearchBulkSinkSimpleTest {
   @BeforeEach
   void setUp() {
     lenient().when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    lenient()
+        .when(searchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     lenient().when(searchClient.getNewClient()).thenReturn(restHighLevelClient);
     lenient().when(searchRepository.getClusterAlias()).thenReturn("default");
     lenient().when(indexMapping.getIndexName("default")).thenReturn("test_index");
@@ -88,7 +91,8 @@ class OpenSearchBulkSinkSimpleTest {
 
     // Drain the semaphore so flushInternal cannot acquire a permit. The sink was constructed
     // with concurrentRequests=2 (see setUp), so drain both.
-    Semaphore semaphore = getField(processor, "concurrentRequestSemaphore", Semaphore.class);
+    BulkSendPermits sendPermits = getField(processor, "sendPermits", BulkSendPermits.class);
+    Semaphore semaphore = getField(sendPermits, "processorSlots", Semaphore.class);
     semaphore.acquire(2);
     int permitsBefore = semaphore.availablePermits();
 
