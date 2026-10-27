@@ -13,12 +13,14 @@ Nox sessions for testing and formatting checks.
 """
 
 import argparse
+import fcntl
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
 import nox
@@ -48,6 +50,17 @@ INGESTION_ROOT = Path(__file__).resolve().parent
 nox.options.envdir = str(INGESTION_ROOT / ".nox")
 ROOT = INGESTION_ROOT.parent
 PROFILES = ("runtime", "all", "dev", "test", "style", "generation", "coverage")
+
+
+# ADR:2026-10-27-local-python-environments-use-locked-profiles
+@contextmanager
+def generation_lock():
+    """Exclude other writers while generating or installing checkout models."""
+    path = INGESTION_ROOT / ".nox/generation.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
 
 
 def default_environment(profile):
@@ -108,44 +121,45 @@ def synchronize(session, profile, path, interpreter):
         )
     )
     selected = policy["profiles"][profile]
-    if selected["install-project"]:
-        generation_python, generation_environment = synchronize(
-            session, "generation", default_environment("generation"), python
-        )
-        check = subprocess.run(
-            [str(generation_python), str(ROOT / "scripts/check_generated_models.py"), "--check"],
-            cwd=ROOT,
-            check=False,
-        )
-        if check.returncode == 1:
+    with generation_lock() if selected["install-project"] else nullcontext():
+        if selected["install-project"]:
+            generation_python, generation_environment = synchronize(
+                session, "generation", default_environment("generation"), python
+            )
+            check = subprocess.run(
+                [str(generation_python), str(ROOT / "scripts/check_generated_models.py"), "--check"],
+                cwd=ROOT,
+                check=False,
+            )
+            if check.returncode == 1:
+                session.run(
+                    str(generation_python),
+                    str(ROOT / "scripts/generate_ingestion_models.py"),
+                    "--python-only",
+                    env=generation_environment,
+                    external=True,
+                )
+            else:
+                check.check_returncode()
+            environment["OM_PYTHON_ENVIRONMENT"] = str(path)
+        flags = [] if selected["install-project"] else ["--inexact"]
+        for group in selected["groups"]:
+            flags.extend(["--group" if selected["install-project"] else "--only-group", group])
+        for extra in selected["extras"]:
+            flags.extend(["--extra", extra])
+        session.run(*command, *flags, env=environment, external=True)
+        if profile == "test" and policy.get("classification-models"):
             session.run(
-                str(generation_python),
-                str(ROOT / "scripts/generate_ingestion_models.py"),
-                "--python-only",
-                env=generation_environment,
+                str(python),
+                "-I",
+                "-m",
+                "metadata",
+                "install-classification-models",
+                "--languages",
+                ",".join(policy["classification-models"]["languages"]),
+                env=environment,
                 external=True,
             )
-        else:
-            check.check_returncode()
-        environment["OM_PYTHON_ENVIRONMENT"] = str(path)
-    flags = [] if selected["install-project"] else ["--inexact"]
-    for group in selected["groups"]:
-        flags.extend(["--group" if selected["install-project"] else "--only-group", group])
-    for extra in selected["extras"]:
-        flags.extend(["--extra", extra])
-    session.run(*command, *flags, env=environment, external=True)
-    if profile == "test" and policy.get("classification-models"):
-        session.run(
-            str(python),
-            "-I",
-            "-m",
-            "metadata",
-            "install-classification-models",
-            "--languages",
-            ",".join(policy["classification-models"]["languages"]),
-            env=environment,
-            external=True,
-        )
     return python, environment
 
 
@@ -180,8 +194,9 @@ def install(session):
 @nox.session(name="generate", python=False, default=False)
 def generate(session):
     """Generate models with the locked generation tools."""
-    python = prepare(session, "generation")
-    session.run(str(python), str(ROOT / "scripts/generate_ingestion_models.py"), *session.posargs, external=True)
+    with generation_lock():
+        python = prepare(session, "generation")
+        session.run(str(python), str(ROOT / "scripts/generate_ingestion_models.py"), *session.posargs, external=True)
 
 
 @nox.session(name="coverage", python=False, default=False)
@@ -317,6 +332,7 @@ def unit_tests(session):
         "--cov-branch",
         "--cov-config=pyproject.toml",
         "--junitxml=junit/test-results-unit.xml",
+        # ADR:2026-10-27-unit-tests-default-to-four-xdist-workers
         "-n",
         "4",
         "--dist",

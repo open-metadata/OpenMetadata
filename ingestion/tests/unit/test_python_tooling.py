@@ -11,9 +11,11 @@
 
 """Behavioral checks for the local Python development entry points."""
 
+import fcntl
 import importlib.metadata
 import json
 import os
+import select
 import shutil
 import subprocess
 import sys
@@ -633,3 +635,99 @@ def test_generation_session_uses_prepared_python(tooling_repo: Path) -> None:
     )
     assert_success(run("nox", "-f", "ingestion/noxfile.py", "-s", "generate", cwd=tooling_repo))
     assert (tooling_repo / "ingestion/generation-python").read_text() == str(tooling_repo / "ingestion/.nox/generation")
+
+
+@pytest.fixture
+def generation_repo(tooling_repo: Path, monkeypatch) -> Path:
+    makefile = tooling_repo / "Makefile"
+    makefile.write_text("ANTLR_VERSION := 4.9.2\n" + makefile.read_text())
+    tools = tooling_repo / "tools"
+    tools.mkdir()
+    antlr = tools / "antlr4"
+    antlr.write_text(
+        f"#!{sys.executable}\n"
+        "import os, sys\nfrom pathlib import Path\n"
+        "version = os.environ.get('TEST_ANTLR_VERSION', '4.9.2')\n"
+        "if len(sys.argv) == 1:\n"
+        "    print('ANTLR Parser Generator Version ' + version)\n"
+        "else:\n"
+        "    output = Path(sys.argv[sys.argv.index('-o') + 1])\n"
+        "    output.mkdir(parents=True, exist_ok=True)\n"
+        "    (output / 'parser.py').write_text('VERSION = ' + repr(version) + '\\n')\n"
+    )
+    antlr.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tools) + os.pathsep + os.environ["PATH"])
+    (tooling_repo / "scripts/datamodel_generation.py").write_text(
+        "import os\nfrom pathlib import Path\n"
+        "output = Path('ingestion/src/metadata/generated')\n"
+        "(output / '__init__.py').touch()\n"
+        "(output / 'model.py').write_text('VALUE = 1\\n')\n"
+        "if os.environ.get('TEST_GENERATION_PHASE') == 'generation':\n"
+        "    with open(os.environ['TEST_GENERATION_READY'], 'w') as ready: ready.write('ready\\n')\n"
+        "    with open(os.environ['TEST_GENERATION_RELEASE']) as release: release.readline()\n"
+    )
+    return tooling_repo
+
+
+@pytest.mark.parametrize("version", ["4.13.2", "4.9.20"])
+def test_generation_rejects_wrong_antlr_without_deleting_outputs(generation_repo: Path, monkeypatch, version: str):
+    monkeypatch.setenv("TEST_ANTLR_VERSION", version)
+    generated = generation_repo / "ingestion/src/metadata/generated"
+    before = {p.relative_to(generated): p.read_bytes() for p in generated.rglob("*") if p.is_file()}
+
+    result = run("nox", "-f", "ingestion/noxfile.py", "-s", "generate", "--", "--python-only", cwd=generation_repo)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "4.9.2" in result.stdout + result.stderr
+    assert {p.relative_to(generated): p.read_bytes() for p in generated.rglob("*") if p.is_file()} == before
+
+
+@pytest.mark.parametrize("phase", ["generation", "installation"])
+def test_generation_and_installation_exclude_other_writers(generation_repo: Path, monkeypatch, phase: str):
+    ready = generation_repo / "ready"
+    release = generation_repo / "release"
+    os.mkfifo(ready)
+    os.mkfifo(release)
+    ready_fd = os.open(ready, os.O_RDWR | os.O_NONBLOCK)
+    release_fd = os.open(release, os.O_RDWR | os.O_NONBLOCK)
+    monkeypatch.setenv("TEST_GENERATION_PHASE", phase)
+    monkeypatch.setenv("TEST_GENERATION_READY", str(ready))
+    monkeypatch.setenv("TEST_GENERATION_RELEASE", str(release))
+    if phase == "installation":
+        (generation_repo / "ingestion/setup.py").write_text(
+            "import os\nfrom pathlib import Path\nfrom setuptools import setup\n"
+            "once = Path(os.environ['TEST_GENERATION_READY'] + '.once')\n"
+            "if not once.exists():\n"
+            "    once.touch()\n"
+            "    with open(os.environ['TEST_GENERATION_READY'], 'w') as ready: ready.write('ready\\n')\n"
+            "    with open(os.environ['TEST_GENERATION_RELEASE']) as release: release.readline()\n"
+            "setup()\n"
+        )
+    args = ["generate", "--", "--python-only"] if phase == "generation" else ["install", "--", "runtime"]
+    log = generation_repo / "generation.log"
+    with log.open("w") as output:
+        process = subprocess.Popen(
+            ["nox", "-f", "ingestion/noxfile.py", "-s", *args],
+            cwd=generation_repo,
+            stdout=output,
+            stderr=subprocess.STDOUT,
+        )
+        try:
+            assert select.select([ready_fd], [], [], 60)[0], log.read_text()
+            assert b"ready" in os.read(ready_fd, 100)
+            with (
+                (generation_repo / "ingestion/.nox/generation.lock").open("a") as lock,
+                pytest.raises(BlockingIOError),
+            ):
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        finally:
+            os.write(release_fd, b"continue\n")
+            try:
+                process.wait(timeout=90)
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait()
+                os.close(ready_fd)
+                os.close(release_fd)
+    assert process.returncode == 0, log.read_text()

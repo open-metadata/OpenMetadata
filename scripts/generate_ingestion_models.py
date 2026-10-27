@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import subprocess
 import sys
@@ -41,6 +42,21 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    pins = re.findall(
+        r"^ANTLR_VERSION\s*:?=\s*(\S+)\s*$",
+        (ROOT / "Makefile").read_text(),
+        re.MULTILINE,
+    )
+    if len(pins) != 1:
+        raise RuntimeError("Expected one ANTLR_VERSION pin in Makefile")
+    antlr = shutil.which("antlr4")
+    if not antlr:
+        raise RuntimeError(f"ANTLR {pins[0]} is required; run make install_antlr_cli")
+    result = subprocess.run([antlr], cwd=ROOT, capture_output=True, text=True, check=True)
+    version = re.search(r"ANTLR Parser Generator\s+Version\s+(\S+)", result.stdout + result.stderr)
+    if not version or version.group(1) != pins[0]:
+        found = version.group(1) if version else "unknown"
+        raise RuntimeError(f"ANTLR {pins[0]} is required; found {found}. Run make install_antlr_cli")
     sys.stdout.write("Running Datamodel Code Generator\n")
 
     shutil.rmtree(GENERATED_ROOT, ignore_errors=True)
@@ -51,7 +67,7 @@ def main() -> None:
     grammar_files = sorted(str(path) for path in ANTLR_GRAMMAR.glob("*.g4"))
     run(
         [
-            "antlr4",
+            antlr,
             "-Dlanguage=Python3",
             "-Xexact-output-dir",
             "-o",
@@ -62,7 +78,7 @@ def main() -> None:
     if not args.python_only:
         run(
             [
-                "antlr4",
+                antlr,
                 "-Dlanguage=JavaScript",
                 "-o",
                 str(JS_GENERATED_ROOT),
