@@ -105,9 +105,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ resource }) => {
 
   if (!embedUrl) {
     return (
-      <Typography as="span" className="tw:p-4" size="text-sm">
-        {t('label.invalid-url')}
-      </Typography>
+      <div className="tw:p-4">
+        <Typography as="span" size="text-sm">
+          {t('label.invalid-url')}
+        </Typography>
+      </div>
     );
   }
 
