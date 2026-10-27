@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-27 (initial)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `ContextMemoryReconcilerTest`, `LLMCompletionClientTest`
+- **Guard:** `ContextMemoryReconcilerTest`, `LLMCompletionClientTest`, `ContextMemoryExtractionIT`
 - **Related:** ADR:2026-09-29-context-file-memory-reuse
 
 ## Context
