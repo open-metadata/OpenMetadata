@@ -25,7 +25,10 @@ import {
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { FEED_FOOTER_AVATAR_SIZE } from '../../../../constants/Feeds.constants';
-import { ReactionOperation } from '../../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
@@ -33,10 +36,7 @@ import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeed
 import Reactions from '../../Reactions/Reactions';
 import FeedCardReplyButton from '../FeedCardReplyButton/FeedCardReplyButton';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
-import {
-  getReactionsVariant,
-  isReplyButtonShown,
-} from './FeedCardFooterNew.utils';
+import { isReplyButtonShown } from './FeedCardFooterNew.utils';
 
 const MAX_VISIBLE_AVATARS = 3;
 
@@ -117,12 +117,7 @@ function FeedCardFooterNew({
 
   return (
     <Box align="start" className={classNames({ 'm-y-md': isReply })}>
-      <Box
-        // footer-container pins the row to 24px, which the labelled reply
-        // button's 40px hover outgrows.
-        className={showReplyCount ? 'tw:w-full' : 'footer-container tw:w-full'}
-        data-testid="feed-card-footer"
-        direction="col">
+      <Box className="tw:w-full" data-testid="feed-card-footer" direction="col">
         <div>
           <Box align="center" className="w-full rounded-8" gap={1}>
             {postLength > 0 && !isReply && !showReplyCount && (
@@ -160,7 +155,7 @@ function FeedCardFooterNew({
             )}
             <Reactions
               reactions={(reply ?? conversation)?.reactions ?? []}
-              variant={getReactionsVariant(showReplyCount)}
+              variant={ReactionsVariant.Pill}
               onReactionSelect={onReactionUpdate ?? noop}
             />
           </Box>

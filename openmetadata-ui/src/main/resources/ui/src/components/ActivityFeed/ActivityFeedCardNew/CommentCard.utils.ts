@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import { ReactionsVariant } from '../../../enums/reactions.enum';
 
 const REPLY_TEXT_LAYOUT = {
   // Held to the row's width: an editor holding a long unbroken word would
@@ -38,8 +37,6 @@ export const getReplyLayout = (
         avatarSize: 'xs' as const,
         showSeparator: false,
         reactions: 'tw:mt-1',
-        // Core icons that follow the theme, as in the Inbox.
-        reactionsVariant: ReactionsVariant.Pill,
       }
     : {
         root: classNames(
@@ -51,5 +48,4 @@ export const getReplyLayout = (
         avatarSize: 'sm' as const,
         showSeparator: true,
         reactions: 'm-y-md',
-        reactionsVariant: ReactionsVariant.Default,
       };

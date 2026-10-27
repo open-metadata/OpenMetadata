@@ -15,7 +15,10 @@ import classNames from 'classnames';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import { ReactionOperation } from '../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../enums/reactions.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
@@ -274,7 +277,7 @@ const CommentCard = ({
               <div className="d-flex items-center gap-2 w-full">
                 <Reactions
                   reactions={reactions ?? []}
-                  variant={layout.reactionsVariant}
+                  variant={ReactionsVariant.Pill}
                   onReactionSelect={onReaction}
                 />
               </div>

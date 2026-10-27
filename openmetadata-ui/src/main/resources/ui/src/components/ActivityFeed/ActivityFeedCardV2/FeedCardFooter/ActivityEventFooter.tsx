@@ -18,7 +18,10 @@ import { noop } from 'lodash';
 import { useCallback } from 'react';
 import { PressEvent } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactionOperation } from '../../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../../enums/reactions.enum';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
 import { ReactionType } from '../../../../generated/type/reaction';
 import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
@@ -68,7 +71,7 @@ function ActivityEventFooter({
 
   return (
     <Box align="start" className={classNames({ 'm-y-md': isForFeedTab })}>
-      <Box className="footer-container tw:w-full" direction="col">
+      <Box className="tw:w-full" direction="col">
         <div>
           <Box align="center" className="w-full rounded-8" gap={1}>
             {/* link-gray draws no hover background; boxed keeps a 28px target. */}
@@ -83,6 +86,7 @@ function ActivityEventFooter({
             />
             <Reactions
               reactions={activity.reactions ?? []}
+              variant={ReactionsVariant.Pill}
               onReactionSelect={onReactionUpdate ?? noop}
             />
           </Box>
