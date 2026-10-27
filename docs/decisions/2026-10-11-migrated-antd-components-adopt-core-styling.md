@@ -1,7 +1,7 @@
 # Components migrated from Ant Design adopt the core component's styling
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-11 (initial) · v2 2026-10-23 (landing-page segmented controls exception) · v3 2026-10-26 (conversation drawer reply count and message exception)
+- **Revisions:** v1 2026-10-11 (initial) · v2 2026-10-23 (landing-page segmented controls exception) · v3 2026-10-26 (conversation drawer reply count and message exception) · v4 2026-10-27 (comment-input trigger placeholder colour exception)
 - **Deciders:** Harshit Shah
 - **Guard:** reviewer
 - **Related:** ADR:2026-10-11-antd-imports-are-frozen-by-eslint-suppressions, open-metadata/openmetadata-collate#6884, open-metadata/openmetadata-collate#6891, open-metadata/OpenMetadata#35209
@@ -47,3 +47,17 @@ The conversation drawers' labelled reply count (over core `Button`) and recessed
 core `Card`) restyle core components from the call site, matching the Inbox, until core ships an
 Inbox-style labelled footer button and a recessed `Card` variant. The scope and exit are in
 ADR:2026-10-26-conversation-drawers-style-the-reply-count-and-message-like-the-inbox.
+
+## Amendment — v4: the comment-input trigger's placeholder colour
+
+The comment-input trigger is the core `Button` (`color="secondary"`, `comments-input-field`) that
+stands in for the comment editor until it is clicked, in `ActivityFeedcardNew.component.tsx` and
+`TaskTabNew.component.tsx`. It renders its label in `text-tertiary` from the call site, through a
+span around the label, so it reads as placeholder copy rather than a button label. Nothing else on
+the Button is restyled.
+
+- **Owner:** UI team, open-metadata/OpenMetadata#36290.
+- **Why no prop:** core `Button` has no placeholder or subtle-label variant, and `color="tertiary"`
+  drops the border the trigger needs to read as an input.
+- **Exit:** when core ships an input-like trigger or a subtle-label `Button` variant, both call
+  sites move to it and this amendment is superseded.

@@ -1985,7 +1985,8 @@ export const TaskTabNew = ({
                   data-testid="comments-input-field"
                   size="sm"
                   onPress={() => setShowFeedEditor(true)}>
-                  {/* Placeholder copy: lighter than the button's own label colour. */}
+                  {/* Placeholder copy, in the tertiary colour: core Button has no
+                      placeholder variant (ADR:2026-10-11-migrated-antd-components-adopt-core-styling v4). */}
                   <span className="tw:text-tertiary">
                     {t('message.input-placeholder')}
                   </span>
