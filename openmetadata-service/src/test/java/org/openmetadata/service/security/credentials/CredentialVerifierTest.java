@@ -556,7 +556,7 @@ class CredentialVerifierTest {
   }
 
   @Test
-  void unchangedMechanismVersionAvoidsTheDecrypt() {
+  void aSweepRereadOfAnUnchangedMechanismAddsNoDecryptAndEveryCheckReadDecrypts() {
     source.withJwtMechanism(ALICE, JWT_OLD);
     verifier(DEFAULTS);
     assertAccepted(ALICE, JWT_OLD);
@@ -572,11 +572,11 @@ class CredentialVerifierTest {
       assertRejected(ALICE, NEVER_ISSUED);
     }
     assertEquals(12, source.fullReads());
-    assertEquals(1, source.decrypts());
+    assertEquals(11, source.decrypts());
 
     ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
     verifier.sweepOnce();
-    assertEquals(2, source.decrypts());
+    assertEquals(12, source.decrypts());
     assertEquals(1.0, counter("om.credential.reads", "reason", "deep", "outcome", "ok"));
   }
 
@@ -1039,6 +1039,28 @@ class CredentialVerifierTest {
     sweepAfterInterval();
     assertEquals(6.0, counter("om.credential.decrypts", "outcome", "performed"));
     assertEquals(1.0, counter("om.credential.decrypts", "outcome", "skipped_unchanged"));
+  }
+
+  @Test
+  void aCheckReadStartedInsideADeepPassNeverReplacesItsResultWithAnOlderDigest() throws Exception {
+    source.withSecretReferenceMechanism(BOB, JWT_OLD);
+    verifier(DEFAULTS);
+    assertAccepted(BOB, JWT_OLD);
+    source.rotateSecretWithoutTouchingTheRow(BOB, JWT_NEW);
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    AtomicReference<Future<Throwable>> checkInsideThePass = new AtomicReference<>();
+    source.duringNextRead(
+        () -> {
+          ticker.advanceNanos(MILLISECOND);
+          checkInsideThePass.set(requireAsync(BOB, JWT_NEW));
+          await().atMost(10, TimeUnit.SECONDS).until(() -> checkInsideThePass.get().isDone());
+        });
+
+    verifier.sweepOnce();
+
+    assertNull(checkInsideThePass.get().get(10, TimeUnit.SECONDS));
+    assertAccepted(BOB, JWT_NEW);
+    assertRejected(BOB, JWT_OLD);
   }
 
   @Test

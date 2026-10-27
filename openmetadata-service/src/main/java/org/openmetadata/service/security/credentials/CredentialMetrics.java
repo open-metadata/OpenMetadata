@@ -46,6 +46,15 @@ final class CredentialMetrics {
       return this == MISS || this == STALE || this == UNKNOWN_TOKEN;
     }
 
+    /**
+     * Whether a read of this reason may reuse a cached digest. Only reads on the sweep thread do:
+     * they never overlap a deep read, while a read on any other thread could start after a deep
+     * read's stamp, reuse the digest that deep read is replacing, and win by its later stamp.
+     */
+    boolean reusesDecrypt() {
+      return this == SWEEP || this == NUDGE;
+    }
+
     static ReadReason of(CheckDecision load) {
       return switch (load) {
         case LOAD_MISSING -> MISS;

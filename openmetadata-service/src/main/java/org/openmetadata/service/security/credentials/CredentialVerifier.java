@@ -545,7 +545,7 @@ public final class CredentialVerifier implements Managed {
       Map<CredentialSubject, InFlightRead> reads, long stampNanos, ReadReason reason) {
     try {
       Map<CredentialSubject, CredentialRecord> records =
-          timedRead(reads.keySet(), cachedRecords(reads.keySet()), reason, stampNanos);
+          timedRead(reads.keySet(), cachedRecords(reads.keySet(), reason), reason, stampNanos);
       reads.forEach(
           (subject, read) ->
               finish(subject, read, installRead(subject, read, records.get(subject), stampNanos)));
@@ -755,7 +755,7 @@ public final class CredentialVerifier implements Managed {
     List<CredentialSubject> changed = confirm(batch, fingerprints, stamp);
     metrics.recordSweepChanged(changed.size());
     if (!changed.isEmpty()) {
-      reread(changed, ReadReason.SWEEP, cachedRecords(changed));
+      reread(changed, ReadReason.SWEEP, cachedRecords(changed, ReadReason.SWEEP));
       metrics.recordSweepQuery(SweepQuery.FULL);
     }
   }
@@ -898,10 +898,16 @@ public final class CredentialVerifier implements Managed {
     return inFlight.containsKey(subject) || entries.policy().getIfPresentQuietly(subject) != null;
   }
 
-  /** Cached records for decrypt reuse, read without touching idle expiry. */
+  /**
+   * Cached records for decrypt reuse, read without touching idle expiry. Empty for a reason that
+   * may not reuse, so the source decrypts every mechanism.
+   */
   private Map<CredentialSubject, CredentialRecord> cachedRecords(
-      Collection<CredentialSubject> subjects) {
+      Collection<CredentialSubject> subjects, ReadReason reason) {
     Map<CredentialSubject, CredentialRecord> previous = new HashMap<>();
+    if (!reason.reusesDecrypt()) {
+      return previous;
+    }
     for (CredentialSubject subject : subjects) {
       VerifiedCredentials entry = entries.policy().getIfPresentQuietly(subject);
       if (entry != null) {

@@ -138,6 +138,11 @@ final class FakeCredentialSource implements CredentialSource {
     rows.computeIfPresent(key(principal), (key, row) -> row.touched(row.storedMechanism()));
   }
 
+  /** The secret changes inside the secrets manager only: the row and its fingerprint stay. */
+  void rotateSecretWithoutTouchingTheRow(String principal, String newToken) {
+    secrets.put(key(principal), newToken);
+  }
+
   /** Direct SQL on a PAT row: the id stays, so the fingerprint cannot see the edit. */
   void replacePatInPlace(String principal, String oldToken, String newToken) {
     rows.computeIfPresent(
