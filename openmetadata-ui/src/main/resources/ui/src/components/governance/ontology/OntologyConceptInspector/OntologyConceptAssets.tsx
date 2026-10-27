@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
@@ -232,9 +233,7 @@ const OntologyConceptAssets = ({
         </Alert>
       ) : null}
       {assets.length > 0 ? (
-        <Box
-          className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:bg-surface"
-          direction="col">
+        <Card className="tw:divide-y tw:divide-secondary">
           {visibleAssets.map((binding) => {
             return (
               <Box
@@ -283,7 +282,7 @@ const OntologyConceptAssets = ({
               </Box>
             );
           })}
-        </Box>
+        </Card>
       ) : null}
       {assets.length === 0 && bindings.isSuccess ? (
         <InspectorEmptyText>

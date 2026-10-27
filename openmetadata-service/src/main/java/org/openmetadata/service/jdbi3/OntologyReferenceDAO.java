@@ -141,22 +141,38 @@ public interface OntologyReferenceDAO {
       @Bind("role") String role,
       @Bind("limit") int limit);
 
-  @SqlQuery(
+  String PROPERTY_EDGE_AXIOMS =
       "SELECT a.name, a.id, a.json FROM ontology_axiom_entity a WHERE a.ontologyId = :ontologyId "
           + "AND a.deleted = FALSE AND a.axiomType IN "
           + "('SUBCLASS_OF', 'EQUIVALENT_CLASS', 'OBJECT_PROPERTY_ASSERTION') AND EXISTS "
           + "(SELECT 1 FROM ontology_reference r WHERE r.sourceId = a.id "
           + "AND r.ontologyId = a.ontologyId AND r.sourceType = 'ontologyAxiom' "
-          + "AND r.role = 'AXIOM_SUBJECT' AND r.iriHash IN (<iriHashes>)) "
+          + "AND r.role = 'AXIOM_SUBJECT' AND r.iriHash IN (<iriHashes>)) ";
+
+  @SqlQuery(
+      PROPERTY_EDGE_AXIOMS
           + "AND (:after.hasAfter = FALSE OR a.name > :after.name "
-          + "OR (a.name = :after.name AND a.id > :after.id)) "
+          + "OR (a.name = :after.name AND (a.id > :after.id OR (:inclusive = TRUE AND a.id = :after.id)))) "
           + "ORDER BY a.name, a.id LIMIT :limit")
   @RegisterRowMapper(EdgeAxiomRowMapper.class)
   List<EdgeAxiomRow> listPropertyEdgeAxioms(
       @BindUUID("ontologyId") UUID ontologyId,
       @BindList("iriHashes") List<String> iriHashes,
       @BindMethods("after") AxiomPosition after,
-      @Bind("limit") int limit);
+      @Bind("limit") int limit,
+      @Bind("inclusive") boolean inclusive);
+
+  default List<EdgeAxiomRow> listPropertyEdgeAxioms(
+      UUID ontologyId, List<String> iriHashes, AxiomPosition after, int limit) {
+    return listPropertyEdgeAxioms(ontologyId, iriHashes, after, limit, false);
+  }
+
+  @SqlQuery(PROPERTY_EDGE_AXIOMS + "AND a.id = :id LIMIT 1")
+  @RegisterRowMapper(EdgeAxiomRowMapper.class)
+  EdgeAxiomRow findPropertyEdgeAxiomPosition(
+      @BindUUID("ontologyId") UUID ontologyId,
+      @BindList("iriHashes") List<String> iriHashes,
+      @BindUUID("id") UUID id);
 
   class EdgeAxiomRowMapper implements RowMapper<EdgeAxiomRow> {
     @Override
