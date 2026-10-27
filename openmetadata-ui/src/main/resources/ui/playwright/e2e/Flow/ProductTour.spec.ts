@@ -45,7 +45,10 @@ const expectStep = async (page: Page, text: string) => {
 };
 
 // react-tour waits before showing the next step and ignores clicks meanwhile,
-// so each Next waits for the step it opens.
+// so each Next waits for the step it opens. Crossing pages, the outgoing
+// react-tour can show the next step on the old page before it unmounts and the
+// page waits behind the loading mask, so the step has settled only once that
+// mask is gone.
 const goNext = async (page: Page) => {
   const next = page.locator(NEXT_BUTTON);
   await expect(next).toBeVisible({ timeout: STEP_TIMEOUT });
@@ -62,6 +65,9 @@ const goNext = async (page: Page) => {
     )
     .toBe(true);
   await expectNoFallback(page);
+  await expect(page.getByTestId('tour-step-loading')).toHaveCount(0, {
+    timeout: STEP_TIMEOUT,
+  });
 };
 
 // On the last step react-tour renders the finish button inside its Next arrow,
