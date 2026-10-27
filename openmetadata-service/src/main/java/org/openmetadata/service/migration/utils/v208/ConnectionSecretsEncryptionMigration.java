@@ -30,6 +30,10 @@ public final class ConnectionSecretsEncryptionMigration {
   private ConnectionSecretsEncryptionMigration() {}
 
   public static void encryptConnectionSecrets(Handle handle, ConnectionType connectionType) {
+    if (!Fernet.getInstance().isKeyDefined()) {
+      LOG.info("No Fernet key is configured; connection secrets stay as stored");
+      return;
+    }
     for (Service service : SERVICES) {
       int current = encryptCurrent(handle, connectionType, service);
       int history = encryptHistory(handle, connectionType, service);

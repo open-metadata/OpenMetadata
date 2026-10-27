@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
@@ -66,7 +67,19 @@ final class ConnectionSecretsMigrationFixtures {
         Fernet.getInstance().decrypt(secret(JsonUtils.readTree(historical), service.mlflow())));
   }
 
-  static void runNormalUpgrade(Path migrationRoot) throws Exception {
+  static List<String> storedLegacy(LegacyService service) {
+    return List.of(
+        stored(service.mlflow(), service.id()),
+        Entity.getCollectionDAO()
+            .entityExtensionDAO()
+            .getExtension(UUID.fromString(service.id()), service.extension()));
+  }
+
+  static void runNormalUpgrade(Path migrationRoot, boolean encryptionEnabled) throws Exception {
+    var config = TestSuiteBootstrap.createApplicationConfigCopy();
+    if (!encryptionEnabled) {
+      config.getFernetConfiguration().setFernetKey(Fernet.FERNET_NO_ENCRYPTION);
+    }
     String dialect =
         TestSuiteBootstrap.getConnectionType() == ConnectionType.MYSQL ? "mysql" : "postgres";
     Path source = Path.of("bootstrap/sql/migrations/native/2.0.8", dialect, "schemaChanges.sql");
@@ -82,7 +95,7 @@ final class ConnectionSecretsMigrationFixtures {
             TestSuiteBootstrap.getConnectionType(),
             "",
             "",
-            TestSuiteBootstrap.createApplicationConfigCopy(),
+            config,
             false);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows(false);

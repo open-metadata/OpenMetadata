@@ -154,7 +154,7 @@ class ConnectionSecretsEncryptionMigrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"Mlflow", "Teradata"})
-  void refusesToLeavePlaintextWhenEncryptionIsUnavailable(String type) {
+  void individualFieldEncryptionRequiresAKey(String type) {
     Fernet.getInstance().setFernetKey((String) null);
     try {
       assertThrows(

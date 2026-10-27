@@ -17,6 +17,7 @@ import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.secre
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.seedLegacy;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.store;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.stored;
+import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.storedLegacy;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.write;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -33,6 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.LegacyService;
@@ -61,15 +63,16 @@ class ConnectionSecretsMigrationIT {
   private record FieldValue(JsonNode input, String plaintext) {}
 
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void normalUpgradeEncryptsPopulatedServicesAndHistory(boolean mlflow, TestNamespace ns)
-      throws Exception {
+  @CsvSource({"true,true", "true,false", "false,true", "false,false"})
+  void normalUpgradeHonorsEncryptionConfiguration(
+      boolean mlflow, boolean encryptionEnabled, TestNamespace ns) throws Exception {
     List<LegacyService> services = new ArrayList<>();
     for (boolean deleted : List.of(false, true)) {
       for (String value : List.of(CURRENT, mlflow ? "http://localhost:5000" : "EXAMPLE.REALM")) {
         services.add(seedLegacy(mlflow, deleted, value, ns));
       }
     }
+    List<List<String>> plaintext = services.stream().map(service -> storedLegacy(service)).toList();
     var jdbi = TestSuiteBootstrap.getJdbi();
     MigrationDAO dao = jdbi.onDemand(MigrationDAO.class);
     var original =
@@ -87,18 +90,27 @@ class ConnectionSecretsMigrationIT {
             handle.execute("DELETE FROM SERVER_MIGRATION_SQL_LOGS WHERE version = '2.0.8'");
             handle.execute("DELETE FROM SERVER_CHANGE_LOG WHERE version = '2.0.8'");
           });
-      runNormalUpgrade(migrationRoot);
-      upgradeRecordsTheRepairIn208();
-      for (LegacyService service : services) {
-        assertLegacyEncrypted(service);
+      if (!encryptionEnabled) {
+        Fernet.getInstance().setFernetKey((String) null);
       }
-      List<String> encrypted =
-          services.stream().map(service -> stored(service.mlflow(), service.id())).toList();
-      runNormalUpgrade(migrationRoot);
-      assertEquals(
-          encrypted,
-          services.stream().map(service -> stored(service.mlflow(), service.id())).toList());
+      runNormalUpgrade(migrationRoot, encryptionEnabled);
+      upgradeRecordsTheRepairIn208();
+      if (encryptionEnabled) {
+        services.forEach(service -> assertLegacyEncrypted(service));
+      } else {
+        assertEquals(plaintext, services.stream().map(service -> storedLegacy(service)).toList());
+      }
+      List<List<String>> migrated =
+          services.stream().map(service -> storedLegacy(service)).toList();
+      runNormalUpgrade(migrationRoot, encryptionEnabled);
+      assertEquals(migrated, services.stream().map(service -> storedLegacy(service)).toList());
+      if (!encryptionEnabled) {
+        Fernet.getInstance().setFernetKey(TestSuiteBootstrap.createApplicationConfigCopy());
+        runNormalUpgrade(migrationRoot, true);
+        assertEquals(migrated, services.stream().map(service -> storedLegacy(service)).toList());
+      }
     } finally {
+      Fernet.getInstance().setFernetKey(TestSuiteBootstrap.createApplicationConfigCopy());
       dao.upsertServerMigration(
           original.getVersion(),
           original.getMigrationFileName(),
