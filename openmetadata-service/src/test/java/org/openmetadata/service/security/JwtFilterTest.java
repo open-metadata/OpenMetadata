@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -60,6 +61,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -131,8 +133,23 @@ class JwtFilterTest {
     jwtFilter = new JwtFilter(jwkProvider, principalClaims, domain, enforcePrincipalDomain);
   }
 
+  // Every test resolves accounts through this per-test mock. Left to the real SubjectCache, the
+  // filter would read the global Entity registry, which other test classes in the same JVM fill
+  // with
+  // their own mock repositories. A name nobody stubs has no account yet, as on a first login.
+  private MockedStatic<SubjectCache> subjectCache;
+
+  @BeforeEach
+  void isolateUserLookups() {
+    subjectCache = mockStatic(SubjectCache.class);
+    subjectCache
+        .when(() -> SubjectCache.getUserContext(anyString()))
+        .thenThrow(EntityNotFoundException.byMessage("no account holds this name yet"));
+  }
+
   @AfterEach
   void clearRequestContext() {
+    subjectCache.close();
     ActivePersonaContext.clear();
     ActiveDomainContext.clear();
   }
@@ -228,12 +245,10 @@ class JwtFilterTest {
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
     when(context.getHeaderString(JwtFilter.ACTIVE_PERSONA_HEADER)).thenReturn(activePersona);
 
-    try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class);
-        MockedStatic<SubjectCache> subjectCache =
-            org.mockito.Mockito.mockStatic(SubjectCache.class)) {
-      subjectCache
-          .when(() -> SubjectCache.getUserContext("sam"))
-          .thenReturn(new User().withName("sam"));
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("sam"))
+        .thenReturn(new User().withName("sam"));
+    try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
       jwtFilter.filter(context);
       entity.verifyNoInteractions();
     }
@@ -258,13 +273,10 @@ class JwtFilterTest {
         new EntityReference().withId(UUID.randomUUID()).withType("domain").withName("Sales");
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
-    try (MockedStatic<SubjectCache> subjectCache =
-        org.mockito.Mockito.mockStatic(SubjectCache.class)) {
-      subjectCache
-          .when(() -> SubjectCache.getUserContext("sam"))
-          .thenReturn(new User().withName("sam").withDefaultDomain(selected));
-      jwtFilter.filter(context);
-    }
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("sam"))
+        .thenReturn(new User().withName("sam").withDefaultDomain(selected));
+    jwtFilter.filter(context);
 
     ArgumentCaptor<SecurityContext> securityContextArgument =
         ArgumentCaptor.forClass(SecurityContext.class);
@@ -287,18 +299,16 @@ class JwtFilterTest {
             .sign(algorithm);
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("sam"))
+        .thenReturn(
+            new User()
+                .withName("sam")
+                .withDefaultDomain(
+                    new EntityReference().withId(UUID.randomUUID()).withType("domain")));
     try (MockedStatic<UserTokenCache> userTokenCache =
-            org.mockito.Mockito.mockStatic(UserTokenCache.class);
-        MockedStatic<SubjectCache> subjectCache =
-            org.mockito.Mockito.mockStatic(SubjectCache.class)) {
+        org.mockito.Mockito.mockStatic(UserTokenCache.class)) {
       userTokenCache.when(() -> UserTokenCache.isTokenValid("sam", jwt)).thenReturn(true);
-      subjectCache
-          .when(() -> SubjectCache.getUserContext("sam"))
-          .thenReturn(
-              new User()
-                  .withName("sam")
-                  .withDefaultDomain(
-                      new EntityReference().withId(UUID.randomUUID()).withType("domain")));
       jwtFilter.filter(context);
     }
 
@@ -318,13 +328,10 @@ class JwtFilterTest {
             .withClaim(JwtFilter.BOT_CLAIM, true)
             .sign(algorithm);
 
-    try (MockedStatic<SubjectCache> subjectCache =
-        org.mockito.Mockito.mockStatic(SubjectCache.class)) {
-      CatalogSecurityContext securityContext = jwtFilter.getCatalogSecurityContext(jwt);
+    CatalogSecurityContext securityContext = jwtFilter.getCatalogSecurityContext(jwt);
 
-      assertNull(securityContext.activeDomain());
-      subjectCache.verifyNoInteractions();
-    }
+    assertNull(securityContext.activeDomain());
+    subjectCache.verifyNoInteractions();
   }
 
   @Test
@@ -355,12 +362,11 @@ class JwtFilterTest {
     ContainerRequestContext context =
         createRequestContextWithJwt(legacyProviderJwt("sam@other.example"));
 
-    try (MockedStatic<SubjectCache> subjectCache = mockStatic(SubjectCache.class)) {
-      subjectCache
-          .when(() -> SubjectCache.getUserContext("sam"))
-          .thenReturn(new User().withName("sam").withEmail("sam@gmail.com"));
-      jwtFilter.filter(context);
-    }
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("sam"))
+        .thenReturn(new User().withName("sam").withEmail("sam@gmail.com"));
+    jwtFilter.filter(context);
+
     verify(context, times(1)).setSecurityContext(any());
   }
 
@@ -368,14 +374,11 @@ class JwtFilterTest {
   void aProviderTokenNeverSignsInToABotAccount() {
     ContainerRequestContext context =
         createRequestContextWithJwt(legacyProviderJwt("ingestion-bot@openmetadata.org"));
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("ingestion-bot"))
+        .thenReturn(botAccount("ingestion-bot"));
 
-    try (MockedStatic<SubjectCache> subjectCache = mockStatic(SubjectCache.class)) {
-      subjectCache
-          .when(() -> SubjectCache.getUserContext("ingestion-bot"))
-          .thenReturn(botAccount("ingestion-bot"));
-
-      assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
-    }
+    assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     verify(context, never()).setSecurityContext(any());
   }
 
@@ -388,14 +391,11 @@ class JwtFilterTest {
             .withClaim("sub", "ingestion-bot")
             .sign(algorithm);
     ContainerRequestContext context = createRequestContextWithJwt(bareBotPrincipal);
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("ingestion-bot"))
+        .thenReturn(botAccount("ingestion-bot"));
 
-    try (MockedStatic<SubjectCache> subjectCache = mockStatic(SubjectCache.class)) {
-      subjectCache
-          .when(() -> SubjectCache.getUserContext("ingestion-bot"))
-          .thenReturn(botAccount("ingestion-bot"));
-
-      assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
-    }
+    assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     verify(context, never()).setSecurityContext(any());
   }
 
@@ -404,13 +404,11 @@ class JwtFilterTest {
   void aProviderTokenForANameNoAccountHoldsIsAFirstLogin() {
     ContainerRequestContext context =
         createRequestContextWithJwt(legacyProviderJwt("new@gmail.com"));
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("new"))
+        .thenThrow(EntityNotFoundException.byMessage("user instance for new not found"));
 
-    try (MockedStatic<SubjectCache> subjectCache = mockStatic(SubjectCache.class)) {
-      subjectCache
-          .when(() -> SubjectCache.getUserContext("new"))
-          .thenThrow(EntityNotFoundException.byMessage("user instance for new not found"));
-      jwtFilter.filter(context);
-    }
+    jwtFilter.filter(context);
 
     verify(context, times(1)).setSecurityContext(any());
   }
