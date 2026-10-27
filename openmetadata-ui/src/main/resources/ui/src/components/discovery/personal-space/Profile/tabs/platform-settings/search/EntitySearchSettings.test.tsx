@@ -12,12 +12,12 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-    within
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
@@ -25,14 +25,14 @@ import { SearchIndex } from '../../../../../../../enums/search.enum';
 import { getCustomPropertiesByEntityType } from '../../../../../../../rest/metadataTypeAPI';
 import { searchPreview } from '../../../../../../../rest/searchAPI';
 import {
-    getSettingsByType,
-    restoreSettingsConfig,
-    updateSettingsConfig
+  getSettingsByType,
+  restoreSettingsConfig,
+  updateSettingsConfig,
 } from '../../../../../../../rest/settingConfigAPI';
 import tagClassBase from '../../../../../../../utils/TagClassBase';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
 import EntitySearchSettings from './EntitySearchSettings';
 

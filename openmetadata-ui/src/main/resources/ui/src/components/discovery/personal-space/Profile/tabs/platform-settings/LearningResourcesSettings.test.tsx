@@ -12,29 +12,29 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
-    createLearningResource,
-    deleteLearningResource,
-    getLearningResourceById,
-    getLearningResourcesList,
-    LearningResource,
-    updateLearningResource
+  createLearningResource,
+  deleteLearningResource,
+  getLearningResourceById,
+  getLearningResourcesList,
+  LearningResource,
+  updateLearningResource,
 } from '../../../../../../rest/learningResourceAPI';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import {
-    toLearningResourceFormValues,
-    toLearningResourcePayload
+  toLearningResourceFormValues,
+  toLearningResourcePayload,
 } from './LearningResourceSettings.utils';
 import LearningResourceSettingsForm from './LearningResourceSettingsForm';
 import LearningResourcesSettings from './LearningResourcesSettings';

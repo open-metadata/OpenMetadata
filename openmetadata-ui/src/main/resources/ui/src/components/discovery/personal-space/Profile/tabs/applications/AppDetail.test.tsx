@@ -12,23 +12,23 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { ReactElement, useCallback, useState } from 'react';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
-    App,
-    ScheduleType
+  App,
+  ScheduleType,
 } from '../../../../../../generated/entity/applications/app';
 import {
-    getApplicationByName,
-    patchApplication,
-    restoreApp,
-    uninstallApp
+  getApplicationByName,
+  patchApplication,
+  restoreApp,
+  uninstallApp,
 } from '../../../../../../rest/applicationAPI';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';

@@ -12,14 +12,14 @@
  */
 
 import {
-    Badge,
-    Box,
-    Button,
-    Table,
-    TableCard,
-    Toggle,
-    Tooltip,
-    Typography
+  Badge,
+  Box,
+  Button,
+  Table,
+  TableCard,
+  Toggle,
+  Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useCallback, useMemo } from 'react';
@@ -27,13 +27,13 @@ import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import {
-    FieldKind,
-    IntakeForm,
-    TargetEntityType
+  FieldKind,
+  IntakeForm,
+  TargetEntityType,
 } from '../../generated/governance/intakeForm';
 import {
-    ENTITY_TYPE_LABEL_KEYS,
-    getIntakeFormFields
+  ENTITY_TYPE_LABEL_KEYS,
+  getIntakeFormFields,
 } from '../../utils/IntakeFormUtils';
 
 interface IntakeFormsTableProps {

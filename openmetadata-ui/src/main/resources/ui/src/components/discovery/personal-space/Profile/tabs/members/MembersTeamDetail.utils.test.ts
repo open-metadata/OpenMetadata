@@ -16,12 +16,12 @@ import { ReactElement } from 'react';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';
 import {
-    getAvailableTabs,
-    getChildTeamColumns,
-    getTabLabel,
-    getUserColumns,
-    updateTeamsHierarchy,
-    withTeamChildrenPlaceholder
+  getAvailableTabs,
+  getChildTeamColumns,
+  getTabLabel,
+  getUserColumns,
+  updateTeamsHierarchy,
+  withTeamChildrenPlaceholder,
 } from './MembersTeamDetail.utils';
 
 const team = (fqn: string, childrenCount = 0): Team =>

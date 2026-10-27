@@ -12,20 +12,20 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-    within
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
 } from '@testing-library/react';
 import React, { useState } from 'react';
 import { getBotByName, updateBotDetail } from '../../../../../../rest/botsAPI';
 import { deleteEntity } from '../../../../../../rest/miscAPI';
 import {
-    getAuthMechanismForBotUser,
-    getUserByName,
-    updateUserDetail
+  getAuthMechanismForBotUser,
+  getUserByName,
+  updateUserDetail,
 } from '../../../../../../rest/userAPI';
 import BotDetailPanel from './BotDetailPanel';
 

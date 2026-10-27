@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { globalSettings as NUMBER_SETTINGS } from '../../../../../../../constants/SearchSettings.constant';
 import { GlobalSettings } from '../../../../../../../generated/configuration/searchSettings';
 import SettingsSection, {
-    ReadOnlyRow
+  ReadOnlyRow,
 } from '../../../components/SettingsSection';
 import NumberSettingRow from './NumberSettingRow';
 

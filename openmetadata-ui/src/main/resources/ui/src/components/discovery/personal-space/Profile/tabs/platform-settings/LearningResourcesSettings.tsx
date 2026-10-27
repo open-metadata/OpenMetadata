@@ -13,22 +13,22 @@
 
 /* eslint-disable openmetadata-imports/no-lower-layer-page-imports -- reuses the classic page's data hooks */
 import {
-    Badge,
-    Box,
-    Button,
-    ButtonUtility,
-    ConfirmPopover,
-    Grid,
-    Input,
-    Table,
-    TableCard,
-    Typography
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  ConfirmPopover,
+  Grid,
+  Input,
+  Table,
+  TableCard,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    Edit01,
-    Plus,
-    Search,
-    Trash01
+  Edit01,
+  Plus,
+  Search,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
@@ -36,43 +36,43 @@ import { DateTime } from 'luxon';
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    PAGE_SIZE_BASE,
-    PAGE_SIZE_LARGE,
-    PAGE_SIZE_MEDIUM
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
 } from '../../../../../../constants/constants';
 import {
-    MAX_VISIBLE_CONTEXTS,
-    MAX_VISIBLE_TAGS,
-    PAGE_IDS
+  MAX_VISIBLE_CONTEXTS,
+  MAX_VISIBLE_TAGS,
+  PAGE_IDS,
 } from '../../../../../../constants/Learning.constants';
 import { VIEW_MODE_PAGE } from '../../../../../../constants/platform/personaAppLayout.constants';
 import { PageViewMode } from '../../../../../../generated/type/personaPreferences';
 import { usePersonaViewMode } from '../../../../../../hooks/platform/usePersonaViewMode';
 import {
-    LearningResourceFilterState,
-    useLearningResourceFilters
+  LearningResourceFilterState,
+  useLearningResourceFilters,
 } from '../../../../../../pages/LearningResourcesPage/hooks/useLearningResourceFilters';
 import { useLearningResources } from '../../../../../../pages/LearningResourcesPage/hooks/useLearningResources';
 import {
-    deleteLearningResource,
-    LearningResource
+  deleteLearningResource,
+  LearningResource,
 } from '../../../../../../rest/learningResourceAPI';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
 import ViewToggle from '../../../../../common/ViewToggle/ViewToggle';
 import {
-    CATEGORY_BADGE_COLORS,
-    LEARNING_CATEGORIES,
-    ResourceCategory
+  CATEGORY_BADGE_COLORS,
+  LEARNING_CATEGORIES,
+  ResourceCategory,
 } from '../../../../../Learning/Learning.interface';
 import { LearningResourceCard } from '../../../../../Learning/LearningResourceCard/LearningResourceCard.component';
 import { ResourceTypeIcon } from '../../../../../Learning/ResourceTypeIcon/ResourceTypeIcon';
 import {
-    getInitialLearningListState,
-    getResourceName
+  getInitialLearningListState,
+  getResourceName,
 } from './LearningResourceSettings.utils';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';

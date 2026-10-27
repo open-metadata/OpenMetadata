@@ -12,29 +12,29 @@
  */
 
 import {
-    Box,
-    Button,
-    ButtonUtility,
-    Card,
-    Owner,
-    Tabs,
-    Typography
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  Owner,
+  Tabs,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    Edit01,
-    RefreshCw01,
-    Trash01
+  Edit01,
+  RefreshCw01,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import React, {
-    FC,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
@@ -45,24 +45,24 @@ import { EntityReference } from '../../../../../../generated/entity/data/table';
 import { EventsRecord } from '../../../../../../generated/events/api/eventsRecord';
 import { EventSubscriptionDiagnosticInfo } from '../../../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import {
-    EventSubscription,
-    ProviderType
+  EventSubscription,
+  ProviderType,
 } from '../../../../../../generated/events/eventSubscription';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
-    getAlertsFromName,
-    updateNotificationAlert
+  getAlertsFromName,
+  updateNotificationAlert,
 } from '../../../../../../rest/alertsAPI';
 import {
-    getAlertEventsDiagnosticsInfo,
-    getDiagnosticInfo,
-    syncOffset
+  getAlertEventsDiagnosticsInfo,
+  getDiagnosticInfo,
+  syncOffset,
 } from '../../../../../../rest/observabilityAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';

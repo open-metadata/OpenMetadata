@@ -11,55 +11,55 @@
  *  limitations under the License.
  */
 import {
-    BadgeWithDot,
-    BadgeWithIcon,
-    Box,
-    Button,
-    ConfirmPopover,
-    Dropdown,
-    FilterSelect,
-    Input,
-    PaginationCardWithControls,
-    Skeleton,
-    Table,
-    TableCard,
-    Typography
+  BadgeWithDot,
+  BadgeWithIcon,
+  Box,
+  Button,
+  ConfirmPopover,
+  Dropdown,
+  FilterSelect,
+  Input,
+  PaginationCardWithControls,
+  Skeleton,
+  Table,
+  TableCard,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    AlertCircle,
-    Announcement02,
-    Copy01,
-    Edit01,
-    NoSearch,
-    Search,
-    Trash01
+  AlertCircle,
+  Announcement02,
+  Copy01,
+  Edit01,
+  NoSearch,
+  Search,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { DateTime } from 'luxon';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    SYSTEM_ANNOUNCEMENT_PAGE_SIZES,
-    SYSTEM_ANNOUNCEMENT_STATUS_LABEL_KEYS,
-    SYSTEM_ANNOUNCEMENT_STATUS_ORDER
+  SYSTEM_ANNOUNCEMENT_PAGE_SIZES,
+  SYSTEM_ANNOUNCEMENT_STATUS_LABEL_KEYS,
+  SYSTEM_ANNOUNCEMENT_STATUS_ORDER,
 } from '../../../../../constants/platform/systemAnnouncements.constants';
 import {
-    AnnouncementStatus,
-    AnnouncementType
+  AnnouncementStatus,
+  AnnouncementType,
 } from '../../../../../generated/entity/feed/announcement';
 import {
-    SystemAnnouncementsListState,
-    useDeleteSystemAnnouncement
+  SystemAnnouncementsListState,
+  useDeleteSystemAnnouncement,
 } from '../../../../../hooks/platform/useSystemAnnouncements';
 import { useAnchoredConfirm } from '../../../../../hooks/popover/useAnchoredConfirm';
 import { AnnouncementEntity } from '../../../../../rest/announcementsAPI';
 import {
-    ANNOUNCEMENT_STATUS_COLORS,
-    ANNOUNCEMENT_TYPE_CONFIG,
-    ANNOUNCEMENT_TYPE_ORDER,
-    getAnnouncementStatus,
-    getAnnouncementTypeConfig,
-    getAnnouncementTypeLabel
+  ANNOUNCEMENT_STATUS_COLORS,
+  ANNOUNCEMENT_TYPE_CONFIG,
+  ANNOUNCEMENT_TYPE_ORDER,
+  getAnnouncementStatus,
+  getAnnouncementTypeConfig,
+  getAnnouncementTypeLabel,
 } from '../../../../../utils/AnnouncementsUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import AnnouncementDeleteDialog from '../../../../Announcement/AnnouncementDeleteDialog';

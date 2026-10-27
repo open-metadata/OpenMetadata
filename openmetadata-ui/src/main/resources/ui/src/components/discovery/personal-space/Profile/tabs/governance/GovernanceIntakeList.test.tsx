@@ -12,11 +12,11 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TargetEntityType } from '../../../../../../generated/governance/intakeForm';
@@ -47,9 +47,9 @@ jest.mock(
 );
 
 import {
-    deleteIntakeForm,
-    listIntakeForms,
-    patchIntakeForm
+  deleteIntakeForm,
+  listIntakeForms,
+  patchIntakeForm,
 } from '../../../../../../rest/intakeFormsAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import GovernanceIntakeList from './GovernanceIntakeList';

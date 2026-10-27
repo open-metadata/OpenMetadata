@@ -12,13 +12,13 @@
  */
 
 import {
-    Avatar,
-    Badge,
-    BadgeWithDot,
-    Box,
-    ButtonUtility,
-    Skeleton,
-    Tabs
+  Avatar,
+  Badge,
+  BadgeWithDot,
+  Box,
+  ButtonUtility,
+  Skeleton,
+  Tabs,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -32,8 +32,8 @@ import { useApplicationStore } from '../../../../../../hooks/useApplicationStore
 import { getTaskById } from '../../../../../../rest/tasksAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
-    getUserOnlineStatus,
-    getVisibleEmail
+  getUserOnlineStatus,
+  getVisibleEmail,
 } from '../../../../../../utils/UsersPureUtils';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import { TASK_ID_PREFIX } from '../../../../../MyData/Widgets/MyTasksWidget/MyTasksWidget.constants';
@@ -42,13 +42,13 @@ import { useUserOpenTaskCount } from '../../../InboxPage/useUserTasks';
 import { useUserAssetCount } from '../../../UserAssets/useUserAssetCount';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import {
-    USER_DETAIL_TABS,
-    USER_DETAIL_TAB_LABEL_KEYS
+  USER_DETAIL_TABS,
+  USER_DETAIL_TAB_LABEL_KEYS,
 } from './Members.constants';
 import type {
-    MembersUserDetailProps,
-    MembersUserDetailView,
-    UserDetailTab
+  MembersUserDetailProps,
+  MembersUserDetailView,
+  UserDetailTab,
 } from './Members.types';
 import { buildMembersHeaderMaps } from './Members.utils';
 

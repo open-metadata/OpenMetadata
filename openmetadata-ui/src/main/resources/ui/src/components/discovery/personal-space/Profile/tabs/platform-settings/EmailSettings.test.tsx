@@ -16,8 +16,8 @@ import { ReactNode } from 'react';
 import { TransportationStrategy } from '../../../../../../generated/email/smtpSettings';
 import { SettingType } from '../../../../../../generated/system/settingsSourceResponse';
 import {
-    getSettingsConfigFromConfigType,
-    getSettingsSource
+  getSettingsConfigFromConfigType,
+  getSettingsSource,
 } from '../../../../../../rest/settingConfigAPI';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import EmailSettings from './EmailSettings';

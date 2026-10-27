@@ -12,10 +12,10 @@
  */
 
 import {
-    Box,
-    SelectItemType,
-    TableCard,
-    Tabs
+  Box,
+  SelectItemType,
+  TableCard,
+  Tabs,
 } from '@openmetadata/ui-core-components';
 import { Reorder } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -23,13 +23,13 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import {
-    FC,
-    lazy,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useFilter } from 'react-aria';
 import type { Key } from 'react-aria-components';
@@ -38,15 +38,15 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
-    INITIAL_PAGING_VALUE,
-    ROUTES
+  INITIAL_PAGING_VALUE,
+  ROUTES,
 } from '../../../../../../constants/constants';
 import { ExportTypes } from '../../../../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
-    EntityType,
-    TabSpecificField
+  EntityType,
+  TabSpecificField,
 } from '../../../../../../enums/entity.enum';
 import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
@@ -63,14 +63,14 @@ import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { getPolicies, getRoles } from '../../../../../../rest/rolesAPIV1';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
-    deleteUserFromTeam,
-    exportTeam,
-    exportUserOfTeam,
-    getTeamByName,
-    getTeams,
-    getTeamsAssetCounts,
-    patchTeamDetail,
-    restoreTeam
+  deleteUserFromTeam,
+  exportTeam,
+  exportUserOfTeam,
+  getTeamByName,
+  getTeams,
+  getTeamsAssetCounts,
+  patchTeamDetail,
+  restoreTeam,
 } from '../../../../../../rest/teamsAPI';
 import { getUsers, updateUserDetail } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -82,8 +82,8 @@ import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { getTableExpandableConfig } from '../../../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../../../utils/TeamUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
@@ -100,17 +100,17 @@ import MembersInlineEntityTab from './MembersInlineEntityTab';
 import MembersTeamDescription from './MembersTeamDescription';
 import type { MovedTeam, TeamTab } from './MembersTeamDetail.types';
 import {
-    getAvailableTabs,
-    getChildTeamColumns,
-    getEntityRefColumns,
-    getTabLabel,
-    getUserColumns,
-    isTeamDropTarget,
-    TEAM_DRAG_TYPE,
-    TEAM_FIELDS,
-    TEAM_USER_FIELDS,
-    updateTeamsHierarchy,
-    withTeamChildrenPlaceholder
+  getAvailableTabs,
+  getChildTeamColumns,
+  getEntityRefColumns,
+  getTabLabel,
+  getUserColumns,
+  isTeamDropTarget,
+  TEAM_DRAG_TYPE,
+  TEAM_FIELDS,
+  TEAM_USER_FIELDS,
+  updateTeamsHierarchy,
+  withTeamChildrenPlaceholder,
 } from './MembersTeamDetail.utils';
 import MembersTeamInfoWidgets from './MembersTeamInfoWidgets';
 import MembersTeamsTab from './MembersTeamsTab';

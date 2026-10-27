@@ -12,9 +12,9 @@
  */
 
 import {
-    Button,
-    ConfirmPopover,
-    Input
+  Button,
+  ConfirmPopover,
+  Input,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { Controller, useForm } from 'react-hook-form';
@@ -22,8 +22,8 @@ import { useTranslation } from 'react-i18next';
 import { EMAIL_REG_EX } from '../../../../../../constants/regex.constants';
 import { testEmailConnection } from '../../../../../../rest/settingConfigAPI';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 
 interface TestEmailFormValues {

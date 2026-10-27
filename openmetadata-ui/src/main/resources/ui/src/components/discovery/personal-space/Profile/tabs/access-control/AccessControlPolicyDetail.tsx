@@ -12,29 +12,29 @@
  */
 
 import {
-    Box,
-    Button,
-    ButtonUtility,
-    Input,
-    Table,
-    TableCard,
-    Tabs,
-    Typography
+  Box,
+  Button,
+  ButtonUtility,
+  Input,
+  Table,
+  TableCard,
+  Tabs,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    Copy01,
-    Edit01 as Edit,
-    Trash01 as Delete
+  Copy01,
+  Edit01 as Edit,
+  Trash01 as Delete,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, {
-    FC,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
@@ -48,21 +48,21 @@ import { useAuth } from '../../../../../../hooks/authHooks';
 import { useClipboard } from '../../../../../../hooks/useClipBoard';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
-    getPolicyByName,
-    getRoleByName,
-    patchPolicy,
-    patchRole
+  getPolicyByName,
+  getRoleByName,
+  patchPolicy,
+  patchRole,
 } from '../../../../../../rest/rolesAPIV1';
 import {
-    getTeamByName,
-    patchTeamDetail
+  getTeamByName,
+  patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';

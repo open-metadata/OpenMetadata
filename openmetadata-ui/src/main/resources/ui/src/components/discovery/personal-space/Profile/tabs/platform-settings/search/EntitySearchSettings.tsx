@@ -12,11 +12,11 @@
  */
 
 import {
-    Box,
-    Button,
-    ConfirmPopover,
-    Dropdown,
-    Select
+  Box,
+  Button,
+  ConfirmPopover,
+  Dropdown,
+  Select,
 } from '@openmetadata/ui-core-components';
 import { Plus, RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -24,52 +24,52 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../../../../../constants/constants';
 import {
-    AllowedFieldField,
-    BoostMode,
-    ScoreMode,
-    SearchSettings,
-    TermBoost
+  AllowedFieldField,
+  BoostMode,
+  ScoreMode,
+  SearchSettings,
+  TermBoost,
 } from '../../../../../../../generated/configuration/searchSettings';
 import {
-    Settings,
-    SettingType
+  Settings,
+  SettingType,
 } from '../../../../../../../generated/settings/settings';
 import { useApplicationStore } from '../../../../../../../hooks/useApplicationStore';
 import { getCustomPropertiesByEntityType } from '../../../../../../../rest/metadataTypeAPI';
 import {
-    getSettingsByType,
-    restoreSettingsConfig,
-    updateSettingsConfig
+  getSettingsByType,
+  restoreSettingsConfig,
+  updateSettingsConfig,
 } from '../../../../../../../rest/settingConfigAPI';
 import {
-    getEffectiveRankingConfiguration,
-    getEntitySearchConfig
+  getEffectiveRankingConfiguration,
+  getEntitySearchConfig,
 } from '../../../../../../../utils/SearchSettingsUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
 import type { PlatformSettingsPageProps } from '../PlatformSettings.types';
 import { SettingsSkeleton } from '../SettingsFormLayout';
 import FieldValueBoostTable from './FieldValueBoostTable';
 import MatchingFieldCard from './MatchingFieldCard';
 import RankingSection, {
-    BOOST_MODE_ITEMS,
-    SCORE_MODE_ITEMS
+  BOOST_MODE_ITEMS,
+  SCORE_MODE_ITEMS,
 } from './RankingSection';
 import SearchPreviewPanel from './SearchPreviewPanel';
 import SearchSection, { SearchSectionTitle } from './SearchSection';
 import {
-    EntitySearchDraft,
-    getReturningSearchState,
-    SearchSavedState,
-    toEntityDraft,
-    toFieldValueBoostItemId,
-    toggleHighlightField,
-    toggleSearchField,
-    updateSearchField,
-    upsertTermBoost,
-    withEntityDraft
+  EntitySearchDraft,
+  getReturningSearchState,
+  SearchSavedState,
+  toEntityDraft,
+  toFieldValueBoostItemId,
+  toggleHighlightField,
+  toggleSearchField,
+  updateSearchField,
+  upsertTermBoost,
+  withEntityDraft,
 } from './SearchSettings.utils';
 import TermBoostCard from './TermBoostCard';
 

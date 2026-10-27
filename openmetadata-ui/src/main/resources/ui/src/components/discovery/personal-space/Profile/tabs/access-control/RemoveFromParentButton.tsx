@@ -12,8 +12,8 @@
  */
 
 import {
-    ButtonUtility,
-    ConfirmPopover
+  ButtonUtility,
+  ConfirmPopover,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';

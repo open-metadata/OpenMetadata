@@ -12,10 +12,10 @@
  */
 
 import {
-    Button,
-    ConfirmPopover,
-    TableCard,
-    Tabs
+  Button,
+  ConfirmPopover,
+  TableCard,
+  Tabs,
 } from '@openmetadata/ui-core-components';
 import { Plus as Expand } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -28,15 +28,15 @@ import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { useAnchoredConfirm } from '../../../../../../hooks/popover/useAnchoredConfirm';
 import {
-    deleteCustomPropertyByName,
-    getTypeByFQN
+  deleteCustomPropertyByName,
+  getTypeByFQN,
 } from '../../../../../../rest/metadataTypeAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';

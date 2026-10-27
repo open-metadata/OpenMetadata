@@ -12,21 +12,21 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { ProviderType } from '../../../../../../generated/tests/dataQualityDimension';
 import {
-    createDataQualityDimension,
-    deleteDataQualityDimension,
-    getDataQualityDimensions,
-    getDataQualityDimensionTestCaseCounts,
-    getDataQualityDimensionTestDefinitionCounts,
-    patchDataQualityDimension
+  createDataQualityDimension,
+  deleteDataQualityDimension,
+  getDataQualityDimensions,
+  getDataQualityDimensionTestCaseCounts,
+  getDataQualityDimensionTestDefinitionCounts,
+  patchDataQualityDimension,
 } from '../../../../../../rest/dataQualityDimensionAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DataQualitySettings from './DataQualitySettings';

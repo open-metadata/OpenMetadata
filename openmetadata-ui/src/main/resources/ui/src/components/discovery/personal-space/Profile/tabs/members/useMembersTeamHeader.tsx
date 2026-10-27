@@ -12,20 +12,20 @@
  */
 
 import {
-    Badge,
-    Box,
-    Button,
-    ButtonUtility,
-    Dropdown,
-    Input
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Dropdown,
+  Input,
 } from '@openmetadata/ui-core-components';
 import {
-    Download01,
-    Edit01,
-    Lock01,
-    Restore,
-    Trash01,
-    Upload01
+  Download01,
+  Edit01,
+  Lock01,
+  Restore,
+  Trash01,
+  Upload01,
 } from '@openmetadata/ui-core-components/icons';
 import type { TFunction } from 'i18next';
 import { ReactNode, useEffect, useRef } from 'react';

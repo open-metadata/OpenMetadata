@@ -12,28 +12,28 @@
  */
 
 import {
-    Autocomplete,
-    Badge,
-    Box,
-    Button,
-    ButtonUtility,
-    Card,
-    Input,
-    SelectItemType,
-    Skeleton,
-    Typography
+  Autocomplete,
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  Input,
+  SelectItemType,
+  Skeleton,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { debounce, isEmpty, toLower, uniqBy } from 'lodash';
 import React, {
-    FC,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useFilter } from 'react-aria';
 import { useTranslation } from 'react-i18next';
@@ -50,9 +50,9 @@ import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissio
 import { getBotByName, updateBotDetail } from '../../../../../../rest/botsAPI';
 import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import {
-    getAuthMechanismForBotUser,
-    getUserByName,
-    updateUserDetail
+  getAuthMechanismForBotUser,
+  getUserByName,
+  updateUserDetail,
 } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';

@@ -12,21 +12,21 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { values } from 'lodash';
 import {
-    DataType,
-    MetricType
+  DataType,
+  MetricType,
 } from '../../../../../../generated/configuration/profilerConfiguration';
 import { SettingType } from '../../../../../../generated/settings/settings';
 import {
-    getSettingsConfigFromConfigType,
-    updateSettingsConfig
+  getSettingsConfigFromConfigType,
+  updateSettingsConfig,
 } from '../../../../../../rest/settingConfigAPI';
 import ProfilerSettings from './ProfilerSettings';
 import ProfilerSettingsForm from './ProfilerSettingsForm';

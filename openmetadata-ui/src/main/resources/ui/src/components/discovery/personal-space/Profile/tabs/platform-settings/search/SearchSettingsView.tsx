@@ -17,25 +17,25 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    GlobalSettings,
-    SearchSettings,
-    TermBoost
+  GlobalSettings,
+  SearchSettings,
+  TermBoost,
 } from '../../../../../../../generated/configuration/searchSettings';
 import {
-    Settings,
-    SettingType
+  Settings,
+  SettingType,
 } from '../../../../../../../generated/settings/settings';
 import { useAuth } from '../../../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../../../hooks/useApplicationStore';
 import {
-    getSettingsByType,
-    restoreSettingsConfig,
-    updateSettingsConfig
+  getSettingsByType,
+  restoreSettingsConfig,
+  updateSettingsConfig,
 } from '../../../../../../../rest/settingConfigAPI';
 import searchSettingsClassBase from '../../../../../../../utils/SearchSettingsClassBase';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
 import type { PlatformSettingsPageProps } from '../PlatformSettings.types';
 import { SettingsSkeleton } from '../SettingsFormLayout';
@@ -45,11 +45,11 @@ import HybridWeightsSection from './HybridWeightsSection';
 import SearchEntityCards from './SearchEntityCards';
 import SearchSection from './SearchSection';
 import {
-    complementWeight,
-    getReturningSearchState,
-    SearchSavedState,
-    toFieldValueBoostItemId,
-    upsertTermBoost
+  complementWeight,
+  getReturningSearchState,
+  SearchSavedState,
+  toFieldValueBoostItemId,
+  upsertTermBoost,
 } from './SearchSettings.utils';
 import TermBoostCard from './TermBoostCard';
 

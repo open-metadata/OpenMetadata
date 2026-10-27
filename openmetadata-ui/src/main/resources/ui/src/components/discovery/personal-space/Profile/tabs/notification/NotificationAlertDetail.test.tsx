@@ -12,18 +12,18 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { compare } from 'fast-json-patch';
 import { ReactNode, useState } from 'react';
 import { EntityReference } from '../../../../../../generated/entity/data/table';
 import {
-    getAlertsFromName,
-    updateNotificationAlert
+  getAlertsFromName,
+  updateNotificationAlert,
 } from '../../../../../../rest/alertsAPI';
 import { deleteEntity } from '../../../../../../rest/miscAPI';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';

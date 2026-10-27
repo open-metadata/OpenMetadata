@@ -13,35 +13,35 @@
 
 /* eslint-disable openmetadata-imports/no-lower-layer-page-imports -- shared settings widget reused here */
 import {
-    Box,
-    Button,
-    ConfirmPopover,
-    Dropdown,
-    Tooltip
+  Box,
+  Button,
+  ConfirmPopover,
+  Dropdown,
+  Tooltip,
 } from '@openmetadata/ui-core-components';
 import {
-    Building01,
-    ChevronDown
+  Building01,
+  ChevronDown,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaceholder from '../../../../../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import {
-    IntakeForm,
-    TargetEntityType
+  IntakeForm,
+  TargetEntityType,
 } from '../../../../../../generated/governance/intakeForm';
 import { useAnchoredConfirm } from '../../../../../../hooks/popover/useAnchoredConfirm';
 import IntakeFormsTable from '../../../../../../pages/IntakeForms/IntakeFormsTable';
 import {
-    deleteIntakeForm,
-    listIntakeForms,
-    patchIntakeForm
+  deleteIntakeForm,
+  listIntakeForms,
+  patchIntakeForm,
 } from '../../../../../../rest/intakeFormsAPI';
 import { ENTITY_TYPE_LABEL_KEYS } from '../../../../../../utils/IntakeFormUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import { GovernanceView } from './Governance.types';
 

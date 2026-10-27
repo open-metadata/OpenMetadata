@@ -12,11 +12,11 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -52,8 +52,8 @@ jest.mock(
 // Import AFTER mocks are defined so jest.requireMock returns the mocked module
 import { getRelationTypeUsageCounts } from '../../../../../../rest/glossaryAPI';
 import {
-    deleteRelationshipType,
-    listRelationshipTypes
+  deleteRelationshipType,
+  listRelationshipTypes,
 } from '../../../../../../rest/ontologyAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import GovernanceGlossaryList from './GovernanceGlossaryList';

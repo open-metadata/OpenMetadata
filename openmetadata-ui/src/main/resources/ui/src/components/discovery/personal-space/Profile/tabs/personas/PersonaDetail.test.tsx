@@ -12,16 +12,16 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import {
-    applyPatch,
-    deepClone,
-    Operation as JsonPatchOperation
+  applyPatch,
+  deepClone,
+  Operation as JsonPatchOperation,
 } from 'fast-json-patch';
 import React, { ReactNode, useState } from 'react';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -29,13 +29,13 @@ import { EntityReference } from '../../../../../../generated/entity/type';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { deleteEntity } from '../../../../../../rest/miscAPI';
 import {
-    getPersonaByName,
-    updatePersona
+  getPersonaByName,
+  updatePersona,
 } from '../../../../../../rest/PersonaAPI';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import PersonaDetail from './PersonaDetail';
 import { PersonaDetailTab } from './Personas.types';
