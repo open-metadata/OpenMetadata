@@ -52,15 +52,25 @@ type LineageSearchOption = SelectItemType & {
 const LineageSearchSelect = () => {
   const { t } = useTranslation();
   const { onNodeClick } = useLineageHandlers();
-  const { nodes, reactFlowInstance } = useLineageStore(
+  // `nodes` is read from the store when the dropdown opens or an option is
+  // picked, not subscribed to: it changes on every frame of a node drag, and
+  // re-rendering the ComboBox (and its load-more loader) that often while
+  // React Flow auto-pans exceeded React's update depth limit.
+  const {
+    reactFlowInstance,
+    zoomValue,
+    isPlatformLineage,
+    platformView,
+    setSelectedColumn,
+  } = useLineageStore(
     useShallow((s) => ({
-      nodes: s.nodes,
       reactFlowInstance: s.reactFlowInstance,
+      zoomValue: s.zoomValue,
+      isPlatformLineage: s.isPlatformLineage,
+      platformView: s.platformView,
+      setSelectedColumn: s.setSelectedColumn,
     }))
   );
-  const { zoomValue, isPlatformLineage, platformView, setSelectedColumn } =
-    useLineageStore();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [allOptions, setAllOptions] = useState<LineageSearchOption[]>([]);
   const [renderedOptions, setRenderedOptions] = useState<LineageSearchOption[]>(
     []
@@ -73,7 +83,7 @@ const LineageSearchSelect = () => {
   const generateNodeOptions = useCallback(() => {
     const optionsMap: Map<string, LineageSearchOption> = new Map();
 
-    nodes.forEach((nodeObj) => {
+    useLineageStore.getState().nodes.forEach((nodeObj) => {
       const { node } = nodeObj.data;
       if (!node) {
         return;
@@ -152,21 +162,7 @@ const LineageSearchSelect = () => {
     });
 
     return Array.from(optionsMap.values());
-  }, [nodes]);
-
-  useEffect(() => {
-    if (isDropdownOpen && allOptions.length === 0) {
-      const options = generateNodeOptions();
-      setAllOptions(options);
-      setRenderedOptions(options.slice(0, INITIAL_NODE_ITEMS_LENGTH));
-    }
-  }, [isDropdownOpen, allOptions.length, generateNodeOptions]);
-
-  useEffect(() => {
-    setAllOptions([]);
-    setRenderedOptions([]);
-    setSearchValue('');
-  }, [nodes]);
+  }, []);
 
   const filterOptions = useCallback(
     (value: string) => {
@@ -202,23 +198,30 @@ const LineageSearchSelect = () => {
     );
   };
 
+  // Options are rebuilt on every open, so they always match the current graph.
   const handleOpenChange = useCallback(
     (open: boolean) => {
-      setIsDropdownOpen(open);
-      if (!open) {
-        setSearchValue('');
-        setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
-        debouncedFilterOptions.cancel();
+      if (open) {
+        const options = generateNodeOptions();
+        setAllOptions(options);
+        setRenderedOptions(options.slice(0, INITIAL_NODE_ITEMS_LENGTH));
+
+        return;
       }
+      setSearchValue('');
+      setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
+      debouncedFilterOptions.cancel();
     },
-    [allOptions, debouncedFilterOptions]
+    [allOptions, debouncedFilterOptions, generateNodeOptions]
   );
 
   const onOptionSelect = useCallback(
     (value?: string) => {
-      const selectedNode = nodes.find(
-        (node: Node) => node.data.node.fullyQualifiedName === value
-      );
+      const selectedNode = useLineageStore
+        .getState()
+        .nodes.find(
+          (node: Node) => node.data.node.fullyQualifiedName === value
+        );
       if (selectedNode) {
         onNodeClick(selectedNode);
 
@@ -246,7 +249,7 @@ const LineageSearchSelect = () => {
         setSelectedColumn(value ?? '');
       }
     },
-    [onNodeClick, reactFlowInstance, setSelectedColumn, nodes, zoomValue]
+    [onNodeClick, reactFlowInstance, setSelectedColumn, zoomValue]
   );
 
   // Both inputValue and value are controlled, so react-aria never

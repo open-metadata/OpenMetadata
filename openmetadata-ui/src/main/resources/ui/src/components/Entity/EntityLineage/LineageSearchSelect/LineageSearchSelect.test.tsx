@@ -101,8 +101,12 @@ jest.mock('../../../Lineage/Lineage/LineageHandlersContext', () => ({
 }));
 
 jest.mock('../../../../hooks/useLineageStore', () => ({
-  useLineageStore: jest.fn((selector) =>
-    selector ? selector(mockDefaultStoreValue) : mockDefaultStoreValue
+  useLineageStore: Object.assign(
+    jest.fn((selector) =>
+      selector ? selector(mockDefaultStoreValue) : mockDefaultStoreValue
+    ),
+    // The component reads `nodes` imperatively rather than subscribing to it.
+    { getState: () => mockDefaultStoreValue }
   ),
 }));
 

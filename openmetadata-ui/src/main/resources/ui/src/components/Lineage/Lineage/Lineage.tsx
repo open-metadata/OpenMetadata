@@ -2212,36 +2212,46 @@ export const Lineage = ({
     onPlatformViewUpdateRef.current();
   }, []);
 
-  const handlers = useMemo<LineageHandlersValue>(
-    () => ({
-      loadChildNodesHandler,
-      removeNodeHandler,
-      onNodeClick,
-      onNodeCollapse,
-      onConnect,
-      onEdgeDetailsUpdate,
-      updateEntityData,
-      handleEntityUpdate,
-      onExportClick,
-      onInitReactFlow,
-      onNodesChange,
-      refetchLineage,
-    }),
-    [
-      loadChildNodesHandler,
-      removeNodeHandler,
-      onNodeClick,
-      onNodeCollapse,
-      onConnect,
-      onEdgeDetailsUpdate,
-      updateEntityData,
-      handleEntityUpdate,
-      onExportClick,
-      onInitReactFlow,
-      onNodesChange,
-      refetchLineage,
-    ]
-  );
+  // Several handlers close over `nodes`, which changes on every frame of a node
+  // drag. A context value rebuilt from them re-rendered every consumer (each
+  // node, the search box) per frame, and while React Flow auto-panned at the
+  // canvas edge that exceeded React's update depth limit. The context holds
+  // stable wrappers instead, each calling the latest handler.
+  const currentHandlers: LineageHandlersValue = {
+    loadChildNodesHandler,
+    removeNodeHandler,
+    onNodeClick,
+    onNodeCollapse,
+    onConnect,
+    onEdgeDetailsUpdate,
+    updateEntityData,
+    handleEntityUpdate,
+    onExportClick,
+    onInitReactFlow,
+    onNodesChange,
+    refetchLineage,
+  };
+  const latestHandlersRef = useRef(currentHandlers);
+  latestHandlersRef.current = currentHandlers;
+  const handlers = useMemo<LineageHandlersValue>(() => {
+    const latest = () => latestHandlersRef.current;
+
+    return {
+      loadChildNodesHandler: (...args) =>
+        latest().loadChildNodesHandler(...args),
+      removeNodeHandler: (...args) => latest().removeNodeHandler(...args),
+      onNodeClick: (...args) => latest().onNodeClick(...args),
+      onNodeCollapse: (...args) => latest().onNodeCollapse(...args),
+      onConnect: (...args) => latest().onConnect(...args),
+      onEdgeDetailsUpdate: (...args) => latest().onEdgeDetailsUpdate(...args),
+      updateEntityData: (...args) => latest().updateEntityData(...args),
+      handleEntityUpdate: (...args) => latest().handleEntityUpdate(...args),
+      onExportClick: (...args) => latest().onExportClick(...args),
+      onInitReactFlow: (...args) => latest().onInitReactFlow(...args),
+      onNodesChange: (...args) => latest().onNodesChange(...args),
+      refetchLineage: (...args) => latest().refetchLineage(...args),
+    };
+  }, []);
 
   const overlayHandlers = useMemo<LineageOverlaysHandlers>(
     () => ({
