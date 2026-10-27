@@ -9,6 +9,7 @@ import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,6 +24,8 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 class OntologyPrefixLineageDaoTest {
   private static final String FROM_TYPE_RELATION_INDEX =
       "idx_entity_relationship_from_type_relation";
+  private static final Pattern POSTGRES_FROM_ID_PROBE =
+      Pattern.compile("index cond: .*\\(?fromid\\)?(::\\w+)? = \\(?(loaded|source)\\.assetid\\)?");
   private static final UUID ONTOLOGY = UUID.fromString("00000000-0000-0000-0000-0000000000f0");
   private static final UUID CUSTOMER = new UUID(0xc1, 0);
   private static final UUID ORDER = new UUID(0xc2, 0);
@@ -44,8 +47,8 @@ class OntologyPrefixLineageDaoTest {
           relate(handle, 1, 3, "");
           relate(handle, 2, 5, "");
           relate(handle, 1, 99, "");
-          relate(handle, 3, 2, "", Relationship.CONTAINS.ordinal(), false);
-          relate(handle, 2, 4, "removed", Relationship.UPSTREAM.ordinal(), true);
+          relate(handle, new Lineage(3, 2, "", Relationship.CONTAINS.ordinal(), false));
+          relate(handle, new Lineage(2, 4, "removed", Relationship.UPSTREAM.ordinal(), true));
 
           final var dao = handle.attach(CollectionDAO.class).ontologyDAO();
           final var filter = PrefixFilter.of(loaded());
@@ -82,27 +85,38 @@ class OntologyPrefixLineageDaoTest {
           seedUnrelatedLineage(handle, 20_000);
           analyze(handle, dialect);
 
-          final var filter = PrefixFilter.of(loaded());
-          final var plan =
-              handle
-                  .createQuery(explain(dialect) + OntologyDAO.PREFIX_LINEAGE_SQL)
-                  .define("sourcePredicate", filter.predicate("source"))
-                  .define("targetPredicate", filter.predicate("target"))
-                  .bindMap(filter.bindings())
-                  .bindMethods(
-                      "query",
-                      new PrefixLineageQuery(ONTOLOGY.toString(), LineagePosition.FIRST, 500))
-                  .map((rows, context) -> rows.getString(1))
-                  .list();
-          final String text = String.join("\n", plan).toLowerCase(Locale.ROOT);
-          final String probe =
-              dialect == ConnectionType.MYSQL
-                  ? "index lookup on relation using"
-                  : "index scan using " + FROM_TYPE_RELATION_INDEX + " on entity_relationship";
-          assertTrue(text.contains(probe), text);
-          assertFalse(text.contains("seq scan on entity_relationship"), text);
-          assertFalse(text.contains("scan on relation"), text);
+          final String plan = prefixLineagePlan(handle, dialect);
+          assertTrue(probesFromIdByLoadedAsset(dialect, plan), plan);
+          assertFalse(plan.contains("seq scan on entity_relationship"), plan);
+          assertFalse(plan.contains("scan on relation"), plan);
         });
+  }
+
+  private static String prefixLineagePlan(final Handle handle, final ConnectionType dialect) {
+    final var filter = PrefixFilter.of(loaded());
+    final var plan =
+        handle
+            .createQuery(explain(dialect) + OntologyDAO.PREFIX_LINEAGE_SQL)
+            .define("sourcePredicate", filter.predicate("source"))
+            .define("targetPredicate", filter.predicate("target"))
+            .bindMap(filter.bindings())
+            .bindMethods(
+                "query", new PrefixLineageQuery(ONTOLOGY.toString(), LineagePosition.FIRST, 500))
+            .map((rows, context) -> rows.getString(1))
+            .list();
+    return String.join("\n", plan).toLowerCase(Locale.ROOT);
+  }
+
+  /**
+   * MySQL names the lookup. PostgreSQL shows it as an index condition on fromId that takes each
+   * loaded asset, whichever of an index, bitmap or index-only scan it picks; once it drops the
+   * trivial {@code loaded} subquery scan, the column prints under the binding alias {@code source}.
+   */
+  private static boolean probesFromIdByLoadedAsset(
+      final ConnectionType dialect, final String plan) {
+    return dialect == ConnectionType.MYSQL
+        ? plan.contains("index lookup on relation using")
+        : POSTGRES_FROM_ID_PROBE.matcher(plan).find();
   }
 
   private static String explain(final ConnectionType dialect) {
@@ -151,24 +165,18 @@ class OntologyPrefixLineageDaoTest {
 
   private static void relate(
       final Handle handle, final int from, final int to, final String relationType) {
-    relate(handle, from, to, relationType, Relationship.UPSTREAM.ordinal(), false);
+    relate(handle, new Lineage(from, to, relationType, Relationship.UPSTREAM.ordinal(), false));
   }
 
-  private static void relate(
-      final Handle handle,
-      final int from,
-      final int to,
-      final String relationType,
-      final int relation,
-      final boolean deleted) {
+  private static void relate(final Handle handle, final Lineage lineage) {
     handle
         .createUpdate(
             "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation, relationType, deleted) VALUES (:from, :to, 'table', 'table', :relation, :type, :deleted)")
-        .bind("from", asset(from).toString())
-        .bind("to", asset(to).toString())
-        .bind("relation", relation)
-        .bind("type", relationType)
-        .bind("deleted", deleted)
+        .bind("from", asset(lineage.from()).toString())
+        .bind("to", asset(lineage.to()).toString())
+        .bind("relation", lineage.relation())
+        .bind("type", lineage.relationType())
+        .bind("deleted", lineage.deleted())
         .execute();
   }
 
@@ -209,4 +217,6 @@ class OntologyPrefixLineageDaoTest {
   private static UUID asset(final int number) {
     return new UUID(0, number);
   }
+
+  private record Lineage(int from, int to, String relationType, int relation, boolean deleted) {}
 }
