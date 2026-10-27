@@ -116,7 +116,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Verify Time filter is active
       const timeFilterTag = page.getByTestId('filter-chip-time');
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
       await expect(timeFilterTag).toBeVisible();
     });
 
@@ -371,7 +371,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await removeUserButton.click();
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
 
       await expect(userFilterTag).not.toBeVisible();
 
@@ -394,7 +394,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
     });
 
     await test.step('Verify Clear button appears after search', async () => {
@@ -409,7 +409,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const clearButton = page.getByTestId('clear-filters');
       await clearButton.click();
       await auditLogResponse;
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
 
       const searchInput = page.getByPlaceholder('Search audit logs');
       await expect(searchInput).toHaveValue('');
@@ -430,7 +430,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
 
       // Clear search
       const clearButton = page.getByTestId('clear-filters');
@@ -443,7 +443,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       }
 
       // Search with uppercase term - should return similar results
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
       await searchInput.fill('ADMIN');
 
       const auditLogResponse2 = page.waitForResponse(
@@ -455,7 +455,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response2 = await auditLogResponse2;
       expect(response2.status()).toBe(200);
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
     });
   });
 
@@ -666,7 +666,7 @@ test.describe(
         await searchInput.press('Enter');
         const response = await auditLogResponse;
         expect(response.status()).toBe(200);
-        await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+        await expect(page.getByTestId('audit-log-list')).toBeVisible();
         const responseData = await response.json();
 
         // Verify response has expected structure
@@ -787,7 +787,7 @@ test.describe(
         );
         await searchInput.press('Enter');
         await auditResponse;
-        await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+        await expect(page.getByTestId('audit-log-list')).toBeVisible();
       });
 
       await test.step('Open Export modal', async () => {
@@ -1500,7 +1500,7 @@ test.describe(
           await searchInput.press('Enter');
           const response = await searchResponse;
           expect(response.status()).toBe(200);
-          await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+          await expect(page.getByTestId('audit-log-list')).toBeVisible();
           const responseData = await response.json();
 
           // Should find at least one entry
