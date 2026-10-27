@@ -109,3 +109,9 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
     falls back to it when the sweep stops);
   - a full in-memory replica of every digest, because its memory grows with the data;
   - a synchronous barrier on revoke, because it needs a membership protocol.
+- The intended next step is to store a SHA-256 digest beside each personal access token and each
+  bot token, and to check against the digest. The sweep would then read digests from one index,
+  with no JSON parsing and no decrypt, and the deep verify would go away. A secret edited directly
+  in the secrets manager would then no longer change which token is valid, so rotation would go
+  through the API only. A bot keeps its encrypted token as well, because the server hands that
+  token to ingestion pipelines.
