@@ -65,6 +65,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -1273,6 +1274,7 @@ public class TeamRepository extends EntityRepository<Team> {
         .ifPresent(
             ids ->
                 bulkRemoveToRelationship(teamId, ids, Entity.TEAM, Entity.USER, Relationship.HAS));
+    reindexMembership(team, Stream.concat(addedUserIds.stream(), removedUserIds.stream()).toList());
 
     setFieldsInternal(team, new EntityUtil.Fields(allowedFields, USERS_FIELD));
     ChangeDescription change = new ChangeDescription().withPreviousVersion(team.getVersion());
@@ -1304,6 +1306,7 @@ public class TeamRepository extends EntityRepository<Team> {
     EntityReference user = Entity.getEntityReferenceById(Entity.USER, userId, NON_DELETED);
 
     deleteRelationship(teamId, Entity.TEAM, userId, Entity.USER, Relationship.HAS);
+    reindexMembership(team, List.of(userId));
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(team.getVersion());
     fieldDeleted(change, USERS_FIELD, List.of(user));
@@ -1323,6 +1326,25 @@ public class TeamRepository extends EntityRepository<Team> {
             .withPreviousVersion(change.getPreviousVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
+  }
+
+  /**
+   * The users endpoints change membership without running an updater on either side, so nothing
+   * else rebuilds the documents that show it: the users' teams and the team's user count.
+   */
+  private void reindexMembership(Team team, List<UUID> userIds) {
+    if (userIds.isEmpty()) {
+      return;
+    }
+    List<EntityReference> references = new ArrayList<>();
+    references.add(team.getEntityReference());
+    userIds.forEach(id -> references.add(new EntityReference().withId(id).withType(Entity.USER)));
+    searchRepository.deferIfFlushScopeActive(
+        () -> searchRepository.updateEntitiesByReference(references),
+        "reindexTeamMembership",
+        team.getId().toString(),
+        team.getFullyQualifiedName(),
+        Entity.TEAM);
   }
 
   public void initOrganization() {

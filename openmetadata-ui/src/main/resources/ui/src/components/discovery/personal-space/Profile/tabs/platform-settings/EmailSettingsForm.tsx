@@ -284,6 +284,7 @@ const EmailSettingsForm = ({
 
   return (
     <SettingsFormLayout
+      centered
       form={form}
       isSaveDisabled={isFullyManaged}
       isSaving={isSaving}

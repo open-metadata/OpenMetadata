@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
@@ -351,9 +352,17 @@ public class PIIMasker {
   }
 
   private static boolean hasPiiSensitiveTag(SearchIndex searchIndex) {
-    return searchIndex.getTags().stream()
-        .map(TagLabel::getTagFQN)
-        .anyMatch(SENSITIVE_PII_TAG::equals);
+    if (searchIndex.getTags().stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals))
+      return true;
+
+    return listOrEmpty(searchIndex.getFields()).stream().anyMatch(PIIMasker::hasPiiSensitiveTag);
+  }
+
+  private static boolean hasPiiSensitiveTag(SearchIndexField field) {
+    return listOrEmpty(field.getTags()).stream()
+            .map(TagLabel::getTagFQN)
+            .anyMatch(SENSITIVE_PII_TAG::equals)
+        || listOrEmpty(field.getChildren()).stream().anyMatch(PIIMasker::hasPiiSensitiveTag);
   }
 
   /*
