@@ -26,6 +26,7 @@ import static org.openmetadata.service.jdbi3.AppRepository.APP_BOT_IMPERSONATION
 import static org.openmetadata.service.jdbi3.AppRepository.APP_BOT_ROLE;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -36,6 +37,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
@@ -43,6 +45,7 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -67,12 +70,17 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ConflictException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.clients.pipeline.noop.NoopClient;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
@@ -1446,6 +1454,70 @@ public class AppsResourceIT {
       } catch (Exception ignored) {
       }
     }
+  }
+
+  @Test
+  void test_uninstallExternalApp_hardDeletesItsPipelineAndBot(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extUninstall");
+    String pipelineFqn = "OpenMetadata." + appName;
+    String botName = appName + "Bot";
+    installExternalApp(httpClient, appName);
+    assertNotNull(SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn));
+    assertNotNull(SdkClients.adminClient().bots().getByName(botName));
+
+    Apps.uninstall(appName, true);
+
+    assertNotFound(() -> Apps.getByName(appName));
+    assertNotFound(() -> SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn));
+    assertNotFound(() -> SdkClients.adminClient().bots().getByName(botName));
+    assertNotFound(
+        () -> httpClient.execute(HttpMethod.GET, "/v1/users/name/" + botName, null, User.class));
+  }
+
+  @Test
+  void test_uninstallExternalApp_keepsItsBotWhenThePipelineDeleteFails(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extUninstallFails");
+    String pipelineFqn = "OpenMetadata." + appName;
+    installExternalApp(httpClient, appName);
+    IngestionPipelineRepository pipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    // NoopClient throws on every undeploy, so the pipeline delete fails after its row is deleted.
+    pipelineRepository.setPipelineServiceClient(
+        new NoopClient(new PipelineServiceClientConfiguration()));
+    try {
+      InvalidRequestException failure =
+          assertThrows(InvalidRequestException.class, () -> Apps.uninstall(appName, true));
+      assertTrue(
+          failure.getMessage().contains("NoopClient does not implement the delete method"),
+          failure.getMessage());
+    } finally {
+      pipelineRepository.setPipelineServiceClient(
+          PipelineServiceClientFactory.createPipelineServiceClient(null));
+    }
+
+    assertNotNull(Apps.getByName(appName, "bot").getBot(), "the app keeps its bot");
+    assertNotFound(() -> SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn));
+    // With its pipeline already gone, uninstalling the app again completes.
+    Apps.uninstall(appName, true);
+    assertNotFound(() -> Apps.getByName(appName));
+  }
+
+  private void installExternalApp(HttpClient httpClient, String appName) throws Exception {
+    AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+    CreateApp createApp =
+        new CreateApp()
+            .withName(marketPlaceDef.getName())
+            .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+            .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY));
+    httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+  }
+
+  private static void assertNotFound(Executable lookup) {
+    OpenMetadataException exception = assertThrows(OpenMetadataException.class, lookup);
+    assertEquals(Response.Status.NOT_FOUND.getStatusCode(), exception.getStatusCode());
   }
 
   private AppMarketPlaceDefinition createExternalAppMarketplace(

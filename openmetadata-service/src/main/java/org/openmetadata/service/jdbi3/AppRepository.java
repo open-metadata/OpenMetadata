@@ -68,7 +68,11 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   protected List<EntityReference> getIngestionPipelines(App service) {
-    return findTo(service.getId(), entityType, Relationship.HAS, Entity.INGESTION_PIPELINE);
+    return findIngestionPipelines(service.getId());
+  }
+
+  private List<EntityReference> findIngestionPipelines(UUID appId) {
+    return findTo(appId, entityType, Relationship.HAS, Entity.INGESTION_PIPELINE);
   }
 
   public AppMarketPlaceRepository getMarketPlace() {
@@ -528,6 +532,22 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   /**
+   * Hard-deletes the app's pipelines before {@code super} removes its bot, so a pipeline delete that
+   * fails leaves the app its bot, which opening and uninstalling the app need. Refused in the
+   * pipeline's {@code preDelete}, as Collate's hybrid-runner check does, it leaves the app row, its
+   * bot and its pipeline untouched; failing later, it leaves the app without that pipeline. A
+   * non-recursive delete is rejected while the app still contains its bot, so it must not take the
+   * pipelines first; it leaves them to {@link #entitySpecificCleanup}.
+   */
+  @Override
+  protected void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
+    if (hardDelete && recursive) {
+      deleteIngestionPipelines(id);
+    }
+    super.deleteChildren(id, recursive, hardDelete, updatedBy);
+  }
+
+  /**
    * Reached exclusively from {@code cleanup()}, which the delete path runs on the hard-delete
    * branch only — so an app's run history survives a (reversible) soft delete and comes back with
    * the app on restore. LIMITS extensions are deliberately left in place: they are meant to carry
@@ -535,14 +555,18 @@ public class AppRepository extends EntityRepository<App> {
    */
   @Override
   protected void entitySpecificCleanup(App app) {
-    // Remove the Pipelines for Application
-    List<EntityReference> pipelineRef = getIngestionPipelines(app);
-    pipelineRef.forEach(
-        reference ->
-            Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
+    deleteIngestionPipelines(app.getId());
     daoCollection
         .appExtensionTimeSeriesDao()
         .delete(app.getId().toString(), AppExtension.ExtensionType.STATUS.toString());
+  }
+
+  private void deleteIngestionPipelines(UUID appId) {
+    findIngestionPipelines(appId)
+        .forEach(
+            pipeline ->
+                Entity.deleteEntity(
+                    Entity.ADMIN_USER_NAME, pipeline.getType(), pipeline.getId(), true, true));
   }
 
   @Override
