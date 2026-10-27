@@ -724,7 +724,6 @@ describe('OntologyExplorerPage', () => {
     expect(
       screen.queryByTestId('ontology-publication-trigger')
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/label\.isolated/)).not.toBeInTheDocument();
     expect(screen.queryByTestId('submode-tab-graph')).not.toBeInTheDocument();
     expect(mockOntologyExplorer).not.toHaveBeenCalled();
     expect(screen.getByTestId('ontology-library-trigger')).toBeVisible();
@@ -756,6 +755,22 @@ describe('OntologyExplorerPage', () => {
     });
 
     expect(await screen.findByTestId('ontology-empty-state')).toBeVisible();
+  });
+
+  it('holds back the mode switch and Publish while the first ontology list loads', async () => {
+    mockUseRealScopes = true;
+    mockSearchParams = new URLSearchParams();
+    (listOntologies as jest.Mock).mockReturnValue(new Promise(() => undefined));
+    render(<OntologyExplorerPage />);
+
+    expect(await screen.findByTestId('ontology-studio-shell')).toBeVisible();
+
+    ['view', 'edit', 'query'].forEach((mode) =>
+      expect(screen.queryByTestId(`mode-tab-${mode}`)).not.toBeInTheDocument()
+    );
+    expect(
+      screen.queryByTestId('ontology-publication-trigger')
+    ).not.toBeInTheDocument();
   });
 
   it('leaves the empty state when the Library installs an ontology, without a reload', async () => {

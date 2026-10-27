@@ -760,6 +760,7 @@ const OntologyExplorerPage: React.FC = () => {
     !studioScopes.isOntologyError,
     availableOntologies.length === 0,
   ].every(Boolean);
+  const isFirstListLoading = isAllOntologies && studioScopes.isOntologyLoading;
 
   const unpublishedCount = useOntologyUnpublishedCount(
     studioScopes.ontologies,
@@ -1326,7 +1327,11 @@ const OntologyExplorerPage: React.FC = () => {
   }
 
   function renderPublicationActions() {
-    if ((!selectedOntology && !isAllOntologies) || isCatalogEmpty) {
+    if (
+      (!selectedOntology && !isAllOntologies) ||
+      isCatalogEmpty ||
+      isFirstListLoading
+    ) {
       return null;
     }
     const isolatedCount = isAllOntologies
@@ -1339,10 +1344,7 @@ const OntologyExplorerPage: React.FC = () => {
           color="primary"
           data-testid="ontology-publication-trigger"
           iconLeading={GitBranch01}
-          isDisabled={
-            isAllOntologies &&
-            (studioScopes.isOntologyLoading || studioScopes.isOntologyError)
-          }
+          isDisabled={isAllOntologies && studioScopes.isOntologyError}
           size="xs"
           onPress={() => {
             setPublicationTab('changes');
@@ -1454,7 +1456,7 @@ const OntologyExplorerPage: React.FC = () => {
           ) : undefined
         }
         mode={mode}
-        modes={isCatalogEmpty ? [] : modeTabs}
+        modes={isCatalogEmpty || isFirstListLoading ? [] : modeTabs}
         scopeMenu={renderScopeMenu()}
         onModeChange={handleModeChange}
       />
