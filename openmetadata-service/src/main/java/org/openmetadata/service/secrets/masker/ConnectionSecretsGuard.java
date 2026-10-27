@@ -18,6 +18,7 @@ import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSW
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.BadRequestException;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -83,23 +84,26 @@ public final class ConnectionSecretsGuard {
     return lower.startsWith("supports") || EXEMPT_FIELD_SUFFIXES.stream().anyMatch(lower::endsWith);
   }
 
-  /** Whether any field other than a known-safe one differs between the two masked configs. */
+  /**
+   * Whether any field other than a known-safe one differs between the two masked configs, in either
+   * direction. A key or array entry the incoming config drops counts as much as one it adds:
+   * removing an override such as a host in {@code connectionArguments} moves the connection too.
+   */
   private static boolean nonExemptFieldChanged(JsonNode incoming, JsonNode stored) {
-    if (incoming.isObject()) {
-      for (Iterator<Map.Entry<String, JsonNode>> fields = incoming.fields(); fields.hasNext(); ) {
-        Map.Entry<String, JsonNode> field = fields.next();
-        if (isExemptField(field.getKey())) {
-          continue;
-        }
-        if (nonExemptFieldChanged(field.getValue(), stored.path(field.getKey()))) {
+    if (incoming.isObject() || stored.isObject()) {
+      Set<String> names = new LinkedHashSet<>();
+      incoming.fieldNames().forEachRemaining(names::add);
+      stored.fieldNames().forEachRemaining(names::add);
+      for (String name : names) {
+        if (!isExemptField(name) && nonExemptFieldChanged(incoming.path(name), stored.path(name))) {
           return true;
         }
       }
       return false;
     }
-    if (incoming.isArray()) {
-      for (int i = 0; i < incoming.size(); i++) {
-        if (nonExemptFieldChanged(incoming.get(i), stored.path(i))) {
+    if (incoming.isArray() || stored.isArray()) {
+      for (int i = 0; i < Math.max(incoming.size(), stored.size()); i++) {
+        if (nonExemptFieldChanged(incoming.path(i), stored.path(i))) {
           return true;
         }
       }

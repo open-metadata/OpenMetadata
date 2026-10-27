@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import jakarta.ws.rs.BadRequestException;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -97,7 +99,7 @@ class ConnectionSecretsGuardTest {
             "hostPort",
             "db.internal:3306",
             "databaseFilterPattern",
-            Map.of("includes", java.util.List.of("sales")),
+            Map.of("includes", List.of("sales")),
             "authType",
             Map.of("password", PASSWORD_MASK));
 
@@ -146,9 +148,52 @@ class ConnectionSecretsGuardTest {
     assertThrows(BadRequestException.class, () -> guard(retargeted));
   }
 
+  /**
+   * Dropping a stored override moves the connection as surely as setting one: a host in {@code
+   * connectionArguments} wins over {@code hostPort}, so removing it points the driver elsewhere.
+   */
+  @Test
+  void removingAStoredOverrideCannotKeepTheMaskedSecret() {
+    Map<String, Object> stored =
+        with(STORED, "connectionArguments", Map.of("host", "db.internal", "connect_timeout", 10));
+    Map<String, Object> overrideRemoved =
+        with(
+            mysql("db.internal:3306", PASSWORD_MASK),
+            "connectionArguments",
+            Map.of("connect_timeout", 10));
+
+    assertThrows(BadRequestException.class, () -> guard(overrideRemoved, stored));
+  }
+
+  @Test
+  void removingAStoredFilterKeepsTheMaskedSecret() {
+    Map<String, Object> stored =
+        with(STORED, "databaseFilterPattern", Map.of("includes", List.of("sales")));
+
+    assertDoesNotThrow(() -> guard(mysql("db.internal:3306", PASSWORD_MASK), stored));
+  }
+
+  /** An empty map of overrides says nothing, so a client that leaves it out changes nothing. */
+  @Test
+  void leavingOutAnEmptyStoredOverrideMapKeepsTheMaskedSecret() {
+    Map<String, Object> stored = with(STORED, "connectionArguments", Map.of());
+
+    assertDoesNotThrow(() -> guard(mysql("db.internal:3306", PASSWORD_MASK), stored));
+  }
+
   private static void guard(Map<String, Object> incoming) {
+    guard(incoming, STORED);
+  }
+
+  private static void guard(Map<String, Object> incoming, Map<String, Object> stored) {
     ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
-        incoming, STORED, "Mysql", ServiceType.DATABASE);
+        incoming, stored, "Mysql", ServiceType.DATABASE);
+  }
+
+  private static Map<String, Object> with(Map<String, Object> config, String field, Object value) {
+    Map<String, Object> extended = new HashMap<>(config);
+    extended.put(field, value);
+    return extended;
   }
 
   private static Map<String, Object> mysql(String hostPort, String password) {
