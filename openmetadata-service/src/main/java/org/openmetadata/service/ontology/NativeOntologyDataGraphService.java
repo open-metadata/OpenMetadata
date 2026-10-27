@@ -33,8 +33,6 @@ import org.openmetadata.schema.api.data.NativeOntologyAssetCluster;
 import org.openmetadata.schema.api.data.NativeOntologyClusterAsset;
 import org.openmetadata.schema.api.data.NativeOntologyConceptEdge;
 import org.openmetadata.schema.api.data.NativeOntologyDataGraph;
-import org.openmetadata.schema.api.data.NativeOntologyDataGraphPage;
-import org.openmetadata.schema.api.data.NativeOntologyDataGraphPageRequest;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
@@ -75,32 +73,29 @@ public final class NativeOntologyDataGraphService {
   public record Query(
       int limit, int offset, int assetsPerConcept, int edgeLimit, int lineageEdgeLimit) {}
 
+  /** Resolves entity references by id, one entity type at a time. */
+  @FunctionalInterface
+  public interface ReferenceLookup {
+    List<EntityReference> byIds(String entityType, List<UUID> ids, Include include);
+  }
+
   private final CollectionDAO dao;
   private final OntologyConceptBindingStore store;
   private final OntologyConceptRepository concepts;
   private final ViewPermissionFilter visibility;
-  private final NativeOntologyDataGraphPager pager;
+  private final ReferenceLookup references;
 
   public NativeOntologyDataGraphService(
       final CollectionDAO dao,
       final OntologyConceptBindingStore store,
       final OntologyConceptRepository concepts,
-      final Authorizer authorizer) {
+      final Authorizer authorizer,
+      final ReferenceLookup references) {
     this.dao = dao;
     this.store = store;
     this.concepts = concepts;
     this.visibility = new ViewPermissionFilter(authorizer);
-    this.pager =
-        new NativeOntologyDataGraphPager(
-            this,
-            dao,
-            store,
-            new OntologyConceptBindingService(store, authorizer, Entity::getEntityRepository));
-  }
-
-  public NativeOntologyDataGraphPage page(
-      Access access, UUID ontologyId, NativeOntologyDataGraphPageRequest request) {
-    return pager.page(access, ontologyId, request);
+    this.references = references;
   }
 
   /** The caller's right to view the ontology itself is checked by the resource. */
@@ -134,13 +129,13 @@ public final class NativeOntologyDataGraphService {
     final var visibleConcepts =
         visibleConcepts(access, ranked.stream().map(ConceptAssetCount::conceptId).toList());
     final var summaries = visibleBindings(access, visibleConcepts.keySet(), assetsPerConcept);
-    final var references = references(summaries);
+    final var resolved = previewReferences(summaries);
     final List<Cluster> clusters = new ArrayList<>();
     for (final var count : ranked) {
       final var concept = visibleConcepts.get(count.conceptId());
       final var summary = summaries.get(count.conceptId());
       if (concept != null && summary.assetCount() > 0) {
-        clusters.add(new Cluster(concept, summary.resolve(concept, references)));
+        clusters.add(new Cluster(concept, summary.resolve(concept, resolved)));
       }
     }
     return List.copyOf(clusters);
@@ -205,19 +200,20 @@ public final class NativeOntologyDataGraphService {
     return visibility.viewableIds(access.securityContext(), references);
   }
 
-  private static Map<UUID, EntityReference> references(final Map<UUID, VisibleSummary> summaries) {
+  private Map<UUID, EntityReference> previewReferences(final Map<UUID, VisibleSummary> summaries) {
     final var pageRows =
         summaries.values().stream()
             .flatMap(summary -> summary.preview().stream())
             .map(Preview::row)
             .toList();
-    final Map<UUID, EntityReference> references = new HashMap<>();
+    final Map<UUID, EntityReference> resolved = new HashMap<>();
     BindingRow.assetIdsByType(pageRows)
         .forEach(
             (type, ids) ->
-                Entity.getEntityReferencesByIds(type.value(), ids, Include.NON_DELETED)
-                    .forEach(reference -> references.put(reference.getId(), reference)));
-    return references;
+                references
+                    .byIds(type.value(), ids, Include.NON_DELETED)
+                    .forEach(reference -> resolved.put(reference.getId(), reference)));
+    return resolved;
   }
 
   private List<NativeOntologyConceptEdge> edges(

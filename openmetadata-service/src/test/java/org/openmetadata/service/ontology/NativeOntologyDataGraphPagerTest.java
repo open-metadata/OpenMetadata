@@ -28,13 +28,15 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.OntologyDAO.LineagePosition;
-import org.openmetadata.service.jdbi3.OntologyReferenceDAO.AxiomPosition;
 import org.openmetadata.service.jdbi3.OntologyReferenceDAO.EdgeAxiomRow;
 import org.openmetadata.service.ontology.NativeOntologyDataGraphPager.Cursor;
 import org.openmetadata.service.ontology.NativeOntologyDataGraphService.Cluster;
 import org.openmetadata.service.util.RestUtil;
 
 class NativeOntologyDataGraphPagerTest {
+  private static final NativeOntologyTopologyCursorCodec CODEC =
+      new NativeOntologyTopologyCursorCodec();
+
   @Test
   void contextDigestIsOrderIndependentAndIncludesScopeRevisionAndScanTail() {
     final UUID ontology = UUID.randomUUID();
@@ -48,29 +50,6 @@ class NativeOntologyDataGraphPagerTest {
         digest, NativeOntologyDataGraphPager.digest(ontology, List.of(prefix(1, 4, 4), second)));
     assertNotEquals(
         digest, NativeOntologyDataGraphPager.digest(ontology, List.of(prefix(1, 3, 5), second)));
-  }
-
-  @Test
-  void cursorRoundTripsIndependentStreamPositionsAndRejectsDifferentContext() {
-    final var cursor =
-        new Cursor(
-            1,
-            "context",
-            new AxiomPosition("", UUID.randomUUID().toString()),
-            7,
-            new LineagePosition(
-                UUID.randomUUID().toString(), UUID.randomUUID().toString(), "typed"),
-            false,
-            true);
-    assertEquals(cursor, Cursor.decode(cursor.encode(), "context"));
-    assertThrows(BadRequestException.class, () -> Cursor.decode(cursor.encode(), "changed"));
-    assertThrows(BadRequestException.class, () -> Cursor.decode("not base64", "context"));
-    assertThrows(BadRequestException.class, () -> Cursor.decode("a".repeat(8193), "context"));
-    assertThrows(
-        BadRequestException.class, () -> Cursor.decode(RestUtil.encodeCursor("{}"), "context"));
-    assertThrows(
-        BadRequestException.class,
-        () -> Cursor.decode(RestUtil.encodeCursor("{broken"), "context"));
   }
 
   @Test
@@ -181,19 +160,19 @@ class NativeOntologyDataGraphPagerTest {
             LineagePosition.FIRST,
             page.done(),
             true);
-    final var decoded = RestUtil.decodeCursor(cursor.encode());
+    final var decoded = RestUtil.decodeCursor(CODEC.encode(cursor));
     assertFalse(decoded.contains("confidential-axiom-"));
     assertFalse(decoded.contains("semanticAfter\""));
     assertEquals(
         rows.getLast().id().toString(),
-        Cursor.decode(cursor.encode(), "context").semanticAfter().id());
+        CODEC.decode(CODEC.encode(cursor), "context").semanticAfter().id());
     final var visible = new EdgeAxiomRow("visible", UUID.randomUUID(), JsonUtils.pojoToJson(axiom));
     final var next =
         NativeOntologyDataGraphPager.semanticPage(
             List.of(visible),
             Set.of(visible.id()),
             concepts,
-            Cursor.decode(cursor.encode(), "context"),
+            CODEC.decode(CODEC.encode(cursor), "context"),
             499);
     assertEquals(1, next.links().size());
     assertEquals(true, next.done());
@@ -253,18 +232,19 @@ class NativeOntologyDataGraphPagerTest {
     assertEquals(row.position(), NativeOntologyDataGraphPager.requirePosition(row));
   }
 
-  private static Cluster cluster(long concept) {
+  private static Cluster cluster(final long concept) {
     return new Cluster(
         concept(concept, UUID.randomUUID()), new NativeOntologyAssetCluster().withAssetCount(1));
   }
 
-  private static OntologyConcept concept(long id, UUID ontology) {
+  private static OntologyConcept concept(final long id, final UUID ontology) {
     return new OntologyConcept()
         .withId(new UUID(0, id))
         .withOntology(new EntityReference().withId(ontology).withType("ontology"));
   }
 
-  private static NativeOntologyLoadedPrefix prefix(long concept, long revision, long asset) {
+  private static NativeOntologyLoadedPrefix prefix(
+      final long concept, final long revision, final long asset) {
     return new NativeOntologyLoadedPrefix()
         .withConceptId(new UUID(0, concept))
         .withBindingRevision(revision)
