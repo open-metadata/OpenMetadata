@@ -101,7 +101,7 @@ class NativeOntologyTopologyCursorCodecTest {
   }
 
   @Test
-  void aCursorFromAnotherProcessKeyGetsTheSameRefusal() {
+  void withoutAServerKeyACursorSealedWithAnotherKeyGetsTheSameRefusal() {
     final var anotherProcess = new NativeOntologyTopologyCursorCodec(List.of(Key.generateKey()));
     assertRefused(forServerKeys(null), anotherProcess.encode(cursor()));
   }
