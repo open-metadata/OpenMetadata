@@ -29,9 +29,9 @@ import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.lineage.MissingLineageEntityException;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
@@ -336,7 +336,7 @@ public class OsUtils {
             fieldsToInclude,
             fieldsToRemove);
     if (result.isEmpty()) {
-      throw EntityNotFoundException.byName(hasToFqnPair.getRight());
+      throw new MissingLineageEntityException(hasToFqnPair.getRight());
     }
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());

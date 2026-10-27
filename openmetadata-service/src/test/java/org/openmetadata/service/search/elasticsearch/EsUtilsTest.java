@@ -37,8 +37,8 @@ import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirectio
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.lineage.MissingLineageEntityException;
 
 @ExtendWith(MockitoExtension.class)
 class EsUtilsTest {
@@ -482,7 +482,7 @@ class EsUtilsTest {
   }
 
   @Test
-  void testSearchEntityByKeyReturns404WhenNoEntityMatches() throws Exception {
+  void testSearchEntityByKeyKeepsMissingNodesAsSearchFailures() throws Exception {
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
       when(searchRepository.getIndexOrAliasName("lineage_search")).thenReturn("resolved.lineage");
@@ -490,9 +490,9 @@ class EsUtilsTest {
       when(searchResponse.hits()).thenReturn(hitsMetadata);
       when(hitsMetadata.hits()).thenReturn(List.of());
 
-      EntityNotFoundException error =
+      SearchException error =
           assertThrows(
-              EntityNotFoundException.class,
+              SearchException.class,
               () ->
                   EsUtils.searchEntityByKey(
                       client,
@@ -502,7 +502,8 @@ class EsUtilsTest {
                       Pair.of("missing-hash", "sample.missing_dashboard"),
                       List.of()));
 
-      assertEquals(404, error.getResponse().getStatus());
+      assertEquals(500, error.getResponse().getStatus());
+      assertInstanceOf(MissingLineageEntityException.class, error);
       assertTrue(error.getMessage().contains("sample.missing_dashboard"));
     }
   }

@@ -38,9 +38,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.ColumnFilterMatcher;
 import org.openmetadata.service.search.ColumnMetadataCache;
 import org.openmetadata.service.search.LineagePathPreserver;
+import org.openmetadata.service.search.lineage.MissingLineageEntityException;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
 import os.org.opensearch.client.json.JsonData;
@@ -564,14 +566,7 @@ public class OSLineageGraphBuilder
   private void addRootEntityWithPagingCounts(
       SearchLineageRequest lineageRequest, SearchLineageResult result, boolean isDirectionBased)
       throws IOException {
-    Map<String, Object> rootEntityMap =
-        OsUtils.searchEntityByKey(
-            esClient,
-            null,
-            GLOBAL_SEARCH_ALIAS,
-            FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
-            Pair.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
-            SOURCE_FIELDS_TO_EXCLUDE);
+    Map<String, Object> rootEntityMap = fetchRootEntity(lineageRequest.getFqn());
 
     if (!rootEntityMap.isEmpty()) {
       String rootFqn = rootEntityMap.get(FQN_FIELD).toString();
@@ -593,6 +588,20 @@ public class OSLineageGraphBuilder
           getNodeInformation(rootEntityMap, downstreamCount, upstreamCount, 0);
 
       result.getNodes().put(rootFqn, rootNode);
+    }
+  }
+
+  private Map<String, Object> fetchRootEntity(String fqn) throws IOException {
+    try {
+      return OsUtils.searchEntityByKey(
+          esClient,
+          null,
+          GLOBAL_SEARCH_ALIAS,
+          FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
+          Pair.of(FullyQualifiedName.buildHash(fqn), fqn),
+          SOURCE_FIELDS_TO_EXCLUDE);
+    } catch (MissingLineageEntityException e) {
+      throw EntityNotFoundException.byName(fqn, e);
     }
   }
 

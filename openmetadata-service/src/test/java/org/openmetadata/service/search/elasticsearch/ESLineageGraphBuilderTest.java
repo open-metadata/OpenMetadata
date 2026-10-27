@@ -3,6 +3,7 @@ package org.openmetadata.service.search.elasticsearch;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -15,6 +16,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
@@ -41,6 +43,7 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.lineage.AbstractLineageGraphBuilder;
 import org.openmetadata.service.search.lineage.LineageQueryContext;
@@ -83,6 +86,31 @@ class ESLineageGraphBuilderTest {
   private void stubEsClientSearch() throws IOException {
     when(esClient.search(any(SearchRequest.class), eq(JsonData.class))).thenReturn(searchResponse);
     when(searchResponse.hits()).thenReturn(hitsMetadata);
+  }
+
+  @Test
+  void searchLineageByEntityCount_missingRootReturns404() throws IOException {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)).thenReturn("global_search");
+      stubEsClientSearch();
+      when(hitsMetadata.hits()).thenReturn(List.of());
+
+      EntityNotFoundException error =
+          assertThrows(
+              EntityNotFoundException.class,
+              () ->
+                  new ESLineageGraphBuilder(esClient)
+                      .searchLineageByEntityCount(
+                          new EntityCountLineageRequest()
+                              .withFqn(ROOT_FQN)
+                              .withDirection(LineageDirection.DOWNSTREAM)
+                              .withNodeDepth(0)
+                              .withIncludeSourceFields(Set.of())));
+
+      assertEquals(404, error.getResponse().getStatus());
+      assertTrue(error.getMessage().contains(ROOT_FQN));
+    }
   }
 
   @Test
