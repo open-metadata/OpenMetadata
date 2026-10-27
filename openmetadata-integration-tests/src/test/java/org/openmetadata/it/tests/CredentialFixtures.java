@@ -133,19 +133,19 @@ public final class CredentialFixtures {
             "{\"tokenIds\":[\"" + pat.getToken() + "\"]}");
   }
 
-  /** A token OpenMetadata signs for a session: not a bot or PAT token, so it has no stored check. */
+  /** A token OpenMetadata signs for a session. It is not a bot or PAT token: no stored check. */
   public static String loginToken(User user) {
     return JwtAuthProvider.tokenFor(
         user.getEmail(), user.getEmail(), new String[] {}, LOGIN_TOKEN_TTL_SECONDS);
   }
 
   /**
-   * How many reads the suite server's verifier has started on behalf of a check. They run on the
-   * verifier's own read threads, which carry no request context, so a statement counter scoped to
-   * requests does not see them; this counter does. Fails when the server reports no such meter,
-   * so a renamed one cannot read as zero.
+   * How many reads the suite server's verifier has run for checks, each counted when it finishes.
+   * They run on the verifier's own read threads, which carry no request context, so a statement
+   * counter scoped to requests does not see them; this counter does. Fails when the server reports
+   * no such meter, so a renamed one cannot read as zero.
    */
-  public static double checkStartedReads() {
+  public static double checkReads() {
     double reads = 0;
     int series = 0;
     for (Counter counter : Metrics.globalRegistry.find("om.credential.reads").counters()) {

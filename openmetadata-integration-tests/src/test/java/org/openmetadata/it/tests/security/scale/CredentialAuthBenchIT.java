@@ -60,9 +60,9 @@ import org.slf4j.LoggerFactory;
  * JvmCpu}, and {@code CredentialFixtures} with the bootstrap and bench classes it already uses.
  *
  * <p>What limits a number: the client and the server share one JVM, so every cell records process
- * CPU and a cell that uses most of the cores is flagged JVM-bound; its figures describe the JVM, not
- * the server. A cell with any non-200 voids the run. Properties {@code credential.bench.*} shorten
- * the run for a smoke test; the defaults are the measured configuration.
+ * CPU and a cell that uses most of the cores is flagged JVM-bound; its figures describe the JVM,
+ * not the server. A cell with any non-200 voids the run. Properties {@code credential.bench.*}
+ * shorten the run for a smoke test; the defaults are the measured configuration.
  */
 @Tag("scale")
 @Isolated
@@ -190,11 +190,11 @@ class CredentialAuthBenchIT {
   private Reading read() {
     return new Reading(
         meters.counterSum("om.credential.checks", "decision", "accept"),
-        checkStartedReads(),
+        checkReads(),
         meters.timerTotals("request.latency.auth"));
   }
 
-  private double checkStartedReads() {
+  private double checkReads() {
     return meters.counterSum("om.credential.reads", "reason", "miss")
         + meters.counterSum("om.credential.reads", "reason", "stale")
         + meters.counterSum("om.credential.reads", "reason", "unknown_token");
@@ -220,7 +220,7 @@ class CredentialAuthBenchIT {
     }
     int control = 0;
     int credential = 0;
-    double readsBefore = checkStartedReads();
+    double readsBefore = checkReads();
     try (SqlQueryCounter counter = SqlQueryCounter.forRequests(Entity.getJdbi(), "")) {
       for (int i = 0; i < STATEMENT_REQUESTS; i++) {
         int before = counter.count();
@@ -234,9 +234,7 @@ class CredentialAuthBenchIT {
     if (meters.verifierPresent()) {
       expectEqual("statements per " + STATEMENT_REQUESTS + " requests", control, credential);
       expectEqual(
-          "check-started reads over " + STATEMENT_REQUESTS + " requests",
-          0,
-          checkStartedReads() - readsBefore);
+          "check reads over " + STATEMENT_REQUESTS + " requests", 0, checkReads() - readsBefore);
     }
     return Map.of("controlStatements", control, "credentialStatements", credential);
   }

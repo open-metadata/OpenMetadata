@@ -43,6 +43,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.security.credentials.CredentialSourceTestSupport;
+import org.openmetadata.service.security.credentials.CredentialVerificationConfig;
 
 /**
  * A credential changed through server A, the suite's server, is honoured by server B, a second
@@ -51,9 +52,9 @@ import org.openmetadata.service.security.credentials.CredentialSourceTestSupport
  * result does not depend on any static of the test JVM.
  *
  * <p>Both lanes run this class. In each, B rejects a revoked, rotated or soft-deleted credential
- * within the bound and accepts a created one. Without Redis a test also checks that B's sweep saw the
- * change; with Redis, a test checks that B received a nudge from A. Whether the nudge or the sweep
- * delivered a given change is not asserted, because either may arrive first.
+ * within the bound and accepts a created one. Without Redis a test also checks that B's sweep saw
+ * the change; with Redis, a test checks that B received a nudge from A. Whether the nudge or the
+ * sweep delivered a given change is not asserted, because either may arrive first.
  *
  * <p>Bench mode ({@code -Dcredential.propagation.bench=true}) measures propagation latency, 100
  * trials per mode and the modes the lane can run: without Redis, with Redis, the slowest sweep the
@@ -64,7 +65,9 @@ import org.openmetadata.service.security.credentials.CredentialSourceTestSupport
 @ExtendWith(TestNamespaceExtension.class)
 class CredentialRevocationTwoProcessIT {
   private static final Duration CLIENT_SLACK = Duration.ofMillis(100);
-  private static final Duration MISS_REFRESH_MIN_AGE = Duration.ofMillis(500);
+  private static final Duration MISS_REFRESH_MIN_AGE =
+      Duration.ofMillis(
+          CredentialVerificationConfig.defaults().missRefreshMinAge().toMilliseconds());
   private static final long POLL_MILLIS = 25;
   private static final int WARM_REQUESTS = 1000;
   private static final String SLOWEST_SWEEP = "sweepInterval";

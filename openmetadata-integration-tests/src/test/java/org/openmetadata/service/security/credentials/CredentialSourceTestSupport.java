@@ -22,9 +22,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.Query;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -99,7 +99,7 @@ public final class CredentialSourceTestSupport {
       return accepted;
     }
 
-    /** How many reads this verifier started for {@code reason}, for example {@code unknown_token}. */
+    /** How many reads this verifier has run for {@code reason}, such as {@code unknown_token}. */
     public double reads(String reason) {
       return registry.get("om.credential.reads").tag("reason", reason).counters().stream()
           .mapToDouble(Counter::count)
@@ -181,17 +181,14 @@ public final class CredentialSourceTestSupport {
       if (type == ConnectionType.POSTGRES) {
         handle.execute("SET LOCAL enable_seqscan = off");
       }
-      return handle.createQuery("EXPLAIN " + sql).mapToMap().list().stream()
-          .map(CredentialSourceTestSupport::planLine)
-          .collect(Collectors.joining("\n"));
+      Query plan = handle.createQuery("EXPLAIN " + sql);
+      List<String> lines =
+          type == ConnectionType.POSTGRES
+              ? plan.mapTo(String.class).list()
+              : plan.mapToMap().map(row -> row.get("table") + ":" + row.get("key")).list();
+      return String.join("\n", lines);
     } finally {
       handle.rollback();
     }
-  }
-
-  private static String planLine(Map<String, Object> row) {
-    return row.containsKey("key")
-        ? row.get("table") + ":" + row.get("key")
-        : String.valueOf(row.get("QUERY PLAN"));
   }
 }

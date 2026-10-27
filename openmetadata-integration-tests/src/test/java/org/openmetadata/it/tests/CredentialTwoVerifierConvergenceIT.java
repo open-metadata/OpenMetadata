@@ -47,6 +47,7 @@ import org.openmetadata.service.security.credentials.CredentialVerificationConfi
 class CredentialTwoVerifierConvergenceIT {
   private static final long MAX_STALENESS_MILLIS = 6000;
   private static final long MARGIN_MILLIS = 2000;
+  private static final long FIRST_USE_MILLIS = 5000;
   private static final long MISS_REFRESH_MIN_AGE_MILLIS = 100;
   private static final long POLL_MILLIS = 25;
   private static final CredentialVerificationConfig CONFIG =
@@ -168,7 +169,7 @@ class CredentialTwoVerifierConvergenceIT {
   private static boolean acceptsFirstUse(TestVerifier verifier, String userName, String token) {
     AtomicBoolean accepted = new AtomicBoolean();
     Awaitility.await("a definitive answer")
-        .atMost(MARGIN_MILLIS, TimeUnit.MILLISECONDS)
+        .atMost(FIRST_USE_MILLIS, TimeUnit.MILLISECONDS)
         .pollInterval(POLL_MILLIS, TimeUnit.MILLISECONDS)
         .ignoreExceptionsInstanceOf(CredentialUnavailableException.class)
         .until(
@@ -179,7 +180,12 @@ class CredentialTwoVerifierConvergenceIT {
     return accepted.get();
   }
 
-  /** Long enough for a sweep that was running when the sweeps stopped to finish, and for the age. */
+  /**
+   * {@code stop()} interrupts the sweep thread without waiting for it, and a sweep blocked in a
+   * database read runs on until the read returns. The wait lets such a sweep install before the
+   * next PAT exists, and lets the owner's last read age past {@code missRefreshMinAge}, so the
+   * PAT's first use reads the owner again.
+   */
   private static void waitOutMissRefreshMinAge() {
     Awaitility.await("the owner's last read is older than missRefreshMinAge")
         .pollDelay(MISS_REFRESH_MIN_AGE_MILLIS * 3, TimeUnit.MILLISECONDS)

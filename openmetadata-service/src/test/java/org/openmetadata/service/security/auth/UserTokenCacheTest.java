@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.auth;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.github.benmanes.caffeine.cache.Ticker;
@@ -65,10 +66,11 @@ class UserTokenCacheTest {
     CredentialVerifier verifier = fixture.verifier();
     assertDoesNotThrow(() -> require(verifier), "the PAT is current and now cached");
     fixture.removeTokensSilently(USER);
-    assertDoesNotThrow(() -> require(verifier), "nothing told the verifier the PAT is gone");
+    int readsBefore = fixture.fullReadsOf(USER);
 
     UserTokenCache.invalidateToken(USER);
 
+    assertEquals(readsBefore + 1, fixture.fullReadsOf(USER), "the hint re-reads the user once");
     assertThrows(AuthenticationException.class, () -> require(verifier));
   }
 

@@ -36,9 +36,9 @@ import org.openmetadata.service.cache.CacheBundle;
 import org.testcontainers.DockerClientFactory;
 
 /**
- * With Redis unreachable, bot and PAT requests are checked in memory and issue no database
- * statements beyond the control's, and the verifier starts no read for them, and revoking a token still works and takes effect on the next
- * request.
+ * With Redis unreachable, bot and PAT requests are checked in memory: they issue no database
+ * statements beyond the control's, and the verifier runs no read for them. Revoking a token still
+ * works and takes effect on the next request.
  *
  * <p>The failure modelled is a Redis that accepts connections and never answers, which is what a
  * paused container, a stalled node or a dropped network route looks like to a client: every Redis
@@ -116,7 +116,7 @@ class CredentialRedisDownIT {
   private static void assertSameStatements(String credentialToken, String controlToken) {
     int control = 0;
     int credential = 0;
-    double readsBefore = CredentialFixtures.checkStartedReads();
+    double readsBefore = CredentialFixtures.checkReads();
     try (SqlQueryCounter counter = SqlQueryCounter.forRequests(Entity.getJdbi(), "")) {
       for (int i = 0; i < MEASURED_REQUESTS; i++) {
         int before = counter.count();
@@ -131,8 +131,8 @@ class CredentialRedisDownIT {
         "statements", MEASURED_REQUESTS, control, credential, "Redis paused");
     assertEquals(
         0,
-        CredentialFixtures.checkStartedReads() - readsBefore,
-        "the verifier started no read for any request while Redis was paused");
+        CredentialFixtures.checkReads() - readsBefore,
+        "the verifier ran no read for any request while Redis was paused");
   }
 
   private static void withRedisPaused(Runnable whilePaused) {
