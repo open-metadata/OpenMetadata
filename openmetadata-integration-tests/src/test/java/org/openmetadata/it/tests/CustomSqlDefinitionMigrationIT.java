@@ -23,7 +23,8 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 /**
- * The 2.2.0 upgrade path for the tableCustomSQLQuery definition.
+ * The 2.1.0 upgrade path for the tableCustomSQLQuery definition (the statements appended to the
+ * post-DDL script).
  *
  * <p>Seeding never rewrites a test definition that already exists, so on an install whose record
  * predates #20307/#22697 the migration is the only thing that adds {@code operator} and {@code
@@ -86,7 +87,7 @@ public class CustomSqlDefinitionMigrationIT {
   private void assertPreconditions(List<String> preExisting) {
     assertTrue(
         preExisting.stream().noneMatch(BACKFILLED_PARAMETERS::contains),
-        "precondition: the record looks like one from before 2.2.0");
+        "precondition: the record looks like one from before the operator seed");
     assertTrue(
         preExisting.contains("thresholdUnit"),
         "precondition: the 2.1.0 backfill has already added thresholdUnit");
@@ -131,12 +132,17 @@ public class CustomSqlDefinitionMigrationIT {
     ConnectionType connectionType = TestSuiteBootstrap.getConnectionType();
     List<String> statements =
         MigrationFile.parseSQLFile(migrationFile(connectionType).toFile(), connectionType).stream()
-            .filter(sql -> sql.contains("UPDATE test_definition"))
+            .filter(
+                sql ->
+                    sql.contains("UPDATE test_definition")
+                        && sql.contains("tableCustomSQLQuery")
+                        && (sql.contains("'operator'")
+                            || sql.contains("'partitionExpression'")))
             .toList();
     assertEquals(
         BACKFILLED_PARAMETERS.size(),
         statements.size(),
-        "the 2.2.0 script backfills one statement per parameter");
+        "the backfill appends one statement per parameter");
     TestSuiteBootstrap.getJdbi().useHandle(handle -> statements.forEach(handle::execute));
   }
 
@@ -285,7 +291,7 @@ public class CustomSqlDefinitionMigrationIT {
             "sql",
             "migrations",
             "native",
-            "2.2.0",
+            "2.1.0",
             dialect,
             "postDataMigrationSQLScript.sql");
 
