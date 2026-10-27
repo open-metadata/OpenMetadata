@@ -43,8 +43,9 @@ logger = utils_logger()
 
 PageT = TypeVar("PageT", bound=PagedResponse)
 
-# The token may not be allowed to export a project; any other failure is transient
-EXPORT_UNAVAILABLE_STATUSES = {403, 404}
+# The token isn't allowed to read it, so it won't be readable on a retry either;
+# any other failure is transient
+UNAVAILABLE_STATUSES = {403, 404}
 
 HEADERS = {
     "accept": "application/json",
@@ -120,7 +121,7 @@ class HexApiClient:
             return _flatten_export_cells(yaml.safe_load(export.content).get("cells") or [])
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            if _status_code(exc) not in EXPORT_UNAVAILABLE_STATUSES:
+            if _status_code(exc) not in UNAVAILABLE_STATUSES:
                 logger.warning("Error exporting Hex project %s: %s", project_id, exc)
                 return None
             logger.debug("Hex project %s can't be exported, reading its cells instead: %s", project_id, exc)
@@ -148,6 +149,10 @@ class HexApiClient:
             }
         except Exception as exc:
             logger.debug(traceback.format_exc())
+            if _status_code(exc) in UNAVAILABLE_STATUSES:
+                # Not allowed for this token: carry on without them, every run would fail the same
+                logger.warning("Hex data connections can't be read, parsing SQL without their dialect: %s", exc)
+                return {}
             logger.warning("Error fetching data connections: %s", exc)
             return None
 

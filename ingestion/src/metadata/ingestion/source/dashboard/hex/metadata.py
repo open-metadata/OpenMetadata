@@ -540,7 +540,7 @@ class HexSource(DashboardServiceSource):
                 logger.warning("Could not parse SQL cell %s of Hex project %s: %s", cell.id, project.id, exc)
                 continue
             if lineage:
-                lineage.name = self._unique_cell_name(lineage.name, taken_names)
+                lineage.name = self._unique_column_name(lineage.name, taken_names)
                 cell_lineage.append(lineage)
         return cell_lineage
 
@@ -563,8 +563,6 @@ class HexSource(DashboardServiceSource):
         # warehouse through the SQL cells it reads
         if not inline_upstream_cells(expression, upstream) and not cell.dataConnectionId:
             return None
-        if cell.resultVariableName:
-            upstream[cell.resultVariableName.lower()] = expression.copy()
 
         lineage = HexCellLineage(name=cell.label or cell.staticId or cell.id, sql=cell.sql)
         tables_by_key: dict[tuple[str, str, str], Table] = {}
@@ -594,6 +592,12 @@ class HexSource(DashboardServiceSource):
                 model_str(column.name): "unknown" for column in table.columns or []
             }
 
+        # Stored once its references name the tables found, so a later cell inlining it
+        # doesn't have to resolve them again without this cell's connection defaults
+        if cell.resultVariableName:
+            upstream[cell.resultVariableName.lower()] = expression.copy()
+
+        taken_names: set[str] = set()
         for output in get_output_columns(expression, schema):
             sources = [
                 (table, column)
@@ -602,10 +606,17 @@ class HexSource(DashboardServiceSource):
                 for column in table.columns or []
                 if model_str(column.name).lower() == column_name and column.fullyQualifiedName
             ]
+            passthrough = sources[0][1] if output.passthrough and len(sources) == 1 else None
+            # Output names are lower-cased; a column passed through keeps its table's casing
+            name = (
+                model_str(passthrough.name)
+                if passthrough and model_str(passthrough.name).lower() == output.name.lower()
+                else output.name
+            )
             lineage.columns.append(
                 HexCellColumn(
-                    name=truncate_column_name(INVALID_COLUMN_NAME_CHARS.sub("_", output.name)),
-                    data_type=sources[0][1].dataType if output.passthrough and len(sources) == 1 else DataType.UNKNOWN,
+                    name=self._unique_column_name(name, taken_names),
+                    data_type=passthrough.dataType if passthrough else DataType.UNKNOWN,
                     source_columns=[
                         (model_str(table.id), model_str(column.fullyQualifiedName)) for table, column in sources
                     ],
@@ -654,7 +665,7 @@ class HexSource(DashboardServiceSource):
         return [table for table in tables or [] if table is not None]
 
     @staticmethod
-    def _unique_cell_name(name: str, taken: set[str]) -> str:
+    def _unique_column_name(name: str, taken: set[str]) -> str:
         name = truncate_column_name(INVALID_COLUMN_NAME_CHARS.sub("_", name))
         unique, suffix = name, 1
         while unique in taken:
