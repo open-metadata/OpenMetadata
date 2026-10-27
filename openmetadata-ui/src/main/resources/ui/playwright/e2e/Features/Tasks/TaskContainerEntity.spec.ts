@@ -18,6 +18,10 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { migratedTo } from '../../../constant/migration';
 
+const RESOLUTION_IT = migratedTo.javaIT(
+  'TaskEntityTypeResolutionIT#approvedMetadataTaskAppliesToEntity'
+);
+
 /**
  * Task Tests for Container Entities
  *
@@ -200,156 +204,166 @@ test.describe('Task Creation and Resolution - Container Entity', () => {
     }
   );
 
-  test('should create OwnershipUpdate task for Container', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create OwnershipUpdate task for Container',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create a new user to be the new owner
-      const newOwner = new UserClass();
-      await newOwner.create(apiContext);
+      try {
+        // Create a new user to be the new owner
+        const newOwner = new UserClass();
+        await newOwner.create(apiContext);
 
-      // Create OwnershipUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
-          type: 'OwnershipUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            currentOwners: [{ id: ownerUser.responseData.id, type: 'user' }],
-            newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('OwnershipUpdate');
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
+        // Create OwnershipUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
-
-      // Verify ownership changed
-      const containerResponse = await apiContext.get(
-        `/api/v1/containers/${container.entityResponseData?.id}?fields=owners`
-      );
-      const updatedContainer = await containerResponse.json();
-
-      expect(updatedContainer.owners).toBeDefined();
-      expect(updatedContainer.owners[0].id).toBe(newOwner.responseData.id);
-
-      // Cleanup new owner
-      await newOwner.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('should create TierUpdate task for Container', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      // Create TierUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
-          type: 'TierUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            newTier: {
-              tagFQN: 'Tier.Tier4',
-              source: 'Classification',
-              labelType: 'Manual',
-              state: 'Confirmed',
+            about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
+            type: 'OwnershipUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              currentOwners: [{ id: ownerUser.responseData.id, type: 'user' }],
+              newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
             },
           },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('TierUpdate');
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('OwnershipUpdate');
 
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      // Verify tier was applied
-      const containerResponse = await apiContext.get(
-        `/api/v1/containers/${container.entityResponseData?.id}?fields=tags`
-      );
-      const updatedContainer = await containerResponse.json();
+        // Verify ownership changed
+        const containerResponse = await apiContext.get(
+          `/api/v1/containers/${container.entityResponseData?.id}?fields=owners`
+        );
+        const updatedContainer = await containerResponse.json();
 
-      const hasTier = updatedContainer.tags?.some(
-        (tag: { tagFQN: string }) => tag.tagFQN === 'Tier.Tier4'
-      );
-      expect(hasTier).toBe(true);
-    } finally {
-      await afterAction();
+        expect(updatedContainer.owners).toBeDefined();
+        expect(updatedContainer.owners[0].id).toBe(newOwner.responseData.id);
+
+        // Cleanup new owner
+        await newOwner.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 
-  test('should create DomainUpdate task for Container', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create TierUpdate task for Container',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create DomainUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DomainUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            newDomain: {
-              id: domain.responseData.id,
-              type: 'domain',
-              fullyQualifiedName: domain.responseData.fullyQualifiedName,
+      try {
+        // Create TierUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
+            type: 'TierUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              newTier: {
+                tagFQN: 'Tier.Tier4',
+                source: 'Classification',
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
             },
           },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('DomainUpdate');
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('TierUpdate');
 
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      // Verify domain was applied
-      const containerResponse = await apiContext.get(
-        `/api/v1/containers/${container.entityResponseData?.id}?fields=domains`
-      );
-      const updatedContainer = await containerResponse.json();
+        // Verify tier was applied
+        const containerResponse = await apiContext.get(
+          `/api/v1/containers/${container.entityResponseData?.id}?fields=tags`
+        );
+        const updatedContainer = await containerResponse.json();
 
-      expect(updatedContainer.domains?.length).toBeGreaterThan(0);
-      expect(updatedContainer.domains[0].id).toBe(domain.responseData.id);
-    } finally {
-      await afterAction();
+        const hasTier = updatedContainer.tags?.some(
+          (tag: { tagFQN: string }) => tag.tagFQN === 'Tier.Tier4'
+        );
+        expect(hasTier).toBe(true);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
+
+  test(
+    'should create DomainUpdate task for Container',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      try {
+        // Create DomainUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DomainUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              newDomain: {
+                id: domain.responseData.id,
+                type: 'domain',
+                fullyQualifiedName: domain.responseData.fullyQualifiedName,
+              },
+            },
+          },
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('DomainUpdate');
+
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
+
+        // Verify domain was applied
+        const containerResponse = await apiContext.get(
+          `/api/v1/containers/${container.entityResponseData?.id}?fields=domains`
+        );
+        const updatedContainer = await containerResponse.json();
+
+        expect(updatedContainer.domains?.length).toBeGreaterThan(0);
+        expect(updatedContainer.domains[0].id).toBe(domain.responseData.id);
+      } finally {
+        await afterAction();
+      }
+    }
+  );
 });

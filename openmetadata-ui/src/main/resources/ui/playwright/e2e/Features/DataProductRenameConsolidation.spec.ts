@@ -236,223 +236,241 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     }
   );
 
-  test('Rename then add tags - assets should be preserved', async ({
-    page,
-  }) => {
-    test.slow();
+  test(
+    'Rename then add tags - assets should be preserved',
+    migratedTo.javaIT(
+      'DataProductResourceIT#test_renameThenAddTagsPreservesAssets'
+    ),
+    async ({ page }) => {
+      test.slow();
 
-    const { apiContext, afterAction } = await getApiContext(page);
+      const { apiContext, afterAction } = await getApiContext(page);
 
-    const testDataProduct = new DataProduct(
-      [domain],
-      `PW_DP_RenameTag_${uuid()}`
-    );
-    const testTable = new TableClass();
-
-    await testDataProduct.create(apiContext);
-    await testTable.create(apiContext);
-
-    await testTable.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/domains',
-          value: [{ id: domain.responseData.id, type: 'domain' }],
-        },
-      ],
-    });
-
-    let currentName = testDataProduct.responseData.name;
-
-    try {
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, testDataProduct.responseData);
-
-      await addAssetsToDataProduct(
-        page,
-        testDataProduct.responseData.fullyQualifiedName ?? '',
-        [testTable]
+      const testDataProduct = new DataProduct(
+        [domain],
+        `PW_DP_RenameTag_${uuid()}`
       );
+      const testTable = new TableClass();
 
-      await checkAssetsCount(page, 1);
+      await testDataProduct.create(apiContext);
+      await testTable.create(apiContext);
 
-      // Step 1: Rename
-      const newName = `renamed-tag-${uuid()}`;
-      await performRename(page, newName);
-      currentName = newName;
+      await testTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
+          },
+        ],
+      });
 
-      await page.getByTestId('assets').click();
-      await checkAssetsCount(page, 1);
+      let currentName = testDataProduct.responseData.name;
 
-      // Step 2: Add a tag (this triggers consolidation logic)
-      await page.getByTestId('documentation').click();
-      await openClassificationTagPicker(
-        page,
-        page.getByTestId('tags-container').getByTestId('add-tag')
-      );
-
-      const tagSearchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(
-          escapeESReservedCharacters(tag.data.name)
-        )}*`
-      );
-      await page
-        .getByTestId('classification-tag-picker-search')
-        .fill(tag.data.name);
-      await tagSearchResponse;
-
-      await page
-        .getByTestId(`tree-node-${tag.responseData.fullyQualifiedName}`)
-        .click();
-
-      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
-
-      const patchResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/dataProducts/') &&
-          response.request().method() === 'PATCH'
-      );
-      await expect(page.getByTestId('update-btn')).toBeEnabled();
-      await page.getByTestId('update-btn').click();
-      await patchResponse;
-
-      // Step 3: Verify assets
-      await page.getByTestId('assets').click();
-      await checkAssetsCount(page, 1);
-
-      const tableFqn = get(testTable, 'entityResponseData.fullyQualifiedName');
-      await expect(
-        page.locator(`[data-testid="table-data-card_${tableFqn}"]`)
-      ).toBeVisible();
-    } finally {
       try {
-        await apiContext.delete(
-          `/api/v1/dataProducts/name/${encodeURIComponent(`"${currentName}"`)}`
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, testDataProduct.responseData);
+
+        await addAssetsToDataProduct(
+          page,
+          testDataProduct.responseData.fullyQualifiedName ?? '',
+          [testTable]
         );
-      } catch {
+
+        await checkAssetsCount(page, 1);
+
+        // Step 1: Rename
+        const newName = `renamed-tag-${uuid()}`;
+        await performRename(page, newName);
+        currentName = newName;
+
+        await page.getByTestId('assets').click();
+        await checkAssetsCount(page, 1);
+
+        // Step 2: Add a tag (this triggers consolidation logic)
+        await page.getByTestId('documentation').click();
+        await openClassificationTagPicker(
+          page,
+          page.getByTestId('tags-container').getByTestId('add-tag')
+        );
+
+        const tagSearchResponse = page.waitForResponse(
+          `/api/v1/search/query?q=*${encodeURIComponent(
+            escapeESReservedCharacters(tag.data.name)
+          )}*`
+        );
+        await page
+          .getByTestId('classification-tag-picker-search')
+          .fill(tag.data.name);
+        await tagSearchResponse;
+
+        await page
+          .getByTestId(`tree-node-${tag.responseData.fullyQualifiedName}`)
+          .click();
+
+        await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+
+        const patchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataProducts/') &&
+            response.request().method() === 'PATCH'
+        );
+        await expect(page.getByTestId('update-btn')).toBeEnabled();
+        await page.getByTestId('update-btn').click();
+        await patchResponse;
+
+        // Step 3: Verify assets
+        await page.getByTestId('assets').click();
+        await checkAssetsCount(page, 1);
+
+        const tableFqn = get(
+          testTable,
+          'entityResponseData.fullyQualifiedName'
+        );
+        await expect(
+          page.locator(`[data-testid="table-data-card_${tableFqn}"]`)
+        ).toBeVisible();
+      } finally {
         try {
-          await testDataProduct.delete(apiContext);
+          await apiContext.delete(
+            `/api/v1/dataProducts/name/${encodeURIComponent(
+              `"${currentName}"`
+            )}`
+          );
         } catch {
-          // Ignore
+          try {
+            await testDataProduct.delete(apiContext);
+          } catch {
+            // Ignore
+          }
         }
+        await testTable.delete(apiContext);
+        await afterAction();
       }
-      await testTable.delete(apiContext);
-      await afterAction();
     }
-  });
+  );
 
-  test('Rename then change owner - assets should be preserved', async ({
-    page,
-  }) => {
-    test.slow();
+  test(
+    'Rename then change owner - assets should be preserved',
+    migratedTo.javaIT(
+      'DataProductResourceIT#test_renameThenChangeOwnerPreservesAssets'
+    ),
+    async ({ page }) => {
+      test.slow();
 
-    const { apiContext, afterAction } = await getApiContext(page);
+      const { apiContext, afterAction } = await getApiContext(page);
 
-    const testDataProduct = new DataProduct(
-      [domain],
-      `PW_DP_RenameOwner_${uuid()}`
-    );
-    const testTable = new TableClass();
-    const newOwner = new UserClass();
-
-    await testDataProduct.create(apiContext);
-    await testTable.create(apiContext);
-    await newOwner.create(apiContext);
-
-    await testTable.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/domains',
-          value: [{ id: domain.responseData.id, type: 'domain' }],
-        },
-      ],
-    });
-
-    let currentName = testDataProduct.responseData.name;
-
-    try {
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, testDataProduct.responseData);
-
-      await addAssetsToDataProduct(
-        page,
-        testDataProduct.responseData.fullyQualifiedName ?? '',
-        [testTable]
+      const testDataProduct = new DataProduct(
+        [domain],
+        `PW_DP_RenameOwner_${uuid()}`
       );
+      const testTable = new TableClass();
+      const newOwner = new UserClass();
 
-      await checkAssetsCount(page, 1);
+      await testDataProduct.create(apiContext);
+      await testTable.create(apiContext);
+      await newOwner.create(apiContext);
 
-      // Step 1: Rename
-      const newName = `renamed-owner-${uuid()}`;
-      await performRename(page, newName);
-      currentName = newName;
+      await testTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
+          },
+        ],
+      });
 
-      await page.getByTestId('assets').click();
-      await checkAssetsCount(page, 1);
+      let currentName = testDataProduct.responseData.name;
 
-      // Step 2: Change owner (this triggers consolidation logic)
-      await page.getByTestId('documentation').click();
-      // Use add-owner since there's no owner initially
-      await page.getByTestId('add-owner').click();
-      await waitForAllLoadersToDisappear(page);
-
-      await page.getByRole('tab', { name: 'Users' }).click();
-      await waitForAllLoadersToDisappear(page);
-
-      // Wait for search response after typing user name
-      const ownerDisplayName = newOwner.getUserDisplayName();
-      const searchResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=user')
-      );
-      await page
-        .getByTestId('owner-select-users-search-bar')
-        .fill(ownerDisplayName);
-      await searchResponse;
-
-      // Click on the user in the list
-      await page
-        .locator('[data-testid="owner-option"]')
-        .filter({ hasText: ownerDisplayName })
-        .click();
-
-      const patchResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/dataProducts/') &&
-          response.request().method() === 'PATCH'
-      );
-      await page.getByTestId('selectable-list-update-btn').click();
-      await patchResponse;
-
-      // Step 3: Verify assets
-      await page.getByTestId('assets').click();
-      await checkAssetsCount(page, 1);
-
-      const tableFqn = get(testTable, 'entityResponseData.fullyQualifiedName');
-      await expect(
-        page.locator(`[data-testid="table-data-card_${tableFqn}"]`)
-      ).toBeVisible();
-    } finally {
       try {
-        await apiContext.delete(
-          `/api/v1/dataProducts/name/${encodeURIComponent(`"${currentName}"`)}`
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, testDataProduct.responseData);
+
+        await addAssetsToDataProduct(
+          page,
+          testDataProduct.responseData.fullyQualifiedName ?? '',
+          [testTable]
         );
-      } catch {
+
+        await checkAssetsCount(page, 1);
+
+        // Step 1: Rename
+        const newName = `renamed-owner-${uuid()}`;
+        await performRename(page, newName);
+        currentName = newName;
+
+        await page.getByTestId('assets').click();
+        await checkAssetsCount(page, 1);
+
+        // Step 2: Change owner (this triggers consolidation logic)
+        await page.getByTestId('documentation').click();
+        // Use add-owner since there's no owner initially
+        await page.getByTestId('add-owner').click();
+        await waitForAllLoadersToDisappear(page);
+
+        await page.getByRole('tab', { name: 'Users' }).click();
+        await waitForAllLoadersToDisappear(page);
+
+        // Wait for search response after typing user name
+        const ownerDisplayName = newOwner.getUserDisplayName();
+        const searchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes('index=user')
+        );
+        await page
+          .getByTestId('owner-select-users-search-bar')
+          .fill(ownerDisplayName);
+        await searchResponse;
+
+        // Click on the user in the list
+        await page
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: ownerDisplayName })
+          .click();
+
+        const patchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataProducts/') &&
+            response.request().method() === 'PATCH'
+        );
+        await page.getByTestId('selectable-list-update-btn').click();
+        await patchResponse;
+
+        // Step 3: Verify assets
+        await page.getByTestId('assets').click();
+        await checkAssetsCount(page, 1);
+
+        const tableFqn = get(
+          testTable,
+          'entityResponseData.fullyQualifiedName'
+        );
+        await expect(
+          page.locator(`[data-testid="table-data-card_${tableFqn}"]`)
+        ).toBeVisible();
+      } finally {
         try {
-          await testDataProduct.delete(apiContext);
+          await apiContext.delete(
+            `/api/v1/dataProducts/name/${encodeURIComponent(
+              `"${currentName}"`
+            )}`
+          );
         } catch {
-          // Ignore
+          try {
+            await testDataProduct.delete(apiContext);
+          } catch {
+            // Ignore
+          }
         }
+        await testTable.delete(apiContext);
+        await newOwner.delete(apiContext);
+        await afterAction();
       }
-      await testTable.delete(apiContext);
-      await newOwner.delete(apiContext);
-      await afterAction();
     }
-  });
+  );
 
   test(
     'Multiple rename + update cycles - assets should be preserved',

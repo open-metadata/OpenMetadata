@@ -97,19 +97,26 @@ const TABLE_COLUMN_TAG_FILTER_IT =
   'TableResourceIT#searchColumns_tagFilterReturnsMatchesAcrossPages';
 
 /**
- * Where each delete's server half is asserted (soft delete, then restore; the
- * hard delete is BaseEntityIT#delete_entityAsAdmin_hardDelete_200). Table
- * stays the real-server delete flow; the other types have no restore IT yet
- * (BaseEntityIT#delete_restore_entity_200 never restores).
+ * Where each delete's server half is asserted: the UI deletes through the async
+ * endpoint, so BaseEntityIT#delete_async_soft_delete (async soft delete, then
+ * restore; the hard delete is delete_async_with_recursive_hardDelete), as
+ * inherited by each type's IT. Table stays the real-server delete flow;
+ * Directory, File and Spreadsheet have no async delete IT.
  */
 const DELETE_ITS: Record<string, string> = {
-  Dashboard: 'DashboardResourceIT#test_dashboardSoftDeleteAndRestore',
-  Pipeline: 'PipelineResourceIT#test_pipelineSoftDeleteRestore',
-  Topic: 'TopicResourceIT#test_topicSoftDeleteAndRestore',
-  'Ml Model': 'MlModelResourceIT#test_mlModelSoftDeleteAndRestore',
-  'Search Index': 'SearchIndexResourceIT#test_deleteAndRestoreSearchIndex',
-  Chart: 'ChartResourceIT#test_chartSoftDeleteAndRestore',
-  Worksheet: 'WorksheetResourceIT#test_worksheetSoftDeleteRestore',
+  'Api Endpoint': 'APIEndpointResourceIT#delete_async_soft_delete',
+  'Stored Procedure': 'StoredProcedureResourceIT#delete_async_soft_delete',
+  Dashboard: 'DashboardResourceIT#delete_async_soft_delete',
+  Pipeline: 'PipelineResourceIT#delete_async_soft_delete',
+  Topic: 'TopicResourceIT#delete_async_soft_delete',
+  'Ml Model': 'MlModelResourceIT#delete_async_soft_delete',
+  Container: 'ContainerResourceIT#delete_async_soft_delete',
+  'Search Index': 'SearchIndexResourceIT#delete_async_soft_delete',
+  'Dashboard Data Model':
+    'DashboardDataModelResourceIT#delete_async_soft_delete',
+  Metric: 'MetricResourceIT#delete_async_soft_delete',
+  Chart: 'ChartResourceIT#delete_async_soft_delete',
+  Worksheet: 'WorksheetResourceIT#delete_async_soft_delete',
 };
 
 const entities = {

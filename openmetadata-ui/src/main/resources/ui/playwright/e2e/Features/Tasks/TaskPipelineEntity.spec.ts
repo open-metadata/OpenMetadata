@@ -18,6 +18,10 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { migratedTo } from '../../../constant/migration';
 
+const RESOLUTION_IT = migratedTo.javaIT(
+  'TaskEntityTypeResolutionIT#approvedMetadataTaskAppliesToEntity'
+);
+
 /**
  * Task Tests for Pipeline Entities
  *
@@ -200,156 +204,166 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
     }
   );
 
-  test('should create OwnershipUpdate task for Pipeline', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create OwnershipUpdate task for Pipeline',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create a new user to be the new owner
-      const newOwner = new UserClass();
-      await newOwner.create(apiContext);
+      try {
+        // Create a new user to be the new owner
+        const newOwner = new UserClass();
+        await newOwner.create(apiContext);
 
-      // Create OwnershipUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
-          type: 'OwnershipUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            currentOwners: [{ id: ownerUser.responseData.id, type: 'user' }],
-            newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('OwnershipUpdate');
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
+        // Create OwnershipUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
-
-      // Verify ownership changed
-      const pipelineResponse = await apiContext.get(
-        `/api/v1/pipelines/${pipeline.entityResponseData?.id}?fields=owners`
-      );
-      const updatedPipeline = await pipelineResponse.json();
-
-      expect(updatedPipeline.owners).toBeDefined();
-      expect(updatedPipeline.owners[0].id).toBe(newOwner.responseData.id);
-
-      // Cleanup new owner
-      await newOwner.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('should create TierUpdate task for Pipeline', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      // Create TierUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
-          type: 'TierUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            newTier: {
-              tagFQN: 'Tier.Tier3',
-              source: 'Classification',
-              labelType: 'Manual',
-              state: 'Confirmed',
+            about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
+            type: 'OwnershipUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              currentOwners: [{ id: ownerUser.responseData.id, type: 'user' }],
+              newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
             },
           },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('TierUpdate');
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('OwnershipUpdate');
 
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      // Verify tier was applied
-      const pipelineResponse = await apiContext.get(
-        `/api/v1/pipelines/${pipeline.entityResponseData?.id}?fields=tags`
-      );
-      const updatedPipeline = await pipelineResponse.json();
+        // Verify ownership changed
+        const pipelineResponse = await apiContext.get(
+          `/api/v1/pipelines/${pipeline.entityResponseData?.id}?fields=owners`
+        );
+        const updatedPipeline = await pipelineResponse.json();
 
-      const hasTier = updatedPipeline.tags?.some(
-        (tag: { tagFQN: string }) => tag.tagFQN === 'Tier.Tier3'
-      );
-      expect(hasTier).toBe(true);
-    } finally {
-      await afterAction();
+        expect(updatedPipeline.owners).toBeDefined();
+        expect(updatedPipeline.owners[0].id).toBe(newOwner.responseData.id);
+
+        // Cleanup new owner
+        await newOwner.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 
-  test('should create DomainUpdate task for Pipeline', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create TierUpdate task for Pipeline',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create DomainUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DomainUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            newDomain: {
-              id: domain.responseData.id,
-              type: 'domain',
-              fullyQualifiedName: domain.responseData.fullyQualifiedName,
+      try {
+        // Create TierUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
+            type: 'TierUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              newTier: {
+                tagFQN: 'Tier.Tier3',
+                source: 'Classification',
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
             },
           },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('DomainUpdate');
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('TierUpdate');
 
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      // Verify domain was applied
-      const pipelineResponse = await apiContext.get(
-        `/api/v1/pipelines/${pipeline.entityResponseData?.id}?fields=domains`
-      );
-      const updatedPipeline = await pipelineResponse.json();
+        // Verify tier was applied
+        const pipelineResponse = await apiContext.get(
+          `/api/v1/pipelines/${pipeline.entityResponseData?.id}?fields=tags`
+        );
+        const updatedPipeline = await pipelineResponse.json();
 
-      expect(updatedPipeline.domains?.length).toBeGreaterThan(0);
-      expect(updatedPipeline.domains[0].id).toBe(domain.responseData.id);
-    } finally {
-      await afterAction();
+        const hasTier = updatedPipeline.tags?.some(
+          (tag: { tagFQN: string }) => tag.tagFQN === 'Tier.Tier3'
+        );
+        expect(hasTier).toBe(true);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
+
+  test(
+    'should create DomainUpdate task for Pipeline',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      try {
+        // Create DomainUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DomainUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              newDomain: {
+                id: domain.responseData.id,
+                type: 'domain',
+                fullyQualifiedName: domain.responseData.fullyQualifiedName,
+              },
+            },
+          },
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('DomainUpdate');
+
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
+
+        // Verify domain was applied
+        const pipelineResponse = await apiContext.get(
+          `/api/v1/pipelines/${pipeline.entityResponseData?.id}?fields=domains`
+        );
+        const updatedPipeline = await pipelineResponse.json();
+
+        expect(updatedPipeline.domains?.length).toBeGreaterThan(0);
+        expect(updatedPipeline.domains[0].id).toBe(domain.responseData.id);
+      } finally {
+        await afterAction();
+      }
+    }
+  );
 });

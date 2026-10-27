@@ -355,11 +355,13 @@ const TASK_ENTITY_CONFIGS: TaskEntityConfig[] = [
   },
 ];
 
-const migrationDetails = (config: TaskEntityConfig, taskType: TaskType) => {
-  const testRef = config.javaIT?.[taskType];
+// Every config's task types are approved per entity type there; `javaIT`
+// overrides it with a more specific test.
+const RESOLUTION_IT =
+  'TaskEntityTypeResolutionIT#approvedMetadataTaskAppliesToEntity';
 
-  return testRef ? migratedTo.javaIT(testRef) : {};
-};
+const migrationDetails = (config: TaskEntityConfig, taskType: TaskType) =>
+  migratedTo.javaIT(config.javaIT?.[taskType] ?? RESOLUTION_IT);
 
 function runTaskSuite(config: TaskEntityConfig) {
   test.describe(`Task Resolution - ${config.name} Entity (All Task Types)`, () => {

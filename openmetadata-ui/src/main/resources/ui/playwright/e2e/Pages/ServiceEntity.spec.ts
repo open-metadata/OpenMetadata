@@ -71,8 +71,10 @@ const MIGRATED = migratedTo.browser(BROWSER_TESTS);
 /**
  * Where each delete's server half is asserted: soft delete, then restore (the
  * hard delete is BaseEntityIT#delete_entityAsAdmin_hardDelete_200, inherited
- * by each). Database Service stays unmarked as the real-server delete flow;
- * Database has no such IT yet (its only restore test needs RDF).
+ * by each). Database and Database Schema delete through the async endpoint as
+ * the UI does, via BaseEntityIT#delete_async_soft_delete (hard delete:
+ * delete_async_with_recursive_hardDelete). Database Service stays unmarked as
+ * the real-server delete flow.
  */
 const DELETE_ITS: Record<string, string> = {
   'Api Service': 'APIServiceResourceIT#test_apiServiceSoftDeleteRestore',
@@ -89,7 +91,8 @@ const DELETE_ITS: Record<string, string> = {
   'Storage Service':
     'StorageServiceResourceIT#test_storageServiceSoftDeleteRestore',
   'Drive Service': 'DriveServiceResourceIT#test_driveServiceSoftDeleteRestore',
-  'Database Schema': 'DatabaseSchemaResourceIT#delete_schemaWithTables_200',
+  Database: 'DatabaseResourceIT#delete_async_soft_delete',
+  'Database Schema': 'DatabaseSchemaResourceIT#delete_async_soft_delete',
 };
 
 const adminUser = new UserClass();
@@ -292,7 +295,7 @@ Object.entries(
    * Tests service deletion
    * @description Soft deletes the service and then hard deletes it to remove it permanently
    */
-  // Unmarked for Database Service (the genuine flow) and Database (no IT).
+  // Unmarked for Database Service (the genuine flow).
   const deleteMarker = DELETE_ITS[key]
     ? migratedTo.split(BROWSER_TESTS, DELETE_ITS[key])
     : {};

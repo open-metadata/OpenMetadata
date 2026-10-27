@@ -280,53 +280,56 @@ test.describe(
     // GLOSSARY TERM TESTS
     // ===================================================================
 
-    test('GlossaryTerm - rename then update description should work', async ({
-      page,
-      browser,
-    }) => {
-      test.slow();
+    test(
+      'GlossaryTerm - rename then update description should work',
+      migratedTo.javaIT(
+        'GlossaryTermResourceIT#test_renameAndUpdateDescriptionConsolidation'
+      ),
+      async ({ page, browser }) => {
+        test.slow();
 
-      const { apiContext, afterAction } = await createNewPage(browser);
+        const { apiContext, afterAction } = await createNewPage(browser);
 
-      const glossary = new Glossary();
-      await glossary.create(apiContext);
+        const glossary = new Glossary();
+        await glossary.create(apiContext);
 
-      const glossaryTerm = new GlossaryTerm(glossary);
-      await glossaryTerm.create(apiContext);
+        const glossaryTerm = new GlossaryTerm(glossary);
+        await glossaryTerm.create(apiContext);
 
-      try {
-        await redirectToHomePage(page);
-
-        await visitGlossaryPage(page, glossary.responseData.displayName);
-        await selectActiveGlossaryTerm(
-          page,
-          glossaryTerm.responseData.displayName
-        );
-
-        // Step 1: Rename the term
-        const newName = `renamed-term-${uuid()}`;
-        await performRename(page, newName, '/api/v1/glossaryTerms/');
-
-        // Step 2: Update description (triggers consolidation logic)
-        await updateDescription(
-          page,
-          `Updated term description ${uuid()}`,
-          '/api/v1/glossaryTerms/'
-        );
-
-        // Step 3: Verify the term is still accessible with updated data
-        await expect(page.getByTestId('entity-header-name')).toContainText(
-          newName
-        );
-      } finally {
         try {
-          await glossary.delete(apiContext);
-        } catch {
-          // Ignore
+          await redirectToHomePage(page);
+
+          await visitGlossaryPage(page, glossary.responseData.displayName);
+          await selectActiveGlossaryTerm(
+            page,
+            glossaryTerm.responseData.displayName
+          );
+
+          // Step 1: Rename the term
+          const newName = `renamed-term-${uuid()}`;
+          await performRename(page, newName, '/api/v1/glossaryTerms/');
+
+          // Step 2: Update description (triggers consolidation logic)
+          await updateDescription(
+            page,
+            `Updated term description ${uuid()}`,
+            '/api/v1/glossaryTerms/'
+          );
+
+          // Step 3: Verify the term is still accessible with updated data
+          await expect(page.getByTestId('entity-header-name')).toContainText(
+            newName
+          );
+        } finally {
+          try {
+            await glossary.delete(apiContext);
+          } catch {
+            // Ignore
+          }
+          await afterAction();
         }
-        await afterAction();
       }
-    });
+    );
 
     // ===================================================================
     // CLASSIFICATION TESTS
@@ -476,122 +479,128 @@ test.describe(
     // TAG TESTS
     // ===================================================================
 
-    test('Tag - rename then update description should work', async ({
-      page,
-      browser,
-    }) => {
-      test.slow();
+    test(
+      'Tag - rename then update description should work',
+      migratedTo.javaIT(
+        'TagResourceIT#test_renameAndUpdateDescriptionConsolidation'
+      ),
+      async ({ page, browser }) => {
+        test.slow();
 
-      const { apiContext, afterAction } = await createNewPage(browser);
+        const { apiContext, afterAction } = await createNewPage(browser);
 
-      const classification = new ClassificationClass();
-      await classification.create(apiContext);
+        const classification = new ClassificationClass();
+        await classification.create(apiContext);
 
-      const tag = new TagClass({ classification: classification.data.name });
-      await tag.create(apiContext);
+        const tag = new TagClass({ classification: classification.data.name });
+        await tag.create(apiContext);
 
-      try {
-        await redirectToHomePage(page);
-
-        // Navigate to tag
-        await sidebarClick(page, SidebarItem.TAGS);
-        await expect(
-          page
-            .getByTestId('side-panel-classification')
-            .filter({ visible: true })
-        ).not.toHaveCount(0);
-        await page
-          .locator('[data-testid="side-panel-classification"]')
-          .filter({ hasText: classification.data.displayName })
-          .click();
-
-        await page.getByTestId(tag.data.name).waitFor({ state: 'visible' });
-        await page.getByTestId(tag.data.name).click();
-
-        await expect(page.getByTestId('entity-header-name')).toBeVisible();
-
-        // Step 1: Rename the tag
-        const newName = `renamed-tag-${uuid()}`;
-        await performRename(page, newName, '/api/v1/tags/');
-
-        // Step 2: Update description (triggers consolidation logic)
-        await updateDescription(
-          page,
-          `Updated tag description ${uuid()}`,
-          '/api/v1/tags/'
-        );
-
-        // Step 3: Verify the tag is still accessible
-        await expect(page.getByTestId('entity-header-name')).toContainText(
-          newName
-        );
-      } finally {
         try {
-          await classification.delete(apiContext);
-        } catch {
-          // Ignore
-        }
-        await afterAction();
-      }
-    });
+          await redirectToHomePage(page);
 
-    test('Tag - multiple rename + update cycles should work', async ({
-      page,
-      browser,
-    }) => {
-      test.slow();
+          // Navigate to tag
+          await sidebarClick(page, SidebarItem.TAGS);
+          await expect(
+            page
+              .getByTestId('side-panel-classification')
+              .filter({ visible: true })
+          ).not.toHaveCount(0);
+          await page
+            .locator('[data-testid="side-panel-classification"]')
+            .filter({ hasText: classification.data.displayName })
+            .click();
 
-      const { apiContext, afterAction } = await createNewPage(browser);
+          await page.getByTestId(tag.data.name).waitFor({ state: 'visible' });
+          await page.getByTestId(tag.data.name).click();
 
-      const classification = new ClassificationClass();
-      await classification.create(apiContext);
+          await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
-      const tag = new TagClass({ classification: classification.data.name });
-      await tag.create(apiContext);
-
-      try {
-        await redirectToHomePage(page);
-
-        await sidebarClick(page, SidebarItem.TAGS);
-        await expect(
-          page
-            .getByTestId('side-panel-classification')
-            .filter({ visible: true })
-        ).not.toHaveCount(0);
-        await page
-          .locator('[data-testid="side-panel-classification"]')
-          .filter({ hasText: classification.data.displayName })
-          .click();
-
-        await page.getByTestId(tag.data.name).waitFor({ state: 'visible' });
-        await page.getByTestId(tag.data.name).click();
-
-        await expect(page.getByTestId('entity-header-name')).toBeVisible();
-
-        // Perform 3 cycles of rename + update
-        for (let i = 1; i <= 3; i++) {
-          const newName = `renamed-tag-cycle-${i}-${uuid()}`;
+          // Step 1: Rename the tag
+          const newName = `renamed-tag-${uuid()}`;
           await performRename(page, newName, '/api/v1/tags/');
 
+          // Step 2: Update description (triggers consolidation logic)
           await updateDescription(
             page,
-            `Description after cycle ${i}`,
+            `Updated tag description ${uuid()}`,
             '/api/v1/tags/'
           );
 
+          // Step 3: Verify the tag is still accessible
           await expect(page.getByTestId('entity-header-name')).toContainText(
             newName
           );
+        } finally {
+          try {
+            await classification.delete(apiContext);
+          } catch {
+            // Ignore
+          }
+          await afterAction();
         }
-      } finally {
-        try {
-          await classification.delete(apiContext);
-        } catch {
-          // Ignore
-        }
-        await afterAction();
       }
-    });
+    );
+
+    test(
+      'Tag - multiple rename + update cycles should work',
+      migratedTo.javaIT(
+        'TagResourceIT#test_multipleRenamesWithUpdatesConsolidation'
+      ),
+      async ({ page, browser }) => {
+        test.slow();
+
+        const { apiContext, afterAction } = await createNewPage(browser);
+
+        const classification = new ClassificationClass();
+        await classification.create(apiContext);
+
+        const tag = new TagClass({ classification: classification.data.name });
+        await tag.create(apiContext);
+
+        try {
+          await redirectToHomePage(page);
+
+          await sidebarClick(page, SidebarItem.TAGS);
+          await expect(
+            page
+              .getByTestId('side-panel-classification')
+              .filter({ visible: true })
+          ).not.toHaveCount(0);
+          await page
+            .locator('[data-testid="side-panel-classification"]')
+            .filter({ hasText: classification.data.displayName })
+            .click();
+
+          await page.getByTestId(tag.data.name).waitFor({ state: 'visible' });
+          await page.getByTestId(tag.data.name).click();
+
+          await expect(page.getByTestId('entity-header-name')).toBeVisible();
+
+          // Perform 3 cycles of rename + update
+          for (let i = 1; i <= 3; i++) {
+            const newName = `renamed-tag-cycle-${i}-${uuid()}`;
+            await performRename(page, newName, '/api/v1/tags/');
+
+            await updateDescription(
+              page,
+              `Description after cycle ${i}`,
+              '/api/v1/tags/'
+            );
+
+            await expect(page.getByTestId('entity-header-name')).toContainText(
+              newName
+            );
+          }
+        } finally {
+          try {
+            await classification.delete(apiContext);
+          } catch {
+            // Ignore
+          }
+          await afterAction();
+        }
+      }
+    );
 
     // // ===================================================================
     // // METRIC TESTS

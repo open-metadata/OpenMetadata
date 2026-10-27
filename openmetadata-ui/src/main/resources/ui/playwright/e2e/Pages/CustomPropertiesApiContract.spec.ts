@@ -13,6 +13,7 @@
 
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 import { createHash } from 'crypto';
+import { migratedTo } from '../../constant/migration';
 import { expect, test, TestNamespace } from '../../fixtures/testNamespace';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -931,33 +932,60 @@ const exercisePropertyVariants = async ({
   }
 };
 
+// The same 16-type matrix, per entity type: BaseEntityIT#put_addEntityCustomAttributes
+// as inherited by each entity's IT.
+const CONTRACT_ITS: Record<string, string> = {
+  apiCollection: 'APICollectionResourceIT',
+  apiEndpoint: 'APIEndpointResourceIT',
+  container: 'ContainerResourceIT',
+  dashboard: 'DashboardResourceIT',
+  dashboardDataModel: 'DashboardDataModelResourceIT',
+  database: 'DatabaseResourceIT',
+  databaseSchema: 'DatabaseSchemaResourceIT',
+  dataProduct: 'DataProductResourceIT',
+  domain: 'DomainResourceIT',
+  glossaryTerm: 'GlossaryTermResourceIT',
+  metric: 'MetricResourceIT',
+  mlmodel: 'MlModelResourceIT',
+  pipeline: 'PipelineResourceIT',
+  searchIndex: 'SearchIndexResourceIT',
+  storedProcedure: 'StoredProcedureResourceIT',
+  topic: 'TopicResourceIT',
+};
+
 test.describe('Custom property instance-value API compatibility contract', () => {
   for (const contract of ENTITY_CONTRACTS) {
-    test(`${contract.typeName} supports removed property value variants`, async ({
-      adminApiContext,
-      testNamespace,
-    }) => {
-      test.setTimeout(300_000);
+    test(
+      `${contract.typeName} supports removed property value variants`,
+      migratedTo.javaIT(
+        `${CONTRACT_ITS[contract.typeName]}#put_addEntityCustomAttributes`
+      ),
+      async ({ adminApiContext, testNamespace }) => {
+        test.setTimeout(300_000);
 
-      await exerciseEntityContract({
-        adminApiContext,
-        contract,
-        testNamespace,
-      });
-    });
+        await exerciseEntityContract({
+          adminApiContext,
+          contract,
+          testNamespace,
+        });
+      }
+    );
   }
 
-  test('tableColumn supports removed property value variants', async ({
-    adminApiContext,
-    testNamespace,
-  }) => {
-    test.setTimeout(300_000);
+  test(
+    'tableColumn supports removed property value variants',
+    migratedTo.javaIT(
+      'ColumnCustomPropertiesIT#test_tableColumn_allPropertyTypes_crudViaColumnsApi'
+    ),
+    async ({ adminApiContext, testNamespace }) => {
+      test.setTimeout(300_000);
 
-    await exerciseTableColumnContract({
-      adminApiContext,
-      testNamespace,
-    });
-  });
+      await exerciseTableColumnContract({
+        adminApiContext,
+        testNamespace,
+      });
+    }
+  );
 });
 
 test('custom property value contract covers the exact removed browser matrix', () => {
