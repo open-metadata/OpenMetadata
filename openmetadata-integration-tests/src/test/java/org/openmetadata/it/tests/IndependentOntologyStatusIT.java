@@ -1,20 +1,25 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.OssTestServer;
+import org.openmetadata.it.util.RdfAccessFixtures;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SqlQueryCounter;
 import org.openmetadata.it.util.TestNamespace;
@@ -24,17 +29,176 @@ import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyDefinitionStatus;
 import org.openmetadata.schema.type.OntologyPublicationStage;
 import org.openmetadata.schema.type.OntologyPublicationStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 
 @Isolated("Counts SQL statements while listing definitions over HTTP")
 @ExtendWith(TestNamespaceExtension.class)
 class IndependentOntologyStatusIT extends BaseOntologyApprovalIT {
+  @Test
+  void anotherEditorSeesAnOlderReviewAndTheNewestOpenRepresentative(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns);
+    SdkClients.adminClient()
+        .ontologies()
+        .update(
+            ontology.getId(),
+            current(ontology).withOwners(List.of(SharedEntities.get().USER2.getEntityReference())));
+    final OntologyRelease first = capture(ontology);
+    final Task firstTask = submit(ns, Entity.ONTOLOGY_RELEASE, first.getFullyQualifiedName());
+    final OntologyRelease second = capture(ontology);
+    final var editor = SdkClients.user2Client();
+    final JsonNode olderLock = publicationJson(editor, ontology).path("reviewLock");
+    assertEquals(first.getId().toString(), olderLock.path("inReview").path("releaseId").asText());
+    assertEquals(1L, olderLock.path("inReview").path("releaseRevision").asLong());
+    assertEquals(2, olderLock.path("inReview").size());
+    assertEquals(second.getId(), publication(ontology).getLatest().getReleaseId());
+    assertEquals(OntologyPublicationStage.DRAFT, publication(ontology).getLatest().getStage());
+    String after = null;
+    do {
+      final JsonNode page =
+          editor
+              .getHttpClient()
+              .execute(
+                  HttpMethod.GET,
+                  "/v1/ontologies/reviews?view=assigned&limit=100"
+                      + (after == null ? "" : "&after=" + after),
+                  null,
+                  JsonNode.class);
+      assertFalse(page.path("data").findValuesAsText("id").contains(first.getId().toString()));
+      final JsonNode next = page.path("paging").path("after");
+      after = next.isMissingNode() || next.isNull() ? null : next.asText();
+    } while (after != null);
+    for (final String patch :
+        List.of(
+            "[{\"op\":\"replace\",\"path\":\"/reviewers\",\"value\":[]}]",
+            "[{\"op\":\"replace\",\"path\":\"/approvalRule\",\"value\":\"AllReviewers\"}]")) {
+      assertEquals(
+          409,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () -> editor.ontologies().patch(ontology.getId(), JsonUtils.readTree(patch)))
+              .getStatusCode());
+    }
+
+    final Task secondTask = submit(ns, Entity.ONTOLOGY_RELEASE, second.getFullyQualifiedName());
+    final OntologyRelease third = capture(ontology);
+    assertEquals(
+        second.getId(), publication(ontology).getReviewLock().getInReview().getReleaseId());
+    assertEquals(third.getId(), publication(ontology).getLatest().getReleaseId());
+    resolve(secondTask, TaskResolutionType.Approved);
+    assertEquals(first.getId(), publication(ontology).getReviewLock().getInReview().getReleaseId());
+    resolve(firstTask, TaskResolutionType.Rejected);
+    assertEquals(JsonUtils.readTree("{}"), publicationJson(editor, ontology).path("reviewLock"));
+  }
+
+  @Test
+  void minimalLockFollowsOwnerViewWhileReleaseDetailsStayDenied(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns);
+    final OntologyRelease release = capture(ontology);
+    submit(ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName());
+    try (RdfAccessFixtures fixtures = new RdfAccessFixtures("lock" + ns.shortPrefix())) {
+      final var allowed = fixtures.allowRole(MetadataOperation.VIEW_BASIC, Entity.ONTOLOGY);
+      final var denied = fixtures.denyRole(MetadataOperation.VIEW_ALL, Entity.ONTOLOGY_RELEASE);
+      final OpenMetadataClient reader =
+          client(fixtures.userToken("reader", List.of(allowed.getId(), denied.getId())));
+      final JsonNode hint = publicationJson(reader, ontology).path("reviewLock").path("inReview");
+      assertEquals(release.getId().toString(), hint.path("releaseId").asText());
+      assertEquals(2, hint.size(), hint.toString());
+      assertEquals(
+          403,
+          assertThrows(
+                  OpenMetadataException.class, () -> reader.ontologyReleases().get(release.getId()))
+              .getStatusCode());
+      assertEquals(
+          403,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      reader
+                          .getHttpClient()
+                          .execute(
+                              HttpMethod.GET,
+                              "/v1/ontologyReleases/" + release.getId() + "/review",
+                              null,
+                              JsonNode.class))
+              .getStatusCode());
+      assertTrue(
+          reader
+              .ontologies()
+              .list(new ListParams().setLimit(100).setFields("publicationStatus"))
+              .getData()
+              .stream()
+              .anyMatch(
+                  item ->
+                      item.getId().equals(ontology.getId())
+                          && item.getPublicationStatus()
+                              .getReviewLock()
+                              .getInReview()
+                              .getReleaseId()
+                              .equals(release.getId())));
+    }
+  }
+
+  @Test
+  void deniedOwnerViewCannotReadLocksThroughGetOrList(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns);
+    final OntologyRelease release = capture(ontology);
+    submit(ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName());
+    try (RdfAccessFixtures fixtures = new RdfAccessFixtures("hiddenlock" + ns.shortPrefix())) {
+      final var denied = fixtures.denyRole(MetadataOperation.VIEW_BASIC, Entity.ONTOLOGY);
+      final OpenMetadataClient reader =
+          client(fixtures.userToken("reader", List.of(denied.getId())));
+      assertEquals(
+          403,
+          assertThrows(OpenMetadataException.class, () -> publicationJson(reader, ontology))
+              .getStatusCode());
+      assertEquals(
+          403,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () -> reader.ontologies().list(new ListParams().setFields("publicationStatus")))
+              .getStatusCode());
+    }
+  }
+
+  @Test
+  void lockProjectionIsRequestedAndCannotBePatched(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns);
+    assertNull(
+        SdkClients.adminClient()
+            .ontologies()
+            .get(ontology.getId().toString())
+            .getPublicationStatus());
+    assertEquals(
+        JsonUtils.readTree("{}"),
+        publicationJson(SdkClients.adminClient(), ontology).path("reviewLock"));
+    for (final String path : List.of("/publicationStatus", "/publicationStatus/reviewLock")) {
+      final JsonNode patch =
+          JsonUtils.readTree("[{\"op\":\"add\",\"path\":\"%s\",\"value\":{}}]".formatted(path));
+      assertEquals(
+          400,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () -> SdkClients.adminClient().ontologies().patch(ontology.getId(), patch))
+              .getStatusCode());
+    }
+    assertFalse(
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.GET, "/v1/ontologies/" + ontology.getId(), null, JsonNode.class)
+            .has("publicationStatus"));
+  }
+
   @Test
   void aConceptWalksThroughEditReviewRejectionApprovalAndActivation(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
@@ -184,27 +348,39 @@ class IndependentOntologyStatusIT extends BaseOntologyApprovalIT {
     assumeFalse(OssTestServer.isExternalMode(), "Counts the embedded server's SQL statements");
     final Ontology first = createOntology(ns, "one");
     declareClass(first, "A", iri(first, "A"));
+    final OntologyRelease review = capture(first);
+    submit(ns, Entity.ONTOLOGY_RELEASE, review.getFullyQualifiedName());
+    for (int index = 0; index < 24; index++) {
+      capture(first);
+    }
     final int narrow = releaseReads(() -> listPublicationStatuses(first));
     for (int index = 0; index < 5; index++) {
       final Ontology other = createOntology(ns, "other" + index);
       declareClass(other, "A", iri(other, "A"));
+      final OntologyRelease otherReview = capture(other);
+      submit(ns, Entity.ONTOLOGY_RELEASE, otherReview.getFullyQualifiedName());
     }
     final int wide = releaseReads(() -> listPublicationStatuses(first));
 
     assertTrue(narrow > 0, "The SQL probe must observe the status reads");
     assertEquals(narrow, wide, "More ontologies on a page must not add release reads");
+    assertEquals(review.getId(), publication(first).getReviewLock().getInReview().getReleaseId());
   }
 
   private static int releaseReads(Runnable request) {
-    try (var queries =
-        SqlQueryCounter.forRequests(
-            Entity.getJdbi(),
-            "select",
-            statement -> {
-              final String sql = statement.getRenderedSql().toLowerCase(Locale.ROOT);
-              return sql.contains("ontology_release_") || sql.contains("ontology_state");
-            })) {
+    try (var tasks = SqlQueryCounter.forRequests(Entity.getJdbi(), "task_entity");
+        var history = SqlQueryCounter.forRequests(Entity.getJdbi(), "from ontology_release_event");
+        var queries =
+            SqlQueryCounter.forRequests(
+                Entity.getJdbi(),
+                "select",
+                statement -> {
+                  final String sql = statement.getRenderedSql().toLowerCase(Locale.ROOT);
+                  return sql.contains("ontology_release_") || sql.contains("ontology_state");
+                })) {
       request.run();
+      assertEquals(0, tasks.count(), "Projection reads must not load tasks");
+      assertEquals(0, history.count(), "Projection reads must not load event history");
       return queries.count();
     }
   }
@@ -228,6 +404,8 @@ class IndependentOntologyStatusIT extends BaseOntologyApprovalIT {
             .ontologies()
             .list(new ListParams().setLimit(100).setFields("publicationStatus"));
     assertTrue(page.getData().stream().allMatch(o -> o.getPublicationStatus() != null));
+    assertTrue(
+        page.getData().stream().allMatch(o -> o.getPublicationStatus().getReviewLock() != null));
     assertTrue(page.getData().stream().anyMatch(o -> o.getId().equals(ontology.getId())));
   }
 
@@ -261,6 +439,22 @@ class IndependentOntologyStatusIT extends BaseOntologyApprovalIT {
         .ontologies()
         .get(ontology.getId().toString(), "publicationStatus")
         .getPublicationStatus();
+  }
+
+  private static JsonNode publicationJson(OpenMetadataClient client, Ontology ontology) {
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/ontologies/" + ontology.getId() + "?fields=publicationStatus",
+            null,
+            JsonNode.class)
+        .path("publicationStatus");
+  }
+
+  private static OpenMetadataClient client(String token) {
+    return new OpenMetadataClient(
+        OpenMetadataConfig.builder().serverUrl(SdkClients.baseUrl()).accessToken(token).build());
   }
 
   private static void edit(OntologyConcept concept, String description) {

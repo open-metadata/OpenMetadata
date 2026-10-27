@@ -20,6 +20,7 @@ import java.util.UUID;
 import org.openmetadata.schema.api.data.OntologyReleaseDiff;
 import org.openmetadata.schema.api.data.OntologyReleaseReview;
 import org.openmetadata.schema.api.data.OntologyReleaseStructureReport;
+import org.openmetadata.schema.api.data.OntologyReleaseValidation;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyReleaseEvent;
@@ -28,11 +29,14 @@ import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.ontology.OntologyConceptBindingService;
 import org.openmetadata.service.ontology.OntologyReleaseComparison;
 import org.openmetadata.service.ontology.OntologyReleaseReader;
 import org.openmetadata.service.ontology.OntologyReleaseStructure;
+import org.openmetadata.service.ontology.OntologyReleaseValidationService;
 import org.openmetadata.service.rdf.OntologyReleaseExporter;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.resources.Collection;
@@ -50,12 +54,20 @@ public final class OntologyReleaseResource
   private final OntologyReleaseExporter exporter;
   private final OntologyReleaseStructure structure;
   private final OntologyReleaseComparison comparison;
+  private final OntologyReleaseValidationService validation;
 
   public OntologyReleaseResource(final Authorizer authorizer, final Limits limits) {
     super(Entity.ONTOLOGY_RELEASE, authorizer, limits);
     exporter = new OntologyReleaseExporter(repository);
     structure = new OntologyReleaseStructure(repository);
     comparison = new OntologyReleaseComparison(repository);
+    validation =
+        new OntologyReleaseValidationService(
+            repository,
+            new OntologyConceptBindingService(
+                new OntologyConceptBindingStore(Entity.getCollectionDAO()),
+                authorizer,
+                Entity::getEntityRepository));
   }
 
   public static class OntologyReleaseList extends ResultList<OntologyRelease> {}
@@ -138,6 +150,29 @@ public final class OntologyReleaseResource
     return structure.report(
         release,
         definition -> OntologyResourceAccess.requireView(authorizer, securityContext, definition));
+  }
+
+  @GET
+  @Path("/{id}/validation")
+  @Operation(
+      operationId = "getOntologyReleaseValidation",
+      summary = "Validate a sealed ontology release",
+      description =
+          "Returns structure and native SHACL findings with current authorized deprecation impact. Logical consistency is not checked and release state does not change.")
+  public OntologyReleaseValidation validation(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id) {
+    final OntologyRelease release = get(uriInfo, securityContext, id);
+    final OntologyRelease base =
+        release.getBaseReleaseId() == null
+            ? null
+            : get(uriInfo, securityContext, release.getBaseReleaseId());
+    return validation.report(
+        release,
+        base,
+        definitions -> OntologyResourceAccess.requireView(authorizer, securityContext, definitions),
+        new OntologyConceptBindingService.Access(uriInfo, securityContext));
   }
 
   @GET

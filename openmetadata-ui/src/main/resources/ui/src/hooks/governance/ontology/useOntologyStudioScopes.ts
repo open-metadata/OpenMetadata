@@ -21,6 +21,7 @@ import {
 } from '../../../rest/ontologyAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { listAllPages } from '../../../utils/governance/ontology/OntologyPaging.utils';
+import { useApplicationStore } from '../../useApplicationStore';
 
 export const ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY =
   'ontology-studio-ontologies';
@@ -46,13 +47,18 @@ export const useOntologyStudioScopes = ({
   loadGlossaries = enabled,
 }: UseOntologyStudioScopesOptions) => {
   const shouldLoadGlossaries = loadGlossaries && knownGlossaries.length === 0;
+  const userId = useApplicationStore((store) => store.currentUser?.id);
   const ontologies = useQuery({
-    queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
+    queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY, userId],
     enabled,
     gcTime: 30_000,
     queryFn: ({ signal }) =>
       listAllPages(
-        (after) => listOntologies({ after, limit: SCOPE_PAGE_SIZE }, signal),
+        (after) =>
+          listOntologies(
+            { after, limit: SCOPE_PAGE_SIZE, fields: 'publicationStatus' },
+            signal
+          ),
         MAX_SCOPE_PAGES
       ),
     retry: false,

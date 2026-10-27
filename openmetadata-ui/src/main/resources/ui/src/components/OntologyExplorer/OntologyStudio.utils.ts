@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
+import { isEqual } from 'lodash';
+import serviceQuerySettings from '../../../../../../../../openmetadata-service/src/main/resources/json/data/settings/sparqlQuerySettings.json';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import type { SavedSparqlQuery } from '../../rest/rdfAPI';
 import { getNameFromFQN } from '../../utils/FqnUtils';
 import {
   GraphFilters,
@@ -80,6 +83,11 @@ SELECT ?conceptFqn WHERE {
            om:fullyQualifiedName ?conceptFqn .
 }
 LIMIT 100`;
+
+export const isCanonicalGlossaryQueryTemplate = (
+  template: SavedSparqlQuery
+): boolean =>
+  serviceQuerySettings.queryTemplates.some((seed) => isEqual(template, seed));
 
 // A native ontology's endpoint reads only its active release, which holds OWL classes, not glossary terms.
 export const NEW_NATIVE_ONTOLOGY_QUERY = `PREFIX owl: <http://www.w3.org/2002/07/owl#>
@@ -528,4 +536,473 @@ export function buildOntologyTreeMetrics(
     .filter((node) => node.type === METRIC_NODE_TYPE && measuresOf.has(node.id))
     .map((node) => ({ measures: measuresOf.get(node.id) ?? [], node }))
     .sort((left, right) => left.node.label.localeCompare(right.node.label));
+}
+
+export interface NativeTreeIndex {
+  nodes: ReadonlyMap<string, OntologyNode>;
+  parents: ReadonlyMap<string, readonly string[]>;
+  children: ReadonlyMap<string, readonly string[]>;
+  roots: readonly string[];
+  relationCounts: ReadonlyMap<string, number>;
+  health: OntologyHealthSummary;
+}
+
+export interface NativeTreePlacement extends OntologyTreeRow {
+  key: string;
+  path: readonly string[];
+  otherParents: readonly OntologyNode[];
+  hasChildren: boolean;
+}
+
+export interface NativeTreeCursor {
+  frames: readonly { conceptId: string; childIndex: number }[];
+}
+
+export interface NativeTreeDisclosure {
+  expanded: boolean;
+  overrides: ReadonlyMap<string, boolean>;
+}
+
+export interface NativeTreePage {
+  placements: readonly NativeTreePlacement[];
+  context: readonly NativeTreePlacement[];
+  previous?: NativeTreeCursor;
+  next?: NativeTreeCursor;
+}
+
+// ADR:2026-10-24-ontology-studio-bounds-tree-windows-and-count-workers
+export const NATIVE_TREE_WINDOW_SIZE = 2048;
+
+function visitNativeTree(
+  id: string,
+  children: ReadonlyMap<string, readonly string[]>,
+  visited: Set<string>,
+  finished: string[]
+) {
+  const stack = [{ id, next: 0 }];
+  visited.add(id);
+  while (stack.length) {
+    const frame = stack[stack.length - 1];
+    const child = children.get(frame.id)?.[frame.next++];
+    if (child === undefined) {
+      finished.push(frame.id);
+      stack.pop();
+    } else if (!visited.has(child)) {
+      visited.add(child);
+      stack.push({ id: child, next: 0 });
+    }
+  }
+}
+
+function nativeTreeComponent(
+  id: string,
+  number: number,
+  parents: ReadonlyMap<string, readonly string[]>,
+  component: Map<string, number>,
+  compare: (a: string, b: string) => number
+): string {
+  const pending = [id];
+  let representative = id;
+  component.set(id, number);
+  for (let position = 0; position < pending.length; position++) {
+    const current = pending[position];
+    if (compare(current, representative) < 0) {
+      representative = current;
+    }
+    for (const parent of parents.get(current) ?? []) {
+      if (!component.has(parent)) {
+        component.set(parent, number);
+        pending.push(parent);
+      }
+    }
+  }
+
+  return representative;
+}
+
+function nativeTreeRoots(
+  nodes: ReadonlyMap<string, OntologyNode>,
+  parents: ReadonlyMap<string, readonly string[]>,
+  children: ReadonlyMap<string, readonly string[]>,
+  compare: (a: string, b: string) => number
+): string[] {
+  const visited = new Set<string>();
+  const finished: string[] = [];
+  for (const id of nodes.keys()) {
+    if (!visited.has(id)) {
+      visitNativeTree(id, children, visited, finished);
+    }
+  }
+  const component = new Map<string, number>();
+  const representatives: string[] = [];
+  for (const id of finished.reverse()) {
+    if (!component.has(id)) {
+      representatives.push(
+        nativeTreeComponent(
+          id,
+          representatives.length,
+          parents,
+          component,
+          compare
+        )
+      );
+    }
+  }
+  const incoming = new Set<number | undefined>();
+  parents.forEach((owners, child) =>
+    owners.forEach((parent) => {
+      if (component.get(child) !== component.get(parent)) {
+        incoming.add(component.get(child));
+      }
+    })
+  );
+  const roots = [...nodes.keys()].filter((id) => !parents.get(id)?.length);
+  const rootIds = new Set(roots);
+
+  return [
+    ...roots,
+    ...representatives
+      .filter((id, number) => !incoming.has(number) && !rootIds.has(id))
+      .sort(compare),
+  ];
+}
+
+export function buildNativeTreeIndex(
+  graphData: OntologyGraphData | null,
+  filters: GraphFilters,
+  relationTypes: RelationshipType[]
+): NativeTreeIndex {
+  const terms = scopedTerms(graphData, filters).sort(
+    (left, right) =>
+      (left.group ?? '').localeCompare(right.group ?? '') ||
+      left.label.localeCompare(right.label) ||
+      left.id.localeCompare(right.id)
+  );
+  const nodes = new Map(terms.map((node) => [node.id, node]));
+  const ids = new Set(nodes.keys());
+  const parentMap = graphData
+    ? buildParentMap(graphData, ids, relationTypes)
+    : new Map<string, Set<string>>();
+  const parents = new Map<string, string[]>();
+  const children = new Map<string, string[]>();
+  const rank = new Map(terms.map((node, position) => [node.id, position]));
+  const compare = (left: string, right: string) =>
+    (rank.get(left) ?? 0) - (rank.get(right) ?? 0);
+  for (const node of terms) {
+    parents.set(
+      node.id,
+      [...(parentMap.get(node.id) ?? [])]
+        .filter((id) => {
+          const parent = nodes.get(id);
+
+          return (
+            parent &&
+            (parent.glossaryId ?? parent.group) ===
+              (node.glossaryId ?? node.group)
+          );
+        })
+        .sort(compare)
+    );
+    children.set(node.id, []);
+  }
+  for (const [child, owners] of parents) {
+    for (const parent of owners) {
+      children.get(parent)?.push(child);
+    }
+  }
+  const roots = nativeTreeRoots(nodes, parents, children, compare);
+  const relationCounts = new Map<string, number>();
+  for (const edge of graphData ? termRelations(graphData, ids) : []) {
+    relationCounts.set(edge.from, (relationCounts.get(edge.from) ?? 0) + 1);
+    relationCounts.set(edge.to, (relationCounts.get(edge.to) ?? 0) + 1);
+  }
+
+  return {
+    nodes,
+    parents,
+    children,
+    roots,
+    relationCounts,
+    health: getOntologyHealthSummary(graphData, filters),
+  };
+}
+
+export function nativeTreePlacementKey(
+  index: NativeTreeIndex,
+  path: readonly string[]
+): string {
+  const node = index.nodes.get(path[0]);
+
+  return JSON.stringify([node?.glossaryId ?? node?.group ?? '', ...path]);
+}
+
+export function nativeTreeCursorForPath(
+  index: NativeTreeIndex,
+  path: readonly string[]
+): NativeTreeCursor {
+  return {
+    frames: path.map((conceptId, position) => ({
+      conceptId,
+      childIndex: (position
+        ? index.children.get(path[position - 1]) ?? []
+        : index.roots
+      ).indexOf(conceptId),
+    })),
+  };
+}
+
+export function findNativeTreePath(
+  index: NativeTreeIndex,
+  conceptId: string
+): string[] | undefined {
+  const preceding = new Map<string, string | undefined>();
+  const queue = [...index.roots];
+  for (const root of queue) {
+    preceding.set(root, undefined);
+  }
+  for (let position = 0; position < queue.length; position++) {
+    const id = queue[position];
+    if (id === conceptId) {
+      const path: string[] = [];
+      let current: string | undefined = id;
+      while (current !== undefined) {
+        path.push(current);
+        current = preceding.get(current);
+      }
+
+      return path.reverse();
+    }
+    for (const child of index.children.get(id) ?? []) {
+      if (!preceding.has(child)) {
+        preceding.set(child, id);
+        queue.push(child);
+      }
+    }
+  }
+
+  return undefined;
+}
+
+export function isNativeTreeExpanded(
+  disclosure: NativeTreeDisclosure,
+  key: string
+): boolean {
+  return disclosure.overrides.get(key) ?? disclosure.expanded;
+}
+
+function adjacentNativeFrame(
+  index: NativeTreeIndex,
+  path: readonly string[],
+  start: number,
+  step: number
+) {
+  const siblings = path.length
+    ? index.children.get(path[path.length - 1]) ?? []
+    : index.roots;
+  const ancestors = new Set(path);
+  for (
+    let childIndex = start;
+    childIndex >= 0 && childIndex < siblings.length;
+    childIndex += step
+  ) {
+    const conceptId = siblings[childIndex];
+    if (!ancestors.has(conceptId)) {
+      return { conceptId, childIndex };
+    }
+  }
+
+  return undefined;
+}
+
+function appendNativeChild(
+  index: NativeTreeIndex,
+  disclosure: NativeTreeDisclosure,
+  frames: { conceptId: string; childIndex: number }[],
+  step: number
+): boolean {
+  const path = frames.map(({ conceptId }) => conceptId);
+  if (!isNativeTreeExpanded(disclosure, nativeTreePlacementKey(index, path))) {
+    return false;
+  }
+  const childCount = index.children.get(path[path.length - 1])?.length ?? 0;
+  const child = adjacentNativeFrame(
+    index,
+    path,
+    step === 1 ? 0 : childCount - 1,
+    step
+  );
+  if (!child) {
+    return false;
+  }
+  frames.push(child);
+
+  return true;
+}
+
+function lastNativeDescendant(
+  index: NativeTreeIndex,
+  disclosure: NativeTreeDisclosure,
+  frames: { conceptId: string; childIndex: number }[]
+): NativeTreeCursor {
+  let descending = true;
+  while (descending) {
+    descending = appendNativeChild(index, disclosure, frames, -1);
+  }
+
+  return { frames };
+}
+
+function moveNativeTreeCursor(
+  index: NativeTreeIndex,
+  disclosure: NativeTreeDisclosure,
+  cursor: NativeTreeCursor,
+  direction: 'forward' | 'backward'
+): NativeTreeCursor | undefined {
+  const frames = cursor.frames.map((frame) => ({ ...frame }));
+  const step = direction === 'forward' ? 1 : -1;
+  if (step === 1 && appendNativeChild(index, disclosure, frames, step)) {
+    return { frames };
+  }
+  let frame = frames.pop();
+  while (frame) {
+    const sibling = adjacentNativeFrame(
+      index,
+      frames.map(({ conceptId }) => conceptId),
+      frame.childIndex + step,
+      step
+    );
+    if (sibling) {
+      frames.push(sibling);
+
+      return step === -1
+        ? lastNativeDescendant(index, disclosure, frames)
+        : { frames };
+    }
+    if (step === -1) {
+      return frames.length ? { frames } : undefined;
+    }
+    frame = frames.pop();
+  }
+
+  return undefined;
+}
+
+function nativeTreePlacement(
+  index: NativeTreeIndex,
+  path: readonly string[]
+): NativeTreePlacement {
+  const id = path[path.length - 1];
+  const node = index.nodes.get(id);
+  if (!node) {
+    throw new Error('Invalid native tree cursor');
+  }
+  const parents = index.parents.get(id) ?? [];
+  const ancestors = new Set(path);
+  const relationCount = index.relationCounts.get(id) ?? 0;
+
+  return {
+    key: nativeTreePlacementKey(index, path),
+    node,
+    path,
+    depth: path.length - 1,
+    parentCount: parents.length,
+    relationCount,
+    isIsolated: relationCount === 0,
+    hasChildren: (index.children.get(id) ?? []).some(
+      (child) => !ancestors.has(child)
+    ),
+    otherParents: parents
+      .filter((parent) => parent !== path[path.length - 2])
+      .flatMap((parent) => {
+        const other = index.nodes.get(parent);
+
+        return other ? [other] : [];
+      }),
+  };
+}
+
+export function getNativeTreePage(
+  index: NativeTreeIndex,
+  disclosure: NativeTreeDisclosure,
+  start?: NativeTreeCursor,
+  direction: 'forward' | 'backward' = 'forward'
+): NativeTreePage {
+  let cursor =
+    start ??
+    (index.roots[0]
+      ? nativeTreeCursorForPath(index, [index.roots[0]])
+      : undefined);
+  const placements: NativeTreePlacement[] = [];
+  let first: NativeTreeCursor | undefined;
+  let last: NativeTreeCursor | undefined;
+  while (cursor && placements.length < NATIVE_TREE_WINDOW_SIZE) {
+    first ??= cursor;
+    last = cursor;
+    placements.push(
+      nativeTreePlacement(
+        index,
+        cursor.frames.map(({ conceptId }) => conceptId)
+      )
+    );
+    cursor = moveNativeTreeCursor(index, disclosure, cursor, direction);
+  }
+  if (direction === 'backward') {
+    placements.reverse();
+    [first, last] = [last, first];
+  }
+  const context: NativeTreePlacement[] = [];
+  const firstPath = placements[0]?.path ?? [];
+  for (let depth = 1; depth < firstPath.length; depth++) {
+    context.push(nativeTreePlacement(index, firstPath.slice(0, depth)));
+  }
+
+  return {
+    placements,
+    context,
+    previous: first
+      ? moveNativeTreeCursor(index, disclosure, first, 'backward')
+      : undefined,
+    next: last
+      ? moveNativeTreeCursor(index, disclosure, last, 'forward')
+      : undefined,
+  };
+}
+
+export interface NativeTreeState {
+  index: NativeTreeIndex;
+  disclosure: NativeTreeDisclosure;
+  anchor?: NativeTreeCursor;
+  direction: 'forward' | 'backward';
+  selectedId?: string;
+  selectedKey?: string;
+  reveal?: string;
+}
+
+export function revealNativeTreeSelection(
+  index: NativeTreeIndex,
+  selectedId?: string,
+  previous?: NativeTreeState
+): NativeTreeState {
+  const disclosure =
+    previous?.index === index
+      ? previous.disclosure
+      : { expanded: true, overrides: new Map<string, boolean>() };
+  const path = selectedId ? findNativeTreePath(index, selectedId) : undefined;
+  const overrides = new Map(disclosure.overrides);
+  if (path) {
+    for (let length = 1; length < path.length; length++) {
+      overrides.set(nativeTreePlacementKey(index, path.slice(0, length)), true);
+    }
+  }
+  const key = path ? nativeTreePlacementKey(index, path) : undefined;
+
+  return {
+    index,
+    disclosure: { ...disclosure, overrides },
+    anchor: path ? nativeTreeCursorForPath(index, path) : undefined,
+    direction: 'forward',
+    selectedId,
+    selectedKey: key,
+    reveal: key,
+  };
 }

@@ -1,10 +1,10 @@
 # Ontology definition status is derived from releases
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-21 (initial); v2 2026-10-23 (clarify publication response and working-change counts); v3 2026-10-25 (separate deprecation counts at stack integration)
+- **Revisions:** v1 2026-10-21 (initial); v2 2026-10-23 (clarify publication response and working-change counts); v3 2026-10-25 (separate deprecation counts at stack integration); v4 2026-10-25 (distinguish available and unavailable review locks)
 - **Deciders:** Harsha
-- **Guard:** `OntologyDefinitionStatusResolverTest`, `OntologyDerivedStatusStorageTest`, `IndependentOntologyStatusIT`
-- **Related:** ADR:2026-10-14-ontology-reviews-bind-workflow-tasks-to-revisions, ADR:2026-10-14-ontology-releases-seal-canonical-sql-members, #35981
+- **Guard:** `OntologyDefinitionStatusResolverTest`, `OntologyPublicationStatusResolverTest`, `OntologyDerivedStatusStorageTest`, `IndependentOntologyStatusIT`
+- **Related:** ADR:2026-10-14-ontology-reviews-bind-workflow-tasks-to-revisions, ADR:2026-10-14-ontology-releases-seal-canonical-sql-members, #35981, #36184
 
 ## Context
 
@@ -74,3 +74,19 @@ not infer zero. Existing captures are immutable and receive no backfill.
 
 `OntologyReleaseComparisonTest.summaryPartitionsDeprecationsAndOtherChangesWithoutDoubleCounting`
 and `unchangedAndNewClosuresHaveAnExplicitZeroDeprecationCount` guard the partition and explicit zero.
+
+## Amendment v4, 2026-10-25
+
+A successful publication-status projection always includes `reviewLock`. An empty object means
+the server checked and found no open review. Missing or null means unavailable, including an older
+server response. The UI must not interpret unavailable as unlocked.
+
+When any release is in review, the envelope's `inReview` identifies the newest open review with
+only its release ID, release revision and optional semantic version. A newer Draft does not clear
+this lock. The existing bounded release-role query supplies this owner-scoped hint without reading
+tasks or exposing reviewer, task or release-content details. Reading release details retains its
+separate authorization check.
+
+The envelope is derived, never stored or accepted in writes. The server's existing 409 guard on
+reviewer and approval-rule changes remains authoritative. Both configured JSON serializers must
+preserve the empty object so clients can distinguish an unlocked result from an unavailable one.

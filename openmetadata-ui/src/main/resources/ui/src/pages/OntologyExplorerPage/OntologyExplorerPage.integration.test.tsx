@@ -62,7 +62,17 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: true, isFirstTimeUser: false }),
 }));
 jest.mock('../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { name: 'admin' } }),
+  useApplicationStore: (
+    selector?: (store: {
+      currentUser: { id: string; displayName: string; name: string };
+    }) => unknown
+  ) => {
+    const store = {
+      currentUser: { id: 'admin', displayName: 'Admin User', name: 'admin' },
+    };
+
+    return selector ? selector(store) : store;
+  },
 }));
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({ permissions: {} }),
