@@ -7844,6 +7844,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricHierarchyCard/MetricHierarchyCard.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/MetricGovernance.spec.ts",
         "playwright/e2e/Features/MetricHierarchy.spec.ts"
       ]
     },
@@ -11396,6 +11397,14 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/search/FieldValueBoostDialog.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/search/FieldValueBoostFields.tsx"
       ],
       "specs": [
         "playwright/e2e/Pages/SearchSettings.spec.ts"
