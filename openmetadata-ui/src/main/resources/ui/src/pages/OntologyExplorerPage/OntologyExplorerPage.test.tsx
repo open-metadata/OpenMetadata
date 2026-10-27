@@ -1813,7 +1813,10 @@ describe('OntologyExplorerPage', () => {
 
     fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
 
-    expect(screen.getByTestId('ontology-native-data-graph')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-native-data-graph')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('label.select-entity')).toBeVisible();
 
     fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
 
