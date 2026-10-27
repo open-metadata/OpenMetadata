@@ -134,7 +134,7 @@ class GlueFilters:
 
     @classmethod
     def of_pipeline(
-        cls, connection: GlueConnectionConfig, pipeline: DatabaseServiceMetadataPipeline, service_name: str
+        cls, connection: GlueConnectionConfig, pipeline: DatabaseServiceMetadataPipeline, service_name: str | None
     ) -> GlueFilters:
         """The patterns an ingestion run filters by, which can differ from the connection's defaults."""
         return cls(
