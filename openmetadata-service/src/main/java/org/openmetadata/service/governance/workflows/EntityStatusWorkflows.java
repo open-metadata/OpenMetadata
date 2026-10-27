@@ -180,8 +180,12 @@ public final class EntityStatusWorkflows implements StageOwnership {
   private static boolean setsStageField(WorkflowNodeDefinitionInterface node) {
     return SET_ENTITY_ATTRIBUTE_NODE.equals(node.getSubType())
         && node.getConfig() != null
-        && STAGE_FIELD_NAMES.contains(
-            String.valueOf(JsonUtils.getMap(node.getConfig()).get(FIELD_NAME_CONFIG)));
+        && isStageField(String.valueOf(JsonUtils.getMap(node.getConfig()).get(FIELD_NAME_CONFIG)));
+  }
+
+  /** Whether a Set Entity Attribute node writing {@code fieldName} sets the entity's stage. */
+  public static boolean isStageField(String fieldName) {
+    return STAGE_FIELD_NAMES.contains(fieldName);
   }
 
   // entityType is the deprecated single-type form of entityTypes; older workflows still use it.

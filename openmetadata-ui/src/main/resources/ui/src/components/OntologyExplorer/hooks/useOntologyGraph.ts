@@ -1129,6 +1129,16 @@ function applyAdditiveUpdate(
   });
 }
 
+// Nodes that size to their label can be wider than NODE_WIDTH (up to
+// MODEL_NODE_MAX_LABEL_WIDTH), so row and ring spacing uses the widest one.
+const getMaxNodeWidth = (nodes: NodeData[]): number =>
+  nodes.reduce((m, n) => {
+    const s = n.data?.size;
+    const w = Array.isArray(s) ? Number(s[0]) || NODE_WIDTH : NODE_WIDTH;
+
+    return Math.max(m, w);
+  }, NODE_WIDTH);
+
 export function useOntologyGraph({
   containerRef,
   graphData,
@@ -1408,12 +1418,7 @@ export function useOntologyGraph({
 
       // Use the widest node's actual rendered width so long-label nodes
       // (up to MODEL_NODE_MAX_WIDTH) don't overlap neighbours and hide edges.
-      const maxNodeW = nodes.reduce((m, n) => {
-        const s = n.data?.size;
-        const w = Array.isArray(s) ? Number(s[0]) || NODE_WIDTH : NODE_WIDTH;
-
-        return Math.max(m, w);
-      }, NODE_WIDTH);
+      const maxNodeW = getMaxNodeWidth(nodes);
 
       nodes.forEach((node, i) => {
         const nc = i % innerCols;
@@ -1457,6 +1462,7 @@ export function useOntologyGraph({
     if (orphanNodes.length > 0) {
       const bottomY = curY + rowMaxH;
       const orphanCols = Math.ceil(Math.sqrt(orphanNodes.length));
+      const orphanW = getMaxNodeWidth(orphanNodes);
       orphanNodes.forEach((node, i) => {
         const col = i % orphanCols;
         const row = Math.floor(i / orphanCols);
@@ -1466,8 +1472,8 @@ export function useOntologyGraph({
             ...(node.style ?? {}),
             x:
               COMBO_INTERIOR_PADDING_SIDES +
-              col * (NODE_WIDTH + NODE_H_SEP) +
-              NODE_WIDTH / 2,
+              col * (orphanW + NODE_H_SEP) +
+              orphanW / 2,
             y:
               bottomY +
               COMBO_V_GAP +
@@ -1594,12 +1600,7 @@ export function useOntologyGraph({
         return;
       }
 
-      const maxNodeW = nodes.reduce((m, n) => {
-        const s = n.data?.size;
-        const w = Array.isArray(s) ? Number(s[0]) || NODE_WIDTH : NODE_WIDTH;
-
-        return Math.max(m, w);
-      }, NODE_WIDTH);
+      const maxNodeW = getMaxNodeWidth(nodes);
 
       // Ring radius large enough so node borders don't overlap, capped so
       // large groups (50-200 nodes) don't create unbounded layouts.
@@ -1648,6 +1649,7 @@ export function useOntologyGraph({
     if (orphanNodes.length > 0) {
       const bottomY = curY + rowMaxH + COMBO_V_GAP;
       const orphanCols = Math.ceil(Math.sqrt(orphanNodes.length));
+      const orphanW = getMaxNodeWidth(orphanNodes);
       orphanNodes.forEach((node, i) => {
         updates.push({
           id: node.id,
@@ -1655,8 +1657,8 @@ export function useOntologyGraph({
             ...(node.style ?? {}),
             x:
               COMBO_INTERIOR_PADDING_SIDES +
-              (i % orphanCols) * (NODE_WIDTH + NODE_H_SEP) +
-              NODE_WIDTH / 2,
+              (i % orphanCols) * (orphanW + NODE_H_SEP) +
+              orphanW / 2,
             y:
               bottomY +
               Math.floor(i / orphanCols) * (NODE_HEIGHT + 40) +

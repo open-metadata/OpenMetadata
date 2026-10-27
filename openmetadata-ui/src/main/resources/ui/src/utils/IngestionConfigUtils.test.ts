@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
+import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { StepSummary } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getIngestionStatusCountData } from './IngestionConfigUtils';
+import { useAppModeStore } from '../hooks/useAppMode';
+import {
+  getIngestionStatusCountData,
+  getSettingsPathFromPipelineType,
+} from './IngestionConfigUtils';
 
 const valueByType = (summary: StepSummary | undefined, type: string) =>
   getIngestionStatusCountData(summary).find((item) => item.type === type)
@@ -64,5 +70,29 @@ describe('getIngestionStatusCountData', () => {
     expect(valueByType(undefined, 'success')).toBe('0');
     expect(valueByType(undefined, 'failed')).toBe('0');
     expect(valueByType(undefined, 'warning')).toBe('0');
+  });
+});
+
+describe('getSettingsPathFromPipelineType', () => {
+  afterEach(() => useAppModeStore.getState().setMode(DEFAULT_APP_MODE));
+
+  it('links a settings pipeline to its application page in classic mode', () => {
+    expect(getSettingsPathFromPipelineType(PipelineType.DataInsight)).toBe(
+      '/settings/apps/DataInsightsApplication'
+    );
+    expect(
+      getSettingsPathFromPipelineType(PipelineType.ElasticSearchReindex)
+    ).toBe('/settings/apps/SearchIndexingApplication');
+  });
+
+  it('opens the application in the settings modal in AI mode', () => {
+    useAppModeStore.getState().setMode(AI_APP_MODE);
+
+    expect(getSettingsPathFromPipelineType(PipelineType.DataInsight)).toBe(
+      '#applications/DataInsightsApplication'
+    );
+    expect(
+      getSettingsPathFromPipelineType(PipelineType.ElasticSearchReindex)
+    ).toBe('#applications/SearchIndexingApplication');
   });
 });

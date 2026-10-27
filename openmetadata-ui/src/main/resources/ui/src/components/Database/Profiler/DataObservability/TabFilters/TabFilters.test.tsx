@@ -184,10 +184,6 @@ jest.mock('../../../../../hooks/useFqn', () => ({
   useFqn: jest.fn(() => ({ fqn: 'test-table-fqn' })),
 }));
 
-jest.mock('../../../../../context/TourProvider/TourProvider', () => ({
-  useTourProvider: jest.fn(() => ({ isTourOpen: false })),
-}));
-
 jest.mock('../../TableProfiler/TableProfilerProvider', () => ({
   useTableProfiler: () => mockUseTableProfiler(),
 }));
@@ -255,8 +251,7 @@ jest.mock('../../../../../hoc/LimitWrapper', () => {
 
 const renderComponent = () => {
   return render(
-    <MemoryRouter
-      future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+    <MemoryRouter>
       <TabFilters />
     </MemoryRouter>
   );

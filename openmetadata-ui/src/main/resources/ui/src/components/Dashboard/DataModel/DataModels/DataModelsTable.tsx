@@ -160,7 +160,7 @@ const DataModelTable = ({
           );
         },
       },
-      ...descriptionTableObject({ width: 400 }),
+      ...descriptionTableObject<ServicePageData>({ width: 400 }),
       {
         title: t('label.data-model-type'),
         dataIndex: TABLE_COLUMNS_KEYS.DATA_MODEL_TYPE,
@@ -307,7 +307,7 @@ const DataModelTable = ({
               />
             ) : (
               <NoDataPlaceholder
-                icon={<Assets className="tw:text-utility-gray-600" />}
+                icon={<Assets />}
                 title={t('message.no-entity-data-available', {
                   entity: t('label.data-model-plural'),
                 })}

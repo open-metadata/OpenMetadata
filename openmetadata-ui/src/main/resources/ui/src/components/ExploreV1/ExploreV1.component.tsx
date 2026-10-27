@@ -1248,7 +1248,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   return (
     <div className="explore-page bg-grey" data-testid="explore-page">
-      <CoreCard className="m-b-box tw:block tw:border-utility-gray-blue-100 tw:p-2 tw:dark:border-subtle">
+      <CoreCard
+        className="m-b-box tw:block tw:border-utility-gray-blue-100 tw:p-2 tw:dark:border-subtle"
+        data-tour-step="explore-search">
         <div className="tw:mr-2 tw:flex tw:flex-wrap tw:gap-y-2">
           {/* Zero flex-basis: with flex-wrap, a max-content basis would place
               the sort controls on their own row before shrinking is even
@@ -1389,48 +1391,48 @@ const ExploreV1: React.FC<ExploreProps> = ({
         </div>
       </CoreCard>
 
-      <ResizableLeftPanels
-        showLearningIcon
-        className={classNames('content-height-with-resizable-panel', {
-          'filter-applied': Boolean(sqlQuery),
-        })}
-        firstPanel={{
-          className: 'content-resizable-panel-container',
-          flex: 0.2,
-          minWidth: 280,
-          title: t('label.browse-estate'),
-          titleClassName: 'tw:capitalize tw:font-medium',
-          titleContainerClassName: 'tw:items-center tw:pb-2',
-          titleStrong: false,
-          children: <div className="p-x-sm">{exploreLeftPanel}</div>,
-        }}
-        secondPanel={{
-          flex: 0.8,
-          minWidth: 800,
-          children: (
-            <ExploreResultsPanel
-              entityDetails={entityDetails}
-              firstEntity={firstEntity}
-              handleClosePanel={handleClosePanel}
-              handleExplorePageChange={handleExplorePageChange}
-              handleExplorePageSizeChange={handleExplorePageSizeChange}
-              handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-              hasActiveFilters={hasActiveFilters}
-              isElasticSearchIssue={isElasticSearchIssue}
-              loading={loading}
-              pageSize={pageSize}
-              parsedSearch={parsedSearch}
-              searchResults={searchResults}
-              selectedQuickFilters={selectedQuickFilters}
-              showRankingDetails={showRankingDetails}
-              showSummaryPanel={showSummaryPanel}
-              totalPages={totalPages}
-              totalValue={totalValue}
-              validCurrentPage={validCurrentPage}
-            />
-          ),
-        }}
-      />
+      <div className="content-height-with-resizable-panel">
+        <ResizableLeftPanels
+          showLearningIcon
+          className="tw:h-full"
+          firstPanel={{
+            className: 'content-resizable-panel-container',
+            flex: 0.2,
+            minWidth: 280,
+            title: t('label.browse-estate'),
+            titleClassName: 'tw:capitalize tw:font-medium',
+            titleContainerClassName: 'tw:items-center tw:pb-2',
+            titleStrong: false,
+            children: <div className="p-x-sm">{exploreLeftPanel}</div>,
+          }}
+          secondPanel={{
+            flex: 0.8,
+            minWidth: 800,
+            children: (
+              <ExploreResultsPanel
+                entityDetails={entityDetails}
+                firstEntity={firstEntity}
+                handleClosePanel={handleClosePanel}
+                handleExplorePageChange={handleExplorePageChange}
+                handleExplorePageSizeChange={handleExplorePageSizeChange}
+                handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                hasActiveFilters={hasActiveFilters}
+                isElasticSearchIssue={isElasticSearchIssue}
+                loading={loading}
+                pageSize={pageSize}
+                parsedSearch={parsedSearch}
+                searchResults={searchResults}
+                selectedQuickFilters={selectedQuickFilters}
+                showRankingDetails={showRankingDetails}
+                showSummaryPanel={showSummaryPanel}
+                totalPages={totalPages}
+                totalValue={totalValue}
+                validCurrentPage={validCurrentPage}
+              />
+            ),
+          }}
+        />
+      </div>
 
       {searchQueryParam && tabItems.length === 0 && loading && <Loader />}
 

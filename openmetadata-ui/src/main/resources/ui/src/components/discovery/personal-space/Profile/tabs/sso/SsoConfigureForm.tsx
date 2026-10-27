@@ -382,7 +382,10 @@ const SsoConfigureForm = ({
       <div
         className="tw:flex-1 tw:px-8 tw:pb-6"
         data-testid={FORM_BODY_TEST_ID}>
-        <Box className="tw:w-full tw:max-w-[50%]" direction="col" gap={5}>
+        <Box
+          className="tw:w-full tw:max-w-[50%] tw:mx-auto"
+          direction="col"
+          gap={5}>
           {currentProvider === AuthProvider.Saml &&
             canUploadSamlMetadata &&
             renderSamlUpload()}

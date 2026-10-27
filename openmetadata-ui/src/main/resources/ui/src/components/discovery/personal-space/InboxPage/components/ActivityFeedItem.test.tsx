@@ -454,6 +454,33 @@ describe('ActivityFeedItem', () => {
     );
   });
 
+  it('links a non-column field change to the entity without an ANTLR error', () => {
+    // `entityStatus` is not in the EntityLink grammar: parsing it made ANTLR
+    // log a syntax error on every render.
+    const errorSpy = jest.spyOn(console, 'error');
+
+    render(
+      <ActivityFeedItem
+        activity={
+          {
+            ...baseActivity,
+            about: '<#E::table::svc.db.sch.dim::entityStatus>',
+          } as ActivityEvent
+        }
+      />
+    );
+
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('no viable alternative')
+    );
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
+
+    errorSpy.mockRestore();
+  });
+
   it('flags a card that mentions the viewer, and only then', () => {
     const { rerender } = render(
       <ActivityFeedItem isMentioned feed={baseFeed} />

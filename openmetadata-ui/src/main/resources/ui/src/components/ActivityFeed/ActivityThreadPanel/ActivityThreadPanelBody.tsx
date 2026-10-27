@@ -14,10 +14,14 @@
 import {
   Box,
   Button,
+  Card,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { MessageChatSquare } from '@openmetadata/ui-core-components/icons';
+import {
+  ArrowLeft,
+  MessageChatSquare,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -36,6 +40,7 @@ import { observerOptions } from '../../../constants/Mydata.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Paging } from '../../../generated/type/paging';
+import { useCloseOnNavigation } from '../../../hooks/useCloseOnNavigation';
 import { useElementInView } from '../../../hooks/useElementInView';
 import {
   createConversation,
@@ -68,8 +73,8 @@ const TaskFeedCardFromTask = withSuspenseFallback(
   lazy(() => import('../TaskFeedCard/TaskFeedCardFromTask.component'))
 );
 
-const ActivityFeedEditor = withSuspenseFallback(
-  lazy(() => import('../ActivityFeedEditor/ActivityFeedEditor'))
+const CommentComposer = withSuspenseFallback(
+  lazy(() => import('../../common/CommentComposer/CommentComposer'))
 );
 
 const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
@@ -99,6 +104,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     TaskStatusGroup.Open
   );
   const [elementRef, isInView] = useElementInView(observerOptions);
+  useCloseOnNavigation(onCancel);
   const conversationsRef = useRef(conversations);
 
   const isTaskType = view === 'tasks';
@@ -247,15 +253,27 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const renderActiveConversationView = () => (
     <Fragment>
-      <Button className="tw:mb-3" color="link-color" size="xs" onClick={onBack}>
+      <Button
+        className="tw:mb-3"
+        color="link-gray"
+        data-testid="thread-back"
+        iconLeading={ArrowLeft}
+        size="sm"
+        onClick={onBack}>
         {t('label.back')}
       </Button>
-      <ActivityFeedCardNew
-        isForFeedTab
-        isOpenInDrawer
-        showThread
-        feed={selectedConversation}
-      />
+      {/* Framed like the list's cards, so the open thread reads as the same
+          conversation. Overflow stays visible: the reply composer's mention
+          list opens below the frame. */}
+      <Card className="tw:overflow-visible">
+        <ActivityFeedCardNew
+          isForFeedTab
+          isOpenInDrawer
+          isThreadPanel
+          showThread
+          feed={selectedConversation}
+        />
+      </Card>
     </Fragment>
   );
 
@@ -264,12 +282,12 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={
+          icon={<MessageChatSquare />}
+          title={
             isTaskClosed
               ? t('message.no-closed-task')
               : t('message.no-open-task')
           }
-          icon={<MessageChatSquare />}
         />
       </div>
     ) : (
@@ -287,11 +305,13 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       </div>
     );
 
+  // No isForFeedTab on the cards: Reply then opens the conversation here, as
+  // a click on the card does, rather than in a second drawer.
   const renderConversationList = () => (
     <div className={classNames(className, 'd-flex flex-col gap-3')}>
       {conversations.map((conversation) => (
         <FeedPanelBodyV1New
-          isForFeedTab
+          isThreadPanel
           feed={conversation}
           isActive={false}
           key={conversation.id}
@@ -310,15 +330,14 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           <Box
             inline
             align="stretch"
-            className="layout-space w-full"
+            className="layout-space w-full tw:mb-4"
             direction="col"
             gap={2}
             itemClassName="layout-space-item">
             <Typography as="p">{t('message.new-conversation')}</Typography>
-            <ActivityFeedEditor
+            <CommentComposer
               // Shown on demand (new conversation, or an empty panel just
-              // opened), so it takes focus as it did before FeedEditor stopped
-              // focusing itself on mount.
+              // opened), so it takes focus.
               focused
               placeHolder={t('message.enter-a-field', {
                 field: t('label.message-lowercase'),
@@ -344,7 +363,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     if (isTaskType && !isUndefined(selectedTask)) {
       return renderActiveTaskView();
     }
-    if (!isUndefined(selectedConversation)) {
+    // A conversation picked for this panel shows only on its own tab.
+    if (isConversationType && !isUndefined(selectedConversation)) {
       return renderActiveConversationView();
     }
 
@@ -356,6 +376,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       <div id="thread-panel-body">
         {showHeader && isConversationType && (
           <FeedPanelHeader
+            hideCloseIcon
             entityLink={selectedConversation?.about ?? threadLink}
             noun={t('label.conversation-plural')}
             onCancel={() => onCancel?.()}

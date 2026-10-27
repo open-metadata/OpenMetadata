@@ -152,7 +152,7 @@ type PaginationContract<T> =
       customPaginationProps?: undefined;
       pagination?: TableComponentProps<T>['pagination'];
     }
-  | { customPaginationProps: CustomPaginationProps; pagination: false };
+  | { customPaginationProps?: CustomPaginationProps; pagination: false };
 
 type TableV2Props<T extends object> = Omit<
   TableComponentProps<T>,
@@ -1892,7 +1892,7 @@ const TableV2 = <T extends object>(
                         toCellPaddingClass(rest.size),
                         // The same rule covers `th`: a header sits on the first
                         // line of a row its own cells may wrap past.
-                        'tw:align-top tw:text-sm tw:text-tertiary',
+                        'tw:align-top tw:text-xs tw:font-semibold tw:text-quaternary',
                         // The core Table.Head wraps the label in its own flex
                         // group (`& > div`); it needs min-w-0 too, or the inner
                         // truncating title has no shrinkable ancestor and a long

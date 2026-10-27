@@ -89,12 +89,6 @@ export const REVIEWER_WIDGET: CommonWidgetType = {
   data: { gridSizes: ['small'] },
 };
 
-export const PENDING_REVIEW_WIDGET: CommonWidgetType = {
-  fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW,
-  name: i18n.t('label.pending-review'),
-  data: { gridSizes: ['small'] },
-};
-
 export const WORKFLOW_HISTORY_WIDGET: CommonWidgetType = {
   fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY,
   name: i18n.t('label.workflow-history'),

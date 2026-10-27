@@ -37,6 +37,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import AllOntologiesGraphView from '../../components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView';
@@ -1556,18 +1557,28 @@ const OntologyExplorerPage: React.FC = () => {
 
     if (availableOntologies.length === 0) {
       return (
-        <Box
-          className="tw:p-6"
-          data-testid="all-ontologies-empty"
-          direction="col"
-          gap={3}>
-          <Typography>{t('message.no-data-available')}</Typography>
-          {canCreateOntology ? (
-            <Button onPress={() => setIsCreatingOntology(true)}>
-              {t('label.new-entity', { entity: t('label.ontology') })}
-            </Button>
-          ) : null}
-        </Box>
+        <div
+          className="tw:relative tw:h-full tw:min-h-70"
+          data-testid="all-ontologies-empty">
+          <NoDataPlaceholder
+            actions={
+              canCreateOntology
+                ? [
+                    {
+                      key: 'new-ontology',
+                      label: t('label.new-entity', {
+                        entity: t('label.ontology'),
+                      }),
+                      iconLeading: Plus,
+                      onPress: () => setIsCreatingOntology(true),
+                    },
+                  ]
+                : undefined
+            }
+            icon={<Share07 className="tw:text-fg-brand-primary" />}
+            title={t('label.no-entity', { entity: t('label.ontology-plural') })}
+          />
+        </div>
       );
     }
     if (!allModels.graph) {

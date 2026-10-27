@@ -16,6 +16,7 @@ import {
   expect,
   Locator,
   Page,
+  Request,
   Response,
 } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../constant/common';
@@ -52,15 +53,6 @@ export interface BulkIdsRequest {
   ids?: string[];
 }
 
-interface UploadMultipart {
-  file: {
-    name: string;
-    mimeType: string;
-    buffer: Buffer;
-  };
-  folder?: string;
-}
-
 interface CapturedDownload {
   download: string;
   href: string;
@@ -81,17 +73,14 @@ export const uploadDocument = async (
   buffer: Buffer,
   folderFqn?: string
 ): Promise<ContextCenterDocument> => {
-  const multipart: UploadMultipart = {
+  const multipart = {
     file: {
       name,
       mimeType: 'text/plain',
       buffer,
     },
+    ...(folderFqn ? { folder: folderFqn } : {}),
   };
-
-  if (folderFqn) {
-    multipart.folder = folderFqn;
-  }
 
   const response = await apiContext.post(
     '/api/v1/contextCenter/drive/files/upload',
@@ -137,7 +126,7 @@ export const responseMatchesRequestPath = (
   response: Response,
   expectedPath: string
 ): boolean => {
-  let request = response.request();
+  let request: Request | null = response.request();
 
   while (request) {
     if (request.url().includes(expectedPath)) {
@@ -1365,6 +1354,52 @@ export const readDraftStore = async (
  * risks racing the autosave itself and observing the draft after it has
  * already been removed rather than confirming it landed in time.
  */
+const SETTLED_ARTICLE_STATUSES = new Set(['Approved', 'Rejected']);
+const ARTICLE_SETTLE_WINDOW_MS = 3_000;
+
+/**
+ * Waits until a freshly created article stops changing server-side.
+ *
+ * When the approval workflow is active it moves entityStatus In Review ->
+ * Approved asynchronously, bumping the version. A draft stamped with the
+ * pre-approval version is then treated as stale (draft.version !== server
+ * version) and dropped on the next load. Deployments without the workflow never
+ * reach Approved, so a settled status is not required: an unchanged version for
+ * the settle window counts as settled too.
+ */
+export const waitForArticleSettled = async (
+  apiContext: APIRequestContext,
+  articleId: string
+) => {
+  let lastVersion: number | undefined;
+  let stableSince = Date.now();
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/contextCenter/pages/${articleId}`
+        );
+        if (!response.ok()) {
+          return false;
+        }
+        const { entityStatus, version } = await response.json();
+
+        if (SETTLED_ARTICLE_STATUSES.has(entityStatus)) {
+          return true;
+        }
+        if (version !== lastVersion) {
+          lastVersion = version;
+          stableSince = Date.now();
+        }
+
+        return Date.now() - stableSince >= ARTICLE_SETTLE_WINDOW_MS;
+      },
+      { timeout: 30_000, intervals: [500, 1_000] }
+    )
+    .toBe(true);
+};
+
 export const waitForDraftPersisted = async (
   page: Page,
   articleId: string,

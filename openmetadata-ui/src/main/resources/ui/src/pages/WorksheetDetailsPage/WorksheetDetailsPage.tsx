@@ -13,16 +13,16 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { get, isUndefined, omitBy, toString } from 'lodash';
+import { isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
-import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import WorksheetDetails from '../../components/DriveService/Worksheet/WorksheetDetails';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { ClientErrors } from '../../enums/Axios.enum';
@@ -244,7 +244,7 @@ const WorksheetDetailsPage = () => {
         USERId,
         EntityType.WORKSHEET
       );
-      const { newValue } = get(res, 'changeDescription.fieldsAdded[0]', {});
+      const newValue = res.changeDescription?.fieldsAdded?.[0]?.newValue ?? [];
       setWorksheetDetails((prev) => ({
         ...prev,
         followers: [...(prev?.followers ?? []), ...newValue],
@@ -388,14 +388,14 @@ const WorksheetDetailsPage = () => {
     isPermissionsLoading ||
     (canViewBasic && isEntityLoading)
   ) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
   if (isError) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={getEntityMissingError('worksheet', decodedWorksheetFQN)}
+          title={getEntityMissingError('worksheet', decodedWorksheetFQN)}
         />
       </div>
     );

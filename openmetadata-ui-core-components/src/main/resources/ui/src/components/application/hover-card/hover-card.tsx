@@ -123,7 +123,9 @@ export const HoverCard = ({
   return (
     <>
       <span
-        className="tw:inline-flex tw:max-w-full"
+        // min-w-0: in a flex row the trigger can shrink, so a truncating
+        // child (an entity link) ellipsizes instead of holding the row open.
+        className="tw:inline-flex tw:min-w-0 tw:max-w-full"
         ref={triggerRef}
         {...mergeProps(triggerHoverProps, focusWithinProps)}>
         {children}
