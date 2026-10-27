@@ -216,6 +216,43 @@ class TestTagScorer:
             score=IsNumeric(gt=0.5),
         )
 
+    @pytest.mark.parametrize(
+        "patterns",
+        [
+            pytest.param([PatternFactory.build(name="Badge", regex=r"EMP-(\d{6}")], id="invalid-regex"),
+            pytest.param([], id="no-patterns"),
+        ],
+    )
+    def test_broken_recognizer_does_not_drop_other_tags(
+        self, email_tag, general_classification, column_to_analyze, nlp_engine, patterns
+    ):
+        broken_tag = TagFactory.create(
+            tag_name="BadgeTag",
+            tag_classification=general_classification,
+            autoClassificationEnabled=True,
+            recognizers=[
+                RecognizerFactory.create(
+                    name="BadgeRecognizer",
+                    recognizerConfig=PatternRecognizerFactory.create(
+                        patterns=patterns,
+                        context=[],
+                        supportedLanguage=ClassificationLanguage.en,
+                    ),
+                    target=Target.content,
+                )
+            ],
+        )
+        classifier = TagScorer(
+            tag_analyzers=[
+                TagAnalyzer(tag=email_tag, column=column_to_analyze, nlp_engine=nlp_engine),
+                TagAnalyzer(tag=broken_tag, column=column_to_analyze, nlp_engine=nlp_engine),
+            ],
+        )
+
+        scores = classifier.predict_scores(["john.doe@example.com", "jane.smith@test.org"])
+
+        assert [scored_tag.tag.fullyQualifiedName for scored_tag in scores] == ["PII.EmailTag"]
+
     def test_empty_data_returns_empty(self, classifier):
         """Test that empty data returns empty scores"""
         scores = classifier.predict_scores([])
