@@ -40,11 +40,13 @@ import {
 const RDF_STATUS_QUERY_KEY = 'ontology-rdf-status';
 
 interface OntologyCreateDialogProps {
+  readonly ontologies: readonly Ontology[];
   readonly onClose: () => void;
   readonly onCreated: (ontology: Ontology) => void;
 }
 
 const OntologyCreateDialog = ({
+  ontologies,
   onClose,
   onCreated,
 }: OntologyCreateDialogProps) => {
@@ -64,8 +66,22 @@ const OntologyCreateDialog = ({
   const prefix = prefixOverride.trim() || derivePrefix(name);
   const isPrefixValid = isValidPrefix(prefix);
   const preview = baseUri ? ontologyIris(baseUri, prefix).namespace : '';
+  const isPrefixTaken =
+    isPrefixValid && ontologies.some(({ namespace }) => namespace === preview);
   const canCreate =
-    Boolean(name.trim()) && isPrefixValid && Boolean(baseUri) && !isSaving;
+    Boolean(name.trim()) &&
+    isPrefixValid &&
+    !isPrefixTaken &&
+    Boolean(baseUri) &&
+    !isSaving;
+
+  const getPrefixHint = () => {
+    if (!isPrefixValid) {
+      return t('message.invalid-ontology-prefix');
+    }
+
+    return isPrefixTaken ? t('message.ontology-prefix-in-use') : undefined;
+  };
 
   const handleClose = () => {
     if (!isSaving) {
@@ -123,13 +139,9 @@ const OntologyCreateDialog = ({
                 onChange={setName}
               />
               <Input
-                hint={
-                  isPrefixValid
-                    ? undefined
-                    : t('message.invalid-ontology-prefix')
-                }
+                hint={getPrefixHint()}
                 inputDataTestId="ontology-create-prefix"
-                isInvalid={!isPrefixValid}
+                isInvalid={!isPrefixValid || isPrefixTaken}
                 label={t('label.namespace-prefix')}
                 placeholder={derivePrefix(name)}
                 size="sm"

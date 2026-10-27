@@ -75,7 +75,7 @@ export const ontologyRequest = (
 const USER_NAMESPACE_SEGMENT = 'onto';
 const PREFIX_LENGTH = 8;
 const PREFIX_FALLBACK = 'onto';
-const PREFIX_PATTERN = /^[A-Za-z0-9._-]+$/;
+const PREFIX_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9._-]*$/;
 
 export const derivePrefix = (name: string): string =>
   name

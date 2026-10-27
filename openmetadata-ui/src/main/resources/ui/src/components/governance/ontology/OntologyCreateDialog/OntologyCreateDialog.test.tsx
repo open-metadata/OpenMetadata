@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Layer } from '../../../../generated/api/data/createOntology';
+import { Ontology } from '../../../../generated/entity/data/ontology';
 import { ProjectionState } from '../../../../generated/api/rdf/rdfStatus';
 import { createOntology } from '../../../../rest/ontologyAPI';
 import { fetchRdfConfig } from '../../../../rest/rdfAPI';
@@ -58,11 +59,15 @@ const status = (baseUri: string) => ({
   storageType: 'FUSEKI',
 });
 
-const renderDialog = async () => {
+const renderDialog = async (ontologies: Ontology[] = []) => {
   const onClose = jest.fn();
   const onCreated = jest.fn();
   renderWithQueryClient(
-    <OntologyCreateDialog onClose={onClose} onCreated={onCreated} />
+    <OntologyCreateDialog
+      ontologies={ontologies}
+      onClose={onClose}
+      onCreated={onCreated}
+    />
   );
 
   await flushReactQuery();
@@ -160,6 +165,57 @@ describe('OntologyCreateDialog', () => {
     expect(preview()).toHaveTextContent(
       'https://open-metadata.org/onto/financec#'
     );
+    expect(createButton()).toBeEnabled();
+  });
+
+  it('refuses a prefix whose namespace a visible ontology already uses', async () => {
+    const user = userEvent.setup();
+    await renderDialog([
+      {
+        id: 'support',
+        name: 'Customer Support',
+        fullyQualifiedName: 'CustomerSupport',
+        iri: 'https://open-metadata.org/onto/customer',
+        namespace: 'https://open-metadata.org/onto/customer#',
+      },
+    ]);
+    await user.type(nameInput(), 'Customer 360');
+
+    await waitFor(() =>
+      expect(screen.getByText('message.ontology-prefix-in-use')).toBeVisible()
+    );
+    expect(createButton()).toBeDisabled();
+
+    await user.type(prefixInput(), 'cust360');
+
+    expect(
+      screen.queryByText('message.ontology-prefix-in-use')
+    ).not.toBeInTheDocument();
+    expect(createButton()).toBeEnabled();
+  });
+
+  it.each(['.', '..', '.hidden', '-dash'])(
+    'refuses the prefix %s that would escape or blur the onto namespace',
+    async (prefix) => {
+      const user = userEvent.setup();
+      await renderDialog();
+      await user.type(nameInput(), 'Finance Core');
+      await user.type(prefixInput(), prefix);
+
+      expect(screen.getByText('message.invalid-ontology-prefix')).toBeVisible();
+      expect(createButton()).toBeDisabled();
+    }
+  );
+
+  it('accepts a prefix with inner dots, hyphens and digits', async () => {
+    const user = userEvent.setup();
+    await renderDialog();
+    await user.type(nameInput(), 'Finance Core');
+    await user.type(prefixInput(), 'fin-2.v1');
+
+    expect(
+      screen.queryByText('message.invalid-ontology-prefix')
+    ).not.toBeInTheDocument();
     expect(createButton()).toBeEnabled();
   });
 
