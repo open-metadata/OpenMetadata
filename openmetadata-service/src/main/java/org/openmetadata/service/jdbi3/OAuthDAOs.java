@@ -221,6 +221,26 @@ public interface OAuthDAOs {
         @Bind("pac4jNonce") String pac4jNonce,
         @Bind("pac4jCodeVerifier") String pac4jCodeVerifier);
 
+    @SqlUpdate(
+        "UPDATE mcp_pending_auth_requests SET consent_token_hash = :consentTokenHash, consent_user_name = :userName, expires_at = :expiresAt WHERE auth_request_id = :authRequestId AND consent_user_name IS NULL AND expires_at > :currentTime")
+    int storeConsent(
+        @Bind("authRequestId") String authRequestId,
+        @Bind("consentTokenHash") String consentTokenHash,
+        @Bind("userName") String userName,
+        @Bind("expiresAt") long expiresAt,
+        @Bind("currentTime") long currentTime);
+
+    @SqlUpdate(
+        "UPDATE mcp_pending_auth_requests SET consent_token_hash = NULL WHERE auth_request_id = :authRequestId AND consent_token_hash = :consentTokenHash AND expires_at > :currentTime")
+    int claimConsent(
+        @Bind("authRequestId") String authRequestId,
+        @Bind("consentTokenHash") String consentTokenHash,
+        @Bind("currentTime") long currentTime);
+
+    @SqlQuery(
+        "SELECT consent_user_name FROM mcp_pending_auth_requests WHERE auth_request_id = :authRequestId")
+    String findConsentUserName(@Bind("authRequestId") String authRequestId);
+
     @SqlUpdate("DELETE FROM mcp_pending_auth_requests WHERE auth_request_id = :authRequestId")
     void delete(@Bind("authRequestId") String authRequestId);
 
