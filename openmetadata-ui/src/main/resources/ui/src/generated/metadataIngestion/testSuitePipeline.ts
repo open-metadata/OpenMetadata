@@ -1951,7 +1951,8 @@ export interface Connection {
     /**
      * Specifies additional data needed by a logon mechanism, such as a secure token,
      * Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon
-     * mechanism.
+     * mechanism. The entire value is protected as a secret, including non-secret names. Secret
+     * references must resolve to the entire LOGDATA value.
      */
     logdata?: string;
     /**
@@ -2525,7 +2526,9 @@ export interface Connection {
     mlModelFilterPattern?: FilterPattern;
     /**
      * Mlflow Model registry backend. E.g.,
-     * mysql+pymysql://mlflow:password@localhost:3307/experiments
+     * mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected
+     * as a secret, including URIs without credentials. Secret references must resolve to the
+     * entire URI.
      */
     registryUri?: string;
     /**
