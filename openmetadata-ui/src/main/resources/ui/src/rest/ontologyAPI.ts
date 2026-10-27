@@ -34,7 +34,6 @@ import { DeleteOntologyResource } from '../generated/api/data/deleteOntologyReso
 import { InstallOntologyPack } from '../generated/api/data/installOntologyPack';
 import type { NativeOntologyImportDetection } from '../generated/api/data/nativeOntologyImportDetection';
 import type { NativeOntologyImportSummary } from '../generated/api/data/nativeOntologyImportSummary';
-import type { OntologyReleaseExportOptions } from '../generated/api/data/ontologyReleaseExportOptions';
 import { OntologyBulkJob } from '../generated/api/data/ontologyBulkJob';
 import { OntologyBulkJobList } from '../generated/api/data/ontologyBulkJobList';
 import { OntologyBulkRequest } from '../generated/api/data/ontologyBulkRequest';
@@ -63,6 +62,7 @@ import { OntologyProfileReport } from '../generated/api/data/ontologyProfileRepo
 import { OntologyRelationshipSuggestionList } from '../generated/api/data/ontologyRelationshipSuggestionList';
 import { OntologyRelationshipSuggestionRequest } from '../generated/api/data/ontologyRelationshipSuggestionRequest';
 import type { OntologyReleaseDiff } from '../generated/api/data/ontologyReleaseDiff';
+import type { OntologyReleaseExportOptions } from '../generated/api/data/ontologyReleaseExportOptions';
 import type { OntologyReleaseReview } from '../generated/api/data/ontologyReleaseReview';
 import { OntologyReleaseReviewList } from '../generated/api/data/ontologyReleaseReviewList';
 import type { OntologyReleaseStructureReport } from '../generated/api/data/ontologyReleaseStructureReport';

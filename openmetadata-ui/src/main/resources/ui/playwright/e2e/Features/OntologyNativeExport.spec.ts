@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { readFile } from 'fs/promises';
 import { Page } from '@playwright/test';
+import { readFile } from 'fs/promises';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';

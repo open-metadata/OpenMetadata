@@ -18,8 +18,8 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { AxiosError, AxiosResponse } from 'axios';
 import userEvent from '@testing-library/user-event';
+import { AxiosError, AxiosResponse } from 'axios';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
