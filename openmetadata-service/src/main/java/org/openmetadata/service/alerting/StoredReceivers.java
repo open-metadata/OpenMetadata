@@ -26,6 +26,7 @@ import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.service.alerting.channel.ChannelResolution;
+import org.openmetadata.service.alerting.channel.ConfigRules;
 
 /**
  * The receiver lists an alert stored, so a save is refused only for a list it grows past the limit.
@@ -50,13 +51,15 @@ final class StoredReceivers {
   }
 
   /**
-   * The receivers a channel reads from the destination, none when it reads none. A configuration
-   * a channel cannot read holds none here; destination validation refuses it when it is new.
+   * The receivers a user typed into the destination, the only ones each send goes to as written.
+   * A destination of users or teams names who to find instead, however many people that is, so it
+   * holds none here. A configuration a channel cannot read holds none either; destination
+   * validation refuses it when it is new.
    */
   static Set<String> of(SubscriptionDestination destination) {
     Set<String> receivers = Set.of();
     try {
-      receivers = readBy(destination);
+      receivers = ConfigRules.configuredByTheUser(destination) ? readBy(destination) : Set.of();
     } catch (IllegalArgumentException unreadable) {
       LOG.debug("Destination {} holds no receivers it can read", destination.getId(), unreadable);
     }
