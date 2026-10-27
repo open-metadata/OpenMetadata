@@ -147,7 +147,7 @@ const ListView = ({
           ),
       },
     ],
-    []
+    [t]
   );
 
   return (

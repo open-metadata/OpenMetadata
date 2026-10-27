@@ -12,12 +12,8 @@
  */
 
 import { StatusType } from '../generated/entity/data/pipeline';
+import { formatDuration } from './date-time/DateTimeUtils';
 import { getTableViewData } from './executionUtils';
-
-jest.mock('./date-time/DateTimeUtils', () => ({
-  formatDateTime: jest.fn().mockImplementation((timestamp) => `${timestamp}`),
-  formatDuration: jest.fn().mockImplementation((ms) => `${ms} ms`),
-}));
 
 describe('getTableViewData', () => {
   it('carries task metrics and a safe log link into the view rows', () => {
@@ -55,11 +51,11 @@ describe('getTableViewData', () => {
     expect(rows).toHaveLength(2);
     expect(rows?.[0]).toMatchObject({
       name: 'load_orders',
-      duration: '2000 ms',
+      duration: formatDuration(2000),
       rowsRead: 1234,
       rowsWritten: 1200,
       rowsFiltered: 34,
-      executionTime: '1500 ms',
+      executionTime: formatDuration(1500),
       logLink: 'https://orchestrator.example/runs/1',
     });
     expect(rows?.[1]).toMatchObject({ name: 'notify', duration: '--' });
