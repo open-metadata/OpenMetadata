@@ -19,7 +19,11 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import lombok.Getter;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -27,7 +31,12 @@ import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.BindMap;
+import org.jdbi.v3.sqlobject.customizer.BindMethods;
+import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
+import org.openmetadata.schema.api.data.NativeOntologyLoadedPrefix;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 
 public interface OntologyDAO {
@@ -137,6 +146,99 @@ public interface OntologyDAO {
       @BindList("assetIds") List<String> assetIds,
       @Bind("lineageRelation") int lineageRelation,
       @Bind("lineageEdgeLimit") int lineageEdgeLimit);
+
+  /**
+   * The loaded assets are materialized first, and each one probes {@code entity_relationship} by
+   * {@code fromId}, so the work follows the loaded assets' outgoing lineage and not the size of the
+   * table. MySQL copies the {@code assetId <= mark} predicates onto the equal relationship columns
+   * and then prefers a range scan of {@code entity_relationship}; the JOIN_ORDER hint keeps the
+   * loaded assets first, and PostgreSQL reads it as a comment. The concepts were authorized against
+   * the ontology when the request was validated.
+   */
+  String PREFIX_LINEAGE_SQL =
+      "SELECT /*+ JOIN_ORDER(loaded, relation) */ relation.fromId, relation.toId, "
+          + "relation.fromEntity, relation.toEntity, relation.relationType "
+          + "FROM (SELECT DISTINCT source.assetId, source.assetType "
+          + "FROM ontology_concept_binding source WHERE <sourcePredicate>) loaded "
+          + "JOIN entity_relationship relation ON relation.fromId = loaded.assetId "
+          + "AND relation.fromEntity = loaded.assetType AND relation.relation = :query.relation "
+          + "WHERE relation.deleted = FALSE "
+          + "AND EXISTS (SELECT 1 FROM ontology_concept_binding target "
+          + "WHERE target.assetId = relation.toId AND target.assetType = relation.toEntity "
+          + "AND (<targetPredicate>)) "
+          + "AND (:query.after.hasAfter = FALSE OR relation.fromId > :query.after.fromId "
+          + "OR (relation.fromId = :query.after.fromId AND relation.toId > :query.after.toId) "
+          + "OR (relation.fromId = :query.after.fromId AND relation.toId = :query.after.toId "
+          + "AND relation.relationType > :query.after.relationType)) "
+          + "ORDER BY relation.fromId, relation.toId, relation.relationType LIMIT :query.limit";
+
+  @SqlQuery(PREFIX_LINEAGE_SQL)
+  @RegisterRowMapper(PrefixLineageRowMapper.class)
+  List<PrefixLineageRow> listLineageForPrefixes(
+      @Define("sourcePredicate") String sourcePredicate,
+      @Define("targetPredicate") String targetPredicate,
+      @BindMap Map<String, String> prefixes,
+      @BindMethods("query") PrefixLineageQuery query);
+
+  record PrefixLineageQuery(String ontologyId, LineagePosition after, int limit) {
+    public int relation() {
+      return Relationship.UPSTREAM.ordinal();
+    }
+  }
+
+  record LineagePosition(String fromId, String toId, String relationType) {
+    public static final LineagePosition FIRST = new LineagePosition("", "", "");
+
+    public boolean hasAfter() {
+      return !fromId.isEmpty();
+    }
+  }
+
+  record PrefixLineageRow(
+      String fromId, String toId, String fromEntity, String toEntity, String relationType) {
+    public LineagePosition position() {
+      return new LineagePosition(fromId, toId, relationType);
+    }
+  }
+
+  record PrefixFilter(int ranges, Map<String, String> bindings) {
+    public static PrefixFilter of(final List<NativeOntologyLoadedPrefix> prefixes) {
+      if (prefixes.size() > 60) {
+        throw new IllegalArgumentException("At most 60 loaded prefixes are supported");
+      }
+      final List<NativeOntologyLoadedPrefix> ranges =
+          prefixes.stream().filter(prefix -> prefix.getThroughAssetId() != null).toList();
+      final Map<String, String> values = new LinkedHashMap<>();
+      for (int index = 0; index < ranges.size(); index++) {
+        values.put("concept" + index, ranges.get(index).getConceptId().toString());
+        values.put("through" + index, ranges.get(index).getThroughAssetId().toString());
+      }
+      return new PrefixFilter(ranges.size(), values);
+    }
+
+    public String predicate(final String alias) {
+      return ranges == 0
+          ? "FALSE"
+          : IntStream.range(0, ranges)
+              .mapToObj(
+                  index ->
+                      "(%1$s.conceptId = :concept%2$d AND %1$s.assetId <= :through%2$d)"
+                          .formatted(alias, index))
+              .collect(Collectors.joining(" OR "));
+    }
+  }
+
+  final class PrefixLineageRowMapper implements RowMapper<PrefixLineageRow> {
+    @Override
+    public PrefixLineageRow map(ResultSet rows, StatementContext context) throws SQLException {
+      return new PrefixLineageRow(
+          rows.getString("fromId"),
+          rows.getString("toId"),
+          rows.getString("fromEntity"),
+          rows.getString("toEntity"),
+          rows.getString("relationType"));
+    }
+  }
 
   @SqlQuery(
       "SELECT COUNT(DISTINCT term.id) FROM glossary_term_entity term "

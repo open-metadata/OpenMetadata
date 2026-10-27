@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1987 endpoints** across 75 resource packages · 1977 carry a summary.
+**1988 endpoints** across 75 resource packages · 1978 carry a summary.
 
 ## (root)
 
@@ -1360,6 +1360,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PATCH` | `/v1/ontologies/{id}` | Patch an ontology |
 | `PUT` | `/v1/ontologies/{id}/activation` | Activate an approved ontology release or roll back to an older release |
 | `GET` | `/v1/ontologies/{id}/dataGraph` | Get one page of bound concepts ranked by binding count, each with the assets the caller may view |
+| `POST` | `/v1/ontologies/{id}/dataGraph/pages` | Read a graph page with bounded topology over loaded concept prefixes |
 | `POST` | `/v1/ontologies/{id}/imports/preview` | Preview a local RDF or native CSV file as native ontology draft operations |
 | `POST` | `/v1/ontologies/{id}/library/{packId}/preview` | Preview verified library modules as native ontology draft operations |
 | `GET` | `/v1/ontologies/{id}/references` | Find working definitions that reference an exact IRI in this ontology |

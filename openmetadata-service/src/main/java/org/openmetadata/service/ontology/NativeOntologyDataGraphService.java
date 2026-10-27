@@ -33,6 +33,8 @@ import org.openmetadata.schema.api.data.NativeOntologyAssetCluster;
 import org.openmetadata.schema.api.data.NativeOntologyClusterAsset;
 import org.openmetadata.schema.api.data.NativeOntologyConceptEdge;
 import org.openmetadata.schema.api.data.NativeOntologyDataGraph;
+import org.openmetadata.schema.api.data.NativeOntologyDataGraphPage;
+import org.openmetadata.schema.api.data.NativeOntologyDataGraphPageRequest;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
@@ -77,6 +79,7 @@ public final class NativeOntologyDataGraphService {
   private final OntologyConceptBindingStore store;
   private final OntologyConceptRepository concepts;
   private final ViewPermissionFilter visibility;
+  private final NativeOntologyDataGraphPager pager;
 
   public NativeOntologyDataGraphService(
       final CollectionDAO dao,
@@ -87,6 +90,17 @@ public final class NativeOntologyDataGraphService {
     this.store = store;
     this.concepts = concepts;
     this.visibility = new ViewPermissionFilter(authorizer);
+    this.pager =
+        new NativeOntologyDataGraphPager(
+            this,
+            dao,
+            store,
+            new OntologyConceptBindingService(store, authorizer, Entity::getEntityRepository));
+  }
+
+  public NativeOntologyDataGraphPage page(
+      Access access, UUID ontologyId, NativeOntologyDataGraphPageRequest request) {
+    return pager.page(access, ontologyId, request);
   }
 
   /** The caller's right to view the ontology itself is checked by the resource. */
@@ -112,7 +126,7 @@ public final class NativeOntologyDataGraphService {
    * Ranking uses the stored row count so a page is stable for every reader; {@code assetCount} and
    * the assets are what this reader may view, and a concept with nothing viewable is left out.
    */
-  private List<Cluster> clusters(
+  List<Cluster> clusters(
       final Access access, final List<ConceptAssetCount> ranked, final int assetsPerConcept) {
     if (ranked.isEmpty()) {
       return List.of();
@@ -153,7 +167,10 @@ public final class NativeOntologyDataGraphService {
         : null;
   }
 
-  private Map<UUID, OntologyConcept> visibleConcepts(final Access access, final List<UUID> ids) {
+  Map<UUID, OntologyConcept> visibleConcepts(final Access access, final List<UUID> ids) {
+    if (ids.isEmpty()) {
+      return Map.of();
+    }
     final var loaded = concepts.find(ids, Include.NON_DELETED);
     final var viewable =
         viewableIds(access, loaded.stream().map(OntologyConcept::getEntityReference).toList());
@@ -164,7 +181,7 @@ public final class NativeOntologyDataGraphService {
     return visible;
   }
 
-  private Map<UUID, LiveAsset> visibleAssets(final Access access, final List<BindingRow> rows) {
+  Map<UUID, LiveAsset> visibleAssets(final Access access, final List<BindingRow> rows) {
     final var live = store.liveAssets(rows);
     final Map<UUID, EntityReference> references = new HashMap<>();
     for (final var row : rows) {
@@ -178,7 +195,7 @@ public final class NativeOntologyDataGraphService {
     return live;
   }
 
-  private Set<UUID> viewableIds(final Access access, final List<EntityReference> references) {
+  Set<UUID> viewableIds(final Access access, final List<EntityReference> references) {
     if (references.isEmpty()) {
       return Set.of();
     }
@@ -328,7 +345,7 @@ public final class NativeOntologyDataGraphService {
     };
   }
 
-  private Map<String, OntologyProperty> viewableProperties(
+  Map<String, OntologyProperty> viewableProperties(
       final Access access, final UUID ontologyId, final Set<Link> links) {
     final Set<String> iris = new LinkedHashSet<>();
     links.forEach(link -> iris.add(link.propertyIri().toString()));
@@ -465,5 +482,5 @@ public final class NativeOntologyDataGraphService {
     }
   }
 
-  private record Cluster(OntologyConcept concept, NativeOntologyAssetCluster response) {}
+  record Cluster(OntologyConcept concept, NativeOntologyAssetCluster response) {}
 }

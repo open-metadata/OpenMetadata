@@ -53,6 +53,8 @@ import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntology;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.NativeOntologyDataGraph;
+import org.openmetadata.schema.api.data.NativeOntologyDataGraphPage;
+import org.openmetadata.schema.api.data.NativeOntologyDataGraphPageRequest;
 import org.openmetadata.schema.api.data.NativeOntologyImportDetection;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
@@ -430,6 +432,20 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     Query toQuery() {
       return new Query(limit, offset, assetsPerConcept, edgeLimit, lineageEdgeLimit);
     }
+  }
+
+  @POST
+  @Path("/{id}/dataGraph/pages")
+  @Operation(
+      operationId = "getNativeOntologyDataGraphPage",
+      summary = "Read a graph page with bounded topology over loaded concept prefixes")
+  public NativeOntologyDataGraphPage getDataGraphPage(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @Valid final NativeOntologyDataGraphPageRequest request) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    return dataGraph.page(new Access(uriInfo, securityContext), id, request);
   }
 
   @GET

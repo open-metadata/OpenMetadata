@@ -1,0 +1,52 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/nativeOntologyDataGraphPage.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "nativeOntologyDataGraphPage",
+  "description": "Selected native graph page and bounded replacement topology for the canonical loaded context. A topology cursor means the generation is incomplete. Binding revisions do not freeze lineage, axioms or permissions.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.NativeOntologyDataGraphPage",
+  "definitions": {
+    "topology": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyTopologyPage",
+      "properties": {
+        "contextDigest": { "type": "string" },
+        "edges": {
+          "type": "array", "maxItems": 500,
+          "items": { "$ref": "nativeOntologyDataGraph.json#/definitions/conceptEdge" }
+        },
+        "lineageEdges": {
+          "type": "array", "maxItems": 500,
+          "items": { "$ref": "../../type/entityLineage.json#/definitions/edge" }
+        },
+        "after": { "type": "string", "maxLength": 8192 }
+      },
+      "required": ["contextDigest", "edges", "lineageEdges"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "clusters": {
+      "type": "array", "maxItems": 12,
+      "items": { "$ref": "nativeOntologyAssetCluster.json" }
+    },
+    "bindings": { "$ref": "../../type/ontologyConceptBindingsResponse.json" },
+    "nextClusterOffset": { "type": "integer", "minimum": 0 },
+    "contextFull": {
+      "description": "True when the loaded context holds the 60-concept maximum. No further cluster can be loaded into it, so nextClusterOffset is omitted even when unloaded clusters remain.",
+      "type": "boolean"
+    },
+    "loaded": {
+      "type": "array", "maxItems": 60,
+      "items": { "$ref": "nativeOntologyDataGraphPageRequest.json#/definitions/loadedPrefix" }
+    },
+    "topology": { "$ref": "#/definitions/topology" }
+  },
+  "required": ["loaded", "topology", "contextFull"],
+  "oneOf": [
+    { "required": ["clusters"], "not": { "required": ["bindings"] } },
+    { "required": ["bindings"], "not": { "anyOf": [{ "required": ["clusters"] }, { "required": ["nextClusterOffset"] }] } },
+    { "not": { "anyOf": [{ "required": ["clusters"] }, { "required": ["bindings"] }, { "required": ["nextClusterOffset"] }] } }
+  ],
+  "additionalProperties": false
+}
