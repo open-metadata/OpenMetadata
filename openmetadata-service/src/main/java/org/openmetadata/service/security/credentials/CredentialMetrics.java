@@ -47,9 +47,10 @@ final class CredentialMetrics {
     }
 
     /**
-     * Whether a read of this reason may reuse a cached digest. Only reads on the sweep thread do:
-     * they never overlap a deep read, while a read on any other thread could start after a deep
-     * read's stamp, reuse the digest that deep read is replacing, and win by its later stamp.
+     * Whether a read of this reason may reuse a cached digest. Only reads on the sweep thread do.
+     * That thread also runs the deep reads, so the record such a read reuses already holds the
+     * latest deep read's result. A read on any other thread can overlap a deep read, so it
+     * decrypts.
      */
     boolean reusesDecrypt() {
       return this == SWEEP || this == NUDGE;
@@ -78,7 +79,7 @@ final class CredentialMetrics {
     SUBJECT_READ_FAILED,
     TIMEOUT,
     NO_PERMIT,
-    /** A check's read of the subject produced no record within missRefreshMinAge, so none was started. */
+    /** A check's read produced no record within missRefreshMinAge, so no read was started. */
     BACKOFF
   }
 
