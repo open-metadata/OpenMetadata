@@ -17,7 +17,6 @@ import jakarta.ws.rs.BadRequestException;
 import java.util.Map;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.service.alerting.AlertLimits;
 
 /** What a channel expects of a destination's configuration. */
 public interface ConfigRules {
@@ -67,16 +66,6 @@ public interface ConfigRules {
     if (config instanceof Map<?, ?> map && map.isEmpty()) {
       throw new BadRequestException(
           String.format("Destination configuration is empty for %s type", destination.getType()));
-    }
-  }
-
-  /** Each receiver is a separate send for every event, so one destination may list only so many. */
-  static void requireAtMostTheReceiverLimit(int receivers) {
-    if (receivers > AlertLimits.MAX_RECEIVERS_PER_DESTINATION) {
-      throw new BadRequestException(
-          String.format(
-              "receivers must be less than or equal to %d, got %d",
-              AlertLimits.MAX_RECEIVERS_PER_DESTINATION, receivers));
     }
   }
 }

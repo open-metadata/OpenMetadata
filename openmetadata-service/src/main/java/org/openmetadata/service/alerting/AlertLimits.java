@@ -1,7 +1,11 @@
 package org.openmetadata.service.alerting;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import jakarta.ws.rs.BadRequestException;
+import java.util.List;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 
 /**
  * The bounds on what an alert may hold and what one request may ask for, kept in one place
@@ -40,6 +44,28 @@ public final class AlertLimits {
         "destinations", destinationsOf(original), destinationsOf(updated), MAX_DESTINATIONS);
     requireNoGrowthPast("batchSize", batchSizeOf(original), batchSizeOf(updated), MAX_BATCH_SIZE);
     requireBatchSizeOfAtLeastOne(original, updated);
+    requireNoDestinationGrowsPastTheReceiverLimit(original, updated);
+  }
+
+  /** A test send is never stored, so each destination it sends to holds nothing yet. */
+  static void requireTestSendWithin(List<SubscriptionDestination> destinations) {
+    listOrEmpty(destinations)
+        .forEach(destination -> requireReceiversWithin(0, StoredReceivers.of(destination).size()));
+  }
+
+  // Each receiver is a separate send for every event, so one destination may list only so many.
+  // A destination that already held more keeps them, but cannot add one.
+  private static void requireNoDestinationGrowsPastTheReceiverLimit(
+      EventSubscription original, EventSubscription updated) {
+    List<SubscriptionDestination> sent = listOrEmpty(updated.getDestinations());
+    List<Long> held = StoredReceivers.of(original).heldBy(sent);
+    for (int index = 0; index < sent.size(); index++) {
+      requireReceiversWithin(held.get(index), StoredReceivers.of(sent.get(index)).size());
+    }
+  }
+
+  private static void requireReceiversWithin(long held, long receivers) {
+    requireNoGrowthPast("receivers", held, receivers, MAX_RECEIVERS_PER_DESTINATION);
   }
 
   // An alert that reads no event at a time never reads one again.

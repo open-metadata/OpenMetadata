@@ -5,9 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.it.util.ApiAssertions.assertBadRequest;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +19,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
@@ -112,6 +115,43 @@ class AlertConfigLimitsIT {
     assertEquals(60, edited.getDestinations().size());
   }
 
+  // A destination saved past the receiver limit keeps its receivers when the destination itself
+  // is edited, by PATCH or by a PUT that leaves out its id, but cannot gain one more.
+  @Test
+  void aDestinationStoredPastTheReceiverLimitCanStillBeEdited(TestNamespace ns) {
+    CreateEventSubscription request = request(ns, "receivers_past_limit", destinations(1));
+    EventSubscription alert = SdkClients.adminClient().eventSubscriptions().create(request);
+    int pastTheLimit = AlertLimits.MAX_RECEIVERS_PER_DESTINATION + 50;
+    SubscriptionDestination stored =
+        destination(0).withConfig(webhookWithReceivers(pastTheLimit, ENDPOINT + "main"));
+    AlertFixtures.writeBehindTheServer(
+        AlertFixtures.stored(alert.getId()).withDestinations(List.of(stored)));
+
+    assertDoesNotThrow(() -> patch(alert, endpointPatch(ENDPOINT + "moved")), "PATCH refused");
+    SubscriptionDestination sentWithoutId =
+        new SubscriptionDestination()
+            .withType(WEBHOOK)
+            .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+            .withConfig(webhookWithReceivers(pastTheLimit, ENDPOINT + "again"));
+    assertDoesNotThrow(
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PUT,
+                    ALERTS_PATH,
+                    request.withDestinations(List.of(sentWithoutId)),
+                    EventSubscription.class),
+        "PUT without destination ids refused");
+    assertBadRequest(
+        () ->
+            patch(
+                alert,
+                "[{\"op\":\"add\",\"path\":\"/destinations/0/config/receivers/-\","
+                    + "\"value\":\"http://localhost:9/one-more\"}]"),
+        "a receiver was added past the limit");
+  }
+
   @Test
   void aPatchCannotStopAnAlertFromReadingEvents(TestNamespace ns) {
     EventSubscription alert = AlertFixtures.tableAlert(ns, "reads_nothing", null, destinations(1));
@@ -142,5 +182,20 @@ class AlertConfigLimitsIT {
 
   private static SubscriptionDestination destination(int index) {
     return AlertFixtures.external(WEBHOOK, ENDPOINT + index).withId(UUID.randomUUID());
+  }
+
+  private static Webhook webhookWithReceivers(int receivers, String endpoint) {
+    return new Webhook()
+        .withEndpoint(URI.create(endpoint))
+        .withReceivers(
+            IntStream.range(0, receivers)
+                .mapToObj(index -> ENDPOINT + "receiver/" + index)
+                .collect(Collectors.toSet()));
+  }
+
+  private static String endpointPatch(String endpoint) {
+    return "[{\"op\":\"replace\",\"path\":\"/destinations/0/config/endpoint\",\"value\":\""
+        + endpoint
+        + "\"}]";
   }
 }

@@ -36,7 +36,6 @@ final class EmailConfigRules implements ConfigRules {
       throw new BadRequestException(
           "Email destination requires at least one email address in 'receivers'");
     }
-    ConfigRules.requireAtMostTheReceiverLimit(config.getReceivers().size());
     for (String email : config.getReceivers()) {
       if (!isValidEmail(email)) {
         throw new BadRequestException(String.format("Invalid email format: '%s'", email));
