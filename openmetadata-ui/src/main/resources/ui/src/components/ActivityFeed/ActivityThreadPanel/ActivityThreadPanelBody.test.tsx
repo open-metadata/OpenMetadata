@@ -12,7 +12,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
 import {
   Conversation,
   ConversationSource,
@@ -217,5 +217,53 @@ describe('ActivityThreadPanelBody', () => {
     expect(
       await screen.findByTestId('selected-conversation')
     ).toHaveTextContent(conversation.id);
+  });
+
+  it('does not show a selected conversation on the Tasks tab', async () => {
+    providerValue.selectedThread = conversation;
+
+    render(
+      <MemoryRouter>
+        <ActivityThreadPanelBody threadLink={conversation.about} view="tasks" />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(listConversations).not.toHaveBeenCalled());
+
+    expect(
+      screen.queryByTestId('selected-conversation')
+    ).not.toBeInTheDocument();
+  });
+
+  it('closes once the app navigates away', async () => {
+    const onCancel = jest.fn();
+    const NavigateButton = () => {
+      const navigate = useNavigate();
+
+      return (
+        <button data-testid="navigate" onClick={() => navigate('/glossary')}>
+          Go
+        </button>
+      );
+    };
+
+    render(
+      <MemoryRouter>
+        <NavigateButton />
+        <ActivityThreadPanelBody
+          threadLink={conversation.about}
+          view="conversations"
+          onCancel={onCancel}
+        />
+      </MemoryRouter>
+    );
+
+    await screen.findByTestId('conversation-conversation-1');
+
+    expect(onCancel).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('navigate'));
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });

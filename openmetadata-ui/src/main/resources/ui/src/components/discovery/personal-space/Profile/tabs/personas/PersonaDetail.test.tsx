@@ -23,7 +23,7 @@ import {
   deepClone,
   Operation as JsonPatchOperation,
 } from 'fast-json-patch';
-import React, { useState } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';

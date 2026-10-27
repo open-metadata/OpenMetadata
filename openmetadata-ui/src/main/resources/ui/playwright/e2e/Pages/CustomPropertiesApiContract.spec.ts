@@ -448,7 +448,9 @@ const getCustomPropertyIndex = (
 
 const expectPersistedValue = (actual: unknown, expected: unknown) => {
   if (typeof expected === 'object' && expected !== null) {
-    expect(actual).toMatchObject(expected);
+    expect(actual).toMatchObject(
+      Array.isArray(expected) ? expected : { ...expected }
+    );
 
     return;
   }

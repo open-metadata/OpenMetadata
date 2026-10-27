@@ -30,7 +30,6 @@ import {
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../../generated/system/ui/page';
-import { useGlossaryProposalCounts } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -197,19 +196,6 @@ const GlossaryTermsV1 = ({
     [permissions]
   );
 
-  const proposalScope = useMemo(
-    () =>
-      glossaryTerm?.id && !isVersionView
-        ? {
-            fullyQualifiedName: glossaryTerm.fullyQualifiedName ?? '',
-            id: glossaryTerm.id,
-            isGlossary: false,
-          }
-        : undefined,
-    [glossaryTerm?.id, glossaryTerm?.fullyQualifiedName, isVersionView]
-  );
-  const { counts: proposalCounts } = useGlossaryProposalCounts(proposalScope);
-
   const tabItems = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
@@ -231,7 +217,6 @@ const GlossaryTermsV1 = ({
       refreshActiveGlossaryTerm,
       setAssetModalVisible,
       setPreviewAsset,
-      proposedCount: proposalCounts.all,
     });
 
     return getDetailsTabWithNewLabel(
@@ -254,7 +239,6 @@ const GlossaryTermsV1 = ({
     handleAssetSave,
     previewAsset,
     handleAssetClick,
-    proposalCounts.all,
   ]);
 
   useEffect(() => {
@@ -328,6 +312,7 @@ const GlossaryTermsV1 = ({
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModalVisible(true)}
             onDelete={handleGlossaryTermDelete}
+            onProposalDecided={refreshActiveGlossaryTerm}
           />
         </div>
 

@@ -96,10 +96,12 @@ export const stringifySearchParams = (param: QuerySearchParams) => {
   return Qs.stringify(param);
 };
 
-export const fetchFilterOptions = async (
+export const fetchFilterOptions = async <
+  SI extends SearchIndex | SearchIndex[]
+>(
   searchText: string,
   filters: string,
-  searchIndex: SearchIndex | SearchIndex[]
+  searchIndex: SI
 ) => {
   const response = await searchQuery({
     query: `*${searchText}*`,
