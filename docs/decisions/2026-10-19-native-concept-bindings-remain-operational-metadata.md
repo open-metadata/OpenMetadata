@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-23 (binding rows, bounded paging, the ontology data graph) · v3 2026-10-24 (write confirmation and complete read recovery) · v4 2026-10-26 (paged cleanup under the lock, lineage between returned assets) · v5 2026-10-26 (stateless combined graph pages)
 - **Deciders:** Ontology Studio implementation review
-- **Guard:** OntologyConceptBindingsIT, OntologyConceptBindingCleanupIT, NativeOntologyDataGraphIT, NativeOntologyDataGraphEdgeScanIT, NativeOntologyDataGraphBindingScanIT, NativeOntologyDataGraphPagerTest, OntologyBindingRulesTest, OntologyConceptBindingMigrationTest, ontologyAPI.test.ts, useOntologyConceptBindings.test.tsx, OntologyConceptAssets.test.tsx, OntologyColumnBindingEditor.test.tsx, OntologyPropertyBindings.test.tsx, OntologyConceptDataGraph.test.tsx, OntologyConceptInspector.test.tsx
+- **Guard:** OntologyConceptBindingsIT, OntologyConceptBindingCleanupIT, NativeOntologyDataGraphIT, NativeOntologyDataGraphEdgeScanIT, NativeOntologyDataGraphBindingScanIT, NativeOntologyDataGraphPageIT, NativeOntologyDataGraphContextIT, NativeOntologyDataGraphPagerTest, NativeOntologyDataGraphPagerRequestTest, NativeOntologyTopologyCursorCodecTest, OntologyPrefixLineageDaoTest, OntologyBindingRulesTest, OntologyConceptBindingMigrationTest, ontologyAPI.test.ts, useOntologyConceptBindings.test.tsx, OntologyConceptAssets.test.tsx, OntologyColumnBindingEditor.test.tsx, OntologyPropertyBindings.test.tsx, OntologyConceptDataGraph.test.tsx, OntologyConceptInspector.test.tsx
 - **Related:** ADR:2026-10-17-glossaries-do-not-own-ontology-models,
   [#35984](https://github.com/open-metadata/OpenMetadata/issues/35984)
 
