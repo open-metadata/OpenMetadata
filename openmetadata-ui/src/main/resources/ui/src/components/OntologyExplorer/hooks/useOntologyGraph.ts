@@ -307,6 +307,7 @@ interface UseOntologyGraphProps {
   hierarchicalRelationTypes?: ReadonlySet<string>;
   isEditMode?: boolean;
   studioMode?: boolean;
+  keepCanvasOnAdd?: boolean;
 }
 
 function computeAssetCountBadgeDiameter(
@@ -1175,6 +1176,7 @@ export function useOntologyGraph({
   hierarchicalRelationTypes,
   isEditMode = false,
   studioMode = false,
+  keepCanvasOnAdd = false,
 }: UseOntologyGraphProps) {
   const graphRef = useRef<Graph | null>(null);
   const settingsRef = useRef(settings);
@@ -1204,6 +1206,13 @@ export function useOntologyGraph({
 
   const onScrollNearEdgeRef = useRef(onScrollNearEdge);
   onScrollNearEdgeRef.current = onScrollNearEdge;
+
+  const onNodeClickRef = useRef(onNodeClick);
+  onNodeClickRef.current = onNodeClick;
+  const onNodeDoubleClickRef = useRef(onNodeDoubleClick);
+  onNodeDoubleClickRef.current = onNodeDoubleClick;
+  const onPaneClickRef = useRef(onPaneClick);
+  onPaneClickRef.current = onPaneClick;
 
   const isEditModeRef = useRef(isEditMode);
   isEditModeRef.current = isEditMode;
@@ -1697,8 +1706,9 @@ export function useOntologyGraph({
         : inputNodes.length,
     [explorationMode, inputNodes]
   );
-  // Studio adds classes to the live graph, so only an empty canvas rekeys it.
-  const graphInstanceKey = studioMode
+  // Only a caller that adds classes to the live graph in place skips the
+  // rebuild; other studio callers need the hierarchy layout for new nodes.
+  const graphInstanceKey = keepCanvasOnAdd
     ? Math.min(termNodeCount, 1)
     : termNodeCount;
 
@@ -1905,7 +1915,7 @@ export function useOntologyGraph({
         isDataMode && isDataModeAssetBadgeShape(e.originalTarget);
       const dataModeLoadMoreBadgeClick =
         isDataMode && isDataModeLoadMoreBadgeShape(e.originalTarget);
-      onNodeClick(resolveNodeForCallback(node), position, {
+      onNodeClickRef.current(resolveNodeForCallback(node), position, {
         dataModeAssetBadgeClick,
         dataModeLoadMoreBadgeClick,
       });
@@ -1916,7 +1926,7 @@ export function useOntologyGraph({
       if (id) {
         const node = findNodeById(id);
         if (node) {
-          onNodeDoubleClick(resolveNodeForCallback(node));
+          onNodeDoubleClickRef.current(resolveNodeForCallback(node));
         }
       }
     };
@@ -1974,7 +1984,7 @@ export function useOntologyGraph({
     graph.on(GraphEvent.AFTER_TRANSFORM, writeGraphSnapshot);
     graph.on(CanvasEvent.CLICK, () => {
       setClickedEdgeIdRef.current(null);
-      onPaneClick();
+      onPaneClickRef.current();
     });
 
     const handleEdgeClick = (e: IElementEvent) => {

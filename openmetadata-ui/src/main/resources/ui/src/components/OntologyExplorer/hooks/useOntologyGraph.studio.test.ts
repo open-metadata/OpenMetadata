@@ -35,6 +35,7 @@ interface FakeGraph {
   translateTo: jest.Mock;
   nodes: Required<FakeNode>[];
   edges: FakeEdge[];
+  listeners: Record<string, Array<(event: unknown) => void>>;
 }
 
 const mockGraphs: FakeGraph[] = [];
@@ -74,6 +75,7 @@ jest.mock('@antv/g6', () => {
           translateTo: jest.fn(() => Promise.resolve()),
           nodes,
           edges,
+          listeners: {},
         };
         mockGraphs.push(recorded);
 
@@ -97,7 +99,9 @@ jest.mock('@antv/g6', () => {
               },
               getZoom: () => 1,
               getCanvasCenter: () => [0, 0],
-              on: () => undefined,
+              on: (name: string, listener: (event: unknown) => void) => {
+                (recorded.listeners[name] ??= []).push(listener);
+              },
               off: () => undefined,
             };
 
@@ -185,11 +189,28 @@ const containerRef = {
 Object.defineProperty(containerRef.current, 'offsetWidth', { value: 1200 });
 Object.defineProperty(containerRef.current, 'offsetHeight', { value: 800 });
 
-const renderStudioGraph = (props: StudioProps = initialProps) =>
+interface Handlers {
+  onNodeClick: jest.Mock;
+  onNodeDoubleClick: jest.Mock;
+  onPaneClick: jest.Mock;
+}
+type RenderProps = StudioProps & { handlers?: Handlers };
+
+const noopHandlers = (): Handlers => ({
+  onNodeClick: jest.fn(),
+  onNodeDoubleClick: jest.fn(),
+  onPaneClick: jest.fn(),
+});
+
+const renderStudioGraph = (
+  props: RenderProps = initialProps,
+  keepCanvasOnAdd = true
+) =>
   renderHook(
-    (current: StudioProps) =>
+    ({ handlers = noopHandlers(), ...current }: RenderProps) =>
       useOntologyGraph({
         ...current,
+        ...handlers,
         assetToTermMap: {},
         computeNodeColor: () => '#000',
         containerRef,
@@ -198,12 +219,10 @@ const renderStudioGraph = (props: StudioProps = initialProps) =>
         layoutType: LayoutEngine.Dagre,
         neighborSet: new Set(),
         explorationMode: 'model',
-        onNodeClick: jest.fn(),
-        onNodeDoubleClick: jest.fn(),
-        onPaneClick: jest.fn(),
         setClickedEdgeId: jest.fn(),
         settings: { layout: 'dagre', showEdgeLabels: true } as never,
         studioMode: true,
+        keepCanvasOnAdd,
       }),
     { initialProps: props }
   );
@@ -320,5 +339,47 @@ describe('studio graph node positions', () => {
         ])
       )
     );
+  });
+
+  it('runs the latest click handlers on a class added to the live canvas', async () => {
+    const first = noopHandlers();
+    const latest = noopHandlers();
+    const { rerender } = renderStudioGraph({
+      ...initialProps,
+      handlers: first,
+    });
+    await waitFor(() => expect(mockGraphs).toHaveLength(1));
+
+    rerender({
+      ...withCreatedClass(initialProps, 'c', undefined),
+      handlers: latest,
+    });
+    await waitFor(() =>
+      expect(mockGraphs[0].nodes.map(({ id }) => id)).toContain('c')
+    );
+    const event = { target: { id: 'c' }, clientX: 4, clientY: 5 };
+    mockGraphs[0].listeners['node:click'].forEach((fn) => fn(event));
+    mockGraphs[0].listeners['node:dblclick'].forEach((fn) => fn(event));
+    mockGraphs[0].listeners['canvas:click'].forEach((fn) => fn(event));
+
+    expect(mockGraphs).toHaveLength(1);
+    expect(latest.onNodeClick).toHaveBeenCalledTimes(1);
+    expect(latest.onNodeDoubleClick).toHaveBeenCalledTimes(1);
+    expect(latest.onPaneClick).toHaveBeenCalledTimes(1);
+    expect(first.onNodeClick).not.toHaveBeenCalled();
+    expect(first.onNodeDoubleClick).not.toHaveBeenCalled();
+    expect(first.onPaneClick).not.toHaveBeenCalled();
+  });
+
+  it('rebuilds the studio canvas for an added node unless the caller opts in to keeping it', async () => {
+    const { rerender } = renderStudioGraph(initialProps, false);
+    await waitFor(() => expect(mockGraphs).toHaveLength(1));
+
+    rerender(withCreatedClass(initialProps, 'c', undefined));
+
+    await waitFor(() => expect(mockGraphs).toHaveLength(2));
+
+    expect(mockGraphs[0].destroy).toHaveBeenCalledTimes(1);
+    expect(mockGraphs[1].nodes.map(({ id }) => id)).toContain('c');
   });
 });

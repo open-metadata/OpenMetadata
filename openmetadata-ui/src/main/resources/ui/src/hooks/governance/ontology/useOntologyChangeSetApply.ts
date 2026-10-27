@@ -290,6 +290,7 @@ export const useOntologyChangeSetApply = ({
     setStatus({ kind: 'busy', step: 'applying' });
     const id = current.draft.id;
     let applyRequested = false;
+    let wasDraftBeforeApply = false;
     const apply = async () => {
       const draft = validateDraft(
         await getOntologyChangeSet(id, CHANGE_SET_FIELDS),
@@ -317,6 +318,7 @@ export const useOntologyChangeSetApply = ({
         return;
       }
       applyRequested = true;
+      wasDraftBeforeApply = draft.state === OntologyChangeSetState.Draft;
       finish(
         await applyOntologyChangeSet(id, {
           lease: {
@@ -333,7 +335,11 @@ export const useOntologyChangeSetApply = ({
           await getOntologyChangeSet(id, CHANGE_SET_FIELDS),
           current.plan
         );
-        if (draft.state === OntologyChangeSetState.Applied) {
+        if (
+          draft.state === OntologyChangeSetState.Applied ||
+          (wasDraftBeforeApply &&
+            draft.state === OntologyChangeSetState.ApplyFailed)
+        ) {
           finish(draft, current.plan);
 
           return;

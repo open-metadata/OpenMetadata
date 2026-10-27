@@ -493,6 +493,37 @@ describe('after a failed attempt', () => {
     ).toHaveLength(2);
   });
 
+  it('settles as rejected when a 500 follows an apply the server recorded as failed', async () => {
+    failFirstApplyWith(500);
+    const lockChanged = jest.fn();
+    setup({ onLockChange: lockChanged });
+    get.mockImplementation(async (url: string) => {
+      if (url.endsWith('/state')) {
+        return { data: { workingRevision: 7 } };
+      }
+      const draft = readDraft(url);
+      const applyAttempted = post.mock.calls.some(([postUrl]) =>
+        postUrl.endsWith('/apply')
+      );
+
+      return {
+        data:
+          applyAttempted && url !== '/ontologyChangeSets'
+            ? { ...draft, state: 'APPLY_FAILED' }
+            : draft,
+      };
+    });
+    await createFundsTransfer();
+
+    expect(await screen.findByText('server.unexpected-error')).toBeVisible();
+    expect(screen.getByTestId('new-class-label')).toBeEnabled();
+    expect(screen.getByTestId('ontology-new-class-close')).toBeEnabled();
+    expect(
+      screen.queryByRole('button', { name: 'label.retry' })
+    ).not.toBeInTheDocument();
+    expect(lockChanged).toHaveBeenLastCalledWith(false);
+  });
+
   it('unlocks the form and Close when the server rejects the plan', async () => {
     rejectFirstApply();
     const lockChanged = jest.fn();
