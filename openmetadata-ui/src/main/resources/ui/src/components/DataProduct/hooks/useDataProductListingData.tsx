@@ -17,6 +17,7 @@ import { TABLE_CARD_PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import { SearchResponse } from '../../../interface/search.interface';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
@@ -30,6 +31,10 @@ import {
   ColumnConfig,
   ListingData,
 } from '../../common/atoms/shared/types';
+
+const transformSearchResults = (
+  response: SearchResponse<SearchIndex.DATA_PRODUCT>
+) => response.hits.hits.map((hit) => hit._source);
 
 export const useDataProductListingData = ({
   enableNlq,
@@ -114,8 +119,9 @@ export const useDataProductListingData = ({
     []
   );
 
-  const listingData = useListingData<DataProduct>({
+  const listingData = useListingData<DataProduct, SearchIndex.DATA_PRODUCT>({
     searchIndex: SearchIndex.DATA_PRODUCT,
+    transform: transformSearchResults,
     baseFilter: '', // No parent filter for data products
     pageSize: TABLE_CARD_PAGE_SIZE,
     filterKeys,

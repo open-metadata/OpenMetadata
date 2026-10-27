@@ -65,10 +65,10 @@ class ProfilerClassBase {
     ];
   }
 
-  public getDefaultTabKey(isTourOpen: boolean): ProfilerTabPath {
-    return isTourOpen
-      ? ProfilerTabPath.COLUMN_PROFILE
-      : ProfilerTabPath.TABLE_PROFILE;
+  // The parameter is unused; Collate's ProfilerClassCollate still overrides
+  // with it, and drops it in its companion change.
+  public getDefaultTabKey(_isTourOpen?: boolean): ProfilerTabPath {
+    return ProfilerTabPath.TABLE_PROFILE;
   }
 }
 

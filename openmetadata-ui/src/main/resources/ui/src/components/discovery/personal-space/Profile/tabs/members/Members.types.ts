@@ -27,6 +27,15 @@ export type TeamNode = {
   children?: TeamNode[];
 };
 
+export type UserDetailTab =
+  | 'overview'
+  | 'access'
+  | 'activity'
+  | 'tasks'
+  | 'owned-assets'
+  | 'following'
+  | 'custom-properties';
+
 export type MembersView =
   | { type: 'landing' }
   | { type: 'teams' }
@@ -34,14 +43,30 @@ export type MembersView =
   | { type: 'teams-add'; parentFqn?: string }
   | { type: 'teams-import'; fqn: string; importType: MembersImportType }
   | { type: 'users' }
+  | {
+      type: 'user-detail';
+      name: string;
+      tab: UserDetailTab;
+      taskId?: string;
+    }
   | { type: 'admins' }
   | { type: 'user-create'; isAdmin?: boolean }
-  | { type: 'user-edit'; name: string }
   | { type: 'online-users' }
   // A downstream-contributed section (EXTENSION_POINTS.MEMBERS_LANDING_SECTIONS).
   // `subPath` carries the section's own internal route, as the Notification
   // panel's section view does.
-  | { type: 'section'; key: string; subPath?: string };
+  | { type: 'section'; key: string; subPath?: string }
+  // A sub-page owned by a contributed team tab (EXTENSION_POINTS.TEAM_DETAILS_TABS).
+  // Rendered at panel level, like the team forms, so the tab's page replaces the
+  // team detail instead of sitting inside its tab chrome. `subPath` carries the
+  // tab's own internal route, as the `section` view does.
+  | {
+      type: 'team-tab-subpage';
+      fqn: string;
+      teamId: string;
+      key: string;
+      subPath?: string;
+    };
 
 export interface MembersLandingCard {
   id: string;
@@ -54,6 +79,22 @@ export interface MembersLandingCard {
 export interface MembersPanelProps {
   onHeaderChange?: (
     override: import('../../profileNavConfig').ProfileHeaderOverride | null
+  ) => void;
+}
+
+export type MembersUserDetailView = Extract<
+  MembersView,
+  { type: 'user-detail' }
+>;
+
+export interface MembersUserDetailProps {
+  view: MembersUserDetailView;
+  onNavigate: (view: MembersView) => void;
+  /** Header slots (title, avatar, tabs, delete…) merged over the Members header. */
+  onSetHeader: (
+    header:
+      | Partial<import('../../profileNavConfig').ProfileHeaderOverride>
+      | undefined
   ) => void;
 }
 

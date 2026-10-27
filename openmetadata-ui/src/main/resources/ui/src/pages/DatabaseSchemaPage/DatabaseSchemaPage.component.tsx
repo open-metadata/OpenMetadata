@@ -29,11 +29,11 @@ import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -794,7 +794,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [isFollowing, unFollowSchema, followSchema]);
 
   if (isPermissionsLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (isError) {
@@ -825,7 +825,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(databaseSchema)}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(databaseSchema)}>
       {isSchemaMissing ? (
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder

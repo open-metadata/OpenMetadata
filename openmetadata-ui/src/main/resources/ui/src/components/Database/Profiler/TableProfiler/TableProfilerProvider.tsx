@@ -30,7 +30,6 @@ import { ReactComponent as ProfileSampleIcon } from '../../../../assets/svg/data
 import { ReactComponent as RowCountIcon } from '../../../../assets/svg/data-observability/row-count.svg';
 import { ReactComponent as TotalSizeIcon } from '../../../../assets/svg/data-observability/total-size.svg';
 import { DEFAULT_SORT_ORDER } from '../../../../constants/profiler.constant';
-import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { CustomMetric, Table } from '../../../../generated/entity/data/table';
 import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
@@ -90,7 +89,6 @@ export const TableProfilerProvider = ({
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
-  const { isTourOpen, tourMockDatasetData } = useTourProvider();
   const testCasePaging = usePaging();
   const { subTab } = useParams<{ subTab: ProfilerTabPath }>();
   // profiler has its own api but sent's the data in Table type
@@ -117,14 +115,11 @@ export const TableProfilerProvider = ({
 
   const isTableDeleted = useMemo(() => table?.deleted, [table]);
 
-  // Get activeTab from URL path (subTab param), fallback to default based on tour state
-  const activeTab = useMemo(() => {
-    const defaultTab = isTourOpen
-      ? ProfilerTabPath.COLUMN_PROFILE
-      : ProfilerTabPath.TABLE_PROFILE;
-
-    return subTab ?? defaultTab;
-  }, [subTab, isTourOpen]);
+  // Get activeTab from URL path (subTab param), fallback to the table profile
+  const activeTab = useMemo(
+    () => subTab ?? ProfilerTabPath.TABLE_PROFILE,
+    [subTab]
+  );
 
   // `permissions` stays raw here — TableProfilerContextInterface exposes it verbatim to
   // consumers (context contract, kept raw per the GenericProvider precedent). `viewTest` is
@@ -332,7 +327,7 @@ export const TableProfilerProvider = ({
   };
 
   useEffect(() => {
-    const isProfilerFetchable = !isTableDeleted && datasetFQN && !isTourOpen;
+    const isProfilerFetchable = !isTableDeleted && datasetFQN;
     const fetchProfiler =
       isProfilerFetchable &&
       [ProfilerTabPath.TABLE_PROFILE, ProfilerTabPath.COLUMN_PROFILE].includes(
@@ -345,17 +340,10 @@ export const TableProfilerProvider = ({
     } else {
       setIsProfilerDataLoading(false);
     }
-    if (isTourOpen) {
-      const mock = tourMockDatasetData as { tableDetails: unknown } | undefined;
-      if (mock?.tableDetails) {
-        setTableProfiler(mock.tableDetails as Table);
-      }
-    }
-  }, [datasetFQN, isTourOpen, activeTab, tourMockDatasetData]);
+  }, [datasetFQN, activeTab]);
 
   useEffect(() => {
-    const fetchTest =
-      !isTourOpen && activeTab === ProfilerTabPath.DATA_QUALITY && viewTest;
+    const fetchTest = activeTab === ProfilerTabPath.DATA_QUALITY && viewTest;
 
     if (fetchTest) {
       fetchAllTests();
@@ -363,7 +351,7 @@ export const TableProfilerProvider = ({
       setAllTestCases([]);
       setIsTestsLoading(false);
     }
-  }, [viewTest, isTourOpen, activeTab, testCasePaging.pageSize]);
+  }, [viewTest, activeTab, testCasePaging.pageSize]);
 
   const fetchTestCaseSummary = useCallback(async () => {
     if (isUndefined(table?.testSuite?.id)) {

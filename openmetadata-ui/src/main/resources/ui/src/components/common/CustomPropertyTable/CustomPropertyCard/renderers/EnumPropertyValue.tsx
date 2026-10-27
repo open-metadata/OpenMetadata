@@ -19,6 +19,7 @@ import { isArray } from 'lodash';
 import { FormEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Config } from '../../../../../generated/type/customProperty';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import { CollapsibleChipList } from '../CollapsibleChipList';
 import {
   CustomPropertyRenderer,
@@ -51,6 +52,7 @@ const EnumPropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const config = property.customPropertyConfig?.config as Config | undefined;
@@ -72,6 +74,8 @@ const EnumPropertyEdit = ({
       ),
     [selected, options]
   );
+
+  useReportDirty(selected, onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

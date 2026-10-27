@@ -57,7 +57,9 @@ export interface InputBaseProps extends TextFieldProps {
   ref?: Ref<HTMLInputElement>;
   groupRef?: Ref<HTMLDivElement>;
   /** Icon component to display on the left side of the input. */
-  icon?: ComponentType<HTMLAttributes<HTMLOrSVGElement>>;
+  icon?: ComponentType<
+    Pick<HTMLAttributes<HTMLOrSVGElement>, 'className' | 'aria-hidden'>
+  >;
   /** Optional slot rendered inside the input group, after the input and before trailing icons. */
   trailingSlot?: ReactNode;
   /** Passes `data-testid` directly to the inner `<input>` element (not the wrapper). */

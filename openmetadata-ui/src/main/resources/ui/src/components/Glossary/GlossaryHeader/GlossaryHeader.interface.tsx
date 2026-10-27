@@ -19,4 +19,6 @@ export interface GlossaryHeaderProps {
   onAssetAdd?: () => void;
   updateVote?: (data: VotingDataProps) => Promise<void>;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
+  /** Reloads the term once its proposal is decided, since the approval workflow moves its stage. */
+  onProposalDecided?: () => void;
 }

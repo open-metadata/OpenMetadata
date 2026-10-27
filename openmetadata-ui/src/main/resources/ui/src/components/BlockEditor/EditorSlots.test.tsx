@@ -126,11 +126,13 @@ describe('EditorSlots link handling', () => {
 
     expect(tippy).toHaveBeenCalled();
 
-    const options = (tippy as jest.Mock).mock.calls[0][1];
+    const options = jest.mocked(tippy).mock.calls[0][1];
 
     // The popup must mount inside the dialog (not document.body) so its actions
     // remain clickable inside a focus-trapping overlay.
-    expect(options.appendTo()).toBe(dialog);
+    expect(
+      typeof options?.appendTo === 'function' && options.appendTo(anchor)
+    ).toBe(dialog);
 
     editor.destroy();
     document.body.removeChild(dialog);
@@ -163,9 +165,11 @@ describe('EditorSlots link handling', () => {
       } as unknown as Parameters<EditorSlotsRef['onMouseDown']>[0]);
     });
 
-    const options = (tippy as jest.Mock).mock.calls[0][1];
+    const options = jest.mocked(tippy).mock.calls[0][1];
 
-    expect(options.appendTo()).toBe(document.body);
+    expect(
+      typeof options?.appendTo === 'function' && options.appendTo(anchor)
+    ).toBe(document.body);
 
     editor.destroy();
     document.body.removeChild(dialog);

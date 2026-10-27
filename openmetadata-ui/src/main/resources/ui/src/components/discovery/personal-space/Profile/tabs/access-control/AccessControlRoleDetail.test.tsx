@@ -113,7 +113,7 @@ jest.mock('../../../../../common/DeleteModal/DeleteModal', () => ({
 // calls jest.advanceTimersByTime(), causing MutationObserver loops.
 jest.mock('@openmetadata/ui-core-components', () => {
   const actual = jest.requireActual('@openmetadata/ui-core-components');
-  const React = jest.requireActual('react');
+  const React = jest.requireActual<typeof import('react')>('react');
 
   const TabsContext = React.createContext<{
     selected: unknown;

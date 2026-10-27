@@ -360,4 +360,99 @@ describe('ActivityFeedActions', () => {
     expect(screen.queryByTestId('confirmation-modal')).not.toBeInTheDocument();
     expect(mockDeleteFeed).not.toHaveBeenCalled();
   });
+
+  describe('as a menu (activity thread panel)', () => {
+    it('offers only Edit and Delete for the conversation', async () => {
+      const onEditPost = jest.fn();
+
+      render(
+        <ActivityFeedActions
+          asMenu
+          conversation={conversation}
+          conversationId={conversation.id}
+          isReply={false}
+          onEditPost={onEditPost}
+        />
+      );
+
+      expect(screen.queryByTestId('feed-actions')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('conversation-actions'));
+
+      const items = await screen.findAllByRole('menuitem');
+
+      expect(items.map((item) => item.textContent)).toEqual([
+        'label.edit',
+        'label.delete',
+      ]);
+
+      fireEvent.click(screen.getByRole('menuitem', { name: 'label.edit' }));
+
+      expect(onEditPost).toHaveBeenCalled();
+    });
+
+    it('deletes the conversation after confirmation', async () => {
+      render(
+        <ActivityFeedActions
+          asMenu
+          conversation={conversation}
+          conversationId={conversation.id}
+          isReply={false}
+        />
+      );
+      fireEvent.click(screen.getByTestId('conversation-actions'));
+      fireEvent.click(
+        await screen.findByRole('menuitem', { name: 'label.delete' })
+      );
+      fireEvent.click(screen.getByTestId('confirm-delete'));
+
+      expect(mockDeleteFeed).toHaveBeenCalledWith(
+        conversation.id,
+        conversation.id,
+        true
+      );
+    });
+
+    it('shows no menu to a user who may not manage the conversation', () => {
+      mockUseApplicationStore.mockReturnValue({
+        currentUser: { id: 'other-id', name: 'bob', isAdmin: false },
+      });
+
+      render(
+        <ActivityFeedActions
+          asMenu
+          conversation={conversation}
+          conversationId={conversation.id}
+          isReply={false}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('conversation-actions')
+      ).not.toBeInTheDocument();
+    });
+
+    it('puts the Edit and Delete of a reply in the menu too', async () => {
+      const onEditPost = jest.fn();
+
+      render(
+        <ActivityFeedActions
+          asMenu
+          isReply
+          conversationId={conversation.id}
+          reply={reply}
+          onEditPost={onEditPost}
+        />
+      );
+
+      expect(screen.queryByTestId('feed-actions')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('conversation-actions'));
+      fireEvent.click(
+        await screen.findByRole('menuitem', { name: 'label.edit' })
+      );
+
+      expect(onEditPost).toHaveBeenCalled();
+    });
+  });
 });
