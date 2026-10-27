@@ -204,6 +204,7 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
         <IntakeFormsTable
           forms={forms}
           loading={loading}
+          variant="muted"
           onDelete={setDeleteTarget}
           onEdit={(form) => onNavigate({ type: 'intake-edit', id: form.id })}
           onToggleEnabled={handleToggleEnabled}

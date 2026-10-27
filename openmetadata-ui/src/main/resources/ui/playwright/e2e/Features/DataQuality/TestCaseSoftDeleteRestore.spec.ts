@@ -168,6 +168,17 @@ for (const { label, testCaseListPath, openApp } of APP_MODES) {
           testDefinition: 'tableColumnCountToEqual',
         });
         softDeleteTestCaseId = softDeleteCandidate.id;
+        // A failed result opens an incident, stored as a child of the test
+        // case; the list's soft delete must then go out with recursive=true.
+        await table.addTestCaseResult(
+          apiContext,
+          softDeleteCandidate.fullyQualifiedName,
+          {
+            result: 'Soft delete with an open incident',
+            testCaseStatus: 'Failed',
+            timestamp: Date.now(),
+          }
+        );
 
         const restoreCandidateData = {
           name: restoreTestCaseName,
@@ -235,7 +246,11 @@ for (const { label, testCaseListPath, openApp } of APP_MODES) {
         );
         const activeListRefresh = waitForTestCaseListResponse(page);
         await page.getByTestId('confirm-button').click();
-        await deleteResponse;
+        const deleted = await deleteResponse;
+        expect(new URL(deleted.url()).searchParams.get('recursive')).toBe(
+          'true'
+        );
+        expect(deleted.ok()).toBe(true);
         await activeListRefresh;
         await toastNotification(page, /deleted successfully!/);
         await expect(

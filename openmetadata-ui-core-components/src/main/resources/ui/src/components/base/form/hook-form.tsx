@@ -12,6 +12,7 @@ import { FormProvider, useController, useFormContext } from 'react-hook-form';
 import { cx } from '@/utils/cx';
 import { FieldDocProvider } from '../../application/form-field/field-doc-context';
 import { FieldDocPanel } from '../../application/form-field/field-doc-panel';
+import type { FieldDocPopoverVariant } from '../../application/form-field/field-doc-popover';
 import { FieldDocPopover } from '../../application/form-field/field-doc-popover';
 
 interface FormProps<TFieldValues extends FieldValues = FieldValues>
@@ -23,6 +24,8 @@ interface FormProps<TFieldValues extends FieldValues = FieldValues>
   fieldDocHeader?: ReactNode;
   fieldDocOffset?: number;
   fieldDocMaxHeight?: number;
+  /** Popover-only: background step of the doc card. */
+  fieldDocVariant?: FieldDocPopoverVariant;
   /**
    * 'popover' (default) floats the doc next to the focused field.
    * 'panel' renders it as a column beside the form, inside the same surface.
@@ -84,6 +87,7 @@ export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
   fieldDocHeader,
   fieldDocOffset,
   fieldDocMaxHeight,
+  fieldDocVariant,
   fieldDocDisplay = 'popover',
   emptyFieldDoc,
   formClassName,
@@ -155,6 +159,7 @@ export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
                 maxHeight={fieldDocMaxHeight}
                 offset={fieldDocOffset}
                 renderDoc={renderFieldDoc}
+                variant={fieldDocVariant}
               />
             ) : null}
           </>

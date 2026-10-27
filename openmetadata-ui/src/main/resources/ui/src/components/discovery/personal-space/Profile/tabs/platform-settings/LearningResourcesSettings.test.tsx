@@ -337,4 +337,22 @@ describe('Learning resources settings', () => {
     expect(screen.getAllByText('label.field-required')).toHaveLength(5);
     expect(createLearningResource).not.toHaveBeenCalled();
   });
+
+  it.each([
+    'javascript:alert(document.domain)',
+    'data:text/html,<script>alert(1)</script>',
+  ])('add rejects a source URL that is not http(s): %s', async (url) => {
+    render(
+      <LearningResourceSettingsForm showHint={false} onNavigate={onNavigate} />
+    );
+    await screen.findByTestId('learning-resource-form');
+
+    fireEvent.change(inputOf('source-url-input'), { target: { value: url } });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(await screen.findByText('label.invalid-url')).toBeInTheDocument();
+    expect(createLearningResource).not.toHaveBeenCalled();
+  });
 });

@@ -400,7 +400,10 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       className="tw:pt-1 tw:h-full tw:px-8 tw:pb-8"
       data-testid="users-list-container"
       direction="col">
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col"
+        size="compact"
+        variant="muted">
         <div className="tw:overflow-y-auto">
           <Table
             className="user-list-table"
@@ -445,6 +448,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
               onSearch: handleSearch,
             }}
             size="small"
+            variant="muted"
           />
         </div>
         {showPagination && (
