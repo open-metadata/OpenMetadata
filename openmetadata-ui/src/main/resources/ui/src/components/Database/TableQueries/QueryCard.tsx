@@ -288,7 +288,7 @@ const QueryCard: FC<QueryCardProp> = ({
                   data-testid="query-entity-copy-button"
                   icon={Copy01}
                   size="sm"
-                  onClick={onCopyToClipBoard}
+                  onClick={() => onCopyToClipBoard()}
                 />
               </Tooltip>
             </Box>

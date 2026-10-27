@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,23 +15,41 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.SearchServiceTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateSearchIndex;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.SearchIndex;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.SearchService;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SearchIndexDataType;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.searchindex.SearchIndexResource;
+import org.openmetadata.service.security.mask.PIIMasker;
 
 /**
  * Integration tests for SearchIndex entity operations.
@@ -42,6 +61,18 @@ import org.openmetadata.service.resources.searchindex.SearchIndexResource;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearchIndex> {
+
+  private static final List<String> SAMPLE_MESSAGES =
+      List.of(
+          "{\"publicId\":1,\"payload\":{\"contact\":{\"details\":{\"email\":\"SAMPLE_SECRET_A\"}}}}",
+          "opaque SAMPLE_SECRET_B");
+
+  private enum SampleTagLocation {
+    ENTITY,
+    FIELD,
+    DEEP_FIELD,
+    NON_SENSITIVE
+  }
 
   private String defaultListService;
 
@@ -1033,6 +1064,217 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     assertFalse(
         fieldTags.stream().anyMatch(t -> t.getTagFQN().equals(userTag.getTagFQN())),
         "The deleted field's user tag must NOT overwrite the incoming tag on the re-added field");
+  }
+
+  @ParameterizedTest
+  @EnumSource(SampleTagLocation.class)
+  void get_sampleData_appliesPersistedTagsAndPreservesStoredMessages(
+      SampleTagLocation location, TestNamespace ns) {
+    User owner = UserTestFactory.createUser(ns, "sample_owner");
+    User reader = UserTestFactory.createUser(ns, "sample_reader");
+    SearchIndex index = createSampleIndex(ns, location, owner.getEntityReference());
+    assertSampleTagPlacement(index, location);
+    putSampleData(index);
+
+    List<String> expected =
+        location == SampleTagLocation.NON_SENSITIVE
+            ? SAMPLE_MESSAGES
+            : List.of(PIIMasker.MASKED_VALUE);
+    assertSampleMessages(userClient(reader), index, expected);
+    assertSampleMessages(userClient(reader), index, expected);
+    assertSampleMessages(userClient(owner), index, SAMPLE_MESSAGES);
+    assertSampleMessages(SdkClients.adminClient(), index, SAMPLE_MESSAGES);
+  }
+
+  @Test
+  void get_sampleData_retainsOriginalsForBotAndTeamOwner(TestNamespace ns) {
+    User teamMember = UserTestFactory.createUser(ns, "sample_team_member");
+    Team team =
+        ns.trackRoot(
+            Entity.TEAM,
+            SdkClients.adminClient()
+                .teams()
+                .create(
+                    new CreateTeam()
+                        .withName(ns.shortPrefix("sample_team"))
+                        .withTeamType(CreateTeam.TeamType.GROUP)
+                        .withUsers(List.of(teamMember.getId()))));
+    SearchIndex index =
+        createSampleIndex(ns, SampleTagLocation.DEEP_FIELD, team.getEntityReference());
+    assertSampleTagPlacement(index, SampleTagLocation.DEEP_FIELD);
+    SearchIndex ownedIndex = getEntityWithFields(index.getId().toString(), "owners");
+    assertTrue(
+        ownedIndex.getOwners().stream().anyMatch(owner -> owner.getId().equals(team.getId())));
+    putSampleData(index);
+
+    assertSampleMessages(userClient(teamMember), index, SAMPLE_MESSAGES);
+    assertSampleMessages(SdkClients.botClient(), index, SAMPLE_MESSAGES);
+  }
+
+  @Test
+  void get_sampleData_deniesExplicitlyDeniedReadersIncludingOwners(TestNamespace ns) {
+    User denied = createSampleDeniedUser(ns);
+    SearchIndex index =
+        createSampleIndex(ns, SampleTagLocation.DEEP_FIELD, denied.getEntityReference());
+    putSampleData(index);
+    assertSampleDataDenied(userClient(denied), index);
+
+    SearchIndex fetched = getEntityWithFields(index.getId().toString(), "owners");
+    fetched.setOwners(List.of());
+    patchEntity(index.getId().toString(), fetched);
+    assertTrue(getEntityWithFields(index.getId().toString(), "owners").getOwners().isEmpty());
+    assertSampleDataDenied(userClient(denied), index);
+    assertSampleMessages(SdkClients.adminClient(), index, SAMPLE_MESSAGES);
+  }
+
+  @Test
+  void get_sampleData_withoutStoredSampleDoesNotInventMaskedMessages(TestNamespace ns) {
+    SearchIndex index = createSampleIndex(ns, SampleTagLocation.DEEP_FIELD, null);
+    User reader = UserTestFactory.createUser(ns, "empty_sample_reader");
+
+    assertNull(getSampleData(userClient(reader), index).getSampleData());
+  }
+
+  private SearchIndex createSampleIndex(
+      TestNamespace ns, SampleTagLocation location, EntityReference owner) {
+    CreateSearchIndex request = createRequest(ns.shortPrefix("sample_" + location.name()), ns);
+    SearchIndexField email = sampleField("email", SearchIndexDataType.KEYWORD);
+    SearchIndexField details =
+        sampleField("details", SearchIndexDataType.OBJECT).withChildren(List.of(email));
+    SearchIndexField contact =
+        sampleField("contact", SearchIndexDataType.OBJECT)
+            .withChildren(List.of(sampleField("city", SearchIndexDataType.KEYWORD), details));
+    SearchIndexField payload =
+        sampleField("payload", SearchIndexDataType.OBJECT).withChildren(List.of(contact));
+    SearchIndexField publicId = sampleField("publicId", SearchIndexDataType.KEYWORD);
+    request.setFields(List.of(publicId, payload));
+    if (owner != null) {
+      request.setOwners(List.of(owner));
+    }
+    TagLabel sensitive =
+        new TagLabel()
+            .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+    switch (location) {
+      case ENTITY -> request.setTags(List.of(sensitive));
+      case FIELD -> publicId.setTags(List.of(sensitive));
+      case DEEP_FIELD -> email.setTags(List.of(sensitive));
+      case NON_SENSITIVE -> email.setTags(
+          List.of(
+              new TagLabel()
+                  .withTagFQN("PII.NonSensitive")
+                  .withSource(TagLabel.TagSource.CLASSIFICATION)));
+    }
+    return createEntity(request);
+  }
+
+  private void assertSampleTagPlacement(SearchIndex index, SampleTagLocation location) {
+    SearchIndex persisted = getEntityWithFields(index.getId().toString(), "fields,tags");
+    SearchIndexField direct = persisted.getFields().getFirst();
+    SearchIndexField leaf =
+        persisted
+            .getFields()
+            .get(1)
+            .getChildren()
+            .getFirst()
+            .getChildren()
+            .get(1)
+            .getChildren()
+            .getFirst();
+    List<TagLabel> tags =
+        switch (location) {
+          case ENTITY -> persisted.getTags();
+          case FIELD -> direct.getTags();
+          case DEEP_FIELD, NON_SENSITIVE -> leaf.getTags();
+        };
+    String expectedTag =
+        location == SampleTagLocation.NON_SENSITIVE
+            ? "PII.NonSensitive"
+            : PIIMasker.SENSITIVE_PII_TAG;
+    assertTrue(tags.stream().anyMatch(tag -> expectedTag.equals(tag.getTagFQN())));
+    if (location != SampleTagLocation.ENTITY) {
+      assertTrue(persisted.getTags().isEmpty(), "Field tags must not become entity tags");
+    }
+  }
+
+  private static SearchIndexField sampleField(String name, SearchIndexDataType dataType) {
+    return new SearchIndexField().withName(name).withDataType(dataType);
+  }
+
+  private static OpenMetadataClient userClient(User user) {
+    return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+  }
+
+  private static SearchIndex getSampleData(OpenMetadataClient client, SearchIndex index) {
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/searchIndexes/" + index.getId() + "/sampleData",
+            null,
+            SearchIndex.class);
+  }
+
+  private static void putSampleData(SearchIndex index) {
+    SearchIndex response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/searchIndexes/" + index.getId() + "/sampleData",
+                new SearchIndexSampleData().withMessages(SAMPLE_MESSAGES),
+                SearchIndex.class);
+    assertEquals(SAMPLE_MESSAGES, response.getSampleData().getMessages());
+  }
+
+  private static void assertSampleMessages(
+      OpenMetadataClient client, SearchIndex index, List<String> expected) {
+    assertEquals(expected, getSampleData(client, index).getSampleData().getMessages());
+  }
+
+  private static void assertSampleDataDenied(OpenMetadataClient client, SearchIndex index) {
+    OpenMetadataException denied =
+        assertThrows(OpenMetadataException.class, () -> getSampleData(client, index));
+    assertEquals(403, denied.getStatusCode());
+    assertFalse(denied.toString().contains("SAMPLE_SECRET_A"));
+    assertFalse(denied.toString().contains("SAMPLE_SECRET_B"));
+  }
+
+  private static User createSampleDeniedUser(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Policy policy =
+        ns.trackRoot(
+            Entity.POLICY,
+            admin
+                .policies()
+                .create(
+                    new CreatePolicy()
+                        .withName(ns.shortPrefix("sample_deny_policy"))
+                        .withRules(
+                            List.of(
+                                new Rule()
+                                    .withName("denySampleData")
+                                    .withResources(List.of(Entity.SEARCH_INDEX))
+                                    .withOperations(List.of(MetadataOperation.VIEW_SAMPLE_DATA))
+                                    .withEffect(Rule.Effect.DENY)))));
+    Role role =
+        ns.trackRoot(
+            Entity.ROLE,
+            admin
+                .roles()
+                .create(
+                    new CreateRole()
+                        .withName(ns.shortPrefix("sample_deny_role"))
+                        .withPolicies(List.of(policy.getFullyQualifiedName()))));
+    return ns.trackRoot(
+        Entity.USER,
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(ns.shortPrefix("sample_denied"))
+                    .withEmail(ns.shortPrefix("sample_denied") + "@test.om.org")
+                    .withRoles(List.of(role.getId()))));
   }
 
   private void searchindexFieldsForReingest(SearchIndex update) {

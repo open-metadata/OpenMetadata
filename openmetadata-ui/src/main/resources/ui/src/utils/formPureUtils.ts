@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ErrorTransformer } from '@rjsf/utils';
+import type { RJSFValidationError } from '@rjsf/utils';
 import { compact, startCase } from 'lodash';
 import { t } from './i18next/LocalUtil';
 
-export const transformErrors: ErrorTransformer = (errors) => {
+export const transformErrors = (errors: RJSFValidationError[]) => {
   const errorRet = errors.map((error) => {
     const { property, params, name } = error;
 

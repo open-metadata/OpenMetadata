@@ -26,6 +26,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { SettingType } from '../../../../../../generated/settings/settings';
+// eslint-disable-next-line openmetadata-imports/no-lower-layer-page-imports -- profiler extension point lives there
+import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { updateSettingsConfig } from '../../../../../../rest/settingConfigAPI';
 import {
   showErrorToast,
@@ -53,7 +55,7 @@ const EMPTY_VALUES: ProfilerFormValues = {
   readSampleData: true,
 };
 
-const ProfilerSettingsForm = ({
+const ProfilerConfigForm = ({
   showHint,
   onNavigate,
 }: PlatformSettingsFormProps) => {
@@ -260,6 +262,16 @@ const ProfilerSettingsForm = ({
       </SettingsFormSection>
     </SettingsFormLayout>
   );
+};
+
+// An item id addresses a downstream sub-page; without one (or without a
+// contributor) this is the profiler configuration form.
+const ProfilerSettingsForm = (props: PlatformSettingsFormProps) => {
+  const ItemForm = props.itemId
+    ? profilerConfigurationClassBase.getSettingsItemForm()
+    : undefined;
+
+  return ItemForm ? <ItemForm {...props} /> : <ProfilerConfigForm {...props} />;
 };
 
 export default ProfilerSettingsForm;

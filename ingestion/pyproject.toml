@@ -59,7 +59,6 @@ omit = [
     "*__init__*",
     "*/generated/*",
     "tests/*",
-    "ingestion/src/*",
     "*/src/metadata/ingestion/source/database/sample_*"
 ]
 
@@ -80,8 +79,6 @@ markers = [
     "xdist_group(name): group tests to run on the same xdist worker"
 ]
 
-# Skip tests that are known to fail or are not ready to run until issue #21736 is solved
-addopts = "--ignore=ingestion/tests/integration/sources/mlmodels/mlflow/test_mlflow.py"
 [project.entry-points.pytest11]
 pytest_openmetadata = "_openmetadata_testutils.pytest_openmetadata.plugin"
 

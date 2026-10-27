@@ -143,8 +143,12 @@ function EditConnectionFormPage() {
       ...serviceConfig,
       connection: {
         config: {
-          ...serviceDetails?.connection?.config,
-          ...serviceConfig?.connection?.config,
+          ...(typeof serviceDetails.connection?.config === 'object'
+            ? serviceDetails.connection.config
+            : {}),
+          ...(typeof serviceConfig?.connection?.config === 'object'
+            ? serviceConfig.connection.config
+            : {}),
           ...updatedData,
         },
       },

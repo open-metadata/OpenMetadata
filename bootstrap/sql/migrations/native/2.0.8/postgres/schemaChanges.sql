@@ -1,0 +1,2 @@
+-- No schema changes in 2.0.8: its migration rewrites stored negated list rules, a data migration,
+-- see org.openmetadata.service.migration.utils.v208.MigrationUtil.

@@ -31,8 +31,11 @@ import {
 import { startCase } from 'lodash';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { DefaultTimeFormat } from '../../../../../../generated/api/configuration/appConfiguration';
+// eslint-disable-next-line openmetadata-imports/no-lower-layer-page-imports -- profiler extension point lives there
+import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { isLoginConfigurationApplicable } from '../../../../../../utils/AuthProvider.util';
 import type { PlatformSettingsPage } from './PlatformSettings.types';
+import { parseFieldValueBoostItemId } from './search/SearchSettings.utils';
 
 export const PLATFORM_SETTINGS_HASH_TAB = 'platform-settings';
 
@@ -78,6 +81,11 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     descriptionKey: 'message.page-sub-header-for-profiler-configuration',
     hasEditView: true,
     hasFieldHints: false,
+    // An item id is a downstream sub-page, titled by its owner.
+    getEditTitle: (t, itemId) =>
+      (itemId &&
+        profilerConfigurationClassBase.getSettingsItemFormTitle(t, itemId)) ||
+      t('label.edit-entity', { entity: t('label.profiler-configuration') }),
   },
   {
     id: 'data-quality',
@@ -105,6 +113,16 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     hasItemViews: true,
     getItemTitle: (_t, itemId) =>
       startCase(ENTITY_PATH[itemId as keyof typeof ENTITY_PATH] ?? itemId),
+    // The edit view is the field value boost form, global or per entity.
+    hasEditView: true,
+    hasFieldHints: false,
+    getEditTitle: (t, itemId) =>
+      t(
+        parseFieldValueBoostItemId(itemId).field
+          ? 'label.edit-entity'
+          : 'label.add-entity',
+        { entity: t('label.field-value-boost') }
+      ),
   },
   {
     id: 'brand-url',

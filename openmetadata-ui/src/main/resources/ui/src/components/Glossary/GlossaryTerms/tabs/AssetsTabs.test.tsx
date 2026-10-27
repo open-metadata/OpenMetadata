@@ -149,9 +149,9 @@ jest.mock('../../../../utils/SearchPureUtils', () => ({
 
 jest.mock('../../../../utils/StringUtils', () => ({
   ...jest.requireActual('../../../../utils/StringUtils'),
-  getEncodedFqn: (...args: unknown[]) => mockGetEncodedFqn(...args),
-  escapeESReservedCharacters: (...args: unknown[]) =>
-    mockEscapeESReservedCharacters(...args),
+  getEncodedFqn: (fqn: string) => mockGetEncodedFqn(fqn),
+  escapeESReservedCharacters: (fqn: string) =>
+    mockEscapeESReservedCharacters(fqn),
 }));
 
 jest.mock('../../../../utils/TagsPureUtils', () => ({

@@ -102,7 +102,6 @@ export const COLLATE_SAAS = 'CollateSaaS';
 export const COLLATE_SAAS_RUNNER = 'Collate SaaS Runner';
 export const RUNNER = 'ingestionRunner';
 
-export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = i18n.t('message.something-went-wrong');
 
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
@@ -408,6 +407,7 @@ export const ENTITY_PATH = {
   files: 'file',
   spreadsheets: 'spreadsheet',
   worksheets: 'worksheet',
+  articles: 'page',
   dataProductsTab: 'dataProductsTab',
   column: 'tableColumn',
   aiApplications: 'aiApplication',
