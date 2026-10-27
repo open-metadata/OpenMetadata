@@ -14,6 +14,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
@@ -33,6 +34,55 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Repository
 public class OntologyPropertyRepository extends OntologyEntityRepository<OntologyProperty> {
   public static final String COLLECTION_PATH = "/v1/ontologyProperties/";
+
+  /**
+   * The deleted object properties the write in progress holds, by declaration. When that write is
+   * a restore, it brings every one of them back, as restoring an ontology does with all its
+   * properties at once.
+   */
+  private static final ThreadLocal<Restoring> RESTORING =
+      ThreadLocal.withInitial(() -> Restoring.NONE);
+
+  private record Declaration(UUID ontologyId, String iri) {
+    static Declaration of(final OntologyProperty property, final URI iri) {
+      return new Declaration(property.getOntology().getId(), iri.toString());
+    }
+  }
+
+  /** A write's deleted object properties, and the partners that two or more of them name. */
+  private record Restoring(
+      Map<Declaration, OntologyProperty> properties, Set<Declaration> contested) {
+    static final Restoring NONE = new Restoring(Map.of(), Set.of());
+
+    static Restoring of(final List<OntologyProperty> entities) {
+      final Map<Declaration, OntologyProperty> properties =
+          entities.stream()
+              .filter(
+                  property ->
+                      Boolean.TRUE.equals(property.getDeleted())
+                          && property.getKind() == OntologyPropertyKind.OBJECT)
+              .collect(
+                  Collectors.toUnmodifiableMap(
+                      property -> Declaration.of(property, property.getIri()),
+                      property -> property,
+                      (first, second) -> first));
+      return new Restoring(properties, contested(properties.values()));
+    }
+
+    private static Set<Declaration> contested(final Collection<OntologyProperty> properties) {
+      return properties.stream()
+          .filter(property -> property.getInverse() != null)
+          .collect(
+              Collectors.groupingBy(
+                  property -> Declaration.of(property, property.getInverse()),
+                  Collectors.counting()))
+          .entrySet()
+          .stream()
+          .filter(claims -> claims.getValue() > 1)
+          .map(Map.Entry::getKey)
+          .collect(Collectors.toUnmodifiableSet());
+    }
+  }
 
   public OntologyPropertyRepository() {
     super(
@@ -86,7 +136,13 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         entities,
         () -> {
           workingState.beforeValidation(entityType, this::reconcileInverses);
-          return work.get();
+          final Restoring enclosing = RESTORING.get();
+          RESTORING.set(Restoring.of(entities));
+          try {
+            return work.get();
+          } finally {
+            RESTORING.set(enclosing);
+          }
         });
   }
 
@@ -105,9 +161,16 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
 
   /**
    * A restore brings back the inverse the property held when it was deleted. When that partner
-   * has gone since, the link is dropped rather than refused: the property cannot be edited while
-   * deleted, so refusing would leave it unrestorable. A self-inverse is kept, because its own
-   * declaration goes live in this write.
+   * has gone since and does not return in the same write, the link is dropped rather than
+   * refused: the property cannot be edited while deleted, so refusing would leave it unrestorable.
+   * When the partner returns in the same write, the link is kept only if the partner still names
+   * this property. A property deleted on its own keeps a claim that its partner has since released
+   * or given to another property, and the partner's own inverse is the later statement. When the
+   * partner is live and another property the same write restores names it too, all of those links
+   * are dropped and the partner keeps its inverse, because the rows of one write have no order
+   * that makes one claim the latest. Links to a vocabulary property that the ontology does not
+   * declare never compete, since no write changes that property. A self-inverse is kept, because
+   * its own declaration goes live in this write.
    */
   @Override
   public EntityUpdater getUpdater(
@@ -120,18 +183,28 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         && updated.getInverse() != null
         && !updated.getInverse().equals(updated.getIri())
         && Boolean.TRUE.equals(find(original.getId(), Include.ALL).getDeleted())
-        && !declaresObjectProperty(
-            updated.getOntology().getId(), updated.getInverse().toString())) {
+        && !partnerLinksBack(updated)) {
       updated.setInverse(null);
     }
     return super.getUpdater(original, updated, operation, source);
   }
 
+  private boolean partnerLinksBack(final OntologyProperty property) {
+    final Declaration partner = Declaration.of(property, property.getInverse());
+    final OntologyProperty restored = RESTORING.get().properties().get(partner);
+    return restored == null
+        ? isLiveAndUncontested(partner)
+        : property.getIri().toString().equals(iriText(restored.getInverse()));
+  }
+
+  private boolean isLiveAndUncontested(final Declaration partner) {
+    return declaresObjectProperty(partner.ontologyId(), partner.iri())
+        ? !RESTORING.get().contested().contains(partner)
+        : OwlEntityDeclarations.vocabularyKind(partner.iri())
+            == OwlEntityDeclarations.EntityKind.OBJECT_PROPERTY;
+  }
+
   private boolean declaresObjectProperty(final UUID ontologyId, final String iri) {
-    if (OwlEntityDeclarations.vocabularyKind(iri)
-        == OwlEntityDeclarations.EntityKind.OBJECT_PROPERTY) {
-      return true;
-    }
     final var properties = daoCollection.ontologyPropertyDAO();
     return properties
         .findDeclarations(
