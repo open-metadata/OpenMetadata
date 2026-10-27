@@ -44,6 +44,7 @@ import {
 interface OntologyConceptAssetsProps {
   conceptId: string;
   canEdit: boolean;
+  presentation: { kind: 'edit' } | { kind: 'view'; onOpenData: () => void };
 }
 
 const OntologyAssetLinks = ({ asset }: { asset: EntityReference }) => {
@@ -81,6 +82,7 @@ const OntologyAssetLinks = ({ asset }: { asset: EntityReference }) => {
 const OntologyConceptAssets = ({
   conceptId,
   canEdit,
+  presentation,
 }: OntologyConceptAssetsProps) => {
   const { t } = useTranslation();
   const bindings = useOntologyConceptBindings(conceptId);
@@ -178,6 +180,30 @@ const OntologyConceptAssets = ({
     );
   };
 
+  const renderPagination = () =>
+    presentation.kind === 'edit' && assets.length > 10 ? (
+      <Box gap={2}>
+        <Button
+          color="secondary"
+          isDisabled={visiblePage === 0}
+          size="xs"
+          onPress={() => setPage(visiblePage - 1)}>
+          {t('label.previous')}
+        </Button>
+        <Button
+          color="secondary"
+          isDisabled={(visiblePage + 1) * 10 >= assets.length}
+          size="xs"
+          onPress={() => setPage(visiblePage + 1)}>
+          {t('label.next')}
+        </Button>
+      </Box>
+    ) : null;
+  const visibleAssets =
+    presentation.kind === 'view'
+      ? assets.slice(0, 3)
+      : assets.slice(visiblePage * 10, (visiblePage + 1) * 10);
+
   return (
     <Box
       className="tw:py-1"
@@ -209,57 +235,54 @@ const OntologyConceptAssets = ({
         <Box
           className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:bg-surface"
           direction="col">
-          {assets
-            .slice(visiblePage * 10, (visiblePage + 1) * 10)
-            .map((binding) => {
-              return (
-                <Box
-                  align="center"
-                  className="tw:min-h-12 tw:px-3 tw:py-2"
-                  gap={3}
-                  key={`${binding.assetType}:${binding.assetId}`}>
-                  <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-                    <OntologyAssetLinks asset={binding.asset} />
-                    <Typography ellipsis color="secondary" size="text-xs">
-                      {binding.asset.fullyQualifiedName}
-                    </Typography>
-                    <Typography color="secondary" size="text-xs">
-                      {binding.assetType} ·{' '}
-                      {t('label.ontology-column-binding-count', {
-                        count: binding.columns.length,
-                      })}
-                    </Typography>
-                  </Box>
-                  {canEdit ? (
-                    <ButtonUtility
-                      color="tertiary"
-                      data-testid={`ontology-native-asset-remove-${binding.assetId}`}
-                      icon={Trash01}
-                      isDisabled={!bindings.editableSnapshot}
-                      size="xs"
-                      tooltip={t('label.remove-entity', {
-                        entity: getEntityName(binding.asset),
-                      })}
-                      onClick={async () => {
-                        if (bindings.editableSnapshot) {
-                          const result = await bindings.removeAsset({
-                            assetType: binding.assetType,
-                            assetId: binding.assetId,
-                            expectedRevision:
-                              bindings.editableSnapshot.revision,
-                          });
-                          const notify =
-                            result.kind === 'confirmed'
-                              ? showSuccessToast
-                              : showErrorToast;
-                          notify(t(getOntologyBindingWriteMessage(result)));
-                        }
-                      }}
-                    />
-                  ) : null}
+          {visibleAssets.map((binding) => {
+            return (
+              <Box
+                align="center"
+                className="tw:min-h-12 tw:px-3 tw:py-2"
+                gap={3}
+                key={`${binding.assetType}:${binding.assetId}`}>
+                <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+                  <OntologyAssetLinks asset={binding.asset} />
+                  <Typography ellipsis color="secondary" size="text-xs">
+                    {binding.asset.fullyQualifiedName}
+                  </Typography>
+                  <Typography color="secondary" size="text-xs">
+                    {binding.assetType} ·{' '}
+                    {t('label.ontology-column-binding-count', {
+                      count: binding.columns.length,
+                    })}
+                  </Typography>
                 </Box>
-              );
-            })}
+                {canEdit ? (
+                  <ButtonUtility
+                    color="tertiary"
+                    data-testid={`ontology-native-asset-remove-${binding.assetId}`}
+                    icon={Trash01}
+                    isDisabled={!bindings.editableSnapshot}
+                    size="xs"
+                    tooltip={t('label.remove-entity', {
+                      entity: getEntityName(binding.asset),
+                    })}
+                    onClick={async () => {
+                      if (bindings.editableSnapshot) {
+                        const result = await bindings.removeAsset({
+                          assetType: binding.assetType,
+                          assetId: binding.assetId,
+                          expectedRevision: bindings.editableSnapshot.revision,
+                        });
+                        const notify =
+                          result.kind === 'confirmed'
+                            ? showSuccessToast
+                            : showErrorToast;
+                        notify(t(getOntologyBindingWriteMessage(result)));
+                      }
+                    }}
+                  />
+                ) : null}
+              </Box>
+            );
+          })}
         </Box>
       ) : null}
       {assets.length === 0 && bindings.isSuccess ? (
@@ -267,24 +290,16 @@ const OntologyConceptAssets = ({
           {t('message.no-data-available')}
         </InspectorEmptyText>
       ) : null}
-      {assets.length > 10 ? (
-        <Box gap={2}>
-          <Button
-            color="secondary"
-            isDisabled={visiblePage === 0}
-            size="xs"
-            onPress={() => setPage(visiblePage - 1)}>
-            {t('label.previous')}
-          </Button>
-          <Button
-            color="secondary"
-            isDisabled={(visiblePage + 1) * 10 >= assets.length}
-            size="xs"
-            onPress={() => setPage(visiblePage + 1)}>
-            {t('label.next')}
-          </Button>
-        </Box>
+      {presentation.kind === 'view' && assets.length > 3 ? (
+        <Button
+          color="link-color"
+          data-testid="ontology-assets-more"
+          size="sm"
+          onPress={presentation.onOpenData}>
+          {t('label.ontology-more-assets', { count: assets.length - 3 })}
+        </Button>
       ) : null}
+      {renderPagination()}
       {renderPicker()}
     </Box>
   );

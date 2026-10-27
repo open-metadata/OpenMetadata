@@ -26,6 +26,7 @@ import {
   getOntologyChangeSet,
   listOntologyChangeSets,
 } from '../../../rest/ontologyAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useOntologyEditLease } from './useOntologyEditLease';
 
@@ -55,6 +56,22 @@ type ApplyStatus =
   | { kind: 'busy'; step: 'creating' | 'reconciling' | 'leasing' | 'applying' }
   | { kind: 'blocked'; message: string };
 
+const planState = (
+  status: ApplyStatus,
+  outcomeUnknown: boolean,
+  rebuildAfterFailure: boolean
+) => {
+  const isSettled = status.kind === 'applied' || status.kind === 'unchanged';
+  const holdsUnknownOutcome = status.kind === 'blocked' && outcomeUnknown;
+  const isRejected = status.kind === 'blocked' && !outcomeUnknown;
+  const holdsBusyOrUnknown = status.kind === 'busy' || holdsUnknownOutcome;
+
+  return {
+    canRebuild: isSettled || (rebuildAfterFailure && isRejected),
+    holdsFrozenPlan: rebuildAfterFailure ? holdsBusyOrUnknown : !isSettled,
+  };
+};
+
 interface ApplyAttempt {
   plan: CreateOntologyChangeSet;
   draft?: OntologyChangeSet;
@@ -63,9 +80,11 @@ interface ApplyAttempt {
 export const useOntologyChangeSetApply = ({
   canApply,
   onApplied,
+  rebuildAfterFailure = false,
 }: {
   canApply: boolean;
   onApplied: () => void;
+  rebuildAfterFailure?: boolean;
 }) => {
   const { t } = useTranslation();
   const [status, setStatus] = useState<ApplyStatus>({ kind: 'idle' });
@@ -74,6 +93,8 @@ export const useOntologyChangeSetApply = ({
   const permitted = useRef(canApply);
   permitted.current = canApply;
   const completed = useRef(false);
+  const outcomeUnknown = useRef(false);
+  const [outcomeUnknownShown, setOutcomeUnknownShown] = useState(false);
   const lease = useOntologyEditLease({
     isActive:
       status.kind === 'busy' &&
@@ -85,8 +106,14 @@ export const useOntologyChangeSetApply = ({
   currentLease.current = lease;
 
   const block = useCallback(
-    (message = t('server.unexpected-error'), error?: unknown) => {
+    (
+      message = t('server.unexpected-error'),
+      error?: unknown,
+      unknown = false
+    ) => {
       running.current = false;
+      outcomeUnknown.current = unknown;
+      setOutcomeUnknownShown(unknown);
       setStatus({ kind: 'blocked', message });
       if (error) {
         showErrorToast(isAxiosError(error) ? error : message);
@@ -151,17 +178,24 @@ export const useOntologyChangeSetApply = ({
     if (retry) {
       const found = await recoverDraft(current.plan);
       if (found) {
+        outcomeUnknown.current = false;
+
         return found;
       }
     }
     if (!permitted.current) {
       throw new Error('Edit permission is required to create the draft.');
     }
+    outcomeUnknown.current = true;
     try {
-      return await createOntologyChangeSet(current.plan);
+      const created = await createOntologyChangeSet(current.plan);
+      outcomeUnknown.current = false;
+
+      return created;
     } catch (error) {
       setStatus({ kind: 'busy', step: 'reconciling' });
       const found = await recoverDraft(current.plan);
+      outcomeUnknown.current = false;
       if (found) {
         return found;
       }
@@ -218,7 +252,7 @@ export const useOntologyChangeSetApply = ({
         block();
       }
     } catch (error) {
-      block(undefined, error);
+      block(undefined, error, outcomeUnknown.current);
     }
   };
 
@@ -232,7 +266,13 @@ export const useOntologyChangeSetApply = ({
       return;
     }
     if (lease.state === 'contended' || lease.state === 'lost') {
-      block(t('message.native-ontology-import-lease-unavailable'));
+      block(
+        lease.lock?.holder
+          ? t('message.ontology-class-lease-holder', {
+              holder: getEntityName(lease.lock.holder),
+            })
+          : t('message.native-ontology-import-lease-unavailable')
+      );
 
       return;
     }
@@ -290,7 +330,9 @@ export const useOntologyChangeSetApply = ({
           return;
         }
       } catch {
-        // Retain the same draft when the outcome cannot be read back.
+        block(undefined, error, true);
+
+        return;
       }
       block(undefined, error);
     });
@@ -305,21 +347,21 @@ export const useOntologyChangeSetApply = ({
     t,
   ]);
 
+  const { canRebuild, holdsFrozenPlan } = planState(
+    status,
+    outcomeUnknownShown,
+    rebuildAfterFailure
+  );
+
   return {
     status,
-    configurationLocked:
-      Boolean(attempt.current) &&
-      status.kind !== 'applied' &&
-      status.kind !== 'unchanged',
+    outcomeUnknown: outcomeUnknownShown && status.kind === 'blocked',
+    configurationLocked: Boolean(attempt.current) && holdsFrozenPlan,
     start: async (plan: CreateOntologyChangeSet) => {
-      if (
-        !running.current &&
-        (!attempt.current ||
-          status.kind === 'applied' ||
-          status.kind === 'unchanged')
-      ) {
+      if (!running.current && (!attempt.current || canRebuild)) {
         attempt.current = { plan };
         completed.current = false;
+        outcomeUnknown.current = false;
       }
       if (attempt.current) {
         await run(attempt.current, false);

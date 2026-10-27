@@ -29,6 +29,8 @@ interface OntologyStudioWorkspaceProps {
   ontology?: Ontology;
   canCreate: boolean;
   createConceptRequestKey?: number;
+  onRequestCreateConcept?: () => void;
+  onAuthoringLockChange?: (locked: boolean) => void;
   initialDraftId?: string;
   mode: 'view' | 'edit' | 'definitions' | 'review';
   viewSurface: 'graph' | 'tree';
@@ -36,6 +38,7 @@ interface OntologyStudioWorkspaceProps {
   onSelectedConceptChange?: (id?: string) => void;
   onSaved: (ontology: Ontology) => void;
   onRequestEdit?: () => void;
+  onRequestGraphSurface: () => void;
   onStatsChange?: (stats: OntologyModelStats) => void;
   onWorkingChange?: () => void;
 }
@@ -49,6 +52,8 @@ const OntologyStudioWorkspace = ({
   ontology,
   canCreate,
   createConceptRequestKey,
+  onRequestCreateConcept,
+  onAuthoringLockChange,
   initialDraftId,
   mode,
   viewSurface,
@@ -56,6 +61,7 @@ const OntologyStudioWorkspace = ({
   onSelectedConceptChange,
   onSaved,
   onRequestEdit,
+  onRequestGraphSurface,
   onStatsChange,
   onWorkingChange,
 }: OntologyStudioWorkspaceProps) => {
@@ -132,7 +138,10 @@ const OntologyStudioWorkspace = ({
             ontology={ontology}
             selectedConceptId={selectedConceptId}
             surface={viewSurface}
+            onAuthoringLockChange={onAuthoringLockChange}
+            onRequestCreateConcept={onRequestCreateConcept}
             onRequestEdit={onRequestEdit}
+            onRequestGraphSurface={onRequestGraphSurface}
             onSelectedConceptChange={onSelectedConceptChange}
             onStatsChange={onStatsChange}
             onWorkingChange={onWorkingChange}

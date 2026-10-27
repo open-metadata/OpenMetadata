@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1988 endpoints** across 75 resource packages · 1978 carry a summary.
+**1989 endpoints** across 75 resource packages · 1979 carry a summary.
 
 ## (root)
 
@@ -1451,6 +1451,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologyReleases/{id}/members/{kind}/{memberId}` | Read an immutable release member |
 | `GET` | `/v1/ontologyReleases/{id}/review` | Read this release's review as the calling user sees it |
 | `GET` | `/v1/ontologyReleases/{id}/structure` | Check property declarations and axiom structure in a sealed release |
+| `GET` | `/v1/ontologyReleases/{id}/validation` | Validate a sealed ontology release |
 | `GET` | `/v1/ontologyReleases/{id}/versions/{version}` | Read the release header version submitted to an approval workflow |
 | `GET` | `/v1/relationshipTypes` | List relationship types |
 | `POST` | `/v1/relationshipTypes` | Create a relationship type |

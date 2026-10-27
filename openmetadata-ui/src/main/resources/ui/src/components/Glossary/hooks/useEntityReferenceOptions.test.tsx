@@ -140,3 +140,67 @@ describe('useUserTeamOptions', () => {
     ]);
   });
 });
+
+it('reports pending input and retained options while the debounced next search is unresolved', async () => {
+  let finishSearch: ((value: SearchResponse) => void) | undefined;
+  mockSearchQuery.mockImplementation(({ query, searchIndex }) => {
+    if (searchIndex === SearchIndex.TEAM) {
+      return Promise.resolve(NO_HITS);
+    }
+    if (query === 'new') {
+      return new Promise((resolve) => {
+        finishSearch = resolve;
+      });
+    }
+
+    return Promise.resolve(userHits('Original reviewer'));
+  });
+  const { result } = renderHook(() => useUserTeamOptions(), {
+    wrapper: createWrapper(),
+  });
+  act(() => result.current.onFocus());
+  await waitFor(() =>
+    expect(optionLabels(result.current.options)).toEqual(['Original reviewer'])
+  );
+  act(() => result.current.onSearchChange('new'));
+
+  expect(result.current.isFetching).toBe(true);
+
+  await waitFor(() => expect(result.current.isPlaceholderData).toBe(true));
+
+  expect(optionLabels(result.current.options)).toEqual(['Original reviewer']);
+
+  await act(async () => {
+    finishSearch?.(userHits('New reviewer'));
+  });
+  await waitFor(() => expect(result.current.isFetching).toBe(false));
+
+  expect(result.current.isPlaceholderData).toBe(false);
+  expect(optionLabels(result.current.options)).toEqual(['New reviewer']);
+});
+
+it('exposes search failure and retries the same query without fabricating empty success', async () => {
+  const denied = new Error('Search denied');
+  mockSearchQuery.mockRejectedValue(denied);
+  const { result } = renderHook(() => useUserTeamOptions(), {
+    wrapper: createWrapper(),
+  });
+  act(() => result.current.onFocus());
+  await waitFor(() => expect(result.current.error).toBe(denied));
+
+  expect(result.current.isFetching).toBe(false);
+
+  mockSearchQuery.mockImplementation(({ searchIndex }) =>
+    Promise.resolve(
+      searchIndex === SearchIndex.TEAM
+        ? NO_HITS
+        : userHits('Recovered reviewer')
+    )
+  );
+  await act(async () => {
+    await result.current.refetch();
+  });
+  await waitFor(() => expect(result.current.error).toBeNull());
+
+  expect(optionLabels(result.current.options)).toEqual(['Recovered reviewer']);
+});

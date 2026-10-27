@@ -18,7 +18,9 @@ import {
   TaskType,
 } from '../generated/entity/tasks/task';
 
-export const isOntologyReviewTask = (task: Task): boolean =>
+export const isOntologyReviewTask = (
+  task: Pick<Task, 'type' | 'about'>
+): boolean =>
   task.type === TaskType.RequestApproval &&
   task.about?.type === 'ontologyRelease';
 
@@ -53,7 +55,9 @@ export const isTaskClosed = (status?: TaskEntityStatus): boolean => {
 /**
  * Get the entity type from a task's about reference
  */
-export const getTaskEntityType = (task: Task): EntityType | undefined => {
+export const getTaskEntityType = (
+  task: Pick<Task, 'about'>
+): EntityType | undefined => {
   if (!task.about?.type) {
     return undefined;
   }
@@ -64,14 +68,18 @@ export const getTaskEntityType = (task: Task): EntityType | undefined => {
 /**
  * Get the entity FQN from a task's about reference
  */
-export const getTaskEntityFQN = (task: Task): string | undefined => {
+export const getTaskEntityFQN = (
+  task: Pick<Task, 'about'>
+): string | undefined => {
   return task.about?.fullyQualifiedName;
 };
 
 /**
  * Get the detail path for a task
  */
-export const getTaskDetailPath = (task: Task): string => {
+export const getTaskDetailPath = (
+  task: Pick<Task, 'id' | 'type' | 'about' | 'taskId'>
+): string => {
   const entityType = getTaskEntityType(task);
   const entityFQN = getTaskEntityFQN(task);
 

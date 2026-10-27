@@ -19,6 +19,7 @@ import {
   OntologyConcept,
   OntologyConceptType,
 } from '../../../generated/entity/data/ontologyConcept';
+import { OntologyDefinitionStatus } from '../../../generated/type/ontologyDefinitionStatus';
 import {
   listOntologyAxioms,
   listOntologyConcepts,
@@ -109,6 +110,30 @@ describe('useOntologyStudioModel', () => {
     );
   });
 
+  it('retains server lifecycle status in the owner model', async () => {
+    mockListOntologyConcepts.mockImplementation(async (params) => ({
+      data: [
+        {
+          ...concept('Order'),
+          ...(params?.fields?.includes('lifecycleStatus') && {
+            lifecycleStatus: OntologyDefinitionStatus.Draft,
+          }),
+        },
+      ],
+      paging: { total: 1 },
+    }));
+
+    const { result } = renderHook(() => useOntologyStudioModel(ontology), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.model).toBeDefined());
+
+    expect(result.current.model?.concepts[0].lifecycleStatus).toBe(
+      OntologyDefinitionStatus.Draft
+    );
+  });
+
   it('fails visibly when a cursor repeats instead of returning a truncated model', async () => {
     const page = Array.from({ length: 5_000 }, () => concept('Repeated'));
     mockListOntologyConcepts.mockResolvedValue({
@@ -165,6 +190,30 @@ describe('all native ontology models', () => {
       ontology.id,
       second.id,
     ]);
+  });
+
+  it('retains server lifecycle status in the aggregate models', async () => {
+    mockListOntologyConcepts.mockImplementation(async (params) => ({
+      data: [
+        {
+          ...concept('Order'),
+          ...(params?.fields?.includes('lifecycleStatus') && {
+            lifecycleStatus: OntologyDefinitionStatus.Draft,
+          }),
+        },
+      ],
+      paging: { total: 1 },
+    }));
+    const { result } = renderHook(
+      () => useAllOntologyStudioModels([ontology], true),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.models).toBeDefined());
+
+    expect(result.current.models?.[0].concepts[0].lifecycleStatus).toBe(
+      OntologyDefinitionStatus.Draft
+    );
   });
 
   it('fails instead of issuing an unscoped definition request for a missing name', async () => {

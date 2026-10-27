@@ -46,18 +46,19 @@ const OntologyStudioHeader = <M extends string>({
       className="tw:shrink-0 tw:border-b tw:border-secondary tw:bg-surface"
       data-testid="ontology-studio-header">
       {breadcrumb ? <div className="tw:px-4 tw:pt-2">{breadcrumb}</div> : null}
-      <Box align="center" className="tw:h-14 tw:px-4" gap={3}>
+      <Box align="center" className="tw:h-14 tw:min-w-0 tw:px-4" gap={2}>
         <Box align="center" className="tw:shrink-0" gap={2}>
           <FeaturedIcon color="brand" icon={Share07} size="sm" theme="dark" />
           <Typography
             as="h1"
-            className="tw:m-0! tw:text-sm! tw:leading-5! tw:whitespace-nowrap"
+            className="not-prose tw:whitespace-nowrap"
+            size="text-sm"
             weight="bold">
             {t('label.ontology-studio')}
           </Typography>
         </Box>
         <Divider className="tw:h-5.5 tw:self-center" orientation="vertical" />
-        {scopeMenu}
+        <Box className="tw:min-w-18 tw:max-w-48 tw:shrink">{scopeMenu}</Box>
         <Tabs
           className="tw:w-auto tw:shrink-0"
           selectedKey={mode}
@@ -81,7 +82,7 @@ const OntologyStudioHeader = <M extends string>({
             ))}
           </Tabs.List>
         </Tabs>
-        <span className="tw:flex-1" />
+        <span className="tw:min-w-0 tw:flex-1" />
         {actions ? (
           <Box align="center" className="tw:shrink-0" gap={2}>
             {actions}

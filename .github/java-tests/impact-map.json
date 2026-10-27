@@ -709,7 +709,9 @@
         "openmetadata-service/src/main/resources/json/data/ontology/**",
         "openmetadata-spec/src/main/resources/json/schema/api/data/*Ontology*",
         "openmetadata-spec/src/main/resources/json/schema/api/data/ontology*",
-        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/Ontology*IT.java"
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/Ontology*IT.java",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyReleaseValidationIT.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseValidationTest.java"
       ],
       "tests": [
         "*Ontology*IT",
@@ -729,7 +731,11 @@
         "openmetadata-spec/src/main/resources/json/schema/api/rdf/**",
         "openmetadata-spec/src/main/resources/json/schema/api/data/rdf*",
         "openmetadata-spec/src/main/resources/rdf/**",
-        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/Rdf*IT.java"
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/Rdf*IT.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/rdf/RdfShaclReportMapperTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/rdf/NativeOntologyShapesTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/rdf/OntologyReleaseProjectionTest.java",
+        "openmetadata-service/src/test/resources/rdf/shapes/malformed-native-test.ttl"
       ],
       "tests": [
         "*Rdf*IT",

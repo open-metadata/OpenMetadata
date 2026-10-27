@@ -13,6 +13,7 @@
 
 import { APIRequestContext, Page } from '@playwright/test';
 import { readFile } from 'fs/promises';
+import { SearchIndex } from '../../../src/enums/search.enum';
 import { ContextMemory } from '../../../src/generated/entity/context/contextMemory';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyChangeSet } from '../../../src/generated/entity/data/ontologyChangeSet';
@@ -21,6 +22,7 @@ import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRele
 import { Task } from '../../../src/generated/entity/tasks/task';
 import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { expect, test } from '../../support/fixtures/isolatedUser';
+import { TeamClass } from '../../support/team/TeamClass';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { fillCodeEditor } from '../../utils/codeEditor';
 import {
@@ -31,6 +33,7 @@ import {
 } from '../../utils/common';
 import { MEMORIES_API } from '../../utils/ContextCenterUtil';
 import { readNodePositions } from '../../utils/ontologyStudio';
+import { waitForSearchIndexed } from '../../utils/polling';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
@@ -106,16 +109,19 @@ const activateRelease = async (
   page: Page,
   ontology: Ontology,
   release: OntologyRelease,
-  expectedRevision: number
+  expectedRevision: number,
+  action: 'publish' | 'rollback'
 ) => {
   const activation = page.waitForResponse(
     (response) =>
       response.url().endsWith(`/api/v1/ontologies/${ontology.id}/activation`) &&
       response.request().method() === 'PUT'
   );
-  await page
-    .getByRole('button', { name: 'Activate release', exact: true })
-    .click();
+  await clickIgnoringToasts(
+    action === 'publish'
+      ? page.getByTestId('ontology-publish-release')
+      : page.getByRole('button', { name: 'Activate release', exact: true })
+  );
   const response = await activation;
   expect(response.request().postDataJSON()).toEqual({
     releaseId: release.id,
@@ -127,6 +133,14 @@ const activateRelease = async (
   );
   expect(state.activeReleaseId).toBe(release.id);
   expect(state.activationRevision).toBe(expectedRevision + 1);
+  await expect(
+    page.getByTestId('ontology-release-history-trigger')
+  ).toContainText(release.semanticVersion ?? String(release.releaseRevision));
+  if (action === 'publish') {
+    await expect(page.getByTestId('ontology-release-stage')).toContainText(
+      'Published'
+    );
+  }
   await expect(page.getByTestId('ontology-active-release')).toHaveText(
     'Active'
   );
@@ -331,6 +345,324 @@ test.describe(
   'Native ontology publication',
   { tag: ['@Features', '@Governance'] },
   () => {
+    test('manages reviewers with reload persistence and locks settings during an open review', async ({
+      isolatedUserPage: author,
+      isolatedUser,
+      freshUserPage: { user: reviewer },
+    }) => {
+      const api = await getWorkerAdminAPIContext();
+      const teamName = `pw_review_team_${uuid()}`;
+      const team = new TeamClass({
+        name: teamName,
+        displayName: teamName,
+        description: 'Review exclusion fixture',
+        teamType: 'Group',
+        users: [],
+        policies: [],
+      });
+      const name = `pw_review_settings_${uuid()}`;
+      const tasks: string[] = [];
+      let ontology: Ontology | undefined;
+      try {
+        await team.create(api);
+        await waitForSearchIndexed(
+          api,
+          reviewer.responseData.name,
+          SearchIndex.USER,
+          {
+            matchBy: 'nameOrDisplayName',
+          }
+        );
+        await waitForSearchIndexed(
+          api,
+          isolatedUser.responseData.name,
+          SearchIndex.USER,
+          { matchBy: 'nameOrDisplayName' }
+        );
+        await waitForSearchIndexed(
+          api,
+          team.responseData.name,
+          SearchIndex.TEAM,
+          {
+            matchBy: 'nameOrDisplayName',
+          }
+        );
+        ontology = await okJson<Ontology>(
+          await api.post('/api/v1/ontologies', {
+            data: {
+              name,
+              iri: `urn:${name}`,
+              namespace: `urn:${name}:`,
+              reviewers: [],
+            },
+          }),
+          'Create reviewer settings ontology'
+        );
+        const ontologyId = ontology.id;
+        await okJson<OntologyConcept>(
+          await api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Customer',
+              ontology: ontology.fullyQualifiedName,
+              conceptType: 'OWL_CLASS',
+            },
+          }),
+          'Create reviewable concept'
+        );
+        await author.goto(`/governance/ontology?ontology=${ontology.id}`);
+        await author.getByTestId('ontology-publication-trigger').click();
+        const card = author.getByTestId('ontology-release-reviewers');
+        const picker = card.getByRole('combobox', { name: 'Add reviewer' });
+        const searchFor = async (name: string) => {
+          const users = author.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname === '/api/v1/search/query' &&
+              url.searchParams.get('q') === name &&
+              url.searchParams.get('index') === SearchIndex.USER
+            );
+          });
+          const teams = author.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname === '/api/v1/search/query' &&
+              url.searchParams.get('q') === name &&
+              url.searchParams.get('index') === SearchIndex.TEAM
+            );
+          });
+          await picker.fill(name);
+          expect((await users).status()).toBe(200);
+          expect((await teams).status()).toBe(200);
+          await expect(picker).toHaveValue(name);
+        };
+
+        await test.step('Add a user and exclude the current user, added user and teams', async () => {
+          await expect(picker).toBeEnabled();
+          await searchFor(reviewer.responseData.name);
+          const firstAddition = author.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                `/api/v1/ontologies/${ontologyId}` &&
+              response.request().method() === 'PATCH'
+          );
+          await author
+            .getByRole('option', {
+              name:
+                reviewer.responseData.displayName ?? reviewer.responseData.name,
+            })
+            .click();
+          expect((await firstAddition).status()).toBe(200);
+          await expect(card).toContainText(
+            reviewer.responseData.displayName ?? reviewer.responseData.name
+          );
+          await picker.fill(reviewer.responseData.name);
+          await expect(picker).toHaveValue(reviewer.responseData.name);
+          await expect(
+            author.getByRole('option', {
+              name:
+                reviewer.responseData.displayName ?? reviewer.responseData.name,
+            })
+          ).toHaveCount(0);
+          await searchFor(isolatedUser.responseData.name);
+          await expect(
+            author.getByRole('option', {
+              name:
+                isolatedUser.responseData.displayName ??
+                isolatedUser.responseData.name,
+            })
+          ).toHaveCount(0);
+          await searchFor(team.responseData.name);
+          await expect(
+            author.getByRole('option', { name: team.responseData.displayName })
+          ).toHaveCount(0);
+        });
+
+        await test.step('Remove and restore the reviewer across reloads', async () => {
+          await author.reload();
+          await author.getByTestId('ontology-publication-trigger').click();
+          const restored = author.getByTestId('ontology-release-reviewers');
+          const row = restored.getByRole('row', {
+            name: new RegExp(
+              reviewer.responseData.displayName ?? reviewer.responseData.name
+            ),
+          });
+          await expect(row).toBeVisible();
+          const removal = author.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                `/api/v1/ontologies/${ontologyId}` &&
+              response.request().method() === 'PATCH'
+          );
+          await row.press('Delete');
+          expect((await removal).status()).toBe(200);
+          await expect(row).toHaveCount(0);
+          await author.reload();
+          await author.getByTestId('ontology-publication-trigger').click();
+          const emptyCard = author.getByTestId('ontology-release-reviewers');
+          await expect(emptyCard).toContainText('No configured reviewers');
+          await emptyCard
+            .getByRole('combobox', { name: 'Add reviewer' })
+            .fill(reviewer.responseData.name);
+          const addition = author.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                `/api/v1/ontologies/${ontologyId}` &&
+              response.request().method() === 'PATCH'
+          );
+          await author
+            .getByRole('option', {
+              name:
+                reviewer.responseData.displayName ?? reviewer.responseData.name,
+            })
+            .click();
+          expect((await addition).status()).toBe(200);
+          await expect(emptyCard).toContainText(
+            reviewer.responseData.displayName ?? reviewer.responseData.name
+          );
+        });
+
+        await test.step('Freeze reviewer and rule controls for the submitted review', async () => {
+          const rule = author
+            .getByTestId('ontology-release-reviewers')
+            .getByRole('button', {
+              name: 'Any one',
+            });
+          await rule.click();
+          const ruleUpdate = author.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                `/api/v1/ontologies/${ontologyId}` &&
+              response.request().method() === 'PATCH'
+          );
+          await author
+            .getByRole('option', { name: 'All', exact: true })
+            .click();
+          expect((await ruleUpdate).status()).toBe(200);
+          const state = await okJson<OntologyState>(
+            await api.get(`/api/v1/ontologies/${ontologyId}/state`),
+            'Read reviewer settings revision'
+          );
+          const release = await okJson<OntologyRelease>(
+            await api.post(`/api/v1/ontologies/${ontologyId}/releases`, {
+              data: { expectedWorkingRevision: state.workingRevision },
+            }),
+            'Capture reviewer settings release'
+          );
+          await submitReview(
+            api,
+            'ontologyRelease',
+            release.fullyQualifiedName,
+            tasks
+          );
+          await author.reload();
+          await author.getByTestId('ontology-publication-trigger').click();
+          const locked = author.getByTestId('ontology-release-reviewers');
+          await expect(
+            locked.getByRole('combobox', { name: 'Add reviewer' })
+          ).toBeDisabled();
+          await expect(
+            locked.getByRole('button', { name: 'All' })
+          ).toBeDisabled();
+          await expect(locked).toContainText('locked by review');
+          await expect(
+            locked.getByRole('row', {
+              name: new RegExp(
+                reviewer.responseData.displayName ?? reviewer.responseData.name
+              ),
+            })
+          ).toBeVisible();
+        });
+      } finally {
+        await cleanReviews(api, tasks);
+        if (ontology) {
+          await deleteFixtureEntity(
+            api,
+            `/api/v1/ontologies/${ontology.id}?recursive=true`
+          );
+        }
+        await team.delete(api);
+      }
+    });
+
+    test('shows the exact punctuation and newline reason after a reviewer rejects', async ({
+      isolatedUserPage: author,
+      freshUserPage: { page: reviewerPage, user: reviewer },
+    }) => {
+      const api = await getWorkerAdminAPIContext();
+      const name = `pw_review_rejection_${uuid()}`;
+      const reason =
+        '<b>Reject this version.</b>\n  Keep “Customer”; fix range & retry.';
+      const tasks: string[] = [];
+      const ontology = await okJson<Ontology>(
+        await api.post('/api/v1/ontologies', {
+          data: {
+            name,
+            iri: `urn:${name}`,
+            namespace: `urn:${name}:`,
+            reviewers: [{ id: reviewer.responseData.id, type: 'user' }],
+          },
+        }),
+        'Create rejection ontology'
+      );
+      try {
+        await okJson<OntologyConcept>(
+          await api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Customer',
+              ontology: ontology.fullyQualifiedName,
+              conceptType: 'OWL_CLASS',
+            },
+          }),
+          'Create rejected concept'
+        );
+        const state = await okJson<OntologyState>(
+          await api.get(`/api/v1/ontologies/${ontology.id}/state`),
+          'Read rejection revision'
+        );
+        const release = await okJson<OntologyRelease>(
+          await api.post(`/api/v1/ontologies/${ontology.id}/releases`, {
+            data: { expectedWorkingRevision: state.workingRevision },
+          }),
+          'Capture rejected release'
+        );
+        const task = await submitReview(
+          api,
+          'ontologyRelease',
+          release.fullyQualifiedName,
+          tasks
+        );
+        await reviewerPage.goto(`/tasks/${task.id}`);
+        await expect(reviewerPage.getByTestId('task-reject')).toBeEnabled();
+        await reviewerPage.getByTestId('task-reject').click();
+        const comment = reviewerPage.getByTestId('task-action-comment');
+        await comment.getByRole('textbox').fill(reason);
+        const resolution = reviewerPage.waitForResponse(
+          (response) =>
+            response.url().endsWith(`/api/v1/tasks/${task.id}/resolve`) &&
+            response.request().method() === 'POST'
+        );
+        await reviewerPage.getByTestId('task-action-comment-confirm').click();
+        expect((await resolution).status()).toBe(200);
+        await author.goto(`/governance/ontology?ontology=${ontology.id}`);
+        await author.getByTestId('ontology-publication-trigger').click();
+        const displayed = author.getByTestId('ontology-rejection-reason');
+        await expect(displayed).toBeVisible();
+        await expect(displayed).toHaveText(reason);
+        await expect(displayed.locator('b')).toHaveCount(0);
+        await expect(
+          author.getByTestId('ontology-request-review')
+        ).toBeDisabled();
+      } finally {
+        await cleanReviews(api, tasks);
+        await deleteFixtureEntity(
+          api,
+          `/api/v1/ontologies/${ontology.id}?recursive=true`
+        );
+      }
+    });
+
     test('captures, reviews, activates and rolls back sealed releases in Studio', async ({
       isolatedUserPage: author,
       freshUserPage: { page: reviewer, user },
@@ -415,9 +747,9 @@ test.describe(
               new URL(response.url()).pathname === '/api/v1/tasks' &&
               response.request().method() === 'POST'
           );
-          await author
-            .getByRole('button', { name: 'Request approval', exact: true })
-            .click();
+          await clickIgnoringToasts(
+            author.getByTestId('ontology-request-review')
+          );
           const task = await okJson<Task>(
             await submission,
             'Submit captured release for workflow approval'
@@ -465,17 +797,31 @@ test.describe(
           expect(beforeActivation.activationRevision).toBe(releases.length - 1);
 
           await openPublication(author, ontology);
+          await expect(
+            author.getByTestId('ontology-release-stage')
+          ).toContainText('Approved');
+          await expect(
+            author.getByTestId('ontology-publish-release')
+          ).toContainText(release.semanticVersion ?? '');
           await author.getByTestId('ontology-publication-tab-releases').click();
           await author
             .getByTestId(`ontology-release-select-${release.id}`)
             .click();
-          await activateRelease(author, ontology, release, releases.length - 1);
+          await activateRelease(
+            author,
+            ontology,
+            release,
+            releases.length - 1,
+            'publish'
+          );
         }
 
         const [firstRelease] = releases;
         await author.reload();
-        await author.getByTestId('ontology-publication-trigger').click();
-        await author.getByTestId('ontology-publication-tab-releases').click();
+        await author.getByTestId('ontology-release-history-trigger').click();
+        await expect(
+          author.getByTestId('ontology-publication-tab-releases')
+        ).toHaveAttribute('aria-selected', 'true');
         await author
           .getByTestId(
             `ontology-release-select-${releases[releases.length - 1].id}`
@@ -487,7 +833,7 @@ test.describe(
         await author
           .getByTestId(`ontology-release-select-${firstRelease.id}`)
           .click();
-        await activateRelease(author, ontology, firstRelease, 2);
+        await activateRelease(author, ontology, firstRelease, 2, 'rollback');
         await author
           .getByTestId('ontology-release-definition')
           .getByRole('button', { name: 'Customer', exact: true })

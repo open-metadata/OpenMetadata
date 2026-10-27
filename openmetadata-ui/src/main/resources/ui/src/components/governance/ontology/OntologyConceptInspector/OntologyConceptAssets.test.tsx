@@ -20,6 +20,10 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import { UpdateOntologyConceptBinding } from '../../../../generated/api/data/updateOntologyConceptBinding';
 import {
+  Access,
+  Operation,
+} from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import {
   AssetBinding,
   AssetType,
   OntologyConceptBindingsResponse,
@@ -65,15 +69,20 @@ const stored = (): OntologyConceptBindingsResponse => ({
 const renderAssets = (id = 'customer') =>
   renderWithQueryClient(
     <MemoryRouter>
-      <OntologyConceptAssets canEdit conceptId={id} key={id} />
+      <OntologyConceptAssets
+        canEdit
+        conceptId={id}
+        key={id}
+        presentation={{ kind: 'edit' }}
+      />
     </MemoryRouter>
   );
-const selectAll = async () => {
+const selectAll = async (firstOption = 'new-one') => {
   const add = await screen.findByTestId('ontology-native-link-assets');
   await waitFor(() => expect(add).toBeEnabled());
   fireEvent.click(add);
   const picker = await screen.findByTestId('ontology-data-asset-picker');
-  await within(picker).findByRole('checkbox', { name: 'new-one' });
+  await within(picker).findByRole('checkbox', { name: firstOption });
   fireEvent.click(
     within(picker).getByRole('checkbox', { name: 'label.select-all' })
   );
@@ -91,6 +100,50 @@ const searchResult = (ids: string[]) => ({
     },
   },
 });
+const permissions = (operations: Operation[]) => ({
+  data: {
+    resource: 'table',
+    permissions: operations.map((operation) => ({
+      operation,
+      access: Access.Allow,
+    })),
+  },
+});
+// A small stateful server: reads return a copy of the state, writes advance
+// its revision after checking the expected one, as the real service does.
+const serve = (
+  state: OntologyConceptBindingsResponse,
+  searchIds: string[],
+  granted: Operation[] = []
+) => {
+  http.get.mockImplementation(async (url) => {
+    if (url.startsWith('/search/query?')) {
+      return searchResult(searchIds);
+    }
+    if (!url.includes('/bindings')) {
+      return permissions(granted);
+    }
+
+    return { data: { revision: state.revision, assets: [...state.assets] } };
+  });
+  http.put.mockImplementation(async (_url, data) => {
+    const body = data as UpdateOntologyConceptBinding;
+
+    expect(body.expectedRevision).toBe(state.revision);
+
+    state.assets.push(asset(body.asset.assetId));
+    state.revision += 1;
+
+    return { data: { revision: 999, assets: [] } };
+  });
+  http.delete.mockImplementation(async (url) => {
+    const assetId = url.slice(url.lastIndexOf('/') + 1);
+    state.assets = state.assets.filter((item) => item.assetId !== assetId);
+    state.revision += 1;
+
+    return { data: { revision: 999, assets: [] } };
+  });
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -338,7 +391,12 @@ it('stops the unsent picker tail when the concept switches during a write', asyn
   await waitFor(() => expect(http.put).toHaveBeenCalledTimes(1));
   rerender(
     <MemoryRouter>
-      <OntologyConceptAssets canEdit conceptId="order" key="order" />
+      <OntologyConceptAssets
+        canEdit
+        conceptId="order"
+        key="order"
+        presentation={{ kind: 'edit' }}
+      />
     </MemoryRouter>
   );
   await act(async () => finish());
@@ -355,4 +413,140 @@ it('stops the unsent picker tail when the concept switches during a write', asyn
     screen.queryByTestId('ontology-data-asset-picker')
   ).not.toBeInTheDocument();
   expect(screen.queryByText('old-table')).not.toBeInTheDocument();
+});
+
+it('adds selected assets serially using re-read revisions and removes a linked asset', async () => {
+  const state: OntologyConceptBindingsResponse = { revision: 0, assets: [] };
+  serve(state, ['first', 'second'], [Operation.ViewSampleData]);
+  renderAssets('concept');
+  await selectAll('first');
+  await waitFor(() =>
+    expect(
+      screen.queryByTestId('ontology-data-asset-picker')
+    ).not.toBeInTheDocument()
+  );
+
+  expect(await screen.findByRole('link', { name: 'first' })).toBeVisible();
+  expect(screen.getByRole('link', { name: 'second' })).toBeVisible();
+  expect(
+    http.put.mock.calls.map(
+      ([, body]) => (body as UpdateOntologyConceptBinding).expectedRevision
+    )
+  ).toEqual([0, 1]);
+
+  await waitFor(() =>
+    expect(
+      screen.getAllByRole('link', { name: 'label.sample-data' })
+    ).toHaveLength(2)
+  );
+  const remove = screen.getByTestId('ontology-native-asset-remove-first');
+  await waitFor(() => expect(remove).toBeEnabled());
+  fireEvent.click(remove);
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('link', { name: 'first' })
+    ).not.toBeInTheDocument()
+  );
+
+  expect(http.delete).toHaveBeenCalledWith(
+    '/ontologyConcepts/concept/bindings/table/first',
+    { params: { expectedRevision: 2 } }
+  );
+  expect(screen.getByRole('link', { name: 'second' })).toBeVisible();
+});
+
+it('keeps a refused selection available for retry and closes the picker without dropping successful links', async () => {
+  const state: OntologyConceptBindingsResponse = { revision: 0, assets: [] };
+  serve(state, ['first', 'second']);
+  let attempts = 0;
+  http.put.mockImplementation(async (_url, data) => {
+    attempts += 1;
+    if (attempts === 2) {
+      throw new Error('Denied');
+    }
+    const body = data as UpdateOntologyConceptBinding;
+    state.assets.push(asset(body.asset.assetId));
+    state.revision += 1;
+
+    return { data: { revision: 999, assets: [] } };
+  });
+  renderAssets('concept');
+  const picker = await selectAll('first');
+
+  expect(
+    await within(picker).findByTestId('ontology-native-batch-status')
+  ).toHaveTextContent('message.ontology-binding-unconfirmed');
+  expect(await screen.findByRole('link', { name: 'first' })).toBeVisible();
+  expect(
+    within(picker).getByRole('checkbox', { name: 'second' })
+  ).toBeChecked();
+  expect(
+    within(picker).getByRole('checkbox', { name: 'first' })
+  ).toBeDisabled();
+  expect(http.put).toHaveBeenCalledTimes(2);
+
+  fireEvent.click(
+    within(picker).getByTestId('ontology-data-asset-picker-close')
+  );
+
+  expect(
+    screen.queryByTestId('ontology-data-asset-picker')
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'first' })).toBeVisible();
+});
+
+it('retries failed binding reads before offering editing', async () => {
+  const state: OntologyConceptBindingsResponse = { revision: 0, assets: [] };
+  let failRead = true;
+  serve(state, []);
+  http.get.mockImplementation(async (url) => {
+    if (!url.includes('/bindings')) {
+      return permissions([]);
+    }
+    if (failRead) {
+      throw new Error('Offline');
+    }
+
+    return { data: { revision: state.revision, assets: [...state.assets] } };
+  });
+  renderAssets('concept');
+  const retry = await screen.findByRole('button', { name: 'label.retry' });
+
+  expect(screen.getByTestId('ontology-native-link-assets')).toBeDisabled();
+
+  failRead = false;
+  fireEvent.click(retry);
+  await waitFor(() =>
+    expect(screen.getByTestId('ontology-native-link-assets')).toBeEnabled()
+  );
+
+  expect(screen.getByText('message.no-data-available')).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: 'label.retry' })
+  ).not.toBeInTheDocument();
+});
+
+it('does not repeat a link that the re-read already reports as present', async () => {
+  const state: OntologyConceptBindingsResponse = { revision: 0, assets: [] };
+  serve(state, ['first', 'second']);
+  http.put.mockImplementation(async (_url, data) => {
+    const body = data as UpdateOntologyConceptBinding;
+
+    expect(body.expectedRevision).toBe(state.revision);
+
+    state.assets.push(asset(body.asset.assetId), asset('second'));
+    state.revision += 1;
+
+    return { data: { revision: 999, assets: [] } };
+  });
+  renderAssets('concept');
+  await selectAll('first');
+  await waitFor(() =>
+    expect(
+      screen.queryByTestId('ontology-data-asset-picker')
+    ).not.toBeInTheDocument()
+  );
+
+  expect(screen.getByRole('link', { name: 'second' })).toBeVisible();
+  expect(http.put).toHaveBeenCalledTimes(1);
 });

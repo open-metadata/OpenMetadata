@@ -22,10 +22,12 @@ import { useTranslation } from 'react-i18next';
 import { useOntologyPublication } from '../../../../hooks/governance/ontology/useOntologyPublication';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import OntologyReleaseExport from './OntologyReleaseExport';
+import { releaseChangeCount } from './OntologyReleasePanel.utils';
 
 interface OntologyReleaseHistoryProps {
   history: ReturnType<typeof useOntologyPublication>['history'];
   activeReleaseId?: string;
+  latestReleaseId?: string;
   selectedReleaseId?: string;
   onSelect: (id: string) => void;
 }
@@ -33,6 +35,7 @@ interface OntologyReleaseHistoryProps {
 const OntologyReleaseHistory = ({
   history,
   activeReleaseId,
+  latestReleaseId,
   selectedReleaseId,
   onSelect,
 }: OntologyReleaseHistoryProps) => {
@@ -59,7 +62,7 @@ const OntologyReleaseHistory = ({
         <Typography>{t('message.no-data-available')}</Typography>
       )}
       <ol className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-3 tw:p-0">
-        {releases.map((release, index) => (
+        {releases.map((release) => (
           <li key={release.id}>
             <Box align="start" gap={3} justify="between">
               <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
@@ -82,7 +85,7 @@ const OntologyReleaseHistory = ({
                   {release.id === activeReleaseId && (
                     <Badge color="success">{t('label.active')}</Badge>
                   )}
-                  {index === 0 && (
+                  {release.id === latestReleaseId && (
                     <Badge color="blue">{t('label.latest')}</Badge>
                   )}
                   <Badge>
@@ -96,6 +99,16 @@ const OntologyReleaseHistory = ({
                     {formatDateTimeLong(release.sealedAt)} · {release.sealedBy}
                   </Typography>
                 </Box>
+                <Typography
+                  color="secondary"
+                  data-testid={`ontology-release-count-${release.id}`}
+                  size="text-xs">
+                  {releaseChangeCount(release) === undefined
+                    ? t('message.ontology-change-summary-unavailable')
+                    : `${releaseChangeCount(release)} ${t(
+                        'label.change-plural'
+                      )}`}
+                </Typography>
                 {release.releaseNotes && (
                   <Typography
                     className="tw:whitespace-pre-wrap tw:break-words"

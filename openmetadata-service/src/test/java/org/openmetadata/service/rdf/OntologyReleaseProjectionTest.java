@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.NativeOntologyShaclReport;
 import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyExpression;
@@ -148,6 +150,111 @@ class OntologyReleaseProjectionTest {
     } finally {
       model.close();
     }
+  }
+
+  @Test
+  void referencedOnlyForeignClassDoesNotFailCapturedValidation() {
+    final Bundle bundle =
+        bundle(
+            List.of(
+                property("related")
+                    .withDomain(List.of(URI.create("https://foreign.example.org/Party")))));
+    final Model model = new OntologyReleaseProjection().build(bundle.release(), bundle.members());
+    try {
+      assertTrue(
+          model.contains(
+              model.createResource("https://foreign.example.org/Party"), RDF.type, OWL2.Class));
+      final NativeOntologyShaclReport report =
+          new NativeOntologyValidation().validate(bundle.release(), bundle.members());
+      assertEquals(0, report.getViolationCount());
+    } finally {
+      model.close();
+    }
+  }
+
+  @Test
+  void capturedEnumerationUsesProjectedListCells() {
+    final OntologyProperty property =
+        property("status")
+            .withKind(OntologyPropertyKind.DATA)
+            .withEnumValues(List.of(new OntologyLiteral().withValue("one")));
+    final Bundle singleton = bundle(List.of(property));
+    assertEquals(
+        1,
+        new NativeOntologyValidation()
+            .validate(singleton.release(), singleton.members())
+            .getViolationCount());
+    final Bundle pair =
+        bundle(
+            List.of(
+                property.withEnumValues(
+                    List.of(
+                        new OntologyLiteral().withValue("one"),
+                        new OntologyLiteral().withValue("two")))));
+    assertEquals(
+        0,
+        new NativeOntologyValidation()
+            .validate(pair.release(), pair.members())
+            .getViolationCount());
+  }
+
+  @Test
+  void capturedTargetsKeepRawShapesAndExportUnchanged() {
+    final Bundle bundle =
+        bundle(
+            List.of(
+                property("related")
+                    .withDomain(List.of(URI.create("https://foreign.example.org/Party")))));
+    final Model model = new OntologyReleaseProjection().build(bundle.release(), bundle.members());
+    try {
+      final String before = RdfGraphSerializer.asString(model, RdfSerializationFormat.TURTLE);
+      assertEquals(
+          1,
+          new RdfShaclReportMapper()
+              .mapNative(
+                  RdfShaclValidator.validate(model, RdfShaclValidator.ShapeSet.NATIVE_ONTOLOGY))
+              .getViolationCount());
+      assertEquals(
+          0,
+          new NativeOntologyValidation()
+              .validate(bundle.release(), bundle.members())
+              .getViolationCount());
+      assertEquals(before, RdfGraphSerializer.asString(model, RdfSerializationFormat.TURTLE));
+      assertEquals(
+          1,
+          new RdfShaclReportMapper()
+              .mapNative(
+                  RdfShaclValidator.validate(model, RdfShaclValidator.ShapeSet.NATIVE_ONTOLOGY))
+              .getViolationCount());
+    } finally {
+      model.close();
+    }
+  }
+
+  @Test
+  void disjointConcurrentReleasesKeepTheirOwnTargets() {
+    final URI foreign = URI.create("https://foreign.example.org/Party");
+    final Bundle first =
+        bundle(
+            List.of(
+                concept("Party").withIri(foreign).withDeprecated(true),
+                concept("Customer"),
+                axiom("subclass")
+                    .withExpressions(
+                        List.of(
+                            new OntologyExpression()
+                                .withKind(OntologyExpressionKind.NAMED_CLASS)
+                                .withClassIri(foreign)))));
+    final Bundle second = bundle(List.of(property("related").withDomain(List.of(foreign))));
+    final NativeOntologyValidation validator = new NativeOntologyValidation();
+    final CompletableFuture<NativeOntologyShaclReport> firstResult =
+        CompletableFuture.supplyAsync(() -> validator.validate(first.release(), first.members()));
+    final CompletableFuture<NativeOntologyShaclReport> secondResult =
+        CompletableFuture.supplyAsync(() -> validator.validate(second.release(), second.members()));
+    assertEquals(1, firstResult.join().getWarningCount());
+    assertEquals(0, firstResult.join().getViolationCount());
+    assertEquals(0, secondResult.join().getWarningCount());
+    assertEquals(0, secondResult.join().getViolationCount());
   }
 
   @ParameterizedTest
