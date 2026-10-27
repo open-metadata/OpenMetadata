@@ -79,11 +79,9 @@ interface OntologyDataGraphProps {
   glossaryColorMap: Record<string, string>;
   hasMoreTerms: boolean;
   isLoadingMoreTerms: boolean;
-  /** Explains why no more clusters can load, in the slot of the render-cap note. */
   limitMessage?: string;
   relationTypes: RelationshipType[];
   selectedNodeId?: string;
-  /** Native ontologies page assets inside each card and draw inferred and lineage edges. */
   variant?: 'glossary' | 'native';
   onLoadMore: (term: OntologyNode) => void;
   onPaneClick: () => void;
