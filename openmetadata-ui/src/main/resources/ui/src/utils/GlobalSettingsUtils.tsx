@@ -67,6 +67,7 @@ const SETTING_OPTION_BY_ENTITY_TYPE: Partial<
   [EntityType.FILE]: GlobalSettingOptions.FILES,
   [EntityType.SPREADSHEET]: GlobalSettingOptions.SPREADSHEETS,
   [EntityType.WORKSHEET]: GlobalSettingOptions.WORKSHEETS,
+  [EntityType.KNOWLEDGE_PAGE]: GlobalSettingOptions.ARTICLES,
 };
 
 export const getSettingOptionByEntityType = (entityType: EntityType) =>

@@ -75,6 +75,7 @@ from metadata.ingestion.source.dashboard.powerbi.constants import (
     BIGQUERY_QUERY_EXPRESSION_KW,
     DATABRICKS_QUERY_EXPRESSION_KW,
     DEFAULT_REPORTS_PREFIX,
+    M_TEXT_LITERAL_OR_COMMENT_PATTERN,
     MAX_PROJECT_FILTER_SIZE,
     OWNER_ACCESS_RIGHTS_KEYWORDS,
     RDL_REPORT_FORMAT,
@@ -1195,9 +1196,13 @@ class PowerbiSource(DashboardServiceSource):
             "SELECT ... FROM `dataset.table` ...", null, [EnableFolding=true])
         """
         try:
-            # Strip M language block comments (/* ... */) and line comments (//)
-            cleaned_expression = re.sub(r"/\*.*?\*/", "", source_expression, flags=re.DOTALL)
-            cleaned_expression = re.sub(SQL_LINE_COMMENT_PATTERN, "", cleaned_expression)
+            # Strip M comments (/* ... */ and //) outside M text literals: the SQL is one of those literals
+            cleaned_expression = re.sub(
+                M_TEXT_LITERAL_OR_COMMENT_PATTERN,
+                lambda match: match.group(1) or "",
+                source_expression,
+                flags=re.DOTALL,
+            )
 
             # Extract the project from BillingProject parameter
             billing_match = re.search(r'BillingProject="([^"]+)"', cleaned_expression)
@@ -1214,12 +1219,11 @@ class PowerbiSource(DashboardServiceSource):
                 logger.debug("SQL query not found in BigQuery NativeQuery expression")
                 return None
 
+            # SQL comments are left to LineageParser, which knows where a string literal ends. Line
+            # breaks are kept so that a -- or # comment ends at its line.
             sql_query = sql_match.group(1).replace('""', '"')
             sql_query = sql_query.replace("#(lf)", "\n")
-            sql_query = sql_query.replace("#(tab)", "\t")
-            sql_query = re.sub(r"--[^\n]*", "", sql_query)
-            sql_query = re.sub(SQL_LINE_COMMENT_PATTERN, "", sql_query)
-            sql_query = re.sub(r"\s+", " ", sql_query).strip()
+            sql_query = sql_query.replace("#(tab)", "\t").strip()
 
             logger.debug(f"Extracted BigQuery SQL query: {sql_query[:200]}")
 

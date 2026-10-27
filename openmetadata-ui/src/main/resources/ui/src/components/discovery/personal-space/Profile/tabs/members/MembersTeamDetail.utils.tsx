@@ -211,7 +211,7 @@ export const getUserColumns = (
   onRemoveUser: (record: User) => Promise<boolean>
 ): ColumnsType<User> => [
   {
-    title: t<string>('label.username'),
+    title: t('label.username'),
     dataIndex: 'name',
     key: 'username',
     ellipsis: true,
@@ -220,7 +220,7 @@ export const getUserColumns = (
     ),
   },
   {
-    title: t<string>('label.name'),
+    title: t('label.name'),
     dataIndex: 'displayName',
     key: 'name',
     ellipsis: true,
@@ -231,7 +231,7 @@ export const getUserColumns = (
     ),
   },
   {
-    title: t<string>('label.role-plural'),
+    title: t('label.role-plural'),
     dataIndex: 'roles',
     key: 'roles',
     render: (_: unknown, record: User) => (
@@ -273,7 +273,7 @@ export const getEntityRefColumns = (
   nameHashOf: (ref: EntityReference) => ProfileHashTarget
 ): ColumnsType<EntityReference> => [
   {
-    title: t<string>('label.name'),
+    title: t('label.name'),
     dataIndex: 'name',
     key: 'name',
     width: '30%',
@@ -291,7 +291,7 @@ export const getEntityRefColumns = (
     ),
   },
   {
-    title: t<string>('label.description'),
+    title: t('label.description'),
     dataIndex: 'description',
     key: 'description',
     render: (_: unknown, record: EntityReference) => record.description || '--',

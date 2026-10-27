@@ -1,7 +1,7 @@
 # Components migrated from Ant Design adopt the core component's styling
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-11 (initial) · v2 2026-10-23 (landing-page segmented controls exception)
+- **Revisions:** v1 2026-10-11 (initial) · v2 2026-10-23 (landing-page segmented controls exception) · v3 2026-10-26 (conversation drawer reply count and message exception)
 - **Deciders:** Harshit Shah
 - **Guard:** reviewer
 - **Related:** ADR:2026-10-11-antd-imports-are-frozen-by-eslint-suppressions, open-metadata/openmetadata-collate#6884, open-metadata/openmetadata-collate#6891, open-metadata/OpenMetadata#35209
@@ -40,3 +40,10 @@ The landing page's segmented controls — the Topics list/grid switch, the Colla
 control, the topic filter and stat chips, and Collate's "Needs you now" tabs — restyle core
 components from the call site until core ships a segmented variant. The scope and exit are in
 ADR:2026-10-23-landing-page-segmented-controls-are-styled-at-the-call-site.
+
+## Amendment — v3: conversation drawer reply count and message
+
+The conversation drawers' labelled reply count (over core `Button`) and recessed message (over
+core `Card`) restyle core components from the call site, matching the Inbox, until core ships an
+Inbox-style labelled footer button and a recessed `Card` variant. The scope and exit are in
+ADR:2026-10-26-conversation-drawers-style-the-reply-count-and-message-like-the-inbox.

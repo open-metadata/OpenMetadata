@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TFunction } from 'i18next';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactElement } from 'react';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
@@ -78,7 +79,7 @@ describe('getAvailableTabs', () => {
 });
 
 describe('getTabLabel', () => {
-  const t = (key: string) => key;
+  const t = ((key: string) => key) as unknown as TFunction;
 
   it('labels custom properties without a count', () => {
     const label = getTabLabel('custom-properties', t, {} as Team, 0, 0);
@@ -124,7 +125,7 @@ describe('getChildTeamColumns', () => {
 });
 
 describe('getUserColumns remove action', () => {
-  const t = (key: string) => key;
+  const t = ((key: string) => key) as unknown as TFunction;
   const alice = { id: 'u1', name: 'alice', displayName: 'Alice' } as User;
 
   const renderRemoveCell = (onRemoveUser: jest.Mock) => {

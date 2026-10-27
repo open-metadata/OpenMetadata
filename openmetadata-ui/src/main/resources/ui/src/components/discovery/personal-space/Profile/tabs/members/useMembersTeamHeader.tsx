@@ -51,7 +51,7 @@ const buildTitleSuffix = (
     <Box align="center" direction="row" gap={2}>
       {team.deleted && (
         <Badge color="error" data-testid="deleted-badge" size="sm">
-          {t<string>('label.deleted')}
+          {t('label.deleted')}
         </Badge>
       )}
       {canEdit && (
@@ -98,14 +98,14 @@ const buildTitleInput = (
         data-testid="save-display-name"
         size="xs"
         onPress={onSaveDisplayName}>
-        {t<string>('label.save')}
+        {t('label.save')}
       </Button>
       <Button
         color="tertiary"
         data-testid="cancel-display-name"
         size="xs"
         onPress={onCancelEditName}>
-        {t<string>('label.cancel')}
+        {t('label.cancel')}
       </Button>
     </Box>
   ) : undefined;
@@ -172,7 +172,7 @@ const buildTeamActionsMenu = (
           data-testid="export-team"
           icon={Download01}
           onAction={onTeamExport}>
-          {t<string>('label.export-entity', {
+          {t('label.export-entity', {
             entity: t('label.team'),
           })}
         </Dropdown.Item>
@@ -182,7 +182,7 @@ const buildTeamActionsMenu = (
           data-testid="import-team"
           icon={Upload01}
           onAction={onTeamImport}>
-          {t<string>('label.import-entity', {
+          {t('label.import-entity', {
             entity: t('label.team'),
           })}
         </Dropdown.Item>
@@ -200,7 +200,7 @@ const buildTeamActionsMenu = (
           data-testid="restore-team"
           icon={Restore}
           onAction={onRestoreTeam}>
-          {t<string>('label.restore-entity', {
+          {t('label.restore-entity', {
             entity: t('label.team'),
           })}
         </Dropdown.Item>
@@ -210,7 +210,7 @@ const buildTeamActionsMenu = (
           data-testid="delete-team"
           icon={Trash01}
           onAction={onDelete}>
-          {t<string>('label.delete')}
+          {t('label.delete')}
         </Dropdown.Item>
       )}
     </Dropdown.Menu>
@@ -248,9 +248,7 @@ const buildHeaderActions = (
           }
           size="xs"
           onPress={isCurrentUserMember ? onLeaveTeam : onJoinTeam}>
-          {isCurrentUserMember
-            ? t<string>('label.leave-team')
-            : t<string>('label.join-team')}
+          {isCurrentUserMember ? t('label.leave-team') : t('label.join-team')}
         </Button>
       )}
       {hasMenu && (

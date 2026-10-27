@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page, Response } from '@playwright/test';
+import test, { APIResponse, expect, Page, Response } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
@@ -145,7 +145,7 @@ const getLatestRunStartTime = async (page: Page) => {
   return run?.startTime;
 };
 
-const getAppRunRecord = async (response: Response) => {
+const getAppRunRecord = async (response: Response | APIResponse) => {
   if (!response.ok() || response.status() === 204) {
     return undefined;
   }

@@ -83,17 +83,17 @@ const buildStatusBadges = (
           data-testid="user-you-badge"
           size="sm"
           type="pill-color">
-          {t<string>('label.you')}
+          {t('label.you')}
         </Badge>
       )}
       {user.isAdmin && !user.isBot && (
         <Badge color="brand" size="sm" type="pill-color">
-          {t<string>('label.admin')}
+          {t('label.admin')}
         </Badge>
       )}
       {user.isBot && (
         <Badge color="gray-blue" size="sm" type="pill-color">
-          {t<string>('label.bot')}
+          {t('label.bot')}
         </Badge>
       )}
       {user.deleted && (
@@ -102,7 +102,7 @@ const buildStatusBadges = (
           data-testid="user-deleted-badge"
           size="sm"
           type="pill-color">
-          {t<string>('label.deleted')}
+          {t('label.deleted')}
         </Badge>
       )}
       {onlineStatus && (
@@ -171,7 +171,7 @@ const buildTabs = (
           data-testid={`user-detail-tab-${id}`}
           id={id}
           key={id}>
-          {t<string>(USER_DETAIL_TAB_LABEL_KEYS[id])}
+          {t(USER_DETAIL_TAB_LABEL_KEYS[id])}
         </Tabs.Item>
       ))}
     </Tabs.List>

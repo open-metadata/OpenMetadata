@@ -135,7 +135,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         dataIndex: 'type',
         key: 'type',
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<EntityReference>(),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',

@@ -2336,7 +2336,7 @@ export const softDeleteEntity = async (
   page: Page,
   entityName: string,
   endPoint: EntityTypeEndpoint,
-  displayName: string
+  _displayName: string
 ) => {
   await deletedEntityCommonChecks({
     page,
@@ -2430,7 +2430,7 @@ export const softDeleteEntity = async (
 
 export const hardDeleteEntity = async (
   page: Page,
-  entityName: string,
+  _entityName: string,
   endPoint: EntityTypeEndpoint
 ) => {
   await clickOutside(page);

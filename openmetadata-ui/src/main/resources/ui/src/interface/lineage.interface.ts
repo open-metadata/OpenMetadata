@@ -18,7 +18,6 @@ import { ContainerDataModel } from '../generated/api/data/createContainer';
 import { EsLineageData } from '../generated/api/lineage/esLineageData';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
-import { Chart } from '../generated/entity/data/chart';
 import { MlFeature } from '../generated/entity/data/mlmodel';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { Column } from '../generated/entity/data/table';
@@ -82,11 +81,14 @@ export type NodeData = {
 };
 
 export interface LineageNodeType
-  extends Exclude<EntityReference, 'type'>,
-    Pick<
-      TableSearchSource,
-      'entityType' | 'deleted' | 'serviceType' | 'testSuite' | 'columns'
+  extends EntityReference,
+    Partial<
+      Pick<
+        TableSearchSource,
+        'entityType' | 'deleted' | 'testSuite' | 'columns'
+      >
     > {
+  serviceType?: string;
   nodeDepth?: number;
   paging?: {
     entityDownstreamCount?: number;
@@ -104,7 +106,7 @@ export interface LineageNodeType
   flattenChildren?: EntityChildren;
   dataModel?: ContainerDataModel;
   mlFeatures?: MlFeature[];
-  charts?: Chart[];
+  charts?: EntityReference[];
   messageSchema?: MessageSchemaObject;
   responseSchema?: APISchema;
   requestSchema?: APISchema;

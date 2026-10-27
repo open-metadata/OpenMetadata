@@ -318,7 +318,7 @@ export const getBreadcrumbForMetric = (
   entityName: string,
   includeCurrent = false
 ) => {
-  const items = [
+  const items: TitleLink[] = [
     {
       name: i18n.t('label.metric-plural'),
       url: ROUTES.METRICS,

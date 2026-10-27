@@ -17,11 +17,14 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.ExpiryTimer;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -47,6 +50,9 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefinition> {
 
   private static final String USER_APPROVAL_TASK = "userApprovalTask";
+
+  private static final String CREATE_AND_RUN_INGESTION_PIPELINE_TASK =
+      "createAndRunIngestionPipelineTask";
 
   public WorkflowDefinitionRepository() {
     super(
@@ -290,6 +296,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateEnforceMode(workflowDefinition);
     // 7. Restrict the values interpolated into conditional-edge JUEL expressions
     validateEdgeConditions(workflowDefinition);
+    // 8. Restrict every other value the BPMN builders interpolate into JUEL expressions
+    validateExpressionInterpolation(workflowDefinition);
   }
 
   /**
@@ -516,6 +524,77 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
               "Workflow '%s' conditional edge '%s' -> '%s' has an invalid source node reference; "
                   + "allowed characters: letters, digits, '_'",
               workflowName, edge.getFrom(), edge.getTo()));
+    }
+  }
+
+  // These nodes' names land in JUEL code position through their namespaced process variables
+  // (e.g. ${<node>_result == ...}) on flows that exist regardless of edge conditionality, so their
+  // names must read as variable references even when their edges are unconditional.
+  private static final Set<String> NODE_NAMES_INTERPOLATED_INTO_EXPRESSIONS =
+      Set.of(USER_APPROVAL_TASK, CREATE_AND_RUN_INGESTION_PIPELINE_TASK);
+
+  /**
+   * Beyond conditional-edge values ({@link #validateEdgeConditions}), the BPMN builders interpolate
+   * node names (namespaced process-variable prefixes) and expiry-timer process-variable names into
+   * JUEL expressions. Validate every expression-bearing field so a definition is rejected with a
+   * 400 at write time instead of failing (or worse, deploying) at build time.
+   */
+  static void validateExpressionInterpolation(WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getNodes() == null) {
+      return;
+    }
+    String workflowName = workflowDefinition.getName();
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      if (NODE_NAMES_INTERPOLATED_INTO_EXPRESSIONS.contains(node.getSubType())
+          && !WorkflowExpressionValidator.isSafeNodeReference(node.getName())) {
+        throw BadRequestException.of(
+            String.format(
+                "Workflow '%s' node '%s' of type '%s' is referenced inside generated expressions; "
+                    + "its name must only contain letters, digits and '_'",
+                workflowName, node.getName(), node.getSubType()));
+      }
+      if (USER_APPROVAL_TASK.equals(node.getSubType())
+          && node instanceof UserApprovalTaskDefinition userTask
+          && userTask.getConfig() != null) {
+        checkExpressionVariables(
+            workflowName, node.getName(), userTask.getConfig().getExpiryTimer());
+      }
+    }
+  }
+
+  private static void checkExpressionVariables(
+      String workflowName, String nodeName, ExpiryTimer expiryTimer) {
+    if (expiryTimer == null) {
+      return;
+    }
+    for (TimerField field : TimerField.values()) {
+      String variableName = field.get(expiryTimer);
+      if (!nullOrEmpty(variableName)
+          && !WorkflowExpressionValidator.isSafeExpressionVariable(variableName)) {
+        throw BadRequestException.of(
+            String.format(
+                "Workflow '%s' node '%s' has an expiryTimer.%s that is not a bare "
+                    + "process-variable name (letters, digits, '_', starting with a letter or "
+                    + "underscore, not a reserved word): '%s'",
+                workflowName, nodeName, field.label, variableName));
+      }
+    }
+  }
+
+  private enum TimerField {
+    DATE_VARIABLE("dateVariable", ExpiryTimer::getDateVariable),
+    DURATION_VARIABLE("durationVariable", ExpiryTimer::getDurationVariable);
+
+    private final String label;
+    private final Function<ExpiryTimer, String> getter;
+
+    TimerField(String label, Function<ExpiryTimer, String> getter) {
+      this.label = label;
+      this.getter = getter;
+    }
+
+    String get(ExpiryTimer expiryTimer) {
+      return getter.apply(expiryTimer);
     }
   }
 
