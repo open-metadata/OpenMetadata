@@ -597,9 +597,9 @@ validated local profiles. Native build prerequisites and ANTLR remain necessary;
 | `all` | Framework plus the published `all` connector extra, with its existing exclusions | `env/` | `make install_all` |
 | `dev` | Framework, development tools and the `sample-data` extra | `env/` | `make install_dev` |
 | `test` | Development/test tools, `all`, Airflow, Great Expectations and required NLP models | `env/` | `make install_test` or `make install_dev_env` |
-| `style` | Ruff and environment validation tools | `ingestion/.nox/style` | `make py_format` or `make py_format_check` |
-| `generation` | Model generator, Ruff and environment validation tools | `ingestion/.nox/generation` | `make generate ARGS=--python-only` |
-| `coverage` | Coverage reporting and environment validation tools | `ingestion/.nox/coverage` | Reporting steps in `make coverage` |
+| `style` | Ruff and bootstrap tools | `ingestion/.nox/style` | `make py_format` or `make py_format_check` |
+| `generation` | Model generator, Ruff and bootstrap tools | `ingestion/.nox/generation` | `make generate ARGS=--python-only` |
+| `coverage` | Coverage reporting and bootstrap tools | `ingestion/.nox/coverage` | Reporting steps in `make coverage` |
 
 For ordinary ingestion development, keep the full `test` profile in `env/` and let Make
 select tool profiles automatically. From the repository root:
@@ -619,7 +619,8 @@ as reporting, so it requires their services and test prerequisites.
 Nox owns synchronization and command execution in `ingestion/noxfile.py`. Make bootstraps
 uv 0.13.4 and the locked Nox dependencies into `ingestion/.nox/bootstrap`; no global uv or
 Nox installation is needed. Each session synchronizes `ingestion/uv.lock` with `--locked`
-and validates installed dependency metadata before executing its task. A stale lock stops
+before executing its task. The existing classification-model installer verifies model versions,
+spaCy compatibility and successful model loading for the test profile. A stale lock stops
 the session; update it deliberately with
 `ingestion/.nox/bootstrap/bin/uv lock --project ingestion` and review the changes.
 
@@ -629,10 +630,10 @@ an explicit interpreter and environment, use the Nox `install` session:
 ```bash
 make python_tools PYTHON=python3.11
 ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py -s install -- dev --environment /tmp/my-dev-env --python python3.11
-ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py --no-venv -s unit-tests -- -n 0 tests/unit/test_python_environments.py -q
+ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py --no-venv -s unit-tests -- -n 0 tests/unit/test_python_tooling.py -q
 ```
 
-The `install` session only prepares and validates dependencies. Task sessions run from
+The `install` session only synchronizes dependencies and provisions the profile's models. Task sessions run from
 `ingestion/`. Direct Nox task sessions normally use their own Nox virtual environment;
 `--no-venv` selects the same application or tool environment as Make. An already installed
 Nox can also invoke these sessions directly. To run another application command after

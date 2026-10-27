@@ -48,7 +48,6 @@ def prepare_locked_tooling(root, monkeypatch):
             "pytest-timeout",
             "coverage",
             "ruff",
-            "packaging",
             "pip",
         ]
     }
@@ -67,13 +66,13 @@ where = ["src"]
 required-version = "==0.13.4"
 default-groups = []
 [dependency-groups]
-environment-check = ["packaging", "pip", "uv==0.13.4", "tomli>=2; python_version < '3.11'"]
-nox = [{include-group = "environment-check"}, "nox"]
-generation = [{include-group = "environment-check"}]
-style = [{include-group = "environment-check"}, "'''
+bootstrap = ["pip", "uv==0.13.4", "tomli>=2; python_version < '3.11'"]
+nox = [{include-group = "bootstrap"}, "nox"]
+generation = [{include-group = "bootstrap"}]
+style = [{include-group = "bootstrap"}, "'''
         + requirements["ruff"]
         + '''"]
-coverage = [{include-group = "environment-check"}, "'''
+coverage = [{include-group = "bootstrap"}, "'''
         + requirements["coverage"]
         + '''"]
 dev = [{include-group = "style"}, "'''
@@ -84,7 +83,7 @@ test = [{include-group = "dev"}, {include-group = "coverage"}, """
         + "]\n"
         + "\n".join(
             f'''[tool.openmetadata.python-environments.profiles.{name}]
-groups = ["{"environment-check" if name == "runtime" else name}"]
+groups = ["{"bootstrap" if name == "runtime" else name}"]
 extras = []
 install-project = {str(name in ("runtime", "dev", "test")).lower()}
 '''
@@ -96,7 +95,6 @@ install-project = {str(name in ("runtime", "dev", "test")).lower()}
         "scripts/check_generated_models.py",
         "scripts/generate_ingestion_models.py",
         "scripts/datamodel_generation.py",
-        "ingestion/scripts/check_python_environment.py",
     ]:
         target = root / name
         target.parent.mkdir(parents=True, exist_ok=True)

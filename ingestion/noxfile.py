@@ -90,9 +90,9 @@ def synchronize(session, profile, path, interpreter):
     }
     uv = pinned_uv(session, python, environment)
     command = [uv, "sync", "--locked", "--project", str(INGESTION_ROOT), "--python", str(python)]
-    parser_check = "import packaging\ntry:\n import tomllib\nexcept ImportError:\n import tomli"
+    parser_check = "try:\n import tomllib\nexcept ImportError:\n import tomli"
     if subprocess.run([str(python), "-I", "-c", parser_check], capture_output=True, check=False).returncode:
-        session.run(*command, "--only-group", "environment-check", "--inexact", env=environment, external=True)
+        session.run(*command, "--only-group", "bootstrap", "--inexact", env=environment, external=True)
     policy = json.loads(
         session.run(
             str(python),
@@ -146,10 +146,6 @@ def synchronize(session, profile, path, interpreter):
             env=environment,
             external=True,
         )
-    checker = [str(python), "-I", str(INGESTION_ROOT / "scripts/check_python_environment.py"), "--profile", profile]
-    if profile == "test" and policy.get("classification-models"):
-        checker.append("--check-models")
-    session.run(*checker, env=environment, external=True)
     return python, environment
 
 
@@ -184,8 +180,8 @@ def install(session):
 @nox.session(name="generate", python=False, default=False)
 def generate(session):
     """Generate models with the locked generation tools."""
-    prepare(session, "generation")
-    session.run("python", str(ROOT / "scripts/generate_ingestion_models.py"), *session.posargs, external=True)
+    python = prepare(session, "generation")
+    session.run(str(python), str(ROOT / "scripts/generate_ingestion_models.py"), *session.posargs, external=True)
 
 
 @nox.session(name="coverage", python=False, default=False)
@@ -194,27 +190,27 @@ def coverage(session):
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=("erase", "report", "xml"))
     args = parser.parse_args(session.posargs)
-    prepare(session, "coverage")
+    python = prepare(session, "coverage")
     flags = ["-o", "coverage.xml"] if args.action == "xml" else []
-    session.run("coverage", args.action, "--rcfile=pyproject.toml", *flags, external=True)
+    session.run(str(python.parent / "coverage"), args.action, "--rcfile=pyproject.toml", *flags, external=True)
 
 
 @nox.session(name="precommit-install", reuse_venv=True, venv_backend="uv|venv", default=False)
 def precommit_install(session):
-    prepare(session, "dev")
-    session.run("pre-commit", "install")
+    python = prepare(session, "dev")
+    session.run(str(python.parent / "pre-commit"), "install")
 
 
 @nox.session(name="generate-settings-docs", reuse_venv=True, venv_backend="uv|venv", default=False)
 def generate_settings_docs(session):
-    prepare(session, "dev")
-    session.run("python", str(INGESTION_ROOT / "scripts/generate_settings_docs.py"))
+    python = prepare(session, "dev")
+    session.run(str(python), str(INGESTION_ROOT / "scripts/generate_settings_docs.py"))
 
 
 @nox.session(name="check-import-layers", reuse_venv=True, venv_backend="uv|venv", default=False)
 def check_import_layers(session):
-    prepare(session, "dev")
-    session.run("lint-imports")
+    python = prepare(session, "dev")
+    session.run(str(python.parent / "lint-imports"))
 
 
 @nox.session(name="reindex-perf-ingest", python=False, default=False)
@@ -236,7 +232,7 @@ def reindex_perf_ingest(session):
     venv_backend="uv|venv",
 )
 def lint(session):
-    prepare(session, "style")
+    python = prepare(session, "style")
     parser = argparse.ArgumentParser()
     parser.add_argument("--fix", action="store_true")
     args = parser.parse_args(session.posargs)
@@ -246,11 +242,16 @@ def lint(session):
         for name in ("generate_ingestion_models.py", "check_generated_models.py", "datamodel_generation.py")
     )
     session.run(
-        "ruff", "check", *(["--fix"] if args.fix else []), *sources, "--config", str(INGESTION_ROOT / "pyproject.toml")
+        str(python.parent / "ruff"),
+        "check",
+        *(["--fix"] if args.fix else []),
+        *sources,
+        "--config",
+        str(INGESTION_ROOT / "pyproject.toml"),
     )
-    session.run("python", "scripts/check_ruff_suppressions.py", "--prune" if args.fix else "--check")
+    session.run(str(python), "scripts/check_ruff_suppressions.py", "--prune" if args.fix else "--check")
     session.run(
-        "ruff",
+        str(python.parent / "ruff"),
         "format",
         *([] if args.fix else ["--check"]),
         *sources,
@@ -261,9 +262,9 @@ def lint(session):
 
 @nox.session(name="unit-dev", reuse_venv=True, venv_backend="uv|venv", python=get_python_versions(), default=False)
 def unit_dev(session):
-    prepare(session, "test")
+    python = prepare(session, "test")
     session.run(
-        "pytest",
+        str(python.parent / "pytest"),
         "-c",
         "pyproject.toml",
         "tests/unit",
@@ -275,7 +276,7 @@ def unit_dev(session):
 
 @nox.session(name="unit", reuse_venv=True, venv_backend="uv|venv", python=get_python_versions())
 def unit(session):
-    prepare(session, "test")
+    python = prepare(session, "test")
     # TODO: We need to remove ignored test once they can be run properly within nox
     # Run unit tests
     ignored_tests = [
@@ -294,7 +295,7 @@ def unit(session):
     ignore_args = [f"--ignore=tests/unit/{test}" for test in ignored_tests]
 
     # run pytest with the ignore arguments and in parallel mode
-    session.run("pytest", "tests/unit/", *ignore_args)
+    session.run(str(python.parent / "pytest"), "tests/unit/", *ignore_args)
 
 
 # TEST PLUGINS
@@ -312,9 +313,9 @@ PLUGINS = list(PLUGINS_TESTS.keys())
 )
 @nox.parametrize("plugin", PLUGINS)
 def unit_plugins(session, plugin):
-    prepare(session, "test")
+    python = prepare(session, "test")
     # Assuming the plugin has its own tests in a specific directory
-    session.run("pytest", PLUGINS_TESTS[plugin])
+    session.run(str(python.parent / "pytest"), PLUGINS_TESTS[plugin])
 
 
 # ---------------------------------------------------------------------------
@@ -327,7 +328,7 @@ def unit_plugins(session, plugin):
     python=get_python_versions(),
 )
 def static_checks(session):
-    prepare(session, "test")
+    python = prepare(session, "test")
     # `--baselinemode=discard` fails the run on any *new* error not in the
     # baseline (early-return path in basedpyright's BaselineHandler.write)
     # while tolerating baseline entries that don't fire on the current
@@ -337,7 +338,7 @@ def static_checks(session):
     # therefore can't accommodate platform drift between developer machines
     # and the GitHub Actions runner.
     session.run(
-        "basedpyright",
+        str(python.parent / "basedpyright"),
         "-p",
         "pyproject.toml",
         "--baselinefile",
@@ -363,7 +364,7 @@ def unit_tests(session):
         nox -s unit-tests -- -k test_name # run specific test
         nox -s unit-tests -- tests/unit/topology/  # run specific directory
     """
-    prepare(session, "test")
+    python = prepare(session, "test")
 
     pytest_args = [
         "-c",
@@ -385,7 +386,7 @@ def unit_tests(session):
 
     pytest_args.extend(session.posargs)
 
-    session.run("pytest", *pytest_args)
+    session.run(str(python.parent / "pytest"), *pytest_args)
 
 
 # ---------------------------------------------------------------------------
@@ -407,7 +408,7 @@ def integration_tests(session):
         nox -s integration-tests                   # local, appends to .coverage
         nox -s integration-tests -- --standalone   # CI, standalone .coverage
     """
-    prepare(session, "test")
+    python = prepare(session, "test")
 
     args = list(session.posargs)
     standalone = "--standalone" in args
@@ -439,7 +440,7 @@ def integration_tests(session):
 
     pytest_args.extend(args)
 
-    session.run("pytest", *pytest_args)
+    session.run(str(python.parent / "pytest"), *pytest_args)
 
 
 # ---------------------------------------------------------------------------
@@ -460,15 +461,15 @@ def combine_coverage(session):
         nox -s combine-coverage
     """
     session.chdir(Path(__file__).resolve().parent)
-    prepare(session, "coverage")
-    session.run("coverage", "combine")
+    python = prepare(session, "coverage")
+    session.run(str(python.parent / "coverage"), "combine")
     session.run(
-        "coverage",
+        str(python.parent / "coverage"),
         "report",
         "--rcfile=pyproject.toml",
     )
     session.run(
-        "coverage",
+        str(python.parent / "coverage"),
         "xml",
         "--rcfile=pyproject.toml",
         "-o",

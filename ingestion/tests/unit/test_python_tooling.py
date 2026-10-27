@@ -11,6 +11,7 @@
 
 """Behavioral checks for the local Python development entry points."""
 
+import importlib.metadata
 import json
 import os
 import shutil
@@ -440,11 +441,11 @@ def test_tool_profile_does_not_prune_application_dependencies(nox_repo: Path, mo
     assert (nox_repo / "ingestion/.nox/style/bin/python").exists()
 
 
-def test_profile_checks_ignore_metadata_on_callers_pythonpath(nox_repo: Path) -> None:
-    metadata = nox_repo / "ingestion/src/foreign_fixture.egg-info"
+def test_tool_install_ignores_metadata_on_callers_pythonpath(nox_repo: Path) -> None:
+    expected = importlib.metadata.version("ruff")
+    metadata = nox_repo / f"ingestion/src/ruff-{expected}.dist-info"
     metadata.mkdir()
-    (metadata / "PKG-INFO").write_text("Metadata-Version: 2.1\nName: foreign-fixture\nVersion: 0.0.0\n")
-    (metadata / "requires.txt").write_text("missing-foreign-fixture-dependency==0.0.0\n")
+    (metadata / "METADATA").write_text(f"Metadata-Version: 2.1\nName: ruff\nVersion: {expected}\n")
 
     result = run(
         "nox",
@@ -458,6 +459,19 @@ def test_profile_checks_ignore_metadata_on_callers_pythonpath(nox_repo: Path) ->
     )
 
     assert_success(result)
+    environment = nox_repo / "ingestion/.nox/style"
+    installed = run(str(environment / "bin/ruff"), "--version", cwd=nox_repo)
+    assert_success(installed)
+    assert installed.stdout.strip() == f"ruff {expected}"
+    assert_success(
+        run(
+            str(environment / "bin/python"),
+            "-I",
+            "-c",
+            f"from importlib.metadata import version; assert version('ruff') == {expected!r}",
+            cwd=nox_repo,
+        )
+    )
 
 
 @pytest.mark.parametrize("directory", [".", "ingestion"])
@@ -530,6 +544,10 @@ def test_repeated_install_preserves_lock_and_package_selection(nox_repo: Path) -
 @pytest.mark.parametrize("directory", [".", "ingestion"])
 def test_nested_nox_reuses_explicit_application_environment(nox_repo: Path, directory: str) -> None:
     environment = nox_repo / "custom-env"
+    (nox_repo / "ingestion/tests/unit/test_selection.py").write_text(
+        "import sys\nfrom pathlib import Path\n\ndef test_unit_selected():\n"
+        f"    assert Path(sys.prefix).resolve() == Path({str(environment)!r}).resolve()\n"
+    )
     assert_success(
         run("make", "unit_ingestion", f"OM_VENV_DIR={environment}", "ARGS=-n 0 -k selected", cwd=nox_repo / directory)
     )
@@ -537,3 +555,11 @@ def test_nested_nox_reuses_explicit_application_environment(nox_repo: Path, dire
     assert (environment / "pyvenv.cfg").is_file()
     assert not (nox_repo / "env").exists()
     assert not (nox_repo / "ingestion/.venv").exists()
+
+
+def test_generation_session_uses_prepared_python(tooling_repo: Path) -> None:
+    (tooling_repo / "scripts/generate_ingestion_models.py").write_text(
+        "import sys\nfrom pathlib import Path\nPath('generation-python').write_text(sys.prefix)\n"
+    )
+    assert_success(run("nox", "-f", "ingestion/noxfile.py", "-s", "generate", cwd=tooling_repo))
+    assert (tooling_repo / "ingestion/generation-python").read_text() == str(tooling_repo / "ingestion/.nox/generation")

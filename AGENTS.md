@@ -35,7 +35,7 @@ and Docker infrastructure.
   python --version                 # expect 3.10.x/3.11.x
   ```
   `make install_test` bootstraps pinned uv and Nox; sessions in `ingestion/noxfile.py`
-  synchronize and validate the locked environment before execution. Style, generation and coverage
+  synchronize dependencies from the lock before execution. Style, generation and coverage
   tools use separate `ingestion/.nox/` environments. `make install_dev_env` remains an alias
   for `make install_test`; published extras remain available. Use
   `make generate ARGS=--python-only` for Python-only generation and

@@ -9944,9 +9944,13 @@ vertica = [
 ]
 
 [package.dev-dependencies]
+bootstrap = [
+    { name = "pip" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "uv" },
+]
 coverage = [
     { name = "coverage", extra = ["toml"] },
-    { name = "packaging" },
     { name = "pip" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "uv" },
@@ -9961,7 +9965,6 @@ dev = [
     { name = "import-linter" },
     { name = "mypy-boto3-glue" },
     { name = "nox" },
-    { name = "packaging" },
     { name = "pandas-stubs" },
     { name = "pip" },
     { name = "pre-commit", version = "4.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -9979,19 +9982,12 @@ dev = [
 dialect-compat = [
     { name = "sqlalchemy-ibmi" },
 ]
-environment-check = [
-    { name = "packaging" },
-    { name = "pip" },
-    { name = "tomli", marker = "python_full_version < '3.11'" },
-    { name = "uv" },
-]
 exasol-test = [
     { name = "exasol-integration-test-docker-environment" },
     { name = "luigi" },
 ]
 generation = [
     { name = "datamodel-code-generator" },
-    { name = "packaging" },
     { name = "pip" },
     { name = "ruff" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
@@ -10000,13 +9996,11 @@ generation = [
 ]
 nox = [
     { name = "nox" },
-    { name = "packaging" },
     { name = "pip" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "uv" },
 ]
 style = [
-    { name = "packaging" },
     { name = "pip" },
     { name = "ruff" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
@@ -10032,7 +10026,6 @@ test = [
     { name = "minio" },
     { name = "mypy-boto3-glue" },
     { name = "nox" },
-    { name = "packaging" },
     { name = "pandas-stubs" },
     { name = "pip" },
     { name = "pre-commit", version = "4.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -11022,9 +11015,13 @@ requires-dist = [
 provides-extras = ["dev", "test", "test-unit", "e2e-test", "exasol-test", "data-insight", "airflow", "amundsen", "athena", "atlas", "azuresql", "azure-sso", "backup", "googledrive", "bigquery", "bigtable", "clickhouse", "clickzetta", "dagster", "dbt", "db2", "db2-ibmi", "databend", "databricks", "datalake-azure", "datalake-gcs", "datalake-s3", "s3", "gcs", "domo", "doris", "starrocks", "druid", "dynamodb", "elasticsearch", "opensearch", "exasol", "glue", "great-expectations", "greenplum", "cockroach", "hive", "iomete", "impala", "kafka", "kafkaconnect", "kinesis", "nats", "pubsub", "looker", "mlflow", "mongo", "cassandra", "couchbase", "mssql", "mssql-odbc", "mysql", "neo4j", "nifi", "openlineage", "oracle", "pgspider", "pinotdb", "postgres", "powerbi", "prefect", "qliksense", "presto", "pymssql", "questdb", "quicksight", "redash", "redpanda", "redshift", "sagemaker", "salesforce", "data360", "data360pipeline", "sample-data", "sap-hana", "sas", "sftp", "singlestore", "sklearn", "snowflake", "ssrs", "superset", "tableau", "tableaupipeline", "teradata", "trino", "vertica", "pandas", "pyarrow", "pii-processor", "presidio-analyzer", "all-dev-env", "all", "playwright", "slim", "docs"]
 
 [package.metadata.requires-dev]
+bootstrap = [
+    { name = "pip" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
+    { name = "uv", specifier = "==0.13.4" },
+]
 coverage = [
     { name = "coverage", extras = ["toml"] },
-    { name = "packaging" },
     { name = "pip" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
     { name = "uv", specifier = "==0.13.4" },
@@ -11039,7 +11036,6 @@ dev = [
     { name = "import-linter", specifier = "~=2.13" },
     { name = "mypy-boto3-glue" },
     { name = "nox" },
-    { name = "packaging" },
     { name = "pandas-stubs", specifier = "~=2.2" },
     { name = "pip" },
     { name = "pre-commit" },
@@ -11052,19 +11048,12 @@ dev = [
     { name = "uvloop", specifier = "==0.21.0" },
 ]
 dialect-compat = [{ name = "sqlalchemy-ibmi", specifier = "==0.9.3" }]
-environment-check = [
-    { name = "packaging" },
-    { name = "pip" },
-    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
-    { name = "uv", specifier = "==0.13.4" },
-]
 exasol-test = [
     { name = "exasol-integration-test-docker-environment", specifier = ">=6.0.0,<7" },
     { name = "luigi", specifier = ">=2.8.4,<=3.6.0" },
 ]
 generation = [
     { name = "datamodel-code-generator", specifier = "==0.83.0" },
-    { name = "packaging" },
     { name = "pip" },
     { name = "ruff", specifier = "~=0.15.12" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
@@ -11073,13 +11062,11 @@ generation = [
 ]
 nox = [
     { name = "nox" },
-    { name = "packaging" },
     { name = "pip" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
     { name = "uv", specifier = "==0.13.4" },
 ]
 style = [
-    { name = "packaging" },
     { name = "pip" },
     { name = "ruff", specifier = "~=0.15.12" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
@@ -11105,7 +11092,6 @@ test = [
     { name = "minio", specifier = "==7.2.5" },
     { name = "mypy-boto3-glue" },
     { name = "nox" },
-    { name = "packaging" },
     { name = "pandas-stubs", specifier = "~=2.2" },
     { name = "pip" },
     { name = "pre-commit" },
