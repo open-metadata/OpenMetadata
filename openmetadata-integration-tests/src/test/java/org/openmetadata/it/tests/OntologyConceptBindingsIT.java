@@ -19,6 +19,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.type.OntologyColumnBindingState;
 import org.openmetadata.schema.type.OntologyConceptBindingsResponse;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyExpressionKind;
+import org.openmetadata.schema.type.OntologyHydratedAssetBinding;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -224,46 +226,71 @@ class OntologyConceptBindingsIT extends BaseOntologyApprovalIT {
     final var ontology = createOntology(ns);
     final var concept = declareClass(ontology, "Customer", URI.create("urn:Customer"));
     final var table = table(ns);
+    final var written = bindTableAndOneHundredFiftyTopics(ns, concept, table);
+    final var assets = assertTwoPagesHoldEveryBoundAsset(concept, written);
+    assertEveryWalkReturnsEachBoundAssetOnce(concept, written.bound());
+    assertServiceTypes(table, assets);
+    assertStatus(400, () -> get(admin(), concept, "?limit=0"));
+    assertStatus(400, () -> get(admin(), concept, "?limit=101"));
+    assertStatus(400, () -> get(admin(), concept, "?after=not-a-cursor"));
+    final var late = topicAsset(ns, written.service());
+    assertStatus(409, () -> put(admin(), concept, late, 3L));
+    assertEquals(151L, get(admin(), concept).getRevision());
+  }
+
+  private static BoundAssets bindTableAndOneHundredFiftyTopics(
+      final TestNamespace ns, final OntologyConcept concept, final Table table) {
     final var tableAsset =
         new OntologyAssetBinding()
             .withAssetType(OntologyBindingAssetType.TABLE)
             .withAssetId(table.getId());
     assertEquals(1L, put(admin(), concept, tableAsset, 0L).getRevision());
-    final var service = MessagingServiceTestFactory.createKafka(ns);
+    final var service = MessagingServiceTestFactory.createKafka(ns).getFullyQualifiedName();
     final var bound = new HashSet<>(List.of(table.getId()));
     OntologyConceptBindingsResponse lastWrite = null;
     for (int index = 0; index < 150; index++) {
-      final var asset = topicAsset(ns, service.getFullyQualifiedName());
+      final var asset = topicAsset(ns, service);
       bound.add(asset.getAssetId());
       lastWrite = put(admin(), concept, asset, index + 1L);
       assertEquals(index + 2L, lastWrite.getRevision());
     }
-    assertEquals(100, lastWrite.getAssets().size());
+    return new BoundAssets(bound, lastWrite, service);
+  }
+
+  private static List<OntologyHydratedAssetBinding> assertTwoPagesHoldEveryBoundAsset(
+      final OntologyConcept concept, final BoundAssets written) {
+    assertEquals(100, written.lastWrite().getAssets().size());
     final var firstPage = get(admin(), concept, "?limit=100");
-    assertEquals(lastWrite, firstPage);
+    assertEquals(written.lastWrite(), firstPage);
     final var secondPage = get(admin(), concept, "?limit=100&after=" + firstPage.getAfter());
     assertEquals(51, secondPage.getAssets().size());
     assertNull(secondPage.getAfter());
-    final var seen = new ArrayList<UUID>();
-    Stream.concat(firstPage.getAssets().stream(), secondPage.getAssets().stream())
-        .forEach(asset -> seen.add(asset.getAssetId()));
-    assertEquals(151, seen.size());
-    assertEquals(bound, new HashSet<>(seen));
+    final var assets =
+        Stream.concat(firstPage.getAssets().stream(), secondPage.getAssets().stream()).toList();
+    assertEquals(151, assets.size());
+    assertEquals(
+        written.bound(),
+        assets.stream().map(OntologyHydratedAssetBinding::getAssetId).collect(Collectors.toSet()));
+    return assets;
+  }
+
+  private static void assertEveryWalkReturnsEachBoundAssetOnce(
+      final OntologyConcept concept, final Set<UUID> bound) {
     assertEquals(List.of(), walk(concept, 40).stream().filter(id -> !bound.contains(id)).toList());
     assertEquals(151, new HashSet<>(walk(concept, 40)).size());
     assertEquals(151, walk(concept, 40).size());
+  }
+
+  private static void assertServiceTypes(
+      final Table table, final List<OntologyHydratedAssetBinding> assets) {
     final var byAsset = new HashMap<UUID, String>();
-    Stream.concat(firstPage.getAssets().stream(), secondPage.getAssets().stream())
-        .forEach(asset -> byAsset.put(asset.getAssetId(), asset.getServiceType()));
+    assets.forEach(asset -> byAsset.put(asset.getAssetId(), asset.getServiceType()));
     assertEquals(table.getServiceType().value(), byAsset.remove(table.getId()));
     assertEquals(Set.of("Kafka"), new HashSet<>(byAsset.values()));
-    assertStatus(400, () -> get(admin(), concept, "?limit=0"));
-    assertStatus(400, () -> get(admin(), concept, "?limit=101"));
-    assertStatus(400, () -> get(admin(), concept, "?after=not-a-cursor"));
-    final var late = topicAsset(ns, service.getFullyQualifiedName());
-    assertStatus(409, () -> put(admin(), concept, late, 3L));
-    assertEquals(151L, get(admin(), concept).getRevision());
   }
+
+  private record BoundAssets(
+      Set<UUID> bound, OntologyConceptBindingsResponse lastWrite, String service) {}
 
   @Test
   void aReaderHiddenFromMostAssetsPagesInBoundedScans(TestNamespace ns) {
