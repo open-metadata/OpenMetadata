@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExternalLinkIcon } from '../../../../assets/svg/external-links.svg';
 import {
   PipelineStatus,
   StatusType,
@@ -134,13 +134,13 @@ const ListView = ({
         render: (logLink: string | undefined, record: { name: string }) =>
           logLink ? (
             <a
-              className="flex items-center gap-2"
+              className="tw:flex tw:items-center tw:gap-2"
               data-testid={`log-link-${record.name}`}
               href={logLink}
               rel="noopener noreferrer"
               target="_blank">
               {t('label.view-entity', { entity: t('label.log') })}
-              <ExternalLinkIcon className="tw:ml-2 tw:shrink-0 tw:size-3.5" />
+              <LinkExternal01 className="tw:shrink-0 tw:size-3.5" />
             </a>
           ) : (
             '--'
