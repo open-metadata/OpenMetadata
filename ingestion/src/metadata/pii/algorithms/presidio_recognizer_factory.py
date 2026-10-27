@@ -16,6 +16,7 @@ import re
 from collections.abc import Callable
 from typing import Any, cast
 
+import regex
 from presidio_analyzer import EntityRecognizer, predefined_recognizers
 from presidio_analyzer import Pattern as PresidioPattern
 from presidio_analyzer import PatternRecognizer as PresidioPatternRecognizer
@@ -105,8 +106,8 @@ class PresidioRecognizerFactory:
         config: PatternRecognizer,
         recognizer_config: Recognizer,
         tag_fqn: str,
-    ) -> PresidioPatternRecognizer:
-        """Create a pattern-based recognizer."""
+    ) -> PresidioPatternRecognizer | None:
+        """Create a pattern-based recognizer, or None if Presidio cannot run its patterns."""
         patterns: list[PresidioPattern] = []
         for pattern_config in config.patterns:
             patterns.append(  # noqa: PERF401
@@ -117,14 +118,24 @@ class PresidioRecognizerFactory:
                 )
             )
 
-        return PresidioPatternRecognizer(
-            supported_entity=tag_fqn,
-            patterns=patterns,
-            name=recognizer_config.name.root,
-            supported_language=config.supportedLanguage.value,
-            context=config.context or [],
-            global_regex_flags=PresidioRecognizerFactory._get_regex_flags(config.regexFlags),
-        )
+        flags = PresidioRecognizerFactory._get_regex_flags(config.regexFlags)
+        try:
+            # Presidio compiles patterns with `regex` on first use, so an invalid one would
+            # otherwise fail every column this recognizer runs on, along with its other tags.
+            for pattern in patterns:
+                regex.compile(pattern.regex, flags=flags or 0)
+            recognizer = PresidioPatternRecognizer(
+                supported_entity=tag_fqn,
+                patterns=patterns,
+                name=recognizer_config.name.root,
+                supported_language=config.supportedLanguage.value,
+                context=config.context or [],
+                global_regex_flags=flags,
+            )
+        except (ValueError, regex.error) as exc:
+            logger.error("Skipping recognizer %s: %s", recognizer_config.name.root, exc)
+            return None
+        return recognizer
 
     @staticmethod
     def _create_exact_terms_recognizer(
@@ -159,12 +170,15 @@ class PresidioRecognizerFactory:
         context_patterns: list[PresidioPattern] = []
 
         for context_word in config.contextWords:
-            pattern = f"(?i)(?:{context_word})\\s+\\w+|\\w+\\s+(?:{context_word})"
+            word = re.escape(context_word)
+            pattern = f"(?i)(?:{word})\\s+\\w+|\\w+\\s+(?:{word})"
             context_patterns.append(
                 PresidioPattern(
                     name=f"context_{context_word}",
                     regex=pattern,
-                    score=(config.minScore + config.maxScore) / 2 if config.minScore and config.maxScore else 0.6,
+                    score=(config.minScore + config.maxScore) / 2
+                    if config.minScore is not None and config.maxScore is not None
+                    else 0.6,
                 )
             )
 
