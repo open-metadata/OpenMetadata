@@ -125,8 +125,8 @@ export const styles = sortCx({
         'tw:*:data-icon:text-utility-gray-500 tw:hover:*:data-icon:text-utility-gray-600',
       ].join(' '),
     },
-    // Primary text for a link that is the heading of a tinted surface (e.g. the
-    // lineage base node), where link-gray's tertiary text washes out.
+    // Primary text for a link that is the heading of a card (e.g. lineage node
+    // titles), where link-gray's tertiary text washes out.
     'link-primary': {
       root: [
         'tw:text-primary tw:hover:text-secondary_hover',
