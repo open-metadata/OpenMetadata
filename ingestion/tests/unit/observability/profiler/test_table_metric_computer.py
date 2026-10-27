@@ -18,7 +18,7 @@ and verifies all new dialect-to-class factory registrations.
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, create_engine, text
 from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import TableType
@@ -614,6 +614,82 @@ class TestTeradataTableMetricComputer:
         result = computer.compute()
         assert result.rowCount == 7500
         assert result.sizeInBytes is None
+
+    def test_stats_query_does_not_restrict_index_number(self):
+        """Statistics not collected on an index carry a NULL IndexNumber.
+        Restricting to index/table-level entries would drop tables whose only
+        collected stats are column stats into the COUNT(*) fallback."""
+        session = _build_mock_session()
+        session.execute.side_effect = [
+            self._exec_result(row_count=7500),
+            self._exec_result(size_in_bytes=12345),
+        ]
+        computer = _build_computer(session, TeradataTableMetricComputer)
+        computer.compute()
+        stats_query = session.execute.call_args_list[0][0][0]
+        sql = str(stats_query.compile())
+        assert "IndexNumber" not in sql, f"Stats query must not filter on IndexNumber, got: {sql}"
+
+    @staticmethod
+    def _sqlite_connection():
+        """A SQLite connection with DBC.TableStatsV/DBC.TableSizeV attached,
+        to exercise the real stats/size SQL semantics end to end."""
+        conn = create_engine("sqlite://").connect()
+        conn.execute(text("ATTACH ':memory:' AS DBC"))
+        conn.execute(
+            text(
+                'CREATE TABLE DBC."TableStatsV" ("DatabaseName" VARCHAR(256),'
+                ' "TableName" VARCHAR(256), "IndexNumber" INTEGER, "RowCount" INTEGER)'
+            )
+        )
+        conn.execute(
+            text(
+                'CREATE TABLE DBC."TableSizeV" ("DatabaseName" VARCHAR(256),'
+                ' "TableName" VARCHAR(256), "CurrentPerm" BIGINT)'
+            )
+        )
+        return conn
+
+    def test_column_only_statistics_avoid_count_star_fallback(self):
+        """A table whose only collected stats are column stats (NULL
+        IndexNumber) must report the stored row count, not fall back to
+        COUNT(*)."""
+        conn = self._sqlite_connection()
+        conn.execute(
+            text("INSERT INTO DBC.\"TableStatsV\" VALUES ('test_schema', 'test_table', NULL, 7500)")
+        )
+        computer = _build_computer(conn, TeradataTableMetricComputer)
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as mock_base:
+            result = computer.compute()
+        assert result.rowCount == 7500
+        mock_base.assert_not_called()
+
+    def test_index_and_column_statistics_return_max_row_count(self):
+        """MAX picks the largest count across collected entries; column stats
+        (NULL IndexNumber) coexist with index stats and must not be dropped."""
+        conn = self._sqlite_connection()
+        conn.execute(
+            text(
+                "INSERT INTO DBC.\"TableStatsV\" VALUES"
+                " ('test_schema', 'test_table', 1, 10000),"
+                " ('test_schema', 'test_table', NULL, 7500)"
+            )
+        )
+        computer = _build_computer(conn, TeradataTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 10000
+
+    def test_size_comes_from_table_size_v_current_perm(self):
+        conn = self._sqlite_connection()
+        conn.execute(
+            text("INSERT INTO DBC.\"TableStatsV\" VALUES ('test_schema', 'test_table', NULL, 7500)")
+        )
+        conn.execute(
+            text("INSERT INTO DBC.\"TableSizeV\" VALUES ('test_schema', 'test_table', 12345)")
+        )
+        computer = _build_computer(conn, TeradataTableMetricComputer)
+        result = computer.compute()
+        assert result.sizeInBytes == 12345
 
 
 class TestTrinoTableMetricComputer:

@@ -992,19 +992,19 @@ class TeradataTableMetricComputer(BaseTableMetricComputer):
         """Compute table metrics for Teradata.
 
         DBC.TableSizeV is a space view with no RowCount column (selecting one
-        raises Teradata error 5628). The approximate row count comes from
-        DBC.TableStatsV, populated by COLLECT STATISTICS; tables without any
-        collected statistics fall back to COUNT(*).
+        raises Teradata error 5628). The approximate row count is the largest
+        count among the table's collected statistics in DBC.TableStatsV;
+        tables without any collected statistics fall back to COUNT(*).
         """
         Result = namedtuple("Result", [ROW_COUNT, SIZE_IN_BYTES, COLUMN_COUNT, COLUMN_NAMES])
         stats_query = self._build_query(
             [func.max(Column("RowCount")).cast(BigInteger).label(ROW_COUNT)],
             self._build_table("TableStatsV", "DBC"),
             [
-                # Primary-index (1) and table-level (0) statistics; column stats
-                # carry duplicates of the same count and would skew nothing but
-                # widen the scan unnecessarily.
-                Column("IndexNumber").in_((0, 1)),
+                # Deliberately no IndexNumber filter: statistics not collected
+                # on an index carry a NULL IndexNumber, so restricting to
+                # index/table-level entries would push tables whose only
+                # collected stats are column stats into the COUNT(*) fallback.
                 func.trim(Column("DatabaseName")) == self.schema_name,
                 func.trim(Column("TableName")) == self.table_name,
             ],
