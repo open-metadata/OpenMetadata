@@ -1,11 +1,11 @@
 package org.openmetadata.service.rdf;
 
-import java.net.URI;
 import java.util.List;
-import java.util.UUID;
 import java.util.function.Consumer;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.Resource;
 import org.openmetadata.schema.OntologyDefinition;
+import org.openmetadata.schema.api.data.OntologyReleaseExportOptions;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
@@ -22,7 +22,6 @@ import org.openmetadata.service.rdf.OwlEntityDeclarations.EntityKind;
 
 /** Exports authorized, verified release content independently of the optional RDF service. */
 public final class OntologyReleaseExporter {
-  private static final String ASSET_BASE = "https://open-metadata.org/entity/";
   private final OntologyReleaseReader reader;
 
   public OntologyReleaseExporter(final OntologyReleaseRepository releases) {
@@ -32,7 +31,7 @@ public final class OntologyReleaseExporter {
   public String export(
       final OntologyRelease release,
       final OntologyExportFormat format,
-      final OntologyExportOptions options,
+      final OntologyReleaseExportOptions options,
       final Consumer<List<? extends OntologyDefinition>> authorize,
       final BoundAssetLinks assetLinks) {
     requireSupported(format, options);
@@ -43,7 +42,7 @@ public final class OntologyReleaseExporter {
       final OntologyRelease release,
       final List<OntologyReleaseMember> members,
       final OntologyExportFormat format,
-      final OntologyExportOptions options,
+      final OntologyReleaseExportOptions options,
       final BoundAssetLinks assetLinks) {
     requireSupported(format, options);
     return format.isGraph()
@@ -52,10 +51,10 @@ public final class OntologyReleaseExporter {
   }
 
   private static void requireSupported(
-      final OntologyExportFormat format, final OntologyExportOptions options) {
-    if (!format.isGraph() && options.includeBoundAssets()) {
+      final OntologyExportFormat format, final OntologyReleaseExportOptions options) {
+    if (!format.isGraph() && options.getIncludeBoundAssets()) {
       throw new BadRequestException(
-          "Bound asset links cannot be written to " + format.externalName());
+          "Bound asset links cannot be written to " + format.wire().value());
     }
   }
 
@@ -63,11 +62,11 @@ public final class OntologyReleaseExporter {
       final OntologyRelease release,
       final List<OntologyReleaseMember> members,
       final OntologyExportFormat format,
-      final OntologyExportOptions options,
+      final OntologyReleaseExportOptions options,
       final BoundAssetLinks assetLinks) {
     final Model model = project(release, members, format, options);
     try {
-      if (options.includeBoundAssets()) {
+      if (options.getIncludeBoundAssets()) {
         addBoundAssets(model, release, members, assetLinks);
       }
       return RdfGraphSerializer.asString(model, format.serialization());
@@ -80,11 +79,12 @@ public final class OntologyReleaseExporter {
       final OntologyRelease release,
       final List<OntologyReleaseMember> members,
       final OntologyExportFormat format,
-      final OntologyExportOptions options) {
+      final OntologyReleaseExportOptions options) {
     return switch (format) {
       case SKOS -> new OntologySkosProjection(false).build(release, members);
       case SKOS_XL -> new OntologySkosProjection(true).build(release, members);
-      default -> new OntologyReleaseProjection().build(release, members, options.includeInverses());
+      default -> new OntologyReleaseProjection()
+          .build(release, members, options.getIncludeInverses());
     };
   }
 
@@ -98,27 +98,28 @@ public final class OntologyReleaseExporter {
     members.stream()
         .filter(member -> member.getMemberKind() == MemberKind.CONCEPT)
         .map(member -> (OntologyConcept) OntologyReleaseReader.definition(release, member))
+        .forEach(concept -> linkAssets(model, concept, assetLinks));
+  }
+
+  private static void linkAssets(
+      final Model model, final OntologyConcept concept, final BoundAssetLinks assetLinks) {
+    final Resource subject = model.createResource(concept.getIri().toString());
+    assetLinks
+        .assetsOf(concept)
         .forEach(
-            concept ->
-                assetLinks
-                    .assetsOf(concept)
-                    .forEach(
-                        asset ->
-                            model
-                                .createResource(concept.getIri().toString())
-                                .addProperty(
-                                    OntologyRdfVocabulary.BOUND_ASSET,
-                                    model.createResource(asset.toString()))));
+            asset ->
+                subject.addProperty(
+                    OntologyRdfVocabulary.BOUND_ASSET, model.createResource(asset.toString())));
   }
 
   private static String csv(
       final OntologyRelease release,
       final List<OntologyReleaseMember> members,
-      final OntologyExportOptions options) {
+      final OntologyReleaseExportOptions options) {
     final List<OntologyDefinition> definitions =
         members.stream().map(member -> OntologyReleaseReader.definition(release, member)).toList();
     final List<OntologyProperty> properties = ofType(definitions, OntologyProperty.class);
-    if (!options.includeInverses()) {
+    if (!options.getIncludeInverses()) {
       properties.forEach(property -> property.setInverse(null));
     }
     final Ontology root = OntologyReleaseReader.root(release, members);
@@ -134,10 +135,5 @@ public final class OntologyReleaseExporter {
   private static <T extends OntologyDefinition> List<T> ofType(
       final List<OntologyDefinition> definitions, final Class<T> type) {
     return definitions.stream().filter(type::isInstance).map(type::cast).toList();
-  }
-
-  /** The IRI an asset has in the RDF store, so exported links meet the same node there. */
-  public static URI assetIri(final String assetType, final UUID assetId) {
-    return URI.create(ASSET_BASE + assetType + "/" + assetId);
   }
 }

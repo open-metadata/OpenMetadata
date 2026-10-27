@@ -21,6 +21,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthorizationException;
 
 class OntologyBoundAssetLinksTest {
+  private static final URI BASE = URI.create("https://open-metadata.org/");
   private static final int PAGE = OntologyConceptBindingService.MAX_PAGE_SIZE;
   private static final OntologyConceptBindingService.Access ACCESS =
       new OntologyConceptBindingService.Access(null, null);
@@ -56,7 +57,19 @@ class OntologyBoundAssetLinksTest {
             URI.create("https://open-metadata.org/entity/table/" + table),
             URI.create("https://open-metadata.org/entity/topic/" + topic),
             URI.create("https://open-metadata.org/entity/dashboard/" + dashboard)),
-        new OntologyBoundAssetLinks(bindings, ACCESS).assetsOf(concept));
+        new OntologyBoundAssetLinks(bindings, ACCESS, BASE).assetsOf(concept));
+  }
+
+  @Test
+  void linksUseTheConfiguredBaseUriTheRdfStoreAlsoUses() {
+    final UUID table = UUID.randomUUID();
+    when(bindings.get(ACCESS, concept.getId(), PAGE, null))
+        .thenReturn(page(null, binding(OntologyBindingAssetType.TABLE, table)));
+
+    assertEquals(
+        List.of(URI.create("https://catalog.example.com/om/entity/table/" + table)),
+        new OntologyBoundAssetLinks(bindings, ACCESS, URI.create("https://catalog.example.com/om/"))
+            .assetsOf(concept));
   }
 
   @Test
@@ -66,7 +79,7 @@ class OntologyBoundAssetLinksTest {
     final OntologyConcept hidden = new OntologyConcept().withId(UUID.randomUUID());
     when(bindings.get(any(), eq(hidden.getId()), eq(PAGE), isNull()))
         .thenThrow(new AuthorizationException("denied"));
-    final var links = new OntologyBoundAssetLinks(bindings, ACCESS);
+    final var links = new OntologyBoundAssetLinks(bindings, ACCESS, BASE);
 
     assertEquals(List.of(), links.assetsOf(concept));
     assertEquals(List.of(), links.assetsOf(hidden));
@@ -83,7 +96,7 @@ class OntologyBoundAssetLinksTest {
                 null,
                 binding(OntologyBindingAssetType.TABLE, UUID.randomUUID()),
                 binding(OntologyBindingAssetType.TABLE, UUID.randomUUID())));
-    final var links = new OntologyBoundAssetLinks(bindings, ACCESS, 2);
+    final var links = new OntologyBoundAssetLinks(bindings, ACCESS, BASE, 2);
 
     assertEquals(1, links.assetsOf(concept).size());
     assertThrows(BadRequestException.class, () -> links.assetsOf(other));

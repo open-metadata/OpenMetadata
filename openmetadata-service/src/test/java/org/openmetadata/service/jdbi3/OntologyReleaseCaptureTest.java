@@ -17,6 +17,7 @@ import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.api.data.ConceptMapping;
+import org.openmetadata.schema.api.data.OntologyReleaseExportOptions;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyRelease;
@@ -35,7 +36,6 @@ import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.rdf.BoundAssetLinks;
 import org.openmetadata.service.rdf.OntologyExportFormat;
-import org.openmetadata.service.rdf.OntologyExportOptions;
 import org.openmetadata.service.rdf.OntologyReleaseExporter;
 
 class OntologyReleaseCaptureTest {
@@ -283,7 +283,7 @@ class OntologyReleaseCaptureTest {
                   .export(
                       first,
                       OntologyExportFormat.N_TRIPLES,
-                      OntologyExportOptions.DEFAULTS,
+                      new OntologyReleaseExportOptions(),
                       member -> {},
                       BoundAssetLinks.NONE);
           var model = ModelFactory.createDefaultModel();

@@ -17,10 +17,13 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.data.OntologyReleaseDiff;
+import org.openmetadata.schema.api.data.OntologyReleaseExportOptions;
 import org.openmetadata.schema.api.data.OntologyReleaseReview;
 import org.openmetadata.schema.api.data.OntologyReleaseStructureReport;
 import org.openmetadata.schema.api.data.OntologyReleaseValidation;
@@ -31,6 +34,7 @@ import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
@@ -43,7 +47,6 @@ import org.openmetadata.service.ontology.OntologyReleaseReader;
 import org.openmetadata.service.ontology.OntologyReleaseStructure;
 import org.openmetadata.service.ontology.OntologyReleaseValidationService;
 import org.openmetadata.service.rdf.OntologyExportFormat;
-import org.openmetadata.service.rdf.OntologyExportOptions;
 import org.openmetadata.service.rdf.OntologyReleaseExporter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
@@ -62,6 +65,7 @@ public final class OntologyReleaseResource
   private final OntologyReleaseComparison comparison;
   private final OntologyReleaseValidationService validation;
   private final OntologyConceptBindingService bindings;
+  private volatile URI assetBaseUri = new RdfConfiguration().getBaseUri();
 
   public OntologyReleaseResource(final Authorizer authorizer, final Limits limits) {
     super(Entity.ONTOLOGY_RELEASE, authorizer, limits);
@@ -75,6 +79,14 @@ public final class OntologyReleaseResource
             authorizer,
             Entity::getEntityRepository);
     validation = new OntologyReleaseValidationService(repository, bindings);
+  }
+
+  /** Bound asset links take their IRIs from the RDF base URI, which the RDF store also uses. */
+  @Override
+  public void initialize(final OpenMetadataApplicationConfig config) {
+    if (config.getRdfConfiguration() != null && config.getRdfConfiguration().getBaseUri() != null) {
+      assetBaseUri = config.getRdfConfiguration().getBaseUri();
+    }
   }
 
   public static class OntologyReleaseList extends ResultList<OntologyRelease> {}
@@ -208,12 +220,13 @@ public final class OntologyReleaseResource
       @Valid @BeanParam final ExportQuery query) {
     final OntologyRelease release = get(uriInfo, securityContext, id);
     final OntologyExportFormat format = OntologyExportFormat.parse(query.format);
+    final OntologyReleaseExportOptions options = query.options();
     final Optional<OntologyReleaseValidation> refusal =
         OntologyExportGate.refusal(
-            query.shaclGate, () -> validate(uriInfo, securityContext, release));
+            options.getShaclGate(), () -> validate(uriInfo, securityContext, release));
     return refusal.isPresent()
         ? Response.status(422).type(MediaType.APPLICATION_JSON).entity(refusal.get()).build()
-        : download(uriInfo, securityContext, release, format, query.options());
+        : download(uriInfo, securityContext, release, format, options);
   }
 
   private Response download(
@@ -221,47 +234,52 @@ public final class OntologyReleaseResource
       final SecurityContext securityContext,
       final OntologyRelease release,
       final OntologyExportFormat format,
-      final OntologyExportOptions options) {
+      final OntologyReleaseExportOptions options) {
     final String content =
         exporter.export(
             release,
             format,
             options,
-            definition ->
-                OntologyResourceAccess.requireView(authorizer, securityContext, definition),
+            definitions ->
+                OntologyResourceAccess.requireView(authorizer, securityContext, definitions),
             new OntologyBoundAssetLinks(
-                bindings, new OntologyConceptBindingService.Access(uriInfo, securityContext)));
+                bindings,
+                new OntologyConceptBindingService.Access(uriInfo, securityContext),
+                assetBaseUri));
     return Response.ok(content, format.mediaType())
-        .header(
-            "Content-Disposition",
-            "attachment; filename=\"ontology-release-"
-                + release.getId()
-                + "."
-                + format.extension()
-                + "\"")
+        .header("Content-Disposition", attachment(release, format))
         .build();
   }
 
-  /** The export query shape; JAX-RS fills the fields, so they cannot be final. */
+  private static String attachment(
+      final OntologyRelease release, final OntologyExportFormat format) {
+    return "attachment; filename=\"ontology-release-%s.%s\""
+        .formatted(release.getId(), format.extension());
+  }
+
+  /**
+   * The export query shape; JAX-RS fills the fields, so they cannot be final. An option the caller
+   * leaves out keeps the default the {@code ontologyReleaseExportOptions} schema declares.
+   */
   public static final class ExportQuery {
     @QueryParam("format")
-    @DefaultValue("turtle")
     private String format;
 
     @QueryParam("includeInverses")
-    @DefaultValue("true")
-    private boolean includeInverses;
+    private Boolean includeInverses;
 
     @QueryParam("includeBoundAssets")
-    @DefaultValue("false")
-    private boolean includeBoundAssets;
+    private Boolean includeBoundAssets;
 
     @QueryParam("shaclGate")
-    @DefaultValue("false")
-    private boolean shaclGate;
+    private Boolean shaclGate;
 
-    OntologyExportOptions options() {
-      return new OntologyExportOptions(includeInverses, includeBoundAssets);
+    OntologyReleaseExportOptions options() {
+      final OntologyReleaseExportOptions options = new OntologyReleaseExportOptions();
+      Optional.ofNullable(includeInverses).ifPresent(options::setIncludeInverses);
+      Optional.ofNullable(includeBoundAssets).ifPresent(options::setIncludeBoundAssets);
+      Optional.ofNullable(shaclGate).ifPresent(options::setShaclGate);
+      return options;
     }
   }
 
