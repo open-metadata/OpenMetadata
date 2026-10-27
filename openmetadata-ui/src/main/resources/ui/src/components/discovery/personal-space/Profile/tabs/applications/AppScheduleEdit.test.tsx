@@ -128,7 +128,26 @@ describe('AppScheduleEdit', () => {
 
     fireEvent.click(screen.getByTestId('save-button'));
 
-    expect(onSave).toHaveBeenCalledWith('', expect.any(String));
+    expect(onSave).toHaveBeenCalledWith('', 'UTC');
+  });
+
+  it('keeps an app without a stored zone on UTC instead of the browser zone', () => {
+    const { onSave } = renderEdit({
+      appData: {
+        ...app,
+        appSchedule: { ...app.appSchedule, timezone: undefined },
+      } as App,
+    });
+
+    expect(ScheduleInterval).toHaveBeenLastCalledWith(
+      expect.objectContaining({ timezone: 'UTC' }),
+      expect.anything()
+    );
+
+    fireEvent.click(screen.getByText('Change schedule'));
+    fireEvent.click(screen.getByTestId('save-button'));
+
+    expect(onSave).toHaveBeenCalledWith('0 12 * * 3', 'UTC');
   });
 
   it('blocks saving while the schedule is invalid', () => {

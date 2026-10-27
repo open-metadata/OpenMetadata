@@ -83,8 +83,10 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   public void prepare(App entity, boolean update) {
-    if (entity.getAppSchedule() != null) {
-      TimezoneUtil.validate(entity.getAppSchedule().getTimezone());
+    if (entity.getAppSchedule() != null && entity.getAppSchedule().getTimezone() != null) {
+      entity
+          .getAppSchedule()
+          .setTimezone(TimezoneUtil.normalize(entity.getAppSchedule().getTimezone()));
     }
     // Encrypt sensitive fields in appConfiguration before saving
     if (entity.getAppConfiguration() != null && entity.getClassName() != null) {

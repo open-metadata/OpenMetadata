@@ -7,6 +7,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -180,10 +181,26 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     // TODO: Using the AppScheduler logic to craft a Flowable compatible Cron Expression. Eventually
     // we should probably avoid this to be dependent that code.
     CronTrigger cronTrigger = (CronTrigger) AppScheduler.getCronSchedule(schedule).build();
+    rejectForeignTimezone(cronTrigger);
 
     TimerEventDefinition timerDefinition = new TimerEventDefinition();
     timerDefinition.setTimeCycle(cronTrigger.getCronExpression());
     return timerDefinition;
+  }
+
+  // Flowable's TimerEventDefinition carries no zone: CycleBusinessCalendar resolves the cron with
+  // the engine clock's zone. Only the cron text crosses over, so a zone that differs from the
+  // server's would be dropped silently. ADR:2026-10-27-schedules-carry-an-iana-timezone
+  private static void rejectForeignTimezone(CronTrigger cronTrigger) {
+    ZoneId requested = cronTrigger.getTimeZone().toZoneId();
+    ZoneId server = ZoneId.systemDefault();
+    if (!requested.getRules().equals(server.getRules())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Periodic workflow triggers run in the server timezone (%s); timezone '%s' is not"
+                  + " supported for workflow schedules.",
+              server.getId(), requested.getId()));
+    }
   }
 
   private CallActivity getWorkflowTriggerCallActivity(

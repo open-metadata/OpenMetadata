@@ -8,7 +8,8 @@
   `IngestionPipelineRepositoryTest.testRequiresRedeployment_TimezoneChange_ShouldReturnTrue` (a zone
   change redeploys the CronJob), `AppsResourceIT.test_externalAppScheduleTimezone_syncsToPipelineAndRejectsUnknownZone`,
   `IngestionPipelineResourceIT.createRejectsUnknownPipelineTimezoneAndStoresIanaZone`
-- **Related:** ADR:2026-10-27-pod-labels-and-annotations-cover-every-spawned-resource
+- **Related:** open-metadata/OpenMetadata#36354 (pod labels and annotations on every spawned
+  resource, whose record lands with that PR)
 
 ## Context
 
@@ -26,6 +27,9 @@ controller and the OMJob operator all agree on.
   holds an **IANA zone id** such as `Europe/Berlin` or `UTC`. `TimezoneUtil` accepts only
   `ZoneId.getAvailableZoneIds()`; offsets such as `+02:00` are rejected with 400 because the
   Kubernetes CronJob controller resolves `spec.timeZone` against tzdata and would reject them.
+  Repositories store the trimmed id (`TimezoneUtil.normalize`), never the raw input.
+- The UI defaults a **new** schedule to the browser zone. Editing an app that has no stored zone
+  seeds `UTC`, the effective server default, so saving an unchanged dialog does not move the app.
 - An absent `appSchedule.timezone` keeps the Quartz default (the server JVM zone), so existing
   deployments do not change behaviour. An absent `pipelineTimezone` keeps its schema default `UTC`.
 - The app schedule is the source of truth for the pipeline bound to an external app: its timezone is
@@ -42,5 +46,8 @@ controller and the OMJob operator all agree on.
   and run at the controller's zone.
 - The Airflow pipeline service client does not read `pipelineTimezone`; Airflow deployments keep
   scheduling at the Airflow default zone until that client passes it on.
+- Periodic workflow triggers run in the server zone: Flowable's `TimerEventDefinition` has no zone
+  and `CycleBusinessCalendar` resolves the cron with the engine clock. `PeriodicBatchEntityTrigger`
+  rejects a schedule whose zone rules differ from the server's rather than dropping it silently.
 - Changing the stored representation (for example to an offset) would need a migration of every
   pipeline and app and a change to the operator and the k8s client in the same release.

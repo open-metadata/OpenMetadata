@@ -1,6 +1,7 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,11 +24,20 @@ class TimezoneUtilTest {
   }
 
   @Test
+  void normalizeTrimsIdsAndClearsBlanks() {
+    assertEquals("Europe/Tallinn", TimezoneUtil.normalize(" Europe/Tallinn "));
+    assertEquals("UTC", TimezoneUtil.normalize("UTC"));
+    assertNull(TimezoneUtil.normalize(null));
+    assertNull(TimezoneUtil.normalize("  "));
+    assertThrows(BadRequestException.class, () -> TimezoneUtil.normalize("Mars/Olympus"));
+  }
+
+  @Test
   void zoneOfRejectsOffsetsAndUnknownIds() {
     BadRequestException offset =
-        assertThrows(BadRequestException.class, () -> TimezoneUtil.validate("+02:00"));
+        assertThrows(BadRequestException.class, () -> TimezoneUtil.zoneOf("+02:00"));
     assertTrue(offset.getMessage().contains("+02:00"));
-    assertThrows(BadRequestException.class, () -> TimezoneUtil.validate("Mars/Olympus"));
-    assertThrows(BadRequestException.class, () -> TimezoneUtil.validate("europe/tallinn"));
+    assertThrows(BadRequestException.class, () -> TimezoneUtil.zoneOf("Mars/Olympus"));
+    assertThrows(BadRequestException.class, () -> TimezoneUtil.zoneOf("europe/tallinn"));
   }
 }

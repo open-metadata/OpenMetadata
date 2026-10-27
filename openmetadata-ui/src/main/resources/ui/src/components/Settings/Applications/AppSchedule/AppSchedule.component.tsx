@@ -33,7 +33,6 @@ import {
   getAppCronExpression,
   getAppScheduleTimezone,
 } from '../../../../utils/ApplicationUtils';
-import { getBrowserTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import Loader from '../../../common/Loader/Loader';
 import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
@@ -241,9 +240,9 @@ const AppSchedule = ({
 
   const onDialogOpen = () => {
     setScheduleValue(getAppCronExpression(appData.appSchedule));
-    setTimezoneValue(
-      getAppScheduleTimezone(appData.appSchedule) ?? getBrowserTimezone()
-    );
+    // An app saved before timezones existed runs at the server default (UTC in the
+    // official images); seeding the browser zone here would move it on save.
+    setTimezoneValue(getAppScheduleTimezone(appData.appSchedule) ?? 'UTC');
     setIsScheduleValid(true);
     setShowModal(true);
   };

@@ -23,7 +23,17 @@ import org.openmetadata.service.exception.BadRequestException;
  * ADR:2026-10-27-schedules-carry-an-iana-timezone
  */
 public final class TimezoneUtil {
+  public static final String UTC = "UTC";
+
   private TimezoneUtil() {}
+
+  /**
+   * The trimmed id to store, or null when none is set. Kubernetes rejects a padded
+   * {@code spec.timeZone}, so repositories persist this rather than the raw input.
+   */
+  public static String normalize(String timezone) {
+    return zoneOf(timezone).map(ZoneId::getId).orElse(null);
+  }
 
   /** The zone for a schedule timezone, or empty when none is set. */
   public static Optional<ZoneId> zoneOf(String timezone) {
@@ -38,9 +48,5 @@ public final class TimezoneUtil {
               timezone));
     }
     return Optional.of(ZoneId.of(id));
-  }
-
-  public static void validate(String timezone) {
-    zoneOf(timezone);
   }
 }

@@ -518,8 +518,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     var service = getCachedParentOrLoad(ingestionPipeline.getService(), "", Include.NON_DELETED);
     ingestionPipeline.setService(service.getEntityReference());
     validateSourceConfigHasType(ingestionPipeline);
-    if (ingestionPipeline.getAirflowConfig() != null) {
-      TimezoneUtil.validate(ingestionPipeline.getAirflowConfig().getPipelineTimezone());
+    if (ingestionPipeline.getAirflowConfig() != null
+        && ingestionPipeline.getAirflowConfig().getPipelineTimezone() != null) {
+      String timezone =
+          TimezoneUtil.normalize(ingestionPipeline.getAirflowConfig().getPipelineTimezone());
+      ingestionPipeline
+          .getAirflowConfig()
+          .setPipelineTimezone(timezone == null ? TimezoneUtil.UTC : timezone);
     }
   }
 

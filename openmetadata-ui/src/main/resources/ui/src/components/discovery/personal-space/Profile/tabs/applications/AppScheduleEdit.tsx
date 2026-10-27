@@ -18,7 +18,6 @@ import {
   getAppCronExpression,
   getAppScheduleTimezone,
 } from '../../../../../../utils/ApplicationUtils';
-import { getBrowserTimezone } from '../../../../../../utils/date-time/DateTimeUtils';
 import { useAppScheduleOptions } from '../../../../../Settings/Applications/AppSchedule/useAppScheduleOptions';
 import ScheduleInterval from '../../../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { AppFooter } from './AppFooter';
@@ -36,8 +35,10 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
   const [scheduleValue, setScheduleValue] = useState(() =>
     getAppCronExpression(appData.appSchedule)
   );
+  // An app saved before timezones existed runs at the server default (UTC in the
+  // official images); seeding the browser zone here would move it on save.
   const [timezoneValue, setTimezoneValue] = useState(
-    () => getAppScheduleTimezone(appData.appSchedule) ?? getBrowserTimezone()
+    () => getAppScheduleTimezone(appData.appSchedule) ?? 'UTC'
   );
   const [isScheduleValid, setIsScheduleValid] = useState(true);
 

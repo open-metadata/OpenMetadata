@@ -1467,10 +1467,13 @@ public class AppsResourceIT {
                   new AppSchedule()
                       .withScheduleTimeline(ScheduleTimeline.CUSTOM)
                       .withCronExpression("17 4 * * *")
-                      .withTimezone("Europe/Tallinn"));
+                      .withTimezone(" Europe/Tallinn "));
 
       App installedApp = httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
-      assertEquals("Europe/Tallinn", installedApp.getAppSchedule().getTimezone());
+      assertEquals(
+          "Europe/Tallinn",
+          installedApp.getAppSchedule().getTimezone(),
+          "The zone id must be stored trimmed; Kubernetes rejects a padded spec.timeZone");
 
       String pipelineFqn = "OpenMetadata." + appName;
       IngestionPipeline pipeline =
