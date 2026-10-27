@@ -39,6 +39,14 @@ DATAFRAME_SQL_DIALECT = "duckdb"
 CASE_INSENSITIVE = sqlglot.Dialect.get_or_raise("duckdb, normalization_strategy=case_insensitive")
 JINJA_EXPRESSION = re.compile(r"\{\{.*?\}\}", re.DOTALL)
 JINJA_STATEMENT = re.compile(r"\{%.*?%\}", re.DOTALL)
+# From an {% elif %} or {% else %} to its {% endif %}: only the first branch is kept
+JINJA_OTHER_BRANCHES = re.compile(r"\{%-?\s*(?:elif|else)\b.*?(?=\{%-?\s*endif)", re.DOTALL)
+# Marks a table reference to leave unresolved: an upstream cell couldn't resolve it,
+# or it names a cell too large to inline
+UNRESOLVED = "hex_unresolved"
+# A cell inlines every cell it chains to, with theirs, so a notebook where each cell
+# joins the ones before it doubles in size per cell. Real cells are a few hundred nodes.
+MAX_INLINED_NODES = 10_000
 
 
 @dataclass
@@ -78,7 +86,7 @@ def parse_cell_sql(sql: str, connection_type: str | None) -> exp.Query | None:
         dialect = None
     # Input parameters ({{ start_date }}) are values, never columns, so NULL keeps
     # the query parseable without changing what it reads
-    sql = JINJA_STATEMENT.sub("", JINJA_EXPRESSION.sub("NULL", sql))
+    sql = JINJA_STATEMENT.sub("", JINJA_OTHER_BRANCHES.sub("", JINJA_EXPRESSION.sub("NULL", sql)))
     try:
         expression = sqlglot.parse_one(sql, read=dialect)
     except SqlglotError:
@@ -110,23 +118,41 @@ def get_table_references(expression: exp.Expression) -> list[exp.Table]:
     ]
 
 
-def inline_upstream_cells(expression: exp.Query, upstream: dict[str, exp.Query]) -> bool:
+def inline_upstream_cells(expression: exp.Query, upstream: dict[str, exp.Query | None]) -> bool:
     """
     Turn the cells this query reads by result variable into CTEs, the way Hex runs
-    chained SQL, so their columns trace back to the warehouse. True if any was inlined.
+    chained SQL, so their columns trace back to the warehouse. A cell stored as None
+    is too large to inline: the references to it are left unresolved. True if the
+    query reads any of these cells.
     """
-    names = {table.name.lower() for table in get_table_references(expression) if not table.db} & upstream.keys()
+    references = [table for table in get_table_references(expression) if not table.db]
+    names = {table.name.lower() for table in references} & upstream.keys()
     if not names:
         return False
+    for table in references:
+        if table.name.lower() in names and upstream[table.name.lower()] is None:
+            table.meta[UNRESOLVED] = True
     # Each cell nests with its own WITH: hoisting its CTEs next to this query's would
     # let a CTE name capture a table this query reads
     ctes = [
-        exp.CTE(this=upstream[name].copy(), alias=exp.TableAlias(this=exp.to_identifier(name)))
+        exp.CTE(this=query.copy(), alias=exp.TableAlias(this=exp.to_identifier(name)))
         for name in sorted(names)
+        if (query := upstream[name]) is not None
     ]
-    own = expression.args.get("with_")
-    expression.set("with_", exp.With(expressions=ctes + (own.expressions if own else [])))
+    if ctes:
+        own = expression.args.get("with_")
+        expression.set(
+            "with_",
+            exp.With(
+                expressions=ctes + (own.expressions if own else []),
+                recursive=own.args.get("recursive") if own else None,
+            ),
+        )
     return True
+
+
+def node_count(expression: exp.Expression) -> int:
+    return sum(1 for _ in expression.walk())
 
 
 def table_key(table: exp.Table) -> TableKey:
@@ -225,6 +251,7 @@ def _drop_unknown_stars(expression: exp.Expression, schema: dict) -> None:
         if table.name not in schema.get(table.catalog, {}).get(table.db, {})
     }
     for select in expression.find_all(exp.Select):
+        _spell_out_bare_star(select, unknown_aliases)
         projections = [
             projection
             for projection in select.expressions
@@ -236,3 +263,18 @@ def _drop_unknown_stars(expression: exp.Expression, schema: dict) -> None:
         ]
         if projections:
             select.set("expressions", projections)
+
+
+def _spell_out_bare_star(select: exp.Select, unknown_aliases: set[str]) -> None:
+    """A bare * over a join with an unknown table becomes one t.* per joined table"""
+    sources = [select.args.get("from_")] + list(select.args.get("joins") or [])
+    aliases = [source.this.alias_or_name for source in sources if source and source.this]
+    if not unknown_aliases.intersection(aliases):
+        return
+    projections: list[exp.Expression] = []
+    for projection in select.expressions:
+        if isinstance(projection, exp.Star):
+            projections.extend(exp.Column(this=exp.Star(), table=exp.to_identifier(alias)) for alias in aliases)
+        else:
+            projections.append(projection)
+    select.set("expressions", projections)

@@ -58,11 +58,14 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.hex.cell_lineage import (
     DATAFRAME_SQL_DIALECT,
+    MAX_INLINED_NODES,
+    UNRESOLVED,
     HexCellColumn,
     HexCellLineage,
     get_output_columns,
     get_table_references,
     inline_upstream_cells,
+    node_count,
     parse_cell_sql,
     table_key,
 )
@@ -80,10 +83,6 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 HEX_TAG_CATEGORY = "HexCategories"
-
-
-# Marks a table reference an upstream cell could not resolve
-UNRESOLVED = "hex_unresolved"
 
 
 class TableSearchError(Exception):
@@ -379,7 +378,7 @@ class HexSource(DashboardServiceSource):
     ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         """
         One data model per project, with one struct column per SQL cell holding
-        the columns that cell outputs
+        the columns that cell outputs (ADR:2026-10-27-hex-project-is-one-data-model-with-a-column-group-per-cell-id)
         """
         if not self.source_config.includeDataModels:
             return
@@ -539,7 +538,7 @@ class HexSource(DashboardServiceSource):
         resolved_tables: dict[tuple, tuple[Table, str | None] | None] = {}
         # Result variable -> (connection, query) of the cells seen so far, for the chained
         # SQL cells after them
-        upstream: dict[str, tuple[str | None, exp.Query]] = {}
+        upstream: dict[str, tuple[str | None, exp.Query | None]] = {}
         cell_lineage: list[HexCellLineage] = []
         taken_names: set[str] = set()
         for cell in cells:
@@ -563,7 +562,7 @@ class HexSource(DashboardServiceSource):
         self,
         cell: Cell,
         data_connections: dict[str, DataConnection],
-        upstream: dict[str, tuple[str | None, exp.Query]],
+        upstream: dict[str, tuple[str | None, exp.Query | None]],
         resolved_tables: dict[tuple, tuple[Table, str | None] | None],
     ) -> HexCellLineage | None:
         if not cell.sql:
@@ -625,7 +624,10 @@ class HexSource(DashboardServiceSource):
         # Stored once its references name the tables found, so a later cell inlining it
         # doesn't have to resolve them again without this cell's connection defaults
         if cell.resultVariableName:
-            upstream[cell.resultVariableName.lower()] = (cell.dataConnectionId, expression.copy())
+            stored = expression.copy() if node_count(expression) <= MAX_INLINED_NODES else None
+            if stored is None:
+                logger.debug("Hex cell %s is too large to trace the cells chained to it", cell.id)
+            upstream[cell.resultVariableName.lower()] = (cell.dataConnectionId, stored)
 
         taken_names: set[str] = set()
         for output in get_output_columns(expression, schema):
