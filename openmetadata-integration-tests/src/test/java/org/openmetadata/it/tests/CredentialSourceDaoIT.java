@@ -14,6 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.tests.MetricMigrationSqlFixture.currentConnectionType;
@@ -228,8 +229,13 @@ class CredentialSourceDaoIT {
 
     String plan = CredentialSourceTestSupport.explainFingerprintStatement(jdbi, owner.getName());
 
-    assertTrue(plan.contains("idx_user_tokens_user_type"), plan);
-    assertTrue(plan.toLowerCase(Locale.ROOT).contains("namehash"), plan);
+    if (currentConnectionType() == ConnectionType.MYSQL) {
+      assertTrue(plan.contains("t:idx_user_tokens_user_type"), plan);
+      assertFalse(plan.contains("u:null"), plan);
+    } else {
+      assertTrue(plan.contains("idx_user_tokens_user_type"), plan);
+      assertTrue(plan.toLowerCase(Locale.ROOT).contains("namehash"), plan);
+    }
   }
 
   private Object fingerprint(User user) {

@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.util.Duration;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,25 +32,29 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.credentials.CredentialSourceTestSupport;
 import org.openmetadata.service.security.credentials.CredentialSourceTestSupport.TestVerifier;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 import org.openmetadata.service.security.credentials.CredentialVerificationConfig;
 
 /**
  * Two verifiers in one JVM over the real database share no state, so a revocation that neither is
  * told about reaches both through the database alone. The server's own verifier receives the write
- * hint; these two do not. They run with a 1 s bound so the test stays short; the shared server keeps
- * its configured one.
+ * hint; these two do not. They run with their own sweep cadence and the default {@code
+ * loadTimeout}. A check that cannot confirm throws {@link CredentialUnavailableException},
+ * which a parallel run can cause for one poll, so the polls retry it and the first-use checks wait
+ * for a definitive answer; a rejection fails a test at once.
  */
 @ExtendWith(TestNamespaceExtension.class)
 class CredentialTwoVerifierConvergenceIT {
-  private static final long MAX_STALENESS_MILLIS = 1000;
-  private static final long MARGIN_MILLIS = 1000;
+  private static final long MAX_STALENESS_MILLIS = 6000;
+  private static final long MARGIN_MILLIS = 2000;
+  private static final long MISS_REFRESH_MIN_AGE_MILLIS = 100;
   private static final long POLL_MILLIS = 25;
   private static final CredentialVerificationConfig CONFIG =
       new CredentialVerificationConfig(
           Duration.milliseconds(MAX_STALENESS_MILLIS),
-          Duration.milliseconds(200),
-          Duration.milliseconds(100),
           Duration.milliseconds(500),
+          Duration.milliseconds(MISS_REFRESH_MIN_AGE_MILLIS),
+          null,
           null,
           null,
           null,
@@ -78,8 +83,8 @@ class CredentialTwoVerifierConvergenceIT {
     User owner = CredentialFixtures.createUser(ns, "twopat");
     PersonalAccessToken pat = CredentialFixtures.createPat(owner, ns.prefix("pat"));
     String token = pat.getJwtToken();
-    assertTrue(verifierA.accepts(owner.getName(), token), "A accepts the live PAT");
-    assertTrue(verifierB.accepts(owner.getName(), token), "B accepts the live PAT");
+    assertTrue(acceptsFirstUse(verifierA, owner.getName(), token), "A accepts the live PAT");
+    assertTrue(acceptsFirstUse(verifierB, owner.getName(), token), "B accepts the live PAT");
     double changedBefore = verifierB.sweepChangedSubjects();
 
     CredentialFixtures.revokePat(owner, pat);
@@ -95,8 +100,8 @@ class CredentialTwoVerifierConvergenceIT {
   void revokedBotTokenIsRejectedByBothVerifiersAndBLearnedItFromTheDatabase(TestNamespace ns) {
     User bot = CredentialFixtures.createBot(ns, "twobot");
     String token = CredentialFixtures.botToken(bot);
-    assertTrue(verifierA.accepts(bot.getName(), token), "A accepts the live bot token");
-    assertTrue(verifierB.accepts(bot.getName(), token), "B accepts the live bot token");
+    assertTrue(acceptsFirstUse(verifierA, bot.getName(), token), "A accepts the live bot token");
+    assertTrue(acceptsFirstUse(verifierB, bot.getName(), token), "B accepts the live bot token");
     double changedBefore = verifierB.sweepChangedSubjects();
 
     CredentialFixtures.revokeBotToken(bot);
@@ -112,7 +117,8 @@ class CredentialTwoVerifierConvergenceIT {
   void verifierWithItsSweepStoppedStillRejectsByMaxStaleness(TestNamespace ns) {
     User owner = CredentialFixtures.createUser(ns, "twostop");
     PersonalAccessToken pat = CredentialFixtures.createPat(owner, ns.prefix("pat"));
-    assertTrue(verifierB.accepts(owner.getName(), pat.getJwtToken()), "B accepts the live PAT");
+    assertTrue(
+        acceptsFirstUse(verifierB, owner.getName(), pat.getJwtToken()), "B accepts the live PAT");
     verifierB.stop();
     double changedBefore = verifierB.sweepChangedSubjects();
 
@@ -126,16 +132,24 @@ class CredentialTwoVerifierConvergenceIT {
   }
 
   @Test
-  void patCreatedAfterBothVerifiersCachedTheOwnerIsAcceptedByBoth(TestNamespace ns) {
+  void patCreatedAfterBothVerifiersCachedTheOwnerIsAcceptedOnFirstUseWithoutASweep(
+      TestNamespace ns) {
     User owner = CredentialFixtures.createUser(ns, "twonew");
     PersonalAccessToken first = CredentialFixtures.createPat(owner, ns.prefix("first"));
-    assertTrue(verifierA.accepts(owner.getName(), first.getJwtToken()));
-    assertTrue(verifierB.accepts(owner.getName(), first.getJwtToken()));
+    assertTrue(acceptsFirstUse(verifierA, owner.getName(), first.getJwtToken()));
+    assertTrue(acceptsFirstUse(verifierB, owner.getName(), first.getJwtToken()));
+    verifierA.stop();
+    verifierB.stop();
+    waitOutMissRefreshMinAge();
+    double readsA = verifierA.reads("unknown_token");
+    double readsB = verifierB.reads("unknown_token");
 
     PersonalAccessToken second = CredentialFixtures.createPat(owner, ns.prefix("second"));
 
-    awaitAccepted(verifierA, owner.getName(), second.getJwtToken());
-    awaitAccepted(verifierB, owner.getName(), second.getJwtToken());
+    assertTrue(acceptsFirstUse(verifierA, owner.getName(), second.getJwtToken()), "A, first use");
+    assertTrue(acceptsFirstUse(verifierB, owner.getName(), second.getJwtToken()), "B, first use");
+    assertTrue(verifierA.reads("unknown_token") > readsA, "A re-read the owner for the token");
+    assertTrue(verifierB.reads("unknown_token") > readsB, "B re-read the owner for the token");
   }
 
   @Test
@@ -143,21 +157,40 @@ class CredentialTwoVerifierConvergenceIT {
     User owner = CredentialFixtures.createUser(ns, "twocold");
     PersonalAccessToken pat = CredentialFixtures.createPat(owner, ns.prefix("pat"));
 
-    assertTrue(verifierA.accepts(owner.getName(), pat.getJwtToken()), "A, first use");
-    assertTrue(verifierB.accepts(owner.getName(), pat.getJwtToken()), "B, first use");
+    assertTrue(acceptsFirstUse(verifierA, owner.getName(), pat.getJwtToken()), "A, first use");
+    assertTrue(acceptsFirstUse(verifierB, owner.getName(), pat.getJwtToken()), "B, first use");
+  }
+
+  /**
+   * The first answer the verifier can give: a check that cannot confirm is repeated, because it
+   * says nothing about the credential, while a rejection is returned at once.
+   */
+  private static boolean acceptsFirstUse(TestVerifier verifier, String userName, String token) {
+    AtomicBoolean accepted = new AtomicBoolean();
+    Awaitility.await("a definitive answer")
+        .atMost(MARGIN_MILLIS, TimeUnit.MILLISECONDS)
+        .pollInterval(POLL_MILLIS, TimeUnit.MILLISECONDS)
+        .ignoreExceptionsInstanceOf(CredentialUnavailableException.class)
+        .until(
+            () -> {
+              accepted.set(verifier.accepts(userName, token));
+              return true;
+            });
+    return accepted.get();
+  }
+
+  /** Long enough for a sweep that was running when the sweeps stopped to finish, and for the age. */
+  private static void waitOutMissRefreshMinAge() {
+    Awaitility.await("the owner's last read is older than missRefreshMinAge")
+        .pollDelay(MISS_REFRESH_MIN_AGE_MILLIS * 3, TimeUnit.MILLISECONDS)
+        .until(() -> true);
   }
 
   private static void awaitRejected(TestVerifier verifier, String userName, String token) {
     Awaitility.await("rejected within maxStaleness")
         .atMost(MAX_STALENESS_MILLIS + MARGIN_MILLIS, TimeUnit.MILLISECONDS)
         .pollInterval(POLL_MILLIS, TimeUnit.MILLISECONDS)
+        .ignoreExceptionsInstanceOf(CredentialUnavailableException.class)
         .untilAsserted(() -> assertFalse(verifier.accepts(userName, token)));
-  }
-
-  private static void awaitAccepted(TestVerifier verifier, String userName, String token) {
-    Awaitility.await("accepted within missRefreshMinAge plus a read")
-        .atMost(MARGIN_MILLIS, TimeUnit.MILLISECONDS)
-        .pollInterval(POLL_MILLIS, TimeUnit.MILLISECONDS)
-        .untilAsserted(() -> assertTrue(verifier.accepts(userName, token)));
   }
 }

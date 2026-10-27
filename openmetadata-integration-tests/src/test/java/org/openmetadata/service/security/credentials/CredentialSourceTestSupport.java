@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.credentials;
 
 import com.github.benmanes.caffeine.cache.Ticker;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
@@ -98,6 +99,13 @@ public final class CredentialSourceTestSupport {
       return accepted;
     }
 
+    /** How many reads this verifier started for {@code reason}, for example {@code unknown_token}. */
+    public double reads(String reason) {
+      return registry.get("om.credential.reads").tag("reason", reason).counters().stream()
+          .mapToDouble(Counter::count)
+          .sum();
+    }
+
     /** How many principals this verifier's sweeps found changed in the database, so far. */
     public double sweepChangedSubjects() {
       return registry.get("om.credential.sweep.changed.subjects").counter().count();
@@ -125,7 +133,11 @@ public final class CredentialSourceTestSupport {
     return fullRecord(jdbi, userName, Map.of()).digests();
   }
 
-  /** The query plan of the fingerprint statement for {@code userName}, one line per plan row. */
+  /**
+   * The query plan of the fingerprint statement for {@code userName}, one line per plan row. On
+   * MySQL a line is {@code alias:key}, the index the optimizer chose for that table, so a plan that
+   * merely lists an index as possible does not match; on Postgres it is the plan node's text.
+   */
   public static String explainFingerprintStatement(Jdbi jdbi, String userName) throws Exception {
     String sql = fingerprintSql(jdbi, userName);
     ConnectionType type = connectionType(jdbi);
@@ -170,10 +182,16 @@ public final class CredentialSourceTestSupport {
         handle.execute("SET LOCAL enable_seqscan = off");
       }
       return handle.createQuery("EXPLAIN " + sql).mapToMap().list().stream()
-          .map(Map::toString)
+          .map(CredentialSourceTestSupport::planLine)
           .collect(Collectors.joining("\n"));
     } finally {
       handle.rollback();
     }
+  }
+
+  private static String planLine(Map<String, Object> row) {
+    return row.containsKey("key")
+        ? row.get("table") + ":" + row.get("key")
+        : String.valueOf(row.get("QUERY PLAN"));
   }
 }
