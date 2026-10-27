@@ -694,6 +694,23 @@ CREATE INDEX IF NOT EXISTS idx_entity_relationship_memory_anchor
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_about_fqn_hash_pattern
   ON task_entity (aboutfqnhash text_pattern_ops);
 
+-- Credential verification joins user_entity to user_tokens on (userId, tokenType) and reads token;
+-- user_tokens had only PRIMARY KEY (token), so that predicate scanned the table. Including token
+-- makes the fingerprint read index-only. Built CONCURRENTLY so the migration takes no write lock
+-- on a table every login writes to, matching 2.0.0 and 1.11.0.
+--
+-- OPERATOR RUNBOOK: an interrupted CONCURRENTLY build leaves an INVALID index that IF NOT EXISTS
+-- then skips. Detect and remediate:
+--   SELECT c.relname FROM pg_class c
+--    JOIN pg_index i ON i.indexrelid = c.oid
+--    WHERE NOT i.indisvalid AND c.relname = 'idx_user_tokens_user_type';
+--   DROP INDEX CONCURRENTLY idx_user_tokens_user_type;
+--   DELETE FROM server_migration_sql_logs
+--    WHERE version = '2.1.0'
+--      AND sqlstatement LIKE '%idx\_user\_tokens\_user\_type%' ESCAPE '\';
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_user_tokens_user_type
+  ON user_tokens (userId, tokenType, token);
+
 -- Independent ontology definitions and releases.
 CREATE TABLE IF NOT EXISTS ontology_entity (
   id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
@@ -861,20 +878,3 @@ DELETE FROM entity_relationship WHERE
   (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration'))));
 DELETE FROM entity_extension WHERE jsonSchema = 'ontologyChangeSet' AND (json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration')));
 DELETE FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration'));
-
--- Credential verification joins user_entity to user_tokens on (userId, tokenType) and reads token;
--- user_tokens had only PRIMARY KEY (token), so that predicate scanned the table. Including token
--- makes the fingerprint read index-only. Built CONCURRENTLY so the migration takes no write lock
--- on a table every login writes to, matching 2.0.0 and 1.11.0.
---
--- OPERATOR RUNBOOK: an interrupted CONCURRENTLY build leaves an INVALID index that IF NOT EXISTS
--- then skips. Detect and remediate:
---   SELECT c.relname FROM pg_class c
---    JOIN pg_index i ON i.indexrelid = c.oid
---    WHERE NOT i.indisvalid AND c.relname = 'idx_user_tokens_user_type';
---   DROP INDEX CONCURRENTLY idx_user_tokens_user_type;
---   DELETE FROM server_migration_sql_logs
---    WHERE version = '2.1.0'
---      AND sqlstatement LIKE '%idx\_user\_tokens\_user\_type%' ESCAPE '\';
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_user_tokens_user_type
-  ON user_tokens (userId, tokenType, token);

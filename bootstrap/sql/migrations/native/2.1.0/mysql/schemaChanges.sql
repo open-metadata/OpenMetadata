@@ -915,6 +915,26 @@ PREPARE rdf_projection_health_watermark_stmt FROM @rdf_projection_health_waterma
 EXECUTE rdf_projection_health_watermark_stmt;
 DEALLOCATE PREPARE rdf_projection_health_watermark_stmt;
 
+-- Credential verification joins user_entity to user_tokens on (userId, tokenType) and reads token.
+-- user_tokens had only PRIMARY KEY (token), so that predicate scanned every row, refresh and
+-- email-verification tokens included. Including token makes the fingerprint read index-only.
+SET @user_tokens_user_type_idx_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'user_tokens'
+        AND index_name = 'idx_user_tokens_user_type'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_user_tokens_user_type ON user_tokens (userId, tokenType, token)'
+  )
+);
+PREPARE user_tokens_user_type_idx_stmt FROM @user_tokens_user_type_idx_ddl;
+EXECUTE user_tokens_user_type_idx_stmt;
+DEALLOCATE PREPARE user_tokens_user_type_idx_stmt;
+
 -- Independent ontology definitions and releases.
 CREATE TABLE IF NOT EXISTS ontology_entity (
   id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
@@ -1139,23 +1159,3 @@ DELETE FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id')
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-
--- Credential verification joins user_entity to user_tokens on (userId, tokenType) and reads token.
--- user_tokens had only PRIMARY KEY (token), so that predicate scanned every row, refresh and
--- email-verification tokens included. Including token makes the fingerprint read index-only.
-SET @ddl = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.statistics
-      WHERE table_schema = DATABASE()
-        AND table_name = 'user_tokens'
-        AND index_name = 'idx_user_tokens_user_type'
-    ),
-    'SELECT 1',
-    'CREATE INDEX idx_user_tokens_user_type ON user_tokens (userId, tokenType, token)'
-  )
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
