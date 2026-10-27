@@ -59,7 +59,8 @@ public abstract class AbstractEventConsumer implements Job {
   private List<Long> polledOffsets = List.of();
   private TickStopSignal stopSignal;
   private boolean stoppedEarly;
-  private boolean publishingWholeBatch;
+  // Set while the reader has pointed the ledger past events no handler has finished.
+  private boolean batchUnfinished;
 
   protected EventSubscription eventSubscription;
 
@@ -265,7 +266,7 @@ public abstract class AbstractEventConsumer implements Job {
   protected void openTick() {
     this.stopSignal = TickStopSignal.startingNow(AlertingSettings.current());
     this.stoppedEarly = false;
-    this.publishingWholeBatch = false;
+    this.batchUnfinished = false;
   }
 
   /** Set when this tick should end after the event, or the batch, it is working on. */
@@ -280,6 +281,8 @@ public abstract class AbstractEventConsumer implements Job {
     if (latestOffset > ledger.position()) {
       ledger.noteOpening();
     }
+    // The reader points the ledger at the end of the batch before any event in it is parsed.
+    batchUnfinished = true;
     ResultList<ChangeEvent> batch = pollEvents(ledger.position(), eventSubscription.getBatchSize());
     List<ChangeEvent> events = new ArrayList<>(batch.getData());
     if (interruptedBefore >= SET_ASIDE_FIRST_EVENT_AT && !events.isEmpty()) {
@@ -290,9 +293,8 @@ public abstract class AbstractEventConsumer implements Job {
     boolean canStopBetweenEvents = polledOffsets.size() == batch.getData().size();
     boolean wholeBatchAtOnce = kind() == ConsumerKind.BATCH && !careful;
     if (wholeBatchAtOnce || !canStopBetweenEvents) {
-      publishingWholeBatch = true;
       publish(events);
-      publishingWholeBatch = false;
+      batchUnfinished = false;
     } else {
       publishOneByOne(events, careful, context);
     }
@@ -319,6 +321,7 @@ public abstract class AbstractEventConsumer implements Job {
     // The reader pointed the ledger at the end of the batch. Until an event is finished, the
     // position may only move past what was set aside.
     ledger.readUpTo(skipped > 0 ? polledOffsets.get(skipped - 1) : ledger.position(), 0L);
+    batchUnfinished = false;
     int processed = 0;
     while (processed < events.size() && !mustStopBefore(processed)) {
       publishIsolated(events.get(processed));
@@ -416,10 +419,11 @@ public abstract class AbstractEventConsumer implements Job {
     }
   }
 
-  // The reader pointed the ledger at the end of a batch it handed over whole; an Error while that
-  // batch was handled leaves none of it finished, so the position stays where it was.
+  // The reader pointed the ledger at the end of a batch before any of it was finished; an Error
+  // while it was read, set aside or handled whole leaves none of it finished, so the position
+  // stays where it was.
   private void forgetUnfinishedBatch() {
-    if (publishingWholeBatch) {
+    if (batchUnfinished) {
       ledger.readUpTo(ledger.position(), ledger.gapWaitSince());
     }
   }
