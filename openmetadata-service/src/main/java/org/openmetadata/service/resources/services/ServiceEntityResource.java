@@ -24,8 +24,6 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
@@ -38,6 +36,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ServiceConnectionAccess;
 
 public abstract class ServiceEntityResource<
         T extends ServiceEntityInterface,
@@ -60,29 +59,18 @@ public abstract class ServiceEntityResource<
   protected T decryptOrNullify(SecurityContext securityContext, T service) {
     if (service.getConnection() != null) {
       // Bots (ingestion) receive the fully decrypted connection. Callers who can edit the service
-      // (EDIT_ALL) receive a masked connection so the UI/SDK can still display and edit it.
-      // Everyone
-      // else receives no connection at all.
+      // receive a masked connection so the UI/SDK can still display and edit it. Everyone else
+      // receives no connection at all.
       if (!authorizer.shouldMaskPasswords(securityContext)) {
         service.getConnection().setConfig(retrieveServiceConnectionConfig(service, false));
-      } else if (canEditConnection(securityContext, service)) {
+      } else if (ServiceConnectionAccess.canEditConnection(
+          authorizer, securityContext, getResourceContextById(service.getId()))) {
         service.getConnection().setConfig(retrieveServiceConnectionConfig(service, true));
       } else {
         return nullifyConnection(service);
       }
     }
     return service;
-  }
-
-  private boolean canEditConnection(SecurityContext securityContext, T service) {
-    // getPermission does not throw and resolves admins without loading the entity, so this avoids
-    // using exceptions for the common view-only path and stays cheap on list pages.
-    return authorizer
-        .getPermission(securityContext, null, getResourceContextById(service.getId()))
-        .getPermissions()
-        .stream()
-        .anyMatch(
-            p -> p.getOperation() == MetadataOperation.EDIT_ALL && p.getAccess() == Access.ALLOW);
   }
 
   private Object retrieveServiceConnectionConfig(T service, boolean maskPassword) {

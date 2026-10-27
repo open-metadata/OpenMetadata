@@ -33,6 +33,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -203,7 +204,17 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                     ),
                 )
                 if service:
-                    self.config.source.serviceConnection = ServiceConnection(service.connection)
+                    if service.connection is not None:
+                        self.config.source.serviceConnection = ServiceConnection(service.connection)
+                    elif not isinstance(self.config.source.sourceConfig.config, DbtPipeline):
+                        # dbt reads its artifacts and never connects to the source, so it is the one
+                        # workflow that can run without the connection
+                        raise InvalidWorkflowJSONException(  # noqa: TRY301
+                            f"The connection of service [{service_name}] was not returned. OpenMetadata"
+                            " returns a usable service connection only to bot accounts, so run the workflow"
+                            " with a bot token such as the ingestion-bot's, or set serviceConnection in the"
+                            " workflow config."
+                        )
                 else:
                     raise InvalidWorkflowJSONException(  # noqa: TRY301
                         f"Error getting the service [{service_name}] from the API. If it exists in OpenMetadata,"

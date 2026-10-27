@@ -48,6 +48,7 @@ from metadata.generated.schema.entity.data.table import (
     Table,
 )
 from metadata.generated.schema.entity.domains.dataProduct import DataProduct
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -188,6 +189,22 @@ class DbtSource(DbtServiceSource):
             for catalog, database in (self.source_config.catalogMapping or {}).items()
             if catalog and database
         }
+
+    @cached_property
+    def lineage_connection_type(self) -> str:
+        # The server returns a service connection only to bots and to users who can edit the
+        # service, so a run with a personal token may have none; serviceType names the same dialect
+        if self.config.serviceConnection is not None:
+            return str(self.config.serviceConnection.root.config.type.value)
+        try:
+            service = self.metadata.get_by_name(entity=DatabaseService, fqn=self.config.serviceName)
+        except APIError as exc:
+            # Cached as well, so one failed read does not repeat for every model
+            logger.warning(
+                "Parsing dbt lineage as ANSI SQL: could not read service [%s]: %s", self.config.serviceName, exc
+            )
+            return ""
+        return str(service.serviceType.value) if service else ""
 
     def _map_catalogs_in_sql(self, sql: str) -> str:
         """
@@ -1427,8 +1444,7 @@ class DbtSource(DbtServiceSource):
                 )
                 query_fqn = ".".join([f'"{i}"' for i in query_fqn.split(".")])
                 query = f"create table {query_fqn} as {self._map_catalogs_in_sql(data_model_link.datamodel.sql.root)}"
-                connection_type = str(self.config.serviceConnection.root.config.type.value)
-                dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
+                dialect = ConnectionTypeDialectMapper.dialect_of(self.lineage_connection_type)
                 lineages = get_lineage_by_query(
                     self.metadata,
                     query=query,

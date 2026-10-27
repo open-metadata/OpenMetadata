@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -44,6 +45,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
     DatabaseServiceQueryLineagePipeline,
 )
+from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Source,
@@ -62,6 +64,7 @@ from metadata.utils.streamable_logger import (
     StreamableLogHandler,
     StreamableLogHandlerManager,
 )
+from metadata.workflow.base import InvalidWorkflowJSONException
 from metadata.workflow.ingestion import IngestionWorkflow
 
 
@@ -336,6 +339,36 @@ def test_self_registration_does_not_invent_a_missing_model_type():
 
     assert explicit_source_config is source_config
     assert explicit_source_config.config.type is None
+
+
+def _workflow_resolving_a_service_without_connection(source_config) -> SimpleWorkflow:
+    """The server returns no connection to a token that is neither a bot nor a service editor"""
+    workflow = _self_registration_workflow(SourceConfig(config=source_config))
+    workflow.metadata.config.forceEntityOverwriting = False
+    workflow.metadata.get_by_name.return_value = SimpleNamespace(connection=None)
+    return workflow
+
+
+def test_missing_service_connection_names_the_token_as_the_cause():
+    workflow = _workflow_resolving_a_service_without_connection(DatabaseServiceMetadataPipeline())
+
+    with pytest.raises(InvalidWorkflowJSONException, match="only to bot accounts"):
+        workflow._retrieve_service_connection_if_needed(ServiceType.Database)
+
+
+def test_dbt_runs_without_the_service_connection(caplog):
+    workflow = _workflow_resolving_a_service_without_connection(
+        DbtPipeline.model_validate(
+            {"dbtConfigSource": {"dbtConfigType": "local", "dbtManifestFilePath": "/dbt/manifest.json"}}
+        )
+    )
+
+    with caplog.at_level(logging.ERROR):
+        workflow._retrieve_service_connection_if_needed(ServiceType.Database)
+
+    assert workflow.config.source.serviceConnection is None
+    # Not an error that was swallowed: dbt never needed the connection
+    assert not caplog.records
 
 
 class TestWorkflowExecuteTeardown:

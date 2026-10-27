@@ -272,7 +272,9 @@ public class GetEntityTool implements McpTool {
       // the copy maskSecrets made, so this does not touch the repository's entity.
       PIIMasker.maskUser(authorizer, securityContext, user);
     }
-    Map<String, Object> entityData = JsonUtils.getMap(entity);
+    Map<String, Object> entityData =
+        McpResponseUtils.hideConnectionFromNonEditors(
+            JsonUtils.getMap(entity), entity, authorizer, securityContext);
 
     // Clean response to optimize LLM context usage, then bound the columns array so a wide entity
     // stays under the dispatch-level size cap instead of being replaced by an empty stub.

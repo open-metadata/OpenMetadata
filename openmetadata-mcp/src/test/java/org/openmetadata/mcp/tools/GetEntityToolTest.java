@@ -42,15 +42,18 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -272,6 +275,41 @@ class GetEntityToolTest {
     }
 
     assertEquals(PIIMasker.MASKED_MAIL, result.get("email"));
+  }
+
+  /**
+   * A service's connection goes only to callers who can edit the service, the rule the REST
+   * resource applies; everyone else reads the service without it.
+   */
+  @Test
+  void serviceDetailsCarryTheConnectionOnlyForCallersWhoCanEditTheService() throws Exception {
+    Map<String, Object> viewer = readMysqlServiceAs(Access.NOT_ALLOW);
+    Map<String, Object> editor = readMysqlServiceAs(Access.ALLOW);
+
+    assertThat(viewer).doesNotContainKey("connection").containsEntry("name", "mysqlService");
+    JsonNode config = JsonUtils.valueToTree(editor).at("/connection/config");
+    assertEquals(PasswordEntityMasker.PASSWORD_MASK, config.at("/authType/password").asText());
+    assertEquals("localhost:3306", config.at("/hostPort").asText());
+  }
+
+  private static Map<String, Object> readMysqlServiceAs(Access editAll) throws Exception {
+    String fqn = "mysqlService";
+    DatabaseService service = McpResponseUtilsTest.mysqlService();
+    EntityMaskerFactory.createEntityMasker();
+
+    try (MockedStatic<Entity> entities =
+        McpResponseUtilsTest.mockServiceLookups(McpResponseUtilsTest.databaseServiceRepository())) {
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(eq(Entity.DATABASE_SERVICE), eq(fqn), anyString(), any()))
+          .thenReturn(service);
+      return new GetEntityTool()
+          .execute(
+              McpResponseUtilsTest.authorizerWithEditAll(editAll),
+              securityContextFor("alice"),
+              Map.of("entityType", Entity.DATABASE_SERVICE, "fqn", fqn));
+    }
   }
 
   static WorkflowDefinition gitSinkWorkflow(String name) {

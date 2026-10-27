@@ -6,13 +6,18 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
@@ -42,12 +47,18 @@ import org.openmetadata.schema.tests.TestSuiteConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.Permission.Access;
+import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 class McpResponseUtilsTest {
 
@@ -304,5 +315,93 @@ class McpResponseUtilsTest {
 
     assertTrue(doc.containsKey("deleted"));
     assertEquals(Boolean.TRUE, doc.get("deleted"));
+  }
+
+  @Test
+  void hideConnectionFromNonEditorsDropsTheConnectionForAViewer() {
+    Map<String, Object> doc = hideConnectionAs(Access.NOT_ALLOW);
+
+    assertFalse(doc.containsKey("connection"));
+    assertEquals("mysqlService", doc.get("name"));
+  }
+
+  @Test
+  void hideConnectionFromNonEditorsKeepsTheConnectionForAnEditor() {
+    Map<String, Object> doc = hideConnectionAs(Access.ALLOW);
+
+    assertTrue(doc.containsKey("connection"));
+  }
+
+  @Test
+  void hideConnectionFromNonEditorsLeavesATestSuitePlaceholderAlone() {
+    TestSuite suite = new TestSuite().withName("suite").withConnection(new TestSuiteConnection());
+    Authorizer authorizer = mock(Authorizer.class);
+    Map<String, Object> doc = JsonUtils.getMap(suite);
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(() -> Entity.getEntityTypeFromObject(suite)).thenReturn(Entity.TEST_SUITE);
+      entities
+          .when(() -> Entity.getEntityRepository(Entity.TEST_SUITE))
+          .thenReturn(mock(TestSuiteRepository.class));
+      McpResponseUtils.hideConnectionFromNonEditors(
+          doc, suite, authorizer, mock(SecurityContext.class));
+    }
+
+    assertEquals(JsonUtils.getMap(suite), doc);
+    verifyNoInteractions(authorizer);
+  }
+
+  private static Map<String, Object> hideConnectionAs(Access editAll) {
+    DatabaseService service = mysqlService();
+    try (MockedStatic<Entity> entities = mockServiceLookups(databaseServiceRepository())) {
+      return McpResponseUtils.hideConnectionFromNonEditors(
+          JsonUtils.getMap(service),
+          service,
+          authorizerWithEditAll(editAll),
+          mock(SecurityContext.class));
+    }
+  }
+
+  static DatabaseService mysqlService() {
+    return new DatabaseService()
+        .withId(UUID.randomUUID())
+        .withName("mysqlService")
+        .withFullyQualifiedName("mysqlService")
+        .withServiceType(CreateDatabaseService.DatabaseServiceType.Mysql)
+        .withConnection(
+            new DatabaseConnection()
+                .withConfig(
+                    new MysqlConnection()
+                        .withHostPort("localhost:3306")
+                        .withUsername("test")
+                        .withAuthType(new basicAuth().withPassword(STORED_SECRET))));
+  }
+
+  static DatabaseServiceRepository databaseServiceRepository() {
+    DatabaseServiceRepository repository = mock(DatabaseServiceRepository.class);
+    when(repository.getServiceType()).thenReturn(ServiceType.DATABASE);
+    return repository;
+  }
+
+  /** The lookups maskSecrets and hideConnectionFromNonEditors make for a database service. */
+  static MockedStatic<Entity> mockServiceLookups(DatabaseServiceRepository repository) {
+    MockedStatic<Entity> entities = mockStatic(Entity.class);
+    entities.when(() -> Entity.getEntityTypeFromObject(any())).thenReturn(Entity.DATABASE_SERVICE);
+    entities.when(() -> Entity.getEntityRepository(Entity.DATABASE_SERVICE)).thenReturn(repository);
+    return entities;
+  }
+
+  /** An authorizer whose answer to "may the caller EditAll this resource" is {@code editAll}. */
+  static Authorizer authorizerWithEditAll(Access editAll) {
+    Authorizer authorizer = mock(Authorizer.class);
+    when(authorizer.getPermission(any(), isNull(), any(ResourceContextInterface.class)))
+        .thenReturn(
+            new ResourcePermission()
+                .withPermissions(
+                    List.of(
+                        new Permission()
+                            .withOperation(MetadataOperation.EDIT_ALL)
+                            .withAccess(editAll))));
+    return authorizer;
   }
 }
