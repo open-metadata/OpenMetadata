@@ -72,7 +72,7 @@ const mockPermissions = {
   ontologyConcept: { Create: true },
   ontologyProperty: { Create: true },
   ontologyAxiom: { Create: true },
-  relationshipType: { Create: true },
+  relationshipType: { Create: true, EditAll: true },
 };
 let mockCanEditConcept = true;
 
@@ -328,6 +328,7 @@ describe('OntologyGraphView', () => {
     mockPermissions.ontologyProperty.Create = true;
     mockPermissions.ontologyAxiom.Create = true;
     mockPermissions.relationshipType.Create = true;
+    mockPermissions.relationshipType.EditAll = true;
     mockCanEditConcept = true;
     mockUseOntologyStudioModel.mockReturnValue(modelResult);
     (listRelationshipTypes as jest.Mock).mockResolvedValue({
@@ -1167,6 +1168,141 @@ describe('OntologyGraphView', () => {
     ).not.toBeInTheDocument();
     expect(createRelationshipType).not.toHaveBeenCalled();
     expect(createOntologyAxiom).not.toHaveBeenCalled();
+  });
+
+  it('registers a single type without an inverse when the user cannot edit relationship types', async () => {
+    mockPermissions.relationshipType.EditAll = false;
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    expect(latestGraphProps().canCreateRelationType).toBe(true);
+
+    let creation: Promise<void> = Promise.resolve();
+    act(() => {
+      creation = latestGraphProps().onCreateRelation(
+        customer.id,
+        orphan.id,
+        'new:approved by'
+      );
+    });
+
+    expect(await screen.findByTestId('relationship-type-dialog')).toBeVisible();
+    expect(screen.getByTestId('relationship-type-inverse')).toBeDisabled();
+    expect(screen.getByText('message.no-permission-for-action')).toBeVisible();
+
+    fireEvent.change(screen.getByTestId('relationship-type-description'), {
+      target: { value: 'Who signs off.' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('relationship-type-submit'));
+      await creation;
+    });
+
+    expect(createRelationshipType).toHaveBeenCalledTimes(1);
+    expect(createRelationshipType).toHaveBeenCalledWith({
+      category: 'CUSTOM',
+      characteristics: undefined,
+      description: 'Who signs off.',
+      displayName: 'approved by',
+      inverse: undefined,
+      name: 'approvedBy',
+      paletteKey: 'VIOLET',
+      rdfPredicate: 'https://open-metadata.org/ontology/approvedBy',
+    });
+    expect(patchRelationshipType).not.toHaveBeenCalled();
+    expect(createOntologyProperty).toHaveBeenCalledTimes(1);
+    expect(createOntologyProperty).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inverse: undefined,
+        iri: 'https://open-metadata.org/ontology/approvedBy',
+        name: 'approvedBy',
+      })
+    );
+    expect(createOntologyAxiom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'CustomerApprovedByOrphan',
+        expressions: [
+          expect.objectContaining({
+            propertyIri: 'https://open-metadata.org/ontology/approvedBy',
+          }),
+        ],
+      })
+    );
+    expect(
+      screen.queryByTestId('relationship-type-dialog')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the symmetric option for a user who cannot edit relationship types', async () => {
+    mockPermissions.relationshipType.EditAll = false;
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    let creation: Promise<void> = Promise.resolve();
+    act(() => {
+      creation = latestGraphProps().onCreateRelation(
+        customer.id,
+        orphan.id,
+        'new:sibling of'
+      );
+    });
+    await screen.findByTestId('relationship-type-dialog');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'label.symmetric' }));
+
+    expect(
+      screen.getByText('message.symmetric-relationship-type')
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId('relationship-type-inverse')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('relationship-type-submit'));
+      await creation;
+    });
+
+    expect(createRelationshipType).toHaveBeenCalledTimes(1);
+    expect(createRelationshipType).toHaveBeenCalledWith({
+      category: 'CUSTOM',
+      characteristics: ['SYMMETRIC'],
+      description: 'sibling of',
+      displayName: 'sibling of',
+      inverse: undefined,
+      name: 'siblingOf',
+      paletteKey: 'VIOLET',
+      rdfPredicate: 'https://open-metadata.org/ontology/siblingOf',
+    });
+    expect(patchRelationshipType).not.toHaveBeenCalled();
+    expect(createOntologyAxiom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'CustomerSiblingOfOrphan',
+        expressions: [
+          expect.objectContaining({
+            propertyIri: 'https://open-metadata.org/ontology/siblingOf',
+          }),
+        ],
+      })
+    );
   });
 
   it('writes nothing when the new type dialog is cancelled', async () => {
