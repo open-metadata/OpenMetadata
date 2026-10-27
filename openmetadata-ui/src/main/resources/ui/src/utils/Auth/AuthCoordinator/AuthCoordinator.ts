@@ -20,6 +20,7 @@ import { getOidcToken, setOidcTokenStrict } from '../../SwTokenStorageUtils';
 import { CrossTabLock, LockTimeoutError } from './CrossTabLock';
 import { TypedEventBus } from './eventBus';
 import { ProactiveTimer } from './ProactiveTimer';
+import { hasSignedOutSince } from './ReauthGuard';
 import { RefreshQueue } from './RefreshQueue';
 import type {
   AuthCoordinatorEvent,
@@ -51,6 +52,15 @@ const MAX_REFRESH_CYCLES_PER_WINDOW = 3;
 const REFRESH_WINDOW_MS = 30_000;
 const REFRESH_FAILED_EVENT: AuthCoordinatorEvent = 'refresh-failed';
 
+// A sign-out started while the refresh was in flight. Not a refresh failure:
+// the session was ended on purpose, so nothing may recover it.
+class SignedOutDuringRefreshError extends Error {
+  constructor() {
+    super('Signed out during token refresh');
+    this.name = 'SignedOutDuringRefreshError';
+  }
+}
+
 export class AuthCoordinator {
   private renewer: Renewer | null = null;
   private inflight: Promise<string> | null = null;
@@ -74,6 +84,9 @@ export class AuthCoordinator {
   // RefreshFailedPayload.staleToken). Set where a cycle starts: a counted
   // 401 (its bearer) or a fast-path read that found the stored token expired.
   private cycleStaleToken: string | null = null;
+  // Bumped by pause(). A refresh that sees it change while in flight was
+  // overtaken by a sign-out (or a re-auth redirect) and must not land.
+  private pauseGeneration = 0;
   private disposeCrossTabDone: (() => void) | null = null;
   private readonly bus = new TypedEventBus();
   private readonly queue = new RefreshQueue();
@@ -211,6 +224,7 @@ export class AuthCoordinator {
   }
 
   pause(): void {
+    this.pauseGeneration += 1;
     this.timer.cancel();
   }
 
@@ -297,7 +311,15 @@ export class AuthCoordinator {
       throw new Error('No renewer registered');
     }
 
-    return this.runExclusiveRefresh(renewer, 0);
+    // Checked after the renewer resolves and before anything is persisted or
+    // emitted. The stored marker covers a sign-out in another tab whose
+    // storage event has not reached this one yet.
+    const startedAt = Date.now();
+    const pauseGeneration = this.pauseGeneration;
+    const signedOut = () =>
+      this.pauseGeneration !== pauseGeneration || hasSignedOutSince(startedAt);
+
+    return this.runExclusiveRefresh(renewer, 0, signedOut);
   }
 
   // Recovery path is bounded to `MAX_RECOVERY_ATTEMPTS` so a broken IdP
@@ -310,7 +332,8 @@ export class AuthCoordinator {
   // token, and reuse-detection would invalidate every session.
   private async runExclusiveRefresh(
     renewer: Renewer,
-    attempt: number
+    attempt: number,
+    signedOut: () => boolean
   ): Promise<string> {
     // Capture the renewer's result outside the try/catch. If publish (the
     // strict persist) throws AFTER renewer succeeds, we still hold a valid
@@ -334,6 +357,9 @@ export class AuthCoordinator {
       outcome = await this.lock.runExclusive<RenewResult>(
         async () => {
           const result = await renewer();
+          if (signedOut()) {
+            throw new SignedOutDuringRefreshError();
+          }
           renewedResult = result;
 
           return result;
@@ -356,11 +382,20 @@ export class AuthCoordinator {
         }
       );
     } catch (err) {
-      return this.handleLeaderPathError(err, renewer, attempt, renewedResult);
+      return this.handleLeaderPathError(
+        err,
+        renewer,
+        attempt,
+        renewedResult,
+        signedOut
+      );
     }
 
     if (outcome.role === 'follower') {
       const message = outcome.message;
+      if (signedOut()) {
+        throw new SignedOutDuringRefreshError();
+      }
       if (message.type === 'done' && this.isRenewResult(message.payload)) {
         // Persist the payload BEFORE applying it in memory. Storage
         // is the source of truth for the axios request interceptor's
@@ -390,7 +425,7 @@ export class AuthCoordinator {
       // across tabs is preserved; a bad IdP still terminates after
       // `MAX_RECOVERY_ATTEMPTS` rather than turning into a refresh storm.
       if (attempt < MAX_RECOVERY_ATTEMPTS) {
-        return this.runExclusiveRefresh(renewer, attempt + 1);
+        return this.runExclusiveRefresh(renewer, attempt + 1, signedOut);
       }
       const reason =
         message.type === 'failed'
@@ -407,7 +442,12 @@ export class AuthCoordinator {
 
     // Persistence + notify already ran under the lock via the `publish`
     // hook above; here we only wire the coordinator-side side-effects
-    // (emit `refreshed`, schedule the proactive timer).
+    // (emit `refreshed`, schedule the proactive timer). A sign-out can still
+    // have started while `publish` awaited the write.
+    if (signedOut()) {
+      throw new SignedOutDuringRefreshError();
+    }
+
     return this.applyRefreshed(outcome.value);
   }
 
@@ -419,14 +459,20 @@ export class AuthCoordinator {
     err: unknown,
     renewer: Renewer,
     attempt: number,
-    renewedResult: RenewResult | undefined
+    renewedResult: RenewResult | undefined,
+    signedOut: () => boolean
   ): Promise<string> {
+    // Also covers a sign-out that landed while `publish` was persisting: the
+    // `renewedResult` fallback below must not bring that session back.
+    if (err instanceof SignedOutDuringRefreshError || signedOut()) {
+      throw new SignedOutDuringRefreshError();
+    }
     // Follower timed out waiting for the leader (slow IdP, leader tab
     // closed mid-refresh, missed broadcast). Retry through the lock so
     // any other follower that also fell back races us for the exclusive
     // slot instead of running its own renewer in parallel.
     if (err instanceof LockTimeoutError && attempt < MAX_RECOVERY_ATTEMPTS) {
-      return this.runExclusiveRefresh(renewer, attempt + 1);
+      return this.runExclusiveRefresh(renewer, attempt + 1, signedOut);
     }
     // Renewer succeeded but the persist/broadcast step threw — the
     // strict-write path keeps the fresh token in `inMemoryState` so

@@ -17,6 +17,7 @@ import { getOidcToken } from '../../../SwTokenStorageUtils';
 import { AuthCoordinator } from '../AuthCoordinator';
 import { LockTimeoutError } from '../CrossTabLock';
 import { ReauthRequiredError } from '../ReauthRequiredError';
+import { RefreshFailedError } from '../RefreshQueue';
 import type { RefreshFailedPayload } from '../types';
 
 jest.mock('../../../SwTokenStorageUtils', () => ({
@@ -1423,6 +1424,122 @@ describe('AuthCoordinator', () => {
 
       expect(unforced).toBe('server-rejected-but-time-fresh');
       expect(renewer).not.toHaveBeenCalled();
+    });
+  });
+
+  // A request that 401s while a sign-out runs still reaches the interceptor.
+  // If its silent refresh resolves after the sign-out started, the session
+  // must stay ended: no persisted token, no `refreshed`, queued requests fail.
+  describe('a refresh overtaken by a sign-out', () => {
+    const { setOidcTokenStrict } = jest.requireMock(
+      '../../../SwTokenStorageUtils'
+    ) as { setOidcTokenStrict: jest.Mock };
+
+    // Resolves once the renewer is running, with a handle to complete it.
+    const startRefreshBehind401 = async () => {
+      let resolveRenewer!: (value: {
+        expiresAt: number;
+        idToken: string;
+      }) => void;
+      let markStarted!: () => void;
+      const started = new Promise<void>((resolve) => {
+        markStarted = resolve;
+      });
+      coordinator.registerRenewer(
+        () =>
+          new Promise((resolve) => {
+            resolveRenewer = resolve;
+            markStarted();
+          })
+      );
+      const { axios, triggerError } = createMockAxios();
+      coordinator.install(axios, () => true);
+      const pending = triggerError({
+        response: { status: 401, data: {} },
+        config: { url: '/api/v1/users/loggedInUser', headers: {} },
+      });
+      pending?.catch(() => undefined);
+      await started;
+
+      return {
+        axios,
+        pending,
+        resolve: () =>
+          resolveRenewer({
+            expiresAt: Date.now() + 300_000,
+            idToken: 'fresh-after-signout',
+          }),
+      };
+    };
+
+    const events: string[] = [];
+
+    beforeEach(() => {
+      setOidcTokenStrict.mockClear();
+      localStorage.clear();
+      events.length = 0;
+      coordinator.on('refreshed', () => events.push('refreshed'));
+      coordinator.on('refresh-failed', () => events.push('refresh-failed'));
+    });
+
+    afterAll(() => localStorage.clear());
+
+    it.each([
+      ['this tab signed out (pause)', () => coordinator.pause()],
+      [
+        'another tab signed out (stored marker)',
+        () => localStorage.setItem('om-signed-out-at', String(Date.now())),
+      ],
+    ])('drops the renewed token when %s', async (_, signOut) => {
+      const { axios, pending, resolve } = await startRefreshBehind401();
+
+      signOut();
+      resolve();
+
+      await expect(pending).rejects.toBeInstanceOf(RefreshFailedError);
+      expect(setOidcTokenStrict).not.toHaveBeenCalled();
+      expect(axios.request).not.toHaveBeenCalled();
+      expect(events).toEqual([]);
+    });
+
+    it('does not adopt a sibling tab token once signed out', async () => {
+      coordinator.registerRenewer(jest.fn());
+      mockRunExclusive.mockImplementationOnce(async () => {
+        coordinator.pause();
+
+        return {
+          role: 'follower',
+          message: {
+            type: 'done',
+            payload: { idToken: 'sibling', expiresAt: Date.now() + 300_000 },
+          },
+        };
+      });
+
+      await expect(
+        coordinator.ensureFreshToken({ force: true })
+      ).rejects.toThrow('Signed out during token refresh'
+      );
+      expect(setOidcTokenStrict).not.toHaveBeenCalled();
+      expect(events).toEqual([]);
+    });
+
+    it('refreshes normally for the next session', async () => {
+      const first = await startRefreshBehind401();
+      coordinator.pause();
+      first.resolve();
+      await first.pending?.catch(() => undefined);
+
+      // Signed back in: a refresh that starts after the sign-out lands.
+      coordinator.registerRenewer(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'next-session',
+      }));
+
+      await expect(coordinator.ensureFreshToken({ force: true })).resolves.toBe(
+        'next-session'
+      );
+      expect(events).toEqual(['refreshed']);
     });
   });
 });
