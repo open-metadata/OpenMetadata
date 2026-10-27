@@ -19,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.RdfAccessFixtures;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseLogicalCheck;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.RelationProvenance;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
@@ -268,7 +270,9 @@ public class IndependentOntologyReleaseValidationIT extends BaseOntologyApproval
     assertEquals(0, empty.getDeprecationImpacts().getFirst().getBoundAssetCount());
     final var schema = DatabaseSchemaTestFactory.createSimple(ns);
     final List<UUID> expected = new ArrayList<>();
+    final List<UUID> tierOne = new ArrayList<>();
     for (int index = 0; index < 101; index++) {
+      final boolean tiered = index % 15 == 0;
       final var table =
           SdkClients.adminClient()
               .tables()
@@ -277,10 +281,13 @@ public class IndependentOntologyReleaseValidationIT extends BaseOntologyApproval
                       .withName(ns.prefix("impact" + index))
                       .withDatabaseSchema(schema.getFullyQualifiedName())
                       .withColumns(
-                          List.of(
-                              new Column().withName("id").withDataType(ColumnDataType.STRING))));
+                          List.of(new Column().withName("id").withDataType(ColumnDataType.STRING)))
+                      .withTags(tiered ? List.of(tierOneTag()) : null));
       bind(concept, table.getId(), index);
       expected.add(table.getId());
+      if (tiered) {
+        tierOne.add(table.getId());
+      }
     }
     final var complete = validate(release);
     assertEquals(empty.getShacl(), complete.getShacl());
@@ -301,19 +308,18 @@ public class IndependentOntologyReleaseValidationIT extends BaseOntologyApproval
                         List.of(new Column().withName("id").withDataType(ColumnDataType.STRING))));
     bind(concept, last.getId(), 101L);
     assertEquals(102, validate(release).getDeprecationImpacts().getFirst().getBoundAssetCount());
-    try (var fixtures = new RdfAccessFixtures("pagedImpact" + ns.shortPrefix())) {
-      final var denyTables = fixtures.denyRole(MetadataOperation.VIEW_ALL, Entity.TABLE);
-      final var reader =
-          new OpenMetadataClient(
-              OpenMetadataConfig.builder()
-                  .serverUrl(SdkClients.baseUrl())
-                  .accessToken(fixtures.userToken("reader", List.of(denyTables.getId())))
-                  .build());
-      final var hidden = validate(reader, release).getDeprecationImpacts().getFirst();
-      assertEquals(0, hidden.getBoundAssetCount());
-      assertTrue(hidden.getBoundAssets().isEmpty());
-      assertEquals(102, validate(release).getDeprecationImpacts().getFirst().getBoundAssetCount());
-    }
+    final var reader =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("pagedImpact"),
+            Entity.TABLE,
+            MetadataOperation.VIEW_BASIC,
+            "!matchAnyTag('Tier.Tier1')");
+    final var partial = validate(reader, release).getDeprecationImpacts().getFirst();
+    assertEquals(7, partial.getBoundAssetCount());
+    assertEquals(
+        tierOne.stream().sorted(Comparator.comparing(UUID::toString)).toList(),
+        partial.getBoundAssets().stream().map(asset -> asset.getId()).toList());
+    assertEquals(102, validate(release).getDeprecationImpacts().getFirst().getBoundAssetCount());
   }
 
   @Test
@@ -495,6 +501,13 @@ public class IndependentOntologyReleaseValidationIT extends BaseOntologyApproval
 
   private static OntologyReleaseValidation validate(OntologyRelease release) {
     return validate(SdkClients.adminClient(), release);
+  }
+
+  private static TagLabel tierOneTag() {
+    return new TagLabel()
+        .withTagFQN("Tier.Tier1")
+        .withSource(TagLabel.TagSource.CLASSIFICATION)
+        .withLabelType(TagLabel.LabelType.MANUAL);
   }
 
   private static void bind(OntologyConcept concept, UUID tableId, long revision) {

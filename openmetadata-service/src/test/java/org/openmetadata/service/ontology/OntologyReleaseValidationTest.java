@@ -35,17 +35,21 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.OntologyReleaseValidation;
 import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyConceptBindingsResponse;
+import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyHydratedAssetBinding;
 import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.OntologyReleaseDAO;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
@@ -54,16 +58,7 @@ class OntologyReleaseValidationTest {
   @Test
   void bindingImpactDrainsBeyondOneHundredAndContinuesAfterAnEmptyDeniedPage() {
     final var assets =
-        IntStream.range(1, 152)
-            .mapToObj(
-                index ->
-                    new OntologyHydratedAssetBinding()
-                        .withAsset(
-                            new EntityReference()
-                                .withId(new UUID(0, index))
-                                .withType("table")
-                                .withName("asset" + index)))
-            .toList();
+        IntStream.range(1, 152).mapToObj(OntologyReleaseValidationTest::table).toList();
     final var pages = new ArrayDeque<OntologyConceptBindingsResponse>();
     pages.add(
         new OntologyConceptBindingsResponse()
@@ -78,10 +73,55 @@ class OntologyReleaseValidationTest {
     pages.add(
         new OntologyConceptBindingsResponse().withRevision(1L).withAssets(assets.subList(0, 51)));
     final var result = OntologyReleaseValidationService.boundAssets(ignored -> pages.removeFirst());
-    assertEquals(151, result.size());
+    assertEquals(151, result.count());
     assertEquals(
         assets.stream().map(asset -> asset.getAsset().getId()).toList(),
-        result.stream().map(asset -> asset.getId()).toList());
+        result.identities().stream().map(EntityReference::getId).toList());
+    assertTrue(pages.isEmpty());
+  }
+
+  @Test
+  void deprecatedConceptImpactCountsEveryAssetButKeepsAtMostOneThousandIdentities() {
+    final var scenario = deprecatedConcept("impactCap");
+    final var pages = new ArrayDeque<OntologyConceptBindingsResponse>();
+    for (int start = 1; start <= 1_201; start += 100) {
+      final int end = Math.min(start + 100, 1_251);
+      pages.add(
+          new OntologyConceptBindingsResponse()
+              .withRevision(7L)
+              .withAssets(
+                  IntStream.range(start, end)
+                      .mapToObj(OntologyReleaseValidationTest::table)
+                      .toList())
+              .withAfter(end < 1_251 ? "after" + end : null));
+    }
+    final var impact = scenario.report(pages).getDeprecationImpacts().getFirst();
+    assertEquals(1_250, impact.getBoundAssetCount());
+    assertEquals(
+        IntStream.range(1, 1_001).mapToObj(index -> new UUID(0, index)).toList(),
+        impact.getBoundAssets().stream().map(EntityReference::getId).toList());
+    assertTrue(pages.isEmpty());
+  }
+
+  @Test
+  void deprecatedConceptImpactRejectsALaterBindingPageFromAnotherRevision() {
+    final var scenario = deprecatedConcept("mixedRevisions");
+    final var pages = new ArrayDeque<OntologyConceptBindingsResponse>();
+    pages.add(
+        new OntologyConceptBindingsResponse()
+            .withRevision(4L)
+            .withAssets(List.of(table(1)))
+            .withAfter("second"));
+    pages.add(
+        new OntologyConceptBindingsResponse()
+            .withRevision(4L)
+            .withAssets(List.of())
+            .withAfter("third"));
+    pages.add(new OntologyConceptBindingsResponse().withRevision(5L).withAssets(List.of(table(2))));
+    final var changed =
+        assertThrows(PreconditionFailedException.class, () -> scenario.report(pages));
+    assertEquals(412, changed.getResponse().getStatus());
+    assertEquals("Concept bindings changed; reload the validation report", changed.getMessage());
     assertTrue(pages.isEmpty());
   }
 
@@ -223,6 +263,12 @@ class OntologyReleaseValidationTest {
 
   private static OntologyReleaseValidationService validation(
       final Map<UUID, List<OntologyReleaseMember>> stored) {
+    return validation(stored, null);
+  }
+
+  private static OntologyReleaseValidationService validation(
+      final Map<UUID, List<OntologyReleaseMember>> stored,
+      final OntologyConceptBindingService bindings) {
     final OntologyReleaseDAO dao = mock(OntologyReleaseDAO.class);
     when(dao.listMembers(any(UUID.class), anyString(), anyString(), eq(100)))
         .thenAnswer(
@@ -242,7 +288,7 @@ class OntologyReleaseValidationTest {
     when(collection.ontologyReleaseDAO()).thenReturn(dao);
     final OntologyReleaseRepository releases = mock(OntologyReleaseRepository.class);
     when(releases.getDaoCollection()).thenReturn(collection);
-    return new OntologyReleaseValidationService(releases, null);
+    return new OntologyReleaseValidationService(releases, bindings);
   }
 
   private static Cache<?, ?> cache(final OntologyReleaseValidationService validation)
@@ -261,16 +307,69 @@ class OntologyReleaseValidationTest {
         .withNamespace(URI.create("https://example.org/" + name + "/"));
   }
 
-  private static Bundle bundle(final Ontology ontology, final OntologyProperty... properties) {
+  private static Scenario deprecatedConcept(final String name) {
+    final Ontology ontology = ontology(name);
+    final OntologyConcept concept =
+        new OntologyConcept()
+            .withId(UUID.randomUUID())
+            .withName("Customer")
+            .withFullyQualifiedName(name + ".Customer")
+            .withIri(URI.create("https://example.org/" + name + "/Customer"))
+            .withOntology(ontology.getEntityReference())
+            .withConceptType(OntologyConceptType.OWL_CLASS);
+    final Bundle base = bundle(ontology, concept);
+    concept.withDeprecated(true);
+    final Bundle changed = bundle(ontology, concept);
+    changed.release().withBaseReleaseId(base.release().getId());
+    final OntologyConceptBindingService bindings = mock(OntologyConceptBindingService.class);
+    final OntologyReleaseValidationService validation =
+        validation(
+            Map.of(
+                base.release().getId(),
+                base.members(),
+                changed.release().getId(),
+                changed.members()),
+            bindings);
+    return new Scenario(validation, bindings, base.release(), changed.release(), concept.getId());
+  }
+
+  private static OntologyHydratedAssetBinding table(final int index) {
+    return new OntologyHydratedAssetBinding()
+        .withAsset(
+            new EntityReference()
+                .withId(new UUID(0, index))
+                .withType("table")
+                .withName("asset" + index));
+  }
+
+  private record Scenario(
+      OntologyReleaseValidationService validation,
+      OntologyConceptBindingService bindings,
+      OntologyRelease base,
+      OntologyRelease changed,
+      UUID conceptId) {
+    OntologyReleaseValidation report(final ArrayDeque<OntologyConceptBindingsResponse> pages) {
+      final var access = new OntologyConceptBindingService.Access(null, null);
+      when(bindings.get(
+              eq(access), eq(conceptId), eq(OntologyConceptBindingService.MAX_PAGE_SIZE), any()))
+          .thenAnswer(ignored -> pages.removeFirst());
+      return validation.report(changed, base, ignored -> {}, access);
+    }
+  }
+
+  private static Bundle bundle(final Ontology ontology, final OntologyDefinition... definitions) {
     final UUID id = UUID.randomUUID();
     final List<OntologyReleaseMember> members = new ArrayList<>();
     members.add(
         OntologyReleaseManifest.member(
             id, MemberKind.ONTOLOGY, ontology.getId(), OntologyReleaseContent.project(ontology)));
-    for (final OntologyProperty property : properties) {
+    for (final OntologyDefinition definition : definitions) {
       members.add(
           OntologyReleaseManifest.member(
-              id, MemberKind.PROPERTY, property.getId(), OntologyReleaseContent.project(property)));
+              id,
+              kind(definition),
+              definition.getId(),
+              OntologyReleaseContent.project(definition)));
     }
     final OntologyRelease release =
         new OntologyRelease()
@@ -286,6 +385,14 @@ class OntologyReleaseValidationTest {
                 members.stream().mapToLong(OntologyReleaseMember::getPayloadBytes).sum())
             .withContentDigest(OntologyReleaseManifest.digest(members));
     return new Bundle(release, members);
+  }
+
+  private static MemberKind kind(final OntologyDefinition definition) {
+    return switch (definition) {
+      case OntologyConcept ignored -> MemberKind.CONCEPT;
+      case OntologyProperty ignored -> MemberKind.PROPERTY;
+      default -> throw new IllegalArgumentException(definition.getClass().getSimpleName());
+    };
   }
 
   private record Bundle(OntologyRelease release, List<OntologyReleaseMember> members) {}

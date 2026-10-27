@@ -44,11 +44,13 @@ import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMemberChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.rdf.NativeOntologyValidation;
 
 public final class OntologyReleaseValidationService {
   private static final int MAX_CACHE_STRING_LENGTH = 131_072;
+  private static final int MAX_IMPACT_ASSETS = 1_000;
   private final OntologyReleaseReader reader;
   private final OntologyConceptBindingService bindings;
   private final NativeOntologyValidation nativeValidation = new NativeOntologyValidation();
@@ -144,8 +146,9 @@ public final class OntologyReleaseValidationService {
       final CapturedDependencies dependencies,
       final OntologyConceptBindingService.Access access) {
     final EntityReference definition = change.getEntity();
-    final List<EntityReference> assets =
-        change.getMemberKind() == OntologyReleaseMember.MemberKind.CONCEPT
+    final boolean concept = change.getMemberKind() == OntologyReleaseMember.MemberKind.CONCEPT;
+    final BoundAssets assets =
+        concept
             ? boundAssets(
                 after ->
                     bindings.get(
@@ -153,28 +156,56 @@ public final class OntologyReleaseValidationService {
                         definition.getId(),
                         OntologyConceptBindingService.MAX_PAGE_SIZE,
                         after))
-            : List.of();
+            : BoundAssets.NONE;
     final String iri = dependencies.iri(change);
-    final boolean concept = change.getMemberKind() == OntologyReleaseMember.MemberKind.CONCEPT;
     return new NativeOntologyDeprecationImpact()
         .withDefinition(definition)
-        .withBoundAssetCount(assets.size())
-        .withBoundAssets(assets)
+        .withBoundAssetCount(assets.count())
+        .withBoundAssets(assets.identities())
         .withSubclasses(concept ? dependencies.subclasses(iri) : List.of())
         .withDomainProperties(concept ? dependencies.domainProperties(iri) : List.of())
         .withRangeProperties(concept ? dependencies.rangeProperties(iri) : List.of());
   }
 
-  static List<EntityReference> boundAssets(
-      final Function<String, OntologyConceptBindingsResponse> read) {
-    final List<EntityReference> assets = new ArrayList<>();
-    String after = null;
-    do {
-      final var page = read.apply(after);
-      page.getAssets().forEach(binding -> assets.add(identity(binding.getAsset())));
-      after = page.getAfter();
-    } while (after != null);
-    return assets.stream().sorted(CapturedDependencies.REFERENCE_ORDER).toList();
+  /**
+   * Counts every authorized asset but keeps only the first {@link #MAX_IMPACT_ASSETS} identities,
+   * which are the lowest asset ids because pages arrive in asset id order, so a concept bound to
+   * many assets costs bounded memory per report.
+   */
+  static BoundAssets boundAssets(final Function<String, OntologyConceptBindingsResponse> read) {
+    final OntologyConceptBindingsResponse first = read.apply(null);
+    final List<EntityReference> identities = new ArrayList<>();
+    int count = 0;
+    OntologyConceptBindingsResponse page = first;
+    while (page != null) {
+      count += page.getAssets().size();
+      identities.addAll(
+          page.getAssets().stream()
+              .limit(MAX_IMPACT_ASSETS - identities.size())
+              .map(binding -> identity(binding.getAsset()))
+              .toList());
+      page = nextPage(read, first, page);
+    }
+    return new BoundAssets(
+        count, identities.stream().sorted(CapturedDependencies.REFERENCE_ORDER).toList());
+  }
+
+  /** A page from another binding revision would mix two binding states into one impact. */
+  private static OntologyConceptBindingsResponse nextPage(
+      final Function<String, OntologyConceptBindingsResponse> read,
+      final OntologyConceptBindingsResponse first,
+      final OntologyConceptBindingsResponse page) {
+    final OntologyConceptBindingsResponse next =
+        page.getAfter() == null ? null : read.apply(page.getAfter());
+    if (next != null && !Objects.equals(first.getRevision(), next.getRevision())) {
+      throw new PreconditionFailedException(
+          "Concept bindings changed; reload the validation report");
+    }
+    return next;
+  }
+
+  record BoundAssets(int count, List<EntityReference> identities) {
+    static final BoundAssets NONE = new BoundAssets(0, List.of());
   }
 
   private static EntityReference identity(final EntityReference source) {

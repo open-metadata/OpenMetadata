@@ -47,4 +47,4 @@ The cleanup that a successful mutation performs reads the concept's rows in asse
 
 Lineage edges in the data graph are selected with both endpoints restricted to the returned assets before the edge limit applies. An asset's edges to assets outside the page cannot consume the limit and hide an edge between two returned assets.
 
-Release validation drains every non-null binding cursor, including empty pages, before sorting authorized asset identities. Structural findings may be cached, but binding impact and authorization are refreshed on every validation report.
+Release validation drains every non-null binding cursor, including empty pages. It counts every authorized asset but returns at most 1,000 asset identities per deprecated concept. Those are the first identities in asset id order, sorted by type and id. A page whose binding revision differs from the first page's fails the report with 412, so one impact never mixes two binding states. Structural findings may be cached, but binding impact and authorization are refreshed on every validation report.
