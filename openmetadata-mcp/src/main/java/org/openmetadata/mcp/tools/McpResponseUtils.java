@@ -2,6 +2,7 @@ package org.openmetadata.mcp.tools;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -27,6 +28,9 @@ import org.openmetadata.service.secrets.masker.EntityMasker;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ServiceConnectionAccess;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 public final class McpResponseUtils {
   private static final Set<String> NOISE_FIELDS =
@@ -46,6 +50,7 @@ public final class McpResponseUtils {
   private static final String UPDATED = "updated";
   private static final String OPERATION_KEY = "_operation";
   private static final String DELETED_KEY = "deleted";
+  private static final String CONNECTION_KEY = "connection";
   private static final List<String> WEBHOOK_SECRET_KEYS =
       List.of("secretKey", "clientId", "clientSecret");
 
@@ -78,6 +83,30 @@ public final class McpResponseUtils {
       case ServiceEntityInterface service -> maskConnection(service, masker);
       default -> entity;
     };
+  }
+
+  /**
+   * Removes a service's connection from {@code doc} unless the caller can edit the service, the rule
+   * ServiceEntityResource applies to REST responses. An editor keeps the copy {@link #maskSecrets}
+   * masked; a test suite has no service repository and keeps its placeholder connection.
+   * ADR:2026-10-26-service-connection-visibility-follows-edit-permission
+   */
+  public static Map<String, Object> hideConnectionFromNonEditors(
+      Map<String, Object> doc,
+      EntityInterface<?> entity,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    if (entity instanceof ServiceEntityInterface) {
+      String entityType = Entity.getEntityTypeFromObject(entity);
+      if (Entity.getEntityRepository(entityType) instanceof ServiceEntityRepository<?, ?>
+          && !ServiceConnectionAccess.canEditConnection(
+              authorizer,
+              securityContext,
+              new ResourceContext<>(entityType, entity.getId(), null))) {
+        doc.remove(CONNECTION_KEY);
+      }
+    }
+    return doc;
   }
 
   private static EntityInterface<?> maskConnection(

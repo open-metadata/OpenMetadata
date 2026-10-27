@@ -157,18 +157,22 @@ class WorkflowConfigBuilder:
         service = self._safe_get_by_id(DatabaseService, service_id)
 
         self.service_connection = cast(DatabaseConnection, service.connection)  # noqa: TC006
-        self._raise_if_credentials_masked(model_str(service.name))
+        self._raise_if_credentials_unusable(model_str(service.name))
         return self
 
-    def _raise_if_credentials_masked(self, service_name: str) -> None:
-        """Fail here rather than letting a masked credential reach the source.
+    def _raise_if_credentials_unusable(self, service_name: str) -> None:
+        """Fail here rather than letting a missing or masked credential reach the source.
 
         A workflow built from masked credentials fails much later as an authentication
         error from the source itself, which points at the source instead of at the token
         that caused it.
         """
         if self.service_connection is None:
-            return
+            raise ValueError(
+                f"No connection came back for service '{service_name}'. OpenMetadata returns a "
+                "service connection only to bot accounts and to users who can edit the service, so "
+                "authenticate with a bot token (for example ingestion-bot)."
+            )
 
         masked_fields = _find_masked_fields(self.service_connection.model_dump())
         if not masked_fields:

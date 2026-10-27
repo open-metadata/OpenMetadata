@@ -1,9 +1,11 @@
 # A service connection is returned only to bots and to callers who can edit the service
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial)
+- **Revisions:** v1 2026-10-26 (initial) · v2 2026-10-27 (MCP follows the rule; clients that run
+  without a connection)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** reviewer
+- **Guard:** `MetadataServiceResourceIT`, `ServiceConnectionAccessTest`,
+  `McpResponseUtilsTest#hideConnectionFromNonEditors*`
 - **Related:** [CVE reporting scope](2026-10-14-cve-reporting-covers-unauthenticated-access-only.md),
   [MCP responses mask stored credentials](2026-10-20-mcp-responses-mask-stored-credentials.md)
 
@@ -45,3 +47,22 @@ application config.
 - Masking remains the second layer for editors: `@PasswordField` values, including the
   server-connection JWT, are masked rather than exempt from masking.
 - A migration drops `elasticsSearch` and `securityConfig` from existing metadata service rows.
+
+## Amendment — 2026-10-27: MCP, and clients that run without a connection
+
+- **MCP follows the same rule.** `get_entity` and `patch_entity` drop a service's `connection` for a
+  caller without `EDIT_ALL` on the service, through the `ServiceConnectionAccess` check the REST
+  resource uses. A caller with it gets the connection masked, bots included, as
+  ADR:2026-10-20-mcp-responses-mask-stored-credentials decides for every MCP response.
+- **Ingestion without a connection.** A workflow that reads its connection from the server fails
+  with an error naming the token as the cause when none comes back. dbt is the exception: it never
+  connects to the source, so it runs without the connection and takes the SQL dialect for query
+  lineage from the service's `serviceType`, which every viewer can read.
+- **Menus built from the connection offer less.** The add-agent menu, and Collate's Add Policy Agent
+  and add-job actions, read the connection to decide what to offer; a role that can create
+  ingestion pipelines but lacks `EditAll` on the service sees fewer options. They degrade; they do
+  not fail.
+- **The legacy Data Insights pipeline is retired.** Collate's `dataInsight` ingestion pipeline type
+  took its search sink from the built-in service's connection, which no longer stores it. Deploying
+  one fails with an error pointing to the Data Insights application; the sink is not re-read from
+  anywhere else.
