@@ -109,7 +109,8 @@ export interface OntologyEdge {
 export type OntologyEdgeKind =
   | 'ontology'
   | 'assetBinding'
-  | 'semanticProjection';
+  | 'semanticProjection'
+  | 'observedLineage';
 
 export interface OntologyGraphData {
   nodes: OntologyNode[];
