@@ -625,6 +625,53 @@ public class AppsResourceIT {
   }
 
   /**
+   * An app's bot is the account named after the app. When a person already holds that name,
+   * installing the app must refuse rather than turn the person's account into the bot, which would
+   * hand the app's privileges to whoever signs in as that person.
+   */
+  @Test
+  void test_installApp_doesNotAdoptAPersonsAccountAsItsBot(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    String appName = "BotNameTaken" + suffix;
+    String botName = appName + "Bot";
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            "/v1/apps/marketplace",
+            new CreateAppMarketPlaceDefinitionReq()
+                .withName(appName)
+                .withDisplayName("Bot Name Taken")
+                .withDescription("An app whose bot name a person already holds")
+                .withFeatures("test features")
+                .withDeveloper("Test Developer")
+                .withDeveloperUrl("https://www.example.com")
+                .withPrivacyPolicyUrl("https://www.example.com/privacy")
+                .withSupportEmail("support@example.com")
+                .withClassName("org.openmetadata.service.resources.apps.TestApp")
+                .withAppType(AppType.Internal)
+                .withScheduleType(ScheduleType.Scheduled)
+                .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+                .withAppConfiguration(new HashMap<>())
+                .withPermission(NativeAppPermission.All),
+            AppMarketPlaceDefinition.class);
+    CreateUser createPerson =
+        new CreateUser().withName(botName).withEmail("bot_name_taken_" + suffix + "@test.om.org");
+    User person = ns.trackRoot(Entity.USER, admin.users().create(createPerson));
+
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> Apps.install().name(appName).execute());
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+
+    User saved = admin.users().get(person.getId().toString());
+    assertNotEquals(Boolean.TRUE, saved.getIsBot());
+    assertEquals(person.getVersion(), saved.getVersion());
+    assertThrows(OpenMetadataException.class, () -> admin.bots().getByName(botName));
+    assertThrows(OpenMetadataException.class, () -> Apps.getByName(appName));
+  }
+
+  /**
    * A user of its own holding the seeded DataSteward role. The shared data-steward client only mints
    * a token, so its account exists only if another test happened to create it first.
    */

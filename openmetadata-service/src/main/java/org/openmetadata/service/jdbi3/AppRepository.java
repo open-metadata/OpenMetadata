@@ -33,6 +33,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.AppException;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -113,7 +114,7 @@ public class AppRepository extends EntityRepository<App> {
     try {
       botUser = userRepository.getByName(null, botName, userRepository.getFields("id"));
       if (!Boolean.TRUE.equals(botUser.getIsBot())) {
-        throw new IllegalStateException(
+        throw BadRequestException.of(
             String.format(
                 "User '%s' already exists and is not a bot, so it cannot be the bot of application"
                     + " '%s'. Rename or delete that user first.",
