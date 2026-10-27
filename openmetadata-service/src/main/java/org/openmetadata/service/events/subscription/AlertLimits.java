@@ -36,7 +36,7 @@ public final class AlertLimits {
   /** The most destinations one alert, or one test send, may hold. */
   public static final int MAX_DESTINATIONS = 50;
 
-  /** The most receivers one email or webhook destination may list. */
+  /** The most receivers a user may type into one email or webhook destination. */
   public static final int MAX_RECEIVERS_PER_DESTINATION = 100;
 
   private static final String RECEIVERS = "receivers";
@@ -54,6 +54,17 @@ public final class AlertLimits {
     requireNoGrowthPast("batchSize", batchSizeOf(original), batchSizeOf(updated), MAX_BATCH_SIZE);
     requireBatchSizeOfAtLeastOne(original, updated);
     requireNoDestinationGrowsPastTheReceiverLimit(original, updated);
+  }
+
+  private static void requireReceiversWithin(long held, long receivers) {
+    boolean grewPastTheLimit = receivers > MAX_RECEIVERS_PER_DESTINATION && receivers > held;
+    if (grewPastTheLimit) {
+      throw new BadRequestException(
+          String.format(
+              "receivers must be less than or equal to %d, got %d. To reach more people, send to a"
+                  + " team or to a mailing list instead of listing each address",
+              MAX_RECEIVERS_PER_DESTINATION, receivers));
+    }
   }
 
   private static void requireNoGrowthPast(String field, long before, long after, long limit) {
@@ -102,7 +113,7 @@ public final class AlertLimits {
           claim(unclaimed, receivers)
               ? receivers.size()
               : byId.getOrDefault(destination.getId(), Set.of()).size();
-      requireNoGrowthPast(RECEIVERS, held, receivers.size(), MAX_RECEIVERS_PER_DESTINATION);
+      requireReceiversWithin(held, receivers.size());
     }
   }
 
@@ -138,7 +149,16 @@ public final class AlertLimits {
     return alert == null || alert.getBatchSize() == null ? 0 : alert.getBatchSize();
   }
 
+  // The receivers a user typed into the destination, the only ones each send goes to as written.
+  // A destination of users or teams names who to find instead, however many people that is.
   private static Set<String> receiversOf(SubscriptionDestination destination) {
+    SubscriptionDestination.SubscriptionCategory category = destination.getCategory();
+    boolean typedByTheUser =
+        category == null || category == SubscriptionDestination.SubscriptionCategory.EXTERNAL;
+    return typedByTheUser ? listedReceivers(destination) : Set.of();
+  }
+
+  private static Set<String> listedReceivers(SubscriptionDestination destination) {
     Object config = destination.getConfig();
     Object receivers =
         config == null ? null : JsonUtils.convertValue(config, Map.class).get(RECEIVERS);

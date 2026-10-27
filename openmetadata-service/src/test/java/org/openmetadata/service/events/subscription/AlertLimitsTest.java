@@ -85,6 +85,29 @@ class AlertLimitsTest {
         () -> AlertLimits.requireWithin(stored, alert(List.of(grown, large), 100)));
   }
 
+  // Users or teams are found by name, however many people that is: only typed addresses count.
+  @Test
+  void aDestinationOfUsersOrTeamsIsNotHeldToTheReceiverLimit() {
+    for (SubscriptionDestination.SubscriptionCategory category :
+        List.of(
+            SubscriptionDestination.SubscriptionCategory.USERS,
+            SubscriptionDestination.SubscriptionCategory.TEAMS)) {
+      Set<String> names =
+          IntStream.range(0, AlertLimits.MAX_RECEIVERS_PER_DESTINATION + 50)
+              .mapToObj(index -> "name" + index)
+              .collect(Collectors.toSet());
+      SubscriptionDestination named =
+          new SubscriptionDestination()
+              .withId(UUID.randomUUID())
+              .withType(SubscriptionDestination.SubscriptionType.EMAIL)
+              .withCategory(category)
+              .withConfig(new EmailAlertConfig().withReceivers(names));
+
+      assertDoesNotThrow(
+          () -> AlertLimits.requireWithin(null, alert(List.of(named), 100)), category.value());
+    }
+  }
+
   // A PUT carries no ids, so each destination it sends gets a new one.
   @Test
   void aStoredListPastTheLimitSentAgainUnderANewIdIsKept() {
