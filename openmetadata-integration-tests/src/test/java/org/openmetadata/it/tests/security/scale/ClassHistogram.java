@@ -27,7 +27,7 @@ import javax.management.ObjectName;
  * Live-object class histogram of this JVM, taken through the {@code DiagnosticCommand} MBean. The
  * command collects garbage first, so only reachable objects are counted.
  */
-final class ClassHistogram {
+public final class ClassHistogram {
   private static final Pattern LINE = Pattern.compile("^\\s*\\d+:\\s+(\\d+)\\s+(\\d+)\\s+(\\S+)");
 
   private final Map<String, Long> bytesByClass;
@@ -51,7 +51,7 @@ final class ClassHistogram {
     }
   }
 
-  static Map<String, Long> parse(String text) {
+  public static Map<String, Long> parse(String text) {
     Map<String, Long> bytes = new HashMap<>();
     for (String line : text.split("\n")) {
       Matcher match = LINE.matcher(line);

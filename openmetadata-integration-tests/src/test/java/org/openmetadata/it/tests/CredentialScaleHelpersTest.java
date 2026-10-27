@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.it.tests.security.scale;
+package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -20,11 +20,12 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import java.util.Map;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.it.tests.security.scale.ClassHistogram;
+import org.openmetadata.it.tests.security.scale.CredentialMeters;
+import org.openmetadata.it.tests.security.scale.Percentiles;
 
-@Tag("scale")
-class CredentialScaleHelpersIT {
+class CredentialScaleHelpersTest {
   @Test
   void percentilesUseTheNearestRank() {
     double[] samples = {50, 10, 40, 20, 30};

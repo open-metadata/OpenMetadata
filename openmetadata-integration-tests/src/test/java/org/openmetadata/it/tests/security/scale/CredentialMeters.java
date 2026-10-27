@@ -30,13 +30,13 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>{@link #ofServer()} reads the global registry the in-process test server reports to.
  */
-final class CredentialMeters {
+public final class CredentialMeters {
   private static final String VERIFIER_CLASS =
       "org.openmetadata.service.security.credentials.CredentialVerifier";
 
   private final MeterRegistry registry;
 
-  CredentialMeters(MeterRegistry registry) {
+  public CredentialMeters(MeterRegistry registry) {
     this.registry = registry;
   }
 
@@ -45,7 +45,7 @@ final class CredentialMeters {
   }
 
   /** True when the server build contains the verifier, whether or not it has checked a token. */
-  boolean verifierPresent() {
+  public boolean verifierPresent() {
     boolean present = true;
     try {
       Class.forName(VERIFIER_CLASS, false, CredentialMeters.class.getClassLoader());
@@ -56,7 +56,7 @@ final class CredentialMeters {
   }
 
   /** Sum of the counters called {@code name} whose tags include every key and value pair given. */
-  double counterSum(String name, String... tags) {
+  public double counterSum(String name, String... tags) {
     return registry.find(name).counters().stream()
         .filter(counter -> hasTags(counter, tags))
         .mapToDouble(counter -> counter.count())

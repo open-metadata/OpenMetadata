@@ -14,7 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.it.tests.CredentialFixtures.LOGGED_IN_USER;
 import static org.openmetadata.it.tests.CredentialFixtures.PIPELINE_CONFIG;
 
@@ -150,8 +150,11 @@ class CredentialDatabaseOutageIT {
 
   private static void withDatabasePaused(Runnable whilePaused) {
     DockerClient docker = DockerClientFactory.lazyClient();
+    assertNotNull(
+        TestSuiteBootstrap.getDatabaseContainer(),
+        "the suite runs against an embedded database container");
     String containerId = TestSuiteBootstrap.getDatabaseContainer().getContainerId();
-    assertTrue(containerId != null, "the suite runs against an embedded database container");
+    assertNotNull(containerId, "the embedded database container has an id");
     docker.pauseContainerCmd(containerId).exec();
     try {
       whilePaused.run();

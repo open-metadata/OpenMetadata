@@ -40,6 +40,7 @@ import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
+import org.openmetadata.service.security.credentials.CredentialVerificationConfig;
 
 /**
  * The yaml of a forked server must load back through the same Dropwizard factory the application
@@ -49,6 +50,10 @@ class ForkedServerConfigTest {
   private static final String BASE =
       ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
   private static final Ports PORTS = new Ports(41001, 41002);
+
+  private static final CredentialVerificationConfig SUITE_VERIFICATION =
+      new CredentialVerificationConfig(
+          Duration.seconds(9), null, null, null, null, null, null, null, null);
 
   private static OpenMetadataApplicationConfig suite;
 
@@ -68,6 +73,7 @@ class ForkedServerConfigTest {
     suite.getCacheConfig().provider = org.openmetadata.service.cache.CacheConfig.Provider.redis;
     suite.getCacheConfig().redis.url = "redis://redis-host:6380";
     suite.getCacheConfig().redis.keyspace = "om:it:42";
+    suite.setCredentialVerification(SUITE_VERIFICATION);
   }
 
   @Test
@@ -98,7 +104,7 @@ class ForkedServerConfigTest {
     OpenMetadataApplicationConfig forked = render(dir, Map.of("sweepInterval", "2500ms"));
 
     assertEquals(Duration.milliseconds(2500), forked.getCredentialVerification().sweepInterval());
-    assertEquals(Duration.seconds(5), forked.getCredentialVerification().maxStaleness());
+    assertEquals(Duration.seconds(9), forked.getCredentialVerification().maxStaleness());
   }
 
   private static OpenMetadataApplicationConfig render(Path dir, Map<String, String> overrides)
