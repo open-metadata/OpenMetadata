@@ -53,7 +53,9 @@ class HexCellColumn:
 class HexCellLineage:
     """One SQL cell: the tables it reads and the columns it outputs"""
 
+    # The cell's id, which survives a rename; the label is only displayed
     name: str
+    label: str
     sql: str
     # table id -> (table, the db service prefix it was found under)
     tables: dict[str, tuple[Table, str | None]] = field(default_factory=dict)
@@ -85,12 +87,26 @@ def parse_cell_sql(sql: str, connection_type: str | None) -> exp.Query | None:
 
 
 def get_table_references(expression: exp.Expression) -> list[exp.Table]:
-    """Tables read by the query, skipping references to its own CTEs"""
-    cte_names = {cte.alias_or_name.lower() for cte in expression.find_all(exp.CTE)}
+    """
+    Tables the query reads, skipping references to a CTE. Scope by scope: a CTE
+    defined inside an inlined cell doesn't shadow a table of the same name outside it.
+    """
+    try:
+        root = build_scope(expression)
+    except (SqlglotError, IndexError, KeyError):
+        root = None
+    if root is None:
+        cte_names = {cte.alias_or_name.lower() for cte in expression.find_all(exp.CTE)}
+        return [
+            table
+            for table in expression.find_all(exp.Table)
+            if table.name and (table.db or table.name.lower() not in cte_names)
+        ]
     return [
         table
-        for table in expression.find_all(exp.Table)
-        if table.name and (table.db or table.name.lower() not in cte_names)
+        for scope in root.traverse()
+        for table in scope.tables
+        if table.name and isinstance(scope.sources.get(table.alias_or_name), exp.Table)
     ]
 
 
@@ -102,14 +118,12 @@ def inline_upstream_cells(expression: exp.Query, upstream: dict[str, exp.Query])
     names = {table.name.lower() for table in get_table_references(expression) if not table.db} & upstream.keys()
     if not names:
         return False
-    ctes: list[exp.Expression] = []
-    for name in sorted(names):
-        query = upstream[name].copy()
-        # Hoist the upstream cell's own CTEs so the WITH stays flat
-        inner = query.args.get("with_")
-        query.set("with_", None)
-        ctes.extend(inner.expressions if inner else [])
-        ctes.append(exp.CTE(this=query, alias=exp.TableAlias(this=exp.to_identifier(name))))
+    # Each cell nests with its own WITH: hoisting its CTEs next to this query's would
+    # let a CTE name capture a table this query reads
+    ctes = [
+        exp.CTE(this=upstream[name].copy(), alias=exp.TableAlias(this=exp.to_identifier(name)))
+        for name in sorted(names)
+    ]
     own = expression.args.get("with_")
     expression.set("with_", exp.With(expressions=ctes + (own.expressions if own else [])))
     return True
