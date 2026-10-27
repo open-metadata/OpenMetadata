@@ -26,6 +26,10 @@ from metadata.generated.schema.entity.data.metric import Language
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.table import Column, DataModel, DataType, Table
 from metadata.generated.schema.entity.domains.domain import Domain
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -40,6 +44,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
@@ -5298,3 +5303,55 @@ class TestCatalogMapping:
         sql = 'select id from "bq_catalog"."raw"."customers"'
 
         assert self._source()._map_catalogs_in_sql(sql) == sql
+
+
+class TestLineageDialectWithoutConnection:
+    """
+    The server returns a service connection only to bots and to users who can edit the
+    service, so a dbt run with any other token has no connection to take the SQL dialect from.
+    """
+
+    @staticmethod
+    def _source():
+        config = {
+            "type": "dbt",
+            "serviceName": "trino_svc",
+            "sourceConfig": {
+                "config": {
+                    "type": "DBT",
+                    "dbtConfigSource": {"dbtConfigType": "local", "dbtManifestFilePath": "/dbt/manifest.json"},
+                }
+            },
+        }
+        return DbtSource.create(config, MagicMock())
+
+    def test_query_lineage_parses_with_the_dialect_of_the_service_type(self):
+        source = self._source()
+        source.metadata.get_by_name.return_value = SimpleNamespace(serviceType=DatabaseServiceType.Trino)
+        data_model_link = SimpleNamespace(
+            table_entity=Table(
+                id=uuid.uuid4(),
+                name="stg_customers",
+                columns=[],
+                fullyQualifiedName="trino_svc.hive.analytics.stg_customers",
+            ),
+            datamodel=SimpleNamespace(sql=SimpleNamespace(root="select id from hive.raw.customers")),
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.get_lineage_by_query", return_value=[]
+        ) as lineage_by_query:
+            assert list(source.create_dbt_query_lineage(data_model_link)) == []
+
+        assert source.config.serviceConnection is None
+        assert lineage_by_query.call_args.kwargs["dialect"] == Dialect.TRINO
+        source.metadata.get_by_name.assert_called_once_with(entity=DatabaseService, fqn="trino_svc")
+
+    def test_an_unreadable_service_falls_back_to_ansi_and_is_read_once(self):
+        source = self._source()
+        source.metadata.get_by_name.side_effect = APIError({"code": 403, "message": "denied"})
+
+        dialects = [ConnectionTypeDialectMapper.dialect_of(source.lineage_connection_type) for _ in range(2)]
+
+        assert dialects == [Dialect.ANSI, Dialect.ANSI]
+        source.metadata.get_by_name.assert_called_once()

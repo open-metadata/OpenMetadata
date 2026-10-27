@@ -130,7 +130,12 @@ public class PatchEntityTool implements McpTool {
             null,
             ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.entity(), response.changeType(), userName);
-    return McpResponseUtils.compactPatch(response.entity(), response.changeType());
+    // A field-scoped edit, such as a description, does not entitle the caller to the connection.
+    return McpResponseUtils.hideConnectionFromNonEditors(
+        McpResponseUtils.compactPatch(response.entity(), response.changeType()),
+        response.entity(),
+        authorizer,
+        securityContext);
   }
 
   private static void requireTarget(String entityType, String fqn) {

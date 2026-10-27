@@ -1,7 +1,8 @@
 # MCP responses mask stored credentials for every caller, and patch_entity does not reach a service's connection
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-20 (initial)
+- **Revisions:** v1 2026-10-20 (initial) · v2 2026-10-27 (a service's connection only for callers
+  who can edit it)
 - **Deciders:** Vishnu Jain
 - **Guard:** `McpResponseUtilsTest`, `PatchEntityToolTest#execute_rejectsPatchesThatReachAServiceConnection`
 - **Related:** #34566
@@ -32,3 +33,10 @@ bot caller the decrypted values.
   through `copy`, `move` or `test`; connection changes go through the service's REST API. This is
   stricter than REST PATCH on purpose.
 - A new entity type that stores credentials needs its own branch in `maskSecrets`.
+
+## Amendment — 2026-10-27: a service's connection only for callers who can edit it
+
+`get_entity` and `patch_entity` return a service's `connection` only to a caller with `EDIT_ALL` on
+the service, per ADR:2026-10-26-service-connection-visibility-follows-edit-permission; everyone
+else reads the service without it. The first consequence above now holds for those callers alone:
+they read the host, account and username, with the password fields masked.

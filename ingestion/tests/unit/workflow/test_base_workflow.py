@@ -12,6 +12,8 @@
 Validate the logic and status handling of the base workflow
 """
 
+import logging
+from types import SimpleNamespace
 from typing import Iterable, Tuple  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -31,9 +33,11 @@ from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Source,
@@ -47,6 +51,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.api.steps import Source as WorkflowSource
+from metadata.workflow.base import InvalidWorkflowJSONException
 from metadata.workflow.ingestion import IngestionWorkflow
 
 
@@ -199,6 +204,47 @@ class TestBaseWorkflow(TestCase):
         )
 
         self.assertEqual(workflow_config.ingestionRunnerName, "test-runner")
+
+
+def _workflow_resolving_a_service_without_connection(source_config) -> SimpleWorkflow:
+    """The server returns no connection to a token that is neither a bot nor a service editor"""
+    workflow_config = config.model_copy(
+        update={
+            "source": config.source.model_copy(
+                update={"type": "mysql", "sourceConfig": SourceConfig(config=source_config)}
+            )
+        },
+        deep=True,
+    )
+    metadata = MagicMock()
+    metadata.config.forceEntityOverwriting = True
+    with patch("metadata.workflow.base.create_ometa_client", return_value=metadata):
+        workflow = SimpleWorkflow(config=workflow_config)
+    workflow.metadata.config.forceEntityOverwriting = False
+    workflow.metadata.get_by_name.return_value = SimpleNamespace(connection=None)
+    return workflow
+
+
+def test_missing_service_connection_names_the_token_as_the_cause():
+    workflow = _workflow_resolving_a_service_without_connection(DatabaseServiceMetadataPipeline())
+
+    with pytest.raises(InvalidWorkflowJSONException, match="only to bot accounts"):
+        workflow._retrieve_service_connection_if_needed(ServiceType.Database)
+
+
+def test_dbt_runs_without_the_service_connection(caplog):
+    workflow = _workflow_resolving_a_service_without_connection(
+        DbtPipeline.model_validate(
+            {"dbtConfigSource": {"dbtConfigType": "local", "dbtManifestFilePath": "/dbt/manifest.json"}}
+        )
+    )
+
+    with caplog.at_level(logging.ERROR):
+        workflow._retrieve_service_connection_if_needed(ServiceType.Database)
+
+    assert workflow.config.source.serviceConnection is None
+    # Not an error that was swallowed: dbt never needed the connection
+    assert not caplog.records
 
 
 class TestWorkflowExecuteTeardown:

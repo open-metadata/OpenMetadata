@@ -539,3 +539,16 @@ def test_build_without_table_raises_assertion(mock_ometa_client, test_definition
 
     with pytest.raises(AssertionError, match="Table entity not provided"):
         builder.build()
+
+
+def test_with_table_raises_when_no_connection_comes_back(mock_ometa_client, mock_table):
+    """Callers who are neither bots nor service editors get no connection at all"""
+    mock_ometa_client.get_by_id.return_value = DatabaseService.model_construct(
+        id=mock_table.service.id, name=EntityName("MySQL"), connection=None
+    )
+    builder = WorkflowConfigBuilder(client=mock_ometa_client)
+
+    with pytest.raises(ValueError, match="No connection came back for service 'MySQL'") as exc_info:
+        builder.with_table("MySQL.default.test_db.test_table")
+
+    assert "ingestion-bot" in str(exc_info.value)

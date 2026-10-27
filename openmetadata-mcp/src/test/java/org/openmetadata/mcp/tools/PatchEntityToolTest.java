@@ -37,11 +37,13 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -382,6 +384,36 @@ class PatchEntityToolTest {
 
       verify(serviceRepository).patch(any(), any(String.class), any(), any(), any(), any(), any());
     }
+  }
+
+  /** A field-scoped edit, such as a description, does not entitle the caller to the connection. */
+  @Test
+  void execute_servicePatchResponseOmitsTheConnectionForCallersWhoCannotEditTheService() {
+    DatabaseServiceRepository serviceRepository = McpResponseUtilsTest.databaseServiceRepository();
+    doReturn(
+            new RestUtil.PatchResponse<>(
+                Response.Status.OK, McpResponseUtilsTest.mysqlService(), EventType.ENTITY_UPDATED))
+        .when(serviceRepository)
+        .patch(any(), any(String.class), any(), any(), any(), any(), any());
+    EntityMaskerFactory.createEntityMasker();
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.DATABASE_SERVICE);
+    params.put("fqn", "mysqlService");
+    params.put("patch", "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"x\"}]");
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entityMock =
+            McpResponseUtilsTest.mockServiceLookups(serviceRepository);
+        MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class)) {
+      result =
+          new PatchEntityTool()
+              .execute(
+                  McpResponseUtilsTest.authorizerWithEditAll(Access.NOT_ALLOW),
+                  securityContext,
+                  params);
+    }
+
+    assertThat(result).doesNotContainKey("connection").containsEntry("name", "mysqlService");
   }
 
   @ParameterizedTest
