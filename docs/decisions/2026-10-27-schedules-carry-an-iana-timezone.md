@@ -29,7 +29,8 @@ controller and the OMJob operator all agree on.
   Kubernetes CronJob controller resolves `spec.timeZone` against tzdata and would reject them.
   Repositories store the trimmed id (`TimezoneUtil.normalize`), never the raw input.
 - The UI defaults a **new** schedule to the browser zone. Editing an app that has no stored zone
-  seeds `UTC`, the effective server default, so saving an unchanged dialog does not move the app.
+  leaves the zone unset (the picker shows its placeholder) and omits it from the save, so saving an
+  unchanged dialog cannot move the app off the server default.
 - An absent `appSchedule.timezone` keeps the Quartz default (the server JVM zone), so existing
   deployments do not change behaviour. An absent `pipelineTimezone` keeps its schema default `UTC`.
 - The app schedule is the source of truth for the pipeline bound to an external app: its timezone is
@@ -48,6 +49,7 @@ controller and the OMJob operator all agree on.
   scheduling at the Airflow default zone until that client passes it on.
 - Periodic workflow triggers run in the server zone: Flowable's `TimerEventDefinition` has no zone
   and `CycleBusinessCalendar` resolves the cron with the engine clock. `PeriodicBatchEntityTrigger`
-  rejects a schedule whose zone rules differ from the server's rather than dropping it silently.
+  rejects a schedule whose zone rules differ from the server's rather than dropping it silently,
+  and `WorkflowDefinitionRepository.prepare` runs that check before the definition is stored.
 - Changing the stored representation (for example to an offset) would need a migration of every
   pipeline and app and a change to the operator and the k8s client in the same release.

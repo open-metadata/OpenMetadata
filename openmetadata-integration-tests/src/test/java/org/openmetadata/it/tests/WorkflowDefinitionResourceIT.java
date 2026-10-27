@@ -34,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -2285,6 +2286,89 @@ public class WorkflowDefinitionResourceIT {
     assertNotNull(validResponse);
     JsonNode validCreated = MAPPER.readTree(validResponse);
     assertEquals(ns.prefix("testPrepareValidation"), validCreated.get("name").asText());
+  }
+
+  /**
+   * Flowable timers carry no zone, so a periodic schedule in a zone other than the server's is
+   * refused. The refusal has to happen in prepare: the trigger is only built in postCreate, after
+   * the definition is stored, so a later failure would leave an undeployable definition behind.
+   */
+  @Test
+  void test_PeriodicBatchWorkflowRejectsForeignTimezoneBeforeStoring(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ZoneId foreign =
+        ZoneId.of("Asia/Tokyo").getRules().equals(ZoneId.systemDefault().getRules())
+            ? ZoneId.of("Europe/Berlin")
+            : ZoneId.of("Asia/Tokyo");
+    String name = ns.prefix("periodicForeignZone");
+    Map<String, Object> schedule = new HashMap<>();
+    schedule.put("scheduleTimeline", "Custom");
+    schedule.put("cronExpression", "0 2 * * *");
+    schedule.put("timezone", foreign.getId());
+    Map<String, Object> request = periodicWorkflowRequest(name, schedule);
+
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST, BASE_PATH, request, RequestOptions.builder().build()));
+
+    assertEquals(400, rejected.getStatusCode());
+    assertTrue(rejected.getMessage().contains(foreign.getId()));
+    OpenMetadataException notStored =
+        assertThrows(
+            OpenMetadataException.class, () -> client.workflowDefinitions().getByName(name, null));
+    assertEquals(404, notStored.getStatusCode());
+  }
+
+  private static Map<String, Object> periodicWorkflowRequest(
+      String name, Map<String, Object> schedule) {
+    Map<String, Object> startNode = new HashMap<>();
+    startNode.put("name", "start");
+    startNode.put("type", "startEvent");
+    startNode.put("subType", "startEvent");
+
+    Map<String, Object> setFieldNode = new HashMap<>();
+    setFieldNode.put("name", "setDescription");
+    setFieldNode.put("displayName", "Set Description");
+    setFieldNode.put("type", "automatedTask");
+    setFieldNode.put("subType", "setEntityAttributeTask");
+    Map<String, Object> setFieldConfig = new HashMap<>();
+    setFieldConfig.put("fieldName", "description");
+    setFieldConfig.put("fieldValue", "Updated by workflow");
+    setFieldNode.put("config", setFieldConfig);
+
+    Map<String, Object> endNode = new HashMap<>();
+    endNode.put("name", "end");
+    endNode.put("type", "endEvent");
+    endNode.put("subType", "endEvent");
+
+    Map<String, Object> edge1 = new HashMap<>();
+    edge1.put("from", "start");
+    edge1.put("to", "setDescription");
+    Map<String, Object> edge2 = new HashMap<>();
+    edge2.put("from", "setDescription");
+    edge2.put("to", "end");
+
+    Map<String, Object> triggerConfig = new HashMap<>();
+    triggerConfig.put("entityTypes", List.of("table"));
+    triggerConfig.put("batchSize", 100);
+    triggerConfig.put("schedule", schedule);
+    Map<String, Object> trigger = new HashMap<>();
+    trigger.put("type", "periodicBatchEntity");
+    trigger.put("config", triggerConfig);
+
+    Map<String, Object> request = new HashMap<>();
+    request.put("name", name);
+    request.put("displayName", "Periodic Batch Workflow");
+    request.put("description", "Periodic batch workflow with a schedule timezone");
+    request.put("trigger", trigger);
+    request.put("nodes", List.of(startNode, setFieldNode, endNode));
+    request.put("edges", List.of(edge1, edge2));
+    return request;
   }
 
   @Test

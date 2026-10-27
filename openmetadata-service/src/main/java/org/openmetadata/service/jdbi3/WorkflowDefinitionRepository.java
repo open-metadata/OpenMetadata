@@ -25,6 +25,7 @@ import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.ExpiryTimer;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -39,6 +40,7 @@ import org.openmetadata.service.governance.workflows.SinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
 import org.openmetadata.service.secrets.WorkflowSinkSecrets;
 import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
@@ -122,6 +124,10 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     // trigger (getUpdater), so a stored definition that breaks them can still be edited otherwise.
     LOG.info("Validating workflow configuration for: {}", entity.getName());
     validateWorkflowStructure(entity);
+    if (entity.getTrigger() instanceof PeriodicBatchEntityTriggerDefinition periodic
+        && periodic.getConfig() != null) {
+      PeriodicBatchEntityTrigger.requireServerTimezone(periodic.getConfig().getSchedule());
+    }
   }
 
   @Override

@@ -32,6 +32,7 @@ import org.flowable.bpmn.model.StartEvent;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.workflows.SubWorkflowFailureListener;
 
 class PeriodicBatchEntityTriggerTest {
@@ -67,14 +68,18 @@ class PeriodicBatchEntityTriggerTest {
     PeriodicBatchEntityTriggerDefinition triggerDef =
         createScheduledTriggerDefinition(foreign.getId());
 
-    IllegalArgumentException rejected =
+    BadRequestException rejected =
         assertThrows(
-            IllegalArgumentException.class,
+            BadRequestException.class,
             () ->
                 new PeriodicBatchEntityTrigger(
                     "MainWorkflow", "MainWorkflowTrigger", triggerDef, true));
 
     assertTrue(rejected.getMessage().contains(foreign.getId()));
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            PeriodicBatchEntityTrigger.requireServerTimezone(triggerDef.getConfig().getSchedule()));
   }
 
   @Test

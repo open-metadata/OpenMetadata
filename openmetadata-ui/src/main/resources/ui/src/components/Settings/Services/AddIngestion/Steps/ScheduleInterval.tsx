@@ -143,6 +143,7 @@ const TimezoneSelect = ({
         isDisabled={disabled}
         items={filteredItems}
         label={t('label.timezone')}
+        placeholder={t('label.default')}
         selectedKey={value ?? null}
         shortcut={false}
         size="sm"

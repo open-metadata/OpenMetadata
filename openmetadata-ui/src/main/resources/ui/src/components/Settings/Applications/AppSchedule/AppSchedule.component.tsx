@@ -240,9 +240,9 @@ const AppSchedule = ({
 
   const onDialogOpen = () => {
     setScheduleValue(getAppCronExpression(appData.appSchedule));
-    // An app saved before timezones existed runs at the server default (UTC in the
-    // official images); seeding the browser zone here would move it on save.
-    setTimezoneValue(getAppScheduleTimezone(appData.appSchedule) ?? 'UTC');
+    // An app without a stored zone runs at the server default; it stays unset
+    // unless the user picks a zone, so saving the dialog unchanged cannot move it.
+    setTimezoneValue(getAppScheduleTimezone(appData.appSchedule));
     setIsScheduleValid(true);
     setShowModal(true);
   };

@@ -128,26 +128,29 @@ describe('AppScheduleEdit', () => {
 
     fireEvent.click(screen.getByTestId('save-button'));
 
-    expect(onSave).toHaveBeenCalledWith('', 'UTC');
+    expect(onSave).toHaveBeenCalledWith('', undefined);
   });
 
-  it('keeps an app without a stored zone on UTC instead of the browser zone', () => {
+  it('leaves the zone unset for an app without a stored zone instead of seeding the browser zone', () => {
     const { onSave } = renderEdit({
       appData: {
         ...app,
-        appSchedule: { ...app.appSchedule, timezone: undefined },
+        appSchedule: {
+          scheduleTimeline: ScheduleTimeline.Custom,
+          cronExpression: '30 0 * * 0',
+        },
       } as App,
     });
 
     expect(ScheduleInterval).toHaveBeenLastCalledWith(
-      expect.objectContaining({ timezone: 'UTC' }),
+      expect.objectContaining({ timezone: undefined }),
       expect.anything()
     );
 
     fireEvent.click(screen.getByText('Change schedule'));
     fireEvent.click(screen.getByTestId('save-button'));
 
-    expect(onSave).toHaveBeenCalledWith('0 12 * * 3', 'UTC');
+    expect(onSave).toHaveBeenCalledWith('0 12 * * 3', undefined);
   });
 
   it('blocks saving while the schedule is invalid', () => {

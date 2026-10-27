@@ -35,10 +35,10 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
   const [scheduleValue, setScheduleValue] = useState(() =>
     getAppCronExpression(appData.appSchedule)
   );
-  // An app saved before timezones existed runs at the server default (UTC in the
-  // official images); seeding the browser zone here would move it on save.
-  const [timezoneValue, setTimezoneValue] = useState(
-    () => getAppScheduleTimezone(appData.appSchedule) ?? 'UTC'
+  // An app without a stored zone runs at the server default; it stays unset
+  // unless the user picks a zone, so saving unchanged cannot move it.
+  const [timezoneValue, setTimezoneValue] = useState<string | undefined>(
+    () => getAppScheduleTimezone(appData.appSchedule)
   );
   const [isScheduleValid, setIsScheduleValid] = useState(true);
 

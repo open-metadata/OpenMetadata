@@ -182,7 +182,7 @@ describe('AppSchedule component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Change schedule' }));
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
 
-    expect(mockOnSave).toHaveBeenCalledWith('0 12 * * *', expect.any(String));
+    expect(mockOnSave).toHaveBeenCalledWith('0 12 * * *', undefined);
 
     await waitFor(() =>
       expect(
