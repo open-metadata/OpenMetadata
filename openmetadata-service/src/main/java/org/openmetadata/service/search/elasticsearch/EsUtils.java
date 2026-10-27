@@ -181,9 +181,6 @@ public class EsUtils {
             0,
             1,
             fieldsToRemove);
-    if (result.isEmpty()) {
-      throw EntityNotFoundException.byName(hasToFqnPair.getRight());
-    }
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());
     } else {
@@ -324,6 +321,9 @@ public class EsUtils {
             1,
             fieldsToInclude,
             fieldsToRemove);
+    if (result.isEmpty()) {
+      throw EntityNotFoundException.byName(hasToFqnPair.getRight());
+    }
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());
     } else {
