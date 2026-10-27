@@ -19,7 +19,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from sqlalchemy import Column, Integer, String, create_engine, text
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, Session
+from sqlalchemy.pool import StaticPool
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.profiler.orm.functions.table_metric_computer import (
@@ -630,64 +631,92 @@ class TestTeradataTableMetricComputer:
         sql = str(stats_query.compile())
         assert "IndexNumber" not in sql, f"Stats query must not filter on IndexNumber, got: {sql}"
 
-    @staticmethod
-    def _sqlite_connection():
-        """A SQLite connection with DBC.TableStatsV/DBC.TableSizeV attached,
-        to exercise the real stats/size SQL semantics end to end."""
-        conn = create_engine("sqlite://").connect()
-        conn.execute(text("ATTACH ':memory:' AS DBC"))
-        conn.execute(
-            text(
-                'CREATE TABLE DBC."TableStatsV" ("DatabaseName" VARCHAR(256),'
-                ' "TableName" VARCHAR(256), "IndexNumber" INTEGER, "RowCount" INTEGER)'
+    @pytest.fixture
+    def teradata_sqlite_session(self):
+        """A real ORM session over a single-connection in-memory SQLite
+        engine with a DBC schema attaching TableStatsV/TableSizeV stand-ins,
+        to exercise the actual stats/size SQL semantics end to end."""
+        engine = create_engine("sqlite://", poolclass=StaticPool)
+        # ATTACH cannot run inside a transaction, so the DBC stand-in is
+        # created on a raw connection before the session opens its own.
+        with engine.connect() as conn:
+            conn.execute(text("ATTACH ':memory:' AS DBC"))
+            conn.execute(
+                text(
+                    'CREATE TABLE DBC."TableStatsV" ("DatabaseName" VARCHAR(256),'
+                    ' "TableName" VARCHAR(256), "IndexNumber" INTEGER,'
+                    ' "LastCollectTimeStamp" VARCHAR(32), "RowCount" INTEGER)'
+                )
             )
-        )
-        conn.execute(
-            text(
-                'CREATE TABLE DBC."TableSizeV" ("DatabaseName" VARCHAR(256),'
-                ' "TableName" VARCHAR(256), "CurrentPerm" BIGINT)'
+            conn.execute(
+                text(
+                    'CREATE TABLE DBC."TableSizeV" ("DatabaseName" VARCHAR(256),'
+                    ' "TableName" VARCHAR(256), "CurrentPerm" BIGINT)'
+                )
             )
-        )
-        return conn
+            conn.commit()
+        session = Session(engine)
+        yield session
+        session.close()
+        engine.dispose()
 
-    def test_column_only_statistics_avoid_count_star_fallback(self):
+    def test_column_only_statistics_avoid_count_star_fallback(self, teradata_sqlite_session):
         """A table whose only collected stats are column stats (NULL
         IndexNumber) must report the stored row count, not fall back to
         COUNT(*)."""
-        conn = self._sqlite_connection()
-        conn.execute(
-            text("INSERT INTO DBC.\"TableStatsV\" VALUES ('test_schema', 'test_table', NULL, 7500)")
+        teradata_sqlite_session.execute(
+            text(
+                "INSERT INTO DBC.\"TableStatsV\" VALUES"
+                " ('test_schema', 'test_table', NULL, '2026-01-20 10:00:00', 7500)"
+            )
         )
-        computer = _build_computer(conn, TeradataTableMetricComputer)
+        computer = _build_computer(teradata_sqlite_session, TeradataTableMetricComputer)
         with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as mock_base:
             result = computer.compute()
         assert result.rowCount == 7500
         mock_base.assert_not_called()
 
-    def test_index_and_column_statistics_return_max_row_count(self):
-        """MAX picks the largest count across collected entries; column stats
-        (NULL IndexNumber) coexist with index stats and must not be dropped."""
-        conn = self._sqlite_connection()
-        conn.execute(
+    def test_index_and_column_statistics_return_max_row_count(self, teradata_sqlite_session):
+        """Entries collected in the same, latest run tie on
+        LastCollectTimeStamp; the largest count among them is reported.
+        Column stats (NULL IndexNumber) coexist with index stats and must not
+        be dropped."""
+        teradata_sqlite_session.execute(
             text(
                 "INSERT INTO DBC.\"TableStatsV\" VALUES"
-                " ('test_schema', 'test_table', 1, 10000),"
-                " ('test_schema', 'test_table', NULL, 7500)"
+                " ('test_schema', 'test_table', 1, '2026-01-20 10:00:00', 10000),"
+                " ('test_schema', 'test_table', NULL, '2026-01-20 10:00:00', 7500)"
             )
         )
-        computer = _build_computer(conn, TeradataTableMetricComputer)
+        computer = _build_computer(teradata_sqlite_session, TeradataTableMetricComputer)
         result = computer.compute()
         assert result.rowCount == 10000
 
-    def test_size_comes_from_table_size_v_current_perm(self):
-        conn = self._sqlite_connection()
-        conn.execute(
-            text("INSERT INTO DBC.\"TableStatsV\" VALUES ('test_schema', 'test_table', NULL, 7500)")
+    def test_newer_statistics_take_precedence_over_larger_stale_count(self, teradata_sqlite_session):
+        """A freshly collected entry reporting a shrunken table wins over a
+        stale, larger entry that was collected once and never re-collected."""
+        teradata_sqlite_session.execute(
+            text(
+                "INSERT INTO DBC.\"TableStatsV\" VALUES"
+                " ('test_schema', 'test_table', 1, '2026-01-01 08:00:00', 100000000),"
+                " ('test_schema', 'test_table', NULL, '2026-01-20 10:00:00', 7500)"
+            )
         )
-        conn.execute(
+        computer = _build_computer(teradata_sqlite_session, TeradataTableMetricComputer)
+        result = computer.compute()
+        assert result.rowCount == 7500
+
+    def test_size_comes_from_table_size_v_current_perm(self, teradata_sqlite_session):
+        teradata_sqlite_session.execute(
+            text(
+                "INSERT INTO DBC.\"TableStatsV\" VALUES"
+                " ('test_schema', 'test_table', NULL, '2026-01-20 10:00:00', 7500)"
+            )
+        )
+        teradata_sqlite_session.execute(
             text("INSERT INTO DBC.\"TableSizeV\" VALUES ('test_schema', 'test_table', 12345)")
         )
-        computer = _build_computer(conn, TeradataTableMetricComputer)
+        computer = _build_computer(teradata_sqlite_session, TeradataTableMetricComputer)
         result = computer.compute()
         assert result.sizeInBytes == 12345
 
