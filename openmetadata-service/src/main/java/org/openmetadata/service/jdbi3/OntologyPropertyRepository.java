@@ -34,6 +34,14 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class OntologyPropertyRepository extends OntologyEntityRepository<OntologyProperty> {
   public static final String COLLECTION_PATH = "/v1/ontologyProperties/";
 
+  /**
+   * The deleted object properties the write in progress holds. When that write is a restore, it
+   * brings every one of them back, as restoring an ontology does with all its properties at once.
+   */
+  private static final ThreadLocal<Set<Declaration>> RESTORING = ThreadLocal.withInitial(Set::of);
+
+  private record Declaration(UUID ontologyId, String iri) {}
+
   public OntologyPropertyRepository() {
     super(
         Entity.ONTOLOGY_PROPERTY,
@@ -86,8 +94,27 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         entities,
         () -> {
           workingState.beforeValidation(entityType, this::reconcileInverses);
-          return work.get();
+          final Set<Declaration> enclosing = RESTORING.get();
+          RESTORING.set(deletedObjectProperties(entities));
+          try {
+            return work.get();
+          } finally {
+            RESTORING.set(enclosing);
+          }
         });
+  }
+
+  private static Set<Declaration> deletedObjectProperties(final List<OntologyProperty> entities) {
+    return Set.copyOf(
+        entities.stream()
+            .filter(
+                property ->
+                    Boolean.TRUE.equals(property.getDeleted())
+                        && property.getKind() == OntologyPropertyKind.OBJECT)
+            .map(
+                property ->
+                    new Declaration(property.getOntology().getId(), property.getIri().toString()))
+            .toList());
   }
 
   @Override
@@ -105,9 +132,9 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
 
   /**
    * A restore brings back the inverse the property held when it was deleted. When that partner
-   * has gone since, the link is dropped rather than refused: the property cannot be edited while
-   * deleted, so refusing would leave it unrestorable. A self-inverse is kept, because its own
-   * declaration goes live in this write.
+   * has gone since and does not return in the same write, the link is dropped rather than
+   * refused: the property cannot be edited while deleted, so refusing would leave it unrestorable.
+   * A self-inverse is kept, because its own declaration goes live in this write.
    */
   @Override
   public EntityUpdater getUpdater(
@@ -120,11 +147,15 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         && updated.getInverse() != null
         && !updated.getInverse().equals(updated.getIri())
         && Boolean.TRUE.equals(find(original.getId(), Include.ALL).getDeleted())
-        && !declaresObjectProperty(
-            updated.getOntology().getId(), updated.getInverse().toString())) {
+        && !partnerLiveAfterWrite(updated.getOntology().getId(), updated.getInverse().toString())) {
       updated.setInverse(null);
     }
     return super.getUpdater(original, updated, operation, source);
+  }
+
+  private boolean partnerLiveAfterWrite(final UUID ontologyId, final String partner) {
+    return RESTORING.get().contains(new Declaration(ontologyId, partner))
+        || declaresObjectProperty(ontologyId, partner);
   }
 
   private boolean declaresObjectProperty(final UUID ontologyId, final String iri) {
