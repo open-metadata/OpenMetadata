@@ -699,6 +699,95 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void post_nestedColumnLevelTest_200_OK(TestNamespace ns) {
+    Table table = createTableWithNestedColumn(ns);
+    String columnLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "address.city");
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("nested_column_test"));
+    request.setEntityLink(columnLink);
+    request.setTestDefinition("columnValuesToBeBetween");
+    request.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("minValue").withValue("1"),
+            new TestCaseParameterValue().withName("maxValue").withValue("1000")));
+
+    TestCase created = createEntity(request);
+    assertTrue(
+        created.getEntityLink().contains("::columns::address.city"),
+        "Nested column link should be preserved, got " + created.getEntityLink());
+  }
+
+  @Test
+  void post_testWithInvalidNestedColumn_4xx(TestNamespace ns) {
+    Table table = createTableWithNestedColumn(ns);
+    String invalidNestedLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "address.state");
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("invalid_nested_column"));
+    request.setEntityLink(invalidNestedLink);
+    request.setTestDefinition("columnValuesToBeBetween");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("minValue").withValue("1")));
+
+    assertThrows(
+        Exception.class, () -> createEntity(request), "Should fail with missing nested column");
+  }
+
+  private Table createTableWithNestedColumn(TestNamespace ns) {
+    String shortId = ns.uniqueShortId();
+
+    org.openmetadata.schema.services.connections.database.PostgresConnection conn =
+        org.openmetadata.sdk.fluent.DatabaseServices.postgresConnection()
+            .hostPort("localhost:5432")
+            .username("test")
+            .build();
+
+    DatabaseService service =
+        org.openmetadata.sdk.fluent.DatabaseServices.builder()
+            .name("pg_" + shortId)
+            .connection(conn)
+            .description("Test Postgres service")
+            .create();
+
+    org.openmetadata.schema.api.data.CreateDatabase dbReq =
+        new org.openmetadata.schema.api.data.CreateDatabase();
+    dbReq.setName("db_" + shortId);
+    dbReq.setService(service.getFullyQualifiedName());
+    org.openmetadata.schema.entity.data.Database database =
+        SdkClients.adminClient().databases().create(dbReq);
+
+    org.openmetadata.schema.api.data.CreateDatabaseSchema schemaReq =
+        new org.openmetadata.schema.api.data.CreateDatabaseSchema();
+    schemaReq.setName("s_" + shortId);
+    schemaReq.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = SdkClients.adminClient().databaseSchemas().create(schemaReq);
+
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName("t_" + shortId);
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableRequest.setColumns(List.of(nestedAddressColumn()));
+
+    return SdkClients.adminClient().tables().create(tableRequest);
+  }
+
+  private Column nestedAddressColumn() {
+    return new Column()
+        .withName("address")
+        .withDataType(ColumnDataType.STRUCT)
+        .withChildren(
+            List.of(
+                new Column()
+                    .withName("city")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+  }
+
+  @Test
   void test_createMultipleTestsOnSameTable_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);

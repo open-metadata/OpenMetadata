@@ -18,7 +18,63 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public final class ColumnUtil {
+  private static final String ALL_COLUMNS = "all";
+
   private ColumnUtil() {}
+
+  /**
+   * Resolves a column by a dotted path relative to the table, walking nested children. Segments
+   * are quoted-aware (a column literally named {@code a.b} arrives as {@code "a.b"} in an
+   * entityLink) and matched case-exactly first, then case-insensitively.
+   */
+  public static Column resolveColumnByPath(List<Column> columns, String columnPath) {
+    if (nullOrEmpty(columnPath)) {
+      return null;
+    }
+    Column resolved = matchPathSegments(columns, List.of(FullyQualifiedName.split(columnPath)));
+    if (resolved == null) {
+      // Legacy entityLinks carry a dotted column name unquoted; when the walk fails, the whole
+      // path may be one literal column name.
+      resolved = findColumnByName(columns, FullyQualifiedName.unquoteName(columnPath));
+    }
+    return resolved;
+  }
+
+  /**
+   * Same contract as {@link org.openmetadata.service.jdbi3.EntityRepository#validateColumn(Table,
+   * String, Boolean)} but resolves nested paths; {@code all} is accepted as "every column".
+   */
+  public static void validateColumnPath(List<Column> columns, String columnPath) {
+    if (columnPath.equalsIgnoreCase(ALL_COLUMNS)
+        || resolveColumnByPath(columns, columnPath) != null) {
+      return;
+    }
+    throw new IllegalArgumentException("Invalid column name " + columnPath);
+  }
+
+  private static Column matchPathSegments(List<Column> columns, List<String> segments) {
+    String head = segments.getFirst();
+    Column matchedColumn = findColumnByName(columns, FullyQualifiedName.unquoteName(head));
+    if (matchedColumn == null || segments.size() == 1) {
+      return matchedColumn;
+    }
+    return matchPathSegments(
+        listOrEmpty(matchedColumn.getChildren()), segments.subList(1, segments.size()));
+  }
+
+  private static Column findColumnByName(List<Column> columns, String name) {
+    for (Column column : columns) {
+      if (column.getName().equals(name)) {
+        return column;
+      }
+    }
+    for (Column column : columns) {
+      if (column.getName().equalsIgnoreCase(name)) {
+        return column;
+      }
+    }
+    return null;
+  }
 
   public static List<Column> cloneWithoutTags(List<Column> columns) {
     if (nullOrEmpty(columns)) {
