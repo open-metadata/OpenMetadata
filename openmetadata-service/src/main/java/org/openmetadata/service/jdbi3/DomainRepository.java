@@ -829,6 +829,11 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(DOMAIN);
+  }
+
+  @Override
   public void setFullyQualifiedName(Domain entity) {
     // Validate parent
     if (entity.getParent() == null) { // Top level domain

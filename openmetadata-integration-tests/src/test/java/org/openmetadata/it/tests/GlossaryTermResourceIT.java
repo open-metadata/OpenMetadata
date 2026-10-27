@@ -17,6 +17,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -68,6 +69,7 @@ import org.openmetadata.schema.type.BulkCreateItemResult.Reason;
 import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.DescriptionUpdatePayload;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -2082,6 +2084,82 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     // FQN should have changed to include parent
     assertNotEquals(originalFqn, movedTerm.getFullyQualifiedName());
     assertTrue(movedTerm.getFullyQualifiedName().contains(parent.getName()));
+  }
+
+  // task_entity.aboutFqnHash stores one 32-char hash per FQN level, so eight levels (263 chars)
+  // need more than the varchar(256) the column was created with.
+  @Test
+  void test_createTaskAboutEighthLevelTerm(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "deepTaskGls");
+    GlossaryTerm term = null;
+    for (int level = 2; level <= 8; level++) {
+      term = createChildTerm(glossary, term, "l" + level);
+    }
+
+    Task task = SdkClients.adminClient().tasks().create(descriptionUpdateTask(ns, term));
+
+    assertEquals(List.of(task.getId()), taskIdsAbout(term.getFullyQualifiedName()));
+  }
+
+  @Test
+  void test_moveTermWithTaskToEighthLevel_repointsTask(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "deepMoveGls");
+    GlossaryTerm levelSix = null;
+    for (int level = 2; level <= 6; level++) {
+      levelSix = createChildTerm(glossary, levelSix, "l" + level);
+    }
+    GlossaryTerm newParent = createChildTerm(glossary, levelSix, "l7a");
+    GlossaryTerm term = createChildTerm(glossary, levelSix, "l7b");
+    Task task = SdkClients.adminClient().tasks().create(descriptionUpdateTask(ns, term));
+    String oldFqn = term.getFullyQualifiedName();
+
+    term.setParent(newParent.getEntityReference());
+    GlossaryTerm movedTerm = patchEntity(term.getId().toString(), term);
+
+    assertEquals(newParent.getId(), movedTerm.getParent().getId());
+    assertEquals(List.of(task.getId()), taskIdsAbout(movedTerm.getFullyQualifiedName()));
+    assertTrue(taskIdsAbout(oldFqn).isEmpty());
+  }
+
+  private Glossary createGlossary(TestNamespace ns, String name) {
+    return SdkClients.adminClient()
+        .glossaries()
+        .create(new CreateGlossary().withName(ns.prefix(name)).withDescription("Deep glossary"));
+  }
+
+  private GlossaryTerm createChildTerm(Glossary glossary, GlossaryTerm parent, String name) {
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(name)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Deep glossary term");
+    if (parent != null) {
+      request.withParent(parent.getFullyQualifiedName());
+    }
+    return createEntity(request);
+  }
+
+  private CreateTask descriptionUpdateTask(TestNamespace ns, GlossaryTerm term) {
+    return new CreateTask()
+        .withName(ns.prefix("deep-term-description"))
+        .withCategory(TaskCategory.MetadataUpdate)
+        .withType(TaskEntityType.DescriptionUpdate)
+        .withAbout("<#E::glossaryTerm::%s>".formatted(term.getFullyQualifiedName()))
+        .withPayload(
+            new DescriptionUpdatePayload()
+                .withFieldPath("description")
+                .withCurrentDescription(term.getDescription())
+                .withNewDescription("Updated deep term description"));
+  }
+
+  private List<UUID> taskIdsAbout(String entityFqn) {
+    return SdkClients.adminClient()
+        .tasks()
+        .listWithFilters(Map.of("aboutEntity", entityFqn, "limit", "100"))
+        .getData()
+        .stream()
+        .map(Task::getId)
+        .toList();
   }
 
   @Test

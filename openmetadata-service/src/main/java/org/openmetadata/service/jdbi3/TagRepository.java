@@ -485,6 +485,11 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(TAG);
+  }
+
+  @Override
   public void setFullyQualifiedName(Tag tag) {
     if (tag.getParent() == null) {
       tag.setFullyQualifiedName(
