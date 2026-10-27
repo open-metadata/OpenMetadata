@@ -84,9 +84,14 @@ public final class OntologyReleaseResource
   /** Bound asset links take their IRIs from the RDF base URI, which the RDF store also uses. */
   @Override
   public void initialize(final OpenMetadataApplicationConfig config) {
-    if (config.getRdfConfiguration() != null && config.getRdfConfiguration().getBaseUri() != null) {
-      assetBaseUri = config.getRdfConfiguration().getBaseUri();
-    }
+    assetBaseUri = assetBase(config);
+  }
+
+  static URI assetBase(final OpenMetadataApplicationConfig config) {
+    final RdfConfiguration rdf = config.getRdfConfiguration();
+    return rdf != null && rdf.getBaseUri() != null
+        ? rdf.getBaseUri()
+        : new RdfConfiguration().getBaseUri();
   }
 
   public static class OntologyReleaseList extends ResultList<OntologyRelease> {}
