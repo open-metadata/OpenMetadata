@@ -409,6 +409,7 @@ class AirflowLineageRunner:
                     continue
 
                 pipeline_status = PipelineStatus(
+                    executionId=dag_run_id,
                     timestamp=execution_timestamp,
                     executionStatus=dag_status,
                     taskStatus=task_status_list,
@@ -545,7 +546,7 @@ class AirflowLineageRunner:
             return None
 
         return PipelineStatus(
-            # Use any of the task execution dates for the status execution date
+            executionId=task_instances[0].run_id,
             timestamp=datetime_to_ts(execution_date),
             executionStatus=self.get_dag_status_from_task_instances(task_instances),
             taskStatus=task_status,

@@ -106,14 +106,21 @@ def test_status_is_limited_to_latest_runs_of_the_dag(dag, airflow_session, is_ai
     assert all(status.executionStatus.value == "Successful" for status in statuses)
 
 
-def test_zero_max_status_skips_status_collection(dag):
-    runner = build_runner(dag, max_status=0)
+@pytest.mark.parametrize("max_status", [0, -1])
+def test_non_positive_max_status_skips_status_collection(dag, max_status):
+    runner = build_runner(dag, max_status=max_status)
 
-    with patch.object(AirflowLineageRunner, "get_all_pipeline_status") as get_all_pipeline_status:
+    with (
+        patch.object(runner_module, "IS_AIRFLOW_3_OR_HIGHER", True),
+        patch("requests.post") as post,
+        patch("requests.get") as get,
+        patch("airflow.utils.session.create_session") as create_session,
+    ):
         runner.add_all_pipeline_status(MagicMock())
 
-    get_all_pipeline_status.assert_not_called()
-    runner.metadata.add_pipeline_status.assert_not_called()
+    post.assert_not_called()
+    get.assert_not_called()
+    create_session.assert_not_called()
 
 
 def test_statuses_are_sent_to_openmetadata(dag, airflow_session):
@@ -132,7 +139,7 @@ def test_statuses_are_sent_to_openmetadata(dag, airflow_session):
 
 
 def test_manually_triggered_runs_are_reported_at_their_start_date(dag, airflow_session):
-    # Same timestamp as the Airflow connector, so both write the same status for the run
+    # Same executionId and timestamp as the Airflow connector, so both write the same status for the run
     manual_start = FIRST_RUN + timedelta(days=10, seconds=3)
     for run_id, run_after, start_date in (
         ("manual", FIRST_RUN + timedelta(days=10), manual_start),
@@ -160,9 +167,9 @@ def test_manually_triggered_runs_are_reported_at_their_start_date(dag, airflow_s
     ):
         statuses = runner.get_all_pipeline_status()
 
-    assert [status.timestamp.root for status in statuses] == [
-        datetime_to_ts(manual_start),
-        datetime_to_ts(FIRST_RUN + timedelta(days=4)),
+    assert [(status.executionId, status.timestamp.root) for status in statuses] == [
+        ("manual", datetime_to_ts(manual_start)),
+        ("run_4", datetime_to_ts(FIRST_RUN + timedelta(days=4))),
     ]
 
 
@@ -187,7 +194,7 @@ def test_rest_api_reports_manually_triggered_runs_at_their_start_date(dag):
         statuses = runner.get_pipeline_status_via_api()
 
     assert get.call_args_list[0].kwargs["params"] == {"limit": 3, "order_by": "-run_after"}
-    assert [status.timestamp.root for status in statuses] == [
-        datetime_to_ts(manual_start),
-        datetime_to_ts(FIRST_RUN + timedelta(days=4)),
+    assert [(status.executionId, status.timestamp.root) for status in statuses] == [
+        ("manual", datetime_to_ts(manual_start)),
+        ("run_4", datetime_to_ts(FIRST_RUN + timedelta(days=4))),
     ]
