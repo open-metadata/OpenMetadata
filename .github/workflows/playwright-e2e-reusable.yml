@@ -623,6 +623,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: Install antlr cli
+        if: ${{ env.SKIP_UI_BUILD != 'true' }}
+        run: sudo make install_antlr_cli
+
       - name: Build the regular UI bundle
         if: ${{ env.SKIP_UI_BUILD != 'true' }}
         env:
