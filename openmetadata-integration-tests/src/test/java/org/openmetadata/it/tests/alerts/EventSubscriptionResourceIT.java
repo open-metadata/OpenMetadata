@@ -2231,17 +2231,33 @@ public class EventSubscriptionResourceIT
     assertSecretsMasked(edited.getDestinations().getFirst());
     assertEquals(storedConfig, storedConfig(created.getId()), "the stored ciphertext is kept");
 
+    // A stored secret does not follow a moved endpoint: the caller chose the address, and all it
+    // could read was the mask. Moving the destination means entering every credential again.
     String otherEndpoint = endpoint + "-moved";
     EventSubscription withNewEndpoint = getEntity(id);
     Map<String, Object> config = configOf(withNewEndpoint.getDestinations().getFirst());
     config.put("endpoint", otherEndpoint);
     withNewEndpoint.getDestinations().getFirst().withConfig(config);
-    patchEntity(id, withNewEndpoint);
-    Map<String, Object> moved = storedConfig(created.getId());
-    assertEquals(otherEndpoint, decrypted(moved.get("endpoint")));
-    assertEquals(headersOf(storedConfig), headersOf(moved), "the other secrets are kept");
+    Map<String, Object> before = storedConfig(created.getId());
+    assertRefused(() -> patchEntity(id, withNewEndpoint));
+    assertEquals(before, storedConfig(created.getId()), "the stored ciphertext is kept");
+
+    Map<String, Object> fresh = new LinkedHashMap<>(config);
+    fresh.put("headers", Map.of("Authorization", headerValue));
+    if (authTypeOf(config) != null) {
+      fresh.put("authType", Map.of("type", "bearer", "secretKey", secretKey));
+    }
+    withNewEndpoint.getDestinations().getFirst().withConfig(fresh);
+    EventSubscription moved = patchEntity(id, withNewEndpoint);
+    assertSecretsMasked(moved.getDestinations().getFirst());
+    assertEquals(otherEndpoint, decrypted(storedConfig(created.getId()).get("endpoint")));
+    assertEquals(
+        headerValue, decrypted(headersOf(storedConfig(created.getId())).get("Authorization")));
+    assertEquals(
+        secretKey, decrypted(authTypeOf(storedConfig(created.getId())).get("secretKey")));
     assertNoSecretOrCiphertext(
-        rawGet(SdkClients.adminClient(), path + "/versions"), List.of(otherEndpoint, headerValue));
+        rawGet(SdkClients.adminClient(), path + "/versions"),
+        List.of(otherEndpoint, headerValue, secretKey));
   }
 
   @Test
@@ -2454,6 +2470,88 @@ public class EventSubscriptionResourceIT
         endpoint,
         decrypted(storedConfig(created.getId()).get("endpoint")),
         "a refused request changes nothing");
+  }
+
+  /** The write path refuses a moved token URL with the stored credentials, as the test does. */
+  @Test
+  void test_patchMovedTokenUrlWithMaskedCredentials_400(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      CreateEventSubscription request =
+          secretRequest(ns, "oauth_write_secret", receiver.url("/hook"), "header-token", null);
+      Map<String, Object> config = configOf(request.getDestinations().getFirst());
+      config.put(
+          "authType",
+          new WebhookOAuth2Config()
+              .withType(WebhookOAuth2Config.Type.OAUTH_2)
+              .withTokenUrl(URI.create(receiver.url("/token")))
+              .withClientId("client-id")
+              .withClientSecret("client-secret"));
+      request.getDestinations().getFirst().withConfig(config);
+      EventSubscription created = createEntity(request);
+      EventSubscription moved = getEntity(created.getId().toString());
+      config = configOf(moved.getDestinations().getFirst());
+      Map<String, Object> auth = new LinkedHashMap<>(authTypeOf(config));
+      auth.put("tokenUrl", receiver.url("/other-token"));
+      config.put("authType", auth);
+      moved.getDestinations().getFirst().withConfig(config);
+
+      assertRefused(() -> patchEntity(created.getId().toString(), moved));
+      assertTrue(receiver.received().isEmpty(), "stored credentials never reach the moved URL");
+      Object storedTokenUrl =
+          ((Map<?, ?>) storedConfig(created.getId()).get("authType")).get("tokenUrl");
+      assertTrue(
+          storedTokenUrl.toString().endsWith("/token"), "the refused request changes nothing");
+    }
+  }
+
+  /** A destination an update keeps by id serves through the channel it is stored under. */
+  @Test
+  void test_patchKeepsTheServedChannel_400(TestNamespace ns) {
+    String endpoint = "http://localhost:8585/" + ns.prefix("channel_hook");
+    String headerValue = ns.prefix("channel-header");
+    EventSubscription created =
+        createEntity(secretRequest(ns, "channel_sub", endpoint, headerValue, null));
+    EventSubscription withAnotherChannel = getEntity(created.getId().toString());
+    withAnotherChannel.getDestinations().getFirst().withChannel("ActivityFeed");
+
+    assertRefused(() -> patchEntity(created.getId().toString(), withAnotherChannel));
+    assertEquals(
+        endpoint,
+        decrypted(storedConfig(created.getId()).get("endpoint")),
+        "the refused request changes nothing");
+  }
+
+  /**
+   * An update of a destination the users do not configure still judges its configuration, as it
+   * would be used: the update paths hand it over with its secrets encrypted.
+   */
+  @Test
+  void test_internalDestinationConfigIsJudgedAsItWouldBeSent(TestNamespace ns) {
+    Map<String, Object> config = new LinkedHashMap<>();
+    config.put("endpoint", "http://localhost:8585/" + ns.prefix("internal_hook"));
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("internal_destination"))
+            .withDescription("An internal destination whose endpoint is judged as it is sent")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(
+                List.of(
+                    new SubscriptionDestination()
+                        .withType(SubscriptionDestination.SubscriptionType.SLACK)
+                        .withCategory(SubscriptionDestination.SubscriptionCategory.OWNERS)
+                        .withConfig(config)));
+    EventSubscription created = createEntity(request);
+    assertTrue(
+        Fernet.isTokenized((String) storedConfig(created.getId()).get("endpoint")),
+        "the endpoint is a secret whatever the category");
+
+    EventSubscription edited = getEntity(created.getId().toString());
+    edited.getDestinations().getFirst().withReadTimeout(30);
+    EventSubscription updated = patchEntity(created.getId().toString(), edited);
+
+    assertEquals(30, updated.getDestinations().getFirst().getReadTimeout());
   }
 
   /** A destination sent back as read is tested with the secrets stored for it, only as stored. */

@@ -330,6 +330,69 @@ class DestinationSecretsTest {
     assertFalse(DestinationSecrets.hasMaskedSecrets(stored));
   }
 
+  // A mask restored beside a moved target hands the stored secret to a new address, so a moved
+  // destination gets nothing restored, and what it still reads as the mask is refused.
+  @Test
+  void restore_leavesAMovedTargetUntouched() {
+    SubscriptionDestination stored = incomingWebhook(SubscriptionType.SLACK);
+    DestinationSecrets.encrypt(List.of(stored));
+    SubscriptionDestination moved = DestinationSecrets.mask(List.of(stored)).getFirst();
+    Map<String, Object> config = new LinkedHashMap<>(configOf(moved));
+    config.put("endpoint", "https://hooks.example.com/moved");
+    moved.withConfig(config);
+
+    DestinationSecrets.restore(stored, moved);
+
+    assertEquals(PASSWORD_MASK, headersOf(moved).get("Authorization"));
+  }
+
+  @Test
+  void theTargetStandsForWhatIsStoredWhateverWayItReads() {
+    SubscriptionDestination stored = incomingWebhook(SubscriptionType.SLACK);
+    DestinationSecrets.encrypt(List.of(stored));
+    SubscriptionDestination masked = DestinationSecrets.mask(List.of(stored)).getFirst();
+    SubscriptionDestination sentAgain =
+        incomingWebhook(SubscriptionType.SLACK).withId(stored.getId());
+    SubscriptionDestination moved =
+        incomingWebhook(SubscriptionType.SLACK).withId(stored.getId());
+    moved.withConfig(new LinkedHashMap<>(Map.of("endpoint", "https://hooks.example.com/moved")));
+
+    assertFalse(DestinationSecrets.targetMoved(stored, masked));
+    assertFalse(DestinationSecrets.targetMoved(stored, sentAgain));
+    assertFalse(DestinationSecrets.targetMoved(stored, stored));
+    assertTrue(DestinationSecrets.targetMoved(stored, moved));
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void aMovedTokenUrlMovesTheTargetForTheOAuthCredentials() {
+    SubscriptionDestination stored = oauth2Destination();
+    DestinationSecrets.encrypt(List.of(stored));
+    SubscriptionDestination masked = DestinationSecrets.mask(List.of(stored)).getFirst();
+    Map<String, Object> config = new LinkedHashMap<>(configOf(masked));
+    ((Map<String, Object>) config.get("authType"))
+        .put("tokenUrl", "https://auth.example.com/moved");
+    masked.withConfig(config);
+
+    assertTrue(DestinationSecrets.targetMoved(stored, masked));
+    assertFalse(
+        DestinationSecrets.targetMoved(
+            stored, DestinationSecrets.mask(List.of(stored)).getFirst()));
+  }
+
+  private static SubscriptionDestination oauth2Destination() {
+    WebhookOAuth2Config oauth2 =
+        new WebhookOAuth2Config()
+            .withType(WebhookOAuth2Config.Type.OAUTH_2)
+            .withTokenUrl(URI.create("https://auth.example.com/token"))
+            .withClientId("client-id")
+            .withClientSecret("client-secret");
+    Map<String, Object> config = new LinkedHashMap<>();
+    config.put("endpoint", ENDPOINT);
+    config.put("authType", JsonUtils.convertValue(oauth2, Map.class));
+    return incomingWebhook(SubscriptionType.WEBHOOK).withConfig(config);
+  }
+
   static final String ENDPOINT = "https://hooks.example.com/services/T0/B0/token";
   static final String TOKEN = "Bearer header-token";
 

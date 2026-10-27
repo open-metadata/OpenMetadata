@@ -36,7 +36,10 @@ import {
   getConfigQueryParamsObjectFromArray,
   getRandomizedAlertName,
 } from './Alerts/AlertsUtilPure';
-import alertsClassBase, { AlertsClassBase } from './AlertsClassBase';
+import alertsClassBase, {
+  AlertsClassBase,
+  destinationsAsAWholeListReplace,
+} from './AlertsClassBase';
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { showSuccessToast } from './ToastUtils';
@@ -701,6 +704,37 @@ describe('AlertsClassBase', () => {
       });
 
       expect(mockAfterSave).toHaveBeenCalledWith('');
+    });
+  });
+
+  describe('destinationsAsAWholeListReplace', () => {
+    it('keeps a patch with no destination operation as it is', () => {
+      const jsonPatch = [
+        { op: 'replace', path: '/displayName', value: 'New Name' },
+      ];
+
+      expect(
+        destinationsAsAWholeListReplace(jsonPatch, mockInitialData.destinations)
+      ).toEqual(jsonPatch);
+    });
+
+    it('replaces a changed destination list in one move', () => {
+      const jsonPatch = [
+        { op: 'remove', path: '/destinations/1' },
+        { op: 'replace', path: '/destinations/0/id', value: '' },
+        { op: 'replace', path: '/description', value: 'New' },
+      ];
+
+      expect(
+        destinationsAsAWholeListReplace(jsonPatch, mockInitialData.destinations)
+      ).toEqual([
+        { op: 'replace', path: '/description', value: 'New' },
+        {
+          op: 'replace',
+          path: '/destinations',
+          value: mockInitialData.destinations,
+        },
+      ]);
     });
   });
 

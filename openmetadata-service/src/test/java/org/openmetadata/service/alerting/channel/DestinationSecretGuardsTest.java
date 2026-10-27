@@ -3,6 +3,7 @@ package org.openmetadata.service.alerting.channel;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.alerting.channel.DestinationSecretsTest.TOKEN;
 import static org.openmetadata.service.alerting.channel.DestinationSecretsTest.configOf;
 import static org.openmetadata.service.alerting.channel.DestinationSecretsTest.incomingWebhook;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
@@ -14,6 +15,7 @@ import jakarta.ws.rs.BadRequestException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -187,6 +189,62 @@ class DestinationSecretGuardsTest {
         Json.createPatchBuilder().copy("/description", "/destinations/0/config/headers").build();
     assertDoesNotThrow(
         () -> DestinationSecretGuards.requireSecretsOnlyInSecretFields(original, patched, copy));
+  }
+
+  // A patch that only moves the endpoint leaves the stored header value where it was; keeping it
+  // would deliver the stored secret to the address the request named, so it is entered again.
+  @Test
+  void storedSecretsDoNotFollowAMovedTarget() {
+    SubscriptionDestination storedDestination = stored();
+    EventSubscription original = alertWith(storedDestination);
+    SubscriptionDestination moved =
+        JsonUtils.deepCopy(storedDestination, SubscriptionDestination.class);
+    Map<String, Object> config = new LinkedHashMap<>(configOf(moved));
+    config.put("endpoint", "https://hooks.example.com/moved");
+    moved.withConfig(config);
+
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, alertWith(moved)),
+        "the stored value would follow the moved endpoint");
+
+    config.put("headers", new LinkedHashMap<>(Map.of("Authorization", TOKEN)));
+    moved.withConfig(config);
+    assertDoesNotThrow(
+        () ->
+            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, alertWith(moved)),
+        "every secret is entered again");
+  }
+
+  @Test
+  void aDestinationKeptByItsIdKeepsTheChannelItIsServedBy() {
+    SubscriptionDestination storedDestination = stored();
+    EventSubscription original = alertWith(storedDestination);
+    SubscriptionDestination moved =
+        JsonUtils.deepCopy(storedDestination, SubscriptionDestination.class)
+            .withChannel("ActivityFeed");
+
+    assertThrows(
+        BadRequestException.class,
+        () -> DestinationSecretGuards.requireServedChannelUnchanged(original, alertWith(moved)));
+
+    assertDoesNotThrow(
+        () ->
+            DestinationSecretGuards.requireServedChannelUnchanged(
+                original,
+                alertWith(
+                    JsonUtils.deepCopy(storedDestination, SubscriptionDestination.class))),
+        "what is unchanged does not refuse");
+    assertDoesNotThrow(
+        () ->
+            DestinationSecretGuards.requireServedChannelUnchanged(
+                original,
+                alertWith(
+                    JsonUtils.deepCopy(storedDestination, SubscriptionDestination.class)
+                        .withId(UUID.randomUUID())
+                        .withChannel("ActivityFeed"))),
+        "a new destination is served by the channel its save chooses");
   }
 
   private static SubscriptionDestination stored() {

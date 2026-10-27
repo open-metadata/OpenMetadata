@@ -40,6 +40,10 @@ public final class DestinationSecretGuards {
       "Destination %s has an encrypted value at '%s'; encrypted values cannot be supplied, provide the actual value";
   private static final String CHANGED_FOR_TEST_MESSAGE =
       "Destination %s is tested with its stored credentials; to test changed credentials, enter every one of them";
+  private static final String MOVED_TARGET_MESSAGE =
+      "Destination %s no longer sends to its stored endpoint or token URL; to change where a destination sends, enter every one of its credentials again";
+  private static final String SERVED_CHANNEL_MESSAGE =
+      "Destination %s changes its served channel from '%s' to '%s'; a destination keeps its channel, so delete it and add a destination for the new channel instead";
   private static final String COPIED_MESSAGE =
       "A destination secret cannot be copied or moved out of its field; it was found at '%s'";
   private static final JsonPointer TOKEN_URL = JsonPointer.compile("/authType/tokenUrl");
@@ -82,6 +86,59 @@ public final class DestinationSecretGuards {
               (field, value) ->
                   Fernet.isTokenized(value) && !value.equals(storedConfig.at(field).asText(null)))
           .ifPresent(field -> refuse(ENCRYPTED_MESSAGE, destination, field));
+    }
+  }
+
+  /**
+   * A destination an update keeps by its id serves through the channel it is stored under: its
+   * configuration belongs to that channel, and so do the secrets encrypted and masked by its rules.
+   * A save naming another channel would leave them unprotected, so it is refused here, before any
+   * secret is read. A replacement destination carries a new id and needs no guard.
+   */
+  public static void requireServedChannelUnchanged(
+      EventSubscription original, EventSubscription updated) {
+    List<SubscriptionDestination> stored = listOrEmpty(original.getDestinations());
+    for (SubscriptionDestination sent : listOrEmpty(updated.getDestinations())) {
+      if (sent.getId() == null || sent.getType() == null) {
+        continue;
+      }
+      stored.stream()
+          .filter(it -> sent.getId().equals(it.getId()) && it.getType() != null)
+          .findFirst()
+          .ifPresent(storedOne -> requireTheSameChannel(storedOne, sent));
+    }
+  }
+
+  private static void requireTheSameChannel(
+      SubscriptionDestination stored, SubscriptionDestination sent) {
+    String storedChannel = ChannelResolution.of(stored).channelId();
+    String sentChannel = ChannelResolution.of(sent).channelId();
+    if (!storedChannel.equals(sentChannel)) {
+      throw new BadRequestException(
+          SERVED_CHANNEL_MESSAGE.formatted(sent.getId(), storedChannel, sentChannel));
+    }
+  }
+
+  /**
+   * A secret restored beside a moved target would be delivered to the target the request chose,
+   * and a caller who only ever read the mask cannot be allowed to choose it. So a destination
+   * whose endpoint or token URL the update moves carries every secret again: a mask left as read,
+   * or the stored ciphertext an earlier request left in place, is refused, as testDestination
+   * refuses one.
+   */
+  public static void requireFreshSecretsOnAMovedTarget(
+      EventSubscription original, EventSubscription updated) {
+    List<SubscriptionDestination> stored = listOrEmpty(original.getDestinations());
+    List<SubscriptionDestination> incoming = listOrEmpty(updated.getDestinations());
+    for (int position = 0; position < incoming.size(); position++) {
+      SubscriptionDestination sent = incoming.get(position);
+      DestinationSecrets.counterpart(stored, sent, position)
+          .filter(it -> DestinationSecrets.targetMoved(it, sent))
+          .ifPresent(
+              it ->
+                  firstSecret(
+                          sent, value -> PASSWORD_MASK.equals(value) || Fernet.isTokenized(value))
+                      .ifPresent(field -> refuse(MOVED_TARGET_MESSAGE, sent, field)));
     }
   }
 

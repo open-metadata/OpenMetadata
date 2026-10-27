@@ -12,6 +12,7 @@
  */
 import type { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import type { Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, trim } from 'lodash';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
@@ -61,6 +62,26 @@ export interface AddAlertFormWidgetProps {
   isViewMode?: boolean;
   templateResourcePermission?: OperationPermission;
 }
+
+/**
+ * The diff of a destination list pairs the destination at each index with the one now beside it,
+ * and a destination's secrets read only as the mask, so removing the first of two keeps the
+ * removed one's configuration under the surviving one's id, which the server refuses. A list
+ * whose members carry their own identity is replaced in one whole-list move instead.
+ */
+export const destinationsAsAWholeListReplace = (
+  jsonPatch: Operation[],
+  destinations: EventSubscription['destinations']
+): Operation[] => {
+  if (!jsonPatch.some((op) => op.path.startsWith('/destinations'))) {
+    return jsonPatch;
+  }
+
+  return [
+    ...jsonPatch.filter((op) => !op.path.startsWith('/destinations')),
+    { op: 'replace', path: '/destinations', value: destinations },
+  ];
+};
 
 /** Props for the notification template section of the AI alert form. */
 export interface AlertAiTemplateSectionProps {
@@ -278,9 +299,9 @@ class AlertsClassBase {
           initialData
         );
 
-        const jsonPatch = compare(
-          omitBy(initialData, isUndefined),
-          newAlertData
+        const jsonPatch = destinationsAsAWholeListReplace(
+          compare(omitBy(initialData, isUndefined), newAlertData),
+          newAlertData.destinations
         );
 
         alertDetails = await updateAlertAPI(initialData.id, jsonPatch);

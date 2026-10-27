@@ -307,8 +307,10 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     // alert meet before the diff and the store. A secret sent back as read is the stored one, and
     // the rest is encrypted before the diff, so the change description and the stored row carry
     // ciphertext only.
+    DestinationSecretGuards.requireServedChannelUnchanged(original, updated);
     DestinationSecrets.restore(original, updated);
     if (operation != Operation.SOFT_DELETE) {
+      DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, updated);
       DestinationSecretGuards.requireNoMaskedSecrets(updated.getDestinations());
       DestinationSecretGuards.requireStoredCiphertext(original, updated);
     }

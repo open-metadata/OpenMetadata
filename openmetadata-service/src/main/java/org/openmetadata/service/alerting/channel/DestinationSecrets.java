@@ -56,6 +56,13 @@ public final class DestinationSecrets {
   private static final List<String> FIELD_CHANGE_VALUES = List.of("oldValue", "newValue");
   private static final UnaryOperator<String> MASK = secret -> PASSWORD_MASK;
 
+  // Where a destination delivers what it carries: the endpoint it posts to, and, for OAuth
+  // credentials, the token URL they are shown to. A secret restored beside a moved target would
+  // be delivered to an address the request chose, which a caller who only ever read the mask
+  // cannot be allowed to pick, so a target that moved gets every secret entered again.
+  private static final List<JsonPointer> SECRET_TARGETS =
+      List.of(JsonPointer.compile("/endpoint"), JsonPointer.compile("/authType/tokenUrl"));
+
   private DestinationSecrets() {}
 
   /**
@@ -129,7 +136,8 @@ public final class DestinationSecrets {
    * Restores, in place, the stored secrets an update sends back: a mask stands for the value stored
    * at the same field of the same destination, and a plaintext that the stored ciphertext decrypts
    * to is replaced by that ciphertext, so sending a secret again changes nothing. Fernet ciphertext
-   * is randomized, so encrypting it again never would.
+   * is randomized, so encrypting it again never would. A destination whose target moved gets
+   * nothing restored: it moves only when every secret is entered again.
    */
   public static void restore(EventSubscription original, EventSubscription updated) {
     List<SubscriptionDestination> stored = listOrEmpty(original.getDestinations());
@@ -155,6 +163,11 @@ public final class DestinationSecrets {
 
   /** Restores, in place, the secrets of one destination from the one stored for it. */
   public static void restore(SubscriptionDestination stored, SubscriptionDestination updated) {
+    if (targetMoved(stored, updated)) {
+      // The stored secret must not follow, so a caller is never served it beside an address they
+      // chose; entering every secret again is how it moves.
+      return;
+    }
     JsonNode storedConfig = JsonUtils.valueToTree(stored.getConfig());
     JsonNode updatedConfig = JsonUtils.valueToTree(updated.getConfig());
     boolean changed = false;
@@ -205,6 +218,32 @@ public final class DestinationSecrets {
   private static boolean sameKind(SubscriptionDestination stored, SubscriptionDestination sent) {
     return stored.getType() == sent.getType()
         && Objects.equals(stored.getChannel(), sent.getChannel());
+  }
+
+  /**
+   * Whether a target stands for what is stored: the same secret in plain text, the mask standing
+   * for the stored one, or plain text the stored ciphertext decrypts to. A plain text beside a
+   * plain text (a configuration stored before this model) is kept as it reads.
+   */
+  private static boolean targetUnchanged(String sent, String stored) {
+    if (stored == null) {
+      return sent == null;
+    }
+    return sent != null
+        && (sent.equals(stored) || PASSWORD_MASK.equals(sent) || isCiphertextOf(sent, stored));
+  }
+
+  /** Whether {@code sent} would deliver what {@code stored} carries somewhere it is not stored. */
+  static boolean targetMoved(SubscriptionDestination stored, SubscriptionDestination sent) {
+    JsonNode storedConfig = JsonUtils.valueToTree(stored.getConfig());
+    JsonNode sentConfig = JsonUtils.valueToTree(sent.getConfig());
+    for (JsonPointer target : SECRET_TARGETS) {
+      if (!targetUnchanged(
+          sentConfig.at(target).asText(null), storedConfig.at(target).asText(null))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static boolean standsForStored(String incoming, String stored) {

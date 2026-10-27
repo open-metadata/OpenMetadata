@@ -35,7 +35,9 @@ public class WebhookConfigRules implements ConfigRules {
       ConfigRules.requireConfiguration(destination);
       validateConfigured(submitted(destination));
     } else {
-      requireAnAllowedEndpointIfAny(destination.getConfig());
+      // The update paths judge configurations already stored, so the endpoint may be ciphertext;
+      // read it as it would be sent.
+      requireAnAllowedEndpointIfAny(DestinationSecrets.decrypted(destination).getConfig());
     }
   }
 
