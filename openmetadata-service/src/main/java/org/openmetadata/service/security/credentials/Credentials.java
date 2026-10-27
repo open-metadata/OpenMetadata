@@ -23,6 +23,8 @@ import java.util.Objects;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
 /**
@@ -144,9 +146,17 @@ public final class Credentials {
     announceQuietly(principalName);
   }
 
+  /** With Redis, peers re-read the principal at once instead of at their next sweep. */
   private static void announceQuietly(String principalName) {
     try {
-      CredentialChangeAnnouncer.announce(principalName);
+      CacheInvalidationPubSub pubSub = CacheBundle.getCacheInvalidationPubSub();
+      if (pubSub != null) {
+        pubSub.publish(
+            CacheInvalidationPubSub.TYPE_CREDENTIAL,
+            null,
+            CredentialSubject.of(principalName).principal(),
+            null);
+      }
     } catch (RuntimeException failure) {
       LOG.warn(
           "Credential change of {} was not announced to other servers", principalName, failure);

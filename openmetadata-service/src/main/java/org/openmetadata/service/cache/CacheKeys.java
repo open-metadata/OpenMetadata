@@ -1,7 +1,6 @@
 package org.openmetadata.service.cache;
 
 import java.util.UUID;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public final class CacheKeys {
@@ -66,10 +65,6 @@ public final class CacheKeys {
 
   public String personaContextLock(UUID personaId) {
     return ns + ":pctx:lock:" + personaId;
-  }
-
-  public String credentialState(String credentialType, String userName) {
-    return ns + ":credential:" + credentialType + ":" + EntityUtil.hash(userName);
   }
 
   /**
