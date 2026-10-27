@@ -31,8 +31,9 @@ import org.openmetadata.service.security.credentials.CredentialMetrics.DecryptOu
  * secrets-manager call. Both are null when the mechanism is not a JWT (or the user is absent).
  *
  * <p>{@code mechanismDigestOrigin} says how this read obtained {@code mechanismDigest}: decrypted,
- * or reused from the previous record. The verifier counts it when it installs the read. Null when
- * the record holds no mechanism digest.
+ * or reused from the previous record. The verifier counts it for every record a read returns,
+ * whether or not the read installs it. Null when the mechanism is not a JWT, the user is absent or
+ * the user is deleted.
  *
  * <p>Invariant the source must keep: equal fingerprints imply equal digest sets, except for edits
  * the fingerprint cannot see (a secret edited inside an external secrets manager, a PAT row's

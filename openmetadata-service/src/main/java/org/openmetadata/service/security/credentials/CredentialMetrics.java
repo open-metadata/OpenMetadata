@@ -69,7 +69,7 @@ final class CredentialMetrics {
     SUBJECT_READ_FAILED,
     TIMEOUT,
     NO_PERMIT,
-    /** A read of the subject produced no record within missRefreshMinAge, so none was started. */
+    /** A check's read of the subject produced no record within missRefreshMinAge, so none was started. */
     BACKOFF
   }
 

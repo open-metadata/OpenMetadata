@@ -23,8 +23,8 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
 - A sweep every 2 s fingerprints each cached principal's rows and re-reads the ones that changed.
   Servers converge on database state and share no credential state, so every committed write is
   seen, whoever made it.
-- Every entry point classifies the token with `OmCredential.classify` and calls
-  `CredentialVerifier.require`, through `JwtFilter.requireCurrentCredential`. Which method each one
+- Every entry point that grants access classifies the token with `OmCredential.classify` and calls
+  `CredentialVerifier.require`, through `JwtFilter.requireCurrentCredential`. Which method each entry point
   calls:
   - `JwtFilter.filter` (REST) calls `authenticate`.
   - `JwtFilter.getCatalogSecurityContext` calls `authenticate`. The MCP tool callbacks
@@ -41,7 +41,8 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   kind.
 - A principal whose latest check read produced no record, because the read failed, got no slot or
   left the principal out, is not read again on a check's behalf for `missRefreshMinAge` (500 ms by
-  default, less than `maxStaleness`). Its checks answer 503 without a read in that window. A token
+  default, less than `maxStaleness`). Its checks that need
+  a read answer 503 without one in that window. A token
   that a fresh entry lacks triggers a read only when the entry's last full read is older than
   `missRefreshMinAge`, and the check rejects it otherwise. So a principal's unknown or failing
   tokens cost at most about two reads per second per server.
@@ -68,13 +69,15 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   `maxStaleness` plus 50 ms has passed on the monotonic clock. The wait is a time bound and needs no
   membership. At most 8 such waits run at once in a process, taken with `tryAcquire` before the
   wait begins, so they cannot hold every request slot; the limit is a constant, not a setting. When
-  the wait cannot finish, because the call is interrupted or no permit is free, the call answers 503
+  the wait cannot finish, because no verifier is installed, no permit is free or the call is interrupted, the call answers 503
   with `Retry-After`. `REVIEW.md` asks that an `InterruptedException` never map to a retryable
   status. Here the write has committed, both endpoints converge on a repeat, and a repeat waits
   again, so the 503 is a request to repeat the call and not an unfinished operation. The wait uses
-  the writing server's `maxStaleness`, so it holds for the cluster only when every server runs the
-  same `credentialVerification` settings. During a rollout that changes `maxStaleness`, the larger
-  value applies until every server runs the new one.
+  the receiving server's `maxStaleness`, so it covers every server only when all of them run the
+  same `credentialVerification` settings. While a change to `maxStaleness` rolls out, it covers
+  only the servers whose `maxStaleness` is no larger than the receiving server's. A cluster-wide
+  bound would need each server to know its peers' settings, which needs the membership that the
+  wait avoids.
 
 ## Consequences
 - While any principal is cached, each server sends one fingerprint statement per 500 cached
@@ -85,10 +88,12 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   `tokenType=PERSONAL_ACCESS` are not affected.
 - Operators alert when `om.credential.sweep.last.complete.age.seconds` (Prometheus name
   `om_credential_sweep_last_complete_age_seconds`) exceeds `maxStaleness`, and watch
-  `om.credential.unavailable`. The gauge is the age of the last sweep that re-confirmed every cached
-  principal. Past `maxStaleness`, the entries of the batches that were not re-confirmed are too
-  old to answer from, so their checks read the database on the request thread and answer 503 when
-  that read fails or exceeds `loadTimeout`. `/healthcheck` stays a liveness check and does not
+  `om.credential.unavailable`. The gauge is the age of the last sweep whose every batch statement
+  succeeded. Past `maxStaleness`, the entries of the batches that failed are too old to answer
+  from, so their checks read the database on the request thread and answer 503 when that read
+  fails or exceeds `loadTimeout`. A principal whose stored credentials cannot be converted does not
+  hold the gauge back. Its checks count under `om.credential.unavailable` with
+  `cause=subject_read_failed`. `/healthcheck` stays a liveness check and does not
   report this.
 - Rejected alternatives:
   - a change-log table read through per-server cursors, because every writer must emit and the ops

@@ -92,9 +92,10 @@ public final class Credentials {
   /**
    * Returns once the installed verifier's maxStaleness, plus a margin for clock-rate differences
    * between servers, has passed on the monotonic clock since this call. Call it after the revoking
-   * write has committed. By the verifier's staleness bound, every server rejects a revoked token on
-   * every check that begins at or after commit + maxStaleness on its own clock, so once this
-   * returns no server accepts it for a new request.
+   * write has committed. By the verifier's staleness bound, a server rejects a revoked token on every
+   * check that begins at or after commit plus its own maxStaleness on its own clock. So once this
+   * returns, no server whose maxStaleness is at most this server's accepts it for a new request,
+   * and that is every server when all of them run the same settings.
    *
    * <p>It throws {@link CredentialUnavailableException}, answered with 503, when it cannot wait the
    * bound out. That happens when no verifier is installed, so the bound is unknown, when {@value

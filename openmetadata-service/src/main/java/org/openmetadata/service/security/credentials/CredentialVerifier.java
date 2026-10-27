@@ -72,7 +72,7 @@ import org.openmetadata.service.security.credentials.CredentialMetrics.Unavailab
  * pool and waits for it within {@code loadTimeout}; when that read fails, does not finish in time
  * or gets no slot, the check throws {@link CredentialUnavailableException} ("cannot confirm"),
  * which is not {@link AuthenticationException} ("confirmed not current"). For missRefreshMinAge
- * after a read of a principal that produced no record, such a check answers the same without a
+ * after a check's read of a principal produced no record, such a check answers the same without a
  * read.
  *
  * <p>All state is per instance. Every stamp is a {@link Ticker} reading compared by difference.
@@ -155,7 +155,8 @@ public final class CredentialVerifier implements Managed {
 
     /**
      * No slot, at once or within the budget of a waiter: every waiter answers NO_PERMIT, and the
-     * subject backs off as after any read that produced no record.
+     * subject backs off as after any check read that produced no record. Only checks start request
+     * reads.
      */
     private void reject(RejectedExecutionException why) {
       try {
@@ -333,10 +334,10 @@ public final class CredentialVerifier implements Managed {
    * reconfirmed. When the deep verify is due, each batch is reconfirmed first and then read in full
    * with every decrypt forced. A deep read that fails leaves its entries trusted by their
    * fingerprints and the pass still complete.
-   * The deep pass is then retried after {@code min(deepVerifyInterval, 1 min)}: a batch fails on a
-   * statement failure, or on an {@link Error} for one subject, which the source's per-subject guard
-   * does not catch and which fails its whole batch. So the whole pass is what to retry, and one
-   * stamp holds that decision.
+   * The deep pass is then retried after {@code min(deepVerifyInterval, 1 min)}. A deep batch fails
+   * on a statement failure, on an {@link Error} for one subject, which the source's per-subject
+   * guard does not catch, or when the source leaves a subject out. So the whole pass is what to
+   * retry, and one stamp holds that decision.
    */
   void sweepOnce() {
     long sweepStart = ticker.read();
@@ -416,7 +417,7 @@ public final class CredentialVerifier implements Managed {
     if (backoff.isBackingOff(subject, nowNanos)) {
       throw unavailable(
           UnavailableCause.BACKOFF,
-          "The last read of "
+          "The last check read of "
               + subject.principal()
               + " produced no record within missRefreshMinAge",
           null);
