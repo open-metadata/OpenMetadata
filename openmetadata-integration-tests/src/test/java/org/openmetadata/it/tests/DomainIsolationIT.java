@@ -62,7 +62,9 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -519,6 +521,50 @@ public class DomainIsolationIT {
     } finally {
       drain(cleanup);
     }
+  }
+
+  /** The ingestion bot reads assets moved into a domain, and their service once it joins too. */
+  @Test
+  void test_ingestionBot_readsDomainAssetsAndServices(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient bot = SdkClients.ingestionBotClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      for (String suffix : List.of("_ingest1", "_ingest2")) {
+        Domain domain = createDomain(admin, ns.shortPrefix() + suffix, cleanup);
+        DatabaseSchema schema = createSchema(ns, cleanup);
+        Table table = createTable(admin, ns.shortPrefix() + suffix, schema, null, cleanup);
+        addAssetsToDomain(admin, domain, table.getEntityReference());
+        assertEquals(
+            List.of(domain.getFullyQualifiedName()),
+            domainFqns(bot.tables().get(table.getId().toString(), "domains").getDomains()));
+
+        DatabaseService service =
+            admin.databaseServices().get(schema.getService().getId().toString(), "domains");
+        service.setDomains(List.of(domain.getEntityReference()));
+        admin.databaseServices().update(service.getId().toString(), service);
+        assertEquals(
+            List.of(domain.getFullyQualifiedName()),
+            domainFqns(
+                bot.databaseServices().get(service.getId().toString(), "domains").getDomains()));
+      }
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  private void addAssetsToDomain(OpenMetadataClient admin, Domain domain, EntityReference asset) {
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/domains/" + domain.getFullyQualifiedName() + "/assets/add",
+            new BulkAssets().withAssets(List.of(asset)).withDryRun(false),
+            Void.class);
+  }
+
+  private List<String> domainFqns(List<EntityReference> domains) {
+    return domains.stream().map(EntityReference::getFullyQualifiedName).toList();
   }
 
   @Test
