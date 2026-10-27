@@ -14,6 +14,15 @@
 package org.openmetadata.service.ontology;
 
 import com.macasaet.fernet.Key;
+import com.macasaet.fernet.StringValidator;
+import com.macasaet.fernet.Token;
+import com.macasaet.fernet.TokenValidationException;
+import com.macasaet.fernet.Validator;
+import java.security.SecureRandom;
+import java.time.DateTimeException;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.TemporalAmount;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.exception.JsonParsingException;
@@ -22,20 +31,37 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.OntologyDAO.LineagePosition;
 import org.openmetadata.service.jdbi3.OntologyReferenceDAO.AxiomPosition;
 import org.openmetadata.service.ontology.NativeOntologyDataGraphPager.Cursor;
-import org.openmetadata.service.util.RestUtil;
 
-/** Turns a topology cursor into the {@code topology.after} token and back. */
+/**
+ * Seals a topology cursor into the opaque {@code topology.after} token with the servers' shared
+ * Fernet keys, and opens it again. The first key seals; any key opens, so rotating keys keeps open
+ * cursors. Without a key no cursor is issued and none is accepted. Cursors do not expire, because
+ * binding revisions and the axiom position check already retire stale ones.
+ */
 public final class NativeOntologyTopologyCursorCodec {
-  static final int MAX_LENGTH = 8192;
+  private static final int MAX_LENGTH = 8192;
   private static final int VERSION = 1;
+  private static final Validator<String> NO_EXPIRY =
+      new StringValidator() {
+        @Override
+        public TemporalAmount getTimeToLive() {
+          return Duration.ofSeconds(Instant.MAX.getEpochSecond());
+        }
+      };
   private final List<Key> keys;
+  private final SecureRandom random = new SecureRandom();
 
   public NativeOntologyTopologyCursorCodec(final List<Key> keys) {
     this.keys = List.copyOf(keys);
   }
 
   String encode(final Cursor cursor) {
-    return RestUtil.encodeCursor(JsonUtils.pojoToJson(WireCursor.of(cursor)));
+    if (keys.isEmpty()) {
+      throw new IllegalStateException(
+          "Set fernetConfiguration.fernetKey to page a native graph topology");
+    }
+    return Token.generate(random, keys.getFirst(), JsonUtils.pojoToJson(WireCursor.of(cursor)))
+        .serialise();
   }
 
   Cursor decode(final String token, final String digest) {
@@ -43,13 +69,20 @@ public final class NativeOntologyTopologyCursorCodec {
       throw invalidCursor();
     }
     try {
-      return toCursor(JsonUtils.readValue(RestUtil.decodeCursor(token), WireCursor.class), digest);
-    } catch (final IllegalArgumentException | JsonParsingException invalid) {
+      return toCursor(JsonUtils.readValue(open(token), WireCursor.class), digest);
+    } catch (final IllegalArgumentException
+        | DateTimeException
+        | TokenValidationException
+        | JsonParsingException invalid) {
       throw invalidCursor();
     }
   }
 
-  static BadRequestException invalidCursor() {
+  private String open(final String token) {
+    return Token.fromString(token).validateAndDecrypt(keys, NO_EXPIRY);
+  }
+
+  private static BadRequestException invalidCursor() {
     return new BadRequestException("Invalid native graph topology cursor");
   }
 

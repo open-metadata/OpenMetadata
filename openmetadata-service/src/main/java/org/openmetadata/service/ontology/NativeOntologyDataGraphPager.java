@@ -7,6 +7,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
@@ -33,6 +34,7 @@ import org.openmetadata.service.jdbi3.OntologyReferenceDAO.AxiomPosition;
 import org.openmetadata.service.jdbi3.OntologyReferenceDAO.EdgeAxiomRow;
 import org.openmetadata.service.ontology.NativeOntologyDataGraphService.Cluster;
 import org.openmetadata.service.ontology.NativeOntologyDataGraphService.Link;
+import org.openmetadata.service.ontology.NativeOntologyDataGraphService.Target;
 import org.openmetadata.service.ontology.NativeOntologyPrefixLineage.LineagePage;
 import org.openmetadata.service.ontology.OntologyConceptBindingService.Access;
 import org.openmetadata.service.util.FreshReadScope;
@@ -68,11 +70,12 @@ public final class NativeOntologyDataGraphPager {
       final UUID ontologyId,
       final NativeOntologyDataGraphPageRequest request) {
     validate(request);
+    final var scope = new Scope(access, ontologyId, copyPrefixes(request.getLoaded()));
+    final var resumed = resumed(scope, request.getPage());
     try (final var ignored = FreshReadScope.enter()) {
-      final var scope = new Scope(access, ontologyId, copyPrefixes(request.getLoaded()));
       final var response = new NativeOntologyDataGraphPage().withClusters(null);
       final var concepts = select(scope, request.getPage(), response);
-      final var cursor = cursor(request.getPage(), digest(ontologyId, scope.loaded()));
+      final var cursor = resumed.orElseGet(() -> Cursor.first(digest(ontologyId, scope.loaded())));
       response
           .withLoaded(scope.loaded())
           .withContextFull(scope.loaded().size() >= MAX_CONCEPTS)
@@ -95,10 +98,11 @@ public final class NativeOntologyDataGraphPager {
     return concepts;
   }
 
-  private Cursor cursor(final NativeOntologyGraphPageSelection selection, final String digest) {
-    return selection.getKind() == Kind.TOPOLOGY
-        ? codec.decode(selection.getAfter(), digest)
-        : Cursor.first(digest);
+  /** Opens a topology cursor before any read, so a refused token reveals nothing about the data. */
+  private Optional<Cursor> resumed(final Scope scope, final NativeOntologyGraphPageSelection page) {
+    return page.getKind() == Kind.TOPOLOGY
+        ? Optional.of(codec.decode(page.getAfter(), digest(scope.ontologyId(), scope.loaded())))
+        : Optional.empty();
   }
 
   private Map<UUID, OntologyConcept> clusters(
@@ -265,12 +269,11 @@ public final class NativeOntologyDataGraphPager {
 
   private AxiomPosition semanticPosition(
       final UUID ontologyId, final List<String> hashes, final AxiomPosition after) {
-    if (!after.hasAfter()) {
-      return AxiomPosition.FIRST;
-    }
-    return requirePosition(
-        dao.ontologyReferenceDAO()
-            .findPropertyEdgeAxiomPosition(ontologyId, hashes, UUID.fromString(after.id())));
+    return after.hasAfter()
+        ? requirePosition(
+            dao.ontologyReferenceDAO()
+                .findPropertyEdgeAxiomPosition(ontologyId, hashes, UUID.fromString(after.id())))
+        : AxiomPosition.FIRST;
   }
 
   static SemanticPage semanticPage(
@@ -282,11 +285,9 @@ public final class NativeOntologyDataGraphPager {
     final Set<Link> links = new LinkedHashSet<>();
     AxiomPosition after = cursor.semanticAfter();
     for (final var candidate : candidates) {
-      final var axiom = JsonUtils.readValue(candidate.json(), OntologyAxiom.class);
-      final int offset = startOffset(candidate, axiom, cursor);
       final var stop =
           visible.contains(candidate.id())
-              ? addLinks(axiom, offset, concepts, links)
+              ? addLinks(candidate, cursor, concepts, links)
               : OptionalInt.empty();
       if (stop.isPresent()) {
         return new SemanticPage(links, candidate.position(), stop.getAsInt(), false);
@@ -296,24 +297,16 @@ public final class NativeOntologyDataGraphPager {
     return new SemanticPage(links, after, 0, candidates.size() < candidateLimit);
   }
 
-  private static int startOffset(
-      final EdgeAxiomRow candidate, final OntologyAxiom axiom, final Cursor cursor) {
-    final int offset =
-        candidate.id().toString().equals(cursor.semanticAfter().id()) ? cursor.targetOffset() : 0;
-    if (offset > 0 && offset > NativeOntologyDataGraphService.targets(axiom).size()) {
-      throw NativeOntologyTopologyCursorCodec.invalidCursor();
-    }
-    return offset;
-  }
-
-  /** Adds the axiom's links from {@code offset}; the next offset when the page fills, if any. */
+  /** Adds a visible axiom's links from the cursor's offset; the next offset when the page fills. */
   private static OptionalInt addLinks(
-      final OntologyAxiom axiom,
-      final int offset,
+      final EdgeAxiomRow candidate,
+      final Cursor cursor,
       final Map<String, UUID> concepts,
       final Set<Link> links) {
+    final var axiom = JsonUtils.readValue(candidate.json(), OntologyAxiom.class);
     final var targets = NativeOntologyDataGraphService.targets(axiom);
     final UUID from = concepts.get(String.valueOf(axiom.getSubjectIri()));
+    final int offset = startOffset(candidate, targets, cursor);
     for (int index = offset; from != null && index < targets.size(); index++) {
       final UUID to = concepts.get(targets.get(index).classIri().toString());
       if (to != null) {
@@ -324,6 +317,16 @@ public final class NativeOntologyDataGraphPager {
       }
     }
     return OptionalInt.empty();
+  }
+
+  private static int startOffset(
+      final EdgeAxiomRow candidate, final List<Target> targets, final Cursor cursor) {
+    final int offset =
+        candidate.id().toString().equals(cursor.semanticAfter().id()) ? cursor.targetOffset() : 0;
+    if (offset > targets.size()) {
+      throw graphChanged();
+    }
+    return offset;
   }
 
   static Integer nextClusterOffset(
@@ -430,8 +433,7 @@ public final class NativeOntologyDataGraphPager {
               && validCursor(page.getAfter(), 256);
           case TOPOLOGY -> page.getConceptId() == null
               && page.getOffset() == null
-              && page.getLimit() == null
-              && validCursor(page.getAfter(), NativeOntologyTopologyCursorCodec.MAX_LENGTH);
+              && page.getLimit() == null;
         };
     if (!valid) {
       throw invalidContext();
