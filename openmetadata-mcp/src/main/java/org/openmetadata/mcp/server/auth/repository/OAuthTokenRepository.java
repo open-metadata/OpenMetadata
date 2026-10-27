@@ -224,7 +224,7 @@ public class OAuthTokenRepository {
   /**
    * Hash token using SHA-256 for secure lookups.
    */
-  private String hashToken(String token) {
+  static String hashToken(String token) {
     try {
       MessageDigest digest = MessageDigest.getInstance("SHA-256");
       byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));

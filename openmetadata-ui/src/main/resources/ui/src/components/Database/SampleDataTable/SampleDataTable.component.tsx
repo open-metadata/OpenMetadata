@@ -13,7 +13,6 @@
 
 import { Box, Select, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 
 import { isEmpty, lowerCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,7 +20,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDownload } from '../../../assets/svg/ic-download.svg';
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
@@ -80,7 +78,6 @@ const SampleDataTable: FC<SampleDataProps> = ({
   permissions,
   entityType = EntityType.TABLE,
 }) => {
-  const { isTourPage, tourMockDatasetData } = useTourProvider();
   const { currentUser, theme } = useApplicationStore();
   const { t } = useTranslation();
   const [sampleData, setSampleData] = useState<SampleData>();
@@ -263,25 +260,12 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   useEffect(() => {
     setIsLoading(true);
-    if (!isTableDeleted && tableId && !isTourPage) {
+    if (!isTableDeleted && tableId) {
       fetchSampleData();
     } else {
       setIsLoading(false);
     }
-    if (isTourPage) {
-      const mock = tourMockDatasetData as
-        | { tableDetails: { columns: unknown }; sampleData: unknown }
-        | undefined;
-      if (mock) {
-        setSampleData(
-          getSampleDataWithType({
-            columns: mock.tableDetails.columns,
-            sampleData: mock.sampleData,
-          } as unknown as Table)
-        );
-      }
-    }
-  }, [tableId, tourMockDatasetData]);
+  }, [tableId]);
 
   if (isLoading) {
     return <Loader />;
@@ -316,9 +300,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   return (
     <div
-      className={classNames('p-md border-default border-radius-sm bg-white', {
-        'h-70vh overflow-hidden': isTourPage,
-      })}
+      className="p-md border-default border-radius-sm bg-white"
       data-testid="sample-data"
       id="sampleDataDetails">
       <Box

@@ -43,3 +43,20 @@ describe('AccordionPanel', () => {
     expect(screen.getByLabelText('Token validity')).toHaveValue('7200');
   });
 });
+
+describe('AccordionItem variant', () => {
+  it.each([
+    ['default', 'tw:bg-surface'],
+    ['muted', 'tw:bg-primary_alt'],
+  ] as const)('paints the %s item with %s', (variant, bg) => {
+    render(
+      <Accordion>
+        <AccordionItem data-testid="item" id="item" variant={variant}>
+          <AccordionHeader>Item</AccordionHeader>
+        </AccordionItem>
+      </Accordion>
+    );
+
+    expect(screen.getByTestId('item')).toHaveClass(bg);
+  });
+});

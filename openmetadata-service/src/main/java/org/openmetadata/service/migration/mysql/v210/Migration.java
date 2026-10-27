@@ -17,6 +17,8 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
 import static org.openmetadata.service.migration.utils.v206.MigrationUtil.ACTIVITY_FEED_ALERT_STEP;
 import static org.openmetadata.service.migration.utils.v206.MigrationUtil.addContractAndStatusToActivityFeedAlert;
+import static org.openmetadata.service.migration.utils.v207.MigrationUtil.MCP_CONSENT_COLUMNS_STEP;
+import static org.openmetadata.service.migration.utils.v207.MigrationUtil.addMcpConsentColumnsOnMySql;
 import static org.openmetadata.service.migration.utils.v210.AlertBacklogMigration.skipBacklogOfAlertsThePreviousReleaseCouldNotSend;
 import static org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets;
 import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.backfillCreationAudit;
@@ -45,6 +47,7 @@ import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
@@ -134,5 +137,21 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ACTIVITY_FEED_ALERT_STEP,
         () -> addContractAndStatusToActivityFeedAlert(handle));
+    // Same for the 2.0.7 MCP consent columns. The step adds only missing columns, so running it
+    // after 2.0.7 already did is harmless.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        MCP_CONSENT_COLUMNS_STEP,
+        () -> addMcpConsentColumnsOnMySql(handle));
+    // `migrate` runs data migrations before it starts Flowable, and this step deploys a workflow.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        GlossaryAutomationReviewMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
+        });
   }
 }
