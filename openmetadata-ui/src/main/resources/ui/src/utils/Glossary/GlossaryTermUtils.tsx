@@ -29,6 +29,12 @@ const TabsLabel = withSuspenseFallback(
   lazy(() => import('../../components/common/TabsLabel/TabsLabel.component'))
 );
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -178,19 +184,17 @@ export const getGlossaryTermDetailPageTabs = (
         firstPanel={{
           className: 'glossary-term-resizable-panel-container',
           children: (
-            <>
-              <AssetsTabs
-                addDisabledMessage={assetsAddDisabledMessage}
-                assetCount={assetCount}
-                entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
-                isSummaryPanelOpen={Boolean(previewAsset)}
-                permissions={assetPermissions}
-                ref={assetTabRef}
-                onAddAsset={() => setAssetModalVisible(true)}
-                onAssetClick={handleAssetClick}
-                onRemoveAsset={handleAssetSave}
-              />
-            </>
+            <AssetsTabs
+              addDisabledMessage={assetsAddDisabledMessage}
+              assetCount={assetCount}
+              entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
+              isSummaryPanelOpen={Boolean(previewAsset)}
+              permissions={assetPermissions}
+              ref={assetTabRef}
+              onAddAsset={() => setAssetModalVisible(true)}
+              onAssetClick={handleAssetClick}
+              onRemoveAsset={handleAssetSave}
+            />
           ),
           flex: 0.7,
           minWidth: 700,
@@ -225,8 +229,9 @@ export const getGlossaryTermDetailPageTabs = (
 
   const buildActivityFeedTab = (): TabProps => ({
     label: (
-      <TabsLabel
+      <ActivityFeedTabLabel
         count={feedCount.totalCount}
+        entityType={EntityType.GLOSSARY_TERM}
         id={EntityTabs.ACTIVITY_FEED}
         isActive={activeTab === EntityTabs.ACTIVITY_FEED}
         name={

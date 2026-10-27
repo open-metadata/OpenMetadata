@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { InboxTaskGrouping } from './InboxPage/components/InboxTaskListToolbar';
 
 /**
  * Root key for the sidebar inbox badge's open-task count. Shared so task
@@ -43,3 +44,9 @@ export const TASK_LIST_QUERY_KEY = 'inbox-task-list';
 export const FEED_DELETE_ACCESS_QUERY_KEY = [
   'feed-resource-delete-access',
 ] as const;
+
+/** The task list's groupings, in menu order, with their labels. */
+export const TASK_GROUPING_LABEL_KEY: Record<InboxTaskGrouping, string> = {
+  type: 'label.type',
+  none: 'label.none',
+};

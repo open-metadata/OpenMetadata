@@ -440,6 +440,20 @@ export const getActivityWindowDays = (dateRange?: InboxDateRange): number => {
   return Math.min(Math.max(days, 1), MAX_ACTIVITY_DAYS);
 };
 
+// `@Max(90)` on the `days` of `/activity/about` and `/activity/user`.
+const ACTIVITY_LOOKBACK_MAX_DAYS = 90;
+
+// The whole days from now back to the window's start, for the endpoints that
+// take only a `days` look-back (`/activity/about`, `/activity/user`). They
+// allow up to 90, so this is not held to the 30-day cap: a 30-day window
+// starts at midnight 30 days ago, which a 30-day look-back from now stops
+// short of. Whatever it reaches past the window is clipped client-side.
+export const getActivityLookbackDays = (startTs: number): number =>
+  Math.min(
+    Math.max(Math.ceil((getCurrentMillis() - startTs) / ACTIVITY_DAY_MS), 1),
+    ACTIVITY_LOOKBACK_MAX_DAYS
+  );
+
 // A list that came back a full page may hold fewer items than the window has,
 // so its length is a floor, not a total.
 export interface InboxCount {

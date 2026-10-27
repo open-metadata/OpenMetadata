@@ -125,17 +125,19 @@ describe('DirectoryDetailsUtils', () => {
       ).toBeInTheDocument();
     });
 
-    it('should render activity feed tab with correct count', () => {
+    it('should render activity feed tab with correct count', async () => {
       const tabs = getDirectoryDetailsPageTabs(mockProps);
       const activityTab = tabs[1];
 
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByTestId('tab-label-label.activity-feed-and-task-plural')
+        await screen.findByTestId(
+          'tab-label-label.activity-feed-and-task-plural'
+        )
       ).toBeInTheDocument();
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (10)')
+        await screen.findByText('label.activity-feed-and-task-plural (10)')
       ).toBeInTheDocument();
     });
 
@@ -212,7 +214,7 @@ describe('DirectoryDetailsUtils', () => {
       expect(screen.getByTestId('custom-properties')).toBeInTheDocument();
     });
 
-    it('should handle different active tab', () => {
+    it('should handle different active tab', async () => {
       const propsWithDifferentActiveTab = {
         ...mockProps,
         activeTab: EntityTabs.ACTIVITY_FEED,
@@ -224,7 +226,9 @@ describe('DirectoryDetailsUtils', () => {
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (10) - Active')
+        await screen.findByText(
+          'label.activity-feed-and-task-plural (10) - Active'
+        )
       ).toBeInTheDocument();
     });
 
@@ -408,7 +412,7 @@ describe('DirectoryDetailsUtils', () => {
   });
 
   describe('edge cases', () => {
-    it('should handle missing feedCount gracefully', () => {
+    it('should handle missing feedCount gracefully', async () => {
       const propsWithoutFeedCount = {
         ...mockProps,
         feedCount: { totalCount: 0 },
@@ -420,7 +424,7 @@ describe('DirectoryDetailsUtils', () => {
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (0)')
+        await screen.findByText('label.activity-feed-and-task-plural (0)')
       ).toBeInTheDocument();
     });
 
@@ -471,7 +475,7 @@ describe('DirectoryDetailsUtils', () => {
       ).toBeInTheDocument();
     });
 
-    it('should use custom label for activity feed tab from labelMap', () => {
+    it('should use custom label for activity feed tab from labelMap', async () => {
       const propsWithLabelMap = {
         ...mockProps,
         labelMap: {
@@ -484,7 +488,9 @@ describe('DirectoryDetailsUtils', () => {
 
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
-      expect(screen.getByText('Custom Activity (10)')).toBeInTheDocument();
+      expect(
+        await screen.findByText('Custom Activity (10)')
+      ).toBeInTheDocument();
     });
 
     it('should use custom label for lineage tab from labelMap', () => {

@@ -3770,6 +3770,7 @@
     "value-boost": "تقویت مقدار",
     "value-count": "تعداد مقادیر",
     "value-plural": "مقادیر",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "واریانس",
     "variant": "گونه",
     "variant-plural": "گونه‌ها",

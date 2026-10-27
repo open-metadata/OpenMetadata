@@ -411,6 +411,16 @@ describe('EntityUtilClassBase', () => {
       });
     });
 
+    it('should return full FQN for WORKSHEET (nested under its spreadsheet)', () => {
+      const fqn = 'service.directory.spreadsheet.worksheet';
+      const result = entityUtil.getFqnParts(fqn, EntityType.WORKSHEET);
+
+      expect(result).toEqual({
+        entityFqn: fqn,
+        columnFqn: undefined,
+      });
+    });
+
     it('should return original FQN if parts are insufficient for TABLE', () => {
       const fqn = 'service.database.schema';
       const result = entityUtil.getFqnParts(fqn, EntityType.TABLE);

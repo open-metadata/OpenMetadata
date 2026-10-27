@@ -29,6 +29,7 @@ import {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import ActivityFeedTabLabel from '../../../components/activity-feed/ActivityFeed/ActivityFeedTabLabel';
 import { ActivityFeedTab } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ActivityThreadPanel from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -39,7 +40,6 @@ import type {
   ExtentionEntitiesKeys,
 } from '../../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../../components/Customization/GenericProvider/GenericProvider';
 import {
   CREATE_PAGE_HASH,
@@ -848,8 +848,9 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       {
         name: t('label.activity-feed-and-task-plural'),
         label: (
-          <TabsLabel
+          <ActivityFeedTabLabel
             count={feedCount.totalCount}
+            entityType={EntityType.KNOWLEDGE_PAGE}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}

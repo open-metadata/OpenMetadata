@@ -20,8 +20,10 @@ const mockGetActivityEvents = jest.fn();
 const mockGetMyActivityFeed = jest.fn();
 const mockGetFollowingActivityFeed = jest.fn();
 const mockGetMentionsActivityFeed = jest.fn();
-const mockGetUserActivity = jest.fn();
 const mockListConversations = jest.fn();
+const mockGetActivityByEntityLink = jest.fn();
+const mockGetUserActivity = jest.fn();
+const mockGetUserByName = jest.fn();
 let mockCurrentUser: { id?: string } | undefined;
 
 jest.mock('rest/activityAPI', () => ({
@@ -31,7 +33,13 @@ jest.mock('rest/activityAPI', () => ({
     mockGetFollowingActivityFeed(...args),
   getMentionsActivityFeed: (...args: unknown[]) =>
     mockGetMentionsActivityFeed(...args),
+  getActivityByEntityLink: (...args: unknown[]) =>
+    mockGetActivityByEntityLink(...args),
   getUserActivity: (...args: unknown[]) => mockGetUserActivity(...args),
+}));
+
+jest.mock('rest/userAPI', () => ({
+  getUserByName: (...args: unknown[]) => mockGetUserByName(...args),
 }));
 
 jest.mock('rest/conversationsAPI', () => ({
@@ -80,8 +88,10 @@ beforeEach(() => {
     mockGetMyActivityFeed,
     mockGetFollowingActivityFeed,
     mockGetMentionsActivityFeed,
+    mockGetActivityByEntityLink,
     mockGetUserActivity,
   ].forEach((mock) => mock.mockResolvedValue(threeEvents));
+  mockGetUserByName.mockResolvedValue({ id: 'user-1' });
   mockListConversations.mockResolvedValue(twoThreads);
 });
 
@@ -292,10 +302,14 @@ describe('fetchInboxActivity', () => {
   });
 });
 
+// The viewer u1 reads another user's (u2) Inbox, as their member page shows it.
 describe('fetchInboxActivity for another user', () => {
   // Their "All" is what they did, not everything the viewer can see.
   it("fetches the user's own activity and conversations for All", async () => {
-    await fetchInboxActivity(ActivityFilter.All, 'u2', 100, 200, true);
+    await fetchInboxActivity(ActivityFilter.All, 'u1', 100, 200, {
+      type: 'inbox',
+      userId: 'u2',
+    });
 
     // A window that started long ago asks for the endpoint's 90-day max.
     expect(mockGetUserActivity).toHaveBeenCalledWith('u2', {
@@ -324,10 +338,10 @@ describe('fetchInboxActivity for another user', () => {
 
     const result = await fetchInboxActivity(
       ActivityFilter.All,
-      'u2',
+      'u1',
       startTs,
       endTs,
-      true
+      { type: 'inbox', userId: 'u2' }
     );
 
     const [, { days }] = mockGetUserActivity.mock.calls[0];
@@ -343,7 +357,10 @@ describe('fetchInboxActivity for another user', () => {
     [ActivityFilter.Following, mockGetFollowingActivityFeed],
     [ActivityFilter.Mentions, mockGetMentionsActivityFeed],
   ])('asks the %s feed for the user', async (filter, activityRequest) => {
-    await fetchInboxActivity(filter, 'u2', undefined, undefined, true);
+    await fetchInboxActivity(filter, 'u1', undefined, undefined, {
+      type: 'inbox',
+      userId: 'u2',
+    });
 
     expect(activityRequest).toHaveBeenCalledWith({
       days: 30,
@@ -552,10 +569,98 @@ describe('useInboxActivityCounts', () => {
   });
 });
 
+describe('fetchInboxActivity per scope', () => {
+  const TABLE_LINK = '<#E::table::svc.db.schema.orders>';
+  const entity = { type: 'entity' as const, entityLink: TABLE_LINK };
+
+  it('reads everything about an entity and the conversations on it and its fields', async () => {
+    await fetchInboxActivity(ActivityFilter.All, 'u1', 100, 200, entity);
+
+    // `/about` takes a look-back from now: back to the window's start (held
+    // to the endpoint's 90-day cap for this 1970 window).
+    expect(mockGetActivityByEntityLink).toHaveBeenCalledWith(TABLE_LINK, {
+      days: 90,
+      limit: 200,
+    });
+    expect(mockListConversations).toHaveBeenCalledWith({
+      entityLink: TABLE_LINK,
+      includeFields: true,
+      filterType: undefined,
+      userId: undefined,
+      limit: 100,
+      startTs: 100,
+      endTs: 200,
+    });
+    expect(mockGetActivityEvents).not.toHaveBeenCalled();
+  });
+
+  // Mentions on an entity: only what names the viewer there.
+  it("reads an entity's mentions of the viewer", async () => {
+    await fetchInboxActivity(ActivityFilter.Mentions, 'u1', 100, 200, entity);
+
+    // The window's absolute start, as the Inbox's own feeds pass it.
+    expect(mockGetMentionsActivityFeed).toHaveBeenCalledWith({
+      days: 1,
+      startTs: 100,
+      limit: 200,
+      entityLink: TABLE_LINK,
+    });
+    expect(mockListConversations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityLink: TABLE_LINK,
+        includeFields: true,
+        filterType: ConversationFilterType.Mentions,
+        userId: 'u1',
+      })
+    );
+  });
+
+  // The activity API reads a user by id; conversations have no "started by".
+  it('reads what a user did, looked up by name', async () => {
+    const { activities, threads } = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u1',
+      100,
+      200,
+      { type: 'user', userName: 'harsh.vador' }
+    );
+
+    expect(mockGetUserByName).toHaveBeenCalledWith('harsh.vador');
+    expect(mockGetUserActivity).toHaveBeenCalledWith('user-1', {
+      days: 90,
+      limit: 200,
+    });
+    expect(mockListConversations).not.toHaveBeenCalled();
+    expect(activities).toHaveLength(3);
+    expect(threads).toHaveLength(0);
+  });
+
+  it('counts only the feeds an entity offers', async () => {
+    const { result } = renderHook(
+      () => useInboxActivityCounts({ startTs: 100, endTs: 200 }, entity),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() =>
+      expect(Object.keys(result.current).sort()).toEqual([
+        ActivityFilter.All,
+        ActivityFilter.Mentions,
+      ])
+    );
+
+    expect(mockGetMyActivityFeed).not.toHaveBeenCalled();
+    expect(mockGetFollowingActivityFeed).not.toHaveBeenCalled();
+  });
+});
+
 describe('scoping to another user', () => {
   it("scopes the hook's requests to the given user", async () => {
     const { result } = renderHook(
-      () => useInboxActivity(ActivityFilter.MyAssets, undefined, 'u2'),
+      () =>
+        useInboxActivity(ActivityFilter.MyAssets, undefined, {
+          type: 'inbox',
+          userId: 'u2',
+        }),
       { wrapper: createWrapper() }
     );
 
@@ -569,7 +674,11 @@ describe('scoping to another user', () => {
   // The viewer's own profile is their inbox, not a scoped view of it.
   it('keeps the inbox requests when the user is the viewer', async () => {
     const { result } = renderHook(
-      () => useInboxActivity(ActivityFilter.MyAssets, undefined, 'u1'),
+      () =>
+        useInboxActivity(ActivityFilter.MyAssets, undefined, {
+          type: 'inbox',
+          userId: 'u1',
+        }),
       { wrapper: createWrapper() }
     );
 
