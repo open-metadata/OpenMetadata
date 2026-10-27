@@ -110,7 +110,7 @@ export const loadFormFieldDocs = (
     return cached;
   }
 
-  const docs = (async () => {
+  const docs = Promise.resolve().then(async () => {
     try {
       const markdown = await fetchMarkdownFile(
         `${SupportedLocales.English}/${folder}/${formName}.md`
@@ -131,7 +131,7 @@ export const loadFormFieldDocs = (
 
       return {};
     }
-  })();
+  });
   cacheFormDocs(cacheKey, docs);
 
   return docs;

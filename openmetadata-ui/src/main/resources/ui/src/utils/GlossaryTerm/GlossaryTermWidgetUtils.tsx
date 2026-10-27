@@ -54,15 +54,6 @@ const UserTeamSelectableList = withSuspenseFallback(
   null
 );
 
-const PendingReviewPanel = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../../components/governance/glossary/GlossaryReview/PendingReviewPanel'
-      )
-  )
-);
-
 const ReviewerLabelV2 = withSuspenseFallback(
   lazy(() =>
     import('../../components/DataAssets/ReviewerLabelV2/ReviewerLabelV2').then(
@@ -188,10 +179,6 @@ export const getGlossaryTermWidgetFromKey = (widgetConfig: WidgetConfig) => {
     widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY)
   ) {
     return <WorkflowHistory />;
-  } else if (
-    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW)
-  ) {
-    return <PendingReviewPanel />;
   } else if (
     widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.RELATED_TERMS)
   ) {

@@ -42,31 +42,10 @@
     padding: @padding-sm;
   }
 
+  // No frame around the left panel: its widgets are cards themselves and must
+  // line up flush with the right-panel widgets and the page edges.
   > #KnowledgePanel\.LeftPanel {
-    background: var(--om-color-bg-surface);
-    border-radius: @border-rad-sm;
-    border: 1px solid @grey-15;
-    box-shadow: 0px 0px 0px 4px @grey-100;
-    box-shadow: 0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-051);
-
-    > .dynamic-height-widget > .left-panel-content {
-      // Keep padding in the observed content so its height is fully reserved.
-      padding: @padding-md;
-    }
-  }
-
-  // Entity tabs (GenericTab): drop the left-panel frame card so the widget cards
-  // sit directly on the page; the frame stays only on the customize page grid.
-  // Also drop the frame's inner padding so the widget lines up flush with the
-  // tabs (left) and the right panel (top) instead of being inset by the frame gap.
-  &.flat-left-panel > #KnowledgePanel\.LeftPanel {
     background: transparent;
-    border: none;
-    box-shadow: none;
-
-    > .dynamic-height-widget > .left-panel-content {
-      padding: 0;
-    }
   }
 }
 

@@ -16,10 +16,11 @@ import { MessageDotsCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import AgentBadge from '../../../../../components/common/AgentBadge/AgentBadge';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { Task } from '../../../../../generated/entity/tasks/task';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import { getTaskTypeBadge } from '../taskDetail.utils';
+import { getProposingAgent, getTaskTypeBadge } from '../taskDetail.utils';
 import { TaskStatusBadge } from '../taskResolution.utils';
 import { getTaskTitleParts } from '../taskTitle.utils';
 import TaskTitle from './TaskTitle';
@@ -36,6 +37,32 @@ export interface InboxTaskListItemProps {
 // The list reads ids as a short reference ("#00357"); the detail header keeps
 // the full "TASK-00357".
 const TASK_ID_PREFIX = 'TASK-';
+
+/** Who raised the task: the AI agent that proposed its subject, else the person. */
+const TaskRequester: React.FC<{ task: Task }> = ({ task }) => {
+  const { t } = useTranslation();
+  const agent = getProposingAgent(task, t);
+  const requester = task.createdBy;
+  const requesterName = requester?.displayName ?? requester?.name;
+
+  if (agent) {
+    return <AgentBadge name={agent} />;
+  }
+
+  return requesterName ? (
+    <Box align="center" className="tw:gap-1.5">
+      <ProfilePicture
+        matchRingToFill
+        displayName={requesterName}
+        name={requester?.name ?? ''}
+        width="16"
+      />
+      <Typography className="tw:text-tertiary" size="text-xs">
+        {requesterName}
+      </Typography>
+    </Box>
+  ) : null;
+};
 
 /** The row's far end: the comment count, when there is one, and the status. */
 const TaskCardTrailing: React.FC<{
@@ -78,8 +105,6 @@ const TaskCardMeta: React.FC<{
   task: Task;
   statusBadge?: TaskStatusBadge;
 }> = ({ task, statusBadge }) => {
-  const requester = task.createdBy;
-  const requesterName = requester?.displayName ?? requester?.name;
   const assetName = task.about ? getEntityName(task.about) : '';
   const commentCount = task.commentCount ?? task.comments?.length ?? 0;
   const shortId = (task.taskId ?? '').replace(TASK_ID_PREFIX, '');
@@ -92,19 +117,7 @@ const TaskCardMeta: React.FC<{
         weight="medium">
         {`#${shortId}`}
       </Typography>
-      {requesterName && (
-        <Box align="center" className="tw:gap-1.5">
-          <ProfilePicture
-            matchRingToFill
-            displayName={requesterName}
-            name={requester?.name ?? ''}
-            width="16"
-          />
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {requesterName}
-          </Typography>
-        </Box>
-      )}
+      <TaskRequester task={task} />
       {assetName && (
         <Badge className="tw:max-w-40" size="sm" type="modern">
           <span className="tw:truncate">{assetName}</span>

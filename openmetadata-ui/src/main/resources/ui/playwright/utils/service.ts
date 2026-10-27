@@ -67,7 +67,7 @@ export const visitServiceDetailsPage = async (
 
   if (verifyHeader) {
     await expect(page.locator('[data-testid="entity-header-name"]')).toHaveText(
-      service.displayName
+      service.displayName ?? service.name
     );
   }
 };

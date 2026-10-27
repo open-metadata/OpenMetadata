@@ -166,7 +166,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
             color="tertiary"
             icon={CopyLeft}
             size="xs"
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               handleCopy(e);
             }}

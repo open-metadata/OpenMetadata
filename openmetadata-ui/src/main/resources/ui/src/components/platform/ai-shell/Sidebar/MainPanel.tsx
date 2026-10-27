@@ -110,7 +110,10 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
       </nav>
 
       {recentSlots.length > 0 ? (
-        <div className="ask-main-panel__chats" data-testid="ask-recent-region">
+        <div
+          className="ask-main-panel__chats"
+          data-testid="ask-recent-region"
+          data-tour-step="recent-chats">
           {recentSlots.map(({ key, component: Slot }) => (
             <Slot key={key} />
           ))}

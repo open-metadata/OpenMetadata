@@ -780,6 +780,7 @@ const OntologyGraphView = ({
             <Typography role="status">{t('label.loading')}</Typography>
           }>
           <OntologyGraphG6
+            keepCanvasOnAdd
             studioMode
             canCreateRelationType={canCreateRelationType}
             edges={graph.edges}

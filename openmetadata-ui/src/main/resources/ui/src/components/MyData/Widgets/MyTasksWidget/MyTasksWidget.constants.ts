@@ -22,7 +22,7 @@ import type { FC } from 'react';
 import { MyTaskBucket } from '../../../../utils/myTaskBuckets';
 import { TOPIC_BLUE_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 
-export const MY_TASKS_TONE = {
+export const MY_TASKS_TONE: Pick<MyTaskKindStyle, 'icon' | 'tile'> = {
   icon: ClipboardCheck,
   tile: TOPIC_BLUE_TILE_CLASSES,
 };

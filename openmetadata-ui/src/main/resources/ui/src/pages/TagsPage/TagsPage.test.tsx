@@ -657,8 +657,7 @@ describe('Test TagsPage page', () => {
 
     expect(currentCategories).toHaveLength(1);
     expect(currentCategories[0]).toHaveTextContent(
-      MOCK_ALL_CLASSIFICATIONS.data[0].displayName ??
-        MOCK_ALL_CLASSIFICATIONS.data[0].name
+      MOCK_ALL_CLASSIFICATIONS.data[0].name
     );
   });
 
