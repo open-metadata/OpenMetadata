@@ -35,7 +35,7 @@ DATAFRAME_SQL_DIALECT = "duckdb"
 # Resolving columns case-insensitively, quoted or not, matches them to the table's
 # columns whatever casing the SQL or the warehouse uses: Snowflake's "REGION" is the
 # region column OpenMetadata stores, Postgres' "createdAt" its createdAt. Output names
-# come out lower-cased as a result.
+# come out lower-cased as a result, other than quoted aliases.
 CASE_INSENSITIVE = sqlglot.Dialect.get_or_raise("duckdb, normalization_strategy=case_insensitive")
 JINJA_EXPRESSION = re.compile(r"\{\{.*?\}\}", re.DOTALL)
 JINJA_STATEMENT = re.compile(r"\{%.*?%\}", re.DOTALL)
@@ -131,6 +131,12 @@ def get_output_columns(
     table references in `expression` must already use those same names.
     """
     _drop_unknown_stars(expression, schema)
+    # Qualifying lower-cases every name; a quoted alias keeps the spelling it was given
+    quoted_aliases = {
+        alias.name.lower(): alias.name
+        for select in expression.selects
+        if isinstance(alias := select.args.get("alias"), exp.Identifier) and alias.quoted
+    }
     try:
         qualified = qualify(
             expression,
@@ -155,7 +161,7 @@ def get_output_columns(
         name = select.alias_or_name
         if not name or name == "*" or name in columns:
             continue
-        column = OutputColumn(name=name)
+        column = OutputColumn(name=quoted_aliases.get(name, name))
         try:
             node = lineage(name, qualified, scope=scope, dialect=CASE_INSENSITIVE, trim_selects=False, copy=False)
             nodes = list(node.walk())
