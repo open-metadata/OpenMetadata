@@ -131,22 +131,28 @@ def test_statuses_are_sent_to_openmetadata(dag, airflow_session):
     ]
 
 
-def test_manually_triggered_run_is_reported_at_its_run_after(dag, airflow_session):
-    manual_run_after = FIRST_RUN + timedelta(days=10)
-    airflow_session.add(
-        DagRun(
-            dag_id=DAG_ID,
-            run_id="manual",
-            logical_date=None,
-            run_after=manual_run_after,
-            run_type="manual",
-            state="success",
+def test_manually_triggered_runs_are_reported_at_their_start_date(dag, airflow_session):
+    # Same timestamp as the Airflow connector, so both write the same status for the run
+    manual_start = FIRST_RUN + timedelta(days=10, seconds=3)
+    for run_id, run_after, start_date in (
+        ("manual", FIRST_RUN + timedelta(days=10), manual_start),
+        ("manual_queued", FIRST_RUN + timedelta(days=11), None),
+    ):
+        airflow_session.add(
+            DagRun(
+                dag_id=DAG_ID,
+                run_id=run_id,
+                logical_date=None,
+                run_after=run_after,
+                start_date=start_date,
+                run_type="manual",
+                state="success" if start_date else "queued",
+            )
         )
-    )
-    for task in dag.tasks:
-        airflow_session.add(TaskInstance(task=task, dag_version_id=uuid4(), run_id="manual", state="success"))
+        for task in dag.tasks:
+            airflow_session.add(TaskInstance(task=task, dag_version_id=uuid4(), run_id=run_id))
     airflow_session.commit()
-    runner = build_runner(dag, max_status=2)
+    runner = build_runner(dag, max_status=3)
 
     with (
         patch.object(runner_module, "IS_AIRFLOW_3_OR_HIGHER", True),
@@ -155,15 +161,16 @@ def test_manually_triggered_run_is_reported_at_its_run_after(dag, airflow_sessio
         statuses = runner.get_all_pipeline_status()
 
     assert [status.timestamp.root for status in statuses] == [
-        datetime_to_ts(manual_run_after),
+        datetime_to_ts(manual_start),
         datetime_to_ts(FIRST_RUN + timedelta(days=4)),
     ]
 
 
-def test_rest_api_reports_manually_triggered_run_at_its_run_after(dag):
-    manual_run_after = FIRST_RUN + timedelta(days=10)
+def test_rest_api_reports_manually_triggered_runs_at_their_start_date(dag):
+    manual_start = FIRST_RUN + timedelta(days=10, seconds=3)
     dag_runs = [
-        {"dag_run_id": "manual", "logical_date": None, "run_after": manual_run_after.isoformat()},
+        {"dag_run_id": "manual_queued", "logical_date": None, "start_date": None},
+        {"dag_run_id": "manual", "logical_date": None, "start_date": manual_start.isoformat()},
         {"dag_run_id": "run_4", "logical_date": (FIRST_RUN + timedelta(days=4)).isoformat()},
     ]
     task_instances = [{"task_id": task.task_id, "state": "success"} for task in dag.tasks]
@@ -172,15 +179,15 @@ def test_rest_api_reports_manually_triggered_run_at_its_run_after(dag):
         body = {"task_instances": task_instances} if url.endswith("/taskInstances") else {"dag_runs": dag_runs}
         return MagicMock(status_code=200, json=MagicMock(return_value=body))
 
-    runner = build_runner(dag, max_status=2)
+    runner = build_runner(dag, max_status=3)
     with (
         patch("requests.post", return_value=MagicMock(status_code=201, json=lambda: {"access_token": "token"})),
         patch("requests.get", side_effect=airflow_api) as get,
     ):
         statuses = runner.get_pipeline_status_via_api()
 
-    assert get.call_args_list[0].kwargs["params"] == {"limit": 2, "order_by": "-run_after"}
+    assert get.call_args_list[0].kwargs["params"] == {"limit": 3, "order_by": "-run_after"}
     assert [status.timestamp.root for status in statuses] == [
-        datetime_to_ts(manual_run_after),
+        datetime_to_ts(manual_start),
         datetime_to_ts(FIRST_RUN + timedelta(days=4)),
     ]

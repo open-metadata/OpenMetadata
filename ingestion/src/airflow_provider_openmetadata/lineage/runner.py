@@ -392,9 +392,10 @@ class AirflowLineageRunner:
                 else:
                     dag_status = StatusType.Successful.value
 
-                # Manually triggered runs have no logical_date; same fallback as get_pipeline_status
+                # Manually triggered runs have no logical_date: fall back to start_date like the
+                # Airflow connector does, so both stamp the same run with the same timestamp
                 execution_date_str = (
-                    dag_run.get("logical_date") or dag_run.get("execution_date") or dag_run.get("run_after")
+                    dag_run.get("logical_date") or dag_run.get("execution_date") or dag_run.get("start_date")
                 )
                 execution_timestamp = None
                 if execution_date_str:
@@ -403,6 +404,9 @@ class AirflowLineageRunner:
                         execution_timestamp = datetime_to_ts(exec_dt)
                     except Exception:
                         pass
+                if execution_timestamp is None:
+                    logger.info(f"Skipping DAG run {dag_run_id}: it has neither a logical_date nor a start_date")
+                    continue
 
                 pipeline_status = PipelineStatus(
                     timestamp=execution_timestamp,
@@ -462,16 +466,15 @@ class AirflowLineageRunner:
         """
         Build the status of the latest `max_status` DAG runs, newest first.
 
-        The LIMIT must happen in SQL: this runs after every task of the DAG, and
-        `DAG.get_task_instances()` loads 30 days of task instances for the whole DAG.
+        The LIMIT must happen in SQL: this runs after every task of the DAG.
         """
         from airflow.models import DagRun
         from airflow.utils.session import create_session
         from sqlalchemy import func
 
         # Airflow 2.x stores `execution_date` (`logical_date` is a Python property there);
-        # Airflow 3.x only has `logical_date`, which is null for manually triggered runs.
-        # Same fallback as `get_pipeline_status`, so runs are ordered by their status timestamp.
+        # Airflow 3.x only has `logical_date`, which is null for manually triggered runs,
+        # so those are ordered by `run_after`, which is never null.
         run_date = (
             DagRun.execution_date
             if hasattr(DagRun, "execution_date")
@@ -486,11 +489,12 @@ class AirflowLineageRunner:
                 .limit(self.max_status)
                 .all()
             )
-            return [
+            statuses = [
                 self.get_pipeline_status(task_instances)
                 for dag_run in dag_runs
                 if (task_instances := dag_run.get_task_instances(session=session))
             ]
+        return [status for status in statuses if status]
 
     @staticmethod
     def get_dag_status_from_task_instances(task_instances: list["TaskInstance"]) -> str:  # noqa: F821
@@ -512,9 +516,10 @@ class AirflowLineageRunner:
     def get_pipeline_status(
         self,
         task_instances: list["TaskInstance"],  # noqa: F821
-    ) -> PipelineStatus:
+    ) -> PipelineStatus | None:
         """
-        Given the task instances for a run, prep the PipelineStatus
+        Given the task instances for a run, prep the PipelineStatus.
+        None when the run has no date to stamp it with yet.
         """
 
         task_status = [
@@ -528,12 +533,16 @@ class AirflowLineageRunner:
             for task_instance in task_instances
         ]
 
-        # Airflow 3.x renamed execution_date to logical_date, which is null for manually triggered runs
+        # Airflow 3.x renamed execution_date to logical_date, which is null for manually triggered
+        # runs: fall back to start_date like the Airflow connector does
         execution_date = (
             getattr(task_instances[0], "logical_date", None)
             or getattr(task_instances[0], "execution_date", None)
-            or task_instances[0].dag_run.run_after
+            or task_instances[0].dag_run.start_date
         )
+        if execution_date is None:
+            logger.info(f"Skipping DAG run {task_instances[0].run_id}: it has neither a logical_date nor a start_date")
+            return None
 
         return PipelineStatus(
             # Use any of the task execution dates for the status execution date
