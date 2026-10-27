@@ -23,9 +23,12 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
     GlueConnection as GlueConnectionConfig,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.glue.connection import (
+    DEFAULT_LIST_LIMIT,
     GLUE_ERRORS,
+    MAX_DATABASES_TO_PROBE,
     GlueChecks,
     GlueConnection,
     list_databases,
@@ -58,8 +61,8 @@ def _paginator(pages: list[dict]) -> MagicMock:
     return paginator
 
 
-def _checks(client=None) -> GlueChecks:
-    return GlueChecks(catalog=Borrowed.of(client))
+def _checks(client=None, schema_filter_pattern: FilterPattern | None = None) -> GlueChecks:
+    return GlueChecks(catalog=Borrowed.of(client), schema_filter_pattern=schema_filter_pattern)
 
 
 def _check_names() -> set[str]:
@@ -222,6 +225,97 @@ def test_get_tables_failure_names_the_database_it_probed():
 
     assert failure.value.cause is cause
     assert failure.value.evidence.command == "glue:GetTables (DatabaseName=sales)"
+
+
+def _client_denying(denied: str, databases: list[dict], tables: dict[str, list[dict]]) -> MagicMock:
+    """GetTables on ``denied`` raises AccessDenied, as a cross-account resource link does."""
+    client = MagicMock()
+
+    def get_tables(**kwargs):
+        if kwargs["DatabaseName"] == denied:
+            raise _client_error("AccessDeniedException", "GetTables")
+        return [{"TableList": tables.get(kwargs["DatabaseName"], [])}]
+
+    tables_paginator = MagicMock()
+    tables_paginator.paginate.side_effect = get_tables
+    client.get_paginator.side_effect = lambda operation: (
+        tables_paginator if operation == "get_tables" else _paginator([{"DatabaseList": databases}])
+    )
+    return client
+
+
+def test_get_tables_never_probes_a_database_the_schema_filter_excludes():
+    # The excluded database sorts first and the identity may not read it.
+    client = _client_denying(
+        denied="linked_db",
+        databases=[{"Name": "linked_db", "CatalogId": "111"}, {"Name": "sales", "CatalogId": "111"}],
+        tables={"sales": [{"Name": "orders"}]},
+    )
+
+    evidence = _checks(client, FilterPattern(includes=["^sales$"])).get_tables()
+
+    assert evidence.summary == "1 table in database 'sales'"
+    assert evidence.command == "glue:GetTables (DatabaseName=sales)"
+
+
+def test_get_tables_without_a_filter_still_surfaces_a_denied_database():
+    client = _client_denying(
+        denied="linked_db",
+        databases=[{"Name": "linked_db"}, {"Name": "sales"}],
+        tables={"sales": [{"Name": "orders"}]},
+    )
+
+    with pytest.raises(CheckError) as failure:
+        _checks(client).get_tables()
+
+    assert failure.value.evidence.command == "glue:GetTables (DatabaseName=linked_db)"
+
+
+def test_get_tables_reaches_a_targeted_database_past_the_probe_cap():
+    excluded = [{"Name": f"other_{i:02d}"} for i in range(MAX_DATABASES_TO_PROBE + 5)]
+    client = _client_denying(
+        denied="other_00",
+        databases=[*excluded, {"Name": "sales"}],
+        tables={"sales": [{"Name": "orders"}]},
+    )
+
+    evidence = _checks(client, FilterPattern(excludes=["^other_"])).get_tables()
+
+    assert evidence.summary == "1 table in database 'sales'"
+
+
+def test_get_tables_names_the_database_catalog():
+    client = MagicMock()
+    tables_paginator = _paginator([{"TableList": [{"Name": "orders"}]}])
+    databases_paginator = _paginator([{"DatabaseList": [{"Name": "sales", "CatalogId": "111"}]}])
+    client.get_paginator.side_effect = lambda operation: (
+        tables_paginator if operation == "get_tables" else databases_paginator
+    )
+
+    _checks(client).get_tables()
+
+    tables_paginator.paginate.assert_called_once_with(
+        PaginationConfig={"MaxItems": DEFAULT_LIST_LIMIT + 1}, DatabaseName="sales", CatalogId="111"
+    )
+
+
+def test_get_tables_warns_when_the_schema_filter_excludes_every_database():
+    client = _client({"get_databases": [{"DatabaseList": [{"Name": "a"}, {"Name": "b"}]}]})
+
+    evidence = _checks(client, FilterPattern(includes=["^missing$"])).get_tables()
+
+    assert evidence.summary == "no databases available to probe"
+    assert evidence.caveat is not None
+    assert "schemaFilterPattern" in evidence.caveat.remediation
+
+
+def test_glue_connection_hands_its_schema_filter_to_the_checks():
+    pattern = FilterPattern(includes=["^sales$"])
+    config = GlueConnectionConfig(awsConfig=AWSCredentials(awsRegion="us-east-1"), schemaFilterPattern=pattern)
+
+    checks = GlueConnection(config).checks()
+
+    assert checks._schema_filter_pattern == pattern
 
 
 def test_error_pack_access_denied():

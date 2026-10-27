@@ -30,10 +30,14 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
     GlueConnection as GlueConnectionConfig,
 )
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.utils.filters import filter_by_schema
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.generated.schema.type.filterPattern import FilterPattern
 
 
 # A check only needs to prove the catalog can be listed, not enumerate all of it.
@@ -91,29 +95,53 @@ def list_databases(client: Any, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
     return Evidence(summary=summary, command=command, caveat=caveat)
 
 
-def list_tables(client: Any, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
-    """Prove tables can be listed, probing databases until one exposes a table.
+def _targeted_databases(client: Any, schema_filter_pattern: FilterPattern | None) -> Iterator[dict[str, Any]]:
+    """Yield the Glue databases ingestion would read, at most ``MAX_DATABASES_TO_PROBE``.
+
+    The filter applies while paging, not after a capped listing: the targeted
+    database can sort well past the cap, and a database the filter excludes - one
+    the identity may not even be allowed to read - must never be probed."""
+    probed = 0
+    for page in client.get_paginator("get_databases").paginate():
+        for database in page.get("DatabaseList", []):
+            if filter_by_schema(schema_filter_pattern, database["Name"]):
+                continue
+            yield database
+            probed += 1
+            if probed >= MAX_DATABASES_TO_PROBE:
+                return
+
+
+def list_tables(
+    client: Any,
+    schema_filter_pattern: FilterPattern | None = None,
+    limit: int = DEFAULT_LIST_LIMIT,
+) -> Evidence:
+    """Prove tables can be listed, probing the databases ``schemaFilterPattern``
+    targets until one exposes a table.
 
     Stopping at the first database would report zero tables for a healthy catalog
     that merely leads with an empty one. Nothing here fails the step: an empty
     catalog is already flagged by ``list_databases``, and Lake Formation returns an
     empty list rather than an error when grants are missing."""
     command = "glue:GetDatabases"
+    probed = 0
     try:
-        databases = _paginate(client, "get_databases", "DatabaseList", MAX_DATABASES_TO_PROBE)
-        if not databases:
-            return Evidence(summary="no databases available to probe", command=command, caveat=_no_tables_caveat())
-        for database in databases[:MAX_DATABASES_TO_PROBE]:
+        for database in _targeted_databases(client, schema_filter_pattern):
+            probed += 1
             name = database["Name"]
             command = f"glue:GetTables (DatabaseName={name})"
-            tables = _paginate(client, "get_tables", "TableList", limit, DatabaseName=name)
+            # Name the database's own catalog, as ingestion does.
+            catalog = {"CatalogId": database["CatalogId"]} if database.get("CatalogId") else {}
+            tables = _paginate(client, "get_tables", "TableList", limit, DatabaseName=name, **catalog)
             if tables:
                 shown = min(len(tables), limit)
                 summary = f"{count(shown, 'table')} in database '{name}'" + more_suffix(shown, len(tables) > limit)
                 return Evidence(summary=summary, command=command)
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
-    probed = min(len(databases), MAX_DATABASES_TO_PROBE)
+    if not probed:
+        return Evidence(summary="no databases available to probe", command=command, caveat=_no_tables_caveat())
     return Evidence(
         summary=f"no tables in the first {count(probed, 'database')}",
         command=command,
@@ -125,7 +153,8 @@ def _no_tables_caveat() -> Diagnosis:
     return Diagnosis(
         title="No tables visible",
         remediation="No database exposed a table. Verify the identity's Glue permissions and any "
-        "Lake Formation DESCRIBE grants; ingestion would collect nothing as configured.",
+        "Lake Formation DESCRIBE grants, and that schemaFilterPattern is not excluding every "
+        "database; ingestion would collect nothing as configured.",
     )
 
 
@@ -137,8 +166,9 @@ class GlueChecks:
 
     errors = GLUE_ERRORS
 
-    def __init__(self, catalog: Borrowed[Any]) -> None:
+    def __init__(self, catalog: Borrowed[Any], schema_filter_pattern: FilterPattern | None = None) -> None:
         self._catalog = catalog
+        self._schema_filter_pattern = schema_filter_pattern
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
@@ -146,7 +176,7 @@ class GlueChecks:
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return list_tables(self._catalog.client)
+        return list_tables(self._catalog.client, self._schema_filter_pattern)
 
 
 class GlueConnection(BaseConnection[GlueConnectionConfig, Any]):
@@ -154,4 +184,7 @@ class GlueConnection(BaseConnection[GlueConnectionConfig, Any]):
         return AWSClient(self.service_connection.awsConfig).get_glue_client()
 
     def checks(self) -> ChecksProvider:
-        return GlueChecks(catalog=self.borrow())
+        return GlueChecks(
+            catalog=self.borrow(),
+            schema_filter_pattern=self.service_connection.schemaFilterPattern,
+        )
