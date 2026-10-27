@@ -21,6 +21,7 @@ import {
   within,
 } from '@testing-library/react';
 import { applyPatch } from 'fast-json-patch';
+import { useTranslation } from 'react-i18next';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { OntologyNode } from '../../components/OntologyExplorer/OntologyExplorer.interface';
 import { ProjectionState, RDFStatus } from '../../generated/api/rdf/rdfStatus';
@@ -208,6 +209,10 @@ describe('Ontology Studio mode-switch integration', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    (useTranslation as jest.Mock).mockReturnValue({
+      t: (key: string) => key,
+      i18n: { language: 'en-US', dir: () => 'ltr' },
+    });
     (
       getOntologyConceptBindings as jest.MockedFunction<
         typeof getOntologyConceptBindings
@@ -479,6 +484,12 @@ describe('Ontology Studio mode-switch integration', () => {
   });
 
   it('guides the first run from the empty state to Edit with the New class panel open', async () => {
+    const translate = (key: string, options?: { name?: string }) =>
+      options?.name ? `${key}: ${options.name}` : key;
+    (useTranslation as jest.Mock).mockReturnValue({
+      t: translate,
+      i18n: { language: 'en-US', dir: () => 'ltr' },
+    });
     const ontology: Ontology = {
       id: 'new-native',
       name: 'Finance Core',
@@ -540,6 +551,9 @@ describe('Ontology Studio mode-switch integration', () => {
       })
     );
     expect(showSuccessToast).toHaveBeenCalledTimes(1);
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      'message.ontology-created-add-first-class: Finance Core'
+    );
 
     fireEvent.click(screen.getByTestId('ontology-new-class-close'));
 

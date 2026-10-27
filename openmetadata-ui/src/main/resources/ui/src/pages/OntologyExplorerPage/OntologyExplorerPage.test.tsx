@@ -197,6 +197,7 @@ interface PageLayoutMockProps {
 }
 
 interface LibraryMockProps {
+  native?: { onCreated?: () => void };
   onClose?: () => void;
   onOpenGlossary?: (glossaryName: string) => void;
 }
@@ -314,10 +315,13 @@ jest.mock('../../components/OntologyExplorer/OntologyExplorer', () => ({
 
 jest.mock('../../components/OntologyExplorer/OntologyLibrary', () => ({
   __esModule: true,
-  default: jest.fn(({ onClose, onOpenGlossary }: LibraryMockProps) => (
+  default: jest.fn(({ native, onClose, onOpenGlossary }: LibraryMockProps) => (
     <div data-testid="ontology-library">
       <button type="button" onClick={onClose}>
         Close library
+      </button>
+      <button type="button" onClick={() => native?.onCreated?.()}>
+        Library created an ontology
       </button>
       <button
         type="button"
@@ -726,6 +730,59 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByTestId('ontology-library-trigger')).toBeVisible();
     expect(screen.getByTestId('ontology-import-export')).toBeVisible();
     expect(screen.getByTestId('ontology-tasks-trigger')).toBeVisible();
+  });
+
+  it('does not flash the empty state while the first ontology list loads', async () => {
+    mockUseRealScopes = true;
+    mockSearchParams = new URLSearchParams();
+    let resolveList: (page: {
+      data: Ontology[];
+      paging: object;
+    }) => void = () => undefined;
+    (listOntologies as jest.Mock).mockReturnValue(
+      new Promise((resolve) => {
+        resolveList = resolve;
+      })
+    );
+    render(<OntologyExplorerPage />);
+
+    expect(await screen.findByTestId('ontology-studio-shell')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-empty-state')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveList({ data: [], paging: { total: 0 } });
+    });
+
+    expect(await screen.findByTestId('ontology-empty-state')).toBeVisible();
+  });
+
+  it('leaves the empty state when the Library installs an ontology, without a reload', async () => {
+    mockUseRealScopes = true;
+    mockSearchParams = new URLSearchParams();
+    (listOntologies as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    render(<OntologyExplorerPage />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'label.install-from-library' })
+    );
+    (listOntologies as jest.Mock).mockResolvedValue({
+      data: [nativeOntology],
+      paging: { total: 1 },
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Library created an ontology' })
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-empty-state')
+      ).not.toBeInTheDocument()
+    );
   });
 
   it('opens the Library from the highlighted first-run option', async () => {
