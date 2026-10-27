@@ -91,6 +91,9 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
 - While the database is unreachable, bot and PAT requests answer 503 once their entries are older
   than `maxStaleness`. Session tokens and identity-provider tokens that claim neither `isBot=true`
   nor `tokenType=PERSONAL_ACCESS` are not affected.
+- While the secrets manager cannot decrypt a bot's secret, the bot's requests answer 503 from the
+  next deep pass on, so within `deepVerifyInterval`, until a read decrypts the secret again. Its
+  failing reads are limited as above, to about two per second per server.
 - Operators alert when `om.credential.sweep.last.complete.age.seconds` (Prometheus name
   `om_credential_sweep_last_complete_age_seconds`) exceeds `maxStaleness`, and watch
   `om.credential.unavailable`. The gauge is the age of the last sweep that re-confirmed every
@@ -99,8 +102,9 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   answer from, so their checks read the database on the request-read pool, wait for it up to
   `loadTimeout`, and answer 503 when that read fails or does not finish. A principal whose stored
   credentials fail to convert with an exception does not hold the gauge back. Its checks count
-  under `om.credential.unavailable` with `cause=subject_read_failed`. `/healthcheck` stays a
-  liveness check and does not report this.
+  under `om.credential.unavailable` with `cause=subject_read_failed`, and those that arrive while
+  its reads back off with `cause=backoff`. `/healthcheck` stays a liveness check and does not
+  report this.
 - Rejected alternatives:
   - a change-log table read through per-server cursors, because every writer must emit and the ops
     CLI and direct SQL emit nothing;
