@@ -34,6 +34,7 @@ import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.ShortStackFactory;
+import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -2343,33 +2344,45 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
-  void csvImport_clearingRelatedMetricsRemovesThemFromBothSides(TestNamespace ns) throws Exception {
-    Metric referenced = createEntity(createRequest(ns.prefix("csv_referenced_metric"), ns));
+  void put_byUserReplacesRelatedMetrics(TestNamespace ns) {
+    String referencedName = ns.prefix("user_put_referenced_metric");
+    Metric referenced = createEntity(createRequest(referencedName, ns));
     Metric referencing =
         createEntity(
-            createRequest(ns.prefix("csv_referencing_metric"), ns)
+            createRequest(ns.prefix("user_put_referencing_metric"), ns)
                 .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
-    String row =
-        referencing.getName() + ",,Re-imported without related metrics,,,,,,,,,,,,,,,Approved,,,,";
-    String csv = METRIC_CSV_HEADER + "\n" + row + "\n";
 
-    CsvImportResult result =
-        new ObjectMapper()
-            .readValue(
-                SdkClients.adminClient().metrics().importCsv("*", csv, false),
-                CsvImportResult.class);
-    assertEquals(1, result.getNumberOfRowsPassed(), result.getImportResultsCsv());
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/metrics", createRequest(referencedName, ns), Metric.class);
 
-    assertTrue(
-        listOrEmpty(
-                getEntityWithFields(referencing.getId().toString(), "relatedMetrics")
-                    .getRelatedMetrics())
-            .isEmpty());
-    assertTrue(
-        listOrEmpty(
-                getEntityWithFields(referenced.getId().toString(), "relatedMetrics")
-                    .getRelatedMetrics())
-            .isEmpty());
+    assertNoRelatedMetrics(referenced);
+    assertNoRelatedMetrics(referencing);
+  }
+
+  @Test
+  void put_byBotKeepsUnrepeatedRelatedMetricUnlessOverridingMetadata(TestNamespace ns)
+      throws Exception {
+    Metric referenced = createEntity(createRequest(ns.prefix("bot_put_referenced_metric"), ns));
+    String referencingName = ns.prefix("bot_put_referencing_metric");
+    Metric referencing =
+        createEntity(
+            createRequest(referencingName, ns)
+                .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
+    String botToken = BulkApi.botToken();
+
+    BulkApi.upsert("metrics", List.of(createRequest(referencingName, ns)), false, botToken);
+    assertEquals(
+        List.of(referenced.getId()),
+        getEntityWithFields(referencing.getId().toString(), "relatedMetrics")
+            .getRelatedMetrics()
+            .stream()
+            .map(EntityReference::getId)
+            .toList());
+
+    BulkApi.upsert("metrics", List.of(createRequest(referencingName, ns)), true, botToken);
+    assertNoRelatedMetrics(referenced);
+    assertNoRelatedMetrics(referencing);
   }
 
   @Test
@@ -2384,16 +2397,17 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     toPatch.setRelatedMetrics(List.of());
     patchEntity(referencing.getId().toString(), toPatch);
 
+    assertNoRelatedMetrics(referencing);
+    assertNoRelatedMetrics(referenced);
+  }
+
+  private void assertNoRelatedMetrics(Metric metric) {
     assertTrue(
         listOrEmpty(
-                getEntityWithFields(referencing.getId().toString(), "relatedMetrics")
+                getEntityWithFields(metric.getId().toString(), "relatedMetrics")
                     .getRelatedMetrics())
-            .isEmpty());
-    assertTrue(
-        listOrEmpty(
-                getEntityWithFields(referenced.getId().toString(), "relatedMetrics")
-                    .getRelatedMetrics())
-            .isEmpty());
+            .isEmpty(),
+        metric.getName() + " should have no related metrics");
   }
 
   @Test
