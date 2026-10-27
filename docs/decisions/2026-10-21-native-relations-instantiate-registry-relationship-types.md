@@ -1,7 +1,7 @@
 # Native relations instantiate registry relationship types
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-21 (initial) · v2 2026-10-26 (an inverse needs edit rights on the registry)
+- **Revisions:** v1 2026-10-21 (initial) · v2 2026-10-26 (an inverse needs edit rights on the registry) · v3 2026-10-27 (a relation is offered only when its writes are allowed)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** IndependentOntologyInverseIT, OntologyHierarchyStorageTest, OntologyNativeRelation.utils.test.ts, OntologyGraphView.test.tsx, RelationshipTypePicker.component.test.tsx
 - **Related:** #35987, ADR:2026-10-14-ontology-definitions-have-independent-entity-storage, ADR:2026-10-17-glossaries-do-not-own-ontology-models, ADR:2026-10-19-native-ontology-imports-use-working-drafts
@@ -31,3 +31,7 @@ Glossaries and native ontologies share one vocabulary of relation names, predica
 ## Amendment: an inverse needs edit rights on the registry (v2, 2026-10-26)
 
 Creating a type with `inverse` stores the reference on the new type only. The reciprocal link on the other type is a `PATCH` of its `/inverse`, and the server authorizes an unmapped patch path as `EditAll` on `relationshipType`. The creator holds no owner right on the types it just made, because the create request carries no owners. A user whose policy grants `Create` without `EditAll` could therefore register both types and then fail on the back link, leaving a half-linked pair. The create dialog enables its inverse field only for users who can edit relationship types, and shows the others the standard permission message under the disabled field. A user with `Create` alone still registers one type and instantiates it, either without an inverse or as a symmetric type, which the server marks as its own inverse during the create. The create option itself still needs only `Create`.
+
+## Amendment: a relation is offered only when its writes are allowed (v3, 2026-10-27)
+
+Picking a type can make three kinds of write. Declaring a property the ontology lacks needs `Create` on `ontologyProperty`. Pointing a reused property at its partner is a `PATCH` of that property's `/inverse`, which the server authorizes as `EditAll` on the property. The axiom needs `Create` on `ontologyAxiom`. Until this amendment the picker offered every type to a user who could create axioms, and the server refused the first write of a choice whose property rights the user lacked. The picker now offers a type only when the user holds every right its planned writes need. Submitting a type the user cannot complete, for example by typing its label, shows the permission message and writes nothing. The Studio reads edit rights per property, because a property inherits the ontology's owners and a resource-level read counts an owner rule as denied. A hierarchy relation, and a type whose two properties the ontology already holds linked, need only the axiom right, so they stay available. A typed label still resolves against every type, so the picker reuses a hidden type instead of registering it a second time.
