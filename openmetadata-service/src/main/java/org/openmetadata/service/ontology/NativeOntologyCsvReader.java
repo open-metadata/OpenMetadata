@@ -54,6 +54,10 @@ final class NativeOntologyCsvReader {
   private int statements;
   private int definitionRows;
 
+  Map<String, Integer> propertyRows() {
+    return Map.copyOf(propertyRows);
+  }
+
   NativeOntologyDocument read(final String csv) {
     requireWithinSize(csv);
     try (CSVParser parser = CSVParser.parse(NativeOntologyCsvCodec.stripBom(csv), ROW_FORMAT)) {

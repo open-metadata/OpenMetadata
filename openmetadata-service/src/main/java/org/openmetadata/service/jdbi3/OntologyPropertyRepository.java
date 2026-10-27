@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.net.URI;
@@ -26,6 +25,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.ontology.OntologyPropertyLists;
 import org.openmetadata.service.ontology.OntologyReleaseManifest;
 import org.openmetadata.service.rdf.OwlEntityDeclarations;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -60,23 +60,25 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
     }
     validatePropertyKind(entity);
     validateDataMetadata(entity);
-    requireEnumeration(entity);
+    requireListsUsable(entity);
   }
 
-  private void requireEnumeration(final OntologyProperty entity) {
-    if (listOrEmpty(entity.getEnumValues()).size() != 1) {
-      return;
+  private void requireListsUsable(final OntologyProperty entity) {
+    final OntologyPropertyLists.Violation violation =
+        OntologyPropertyLists.firstViolation(entity, () -> storedEnumerationEquals(entity));
+    if (violation != null) {
+      throw new BadRequestException(violation.message());
     }
-    // One-value enumerations stored before this rule stay editable until their values change.
+  }
+
+  private boolean storedEnumerationEquals(final OntologyProperty entity) {
     final OntologyProperty stored =
         findByNameOrNull(
             FullyQualifiedName.add(entity.getOntology().getFullyQualifiedName(), entity.getName()),
             Include.ALL);
-    if (stored == null
-        || !JsonUtils.pojoToJson(stored.getEnumValues())
-            .equals(JsonUtils.pojoToJson(entity.getEnumValues()))) {
-      throw new BadRequestException("An enumeration needs at least two allowed values");
-    }
+    return stored != null
+        && JsonUtils.pojoToJson(stored.getEnumValues())
+            .equals(JsonUtils.pojoToJson(entity.getEnumValues()));
   }
 
   @Override
@@ -336,9 +338,6 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         throw new BadRequestException("An ontology property supports at most 1000 enum values");
       }
       values.forEach(OntologyPropertyRepository::validateLiteral);
-      if (values.stream().map(JsonUtils::pojoToJson).distinct().count() != values.size()) {
-        throw new BadRequestException("Ontology property enum values must be unique");
-      }
     }
   }
 
@@ -360,9 +359,6 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
     if (entity.getKind() != OntologyPropertyKind.OBJECT
         && (entity.getInverse() != null || !nullOrEmpty(entity.getPropertyChain()))) {
       throw new BadRequestException("Only object properties can have inverses or property chains");
-    }
-    if (!nullOrEmpty(entity.getPropertyChain()) && entity.getPropertyChain().size() < 2) {
-      throw new BadRequestException("A property chain requires at least two object properties");
     }
     validateCharacteristics(entity);
     if (entity.getKind() == OntologyPropertyKind.ANNOTATION
