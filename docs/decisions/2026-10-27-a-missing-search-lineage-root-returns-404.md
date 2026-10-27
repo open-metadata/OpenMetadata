@@ -16,7 +16,8 @@ is ambiguous. That reports a nonexistent lineage root as HTTP 500 to the UI, SDK
 Both helpers throw a typed `MissingLineageEntityException` for a successful search with no
 matching document. It remains a `SearchException` with HTTP 500 until the root loader converts
 it to `EntityNotFoundException` and HTTP 404. Multiple matches, backend failures and transport
-failures propagate unchanged. No server error text is parsed.
+failures propagate unchanged. Timed-out responses are rejected before their hit metadata is
+discarded, so a partial empty response cannot prove the root is absent. No server error text is parsed.
 
 ## Consequences
 Only a missing root produces HTTP 404 on either engine. A stale reference to a missing non-root

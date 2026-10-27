@@ -42,11 +42,13 @@ import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.lineage.AbstractLineageGraphBuilder;
 import org.openmetadata.service.search.lineage.LineageQueryContext;
+import org.openmetadata.service.search.lineage.MissingLineageEntityException;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
 
@@ -90,27 +92,52 @@ class ESLineageGraphBuilderTest {
 
   @Test
   void searchLineageByEntityCount_missingRootReturns404() throws IOException {
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      when(searchRepository.getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)).thenReturn("global_search");
+    try (final MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      stubRootRepository(entity);
       stubEsClientSearch();
       when(hitsMetadata.hits()).thenReturn(List.of());
 
-      EntityNotFoundException error =
-          assertThrows(
-              EntityNotFoundException.class,
-              () ->
-                  new ESLineageGraphBuilder(esClient)
-                      .searchLineageByEntityCount(
-                          new EntityCountLineageRequest()
-                              .withFqn(ROOT_FQN)
-                              .withDirection(LineageDirection.DOWNSTREAM)
-                              .withNodeDepth(0)
-                              .withIncludeSourceFields(Set.of())));
+      final EntityNotFoundException error =
+          assertThrows(EntityNotFoundException.class, this::fetchRootPage);
 
       assertEquals(404, error.getResponse().getStatus());
       assertTrue(error.getMessage().contains(ROOT_FQN));
     }
+  }
+
+  @Test
+  void searchLineageByEntityCount_timedOutRootSearchRemains500() throws IOException {
+    try (final MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      stubRootRepository(entity);
+      final SearchResponse<JsonData> timeout =
+          new SearchResponse.Builder<JsonData>()
+              .took(1)
+              .timedOut(true)
+              .shards(shards -> shards.total(1).successful(1).failed(0))
+              .hits(hits -> hits.hits(List.of()))
+              .build();
+      when(esClient.search(any(SearchRequest.class), eq(JsonData.class))).thenReturn(timeout);
+
+      final SearchException error = assertThrows(SearchException.class, this::fetchRootPage);
+
+      assertEquals(500, error.getResponse().getStatus());
+      assertFalse(error instanceof MissingLineageEntityException);
+    }
+  }
+
+  private void stubRootRepository(final MockedStatic<Entity> entity) {
+    entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+    when(searchRepository.getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)).thenReturn("global_search");
+  }
+
+  private SearchLineageResult fetchRootPage() throws IOException {
+    return new ESLineageGraphBuilder(esClient)
+        .searchLineageByEntityCount(
+            new EntityCountLineageRequest()
+                .withFqn(ROOT_FQN)
+                .withDirection(LineageDirection.DOWNSTREAM)
+                .withNodeDepth(0)
+                .withIncludeSourceFields(Set.of()));
   }
 
   @Test

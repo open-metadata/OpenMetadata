@@ -35,6 +35,7 @@ import org.openmetadata.service.search.lineage.MissingLineageEntityException;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
+import org.openmetadata.service.util.LineageUtil;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -445,6 +446,7 @@ public class OsUtils {
       }
     }
 
+    LineageUtil.rejectTimedOutSearch(searchResponse.timedOut(), indexAlias);
     for (Hit<JsonData> hit : searchResponse.hits().hits()) {
       if (hit.source() != null) {
         Map<String, Object> esDoc = jsonDataToMap(hit.source());
