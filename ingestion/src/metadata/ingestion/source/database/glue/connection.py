@@ -57,6 +57,7 @@ MAX_DATABASES_TO_PROBE = 10
 
 # A selective tableFilterPattern can match nothing in a large database; cap the tables
 # the whole probe reads so the check cannot outrun its step timeout.
+# ADR:2026-10-27-glue-test-connection-probes-what-ingestion-reads
 MAX_TABLES_TO_SCAN = 1000
 
 
@@ -229,7 +230,11 @@ def list_tables(client: Any, filters: GlueFilters | None = None, limit: int = DE
                 summary = f"{count(shown, 'table')} in database '{name}'" + more_suffix(shown, len(tables) > limit)
                 return Evidence(summary=summary, command=command)
             if budget <= 0:
-                break
+                return Evidence(
+                    summary=f"no kept table in the first {count(MAX_TABLES_TO_SCAN, 'table')} read",
+                    command=command,
+                    caveat=_scan_budget_caveat(),
+                )
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
     if not probed:
@@ -247,6 +252,17 @@ def _no_tables_caveat() -> Diagnosis:
         remediation="No database exposed a table. Verify the identity's Glue permissions and any "
         "Lake Formation DESCRIBE grants, and that databaseFilterPattern, schemaFilterPattern and "
         "tableFilterPattern are not excluding everything; ingestion would collect nothing as configured.",
+    )
+
+
+def _scan_budget_caveat() -> Diagnosis:
+    # Running out of reads proves nothing about what ingestion collects, so this must
+    # not reuse the "would collect nothing" caveat.
+    return Diagnosis(
+        title="Table probe stopped early",
+        remediation=f"The filters excluded every table among the first {MAX_TABLES_TO_SCAN} read, so the "
+        "probe stopped before finding one they keep. This does not mean ingestion would collect "
+        "nothing; verify tableFilterPattern keeps the tables you expect.",
     )
 
 
@@ -278,7 +294,9 @@ class GlueConnection(BaseConnection[GlueConnectionConfig, Any]):
         return AWSClient(self.service_connection.awsConfig).get_glue_client()
 
     def scope_to(self, filters: GlueFilters) -> None:
-        """Probe what an ingestion run reads, instead of the connection's default filters."""
+        """Probe what an ingestion run reads, instead of the connection's default filters.
+
+        ADR:2026-10-27-glue-test-connection-probes-what-ingestion-reads"""
         self._filters = filters
 
     def checks(self) -> ChecksProvider:

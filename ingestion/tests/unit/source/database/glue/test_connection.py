@@ -422,8 +422,11 @@ def test_get_tables_stops_once_the_table_scan_budget_is_spent():
 
     evidence = _checks(client, table=FilterPattern(excludes=["^tmp_"])).get_tables()
 
-    assert evidence.summary == "no tables in the first 1 database"
+    # Running out of reads is not evidence that ingestion would collect nothing.
+    assert evidence.summary == f"no kept table in the first {MAX_TABLES_TO_SCAN} tables read"
     assert evidence.caveat is not None
+    assert evidence.caveat.title == "Table probe stopped early"
+    assert "does not mean ingestion would collect nothing" in evidence.caveat.remediation
 
 
 def test_pipeline_filters_match_fully_qualified_names_with_use_fqn_for_filtering():
