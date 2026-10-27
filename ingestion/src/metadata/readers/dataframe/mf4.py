@@ -32,7 +32,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.readers.dataframe.base import DataFrameReader, FileFormatException
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import return_azure_storage_options
-from metadata.readers.file.gcs import get_gcs_impersonated_token
+from metadata.readers.file.gcs import get_gcsfs_auth_options
 from metadata.readers.models import ConfigSource
 from metadata.utils.logger import ingestion_logger
 
@@ -91,7 +91,7 @@ class MF4DataFrameReader(DataFrameReader):
         from asammdf import MDF
         from gcsfs import GCSFileSystem
 
-        gcs = GCSFileSystem(token=get_gcs_impersonated_token(self.client))
+        gcs = GCSFileSystem(**get_gcsfs_auth_options(self.client))
         file_path = f"gs://{bucket_name}/{key}"
 
         with tempfile.NamedTemporaryFile(suffix=".mf4", delete=True) as tmp:

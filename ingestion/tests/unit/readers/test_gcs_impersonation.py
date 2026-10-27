@@ -30,15 +30,14 @@ from metadata.readers.dataframe.dsv import DSVDataFrameReader
 from metadata.readers.dataframe.json import JSONDataFrameReader
 from metadata.readers.dataframe.mf4 import MF4DataFrameReader
 from metadata.readers.dataframe.parquet import ParquetDataFrameReader
-from metadata.readers.file.gcs import get_gcs_impersonated_token
+from metadata.readers.file.gcs import get_gcsfs_auth_options
 
 
 class _StopReadError(Exception):
     """Raised by the patched filesystem so the test stops right after it was built."""
 
 
-@pytest.fixture
-def impersonated():
+def _impersonated() -> ImpersonatedCredentials:
     return ImpersonatedCredentials(
         source_credentials=AnonymousCredentials(),
         target_principal="target@my-project.iam.gserviceaccount.com",
@@ -46,20 +45,41 @@ def impersonated():
     )
 
 
-def test_token_is_the_impersonated_credentials_of_a_storage_client(impersonated):
-    assert get_gcs_impersonated_token(Client(project="p1", credentials=impersonated)) is impersonated
+@pytest.fixture
+def impersonated():
+    return _impersonated()
 
 
-def test_token_is_the_impersonated_credentials_of_a_multi_project_client(impersonated):
+def _options(credentials):
+    return {"token": credentials, "skip_instance_cache": True}
+
+
+def test_options_carry_the_impersonated_credentials_of_a_storage_client(impersonated):
+    assert get_gcsfs_auth_options(Client(project="p1", credentials=impersonated)) == _options(impersonated)
+
+
+def test_options_carry_the_impersonated_credentials_of_a_multi_project_client(impersonated):
     client = MultiProjectClient(client_class=Client, project_ids=["p1", "p2"], credentials=impersonated)
-    assert get_gcs_impersonated_token(client) is impersonated
+    assert get_gcsfs_auth_options(client) == _options(impersonated)
 
 
-def test_no_token_for_base_identity_clients():
-    assert get_gcs_impersonated_token(Client(project="p1", credentials=AnonymousCredentials())) is None
+def test_no_options_for_base_identity_clients():
+    assert get_gcsfs_auth_options(Client(project="p1", credentials=AnonymousCredentials())) == {}
     base_identity = MultiProjectClient(client_class=Client, project_ids=["p1"], credentials=AnonymousCredentials())
-    assert get_gcs_impersonated_token(base_identity) is None
-    assert get_gcs_impersonated_token(None) is None
+    assert get_gcsfs_auth_options(base_identity) == {}
+    assert get_gcsfs_auth_options(None) == {}
+
+
+def test_impersonated_filesystems_do_not_accumulate_in_the_fsspec_cache():
+    """The profiler and samplers rebuild the connection per entity, so every entity brings a
+    new credentials object; caching each filesystem would grow the process-wide cache forever."""
+    from gcsfs import GCSFileSystem
+
+    cached_before = len(GCSFileSystem._cache)
+    for _ in range(3):
+        GCSFileSystem(**get_gcsfs_auth_options(Client(project="p1", credentials=_impersonated())))
+
+    assert len(GCSFileSystem._cache) == cached_before
 
 
 def _read(reader):
@@ -78,7 +98,7 @@ def test_gcsfs_readers_use_the_client_identity(reader_class, impersonated):
         _read(reader_class(GCSConfig(), Client(project="p1", credentials=impersonated)))
         _read(reader_class(GCSConfig(), Client(project="p1", credentials=AnonymousCredentials())))
 
-    assert [c.kwargs for c in mock_gcsfs.call_args_list] == [{"token": impersonated}, {"token": None}]
+    assert [c.kwargs for c in mock_gcsfs.call_args_list] == [_options(impersonated), {}]
 
 
 def test_csv_reader_uses_the_client_identity(impersonated):
@@ -86,4 +106,4 @@ def test_csv_reader_uses_the_client_identity(impersonated):
         _read(DSVDataFrameReader(GCSConfig(), Client(project="p1", credentials=impersonated)))
         _read(DSVDataFrameReader(GCSConfig(), Client(project="p1", credentials=AnonymousCredentials())))
 
-    assert [c.kwargs["storage_options"] for c in mock_read_csv.call_args_list] == [{"token": impersonated}, None]
+    assert [c.kwargs["storage_options"] for c in mock_read_csv.call_args_list] == [_options(impersonated), None]

@@ -24,13 +24,18 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def get_gcs_impersonated_token(client: Any) -> impersonated_credentials.Credentials | None:
-    """gcsfs (directly or through pandas `gs://` paths) resolves its own identity from ADC,
-    i.e. the base service account, so hand it the impersonated credentials the client was
-    built with. The client's credentials object is reused so the whole run shares one
-    token and one cached filesystem. None keeps gcsfs' default auth untouched."""
+def get_gcsfs_auth_options(client: Any) -> dict[str, Any]:
+    """gcsfs kwargs (also valid as pandas `storage_options`) to read as the client's identity.
+
+    gcsfs resolves its own identity from ADC, i.e. the base service account, so hand it the
+    impersonated credentials the client was built with. fsspec caches filesystems per process
+    keyed on these kwargs, and the profiler/samplers rebuild the connection (and so a new
+    credentials object) per entity, so a cached instance would leak one filesystem per entity:
+    skip the cache. Empty keeps gcsfs' default auth and caching untouched."""
     credentials = getattr(client, "_credentials", None)
-    return credentials if isinstance(credentials, impersonated_credentials.Credentials) else None
+    if not isinstance(credentials, impersonated_credentials.Credentials):
+        return {}
+    return {"token": credentials, "skip_instance_cache": True}
 
 
 class GCSReader(Reader):
