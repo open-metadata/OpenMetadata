@@ -251,7 +251,7 @@ jobs:
       # and the warm populates keys nobody reads.
       full_suite: true
       protocol: http
-      coarse_bundle: false
+      coarse_bundle: true
   warm-venv:
     concurrency:
       group: populate-playwright-caches-venv-${{ matrix.py-version }}

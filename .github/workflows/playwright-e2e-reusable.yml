@@ -63,7 +63,7 @@ on:
         description: Build the CI-only coarse Vite bundle.
         required: false
         type: boolean
-        default: false
+        default: true
       warm_caches_only:
         description: >-
           Build and seed the pipeline's cache assets, then stop before the test
@@ -195,10 +195,8 @@ jobs:
       docker-compose: ${{ steps.filter.outputs.docker-compose }}
       # The visual and RDF lanes run whole projects, switched on by these
       # filters rather than by spec impact; manual and nightly runs take both.
-      # Neither runs on h2: both start plain-HTTP Docker servers. Visual also
-      # skips the opt-in coarse bundle, which resolves CSS ties differently from
-      # production and so cannot match its baselines.
-      visual: ${{ !inputs.coarse_bundle && inputs.protocol != 'h2' && (contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.visual) || 'false' }}
+      # Neither runs on h2: both start plain-HTTP Docker servers.
+      visual: ${{ inputs.protocol != 'h2' && (contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.visual) || 'false' }}
       rdf: ${{ inputs.protocol != 'h2' && (contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.rdf) || 'false' }}
     steps:
       - name: Checkout
@@ -247,6 +245,7 @@ jobs:
               - '.github/scripts/pack_playwright_ingestion_image.sh'
               - '.github/scripts/playwright_distribution_cache.sh'
               - '.github/scripts/rotate_playwright_auth_state.py'
+              - '.github/scripts/serve_playwright_ui.cjs'
               - '.github/scripts/evaluate_playwright_performance.py'
               - '.github/scripts/import_playwright_json_timings.py'
               - '.github/scripts/merge_playwright_timings.py'
@@ -293,6 +292,8 @@ jobs:
               - 'openmetadata-ui/src/main/resources/ui/playwright/test-data/**'
               - '.github/workflows/playwright-e2e-reusable.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
+              - '.github/actions/cache-ui-dist/action.yml'
+              - '.github/scripts/serve_playwright_ui.cjs'
             rdf:
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
               - '.github/workflows/playwright-e2e-reusable.yml'
@@ -357,7 +358,7 @@ jobs:
       - name: Calculate cache fingerprints
         id: fingerprints
         env:
-          # inputs.coarse_bundle is always defined (workflow_call), defaults to false.
+          # inputs.coarse_bundle is always defined (workflow_call), defaults to true.
           COARSE_BUNDLE: ${{ inputs.coarse_bundle }}
         run: |
           bundle_mode=regular
@@ -574,6 +575,66 @@ jobs:
             ${{ env.DISTRIBUTION_CACHE_DIR }}/openmetadata-*.tar.gz
             ${{ env.DISTRIBUTION_CACHE_DIR }}/distribution-manifest.json
           compression-level: 0
+          retention-days: 1
+
+  # The visual baselines are captured on the regular UI bundle, but the shared
+  # distribution may carry the coarse one, whose CSS order differs from
+  # production. The visual shard serves this regular build in front of the
+  # shared server instead (ADR:2026-10-23-playwright-visual-and-rdf-are-blocking-lanes-on-the-regular-bundle).
+  build-visual-ui:
+    needs: [check-changes]
+    runs-on: ubuntu-latest
+    if: |
+      needs.check-changes.outputs.visual == 'true' &&
+      !inputs.warm_caches_only &&
+      !github.event.pull_request.draft &&
+      (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
+          # Same opt-in and reasoning as the build job's checkout.
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
+
+      - name: Restore openmetadata-ui dist cache
+        # Same fork guard as the build job's cache step.
+        if: >-
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
+        uses: ./.github/actions/cache-ui-dist
+        with:
+          variant: pw-e2e-build
+
+      - name: Setup JDK 21
+        if: ${{ env.SKIP_UI_BUILD != 'true' }}
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Restore Maven Dependencies
+        if: ${{ env.SKIP_UI_BUILD != 'true' }}
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build the regular UI bundle
+        if: ${{ env.SKIP_UI_BUILD != 'true' }}
+        env:
+          PW_E2E_BUILD: "true"
+        run: mvn -DskipTests package -pl openmetadata-ui -am
+
+      - name: Upload the regular UI bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-visual-ui
+          overwrite: true
+          path: openmetadata-ui/src/main/resources/ui/dist
           retention-days: 1
 
   detect-changes:
@@ -1460,6 +1521,7 @@ jobs:
     needs:
       [
         build,
+        build-visual-ui,
         cache-keys,
         detect-changes,
         plan-playwright,
@@ -1500,7 +1562,7 @@ jobs:
       PW_SHARD_ID: ${{ matrix.shardId }}
       PW_SHARD_LANE: ${{ matrix.lane }}
       # The visual and RDF lanes seed their own environments (visual: the
-      # MySQL + regular-bundle setup its baselines were captured on; RDF:
+      # MySQL setup its baselines were captured on; RDF:
       # Fuseki with RDF enabled), so their setup projects run for real.
       PW_PRESEEDED_STATE: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
     strategy:
@@ -1823,6 +1885,29 @@ jobs:
       # ran right after "Setup Openmetadata Test Environment", so a 10-min
       # `install-deps` blowup was invisible to the env gate and only surfaced
       # as a runner-clock cancellation.
+      - name: Download the regular UI bundle
+        if: ${{ matrix.lane == 'visual' }}
+        uses: actions/download-artifact@v7
+        with:
+          name: playwright-visual-ui
+          path: ${{ runner.temp }}/playwright-visual-ui
+
+      - name: Serve the regular UI in front of the visual server
+        if: ${{ matrix.lane == 'visual' }}
+        run: |
+          nohup node .github/scripts/serve_playwright_ui.cjs \
+            "$RUNNER_TEMP/playwright-visual-ui" 3300 8585 > "$RUNNER_TEMP/visual-ui-server.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3300/signin >/dev/null &&
+              curl -sf http://127.0.0.1:3300/api/v1/system/version >/dev/null; then
+              echo "PLAYWRIGHT_TEST_BASE_URL=http://127.0.0.1:3300" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/visual-ui-server.log" >&2
+          exit 1
+
       - name: Record environment setup duration
         run: |
           finished_at=$(date +%s)

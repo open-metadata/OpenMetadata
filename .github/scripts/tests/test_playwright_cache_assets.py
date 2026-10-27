@@ -579,14 +579,14 @@ def test_prune_workflow_only_cancels_runs_on_dead_queue_refs() -> None:
     assert "actions/runs?event=merge_group" in listing
 
 
-def test_visual_runs_only_on_the_regular_bundle_and_neither_lane_runs_on_h2() -> None:
+def test_visual_renders_the_regular_bundle_in_front_of_the_shared_server() -> None:
     # ADR:2026-10-23-playwright-visual-and-rdf-are-blocking-lanes-on-the-regular-bundle
     workflows = ROOT / ".github/workflows"
     reusable = (workflows / "playwright-e2e-reusable.yml").read_text()
     outputs = reusable.split("  check-changes:", 1)[1].split("    steps:", 1)[0]
     visual = next(line for line in outputs.splitlines() if line.startswith("      visual:"))
     rdf = next(line for line in outputs.splitlines() if line.startswith("      rdf:"))
-    assert "!inputs.coarse_bundle" in visual
+    assert "coarse_bundle" not in visual
     assert "inputs.protocol != 'h2'" in visual
     assert "inputs.protocol != 'h2'" in rdf
     assert visual.endswith("|| 'false' }}") and rdf.endswith("|| 'false' }}")
@@ -594,10 +594,21 @@ def test_visual_runs_only_on_the_regular_bundle_and_neither_lane_runs_on_h2() ->
     for workflow in ("playwright-e2e-reusable.yml", "playwright-postgresql-e2e.yml",
                      "postgresql-nightly-e2e.yml", "mysql-nightly-e2e.yml"):
         block = (workflows / workflow).read_text().split("      coarse_bundle:\n", 1)[1]
-        assert block.split("default:", 1)[1].split("\n", 1)[0].strip() == "false", workflow
-    assert "      coarse_bundle: false\n" in (workflows / "populate-playwright-caches.yml").read_text()
+        assert block.split("default:", 1)[1].split("\n", 1)[0].strip() == "true", workflow
+
+    ui_job = reusable.split("\n  build-visual-ui:\n", 1)[1].split("\n  detect-changes:\n", 1)[0]
+    assert "needs.check-changes.outputs.visual == 'true'" in ui_job
+    assert "variant: pw-e2e-build" in ui_job
+    assert 'PW_E2E_BUILD: "true"' in ui_job and "PW_E2E_BUNDLE" not in ui_job
+    assert "name: playwright-visual-ui" in ui_job
 
     shard = reusable.split("\n  playwright-ci:\n", 1)[1].split("\n  slack-notify:\n", 1)[0]
     for step in ("Restore Playwright browser cache", "Cache Playwright system deps", "Install Playwright Browsers"):
         body = shard.split(f"      - name: {step}\n", 1)[1].split("      - name:", 1)[0]
         assert body.count("if: ${{ matrix.lane != 'visual' }}") == 1, step
+    assert "        build-visual-ui,\n" in shard
+    serve = shard.split("      - name: Serve the regular UI in front of the visual server\n", 1)[1].split("      - name:", 1)[0]
+    assert "if: ${{ matrix.lane == 'visual' }}" in serve
+    assert "serve_playwright_ui.cjs" in serve
+    assert 'PLAYWRIGHT_TEST_BASE_URL=http://127.0.0.1:3300' in serve
+    assert shard.index("Serve the regular UI in front of the visual server") < shard.index("      - name: Run Playwright tests")

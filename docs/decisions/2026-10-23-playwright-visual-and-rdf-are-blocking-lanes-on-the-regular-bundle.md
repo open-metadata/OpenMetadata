@@ -1,4 +1,4 @@
-# Visual regression and RDF run as blocking lanes of the main Playwright workflow, on the regular UI bundle
+# Visual regression and RDF run as blocking lanes of the main Playwright workflow, and visual renders the regular UI bundle
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-23 (initial)
@@ -23,13 +23,18 @@ stylesheets only moves the tie somewhere else.
   runs on `protocol=h2`, because both start plain-HTTP Docker servers.
 - Each lane seeds its own environment (visual: MySQL; RDF: Postgres + Fuseki) because the shared
   fixture carries other lanes' data. Both reuse the shared distribution and ingestion image.
-- `coarse_bundle` defaults to false in the reusable workflow, every caller and the cache warm-up.
-  The coarse bundle stays opt-in for measurement, and `visual` never runs on it.
+- `coarse_bundle` stays on by default for every other lane. `visual` always renders the regular
+  bundle: `build-visual-ui` builds it (`PW_E2E_BUILD` without `PW_E2E_BUNDLE`, cached under the
+  `pw-e2e-build` UI-dist variant), and the visual shard serves it with
+  `.github/scripts/serve_playwright_ui.cjs` in front of the shared server, proxying `/api`, and
+  points `PLAYWRIGHT_TEST_BASE_URL` at it. Re-capturing the baselines on the coarse bundle was
+  rejected: they would record a rendering production never shows.
 - SSO login stays a separate workflow.
 
 ## Consequences
-One build serves every lane. A visual or RDF break blocks the merge queue the same way a functional
-failure does, and functional specs now see the CSS cascade production renders. The full-suite run on
-#35902 measured the regular bundle against the last three coarse nightlies: slowest shard 26.4m
-against 25.1–28.6m. Revisit the default only if the coarse bundle keeps production CSS order and
-three consecutive full runs meet the thresholds in `evaluate_playwright_performance.py`.
+One server build serves every lane, plus one UI-only build, cached and parallel to the server build,
+when the visual lane runs. A visual or RDF break blocks the merge queue the same way a functional
+failure does. Functional specs still run on the coarse bundle and so still see its CSS order. Measured
+locally, 5 of 19 visual baselines differ by more than the 1% tolerance between the two bundles, and
+production renders the regular one. `build-visual-ui` and the static server can go once the coarse
+bundle keeps production CSS order, or once coarse is no longer the default.
