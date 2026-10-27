@@ -34,6 +34,7 @@ from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.readers.dataframe.base import DataFrameReader, FileFormatException
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import return_azure_storage_options
+from metadata.readers.file.gcs import get_gcs_impersonated_token
 from metadata.readers.models import ConfigSource
 from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import ingestion_logger
@@ -130,7 +131,7 @@ class AvroDataFrameReader(DataFrameReader):
         """Stream Avro from GCS without loading entire file into memory."""
         from gcsfs import GCSFileSystem
 
-        gcs = GCSFileSystem()
+        gcs = GCSFileSystem(token=get_gcs_impersonated_token(self.client))
         file_path = f"gs://{bucket_name}/{key}"
 
         with gcs.open(file_path, "rb") as f:

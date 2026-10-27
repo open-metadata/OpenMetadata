@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.readers.dataframe.base import DataFrameReader, FileFormatException
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import AZURE_PATH, return_azure_storage_options
+from metadata.readers.file.gcs import get_gcs_impersonated_token
 from metadata.readers.models import ConfigSource
 from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import ingestion_logger
@@ -152,7 +153,10 @@ class DSVDataFrameReader(DataFrameReader):
             compression = "gzip"
 
         path = f"gs://{bucket_name}/{key}"
-        return self.read_from_pandas(path=path, compression=compression)
+        token = get_gcs_impersonated_token(self.client)
+        return self.read_from_pandas(
+            path=path, storage_options={"token": token} if token else None, compression=compression
+        )
 
     @_read_dsv_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:

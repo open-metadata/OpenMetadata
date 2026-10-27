@@ -14,11 +14,23 @@ Read files as string from S3
 """
 
 import traceback
+from typing import Any
+
+from google.auth import impersonated_credentials
 
 from metadata.readers.file.base import Reader, ReadException
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+def get_gcs_impersonated_token(client: Any) -> impersonated_credentials.Credentials | None:
+    """gcsfs (directly or through pandas `gs://` paths) resolves its own identity from ADC,
+    i.e. the base service account, so hand it the impersonated credentials the client was
+    built with. The client's credentials object is reused so the whole run shares one
+    token and one cached filesystem. None keeps gcsfs' default auth untouched."""
+    credentials = getattr(client, "_credentials", None)
+    return credentials if isinstance(credentials, impersonated_credentials.Credentials) else None
 
 
 class GCSReader(Reader):

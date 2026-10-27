@@ -37,7 +37,10 @@ from metadata.ingestion.connections.test_connections import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.storage.gcs.client import MultiProjectClient
 from metadata.utils.constants import THREE_MIN
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import (
+    get_gcp_impersonate_credentials_or_none,
+    set_google_credentials,
+)
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
 
@@ -52,6 +55,7 @@ class GcsObjectStoreClient:
 
 def get_connection(connection: GcsConnectionConfig):
     set_google_credentials(connection.credentials)
+    credentials = get_gcp_impersonate_credentials_or_none(connection.credentials)
     project_ids = None
     if isinstance(connection.credentials.gcpConfig, GcpCredentialsValues):
         project_ids = (
@@ -60,8 +64,8 @@ def get_connection(connection: GcsConnectionConfig):
             else connection.credentials.gcpConfig.projectId.root
         )
     return GcsObjectStoreClient(
-        storage_client=MultiProjectClient(client_class=Client, project_ids=project_ids),
-        metrics_client=MetricServiceClient(),
+        storage_client=MultiProjectClient(client_class=Client, project_ids=project_ids, credentials=credentials),
+        metrics_client=MetricServiceClient(credentials=credentials),
     )
 
 

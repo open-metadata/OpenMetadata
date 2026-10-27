@@ -52,7 +52,10 @@ from metadata.ingestion.source.database.dbt.constants import (
 )
 from metadata.ingestion.source.database.dbt.models import DbtFiles
 from metadata.readers.file.config_source_factory import get_reader
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import (
+    get_gcp_impersonate_credentials_or_none,
+    set_google_credentials,
+)
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ometa_logger
 from metadata.utils.ssl_registry import get_verify_ssl_fn
@@ -662,7 +665,7 @@ def _(config: DbtGcsConfig):
             ) from cred_exc
 
         try:
-            client = storage.Client()
+            client = storage.Client(credentials=get_gcp_impersonate_credentials_or_none(config.dbtSecurityConfig))
         except DefaultCredentialsError as client_exc:
             logger.error(
                 f"Failed to create Google Cloud Storage client: {str(client_exc)}. "  # noqa: RUF010

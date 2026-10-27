@@ -40,6 +40,7 @@ from metadata.readers.dataframe.base import (
 )
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import return_azure_storage_options
+from metadata.readers.file.gcs import get_gcs_impersonated_token
 from metadata.readers.models import ConfigSource
 from metadata.utils.constants import CHUNKSIZE, UTF_8
 from metadata.utils.logger import ingestion_logger
@@ -221,7 +222,7 @@ class JSONDataFrameReader(DataFrameReader):
     def _(self, _: GCSConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         from gcsfs import GCSFileSystem
 
-        gcs = GCSFileSystem()
+        gcs = GCSFileSystem(token=get_gcs_impersonated_token(self.client))
         file_path = f"gs://{bucket_name}/{key}"
 
         @contextmanager
