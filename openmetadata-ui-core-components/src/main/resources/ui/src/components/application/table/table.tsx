@@ -148,27 +148,24 @@ const TableContext = createContext<{
 
 export type TableCardVariant = 'default' | 'muted';
 
-// `muted` matches a muted Card: rows sit one step below the surface in dark
-// mode, so the default `bg-secondary` row hover (same step) would be invisible,
-// and an 8%-white edge over them lands on the modal's own colour, so the frame
-// (header top included) takes the header divider's solid border-primary.
-// ADR:2026-10-27-settings-modal-surfaces-use-the-muted-step
 /**
- * Row surface of a muted table, shared by every muted table container (core
- * TableCard, legacy TableV2, ad-hoc wrappers) so a fix lands once. Only the
- * outermost table is repainted; tables nested in an expanded row keep theirs.
- * Clamped markdown fades into `--markdown-clamp-fade-color`, which the tbody
- * LESS default (unlayered, hence the `!`) pins to bg-surface: in dark it must
- * follow the gray-900 row (bg-secondary is the same step) and its hover tint.
+ * Row surface of a muted table, shared by every muted table container so a fix
+ * lands once (ADR:2026-10-27-settings-modal-surfaces-use-the-muted-step). Only
+ * the outermost table is repainted; tables nested in an expanded row keep theirs.
+ * The default `bg-secondary` hover is the muted row's own step, hence the
+ * translucent one. Clamped markdown fades into `--markdown-clamp-fade-color`,
+ * which the unlayered tbody LESS default pins to bg-surface (hence the `!`).
  */
 export const MUTED_TABLE_SURFACE_CLASSES = [
   'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
-  'tw:[&_tbody_tr:hover]:bg-primary_hover',
-  'tw:[&_tbody_tr:hover_td]:bg-primary_hover',
+  'tw:[&_tbody:not(table_table_tbody)>tr:hover]:bg-primary_hover',
+  'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover',
   'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!',
   'tw:dark:[&_tbody:not(table_table_tbody)>tr:hover]:[--markdown-clamp-fade-color:color-mix(in_srgb,var(--tw-color-bg-secondary),white_6%)]!',
 ].join(' ');
 
+// An 8%-white muted edge lands on the modal's own colour, so the frame (header
+// top included) takes the header divider's solid border-primary in dark.
 const TABLE_CARD_VARIANTS: Record<TableCardVariant, string> = {
   default: 'tw:bg-surface tw:after:outline-subtle',
   muted: cx(

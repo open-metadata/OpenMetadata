@@ -253,7 +253,7 @@ describe('TableCard theme roles', () => {
       'tw:after:outline-secondary',
       'tw:dark:after:outline-primary',
       'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
-      'tw:[&_tbody_tr:hover]:bg-primary_hover',
+      'tw:[&_tbody:not(table_table_tbody)>tr:hover]:bg-primary_hover',
       // Clamped markdown must fade into the muted row, not the surface.
       'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!'
     );

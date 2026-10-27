@@ -28,6 +28,10 @@ modal's colour, so the header lost its top edge, and the `bg-secondary` row hove
 - The look is expressed through core variants, not call-site colour classes, so a shared component
   reused on a classic page keeps its default; shared components take a `variant` prop that only the
   modal sets.
+- Named exceptions, styled at the call site because core has no slot for them: the members import
+  result table (a `stickyHeader` table that `TableCard`'s `overflow-hidden` would stop sticking; it
+  reuses `MUTED_TABLE_SURFACE_CLASSES`) and the CodeMirror schema editors (their dark background is
+  global LESS).
 
 ## Consequences
 A new settings-modal panel picks a variant instead of inventing a background. In light mode the

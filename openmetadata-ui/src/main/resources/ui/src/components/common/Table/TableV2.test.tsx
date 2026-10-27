@@ -266,7 +266,7 @@ describe('TableV2 tree regressions', () => {
     expect(wrapper).toHaveClass(
       'tw:bg-primary_alt!',
       'tw:dark:border-primary',
-      'tw:[&_tbody_tr:hover_td]:bg-primary_hover'
+      'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover'
     );
     expect(wrapper).not.toHaveClass('tw:border-utility-gray-200');
     expect(wrapper).not.toHaveClass('tw:[&_tbody_tr:hover_td]:bg-secondary');
