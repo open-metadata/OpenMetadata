@@ -42,7 +42,7 @@ import {
 import OntologyTreeView from '../../../OntologyExplorer/OntologyTreeView';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
-import OntologyConceptDataGraph from '../OntologyGraphView/OntologyConceptDataGraph';
+import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode';
 import {
   EMPTY_COLOR_MAP,
   EMPTY_GLOSSARIES,
@@ -129,12 +129,17 @@ const AllOntologiesGraphView = ({
       );
     }
     if (graphMode === 'data') {
-      return (
-        <OntologyConceptDataGraph
-          concept={selected}
-          key={selected?.id}
-          model={model}
+      return model ? (
+        <OntologyNativeDataMode
+          key={model.ontology.id}
+          ontologyId={model.ontology.id}
+          selectedConceptId={selectedConceptId}
+          onSelectConcept={onSelectedConceptChange}
         />
+      ) : (
+        <Typography className="tw:relative tw:p-4" size="text-sm">
+          {t('label.select-entity', { entity: t('label.concept') })}
+        </Typography>
       );
     }
 

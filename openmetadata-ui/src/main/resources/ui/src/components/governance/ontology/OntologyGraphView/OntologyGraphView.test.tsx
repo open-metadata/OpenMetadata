@@ -40,6 +40,7 @@ import {
   PaletteKey,
   RelationshipType,
 } from '../../../../generated/entity/data/relationshipType';
+import { pageFixture } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.mock';
 import {
   acquireOntologyEditLock,
   applyOntologyChangeSet,
@@ -47,6 +48,7 @@ import {
   createOntologyChangeSet,
   createOntologyProperty,
   createRelationshipType,
+  getNativeOntologyDataGraphPage,
   getOntologyChangeSet,
   getOntologyState,
   getRelationshipTypeByName,
@@ -119,6 +121,7 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   getOntologyConceptBindings: jest
     .fn()
     .mockResolvedValue({ kind: 'complete', revision: 0, assets: [] }),
+  getNativeOntologyDataGraphPage: jest.fn(),
   createOntologyAxiom: jest.fn(),
   createOntologyProperty: jest.fn(),
   createRelationshipType: jest.fn(),
@@ -1656,6 +1659,22 @@ describe('OntologyGraphView', () => {
   });
 
   it('controls the model viewport and switches to Data without losing the concept', async () => {
+    (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
+      pageFixture({
+        clusters: [
+          {
+            id: 'concept-customer',
+            name: 'Customer',
+            count: 6,
+            after: 'cursor',
+            assets: [1, 2, 3, 4].map((n) => ({
+              id: `t${n}`,
+              name: `table_${n}`,
+            })),
+          },
+        ],
+      })
+    );
     render(
       <MemoryRouter>
         <OntologyGraphView
@@ -1683,6 +1702,9 @@ describe('OntologyGraphView', () => {
     expect(screen.getByTestId('ontology-concept-inspector')).toHaveTextContent(
       'Customer'
     );
+    expect(
+      await screen.findByTestId('ontology-data-cluster-concept-customer')
+    ).toBeVisible();
 
     fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
 
@@ -1690,5 +1712,15 @@ describe('OntologyGraphView', () => {
       'aria-pressed',
       'true'
     );
+    expect(screen.getByTestId('native-ontology-graph')).toBeVisible();
+    expect(screen.getByTestId('ontology-native-data-graph')).not.toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+
+    expect(screen.getByTestId('ontology-native-data-graph')).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-data-cluster-concept-customer')
+    ).toBeVisible();
+    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
   });
 });

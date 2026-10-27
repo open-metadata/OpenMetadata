@@ -34,12 +34,19 @@ import {
   useRef,
   useState,
 } from 'react';
+import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import Fqn from '../../utils/Fqn';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import OntologyControlButtons from './OntologyControlButtons';
+import {
+  DataEdgeLegend,
+  DataGraphFootnote,
+  DataLayerHeading,
+  LegendEntry,
+} from './OntologyDataGraphChrome';
 import { DATA_MODE_MAX_RENDER_COUNT } from './OntologyExplorer.constants';
 import {
   OntologyEdge,
@@ -72,7 +79,12 @@ interface OntologyDataGraphProps {
   glossaryColorMap: Record<string, string>;
   hasMoreTerms: boolean;
   isLoadingMoreTerms: boolean;
+  /** Explains why no more clusters can load, in the slot of the render-cap note. */
+  limitMessage?: string;
   relationTypes: RelationshipType[];
+  selectedNodeId?: string;
+  /** Native ontologies page assets inside each card and draw inferred and lineage edges. */
+  variant?: 'glossary' | 'native';
   onLoadMore: (term: OntologyNode) => void;
   onPaneClick: () => void;
   onSelectNode: (node: OntologyNode) => void;
@@ -100,6 +112,10 @@ const ASSET_ROW_HEIGHT = 64;
 const SHOW_MORE_HEIGHT = 41;
 // A collapsed card previews this many assets; the rest sit behind "Show N more".
 const COLLAPSED_ASSET_COUNT = 3;
+// A native card shows this many rows, then scrolls the rows loaded after them.
+const NATIVE_COLLAPSED_ASSET_COUNT = 4;
+const INFERRED_EDGE_COLOR = 'var(--tw-color-border-brand)';
+const LINEAGE_EDGE_COLOR = 'var(--tw-color-fg-secondary)';
 const HIERARCHY_RELATION_TYPES = new Set(['parentOf', 'childOf']);
 const CANVAS_MIN_HEIGHT = 560;
 const CANVAS_MIN_WIDTH = 996;
@@ -150,6 +166,17 @@ function getAssetServiceLabel(node: OntologyNode): string {
   );
 }
 
+function getNativeAssetSummary(node: OntologyNode, t: TFunction): string {
+  const connector = getAssetServiceLabel(node);
+
+  return node.columnCount
+    ? t('message.native-asset-summary', {
+        connector,
+        count: node.columnCount,
+      })
+    : connector;
+}
+
 function toSentenceCase(label: string): string {
   const lower = label.toLocaleLowerCase();
 
@@ -174,6 +201,61 @@ function getAssetEntityType(node: OntologyNode): string {
   return node.type === METRIC_NODE_TYPE
     ? METRIC_NODE_TYPE
     : node.entityRef?.type ?? node.type;
+}
+
+function AssetLogo({
+  asset,
+  entityType,
+}: {
+  asset: OntologyNode;
+  entityType: string;
+}) {
+  const isMetric = entityType === METRIC_NODE_TYPE;
+  const iconUrl = isMetric
+    ? undefined
+    : serviceUtilClassBase.getServiceTypeLogo({
+        entityType: asset.entityRef?.type,
+        serviceType:
+          getText(asset.serviceLabel) ??
+          getText(asset.searchSource?.serviceType),
+      });
+
+  return (
+    <Box
+      align="center"
+      className={classNames(
+        'tw:size-8 tw:shrink-0 tw:rounded-lg tw:border',
+        isMetric
+          ? 'tw:border-utility-purple-200 tw:bg-utility-purple-50 tw:text-utility-purple-600'
+          : 'tw:border-secondary tw:bg-primary'
+      )}
+      justify="center">
+      {isMetric ? (
+        <BarChart01 aria-hidden="true" className="tw:size-4" />
+      ) : null}
+      {iconUrl ? (
+        <img
+          alt=""
+          className="tw:size-4 tw:object-contain"
+          height={16}
+          src={iconUrl}
+          width={16}
+        />
+      ) : null}
+    </Box>
+  );
+}
+
+function AssetTypeBadge({ entityType }: { entityType: string }) {
+  return (
+    <Badge
+      className="tw:shrink-0"
+      color={ASSET_BADGE_COLORS[entityType] ?? 'gray'}
+      size="sm"
+      type="pill-color">
+      {entityUtilClassBase.getFormattedEntityType(entityType)}
+    </Badge>
+  );
 }
 
 function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
@@ -228,13 +310,14 @@ function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
 function estimateCardHeight(
   term: OntologyNode,
   loadedAssets: number,
-  isExpanded: boolean
+  isExpanded: boolean,
+  collapsedCount: number
 ): number {
   const totalAssets = Math.max(term.assetCount ?? 0, loadedAssets);
   const shownAssets = isExpanded
     ? loadedAssets
-    : Math.min(loadedAssets, COLLAPSED_ASSET_COUNT);
-  const hasToggle = totalAssets > COLLAPSED_ASSET_COUNT;
+    : Math.min(loadedAssets, collapsedCount);
+  const hasToggle = totalAssets > collapsedCount;
 
   return (
     CARD_CHROME_HEIGHT +
@@ -253,13 +336,12 @@ interface CardAssetState {
 function getCardAssetState(
   term: OntologyNode,
   assets: OntologyNode[],
-  isExpanded: boolean
+  isExpanded: boolean,
+  collapsedCount: number
 ): CardAssetState {
   const totalAssetCount = Math.max(term.assetCount ?? 0, assets.length);
   const loadedAssetCount = Math.max(term.loadedAssetCount ?? 0, assets.length);
-  const shownAssets = isExpanded
-    ? assets
-    : assets.slice(0, COLLAPSED_ASSET_COUNT);
+  const shownAssets = isExpanded ? assets : assets.slice(0, collapsedCount);
 
   return {
     hiddenAssetCount: totalAssetCount - shownAssets.length,
@@ -364,13 +446,20 @@ const OntologyDataGraph = ({
   glossaryColorMap,
   hasMoreTerms,
   isLoadingMoreTerms,
+  limitMessage,
   relationTypes,
+  selectedNodeId,
+  variant = 'glossary',
   onLoadMore,
   onPaneClick,
   onSelectNode,
   onLoadMoreTerms,
 }: OntologyDataGraphProps) => {
   const { t } = useTranslation();
+  const isNative = variant === 'native';
+  const collapsedCount = isNative
+    ? NATIVE_COLLAPSED_ASSET_COUNT
+    : COLLAPSED_ASSET_COUNT;
   const { assetsByTerm, terms } = useMemo(
     () => buildDataClusterModel(data),
     [data]
@@ -395,9 +484,10 @@ const OntologyDataGraph = ({
       estimateCardHeight(
         term,
         assetsByTerm.get(term.id)?.length ?? 0,
-        expandedCardIds.has(term.id)
+        expandedCardIds.has(term.id),
+        collapsedCount
       ),
-    [assetsByTerm, expandedCardIds, measuredHeights]
+    [assetsByTerm, collapsedCount, expandedCardIds, measuredHeights]
   );
   const clusterEdges = useMemo(
     () =>
@@ -452,6 +542,16 @@ const OntologyDataGraph = ({
   const renderedSemanticEdges = useMemo(
     () =>
       dataEdges.map((layout) => {
+        if (isNative) {
+          const isLineage = layout.edge.edgeKind === 'observedLineage';
+
+          return {
+            ...layout,
+            color: isLineage ? LINEAGE_EDGE_COLOR : INFERRED_EDGE_COLOR,
+            isSolid: isLineage,
+            labelText: layout.edge.label,
+          };
+        }
         const relationshipType = relationshipTypeByName.get(
           layout.edge.relationType
         );
@@ -461,27 +561,51 @@ const OntologyDataGraph = ({
           getEffectiveRelationColor(
             layout.edge.relationType,
             relationshipType
-          ) ?? 'var(--tw-color-border-brand)';
+          ) ?? INFERRED_EDGE_COLOR;
 
         return {
           ...layout,
           color,
-          isHierarchy: HIERARCHY_RELATION_TYPES.has(layout.edge.relationType),
+          isSolid: HIERARCHY_RELATION_TYPES.has(layout.edge.relationType),
+          labelText: formatRelationLabel(
+            layout.edge.relationType
+          ).toLocaleLowerCase(),
         };
       }),
-    [dataEdges, relationshipTypeByName]
+    [dataEdges, isNative, relationshipTypeByName]
   );
-  const legendEntries = useMemo(
-    () => [
+  const legendEntries = useMemo((): LegendEntry[] => {
+    if (isNative) {
+      return [
+        {
+          color: INFERRED_EDGE_COLOR,
+          isSolid: false,
+          key: 'inferred',
+          label: t('label.ontology-inferred-relation'),
+        },
+        {
+          color: LINEAGE_EDGE_COLOR,
+          isSolid: true,
+          key: 'lineage',
+          label: t('label.observed-lineage'),
+        },
+      ];
+    }
+
+    return [
       ...new Map(
-        renderedSemanticEdges.map(({ color, edge, isHierarchy }) => [
+        renderedSemanticEdges.map(({ color, edge, isSolid }) => [
           edge.relationType,
-          { color, isHierarchy, relationType: edge.relationType },
+          {
+            color,
+            isSolid,
+            key: edge.relationType,
+            label: toSentenceCase(formatRelationLabel(edge.relationType)),
+          },
         ])
       ).values(),
-    ],
-    [renderedSemanticEdges]
-  );
+    ];
+  }, [isNative, renderedSemanticEdges, t]);
   const linkedAssetTotal = useMemo(
     () =>
       visibleTerms.reduce(
@@ -503,7 +627,7 @@ const OntologyDataGraph = ({
       ),
     [cardBoxes]
   );
-  const hasFooter = hasMoreTerms || isRenderCapped;
+  const hasFooter = hasMoreTerms || isRenderCapped || Boolean(limitMessage);
   const { canvasHeight, canvasWidth } = useMemo(() => {
     let nextHeight = Math.max(CANVAS_MIN_HEIGHT, clusterLayout.height);
     let nextWidth = Math.max(CANVAS_MIN_WIDTH, clusterLayout.width);
@@ -564,6 +688,13 @@ const OntologyDataGraph = ({
       return;
     }
     const handleWheel = (event: WheelEvent) => {
+      const scrollArea =
+        event.target instanceof Element
+          ? event.target.closest('[data-wheel-scroll]')
+          : null;
+      if (scrollArea && scrollArea.scrollHeight > scrollArea.clientHeight) {
+        return;
+      }
       event.preventDefault();
       const rect = node.getBoundingClientRect();
       const pointerX = event.clientX - rect.left;
@@ -812,6 +943,18 @@ const OntologyDataGraph = ({
     );
   }
 
+  const showLess = (term: OntologyNode) => {
+    setExpandedCardIds((current) => {
+      const next = new Set(current);
+      next.delete(term.id);
+
+      return next;
+    });
+    canvasRef.current
+      ?.querySelector(`[data-rows-id="${term.id}"]`)
+      ?.scrollTo?.({ top: 0 });
+  };
+
   const toggleCard = (term: OntologyNode, unloadedAssetCount: number) => {
     const isExpanded = expandedCardIds.has(term.id);
     // Expanding past the loaded preview fetches the next page as well.
@@ -832,15 +975,6 @@ const OntologyDataGraph = ({
 
   const renderAssetRow = (asset: OntologyNode, index: number) => {
     const entityType = getAssetEntityType(asset);
-    const isMetric = entityType === METRIC_NODE_TYPE;
-    const iconUrl = isMetric
-      ? undefined
-      : serviceUtilClassBase.getServiceTypeLogo({
-          entityType: asset.entityRef?.type,
-          serviceType:
-            getText(asset.serviceLabel) ??
-            getText(asset.searchSource?.serviceType),
-        });
 
     return (
       <Button
@@ -854,28 +988,7 @@ const OntologyDataGraph = ({
         data-testid={`ontology-data-asset-${asset.id}`}
         key={asset.id}
         onClick={() => onSelectNode(asset)}>
-        <Box
-          align="center"
-          className={classNames(
-            'tw:size-8 tw:shrink-0 tw:rounded-lg tw:border',
-            isMetric
-              ? 'tw:border-utility-purple-200 tw:bg-utility-purple-50 tw:text-utility-purple-600'
-              : 'tw:border-secondary tw:bg-primary'
-          )}
-          justify="center">
-          {isMetric ? (
-            <BarChart01 aria-hidden="true" className="tw:size-4" />
-          ) : null}
-          {!isMetric && iconUrl ? (
-            <img
-              alt=""
-              className="tw:size-4 tw:object-contain"
-              height={16}
-              src={iconUrl}
-              width={16}
-            />
-          ) : null}
-        </Box>
+        <AssetLogo asset={asset} entityType={entityType} />
         <Box className="tw:min-w-0 tw:flex-1" direction="col">
           <Typography
             ellipsis
@@ -886,21 +999,17 @@ const OntologyDataGraph = ({
             {asset.originalLabel ?? asset.label}
           </Typography>
           <Typography ellipsis className="tw:text-tertiary" size="text-xs">
-            {getAssetPath(asset)}
+            {isNative ? getNativeAssetSummary(asset, t) : getAssetPath(asset)}
           </Typography>
         </Box>
-        <Badge
-          className="tw:shrink-0"
-          color={ASSET_BADGE_COLORS[entityType] ?? 'gray'}
-          size="sm"
-          type="pill-color">
-          {entityUtilClassBase.getFormattedEntityType(entityType)}
-        </Badge>
+        {isNative && entityType === 'table' ? null : (
+          <AssetTypeBadge entityType={entityType} />
+        )}
       </Button>
     );
   };
 
-  const renderCardToggle = (
+  const renderGlossaryToggle = (
     term: OntologyNode,
     { hiddenAssetCount, unloadedAssetCount }: CardAssetState
   ) => {
@@ -931,11 +1040,54 @@ const OntologyDataGraph = ({
     );
   };
 
+  const renderNativeToggle = (
+    term: OntologyNode,
+    { hiddenAssetCount, unloadedAssetCount }: CardAssetState,
+    loadedCount: number
+  ) => {
+    const canShowLess =
+      expandedCardIds.has(term.id) && loadedCount > collapsedCount;
+    if (hiddenAssetCount === 0 && !canShowLess && !term.isLoadingAssets) {
+      return null;
+    }
+
+    return (
+      <Box
+        className="tw:border-t tw:border-secondary tw:px-5 tw:py-2.5"
+        gap={4}>
+        {hiddenAssetCount > 0 || term.isLoadingAssets ? (
+          <Button
+            color="link-color"
+            data-testid={`ontology-load-more-assets-${term.id}`}
+            iconLeading={ChevronDown}
+            isDisabled={term.isLoadingAssets}
+            size="sm"
+            onClick={() => toggleCard(term, unloadedAssetCount)}>
+            {term.isLoadingAssets
+              ? t('label.loading')
+              : t('label.load-more-count', { count: hiddenAssetCount })}
+          </Button>
+        ) : null}
+        {canShowLess ? (
+          <Button
+            color="link-color"
+            data-testid={`ontology-show-less-assets-${term.id}`}
+            iconLeading={ChevronUp}
+            size="sm"
+            onClick={() => showLess(term)}>
+            {t('label.show-less')}
+          </Button>
+        ) : null}
+      </Box>
+    );
+  };
+
   const renderCard = (term: OntologyNode) => {
     const assetState = getCardAssetState(
       term,
       assetsByTerm.get(term.id) ?? [],
-      expandedCardIds.has(term.id)
+      expandedCardIds.has(term.id),
+      collapsedCount
     );
     const position = cardBoxes.get(term.id) ?? {
       left: CLUSTER_LAYOUT_MARGIN,
@@ -950,6 +1102,7 @@ const OntologyDataGraph = ({
         className="tw:absolute tw:cursor-grab tw:shadow-xs tw:active:cursor-grabbing"
         data-term-id={term.id}
         data-testid={`ontology-data-cluster-${term.id}`}
+        isSelected={term.id === selectedNodeId}
         key={term.id}
         style={{ left: position.left, top: position.top, width: CARD_WIDTH }}
         onClickCapture={handleCardClickCapture}
@@ -976,16 +1129,41 @@ const OntologyDataGraph = ({
             weight="medium">
             {term.originalLabel ?? term.label}
           </Typography>
-          <Typography
-            className="tw:ml-auto tw:shrink-0 tw:text-tertiary"
-            size="text-xs">
-            {assetState.totalAssetCount} {t('label.asset-plural-lowercase')}
-          </Typography>
+          {isNative ? (
+            <Typography
+              className="tw:shrink-0 tw:text-tertiary"
+              data-testid="ontology-data-cluster-count"
+              size="text-sm">
+              {`· ${assetState.totalAssetCount}`}
+            </Typography>
+          ) : (
+            <Typography
+              className="tw:ml-auto tw:shrink-0 tw:text-tertiary"
+              size="text-xs">
+              {assetState.totalAssetCount} {t('label.asset-plural-lowercase')}
+            </Typography>
+          )}
         </Button>
 
-        {assetState.shownAssets.map(renderAssetRow)}
+        {isNative ? (
+          <div
+            className="tw:max-h-64 tw:touch-pan-y tw:overflow-y-auto"
+            data-rows-id={term.id}
+            data-testid={`ontology-data-cluster-rows-${term.id}`}
+            data-wheel-scroll="">
+            {assetState.shownAssets.map(renderAssetRow)}
+          </div>
+        ) : (
+          assetState.shownAssets.map(renderAssetRow)
+        )}
 
-        {renderCardToggle(term, assetState)}
+        {isNative
+          ? renderNativeToggle(
+              term,
+              assetState,
+              assetsByTerm.get(term.id)?.length ?? 0
+            )
+          : renderGlossaryToggle(term, assetState)}
       </Card>
     );
   };
@@ -1029,14 +1207,15 @@ const OntologyDataGraph = ({
           height={canvasHeight}
           width={canvasWidth}>
           {renderedSemanticEdges.map(
-            ({ color, end, isHierarchy, path, renderKey }) => (
+            ({ color, edge, end, isSolid, path, renderKey }) => (
               <Fragment key={renderKey}>
                 <path
                   d={path}
+                  data-edge-kind={edge.edgeKind}
                   data-testid="ontology-data-semantic-edge"
                   fill="none"
                   stroke={color}
-                  strokeDasharray={isHierarchy ? undefined : '4 3'}
+                  strokeDasharray={isSolid ? undefined : '4 3'}
                   strokeWidth="1.5"
                 />
                 <circle
@@ -1054,7 +1233,7 @@ const OntologyDataGraph = ({
         {visibleTerms.map(renderCard)}
 
         {renderedSemanticEdges.map(
-          ({ color, edge, labelLeft, labelTop, renderKey }) => (
+          ({ color, labelLeft, labelText, labelTop, renderKey }) => (
             <Badge
               className="tw:pointer-events-none tw:absolute tw:-translate-x-1/2 tw:-translate-y-1/2 tw:border tw:bg-surface"
               data-testid="ontology-data-semantic-edge-label"
@@ -1067,53 +1246,26 @@ const OntologyDataGraph = ({
                 top: labelTop,
               }}
               type="pill-color">
-              {formatRelationLabel(edge.relationType).toLocaleLowerCase()}
+              {labelText}
             </Badge>
           )
         )}
 
-        {hasMoreTerms ? (
-          <Button
-            className="tw:absolute tw:left-1/2 tw:-translate-x-1/2"
-            color="secondary"
-            isDisabled={isLoadingMoreTerms}
-            size="sm"
-            style={{ top: contentBottom + LOAD_MORE_TERMS_GAP }}
-            onPress={onLoadMoreTerms}>
-            {isLoadingMoreTerms ? t('label.loading') : t('label.load-more')}
-          </Button>
-        ) : null}
-
-        {!hasMoreTerms && isRenderCapped ? (
-          <Badge
-            className="tw:absolute tw:left-1/2 tw:-translate-x-1/2"
-            color="gray"
-            data-testid="ontology-data-render-cap"
-            size="md"
-            style={{ top: contentBottom + LOAD_MORE_TERMS_GAP }}
-            type="pill-color">
-            {t('message.data-clusters-render-cap', {
-              count: DATA_MODE_MAX_RENDER_COUNT,
-            })}
-          </Badge>
-        ) : null}
+        <DataGraphFootnote
+          hasMoreTerms={hasMoreTerms}
+          isLoadingMoreTerms={isLoadingMoreTerms}
+          isRenderCapped={isRenderCapped}
+          limitMessage={limitMessage}
+          top={contentBottom + LOAD_MORE_TERMS_GAP}
+          onLoadMoreTerms={onLoadMoreTerms}
+        />
       </div>
 
-      <Box
-        className="tw:pointer-events-none tw:absolute tw:left-6 tw:top-5"
-        data-testid="ontology-data-layer-heading"
-        direction="col"
-        gap={0}>
-        <Typography className="tw:text-primary" size="text-sm" weight="medium">
-          {t('label.data-layer')}
-        </Typography>
-        <Typography className="tw:text-tertiary" size="text-xs">
-          {t('message.data-layer-summary', {
-            assetCount: linkedAssetTotal,
-            termCount: visibleTerms.length,
-          })}
-        </Typography>
-      </Box>
+      <DataLayerHeading
+        assetCount={linkedAssetTotal}
+        conceptCount={visibleTerms.length}
+        isNative={isNative}
+      />
 
       <Box
         align="end"
@@ -1131,31 +1283,7 @@ const OntologyDataGraph = ({
             onZoomOut={() => zoomAtCenter(1 / ZOOM_BUTTON_FACTOR)}
           />
         </Card>
-        {legendEntries.length > 0 ? (
-          <Card
-            className="tw:flex tw:items-center tw:gap-4 tw:px-3 tw:py-2"
-            data-testid="ontology-data-edge-legend"
-            variant="elevated">
-            {legendEntries.map(({ color, isHierarchy, relationType }) => (
-              <Box align="center" gap={2} key={relationType}>
-                <svg aria-hidden="true" height="2" width="24">
-                  <line
-                    stroke={color}
-                    strokeDasharray={isHierarchy ? undefined : '4 3'}
-                    strokeWidth="2"
-                    x1="0"
-                    x2="24"
-                    y1="1"
-                    y2="1"
-                  />
-                </svg>
-                <Typography className="tw:text-secondary" size="text-xs">
-                  {toSentenceCase(formatRelationLabel(relationType))}
-                </Typography>
-              </Box>
-            ))}
-          </Card>
-        ) : null}
+        <DataEdgeLegend entries={legendEntries} />
       </Box>
     </div>
   );

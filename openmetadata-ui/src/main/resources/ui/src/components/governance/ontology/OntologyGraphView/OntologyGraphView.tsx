@@ -91,7 +91,7 @@ import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/gra
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
 import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
-import OntologyConceptDataGraph from '../OntologyGraphView/OntologyConceptDataGraph';
+import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode';
 import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
 
@@ -306,6 +306,13 @@ const OntologyGraphView = ({
 
   const [search, setSearch] = useState('');
   const [graphMode, setGraphMode] = useState<'model' | 'data'>('model');
+  const [hasOpenedData, setHasOpenedData] = useState(false);
+  const changeGraphMode = useCallback((mode: 'model' | 'data') => {
+    setGraphMode(mode);
+    if (mode === 'data') {
+      setHasOpenedData(true);
+    }
+  }, []);
   const [localSelectedId, setLocalSelectedId] = useState<string>();
   const selectedId = onSelectedConceptChange
     ? selectedConceptId
@@ -731,7 +738,7 @@ const OntologyGraphView = ({
           }
           onOpenData={() => {
             onRequestGraphSurface();
-            setGraphMode('data');
+            changeGraphMode('data');
           }}
           onSelectConcept={(concept) => setSelectedId(concept.id)}
         />
@@ -746,6 +753,23 @@ const OntologyGraphView = ({
       />
     );
   };
+
+  const renderDataSurface = () =>
+    hasOpenedData ? (
+      <div
+        className={
+          graphMode === 'data'
+            ? 'tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col'
+            : undefined
+        }
+        hidden={graphMode !== 'data'}>
+        <OntologyNativeDataMode
+          ontologyId={ontology.id}
+          selectedConceptId={selectedId}
+          onSelectConcept={setSelectedId}
+        />
+      </div>
+    ) : null;
 
   const renderSurface = () => {
     if (surface === 'tree') {
@@ -764,17 +788,12 @@ const OntologyGraphView = ({
       );
     }
     if (graphMode === 'data') {
-      return (
-        <OntologyConceptDataGraph
-          concept={selected}
-          key={selected?.id}
-          model={model}
-        />
-      );
+      return <>{renderDataSurface()}</>;
     }
 
     return (
       <>
+        {renderDataSurface()}
         <div aria-hidden="true" className={GRAPH_BACKDROP_CLASS} />
         <Suspense
           fallback={
@@ -833,7 +852,7 @@ const OntologyGraphView = ({
             data-testid={`ontology-graph-mode-${mode}`}
             key={mode}
             size="xs"
-            onPress={() => setGraphMode(mode)}>
+            onPress={() => changeGraphMode(mode)}>
             {t(`label.${mode}`)}
           </Button>
         ))}
