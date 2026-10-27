@@ -148,8 +148,10 @@ a.ant-typography {
     text-decoration: underline;
   }
 
+  // No colour here: this rule is unlayered, so it would beat the layered
+  // Tailwind text colour of any focused link, e.g. turning the classic
+  // sidebar's white icon blue on its blue selected pill.
   &:focus {
-    color: @primary-color;
     text-decoration: underline;
     cursor: pointer;
   }
