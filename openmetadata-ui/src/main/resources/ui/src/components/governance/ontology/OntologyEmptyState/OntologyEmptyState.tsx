@@ -79,7 +79,7 @@ const OntologyEmptyState = ({
   return (
     <Box
       align="center"
-      className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:bg-secondary tw:p-8"
+      className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-8"
       data-testid="ontology-empty-state"
       direction="col"
       justify="center">
@@ -101,28 +101,31 @@ const OntologyEmptyState = ({
         <div className="tw:grid tw:w-full tw:grid-cols-1 tw:gap-4 tw:text-left tw:md:grid-cols-3">
           {options.map((option) => (
             <Card
-              className="tw:flex tw:flex-col tw:gap-3 tw:p-5"
+              className="tw:flex tw:flex-col"
               color={option.isHighlighted ? 'brandOutlined' : 'default'}
               data-testid={`ontology-empty-option-${option.id}`}
-              key={option.id}>
-              <FeaturedIcon
-                color={option.isHighlighted ? 'brand' : 'gray'}
-                icon={option.icon}
-                size="md"
-                theme="light"
-              />
-              <Typography color="secondary" size="text-xs">
-                {option.description}
-              </Typography>
-              <Button
-                className="tw:mt-auto tw:self-start"
-                color={option.isHighlighted ? 'primary' : 'secondary'}
-                data-testid={`ontology-empty-${option.id}`}
-                isDisabled={!canCreate}
-                size="sm"
-                onPress={option.onPress}>
-                {option.title}
-              </Button>
+              key={option.id}
+              size="md">
+              <Card.Content className="tw:flex tw:flex-1 tw:flex-col tw:gap-3">
+                <FeaturedIcon
+                  color={option.isHighlighted ? 'brand' : 'gray'}
+                  icon={option.icon}
+                  size="md"
+                  theme="light"
+                />
+                <Typography color="secondary" size="text-xs">
+                  {option.description}
+                </Typography>
+                <Button
+                  className="tw:mt-auto tw:self-start"
+                  color={option.isHighlighted ? 'primary' : 'secondary'}
+                  data-testid={`ontology-empty-${option.id}`}
+                  isDisabled={!canCreate}
+                  size="sm"
+                  onPress={option.onPress}>
+                  {option.title}
+                </Button>
+              </Card.Content>
             </Card>
           ))}
         </div>
