@@ -68,6 +68,7 @@ import {
   updateDescription,
   updateDisplayName,
 } from './entityMatrix';
+import { suiteTimeout } from '../timeouts';
 
 export type ServiceLabel =
   | 'ApiService'
@@ -254,7 +255,7 @@ export const landingOn = (
 export const describeServiceEntityFlows = (label: ServiceLabel) => {
   const config = serviceConfigOf(label);
 
-  describe(`Admin edits a ${label}`, { timeout: 60_000 }, () => {
+  describe(`Admin edits a ${label}`, suiteTimeout(60_000), () => {
     let entity: EntityPage;
     const server = () => entity.server;
 

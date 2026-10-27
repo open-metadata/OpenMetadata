@@ -39,6 +39,7 @@ import { ADMIN } from '../fixtures/personas';
 import { ALL_COLUMNS } from '../fixtures/table';
 import { EMPTY_LIST, worker } from '../msw';
 import { setValue, VALUES } from './customPropertyEditors';
+import { suiteTimeout } from '../timeouts';
 
 const COLUMN_FQN = ALL_COLUMNS[0].fullyQualifiedName ?? '';
 
@@ -93,7 +94,7 @@ const expectSummary = async (
 };
 
 export const describeColumnCustomProperties = (types: FieldTypeName[]) =>
-  describe('Table column custom properties', { timeout: 90_000 }, () => {
+  describe('Table column custom properties', suiteTimeout(90_000), () => {
     test.each(types.map((type) => ({ type })))(
       'set a $type value from the column panel; it persists',
       async ({ type }) => {

@@ -62,6 +62,13 @@ export default defineConfig(async (env) => {
     },
     {
       plugins: [mswServiceWorker()],
+      // Read by src/test/browser/timeouts.ts: a suite's own time limit
+      // doubles under --coverage, as the CLI --testTimeout does.
+      define: {
+        __BROWSER_TEST_TIME_SCALE__: JSON.stringify(
+          process.argv.includes('--coverage') ? 2 : 1
+        ),
+      },
       optimizeDeps: {
         include: [
           'msw/browser',

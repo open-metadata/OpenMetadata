@@ -31,6 +31,7 @@ import {
   rule,
   serveExplore,
 } from './queryBuilder';
+import { suiteTimeout } from '../timeouts';
 
 /** Three tables, so a filtered search has a count to show. */
 const TABLES = [1, 2, 3].map((n) => ({
@@ -43,7 +44,7 @@ const TABLES = [1, 2, 3].map((n) => ({
 
 const count = () => page.getByTestId('search-results-count');
 
-describe('Explore advanced search', { timeout: 60_000 }, () => {
+describe('Explore advanced search', suiteTimeout(60_000), () => {
   test('a value nobody has shows "No data" and stops searching', async () => {
     const explore = serveExplore();
     await openExplore();

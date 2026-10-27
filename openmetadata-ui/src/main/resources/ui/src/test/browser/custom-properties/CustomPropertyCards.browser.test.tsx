@@ -45,6 +45,7 @@ import {
   expectCardShows,
   openEditModal,
 } from './customPropertyEditors';
+import { suiteTimeout } from '../timeouts';
 
 const card = (type: FieldTypeName) =>
   page.getByTestId(`custom-property-${propertyOf(type).name}-card`);
@@ -102,7 +103,7 @@ const MORE_USERS = [1, 2, 3, 4, 5].map((n) => ({
   fullyQualifiedName: `pw_reference_list_user_${n}`,
 }));
 
-describe('Custom property cards', { timeout: 60_000 }, () => {
+describe('Custom property cards', suiteTimeout(60_000), () => {
   test('a long SQL query scrolls inside its editor', async () => {
     const entity = await openTab('Table', ['sqlQuery']);
     const sql =

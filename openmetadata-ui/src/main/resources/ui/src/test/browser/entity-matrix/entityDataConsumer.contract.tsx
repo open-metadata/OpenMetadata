@@ -48,11 +48,12 @@ import {
   upVoteThenDownVote,
   USERS,
 } from './entityMatrix';
+import { suiteTimeout } from '../timeouts';
 
 export const describeDataConsumerFlows = (label: EntityLabel) => {
   const config = entityConfig(label);
 
-  describe(`Data Consumer edits a ${label}`, { timeout: 60_000 }, () => {
+  describe(`Data Consumer edits a ${label}`, suiteTimeout(60_000), () => {
     let entity: EntityPage;
     const server = () => entity.server;
     const editOwner = () => page.getByTestId('edit-owner');

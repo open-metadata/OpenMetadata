@@ -30,6 +30,7 @@ import {
   pickField,
 } from '../advanced-search/queryBuilder';
 import { blockEditor } from './customPropertyEditors';
+import { suiteTimeout } from '../timeouts';
 
 /** One entity type's settings page, keyed as the spec keys it. */
 export interface SettingsEntity {
@@ -376,7 +377,7 @@ export const describeCustomPropertySettings = (
 
   describe(
     `Custom properties of ${entity.entityType}`,
-    { timeout: 150_000 },
+    suiteTimeout(150_000),
     () => {
       test.each(kinds)(
         '$label: create, edit, find in advanced search, delete',

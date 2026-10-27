@@ -35,6 +35,7 @@ import {
   pickSelect,
   serveExplore,
 } from './queryBuilder';
+import { suiteTimeout } from '../timeouts';
 
 /** A field as the spec lists it: its label and the ES field it filters. */
 export interface SearchField {
@@ -80,7 +81,7 @@ export const describeAdvancedSearchField = (field: SearchField) => {
   const slug = field.id.toLowerCase().replace(/\W+/g, '-');
   const [first, second] = [`pw-${slug}-one`, `pw-${slug}-two`];
 
-  describe(`Advanced search on ${field.id}`, { timeout: 90_000 }, () => {
+  describe(`Advanced search on ${field.id}`, suiteTimeout(90_000), () => {
     let explore: Explore;
 
     beforeEach(async () => {

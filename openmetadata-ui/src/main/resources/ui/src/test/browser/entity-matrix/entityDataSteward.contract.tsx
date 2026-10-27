@@ -45,11 +45,12 @@ import {
   updateDisplayName,
   upVoteThenDownVote,
 } from './entityMatrix';
+import { suiteTimeout } from '../timeouts';
 
 export const describeDataStewardFlows = (label: EntityLabel) => {
   const config: EntityConfig = entityConfig(label);
 
-  describe(`Data Steward edits a ${label}`, { timeout: 60_000 }, () => {
+  describe(`Data Steward edits a ${label}`, suiteTimeout(60_000), () => {
     let entity: EntityPage;
     const server = () => entity.server;
 

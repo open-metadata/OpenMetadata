@@ -39,6 +39,7 @@ import {
   rule,
   serveExplore,
 } from '../advanced-search/queryBuilder';
+import { suiteTimeout } from '../timeouts';
 
 /** As long as the spec's generated names, so the labels overflow the select. */
 const LONG_NAME = 'cp-a-long-custom-property-name-that-overflows-the-select';
@@ -80,7 +81,7 @@ const typed = (name: string, clause: Record<string, unknown>) => ({
   },
 });
 
-describe('Custom properties in advanced search', { timeout: 60_000 }, () => {
+describe('Custom properties in advanced search', suiteTimeout(60_000), () => {
   test.each([
     { type: 'timeInterval', suffixes: [' (Start)', ' (End)'] },
     { type: 'hyperlink-cp', suffixes: [' URL', ' Display Text'] },

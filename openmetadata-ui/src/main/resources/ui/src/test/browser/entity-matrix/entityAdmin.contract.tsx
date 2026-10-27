@@ -57,6 +57,7 @@ import {
   usersPanel,
 } from './entityMatrix';
 import { landingOn } from './serviceEntity.contract';
+import { suiteTimeout } from '../timeouts';
 
 /** Where each page goes after a hard delete (its `afterDeleteAction`). */
 const DELETE_TARGETS: Record<EntityLabel, () => DeleteTarget> = {
@@ -126,7 +127,7 @@ const expectEditsClosed = async () => {
 export const describeAdminFlows = (label: EntityLabel) => {
   const config = entityConfig(label);
 
-  describe(`Admin edits a ${label}`, { timeout: 60_000 }, () => {
+  describe(`Admin edits a ${label}`, suiteTimeout(60_000), () => {
     let entity: EntityPage;
     const server = () => entity.server;
 
@@ -207,7 +208,7 @@ export const describeAdminFlows = (label: EntityLabel) => {
 
   describe(
     `Data Consumer denied EditDescription on a ${label}`,
-    { timeout: 60_000 },
+    suiteTimeout(60_000),
     () => {
       beforeEach(async () => {
         await mountEntityPage(config, {

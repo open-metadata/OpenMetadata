@@ -60,6 +60,7 @@ import {
   tagFqns,
   toggleTag,
 } from './entityMatrix';
+import { suiteTimeout } from '../timeouts';
 
 export const panel = () => page.getByCSS('.column-detail-panel');
 
@@ -197,7 +198,7 @@ export const describeColumnPanelFlows = (label: EntityLabel) => {
   const row = childRow(config);
   const nameTestId = label === 'Pipeline' ? 'task-name' : 'column-name';
 
-  describe(`Admin edits a ${label}'s children`, { timeout: 60_000 }, () => {
+  describe(`Admin edits a ${label}'s children`, suiteTimeout(60_000), () => {
     let entity: EntityPage;
     const child = () => entity.child as ChildServer;
 
@@ -441,7 +442,7 @@ export const describeColumnPanelFlows = (label: EntityLabel) => {
 
   describe.runIf(label === 'Table')(
     'Admin opens nested, profiled and tested Table columns',
-    { timeout: 60_000 },
+    suiteTimeout(60_000),
     () => {
       let entity: EntityPage;
       const reads = () => (entity.child as ChildServer).reads?.() ?? [];
@@ -592,7 +593,7 @@ export const describeColumnPanelFlows = (label: EntityLabel) => {
 
   describe.runIf(label === 'Table')(
     'Data Consumer denied tag, glossary and description edits on a Table',
-    { timeout: 60_000 },
+    suiteTimeout(60_000),
     () => {
       beforeEach(async () => {
         serveColumnTests([], []);

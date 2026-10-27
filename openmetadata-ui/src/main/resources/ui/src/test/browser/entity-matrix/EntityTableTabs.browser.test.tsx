@@ -26,10 +26,11 @@ import { ADMIN, DATA_CONSUMER } from '../fixtures/personas';
 import { makeTable, TABLE_FQN } from '../fixtures/table';
 import { EMPTY_LIST, worker } from '../msw';
 import { entityConfig, mountEntityPage } from './entityMatrix';
+import { suiteTimeout } from '../timeouts';
 
 const table = entityConfig('Table');
 
-describe('Table tabs', { timeout: 60_000 }, () => {
+describe('Table tabs', suiteTimeout(60_000), () => {
   test('Data Observability, then Activity Feed', async () => {
     const profiles: string[] = [];
     const base = `/api/v1/tables/${TABLE_FQN}`;

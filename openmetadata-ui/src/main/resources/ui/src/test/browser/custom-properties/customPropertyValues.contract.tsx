@@ -42,6 +42,7 @@ import { serveSearch } from '../fixtures/search';
 import { EMPTY_LIST, worker } from '../msw';
 import { renderApp } from '../renderWithApp';
 import { expectCardShows, setValue, VALUES } from './customPropertyEditors';
+import { suiteTimeout } from '../timeouts';
 
 /** The entity type each page's custom properties belong to, and its Explore tab. */
 const EXPLORE: Partial<
@@ -115,7 +116,7 @@ export const describeCustomPropertyValues = (
   const { entityType, tab } = EXPLORE[label] ?? { entityType: '', tab: '' };
   const properties = types.map(propertyFor);
 
-  describe(`${label} custom property values`, { timeout: 120_000 }, () => {
+  describe(`${label} custom property values`, suiteTimeout(120_000), () => {
     test(`set ${
       types.length > 1 ? 'every type' : types[0]
     }, then update ${updated.join(
