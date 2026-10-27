@@ -10798,14 +10798,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/RemoveFromParentButton.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AccessControlSettings.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/applications/AppDetail.tsx"
       ],
       "specs": [
@@ -11073,6 +11065,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersTeamDetail.utils.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersTeamInfoWidgets.tsx"
       ],
       "specs": [
@@ -11123,14 +11123,6 @@
       ],
       "specs": [
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
-        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/RemoveFromTeamButton.tsx"
-      ],
-      "specs": [
         "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts"
       ]
     },
