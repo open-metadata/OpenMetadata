@@ -109,13 +109,13 @@
     },
     "verifySSL": {
       "title": "Verify SSL",
-      "description": "Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate validation, 'validate' to verify against a CA certificate.",
+      "description": "Validate HTTPS certificates using system trust or the configured CA certificate by default. Use 'ignore' to explicitly skip certificate validation. The legacy 'no-ssl' setting also validates HTTPS certificates; use an http:// URL for plain HTTP.",
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
-      "default": "no-ssl"
+      "default": "validate"
     },
     "sslConfig": {
       "title": "SSL Config",
-      "description": "CA certificate, client certificate, and private key for SSL validation. Required when verifySSL is 'validate'.",
+      "description": "Optional CA certificate, client certificate, and private key for SSL validation. System trust is used when no CA certificate is supplied.",
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
     "dashboardFilterPattern": {

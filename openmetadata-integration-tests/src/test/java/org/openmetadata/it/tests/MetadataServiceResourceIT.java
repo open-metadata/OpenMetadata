@@ -10,9 +10,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.services.CreateMetadataService;
@@ -36,6 +38,11 @@ public class MetadataServiceResourceIT
 
   private static final String OM_SERVICE = "OpenMetadata";
   private static final String MASKED = "*********";
+
+  @BeforeAll
+  static void ensureDataConsumerUser() {
+    UserTestFactory.getDataConsumer(null);
+  }
 
   {
     supportsListHistoryByTimestamp = true;

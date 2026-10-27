@@ -698,8 +698,8 @@ export interface OpenMetadataJWTClientConfig {
  *
  * SSL Configuration details.
  *
- * CA certificate, client certificate, and private key for SSL validation. Required when
- * verifySSL is 'validate'.
+ * Optional CA certificate, client certificate, and private key for SSL validation. System
+ * trust is used when no CA certificate is supplied.
  *
  * SSL Configuration details for DB2 connection. Provide CA certificate for server
  * validation, and optionally client certificate and key for mutual TLS authentication.
@@ -756,8 +756,9 @@ export enum OpenmetadataType {
  *
  * Client SSL verification.
  *
- * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
- * validation, 'validate' to verify against a CA certificate.
+ * Validate HTTPS certificates using system trust or the configured CA certificate by
+ * default. Use 'ignore' to explicitly skip certificate validation. The legacy 'no-ssl'
+ * setting also validates HTTPS certificates; use an http:// URL for plain HTTP.
  *
  * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
  */
@@ -4196,8 +4197,8 @@ export interface Connection {
     /**
      * SSL Configuration details.
      *
-     * CA certificate, client certificate, and private key for SSL validation. Required when
-     * verifySSL is 'validate'.
+     * Optional CA certificate, client certificate, and private key for SSL validation. System
+     * trust is used when no CA certificate is supplied.
      *
      * SSL Configuration details for DB2 connection. Provide CA certificate for server
      * validation, and optionally client certificate and key for mutual TLS authentication.
@@ -4271,8 +4272,9 @@ export interface Connection {
      *
      * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
      *
-     * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
-     * validation, 'validate' to verify against a CA certificate.
+     * Validate HTTPS certificates using system trust or the configured CA certificate by
+     * default. Use 'ignore' to explicitly skip certificate validation. The legacy 'no-ssl'
+     * setting also validates HTTPS certificates; use an http:// URL for plain HTTP.
      *
      * Flag to verify SSL Certificate for OpenMetadata Server.
      *
@@ -7609,8 +7611,8 @@ export enum ConnectionScheme {
  *
  * SSL Configuration details.
  *
- * CA certificate, client certificate, and private key for SSL validation. Required when
- * verifySSL is 'validate'.
+ * Optional CA certificate, client certificate, and private key for SSL validation. System
+ * trust is used when no CA certificate is supplied.
  *
  * SSL Configuration details for DB2 connection. Provide CA certificate for server
  * validation, and optionally client certificate and key for mutual TLS authentication.
@@ -8420,8 +8422,8 @@ export enum SpaceType {
  *
  * SSL Configuration details.
  *
- * CA certificate, client certificate, and private key for SSL validation. Required when
- * verifySSL is 'validate'.
+ * Optional CA certificate, client certificate, and private key for SSL validation. System
+ * trust is used when no CA certificate is supplied.
  *
  * SSL Configuration details for DB2 connection. Provide CA certificate for server
  * validation, and optionally client certificate and key for mutual TLS authentication.

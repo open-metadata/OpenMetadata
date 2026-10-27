@@ -6216,8 +6216,8 @@
                     },
                     "verifySSL": {
                       "title": "Verify SSL",
-                      "description": "Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate validation, 'validate' to verify against a CA certificate.",
-                      "default": "no-ssl",
+                      "description": "Validate HTTPS certificates using system trust or the configured CA certificate by default. Use 'ignore' to explicitly skip certificate validation. The legacy 'no-ssl' setting also validates HTTPS certificates; use an http:// URL for plain HTTP.",
+                      "default": "validate",
                       "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
                       "type": "string",
                       "enum": [
@@ -43920,8 +43920,8 @@
                     },
                     "verifySSL": {
                       "title": "Verify SSL",
-                      "description": "Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate validation, 'validate' to verify against a CA certificate.",
-                      "default": "no-ssl",
+                      "description": "Validate HTTPS certificates using system trust or the configured CA certificate by default. Use 'ignore' to explicitly skip certificate validation. The legacy 'no-ssl' setting also validates HTTPS certificates; use an http:// URL for plain HTTP.",
+                      "default": "validate",
                       "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
                       "type": "string",
                       "enum": [

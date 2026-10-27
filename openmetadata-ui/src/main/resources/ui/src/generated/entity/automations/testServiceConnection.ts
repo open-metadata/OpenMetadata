@@ -386,8 +386,8 @@ export interface Connection {
      * SSL Configuration details. Provide the CA certificate to validate the Informix server
      * certificate. Paste the PEM content directly or upload the certificate file.
      *
-     * CA certificate, client certificate, and private key for SSL validation. Required when
-     * verifySSL is 'validate'.
+     * Optional CA certificate, client certificate, and private key for SSL validation. System
+     * trust is used when no CA certificate is supplied.
      *
      * SSL Configuration for Prefect API connection.
      *
@@ -452,8 +452,9 @@ export interface Connection {
      *
      * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
      *
-     * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
-     * validation, 'validate' to verify against a CA certificate.
+     * Validate HTTPS certificates using system trust or the configured CA certificate by
+     * default. Use 'ignore' to explicitly skip certificate validation. The legacy 'no-ssl'
+     * setting also validates HTTPS certificates; use an http:// URL for plain HTTP.
      *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
@@ -3552,8 +3553,8 @@ export enum KafkaSecurityProtocol {
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
  *
- * CA certificate, client certificate, and private key for SSL validation. Required when
- * verifySSL is 'validate'.
+ * Optional CA certificate, client certificate, and private key for SSL validation. System
+ * trust is used when no CA certificate is supplied.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
@@ -4154,8 +4155,8 @@ export enum ConnectionScheme {
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
  *
- * CA certificate, client certificate, and private key for SSL validation. Required when
- * verifySSL is 'validate'.
+ * Optional CA certificate, client certificate, and private key for SSL validation. System
+ * trust is used when no CA certificate is supplied.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
@@ -4223,8 +4224,9 @@ export enum ConnectionType {
  *
  * Client SSL verification.
  *
- * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
- * validation, 'validate' to verify against a CA certificate.
+ * Validate HTTPS certificates using system trust or the configured CA certificate by
+ * default. Use 'ignore' to explicitly skip certificate validation. The legacy 'no-ssl'
+ * setting also validates HTTPS certificates; use an http:// URL for plain HTTP.
  *
  * Flag to verify SSL Certificate for OpenMetadata Server.
  */
@@ -4981,8 +4983,8 @@ export enum SpaceType {
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
  *
- * CA certificate, client certificate, and private key for SSL validation. Required when
- * verifySSL is 'validate'.
+ * Optional CA certificate, client certificate, and private key for SSL validation. System
+ * trust is used when no CA certificate is supplied.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
