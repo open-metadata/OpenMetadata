@@ -32,7 +32,9 @@ def routine(patch_passwords_for_db_services, run_workflow, ingestion_config, met
     # inherit add_two as "seen". Each Airflow run is its own process and starts empty.
     DatabaseServiceSource.stored_procedure_source_state.clear()
     filtered = deepcopy(ingestion_config)
-    filtered["source"]["sourceConfig"]["config"]["storedProcedureFilterPattern"] = {"excludes": ["^add_two$"]}
+    filtered["source"]["sourceConfig"]["config"]["storedProcedureFilterPattern"] = {
+        "excludes": ["^add_two$", r"^scale\(integer\)$"]
+    }
     run_workflow(MetadataWorkflow, filtered)
 
     def _get(name: str) -> StoredProcedure | None:
@@ -52,3 +54,11 @@ class TestStoredProcedureFilter:
         procedure = routine("triple")
         assert procedure is not None
         assert not procedure.deleted
+
+    def test_a_filter_can_target_one_overload(self, routine):
+        excluded = routine("scale(integer)")
+        assert excluded is not None, "scale(integer) was never ingested by the first run"
+        assert excluded.deleted
+        kept = routine("scale(integer,integer)")
+        assert kept is not None
+        assert not kept.deleted

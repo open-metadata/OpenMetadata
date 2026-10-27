@@ -288,13 +288,10 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
         # Only overloads get the signature, so a routine's FQN changes only if its name is shared.
         name_counts = Counter(row[0] for row in rows)
         for name, is_proc, proc_id, param_types in rows:
-            if self.is_stored_procedure_filtered(name):
+            published_name = f"{name}({param_types or ''})" if name_counts[name] > 1 else name
+            if self.is_stored_procedure_filtered(published_name):
                 continue
-            yield InformixStoredProcedure(
-                name=f"{name}({param_types or ''})" if name_counts[name] > 1 else name,
-                proc_id=proc_id,
-                is_function=is_proc != "t",
-            )
+            yield InformixStoredProcedure(name=published_name, proc_id=proc_id, is_function=is_proc != "t")
 
     def _stored_procedure_code(self, proc_id: int) -> str | None:
         """Reassemble a routine's text, which sysprocbody stores in fragments."""
