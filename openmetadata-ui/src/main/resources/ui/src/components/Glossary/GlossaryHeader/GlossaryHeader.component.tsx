@@ -49,8 +49,8 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { Votes } from '../../../generated/type/votes';
 import {
-  refreshGlossaryProposals,
-  useTermDerivation,
+  useDecideProposal,
+  useGlossaryProposal,
 } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
@@ -65,10 +65,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import Fqn from '../../../utils/Fqn';
-import {
-  canDecideAiGeneratedDraft,
-  isAiGeneratedDraft,
-} from '../../../utils/GlossaryPureUtils';
+import { isAiGeneratedDraft } from '../../../utils/GlossaryPureUtils';
+import { canDecideProposal } from '../../../utils/GlossaryReview/GlossaryReview.utils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
@@ -76,7 +74,7 @@ import {
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { DomainMismatchAlert } from '../../common/DomainMismatchAlert/DomainMismatchAlert.component';
 import {
@@ -92,7 +90,6 @@ import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
-import PendingReviewSummary from '../../governance/glossary/GlossaryReview/PendingReviewSummary';
 import ProposalCard from '../../governance/glossary/GlossaryReview/ProposalCard';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
@@ -473,43 +470,39 @@ interface GlossaryTermAiDraftNoticeProps {
   term: GlossaryTerm;
   isGlossary: boolean;
   isVersionView?: boolean;
-  canEditAll: boolean;
-  onUpdate: (updatedData: GlossaryTerm) => Promise<void>;
+  onDecided?: () => void;
 }
 
+/** An AI agent's proposal heads its term's page, decided there through its approval request. */
 const GlossaryTermAiDraftNotice = ({
   term,
   isGlossary,
   isVersionView,
-  canEditAll,
-  onUpdate,
+  onDecided,
 }: GlossaryTermAiDraftNoticeProps) => {
+  const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  // An AI term sent to review by someone's edit is decided through its approval request instead.
-  const isAiDraft =
-    !isGlossary &&
-    !isVersionView &&
-    term.entityStatus === EntityStatus.Draft &&
-    isAiGeneratedDraft(term);
-  const derivation = useTermDerivation(isAiDraft ? term.id : undefined);
+  const isAiProposal =
+    !isGlossary && !isVersionView && isAiGeneratedDraft(term);
+  const proposal = useGlossaryProposal(isAiProposal ? term.id : undefined);
+  const decide = useDecideProposal();
 
-  if (!isAiDraft) {
+  // Until its approval request loads, the card could not say who decides the proposal.
+  if (!isAiProposal || !proposal) {
     return null;
   }
 
   return (
     <div className="tw:mb-3" data-testid="ai-generated-term-card">
       <ProposalCard
-        isExpanded
-        canDecide={
-          !term.deleted &&
-          canDecideAiGeneratedDraft(term, currentUser, canEditAll)
-        }
-        layout="banner"
-        proposal={{ derivation, source: 'ai', term }}
-        onDecide={async (entityStatus) => {
-          await onUpdate({ ...term, entityStatus });
-          await refreshGlossaryProposals();
+        canDecide={!term.deleted && canDecideProposal(proposal, currentUser)}
+        proposal={proposal}
+        onDecide={async (decision, comment) => {
+          if (await decide(proposal, decision, comment)) {
+            onDecided?.();
+          } else {
+            showSuccessToast(t('message.vote-recorded'));
+          }
         }}
       />
     </div>
@@ -520,6 +513,7 @@ const GlossaryHeader = ({
   onDelete,
   onAssetAdd,
   onAddGlossaryTerm,
+  onProposalDecided,
   updateVote,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
@@ -554,17 +548,6 @@ const GlossaryHeader = ({
     useState(false);
   const [isOntologyImportOpen, setIsOntologyImportOpen] = useState(false);
   const isGlossary = entityType === EntityType.GLOSSARY;
-  const proposalScope = useMemo(
-    () =>
-      selectedData?.id
-        ? {
-            fullyQualifiedName: selectedData.fullyQualifiedName ?? '',
-            id: selectedData.id,
-            isGlossary,
-          }
-        : undefined,
-    [selectedData?.id, selectedData?.fullyQualifiedName, isGlossary]
-  );
   const { permissions: globalPermissions } = usePermissionProvider();
   const { refreshGlossaryTerms } = useGlossaryStore();
 
@@ -883,11 +866,10 @@ const GlossaryHeader = ({
         />
       )}
       <GlossaryTermAiDraftNotice
-        canEditAll={canEditAll}
         isGlossary={isGlossary}
         isVersionView={isVersionView}
         term={selectedData}
-        onUpdate={onUpdate}
+        onDecided={onProposalDecided}
       />
       <PageHeader
         actions={
@@ -899,17 +881,12 @@ const GlossaryHeader = ({
             isVersionView={isVersionView}
             manageButtonContent={manageButtonContent}
             pendingChangeRequests={
-              <>
-                {!isVersionView && (
-                  <PendingReviewSummary scope={proposalScope} />
-                )}
-                <ChangeRequestsIndicator
-                  entityId={selectedData?.id ?? ''}
-                  entityType={
-                    isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
-                  }
-                />
-              </>
+              <ChangeRequestsIndicator
+                entityId={selectedData?.id ?? ''}
+                entityType={
+                  isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
+                }
+              />
             }
             setShowActions={setShowActions}
             showActions={showActions}

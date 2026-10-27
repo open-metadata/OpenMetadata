@@ -442,13 +442,14 @@ def build_patch(  # noqa: C901
                     )
                 )
                 if src_json.get(field) != dst_json.get(field):
-                    patch.patch.append(
+                    patch.patch = [
+                        *patch.patch,
                         {
                             "op": "replace",
                             "path": f"/{field}",
                             "value": dst_json.get(field, []),
-                        }
-                    )
+                        },
+                    ]
 
         if not patch.patch:
             return None
