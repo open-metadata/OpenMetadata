@@ -34,6 +34,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import org.openmetadata.common.utils.CommonUtil;
@@ -565,11 +566,21 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         .toResponse();
   }
 
+  /**
+   * Gives each stored query its full queryUsedIn, read for all of them at once. It replaces the list
+   * the query carried, since resolving domains leaves only the tables there.
+   */
+  @Override
+  protected void prepareCreateOrUpdateAuthorization(List<Query> stored) {
+    Map<UUID, List<EntityReference>> usage = repository.getQueryUsage(stored);
+    stored.forEach(query -> query.setQueryUsedIn(usage.getOrDefault(query.getId(), List.of())));
+  }
+
   /** Covers create, PUT and every item of a bulk PUT. */
   @Override
   protected void authorizeCreateOrUpdate(
       SecurityContext securityContext, Query query, Query stored) {
-    List<EntityReference> storedTargets = stored == null ? null : repository.getQueryUsage(stored);
+    List<EntityReference> storedTargets = stored == null ? null : stored.getQueryUsedIn();
     authorizeQueryTargets(
         securityContext, changedQueryTargets(storedTargets, query.getQueryUsedIn()));
   }

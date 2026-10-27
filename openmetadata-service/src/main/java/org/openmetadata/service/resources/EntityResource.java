@@ -662,10 +662,23 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
    * Authorizes what a create or update does beyond writing the entity itself, once the CREATE or
    * EDIT_ALL check on the entity has passed. Every create and create-or-update path, single and
    * bulk, calls it, so a resource whose entity links to other entities checks those links in one
-   * place. {@code stored} is the saved entity, or null when the write creates it. Throwing fails
+   * place. {@code stored} is the saved entity, carrying what {@link
+   * #prepareCreateOrUpdateAuthorization} loaded, or null when the write creates it. Throwing fails
    * the write; in a bulk request it fails that item alone.
    */
   protected void authorizeCreateOrUpdate(SecurityContext securityContext, T entity, T stored) {}
+
+  /**
+   * Loads onto the stored entities what {@link #authorizeCreateOrUpdate} reads from them, for all of
+   * them at once, so a bulk request pays one read rather than one per item. It runs before that
+   * check on every update path: for a bulk request, once with every entity the request updates.
+   */
+  protected void prepareCreateOrUpdateAuthorization(List<T> stored) {}
+
+  private void authorizeUpdate(SecurityContext securityContext, T entity, T stored) {
+    prepareCreateOrUpdateAuthorization(List.of(stored));
+    authorizeCreateOrUpdate(securityContext, entity, stored);
+  }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
     OperationContext operationContext = new OperationContext(entityType, CREATE);
@@ -730,7 +743,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
         getResourceContextByName(
             entity.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    authorizeCreateOrUpdate(securityContext, entity, stored);
+    authorizeUpdate(securityContext, entity, stored);
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
@@ -763,7 +776,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
     }
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-    authorizeCreateOrUpdate(securityContext, entity, entityClass.cast(resourceContext.getEntity()));
+    authorizeUpdate(securityContext, entity, entityClass.cast(resourceContext.getEntity()));
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
@@ -1688,6 +1701,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       }
       if (!existingEntities.isEmpty()) {
         repository.enrichEntitiesForAuth(existingEntities);
+        prepareCreateOrUpdateAuthorization(existingEntities);
       }
     }
 
