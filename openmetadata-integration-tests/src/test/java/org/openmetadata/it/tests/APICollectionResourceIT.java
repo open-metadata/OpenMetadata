@@ -9,6 +9,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -16,10 +17,14 @@ import org.openmetadata.it.factories.APIServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateAPICollection;
+import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.entity.data.APICollection;
+import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.services.ApiService;
+import org.openmetadata.schema.type.APIRequestMethod;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -165,6 +170,50 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
   // ===================================================================
   // API COLLECTION-SPECIFIC TESTS
   // ===================================================================
+
+  /** Endpoints inherit the collection's owners as they are set, switched to a team and removed. */
+  @Test
+  void test_ownerInheritedByEndpoints(TestNamespace ns) {
+    APICollection collection = createEntity(createMinimalRequest(ns));
+    APIEndpoint endpoint =
+        SdkClients.adminClient()
+            .apiEndpoints()
+            .create(
+                new CreateAPIEndpoint()
+                    .withName(ns.prefix("inheritingEndpoint"))
+                    .withApiCollection(collection.getFullyQualifiedName())
+                    .withEndpointURL(URI.create("https://localhost:8585/api/v1/inherit"))
+                    .withRequestMethod(APIRequestMethod.GET));
+
+    List<EntityReference> users = List.of(testUser1Ref(), testUser2Ref());
+    collection = setOwners(collection, users);
+    assertEndpointInherits(endpoint, users);
+    List<EntityReference> team = List.of(testTeam1().getEntityReference());
+    collection = setOwners(collection, team);
+    assertEndpointInherits(endpoint, team);
+    setOwners(collection, List.of());
+    assertEndpointInherits(endpoint, List.of());
+  }
+
+  private APICollection setOwners(APICollection collection, List<EntityReference> owners) {
+    APICollection current = getEntityWithFields(collection.getId().toString(), "owners");
+    current.setOwners(owners);
+    return patchEntity(current.getId().toString(), current);
+  }
+
+  private void assertEndpointInherits(APIEndpoint endpoint, List<EntityReference> owners) {
+    List<EntityReference> inherited =
+        SdkClients.adminClient()
+            .apiEndpoints()
+            .get(endpoint.getId().toString(), "owners")
+            .getOwners();
+    assertEquals(
+        owners.stream().map(EntityReference::getId).collect(Collectors.toSet()),
+        inherited.stream().map(EntityReference::getId).collect(Collectors.toSet()));
+    assertTrue(
+        inherited.stream().allMatch(owner -> Boolean.TRUE.equals(owner.getInherited())),
+        "Endpoint owners are marked inherited: " + inherited);
+  }
 
   @Test
   void post_apiCollectionWithEndpointURL_200_OK(TestNamespace ns) {
