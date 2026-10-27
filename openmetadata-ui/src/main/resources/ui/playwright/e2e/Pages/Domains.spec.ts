@@ -1350,7 +1350,7 @@ test.describe('Domains', () => {
       });
 
       await test.step('Fill subdomain form', async () => {
-        await fillDomainForm(page, subDomain.data, false);
+        await fillDomainForm(page, subDomain.data);
       });
 
       await test.step('Search and select tag via TagSuggestion', async () => {

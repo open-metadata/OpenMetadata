@@ -917,3 +917,78 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     ).toContainText('🎉', { timeout: 15_000 });
   });
 });
+
+// The description drawers keep only Edit and Delete in their menu; resolving a
+// conversation stays on the entity Activity tab's hover actions.
+test.describe('ActivityFeed: resolve a conversation from the Activity tab', () => {
+  let owner: UserClass;
+  let entity: TableClass;
+  let conversationId: string;
+  const message = `Resolve from activity tab ${uuid()}`;
+
+  const test = base.extend<{ ownerPage: Page }>({
+    ownerPage: async ({ browser }, use) => {
+      const page = await browser.newPage({ storageState: undefined });
+      await owner.signIn(page);
+      await use(page);
+      await page.close();
+    },
+  });
+
+  test.beforeAll('Setup entity and conversation', async ({ browser }) => {
+    test.slow(true);
+
+    owner = new UserClass();
+    entity = new TableClass();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await owner.create(apiContext);
+    await owner.setAdminRole(apiContext);
+    await entity.create(apiContext);
+
+    const response = await apiContext.post('/api/v1/conversations', {
+      data: {
+        message,
+        about: `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`,
+      },
+    });
+    conversationId = (await response.json()).id;
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await entity.delete(apiContext);
+    await owner.delete(apiContext);
+    await afterAction();
+  });
+
+  test('resolves a conversation from its hover actions', async ({
+    ownerPage,
+  }) => {
+    await entity.visitEntityPage(ownerPage);
+    await ownerPage.getByTestId('activity_feed').click();
+    await waitForAllLoadersToDisappear(ownerPage);
+
+    const card = ownerPage
+      .locator('#feedData [data-testid="message-container"]')
+      .filter({ hasText: message });
+    await expect(card).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
+
+    await card.hover();
+    const toggle = card.getByTestId('toggle-resolved');
+    await expect(toggle).toHaveAttribute('aria-label', 'Resolve');
+
+    const resolveResponse = ownerPage.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/v1/conversations/${conversationId}`) &&
+        response.request().method() === 'PATCH'
+    );
+    await toggle.click();
+    expect((await resolveResponse).ok()).toBe(true);
+
+    await card.hover();
+    await expect(toggle).toHaveAttribute('aria-label', 'Open');
+  });
+});

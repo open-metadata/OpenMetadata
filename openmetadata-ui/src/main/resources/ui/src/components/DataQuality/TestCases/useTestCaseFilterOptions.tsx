@@ -158,7 +158,10 @@ export const useTestCaseFilterOptions = () => {
   };
 
   const fetchSearchOptions = async (
-    searchIndex: SearchIndex,
+    searchIndex:
+      | SearchIndex.TABLE
+      | SearchIndex.DATABASE_SERVICE
+      | SearchIndex.DATA_PRODUCT,
     setter: (options: FetchedOption[]) => void,
     valueKey: 'name' | 'fullyQualifiedName',
     query: string

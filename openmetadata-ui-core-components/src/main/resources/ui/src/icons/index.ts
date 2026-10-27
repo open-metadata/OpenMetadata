@@ -80,6 +80,8 @@ export { ArrowRight } from './ArrowRight';
 export { ArrowUpRight } from './ArrowUpRight';
 export { ArrowUp } from './ArrowUp';
 export { ArrowsUp } from './ArrowsUp';
+export { ArticleSettings } from './ArticleSettings';
+export { Article } from './Article';
 export { AssetsOwned } from './AssetsOwned';
 export { AssetsType } from './AssetsType';
 export { Assets } from './Assets';
