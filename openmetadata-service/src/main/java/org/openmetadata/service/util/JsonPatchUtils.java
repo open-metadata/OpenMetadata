@@ -37,6 +37,10 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 public class JsonPatchUtils {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final String FROM_MEMBER = "from";
+  private static final String PATH_MEMBER = "path";
+  private static final String OP_MEMBER = "op";
+  private static final String TEST_OPERATION = "test";
+  private static final String ROOT_POINTER = "/";
 
   private JsonPatchUtils() {}
 
@@ -96,20 +100,22 @@ public class JsonPatchUtils {
   }
 
   /**
-   * Whether an operation of {@code jsonPatch} targets the document root ({@code ""} or {@code "/"}),
+   * Whether an operation of {@code jsonPatch} writes the document root ({@code ""} or {@code "/"}),
    * so it can change any field. {@link JsonUtils#extractPatchedFields} skips root paths, which makes
    * a root replace bundled with, say, a {@code /description} edit look like a description edit alone;
-   * a check that keys off the patched fields must ask this as well.
+   * a check that keys off the patched fields must ask this as well. A {@code test} operation only
+   * reads the document, so a root {@code test} does not count.
    */
   public static boolean replacesWholeDocument(JsonPatch jsonPatch) {
     return jsonPatch.toJsonArray().stream()
         .anyMatch(
             operation -> {
-              if (!(operation instanceof JsonObject object)) {
+              if (!(operation instanceof JsonObject object)
+                  || TEST_OPERATION.equals(object.getString(OP_MEMBER, null))) {
                 return false;
               }
-              String path = object.getString("path", null);
-              return path == null || path.isEmpty() || path.equals("/");
+              String path = object.getString(PATH_MEMBER, null);
+              return path == null || path.isEmpty() || ROOT_POINTER.equals(path);
             });
   }
 

@@ -418,6 +418,16 @@ class JsonPatchUtilsTest {
             jsonPatch("[{\"op\":\"replace\",\"path\":\"/\",\"value\":{}}]")));
   }
 
+  /** A test operation only reads the document, so a root test changes nothing. */
+  @Test
+  void aRootTestOperationDoesNotReplaceTheWholeDocument() {
+    assertFalse(
+        JsonPatchUtils.replacesWholeDocument(
+            jsonPatch(
+                "[{\"op\":\"test\",\"path\":\"\",\"value\":{\"name\":\"svc\"}},"
+                    + "{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"tidy up\"}]")));
+  }
+
   @Test
   void fieldEditsDoNotReplaceTheWholeDocument() {
     assertFalse(

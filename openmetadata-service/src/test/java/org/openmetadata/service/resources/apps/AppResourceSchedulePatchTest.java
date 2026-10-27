@@ -44,6 +44,16 @@ class AppResourceSchedulePatchTest {
                     + "\"value\":\"Hourly\"}]")));
   }
 
+  /** A root test only checks the document, so it must not reinstall the app. */
+  @Test
+  void aRootTestBundledWithADescriptionEditDoesNotTouchScheduleOrConfig() {
+    assertFalse(
+        AppResource.touchesScheduleOrConfig(
+            patch(
+                "[{\"op\":\"test\",\"path\":\"\",\"value\":{\"name\":\"SearchIndexingApplication\"}},"
+                    + "{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"tidy up\"}]")));
+  }
+
   @Test
   void aDescriptionEditDoesNotTouchScheduleOrConfig() {
     assertFalse(
