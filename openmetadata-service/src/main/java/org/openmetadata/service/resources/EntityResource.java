@@ -658,12 +658,22 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
                 uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled()));
   }
 
+  /**
+   * Authorizes what a create or update does beyond writing the entity itself, once the CREATE or
+   * EDIT_ALL check on the entity has passed. Every create and create-or-update path, single and
+   * bulk, calls it, so a resource whose entity links to other entities checks those links in one
+   * place. {@code stored} is the saved entity, or null when the write creates it. Throwing fails
+   * the write; in a bulk request it fails that item alone.
+   */
+  protected void authorizeCreateOrUpdate(SecurityContext securityContext, T entity, T stored) {}
+
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
     OperationContext operationContext = new OperationContext(entityType, CREATE);
     CreateResourceContext<T> createResourceContext =
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
+    authorizeCreateOrUpdate(securityContext, entity, null);
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     T createdEntity =
         addHref(
@@ -684,6 +694,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    authorizeCreateOrUpdate(securityContext, entity, null);
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     T createdEntity =
         addHref(
@@ -705,6 +716,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorize(securityContext, operationContext, createResourceContext);
+      authorizeCreateOrUpdate(securityContext, entity, null);
       T createdEntity =
           addHref(
               uriInfo,
@@ -712,10 +724,13 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
                   uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
       return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
     }
+    // Already loaded by createOrUpdateOperation, so handing it over costs no read.
+    T stored = entityClass.cast(resourceContext.getEntity());
     resourceContext =
         getResourceContextByName(
             entity.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeCreateOrUpdate(securityContext, entity, stored);
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
@@ -739,6 +754,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+      authorizeCreateOrUpdate(securityContext, entity, null);
       T createdEntity =
           addHref(
               uriInfo,
@@ -747,6 +763,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
     }
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    authorizeCreateOrUpdate(securityContext, entity, entityClass.cast(resourceContext.getEntity()));
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
@@ -1695,6 +1712,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
               new CreateResourceContext<>(entityType, entity);
           limits.enforceLimits(securityContext, createResourceContext, operationContext);
           authorizer.authorize(securityContext, operationContext, createResourceContext);
+          authorizeCreateOrUpdate(securityContext, entity, null);
         } else {
           MetadataOperation operation = MetadataOperation.EDIT_ALL;
           OperationContext operationContext = new OperationContext(entityType, operation);
@@ -1702,6 +1720,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
           ResourceContext<T> resourceContext =
               new ResourceContext<>(entityType, existingEntity, repository, bulkFieldHydrator);
           authorizer.authorize(securityContext, operationContext, resourceContext);
+          authorizeCreateOrUpdate(securityContext, entity, existingEntity);
         }
 
         validEntities.add(entity);
