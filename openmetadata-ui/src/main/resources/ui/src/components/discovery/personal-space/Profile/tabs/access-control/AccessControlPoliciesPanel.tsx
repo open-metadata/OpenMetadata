@@ -445,7 +445,10 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
       data-testid="policies-list-container"
       direction="col"
       gap={4}>
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col"
+        size="compact"
+        variant="muted">
         <div className="tw:overflow-y-auto">
           <Table
             aria-label={t('label.policy-plural')}
