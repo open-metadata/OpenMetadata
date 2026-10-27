@@ -9,19 +9,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.RDFList;
-import org.apache.jena.rdf.model.RDFNode;
-import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
-import org.apache.jena.vocabulary.SKOS;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -29,7 +24,6 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.util.RdfAccessFixtures;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -37,23 +31,11 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateOntologyAxiom;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
 import org.openmetadata.schema.api.data.CreateOntologyProperty;
-import org.openmetadata.schema.api.data.CreateTable;
-import org.openmetadata.schema.api.data.OntologyReleaseValidation;
-import org.openmetadata.schema.api.data.UpdateOntologyConceptBinding;
 import org.openmetadata.schema.entity.data.Ontology;
-import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyRelease;
-import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.OntologyAssetBinding;
 import org.openmetadata.schema.type.OntologyAxiomType;
-import org.openmetadata.schema.type.OntologyBindingAssetType;
-import org.openmetadata.schema.type.OntologyConceptBindingsResponse;
 import org.openmetadata.schema.type.OntologyConceptType;
-import org.openmetadata.schema.type.OntologyExpression;
-import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.RelationProvenance;
@@ -62,20 +44,12 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
-import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.ontology.NativeOntologyCsvCodec;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
-public class IndependentOntologyReleaseExportIT extends BaseOntologyApprovalIT {
-  private static final URI CUSTOMER = URI.create("https://example.org/model/Customer");
-  private static final URI PARTY = URI.create("https://example.org/model/Party");
-  private static final URI KNOWS = URI.create("https://example.org/model/knows");
-  private static final URI KNOWN_BY = URI.create("https://example.org/model/knownBy");
-  private static final URI SUPPLIER = URI.create("https://example.org/model/Supplier");
-  private static final String SKOSXL = "http://www.w3.org/2008/05/skos-xl#";
-
+public class IndependentOntologyReleaseExportIT extends OntologyReleaseExportSupport {
   @Test
   void structuralGateProtectsDeclarationsAndReportsTheFrozenModelAfterDeletion(TestNamespace ns) {
     var client = SdkClients.adminClient();
@@ -306,168 +280,6 @@ public class IndependentOntologyReleaseExportIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void skosExportListsBroaderForEveryParentAndSkosXlGivesEveryLabelItsOwnNode(TestNamespace ns) {
-    var client = SdkClients.adminClient();
-    Ontology ontology = createOntology(ns, "skos");
-    client
-        .ontologyConcepts()
-        .create(
-            new CreateOntologyConcept()
-                .withName("Customer")
-                .withDisplayName("Customer account")
-                .withIri(CUSTOMER)
-                .withConceptType(OntologyConceptType.OWL_CLASS)
-                .withSynonyms(Set.of("Client", "Buyer"))
-                .withOntology(ontology.getFullyQualifiedName()));
-    declareClass(ontology, "Party", PARTY);
-    declareClass(ontology, "Supplier", SUPPLIER);
-    client.ontologyAxioms().create(axiom(ontology));
-    client
-        .ontologyAxioms()
-        .create(axiom(ontology).withName("supplier-is-party").withSubjectIri(SUPPLIER));
-    OntologyRelease release = capture(ontology);
-
-    Model skos = parseTurtle(export(client, release.getId(), "skos"));
-    for (URI child : List.of(CUSTOMER, SUPPLIER)) {
-      assertTrue(
-          skos.contains(
-              skos.createResource(child.toString()),
-              SKOS.broader,
-              skos.createResource(PARTY.toString())));
-    }
-    assertTrue(skos.contains(skos.createResource(PARTY.toString()), RDF.type, SKOS.Concept));
-    assertEquals(
-        3,
-        skos.listResourcesWithProperty(SKOS.inScheme).toList().size(),
-        "every concept is in the scheme");
-    assertFalse(skos.contains(null, skos.createProperty(SKOSXL + "literalForm")));
-
-    Model skosXl = parseTurtle(export(client, release.getId(), "skos-xl"));
-    var labelType = skosXl.createResource(SKOSXL + "Label");
-    var labels = skosXl.listResourcesWithProperty(RDF.type, labelType).toList();
-    assertEquals(5, labels.size(), "three concept labels plus two synonyms");
-    var customerLabel =
-        skosXl
-            .getResource(CUSTOMER.toString())
-            .getPropertyResourceValue(skosXl.createProperty(SKOSXL + "prefLabel"));
-    assertEquals(
-        "Customer account",
-        customerLabel.getProperty(skosXl.createProperty(SKOSXL + "literalForm")).getString());
-    assertEquals(
-        2,
-        skosXl
-            .listObjectsOfProperty(
-                skosXl.getResource(CUSTOMER.toString()), skosXl.createProperty(SKOSXL + "altLabel"))
-            .toList()
-            .size());
-  }
-
-  @Test
-  void csvExportParsesBackThroughTheNativeCodecAndHonoursInverses(TestNamespace ns) {
-    var client = SdkClients.adminClient();
-    Ontology ontology = createOntology(ns, "csv");
-    declareClass(ontology, "Customer", CUSTOMER);
-    declareClass(ontology, "Party", PARTY);
-    client.ontologyAxioms().create(axiom(ontology));
-    client.ontologyProperties().create(property(ontology).withInverse(KNOWN_BY));
-    client.ontologyProperties().create(inverseProperty(ontology));
-    OntologyRelease release = capture(ontology);
-
-    var withInverses = NativeOntologyCsvCodec.read(export(client, release.getId(), "csv"));
-    var withoutInverses =
-        NativeOntologyCsvCodec.read(
-            export(client, release.getId(), "csv", "&includeInverses=false"));
-
-    assertEquals(
-        List.of(CUSTOMER.toString(), PARTY.toString()),
-        withInverses.concepts().stream().map(c -> c.getIri().toString()).toList());
-    assertEquals(
-        List.of(KNOWN_BY, KNOWS),
-        withInverses.properties().stream().map(property -> property.getIri()).sorted().toList());
-    assertTrue(withInverses.properties().stream().allMatch(p -> p.getInverse() != null));
-    assertTrue(withoutInverses.properties().stream().allMatch(p -> p.getInverse() == null));
-    assertEquals(
-        400,
-        assertThrows(
-                OpenMetadataException.class,
-                () -> export(client, release.getId(), "csv", "&includeBoundAssets=true"))
-            .getStatusCode());
-  }
-
-  @Test
-  void inverseOfIsWrittenOnlyWhenRequested(TestNamespace ns) {
-    var client = SdkClients.adminClient();
-    Ontology ontology = createOntology(ns, "inverses");
-    declareClass(ontology, "Customer", CUSTOMER);
-    declareClass(ontology, "Party", PARTY);
-    client.ontologyProperties().create(property(ontology).withInverse(KNOWN_BY));
-    client.ontologyProperties().create(inverseProperty(ontology));
-    OntologyRelease release = capture(ontology);
-
-    Model with = parseTurtle(export(client, release.getId(), "turtle"));
-    Model without =
-        parseTurtle(export(client, release.getId(), "turtle", "&includeInverses=false"));
-
-    assertTrue(with.contains(with.createResource(KNOWS.toString()), OWL2.inverseOf));
-    assertFalse(without.contains(null, OWL2.inverseOf));
-    assertTrue(
-        without.contains(without.createResource(KNOWS.toString()), RDF.type, OWL2.ObjectProperty));
-  }
-
-  @Test
-  void boundAssetsAreLinkedOncePerBindingAndOnlyWhenRequested(TestNamespace ns) {
-    var client = SdkClients.adminClient();
-    Ontology ontology = createOntology(ns, "assets");
-    var customer = declareClass(ontology, "Customer", CUSTOMER);
-    declareClass(ontology, "Party", PARTY);
-    var schema = DatabaseSchemaTestFactory.createSimple(ns);
-    var first = table(ns, schema.getFullyQualifiedName(), "boundOne");
-    var second = table(ns, schema.getFullyQualifiedName(), "boundTwo");
-    bind(client, customer, first.getId(), 0L);
-    bind(client, customer, second.getId(), 1L);
-    OntologyRelease release = capture(ontology);
-
-    Model linked =
-        parseTurtle(export(client, release.getId(), "turtle", "&includeBoundAssets=true"));
-    Model plain = parseTurtle(export(client, release.getId(), "turtle"));
-
-    var property = linked.createProperty("https://open-metadata.org/ontology/boundAsset");
-    assertEquals(
-        Set.of(
-            "https://open-metadata.org/entity/table/" + first.getId(),
-            "https://open-metadata.org/entity/table/" + second.getId()),
-        linked
-            .listObjectsOfProperty(linked.getResource(CUSTOMER.toString()), property)
-            .toList()
-            .stream()
-            .map(Object::toString)
-            .collect(Collectors.toSet()));
-    assertEquals(2, linked.listStatements(null, property, (RDFNode) null).toList().size());
-    assertFalse(plain.contains(null, plain.createProperty(property.getURI())));
-  }
-
-  @Test
-  void shaclGateExportsAValidReleaseUnchanged(TestNamespace ns) {
-    var client = SdkClients.adminClient();
-    Ontology ontology = createOntology(ns, "gate");
-    declareClass(ontology, "Customer", CUSTOMER);
-    OntologyRelease release = capture(ontology);
-
-    assertEquals(
-        export(client, release.getId(), "turtle"),
-        export(client, release.getId(), "turtle", "&shaclGate=true"));
-    assertTrue(
-        client
-            .getHttpClient()
-            .execute(
-                HttpMethod.GET,
-                "/v1/ontologyReleases/" + release.getId() + "/validation",
-                null,
-                OntologyReleaseValidation.class)
-            .getValid());
-  }
-
-  @Test
   void anExportCarriesOnlyTheReleasesOntology(TestNamespace ns) {
     var client = SdkClients.adminClient();
     Ontology current = createOntology(ns, "scopeCurrent");
@@ -486,90 +298,5 @@ public class IndependentOntologyReleaseExportIT extends BaseOntologyApprovalIT {
     assertEquals(
         List.of(CUSTOMER.toString()),
         csv.concepts().stream().map(c -> c.getIri().toString()).toList());
-  }
-
-  private static CreateOntologyProperty inverseProperty(Ontology ontology) {
-    return new CreateOntologyProperty()
-        .withName("knownBy")
-        .withIri(KNOWN_BY)
-        .withKind(OntologyPropertyKind.OBJECT)
-        .withDomain(List.of(PARTY))
-        .withRange(List.of(CUSTOMER))
-        .withInverse(KNOWS)
-        .withOntology(ontology.getFullyQualifiedName());
-  }
-
-  private static Table table(TestNamespace ns, String schemaFqn, String name) {
-    return SdkClients.adminClient()
-        .tables()
-        .create(
-            new CreateTable()
-                .withName(ns.prefix(name))
-                .withDatabaseSchema(schemaFqn)
-                .withColumns(
-                    List.of(new Column().withName("id").withDataType(ColumnDataType.STRING))));
-  }
-
-  private static void bind(
-      OpenMetadataClient client, OntologyConcept concept, UUID tableId, long revision) {
-    client
-        .getHttpClient()
-        .execute(
-            HttpMethod.PUT,
-            "/v1/ontologyConcepts/" + concept.getId() + "/bindings",
-            new UpdateOntologyConceptBinding()
-                .withExpectedRevision(revision)
-                .withAsset(
-                    new OntologyAssetBinding()
-                        .withAssetType(OntologyBindingAssetType.TABLE)
-                        .withAssetId(tableId)),
-            OntologyConceptBindingsResponse.class);
-  }
-
-  private static Model parseTurtle(String text) {
-    Model model = ModelFactory.createDefaultModel();
-    RDFParser.fromString(text, Lang.TURTLE).parse(model);
-    return model;
-  }
-
-  private static CreateOntologyProperty property(Ontology ontology) {
-    return new CreateOntologyProperty()
-        .withName("knows")
-        .withIri(KNOWS)
-        .withKind(OntologyPropertyKind.OBJECT)
-        .withDomain(List.of(CUSTOMER))
-        .withRange(List.of(PARTY))
-        .withOntology(ontology.getFullyQualifiedName());
-  }
-
-  private static CreateOntologyAxiom axiom(Ontology ontology) {
-    return new CreateOntologyAxiom()
-        .withName("customer-is-party")
-        .withDisplayName("Customer is a party")
-        .withDescription("Every customer is a party")
-        .withOntology(ontology.getFullyQualifiedName())
-        .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
-        .withSubjectIri(CUSTOMER)
-        .withProvenance(RelationProvenance.MANUAL)
-        .withExpressions(
-            List.of(
-                new OntologyExpression()
-                    .withKind(OntologyExpressionKind.NAMED_CLASS)
-                    .withClassIri(PARTY)));
-  }
-
-  private static String export(OpenMetadataClient client, UUID releaseId, String format) {
-    return export(client, releaseId, format, "");
-  }
-
-  private static String export(
-      OpenMetadataClient client, UUID releaseId, String format, String options) {
-    return client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.GET,
-            "/v1/ontologyReleases/" + releaseId + "/export?format=" + format + options,
-            null,
-            RequestOptions.builder().header("Accept", "*/*").build());
   }
 }
