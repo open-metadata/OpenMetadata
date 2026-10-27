@@ -31,7 +31,12 @@ public final class ColumnUtil {
     if (nullOrEmpty(columnPath)) {
       return null;
     }
-    Column resolved = matchPathSegments(columns, List.of(FullyQualifiedName.split(columnPath)));
+    Column resolved = null;
+    // Only paths the Fqn grammar accepts split into segments; anything else (raw names carrying a
+    // quote at an edge, empty segments) must fall through to the whole-name match, not 500.
+    if (FullyQualifiedName.isValid(columnPath)) {
+      resolved = matchPathSegments(columns, List.of(FullyQualifiedName.split(columnPath)));
+    }
     if (resolved == null) {
       // Legacy entityLinks carry a dotted column name unquoted; when the walk fails, the whole
       // path may be one literal column name.

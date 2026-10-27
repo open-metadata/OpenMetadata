@@ -54,11 +54,17 @@ class ColumnUtilTest {
 
   @Test
   void resolveColumnByPathPrefersTheExactCaseMatch() {
+    // The case-variant child is listed first, so the query must pick the exact-case child on the
+    // exact pass rather than whichever sibling a case-insensitive first-match would return.
     List<Column> columns =
         List.of(
-            column("address", ColumnDataType.STRUCT, column("city", ColumnDataType.STRING)),
-            column("address", ColumnDataType.STRUCT, column("CITY", ColumnDataType.STRING)));
+            column(
+                "address",
+                ColumnDataType.STRUCT,
+                column("CITY", ColumnDataType.STRING),
+                column("city", ColumnDataType.STRING)));
     assertEquals("city", ColumnUtil.resolveColumnByPath(columns, "address.city").getName());
+    assertEquals("CITY", ColumnUtil.resolveColumnByPath(columns, "address.CITY").getName());
   }
 
   @Test
@@ -94,6 +100,28 @@ class ColumnUtilTest {
     // must still resolve to the literal column.
     List<Column> columns = List.of(column("a.b", ColumnDataType.STRING));
     assertEquals("a.b", ColumnUtil.resolveColumnByPath(columns, "a.b").getName());
+  }
+
+  @Test
+  void resolveColumnByPathResolvesNamesTheFqnParserCannotSplitAsAWholeName() {
+    // validateFqnName accepts raw column names that do not parse as FQN paths (edge quotes,
+    // empty segments); they must match whole, not throw.
+    List<Column> columns =
+        List.of(
+            column("a..b", ColumnDataType.STRING),
+            column(".a", ColumnDataType.STRING),
+            column("a.", ColumnDataType.STRING),
+            column("a\"b", ColumnDataType.STRING));
+    assertEquals("a..b", ColumnUtil.resolveColumnByPath(columns, "a..b").getName());
+    assertEquals(".a", ColumnUtil.resolveColumnByPath(columns, ".a").getName());
+    assertEquals("a.", ColumnUtil.resolveColumnByPath(columns, "a.").getName());
+    assertEquals("a\"b", ColumnUtil.resolveColumnByPath(columns, "a\"b").getName());
+  }
+
+  @Test
+  void validateColumnPathAcceptsLiteralNamesTheFqnParserCannotSplit() {
+    List<Column> columns = List.of(column("a..b", ColumnDataType.STRING));
+    ColumnUtil.validateColumnPath(columns, "a..b");
   }
 
   @Test

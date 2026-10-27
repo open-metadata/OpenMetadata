@@ -708,11 +708,10 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     CreateTestCase request = new CreateTestCase();
     request.setName(ns.prefix("nested_column_test"));
     request.setEntityLink(columnLink);
-    request.setTestDefinition("columnValuesToBeBetween");
+    // city is VARCHAR, so the definition must be one whose supportedDataTypes include it.
+    request.setTestDefinition("columnValuesToMatchRegex");
     request.setParameterValues(
-        List.of(
-            new TestCaseParameterValue().withName("minValue").withValue("1"),
-            new TestCaseParameterValue().withName("maxValue").withValue("1000")));
+        List.of(new TestCaseParameterValue().withName("regex").withValue("^[A-Za-z ]+$")));
 
     TestCase created = createEntity(request);
     assertTrue(
@@ -730,12 +729,33 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     CreateTestCase request = new CreateTestCase();
     request.setName(ns.prefix("invalid_nested_column"));
     request.setEntityLink(invalidNestedLink);
+    request.setTestDefinition("columnValuesToMatchRegex");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("regex").withValue("^[A-Za-z ]+$")));
+
+    Exception error =
+        assertThrows(
+            Exception.class, () -> createEntity(request), "Should fail with missing nested column");
+    assertTrue(
+        error.getMessage().contains("Invalid column name address.state"), error.getMessage());
+  }
+
+  @Test
+  void post_testOnUnsupportedNestedColumnType_4xx(TestNamespace ns) {
+    Table table = createTableWithNestedColumn(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("between_on_varchar_child"));
+    // city is VARCHAR; columnValuesToBeBetween supports only numeric and temporal types.
+    request.setEntityLink(
+        "<#E::table::" + table.getFullyQualifiedName() + "::columns::address.city>");
     request.setTestDefinition("columnValuesToBeBetween");
     request.setParameterValues(
-        List.of(new TestCaseParameterValue().withName("minValue").withValue("1")));
+        List.of(
+            new TestCaseParameterValue().withName("minValue").withValue("1"),
+            new TestCaseParameterValue().withName("maxValue").withValue("1000")));
 
-    assertThrows(
-        Exception.class, () -> createEntity(request), "Should fail with missing nested column");
+    Exception error = assertThrows(Exception.class, () -> createEntity(request));
+    assertTrue(error.getMessage().contains("does not support column type"), error.getMessage());
   }
 
   private Table createTableWithNestedColumn(TestNamespace ns) {

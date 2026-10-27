@@ -1,11 +1,14 @@
 # A nested-column DQ test case is addressed by a quoted-aware dotted path in the entityLink
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-27 (initial)
+- **Revisions:** v1 2026-10-27 (initial); v2 2026-10-27 (conformance type check uses the same walk;
+  paths that do not parse as an FQN match whole instead of erroring)
 - **Deciders:** TeddyCr
 - **Guard:** `ColumnUtilTest` (`resolveColumnByPath*` / `validateColumnPath*`),
+  `TestCaseDefinitionConformanceTest` (`aNestedColumnOfA*TypeIs*`),
   `TestCaseResourceIT#post_nestedColumnLevelTest_200_OK`,
-  `TestCaseResourceIT#post_testWithInvalidNestedColumn_4xx`
+  `TestCaseResourceIT#post_testWithInvalidNestedColumn_4xx`,
+  `TestCaseResourceIT#post_testOnUnsupportedNestedColumnType_4xx`
 - **Related:** #36278 (epic), #36381 (backend), #36382 (ingestion), #36383 (Snowflake), #36384 (UI)
 
 ## Context
@@ -20,8 +23,11 @@ A test case's column is resolved from the entityLink array field by walking `Col
 segment-wise. The path is FQN-split — quoted-aware, so a column literally named `a.b` arrives as
 `"a.b"` and resolves as one segment — matched case-exactly first, then case-insensitively, and for
 compatibility a dotted literal column name arriving unquoted matches as a whole name when the
-segment walk fails. `all` keeps its "every column" meaning. The same resolution governs
-`dimensionColumns` and the tag inheritance of column-scoped test cases, and the CSV round-trip
+segment walk fails. Raw names the Fqn grammar cannot split (an edge quote, an empty segment — all
+accepted as column names by `FullyQualifiedName.validateFqnName`) are never parsed as paths; they
+match as one whole name. `all` keeps its "every column" meaning. The same resolution governs the
+definition's `supportedDataTypes` conformance check, `dimensionColumns` and the tag inheritance of
+column-scoped test cases, and the CSV round-trip
 serializes the full quoted remaining path (`FullyQualifiedName` column segments joined by `.`,
 per-segment `quoteName`), never `getColumnName`, which truncates to the first segment.
 
