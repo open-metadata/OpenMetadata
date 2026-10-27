@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError, AxiosHeaders } from 'axios';
+import { ReactNode } from 'react';
 import { NativeOntologyDataGraphPage } from '../../../generated/api/data/nativeOntologyDataGraphPage';
 import { getNativeOntologyDataGraphPage } from '../../../rest/ontologyAPI';
 import {
@@ -77,13 +79,37 @@ const settle = () =>
     }
   });
 
-const render = (ontologyId = 'ontology-1') =>
-  renderHook(({ id }) => useNativeOntologyDataGraph(id), {
-    initialProps: { id: ontologyId },
+type HookOptions = Parameters<typeof useNativeOntologyDataGraph>[1];
+
+let queryClient: QueryClient;
+
+const Providers = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+);
+
+const render = (ontologyId = 'ontology-1', options?: HookOptions) =>
+  renderHook(
+    ({ id, hookOptions }) => useNativeOntologyDataGraph(id, hookOptions),
+    {
+      initialProps: { id: ontologyId, hookOptions: options },
+      wrapper: Providers,
+    }
+  );
+
+const writeBinding = (kind: 'confirmed' | 'not-ready') =>
+  act(async () => {
+    await queryClient
+      .getMutationCache()
+      .build(queryClient, {
+        mutationKey: ['ontology-concept-bindings-write', 'transfer'],
+        mutationFn: async () => ({ kind }),
+      })
+      .execute(undefined);
   });
 
 beforeEach(() => {
   fetchPage.mockReset();
+  queryClient = new QueryClient();
 });
 
 describe('first load', () => {
@@ -512,5 +538,227 @@ describe('changing the ontology', () => {
     expect(result.current.graph.clusters.map((c) => c.concept.id)).toEqual([
       'other',
     ]);
+  });
+});
+
+describe('an empty clusters page that advertises more clusters', () => {
+  const emptyPage = (offset?: number) =>
+    pageFixture({
+      clusters: [],
+      loaded: [],
+      nextClusterOffset: offset,
+      topologyAfter: 'must-not-be-followed',
+    });
+  const clustersAt = (offset: number) => ({
+    loaded: [],
+    page: { kind: 'clusters', limit: 12, offset },
+  });
+
+  it('keeps asking for the advertised offset and never shows an empty graph meanwhile', async () => {
+    let answerSecond!: (page: NativeOntologyDataGraphPage) => void;
+    fetchPage.mockResolvedValueOnce(emptyPage(12)).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answerSecond = resolve;
+        })
+    );
+    const { result } = render();
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2));
+
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.graph.clusters).toEqual([]);
+
+    await act(async () => answerSecond(clustersPage()));
+
+    expect(requests()).toEqual([FIRST_CLUSTERS_REQUEST, clustersAt(12)]);
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.graph.clusters).toHaveLength(2);
+  });
+
+  it('follows a run of two empty pages to the first visible cluster', async () => {
+    fetchPage
+      .mockResolvedValueOnce(emptyPage(12))
+      .mockResolvedValueOnce(emptyPage(24))
+      .mockResolvedValueOnce(clustersPage());
+    const { result } = render();
+
+    await waitFor(() => expect(result.current.graph.clusters).toHaveLength(2));
+
+    expect(requests()).toEqual([
+      FIRST_CLUSTERS_REQUEST,
+      clustersAt(12),
+      clustersAt(24),
+    ]);
+  });
+
+  it('stops when the server repeats an offset', async () => {
+    fetchPage
+      .mockResolvedValueOnce(emptyPage(12))
+      .mockResolvedValueOnce(emptyPage(12));
+    const { result } = render();
+    await settle();
+
+    expect(requests()).toEqual([FIRST_CLUSTERS_REQUEST, clustersAt(12)]);
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.failure).toBeUndefined();
+  });
+
+  it('stops when the offset is gone', async () => {
+    fetchPage
+      .mockResolvedValueOnce(emptyPage(12))
+      .mockResolvedValueOnce(emptyPage(undefined));
+    const { result } = render();
+    await settle();
+
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it('stops at a full context even when a stray offset comes with it', async () => {
+    fetchPage.mockResolvedValue(
+      pageFixture({
+        clusters: [],
+        contextFull: true,
+        loaded: [],
+        nextClusterOffset: 12,
+      })
+    );
+    const { result } = render();
+    await settle();
+
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    expect(result.current.isLoading).toBe(false);
+  });
+});
+
+describe('a full context', () => {
+  it('sends no cluster request even when a stray offset comes with it', async () => {
+    fetchPage.mockResolvedValueOnce(
+      clustersPage({ contextFull: true, nextClusterOffset: 12 })
+    );
+    const { result } = render();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.loadMoreClusters());
+    await settle();
+
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('a graph that the model or the bindings made stale', () => {
+  const changedClusters = () =>
+    clustersPage({
+      clusters: [
+        {
+          id: 'transfer',
+          name: 'Funds Transfer',
+          count: 151,
+          after: 'cursor-9',
+          assets: [{ id: 'a1', name: 'transfers', serviceType: 'Snowflake' }],
+        },
+      ],
+      loaded: [prefixFixture('transfer', 'a1')],
+    });
+
+  it('reloads from the first page when the revision changes, keeping the old graph until it arrives', async () => {
+    let answerReload!: (page: NativeOntologyDataGraphPage) => void;
+    fetchPage.mockResolvedValueOnce(clustersPage()).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answerReload = resolve;
+        })
+    );
+    const { result, rerender } = render('ontology-1', {
+      isActive: true,
+      revision: 0,
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    rerender({
+      id: 'ontology-1',
+      hookOptions: { isActive: true, revision: 1 },
+    });
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2));
+
+    expect(requests()[1]).toEqual(FIRST_CLUSTERS_REQUEST);
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.graph.clusters).toHaveLength(2);
+
+    await act(async () => answerReload(changedClusters()));
+
+    expect(result.current.isLoading).toBe(false);
+    expect(
+      result.current.graph.clusters.map((c) => [c.concept.id, c.assetCount])
+    ).toEqual([['transfer', 151]]);
+  });
+
+  it('costs one reload for ten edits made while the surface is hidden', async () => {
+    fetchPage.mockResolvedValue(clustersPage());
+    const { result, rerender } = render('ontology-1', {
+      isActive: true,
+      revision: 0,
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    for (let revision = 1; revision <= 10; revision++) {
+      rerender({
+        id: 'ontology-1',
+        hookOptions: { isActive: false, revision },
+      });
+    }
+    await settle();
+
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+
+    rerender({
+      id: 'ontology-1',
+      hookOptions: { isActive: true, revision: 10 },
+    });
+    await settle();
+
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+  });
+
+  it('reloads after a binding write succeeds, and not after one that did not run', async () => {
+    fetchPage
+      .mockResolvedValueOnce(clustersPage())
+      .mockResolvedValueOnce(changedClusters());
+    const { result } = render();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await writeBinding('not-ready');
+    await settle();
+
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+
+    await writeBinding('confirmed');
+    await waitFor(() =>
+      expect(result.current.graph.clusters.map((c) => c.assetCount)).toEqual([
+        151,
+      ])
+    );
+
+    expect(requests()[1]).toEqual(FIRST_CLUSTERS_REQUEST);
+  });
+});
+
+describe('leaving the page', () => {
+  it('aborts the requests of a generation that a retry started', async () => {
+    fetchPage
+      .mockRejectedValueOnce(rejection(500))
+      .mockImplementationOnce(() => new Promise(() => undefined));
+    const { result, unmount } = render();
+    await waitFor(() => expect(result.current.failure).toBeDefined());
+
+    act(() => result.current.retry());
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2));
+    const retrySignal = fetchPage.mock.calls[1][2] as AbortSignal;
+
+    expect(retrySignal.aborted).toBe(false);
+
+    unmount();
+
+    expect(retrySignal.aborted).toBe(true);
   });
 });
