@@ -144,10 +144,8 @@ const EntityLineageCanvas = ({
   );
 
   // The node ⋮ menu and column menu read their edit callbacks from node data.
-  // Each node keeps its extended data until its own data changes: `nodes` is
-  // rebuilt on every frame of a node drag, and a fresh `data` for every node
-  // each frame re-rendered all of them, which while React Flow auto-panned at
-  // the canvas edge exceeded React's update depth.
+  // The extended data is cached per source data, so a drag frame, which only
+  // moves nodes, does not re-render every node.
   const [editableDataCache] = useState(
     () => new WeakMap<Node['data'], Node['data']>()
   );

@@ -2212,11 +2212,8 @@ export const Lineage = ({
     onPlatformViewUpdateRef.current();
   }, []);
 
-  // Several handlers close over `nodes`, which changes on every frame of a node
-  // drag. A context value rebuilt from them re-rendered every consumer (each
-  // node, the search box) per frame, and while React Flow auto-panned at the
-  // canvas edge that exceeded React's update depth limit. The context holds
-  // stable wrappers instead, each calling the latest handler.
+  // Stable wrappers over the latest handlers: several close over `nodes`, which
+  // changes every drag frame, and must not re-render every context consumer.
   const currentHandlers: LineageHandlersValue = {
     loadChildNodesHandler,
     removeNodeHandler,

@@ -794,8 +794,8 @@ export const getLineageEditColumnPair = (
 // Semantic zoom switches level by how much of the screen the graph or a card
 // fills, not by a zoom value, so it behaves the same for 5 nodes or 500.
 export const ZOOM_OUT_SCREEN_FILL = 1 / 3;
-// At 0.6 a 340px container on a ~1400px canvas drilled at zoom 2.45 against a
-// 2.5 maximum, so drilling read as "zoom all the way in"; 0.35 drills at ~1.43.
+// A 340px container on a ~1400px canvas drills at zoom ~1.43, well short of
+// the 2.5 maximum.
 export const ZOOM_IN_SCREEN_FILL = 0.35;
 
 interface Size {

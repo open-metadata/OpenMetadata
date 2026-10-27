@@ -52,10 +52,7 @@ type LineageSearchOption = SelectItemType & {
 const LineageSearchSelect = () => {
   const { t } = useTranslation();
   const { onNodeClick } = useLineageHandlers();
-  // `nodes` is read from the store when the dropdown opens or an option is
-  // picked, not subscribed to: it changes on every frame of a node drag, and
-  // re-rendering the ComboBox (and its load-more loader) that often while
-  // React Flow auto-pans exceeded React's update depth limit.
+  // `nodes` is read when needed, not subscribed to: it changes every drag frame.
   const {
     reactFlowInstance,
     zoomValue,
@@ -164,17 +161,15 @@ const LineageSearchSelect = () => {
     return Array.from(optionsMap.values());
   }, []);
 
-  const filterOptions = useCallback(
-    (value: string) => {
-      if (value) {
-        const filteredOptions = allOptions.filter((option) =>
+  const getVisibleOptions = (options: LineageSearchOption[], value: string) =>
+    value
+      ? options.filter((option) =>
           option.label.toLowerCase().includes(value.toLowerCase())
-        );
-        setRenderedOptions(filteredOptions);
-      } else {
-        setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
-      }
-    },
+        )
+      : options.slice(0, INITIAL_NODE_ITEMS_LENGTH);
+
+  const filterOptions = useCallback(
+    (value: string) => setRenderedOptions(getVisibleOptions(allOptions, value)),
     [allOptions]
   );
 
@@ -199,12 +194,14 @@ const LineageSearchSelect = () => {
   };
 
   // Options are rebuilt on every open, so they always match the current graph.
+  // Typing into the focused input also reopens the menu, after the filter for
+  // that text was queued; rebuilding cancels it, so apply the text here.
   const handleOpenChange = useCallback(
     (open: boolean) => {
       if (open) {
         const options = generateNodeOptions();
         setAllOptions(options);
-        setRenderedOptions(options.slice(0, INITIAL_NODE_ITEMS_LENGTH));
+        setRenderedOptions(getVisibleOptions(options, searchValue));
 
         return;
       }
@@ -212,7 +209,7 @@ const LineageSearchSelect = () => {
       setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
       debouncedFilterOptions.cancel();
     },
-    [allOptions, debouncedFilterOptions, generateNodeOptions]
+    [allOptions, debouncedFilterOptions, generateNodeOptions, searchValue]
   );
 
   const onOptionSelect = useCallback(

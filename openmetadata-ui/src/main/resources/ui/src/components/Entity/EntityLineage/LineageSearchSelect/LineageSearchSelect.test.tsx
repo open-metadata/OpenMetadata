@@ -180,6 +180,21 @@ describe('LineageSearchSelect', () => {
     expect(screen.queryByTestId('option-column1')).not.toBeInTheDocument();
   });
 
+  it('should filter a keystroke typed after the menu closed with focus kept in the input', async () => {
+    render(<LineageSearchSelect />);
+    await openDropdown();
+    await screen.findByTestId('option-test1');
+    await user.keyboard('{Escape}');
+    // A single keystroke reopens the menu, which rebuilds the options while
+    // the filter for this text is still pending.
+    await user.keyboard('c');
+    await act(async () => jest.advanceTimersByTime(DEBOUNCE_TIMEOUT));
+
+    expect(screen.getByTestId('option-column1')).toBeInTheDocument();
+    expect(screen.getByTestId('option-column2')).toBeInTheDocument();
+    expect(screen.queryByTestId('option-test1')).not.toBeInTheDocument();
+  });
+
   it('should show the selection and clear the column when the input is cleared', async () => {
     render(<LineageSearchSelect />);
     await openDropdown();
