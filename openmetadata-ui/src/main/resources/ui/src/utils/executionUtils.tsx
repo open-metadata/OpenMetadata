@@ -26,6 +26,7 @@ import { getLayoutGutter } from './common/layout.utils';
 import { formatDateTime, formatDuration } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
 import { getStatusBadgeIcon } from './PipelineDetailsUtils';
+import { getSafeHttpUrl } from './StringUtils';
 interface StatusIndicatorInterface {
   status: StatusType;
 }
@@ -40,6 +41,11 @@ export interface ViewDataInterface {
   startTime?: number;
   endTime?: number;
   duration?: string;
+  rowsRead?: number;
+  rowsWritten?: number;
+  rowsFiltered?: number;
+  executionTime?: string;
+  logLink?: string;
 }
 
 const StatusBadge = ({ status }: { status?: StatusType }) => {
@@ -105,6 +111,7 @@ export const getTableViewData = (
       const endTime = execute.endTime;
       const duration =
         startTime && endTime ? formatDuration(endTime - startTime) : '--';
+      const executionTimeMs = execute.metrics?.executionTimeMs;
 
       viewData.push({
         name: execute.name,
@@ -116,6 +123,13 @@ export const getTableViewData = (
         startTime,
         endTime,
         duration,
+        rowsRead: execute.metrics?.rowsRead,
+        rowsWritten: execute.metrics?.rowsWritten,
+        rowsFiltered: execute.metrics?.rowsFiltered,
+        executionTime: isUndefined(executionTimeMs)
+          ? undefined
+          : formatDuration(executionTimeMs),
+        logLink: getSafeHttpUrl(execute.logLink),
       });
     });
   });

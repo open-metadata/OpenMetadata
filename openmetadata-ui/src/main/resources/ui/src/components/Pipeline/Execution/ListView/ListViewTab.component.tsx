@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ExternalLinkIcon } from '../../../../assets/svg/external-links.svg';
 import {
   PipelineStatus,
   StatusType,
@@ -22,6 +24,7 @@ import {
   getTableViewData,
   StatusIndicator,
 } from '../../../../utils/executionUtils';
+import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import Table from '../../../common/Table/TableV2';
 
@@ -32,6 +35,9 @@ interface ListViewProps {
   searchString: string | undefined;
   handleSearch: (value: string) => void;
 }
+
+const renderCount = (value?: number) =>
+  isUndefined(value) ? '--' : formatNumberWithComma(value);
 
 const ListView = ({
   executions,
@@ -96,6 +102,49 @@ const ListView = ({
         render: (duration: string, record: { name: string }) => (
           <span data-testid={`duration-${record.name}`}>{duration}</span>
         ),
+      },
+      {
+        title: t('label.rows-read'),
+        dataIndex: 'rowsRead',
+        key: 'rowsRead',
+        render: renderCount,
+      },
+      {
+        title: t('label.rows-written'),
+        dataIndex: 'rowsWritten',
+        key: 'rowsWritten',
+        render: renderCount,
+      },
+      {
+        title: t('label.rows-filtered'),
+        dataIndex: 'rowsFiltered',
+        key: 'rowsFiltered',
+        render: renderCount,
+      },
+      {
+        title: t('label.execution-time'),
+        dataIndex: 'executionTime',
+        key: 'executionTime',
+        render: (executionTime?: string) => executionTime ?? '--',
+      },
+      {
+        title: t('label.log'),
+        dataIndex: 'logLink',
+        key: 'logLink',
+        render: (logLink: string | undefined, record: { name: string }) =>
+          logLink ? (
+            <a
+              className="flex items-center gap-2"
+              data-testid={`log-link-${record.name}`}
+              href={logLink}
+              rel="noopener noreferrer"
+              target="_blank">
+              {t('label.view-entity', { entity: t('label.log') })}
+              <ExternalLinkIcon className="tw:ml-2 tw:shrink-0 tw:size-3.5" />
+            </a>
+          ) : (
+            '--'
+          ),
       },
     ],
     []

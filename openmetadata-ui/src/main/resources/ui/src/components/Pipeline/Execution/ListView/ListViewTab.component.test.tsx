@@ -83,4 +83,55 @@ describe('Test ListViewTab Component', () => {
 
     expect(screen.getAllByText('StatusIndicator')).toHaveLength(7);
   });
+
+  it('Should render task metrics and the log link when present', async () => {
+    render(
+      <ListView
+        {...mockProps}
+        executions={[
+          {
+            name: 'load_orders',
+            status: StatusType.Successful,
+            timestamp: '2024-05-11',
+            key: 1715404800000,
+            rowsRead: 1234,
+            rowsWritten: 1200,
+            rowsFiltered: 34,
+            executionTime: '2.00 seconds',
+            logLink: 'https://orchestrator.example/runs/1',
+          } as unknown as (typeof EXECUTION_LIST_MOCK)[number],
+        ]}
+      />
+    );
+
+    expect(screen.getByText('1,234')).toBeInTheDocument();
+    expect(screen.getByText('1,200')).toBeInTheDocument();
+    expect(screen.getByText('34')).toBeInTheDocument();
+    expect(screen.getByText('2.00 seconds')).toBeInTheDocument();
+    expect(screen.getByTestId('log-link-load_orders')).toHaveAttribute(
+      'href',
+      'https://orchestrator.example/runs/1'
+    );
+  });
+
+  it('Should render placeholders when a task has no metrics or log link', async () => {
+    render(
+      <ListView
+        {...mockProps}
+        executions={[
+          {
+            name: 'load_orders',
+            status: StatusType.Successful,
+            timestamp: '2024-05-11',
+            key: 1715404800000,
+          } as unknown as (typeof EXECUTION_LIST_MOCK)[number],
+        ]}
+      />
+    );
+
+    expect(screen.getAllByText('--')).toHaveLength(7);
+    expect(
+      screen.queryByTestId('log-link-load_orders')
+    ).not.toBeInTheDocument();
+  });
 });
