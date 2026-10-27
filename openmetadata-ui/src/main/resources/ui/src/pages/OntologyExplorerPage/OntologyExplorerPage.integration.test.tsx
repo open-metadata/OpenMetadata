@@ -711,6 +711,7 @@ describe('Ontology Studio mode-switch integration', () => {
         'ontology:created'
       )
     );
+
     expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
   });
 
