@@ -510,9 +510,11 @@ public final class CredentialVerifier implements Managed {
   private CredentialUnavailableException timedOut(
       CredentialSubject subject, InFlightRead read, TimeoutException timeout) {
     RequestRead queued = read.task;
+    RejectedExecutionException why =
+        new RejectedExecutionException("no read slot within loadTimeout");
     boolean withdrawn = queued != null && requestReads.remove(queued);
     if (withdrawn) {
-      queued.reject(new RejectedExecutionException("no read slot within loadTimeout"));
+      queued.reject(why);
     }
     return withdrawn
         ? unavailable(
