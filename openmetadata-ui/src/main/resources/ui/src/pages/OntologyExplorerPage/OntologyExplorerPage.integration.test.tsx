@@ -571,6 +571,87 @@ describe('Ontology Studio mode-switch integration', () => {
     ).toBeVisible();
   });
 
+  it('does not open the New class panel later for an ontology the user moved away from', async () => {
+    const created: Ontology = {
+      id: 'created',
+      name: 'Created',
+      fullyQualifiedName: 'Created',
+      iri: 'urn:created',
+      namespace: 'urn:created#',
+    };
+    const other: Ontology = {
+      id: 'other',
+      name: 'Other',
+      fullyQualifiedName: 'Other',
+      iri: 'urn:other',
+      namespace: 'urn:other#',
+    };
+    let catalog: Ontology[] = [];
+    let isFirstCreatedLoad = true;
+    mockFetchRdfConfig.mockResolvedValue(rdfStatus);
+    mockListOntologies.mockImplementation(async () => ({
+      data: catalog,
+      paging: { total: catalog.length },
+    }));
+    mockCreateOntology.mockImplementation(async () => {
+      catalog = [created, other];
+
+      return created;
+    });
+    mockGetOntology.mockImplementation((id) => {
+      if (id === created.id && isFirstCreatedLoad) {
+        isFirstCreatedLoad = false;
+
+        return new Promise(() => undefined);
+      }
+
+      return Promise.resolve(id === created.id ? created : other);
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <OntologyExplorerPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    fireEvent.click(await screen.findByTestId('ontology-empty-scratch'));
+    fireEvent.change(await screen.findByTestId('ontology-create-name'), {
+      target: { value: 'Created' },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-create-submit')).toBeEnabled()
+    );
+    fireEvent.click(screen.getByTestId('ontology-create-submit'));
+
+    fireEvent.click(await screen.findByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(await screen.findByTestId('ontology-scope-other'));
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+        'data-scope-key',
+        'ontology:other'
+      )
+    );
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(await screen.findByTestId('ontology-scope-created'));
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+        'data-scope-key',
+        'ontology:created'
+      )
+    );
+    fireEvent.click(await screen.findByTestId('mode-tab-edit'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      )
+    );
+    expect(
+      screen.queryByTestId('ontology-new-class-panel')
+    ).not.toBeInTheDocument();
+  });
+
   it.each(['pending', 'resolved'])(
     'hydrates Settings from detail when the request is %s',
     async (status) => {

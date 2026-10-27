@@ -845,8 +845,12 @@ const OntologyExplorerPage: React.FC = () => {
     });
   };
   useEffect(() => {
-    if (
-      pendingFirstClassFor &&
+    if (!pendingFirstClassFor) {
+      return;
+    }
+    if (ontologyId && ontologyId !== pendingFirstClassFor) {
+      setPendingFirstClassFor(undefined);
+    } else if (
       selectedOntology?.id === pendingFirstClassFor &&
       mode === 'edit'
     ) {
@@ -855,7 +859,7 @@ const OntologyExplorerPage: React.FC = () => {
         nextConceptRequest(current, pendingFirstClassFor)
       );
     }
-  }, [mode, pendingFirstClassFor, selectedOntology?.id]);
+  }, [mode, ontologyId, pendingFirstClassFor, selectedOntology?.id]);
   const handleStatsChange = useCallback((newStats: string[]) => {
     setStats(newStats);
   }, []);
