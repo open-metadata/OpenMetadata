@@ -150,7 +150,7 @@ type CustomPaginationProps = NonNullable<
  */
 type PaginationContract<T> =
   | {
-      customPaginationProps?: undefined;
+      customPaginationProps?: never;
       pagination?: TableComponentProps<T>['pagination'];
     }
   | { customPaginationProps?: CustomPaginationProps; pagination: false };
@@ -890,6 +890,9 @@ const TableV2 = <T extends object>(
   }: TableV2Props<T>,
   ref: Ref<HTMLDivElement> | null | undefined
 ) => {
+  // Read once so callbacks depend on the handler, not on `rest` (a new object
+  // every render).
+  const { onChange: onTableChange } = rest;
   const { t } = useTranslation();
   const { type } = useGenericContext();
   const [reorderedList, setReorderedList] = useState<
@@ -1068,15 +1071,11 @@ const TableV2 = <T extends object>(
    */
   const sizeByContent = scroll?.x === 'max-content';
 
-  const scrollStyle = useMemo((): React.CSSProperties => {
-    if (!scroll) {
-      return {};
-    }
-
-    return {
-      ...(scroll.x ? { overflowX: 'auto' } : {}),
-    };
-  }, [scroll?.x]);
+  const scrollX = scroll?.x;
+  const scrollStyle = useMemo(
+    (): React.CSSProperties => (scrollX ? { overflowX: 'auto' } : {}),
+    [scrollX]
+  );
 
   /**
    * Derived, not state: seeding this from an effect left the first render with
@@ -1243,7 +1242,7 @@ const TableV2 = <T extends object>(
   // null — the filteredValue call sites read the next state off this argument.
   const reportFilterChange = useCallback(
     (nextState: Record<string, React.Key[]>) => {
-      if (!rest.onChange) {
+      if (!onTableChange) {
         return;
       }
       const filters: Record<string, FilterValue | null> = {};
@@ -1261,7 +1260,7 @@ const TableV2 = <T extends object>(
         effectiveNext[key] = keys;
         filters[key] = keys.length ? (keys as FilterValue) : null;
       });
-      rest.onChange(
+      onTableChange(
         {} as TablePaginationConfig,
         filters,
         {} as SorterResult<T>,
@@ -1274,7 +1273,7 @@ const TableV2 = <T extends object>(
         } as TableCurrentDataSource<T>
       );
     },
-    [rest.onChange, rest.columns, controlledFilterState, applyColumnFilters]
+    [onTableChange, rest.columns, controlledFilterState, applyColumnFilters]
   );
 
   const currentPage =
@@ -1288,7 +1287,7 @@ const TableV2 = <T extends object>(
   const handlePageChange = useCallback(
     (nextPage: number) => {
       setInternalCurrentPage(nextPage);
-      rest.onChange?.(
+      onTableChange?.(
         {
           current: nextPage,
           pageSize: clientPagination?.pageSize ?? DEFAULT_PAGE_SIZE,
@@ -1302,7 +1301,7 @@ const TableV2 = <T extends object>(
         } as TableCurrentDataSource<T>
       );
     },
-    [rest.onChange, clientPagination, filteredDataSource]
+    [onTableChange, clientPagination, filteredDataSource]
   );
 
   /**
@@ -1318,7 +1317,7 @@ const TableV2 = <T extends object>(
       // AntD reports a page-size change through `onChange` as well, which is
       // the only callback a server-paged table has to refetch on. Without it
       // the picker moves and nothing else happens.
-      rest.onChange?.(
+      onTableChange?.(
         {
           current: 1,
           pageSize: size,
@@ -1332,7 +1331,7 @@ const TableV2 = <T extends object>(
         } as TableCurrentDataSource<T>
       );
     },
-    [clientPagination, rest.onChange, filteredDataSource]
+    [clientPagination, onTableChange, filteredDataSource]
   );
 
   const pagedDataSource = useMemo((): T[] => {
@@ -1381,7 +1380,12 @@ const TableV2 = <T extends object>(
 
       setColumnDropdownSelections(updatedSelections);
     },
-    [columnDropdownSelections, selectedEntityTableColumns, entityKey]
+    [
+      columnDropdownSelections,
+      selectedEntityTableColumns,
+      entityKey,
+      setPreference,
+    ]
   );
 
   const handleBulkColumnAction = useCallback(() => {
@@ -1408,6 +1412,7 @@ const TableV2 = <T extends object>(
     columnDropdownSelections,
     selectedEntityTableColumns,
     entityKey,
+    setPreference,
   ]);
 
   // ─── Row key ──────────────────────────────────────────────────────────────
@@ -1592,7 +1597,7 @@ const TableV2 = <T extends object>(
       );
       setSortState({ columnKey: newKey, direction: newDirection });
 
-      if (!rest.onChange) {
+      if (!onTableChange) {
         return;
       }
 
@@ -1600,7 +1605,7 @@ const TableV2 = <T extends object>(
       const reportedOrder =
         newDirection === 'ascending' ? 'ascend' : descendingOrder;
 
-      rest.onChange(
+      onTableChange(
         {
           current: internalCurrentPage,
           pageSize: clientPagination?.pageSize ?? 10,
@@ -1620,9 +1625,10 @@ const TableV2 = <T extends object>(
       );
     },
     [
-      rest.onChange,
+      onTableChange,
       propsColumns,
       rest.dataSource,
+      filteredDataSource.length,
       internalCurrentPage,
       clientPagination,
       sortState.columnKey,

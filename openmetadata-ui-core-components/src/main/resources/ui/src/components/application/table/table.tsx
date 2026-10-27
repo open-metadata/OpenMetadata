@@ -166,13 +166,13 @@ export const MUTED_TABLE_SURFACE_CLASSES = [
 
 // An 8%-white muted edge lands on the modal's own colour, so the frame (header
 // top included) takes the header divider's solid border-primary in dark.
-const TABLE_CARD_VARIANTS: Record<TableCardVariant, string> = {
+const TABLE_CARD_VARIANTS: Record<TableCardVariant, string> = sortCx({
   default: 'tw:bg-surface tw:after:outline-subtle',
   muted: cx(
     'tw:bg-primary_alt tw:after:outline-secondary tw:dark:after:outline-primary',
     MUTED_TABLE_SURFACE_CLASSES
   ),
-};
+});
 
 const TableCardRoot = ({
   children,

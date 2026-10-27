@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TableCardVariant } from '@openmetadata/ui-core-components';
 import { RJSFSchema } from '@rjsf/utils';
 import { App } from '../../../../generated/entity/applications/app';
-import { TableComponentProps } from '../../../common/Table/Table.interface';
 import { AppRunRecordWithId } from '../AppRunsHistory/AppRunsHistory.interface';
 
 export interface AppScheduleProps {
@@ -29,7 +29,7 @@ export interface AppScheduleProps {
   canTrigger?: boolean;
   canDeploy?: boolean;
   /** Table variant for the latest-run history. */
-  runsHistoryVariant?: TableComponentProps<unknown>['variant'];
+  runsHistoryVariant?: TableCardVariant;
   onSave: (cron: string) => Promise<void>;
   onDemandTrigger: () => Promise<void>;
   onDeployTrigger: () => Promise<void>;
