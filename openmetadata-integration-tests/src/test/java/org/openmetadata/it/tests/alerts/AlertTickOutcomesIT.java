@@ -135,6 +135,30 @@ class AlertTickOutcomesIT {
     }
   }
 
+  // The reader points the alert past the batch before parsing it; an Error while it is read must
+  // not leave the position there, or every event in the batch would be skipped unsent.
+  @Test
+  void aTickThatDiesOfAnErrorWhileReadingSkipsNoEvent(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert =
+          webhookAlert(ns, "dies_while_reading", ErrorThrowingConsumer.ID, receiver);
+      QuietAlert.settle(alert);
+      List<String> events = FixtureEvents.tableEvents().subList(0, 2);
+      ErrorThrowingConsumer.failReads(alert.getId(), 1);
+      try {
+        FixtureEvents.insert(events);
+
+        assertEquals(1, tickCountingErrors(alert), "the first read dies of an Error");
+        DirectTick.run(alert);
+
+        assertEquals(events.size(), receiver.received().size(), "no event was skipped");
+        assertTrue(failuresOf(alert).isEmpty());
+      } finally {
+        ErrorThrowingConsumer.cure(alert.getId());
+      }
+    }
+  }
+
   private static int tickCountingErrors(EventSubscription alert) {
     int errors = 0;
     try {
