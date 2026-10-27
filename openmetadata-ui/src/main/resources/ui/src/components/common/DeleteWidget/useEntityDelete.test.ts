@@ -19,7 +19,6 @@ import { useEntityDelete, UseEntityDeleteOptions } from './useEntityDelete';
 
 const CURRENT_USER_ID = 'current-user-id';
 const mockOnLogoutHandler = jest.fn();
-const mockAsyncDelete = jest.fn();
 const mockAfterDeleteAction = jest.fn();
 
 jest.mock('../../../rest/miscAPI', () => ({
@@ -35,12 +34,6 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 
 jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
   useAuthProvider: jest.fn(() => ({ onLogoutHandler: mockOnLogoutHandler })),
-}));
-
-jest.mock('../../../context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
-  useAsyncDeleteProvider: jest.fn(() => ({
-    handleOnAsyncEntityDeleteConfirm: mockAsyncDelete,
-  })),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -88,22 +81,12 @@ describe('useEntityDelete', () => {
     expect(mockAfterDeleteAction).toHaveBeenCalledWith(true, 3);
   });
 
-  it('hard-deletes recursively and uses a custom success message', async () => {
+  it('hard-deletes recursively', async () => {
     expect(
-      await runDelete(DeleteType.HARD_DELETE, {
-        isRecursiveDelete: true,
-        successMessage: 'Gone',
-      })
+      await runDelete(DeleteType.HARD_DELETE, { isRecursiveDelete: true })
     ).toBe(true);
     expect(deleteEntity).toHaveBeenCalledWith('teams', 'team-id', true, true);
-    expect(showSuccessToast).toHaveBeenCalledWith('Gone');
     expect(mockAfterDeleteAction).toHaveBeenCalledWith(false, 3);
-  });
-
-  it('keeps the entity type as given when prepareType is off', async () => {
-    await runDelete(DeleteType.HARD_DELETE, { prepareType: false });
-
-    expect(deleteEntity).toHaveBeenCalledWith('team', 'team-id', false, true);
   });
 
   it('resolves false and toasts when the request fails', async () => {
@@ -131,29 +114,5 @@ describe('useEntityDelete', () => {
     ).toBe(true);
     expect(mockOnLogoutHandler).toHaveBeenCalled();
     expect(mockAfterDeleteAction).not.toHaveBeenCalled();
-  });
-
-  it('hands an async delete to the async delete provider', async () => {
-    mockAsyncDelete.mockResolvedValueOnce(undefined);
-
-    expect(
-      await runDelete(DeleteType.HARD_DELETE, { isAsyncDelete: true })
-    ).toBe(true);
-    expect(deleteEntity).not.toHaveBeenCalled();
-    expect(mockAsyncDelete).toHaveBeenCalledWith(
-      expect.objectContaining({
-        entityId: 'team-id',
-        deleteType: DeleteType.HARD_DELETE,
-        isRecursiveDelete: false,
-      })
-    );
-  });
-
-  it('resolves false when the async delete throws', async () => {
-    mockAsyncDelete.mockRejectedValueOnce(new Error('socket'));
-
-    expect(
-      await runDelete(DeleteType.HARD_DELETE, { isAsyncDelete: true })
-    ).toBe(false);
   });
 });

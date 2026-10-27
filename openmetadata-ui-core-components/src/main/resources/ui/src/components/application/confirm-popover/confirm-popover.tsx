@@ -90,7 +90,7 @@ const ACTIVE_TRIGGER_CLASS = {
 };
 
 /**
- * A lightweight, non-modal confirmation anchored to the control that asked
+ * A lightweight confirmation anchored to the control that asked
  * for it. Use it instead of a confirmation modal wherever the page itself is
  * already an overlay (Settings), so the user keeps their context.
  */

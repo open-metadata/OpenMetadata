@@ -40,12 +40,6 @@ jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
   useAuthProvider: jest.fn(() => ({ onLogoutHandler: mockOnLogoutHandler })),
 }));
 
-jest.mock('../../../context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
-  useAsyncDeleteProvider: jest.fn(() => ({
-    handleOnAsyncEntityDeleteConfirm: jest.fn(),
-  })),
-}));
-
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),

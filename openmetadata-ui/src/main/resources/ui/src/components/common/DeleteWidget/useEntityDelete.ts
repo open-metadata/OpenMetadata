@@ -13,7 +13,6 @@
 import { AxiosError } from 'axios';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { deleteEntity } from '../../../rest/miscAPI';
@@ -27,16 +26,13 @@ export type UseEntityDeleteOptions = Pick<
   | 'entityName'
   | 'entityType'
   | 'entityId'
-  | 'prepareType'
-  | 'isAsyncDelete'
   | 'isRecursiveDelete'
-  | 'successMessage'
   | 'afterDeleteAction'
 >;
 
 /**
- * The delete request behind `DeleteEntityPopover`: sync or async delete,
- * toasts, logging out when users delete themselves, and `afterDeleteAction`.
+ * The delete request behind `DeleteEntityPopover`: the delete call, toasts,
+ * logging out when users delete themselves, and `afterDeleteAction`.
  * Errors are toasted here; the promise resolves to whether the delete
  * succeeded, so a confirmation popover stays open on failure.
  */
@@ -44,42 +40,18 @@ export const useEntityDelete = ({
   entityName,
   entityType,
   entityId,
-  prepareType = true,
-  isAsyncDelete = false,
   isRecursiveDelete,
-  successMessage,
   afterDeleteAction,
 }: UseEntityDeleteOptions) => {
   const { t } = useTranslation();
   const currentUserId = useApplicationStore((state) => state.currentUser?.id);
   const { onLogoutHandler } = useAuthProvider();
-  const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
 
   return useCallback(
     async (deleteType: DeleteType): Promise<boolean> => {
-      if (isAsyncDelete) {
-        try {
-          await handleOnAsyncEntityDeleteConfirm({
-            entityName,
-            entityId: entityId ?? '',
-            entityType,
-            deleteType,
-            prepareType,
-            isRecursiveDelete: isRecursiveDelete ?? false,
-            afterDeleteAction,
-          });
-
-          return true;
-        } catch {
-          return false;
-        }
-      }
-
       try {
         const response = await deleteEntity(
-          prepareType
-            ? deleteWidgetClassBase.prepareEntityType(entityType)
-            : entityType,
+          deleteWidgetClassBase.prepareEntityType(entityType),
           entityId ?? '',
           Boolean(isRecursiveDelete),
           deleteType === DeleteType.HARD_DELETE
@@ -90,8 +62,7 @@ export const useEntityDelete = ({
           return false;
         }
         showSuccessToast(
-          successMessage ??
-            t('server.entity-deleted-successfully', { entity: entityName })
+          t('server.entity-deleted-successfully', { entity: entityName })
         );
         if (entityType === EntityType.USER && entityId === currentUserId) {
           onLogoutHandler();
@@ -118,14 +89,10 @@ export const useEntityDelete = ({
       entityName,
       entityType,
       entityId,
-      prepareType,
-      isAsyncDelete,
       isRecursiveDelete,
-      successMessage,
       afterDeleteAction,
       currentUserId,
       onLogoutHandler,
-      handleOnAsyncEntityDeleteConfirm,
     ]
   );
 };

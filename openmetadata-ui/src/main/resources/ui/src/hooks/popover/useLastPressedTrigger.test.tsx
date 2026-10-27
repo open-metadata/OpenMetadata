@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { RefObject, useState } from 'react';
+import { RefObject } from 'react';
 import { useLastPressedTrigger } from './useLastPressedTrigger';
 
 let captured: RefObject<HTMLElement | null> | undefined;
@@ -30,19 +30,6 @@ const Harness = ({ showSecond = true }: { showSecond?: boolean }) => {
       )}
       <p>Not a button</p>
     </div>
-  );
-};
-
-const Outside = () => {
-  const [visible, setVisible] = useState(true);
-
-  return (
-    <>
-      {visible && <Harness />}
-      <button type="button" onClick={() => setVisible(false)}>
-        Hide
-      </button>
-    </>
   );
 };
 
@@ -101,12 +88,16 @@ describe('useLastPressedTrigger', () => {
     expect(captured?.current).toBeNull();
   });
 
-  it('stops listening when the container unmounts', () => {
-    render(<Outside />);
-    const ref = captured;
+  it('removes its capture listeners when the container unmounts', () => {
+    const { unmount } = render(<Harness />);
+    const container = screen.getByRole('button', { name: 'First' })
+      .parentElement as HTMLElement;
+    const removeSpy = jest.spyOn(container, 'removeEventListener');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Hide' }));
+    unmount();
 
-    expect(ref?.current).toBeNull();
+    ['pointerdown', 'keydown', 'click'].forEach((type) =>
+      expect(removeSpy).toHaveBeenCalledWith(type, expect.any(Function), true)
+    );
   });
 });
