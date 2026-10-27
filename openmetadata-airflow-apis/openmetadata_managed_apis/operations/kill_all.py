@@ -34,29 +34,42 @@ def kill_all(dag_id: str) -> Response:
         if not dag_model:
             return ApiResponse.not_found(f"DAG {dag_id} not found.")
 
-        runs: list[DagRun] = (
-            session.query(DagRun)
-            .filter(
-                DagRun.dag_id == dag_id,
-                DagRun.state.in_((DagRunState.RUNNING, DagRunState.QUEUED)),
-            )
-            .all()
-        )
-
-        instances: list[TaskInstance] = session.query(TaskInstance).filter(
-            TaskInstance.dag_id == dag_id,
-            TaskInstance.state.notin_((TaskInstanceState.SUCCESS, TaskInstanceState.FAILED)),
-        )
-
-        if not runs or not instances:
+        if not fail_unfinished_runs(dag_id, session):
             return ApiResponse.not_found(f"Workflow [{dag_id}] has no running or pending runs nor tasks")
-
-        for dag_run in runs:
-            dag_run.set_state(DagRunState.FAILED)
-
-        for instance in instances:
-            instance.set_state(TaskInstanceState.FAILED)
 
         session.commit()
 
         return ApiResponse.success({"message": f"Workflow [{dag_id}] has been killed"})
+
+
+def fail_unfinished_runs(dag_id: str, session) -> bool:
+    """
+    Mark the DAG's running or queued runs and their unfinished task instances as failed.
+    :param dag_id: DAG whose runs to stop
+    :param session: Airflow DB session; the caller commits
+    :return: whether there was anything to stop
+    """
+    runs: list[DagRun] = (
+        session.query(DagRun)
+        .filter(
+            DagRun.dag_id == dag_id,
+            DagRun.state.in_((DagRunState.RUNNING, DagRunState.QUEUED)),
+        )
+        .all()
+    )
+
+    instances: list[TaskInstance] = session.query(TaskInstance).filter(
+        TaskInstance.dag_id == dag_id,
+        TaskInstance.state.notin_((TaskInstanceState.SUCCESS, TaskInstanceState.FAILED)),
+    )
+
+    if not runs or not instances:
+        return False
+
+    for dag_run in runs:
+        dag_run.set_state(DagRunState.FAILED)
+
+    for instance in instances:
+        instance.set_state(TaskInstanceState.FAILED)
+
+    return True

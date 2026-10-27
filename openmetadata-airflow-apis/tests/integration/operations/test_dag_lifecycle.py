@@ -22,7 +22,6 @@ from uuid import uuid4
 import pytest
 from airflow import DAG, settings
 from airflow.api.common.delete_dag import delete_dag as airflow_delete_dag
-from airflow.exceptions import AirflowException
 from airflow.models import DagModel, DagRun, TaskInstance
 from airflow.utils import timezone
 from airflow.utils.state import DagRunState, TaskInstanceState
@@ -102,20 +101,22 @@ def test_delete_dag_with_versioned_task_history(stored_dag):
             assert session.query(model).filter_by(dag_id=name).count() == 0
 
 
-def test_running_dag_keeps_its_files_when_deletion_is_rejected(stored_dag):
-    name, dag_file, config_file, _ = stored_dag
+def test_delete_stops_a_running_dag_and_removes_it(stored_dag):
+    name, dag_file, config_file, version_model = stored_dag
     with settings.Session() as session:
+        session.query(DagRun).filter_by(dag_id=name).update({"state": DagRunState.RUNNING})
         session.query(TaskInstance).filter_by(dag_id=name).update({"state": TaskInstanceState.RUNNING})
         session.commit()
 
-    with (
-        Flask(__name__).app_context(),
-        pytest.raises(AirflowException, match="TaskInstances still running"),
-    ):
-        delete.delete_dag_id(name)
+    with Flask(__name__).app_context():
+        response = delete.delete_dag_id(name)
 
-    assert dag_file.exists()
-    assert config_file.exists()
+    assert response.status_code == 200
+    assert not dag_file.exists()
+    assert not config_file.exists()
+    with settings.Session() as session:
+        for model in (TaskInstance, DagRun, version_model, DagModel):
+            assert session.query(model).filter_by(dag_id=name).count() == 0
 
 
 def test_invalid_dag_does_not_report_success(tmp_path, monkeypatch):
