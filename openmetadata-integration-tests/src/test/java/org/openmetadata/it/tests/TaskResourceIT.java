@@ -132,7 +132,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
   private static final String REQUESTED_DESCRIPTION = "Description requested by the creator";
 
-  private static String entityLink(String entityType, String entityFqn) {
+  static String entityLink(String entityType, String entityFqn) {
     return String.format("<#E::%s::%s>", entityType, entityFqn);
   }
 
@@ -5416,7 +5416,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     return SdkClients.createClient(userEmail, userEmail, new String[] {});
   }
 
-  private void awaitTaskReadyForWorkflowResolution(UUID taskId) {
+  static void awaitTaskReadyForWorkflowResolution(UUID taskId) {
     Awaitility.await("task workflow materialization for " + taskId)
         .atMost(Duration.ofSeconds(20))
         .pollInterval(Duration.ofMillis(250))
