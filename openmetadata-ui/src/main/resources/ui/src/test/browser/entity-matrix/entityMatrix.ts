@@ -428,6 +428,34 @@ const ENTITIES: EntityConfig[] = [
 export const header = () => page.getByTestId('data-assets-header');
 export const usersPanel = () => page.getByTestId('owner-select-users-panel');
 
+/**
+ * Clicks `trigger` and waits for the picker's `ready` element; clicks again
+ * only if it still has not shown after a grace period. A panel or header that
+ * re-renders under the click drops it, so the picker never opens (the
+ * Playwright helpers re-click for the same reason). Re-clicking sooner would
+ * close a picker that is merely slow to open.
+ */
+const openPicker = async (trigger: Locator, ready: Locator) => {
+  // Plain polling, not expect.element in a try/catch: a failed browser
+  // assertion fails the test even when the error is caught.
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    if (!ready.query()) {
+      await userEvent.click(trigger, { timeout: 5_000 }).catch(() => {
+        // Detached by a re-render; the next attempt clicks it again.
+      });
+    }
+    const deadline = Date.now() + 3_000;
+    while (Date.now() < deadline) {
+      if (ready.query()) {
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+
+  throw new Error('The picker did not open after 4 clicks on its trigger');
+};
+
 export const openOwnerPicker = async (tab: 'Users' | 'Teams') => {
   await userEvent.click(page.getByTestId('edit-owner'));
   await userEvent.click(
@@ -591,10 +619,11 @@ export const updateDisplayName = async (server: EntityServer<EntityLike>) => {
 export const DESCRIPTION =
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis.';
 
-/** Replaces the text in the open rich-text editor and saves. */
-export const saveDescription = async (text: string) => {
+/** Opens the rich-text editor from `trigger`, replaces its text and saves. */
+export const saveDescription = async (trigger: Locator, text: string) => {
   // The block editor has no role or test id of its own; find it by class.
   const editor = page.getByCSS('.om-block-editor[contenteditable="true"]');
+  await openPicker(trigger, editor);
   await userEvent.click(editor);
   await userEvent.keyboard('{ControlOrMeta>}a{/ControlOrMeta}{Backspace}');
   if (text) {
@@ -635,27 +664,6 @@ const setSelected = (option: Locator, selected: boolean) =>
       { timeout: 10_000, interval: 300 }
     )
     .toBe(selected);
-
-/**
- * Clicks `trigger` until the picker's `ready` element shows. A panel or header
- * that re-renders under the click drops it, and the picker never opens (the
- * Playwright helpers re-click for the same reason).
- */
-const openPicker = (trigger: Locator, ready: Locator) =>
-  expect
-    .poll(
-      async () => {
-        if (!ready.query()) {
-          await userEvent.click(trigger, { timeout: 2_000 }).catch(() => {
-            // Detached by a re-render; the next poll clicks it again.
-          });
-        }
-
-        return ready.query() !== null;
-      },
-      { timeout: 15_000, interval: 500 }
-    )
-    .toBe(true);
 
 /**
  * Toggles `fqn` in the classification tag picker `trigger` opens, and applies.
@@ -1360,8 +1368,7 @@ export const setReplaceClearTier = async (
 };
 
 export const updateDescription = async (server: EntityServer<EntityLike>) => {
-  await userEvent.click(page.getByTestId('edit-description'));
-  await saveDescription(DESCRIPTION);
+  await saveDescription(page.getByTestId('edit-description'), DESCRIPTION);
 
   await expect
     .poll(() => server.current().description)
@@ -1511,10 +1518,10 @@ export const addUpdateRemoveChildDescription = async (
   child: ChildServer
 ) => {
   for (const text of [DESCRIPTION, `${DESCRIPTION} updated`, '']) {
-    await userEvent.click(
-      row().getByTestId('description').first().getByTestId('edit-button')
+    await saveDescription(
+      row().getByTestId('description').first().getByTestId('edit-button'),
+      text
     );
-    await saveDescription(text);
 
     await expect.element(page.getByTestId('editor')).not.toBeInTheDocument();
 

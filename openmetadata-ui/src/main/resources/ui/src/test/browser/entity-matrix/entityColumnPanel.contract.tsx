@@ -299,8 +299,10 @@ export const describeColumnPanelFlows = (label: EntityLabel) => {
         await expect.element(panel().getByCSS('.data-type-chip')).toBeVisible();
       }
 
-      await userEvent.click(panel().getByTestId('edit-description'));
-      await saveDescription(DESCRIPTION);
+      await saveDescription(
+        panel().getByTestId('edit-description'),
+        DESCRIPTION
+      );
 
       await expect
         .poll(() => child().current().description)
