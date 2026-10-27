@@ -333,12 +333,12 @@ public final class CredentialVerifier implements Managed {
    * before each query. A batch failure of any kind, an {@link Error} included, leaves its entries
    * to age out and does not stop the others; the sweep-age gauge restarts only when every batch was
    * reconfirmed. When the deep verify is due, each batch is reconfirmed first and then read in full
-   * with every decrypt forced. A deep read that fails leaves its entries trusted by their
-   * fingerprints and the pass still complete.
-   * The deep pass is then retried after {@code min(deepVerifyInterval, 1 min)}. A deep batch fails
-   * on a statement failure, on an {@link Error} for one subject, which the source's per-subject
-   * guard does not catch, or when the source leaves a subject out. So the whole pass is what to
-   * retry, and one stamp holds that decision.
+   * with every decrypt forced. A subject the deep read leaves out is unconfirmed, so its next check
+   * reads it again, and it does not fail the deep verify. A deep read that throws, on a statement
+   * failure or on an {@link Error} for one subject, which the source's per-subject guard does not
+   * catch, changes no entry and leaves the pass complete. When a batch's reconfirmation or deep
+   * read throws, the deep pass is retried after {@code min(deepVerifyInterval, 1 min)}. A throw
+   * fails the whole batch, so the whole pass is what to retry, and one stamp holds that decision.
    */
   void sweepOnce() {
     long sweepStart = ticker.read();
@@ -726,7 +726,10 @@ public final class CredentialVerifier implements Managed {
     return succeeded;
   }
 
-  /** The deep verify: every decrypt forced, so a secret edited inside the secrets manager is seen. */
+  /**
+   * The deep verify: every decrypt forced, so a secret edited inside the secrets manager is seen.
+   * It fails only when the read throws; a subject the read leaves out is unconfirmed instead.
+   */
   private boolean deepReadQuietly(List<CredentialSubject> batch) {
     boolean succeeded = false;
     try {
@@ -735,7 +738,7 @@ public final class CredentialVerifier implements Managed {
       succeeded = true;
     } catch (Throwable failure) {
       LOG.warn(
-          "Deep credential verification of {} subjects failed; they stay trusted by fingerprint and"
+          "Deep credential verification of {} subjects failed and changed none of their entries;"
               + " the pass is retried in {} ms",
           batch.size(),
           TimeUnit.NANOSECONDS.toMillis(deepRetryIntervalNanos),
