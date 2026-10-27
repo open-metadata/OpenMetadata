@@ -64,7 +64,10 @@ WTForms==3.2.2
 Werkzeug==3.1.8
 a2wsgi==1.10.10
 adal==1.2.7
-adbc-driver-manager==1.12.0
+adbc-driver-flightsql==1.12.0 ; python_version < "3.11"
+adbc-driver-flightsql==1.13.0 ; python_version >= "3.11"
+adbc-driver-manager==1.12.0 ; python_version < "3.11"
+adbc-driver-manager==1.13.0 ; python_version >= "3.11"
 adbc-driver-postgresql==1.12.0
 adbc-driver-sqlite==1.12.0
 adlfs==2026.8.0
@@ -669,7 +672,7 @@ svcs==26.2.0
 tableauserverclient==0.41
 tabulate==0.10.0
 tenacity==9.1.4
-teradatasql==20.0.0.68
+teradatasql==20.0.0.72
 teradatasqlalchemy==20.0.0.9
 termcolor==3.3.0
 text-unidecode==1.3

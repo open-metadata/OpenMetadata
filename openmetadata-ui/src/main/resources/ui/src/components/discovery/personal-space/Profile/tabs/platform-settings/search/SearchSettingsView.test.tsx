@@ -13,6 +13,7 @@
 
 import {
   act,
+  cleanup,
   fireEvent,
   render,
   screen,
@@ -101,15 +102,18 @@ const CONFIG = {
 };
 
 const onNavigate = jest.fn();
+const onSaveState = jest.fn();
 let headerActions: ReactNode;
 const onSetHeaderActions = (actions: ReactNode) => {
   headerActions = actions;
 };
 
-const renderView = async () => {
+const renderView = async (savedState?: unknown) => {
   render(
     <SearchSettingsView
+      savedState={savedState}
       onNavigate={onNavigate}
+      onSaveState={onSaveState}
       onSetHeaderActions={onSetHeaderActions}
     />
   );
@@ -314,30 +318,117 @@ describe('SearchSettingsView', () => {
     expect(screen.getByTestId('term-boost-save-btn')).toBeEnabled();
   });
 
-  it('saves an edited field value boost straight away', async () => {
+  it('opens the field value boost form to add or edit a boost', async () => {
     await renderView();
+    fireEvent.click(screen.getByTestId('add-field-value-boost-btn'));
     fireEvent.click(
       within(screen.getByTestId('field-value-boost-totalVotes')).getByTestId(
         'edit-field-value-boost-btn'
       )
     );
-    const dialog = await screen.findByTestId('field-value-boost-dialog');
-    fireEvent.change(
-      within(dialog).getByTestId('lt-input').querySelector('input') as Element,
-      { target: { value: '9' } }
-    );
-    await act(async () => {
-      fireEvent.click(within(dialog).getByTestId('save-field-value-boost'));
+
+    expect(onNavigate.mock.calls).toEqual([
+      [
+        {
+          type: 'page',
+          page: 'search',
+          isEditing: true,
+          itemId: 'field-value-boost',
+        },
+      ],
+      [
+        {
+          type: 'page',
+          page: 'search',
+          isEditing: true,
+          itemId: 'field-value-boost/totalVotes',
+        },
+      ],
+    ]);
+  });
+
+  it('hands unsaved term boosts to the boost form and resumes them on return', async () => {
+    await renderView();
+    act(() => {
+      fireEvent.keyDown(
+        within(screen.getByTestId('term-boost-PII.Sensitive')).getByRole(
+          'slider'
+        ),
+        { key: 'ArrowRight' }
+      );
+    });
+    fireEvent.click(screen.getByTestId('add-field-value-boost-btn'));
+
+    const stashed = onSaveState.mock.calls[0][0];
+
+    expect(stashed.termBoosts[1]).toEqual({
+      ...CONFIG.globalSettings.termBoosts[1],
+      boost: 2.1,
     });
 
+    cleanup();
+    await renderView({ ...stashed, isReturning: true });
+
     await waitFor(() =>
-      expect(savedGlobalSettings().fieldValueBoosts[0]).toEqual(
-        expect.objectContaining({
-          field: 'totalVotes',
-          condition: { range: { lt: 9 } },
-        })
-      )
+      expect(
+        within(screen.getByTestId('term-boost-PII.Sensitive')).getByTestId(
+          'term-boost-value'
+        )
+      ).toHaveTextContent('2.1')
     );
+
+    expect(screen.getByTestId('term-boost-save-btn')).toBeEnabled();
+    expect(onSaveState).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it('keeps returning term boosts when the page is left before the load resolves', async () => {
+    let resolveLoad!: (value: unknown) => void;
+    (getSettingsByType as jest.Mock).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveLoad = resolve;
+      })
+    );
+    const { unmount } = render(
+      <SearchSettingsView
+        savedState={{ termBoosts: [], isReturning: true }}
+        onNavigate={onNavigate}
+        onSaveState={onSaveState}
+        onSetHeaderActions={onSetHeaderActions}
+      />
+    );
+    unmount();
+    await act(async () => {
+      resolveLoad(CONFIG);
+    });
+
+    expect(onSaveState).not.toHaveBeenCalled();
+  });
+
+  it('keeps returning term boosts when the settings fail to load', async () => {
+    (getSettingsByType as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    render(
+      <SearchSettingsView
+        savedState={{ termBoosts: [], isReturning: true }}
+        onNavigate={onNavigate}
+        onSaveState={onSaveState}
+        onSetHeaderActions={onSetHeaderActions}
+      />
+    );
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+
+    expect(onSaveState).not.toHaveBeenCalled();
+  });
+
+  it('drops an entity draft abandoned by leaving the boost form', async () => {
+    await renderView({
+      entity: 'tables',
+      draft: { fieldValueBoosts: [] },
+      isChanged: true,
+    });
+
+    expect(onSaveState).toHaveBeenCalledWith(undefined);
+    expect(screen.getByTestId('term-boost-save-btn')).toBeDisabled();
   });
 
   it('toasts and keeps the settings when a save fails', async () => {
@@ -354,7 +445,7 @@ describe('SearchSettingsView', () => {
     ).not.toBeChecked();
   });
 
-  it('keeps the limit editor and the boost dialog open when a save fails', async () => {
+  it('keeps the limit editor open when a save fails', async () => {
     (updateSettingsConfig as jest.Mock).mockRejectedValue(new Error('boom'));
     await renderView();
 
@@ -373,19 +464,6 @@ describe('SearchSettingsView', () => {
     expect(
       screen.getByTestId('global-setting-input-maxAggregateSize')
     ).toHaveValue(500);
-
-    fireEvent.click(
-      within(screen.getByTestId('field-value-boost-totalVotes')).getByTestId(
-        'edit-field-value-boost-btn'
-      )
-    );
-    const dialog = await screen.findByTestId('field-value-boost-dialog');
-    await act(async () => {
-      fireEvent.click(within(dialog).getByTestId('save-field-value-boost'));
-    });
-
-    expect(updateSettingsConfig).toHaveBeenCalledTimes(2);
-    expect(screen.getByTestId('field-value-boost-dialog')).toBeInTheDocument();
   });
 
   it('leaves column indexing on when the confirmation is cancelled', async () => {
