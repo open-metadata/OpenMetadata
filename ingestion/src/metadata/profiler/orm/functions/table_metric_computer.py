@@ -1014,10 +1014,7 @@ class TeradataTableMetricComputer(BaseTableMetricComputer):
         # carries a timestamp at all nothing matches and the COUNT(*)
         # fallback applies — correct, albeit slower.
         latest_ts_subquery = (
-            select(func.max(Column("LastCollectTimeStamp")))
-            .select_from(stats_table)
-            .where(*filters)
-            .scalar_subquery()
+            select(func.max(Column("LastCollectTimeStamp"))).select_from(stats_table).where(*filters).scalar_subquery()
         )
         stats_query = self._build_query(
             [func.max(Column("RowCount")).cast(BigInteger).label(ROW_COUNT)],

@@ -666,7 +666,7 @@ class TestTeradataTableMetricComputer:
         COUNT(*)."""
         teradata_sqlite_session.execute(
             text(
-                "INSERT INTO DBC.\"TableStatsV\" VALUES"
+                'INSERT INTO DBC."TableStatsV" VALUES'
                 " ('test_schema', 'test_table', NULL, '2026-01-20 10:00:00', 7500)"
             )
         )
@@ -683,7 +683,7 @@ class TestTeradataTableMetricComputer:
         be dropped."""
         teradata_sqlite_session.execute(
             text(
-                "INSERT INTO DBC.\"TableStatsV\" VALUES"
+                'INSERT INTO DBC."TableStatsV" VALUES'
                 " ('test_schema', 'test_table', 1, '2026-01-20 10:00:00', 10000),"
                 " ('test_schema', 'test_table', NULL, '2026-01-20 10:00:00', 7500)"
             )
@@ -697,7 +697,7 @@ class TestTeradataTableMetricComputer:
         stale, larger entry that was collected once and never re-collected."""
         teradata_sqlite_session.execute(
             text(
-                "INSERT INTO DBC.\"TableStatsV\" VALUES"
+                'INSERT INTO DBC."TableStatsV" VALUES'
                 " ('test_schema', 'test_table', 1, '2026-01-01 08:00:00', 100000000),"
                 " ('test_schema', 'test_table', NULL, '2026-01-20 10:00:00', 7500)"
             )
@@ -709,7 +709,7 @@ class TestTeradataTableMetricComputer:
     def test_size_comes_from_table_size_v_current_perm(self, teradata_sqlite_session):
         teradata_sqlite_session.execute(
             text(
-                "INSERT INTO DBC.\"TableStatsV\" VALUES"
+                'INSERT INTO DBC."TableStatsV" VALUES'
                 " ('test_schema', 'test_table', NULL, '2026-01-20 10:00:00', 7500)"
             )
         )
