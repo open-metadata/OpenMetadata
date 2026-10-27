@@ -174,6 +174,7 @@ class TestHexSource(TestCase):
 
         # Initialize required attributes
         self.hex_source.config = self.config
+        self.hex_source.config.serviceName = "mock_hex"
         self.hex_source.metadata = self.metadata
         self.hex_source.service_connection = MagicMock()
         self.hex_source.source_config = MagicMock()
@@ -199,6 +200,7 @@ class TestHexSource(TestCase):
         self.hex_source.query_fetcher = MagicMock()
         self.hex_source.client.get_project_cells = MagicMock(return_value=None)
         self.hex_source._cell_lineage = None
+        self.hex_source._connection_types = None
 
         # Mock register_record
         self.hex_source.register_record = MagicMock()

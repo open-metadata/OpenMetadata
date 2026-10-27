@@ -66,7 +66,7 @@ class HexApiClient:
             auth_token_mode="Bearer",
             extra_headers=HEADERS,
             # Hex allows ~30 requests/minute per endpoint and answers 429 past that;
-            # the cells endpoint is called once per project, so 429 must be retried.
+            # the project export is called once per project, so 429 must be retried.
             retry_codes=[429, 503, 504],
             limit_codes=[],
         )
@@ -126,9 +126,10 @@ class HexApiClient:
             logger.warning("Error fetching cells for project %s: %s", project_id, exc)
             return None
 
-    def get_data_connection_types(self) -> dict[str, str]:
+    def get_data_connection_types(self) -> dict[str, str] | None:
         """
-        Map each data connection id to its warehouse type (snowflake, bigquery, ...)
+        Map each data connection id to its warehouse type (snowflake, bigquery, ...).
+        None when the data connections can't be read.
         """
         try:
             return {
@@ -140,7 +141,7 @@ class HexApiClient:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Error fetching data connections: %s", exc)
-            return {}
+            return None
 
     def _paginate(self, path: str, params: dict, model: type[PageT]) -> Iterator[PageT]:
         params = {**params, "limit": 100}
