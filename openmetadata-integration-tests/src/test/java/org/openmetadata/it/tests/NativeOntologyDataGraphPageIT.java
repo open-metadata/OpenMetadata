@@ -172,9 +172,7 @@ class NativeOntologyDataGraphPageIT extends BaseOntologyApprovalIT {
       assertNull(page.getTopology().getAfter());
       final var reader = deniedReader(fixtures, "reader", Entity.TABLE);
       assertHiddenFrom(reader, ontology, loaded, bound.getFirst());
-      admin().tables().delete(bound.getLast().getId());
-      final var deleted = graphPage(admin(), ontology, loaded, clusterPage(0, 12));
-      assertEquals(List.of(), deleted.getTopology().getLineageEdges());
+      assertADeletedEndpointDropsTheEdge(ontology, loaded, bound.getLast());
     } finally {
       deleteUnrelatedOutgoing(bound.getFirst());
     }
@@ -309,6 +307,15 @@ class NativeOntologyDataGraphPageIT extends BaseOntologyApprovalIT {
     assertEquals(List.of(), page.getClusters());
     assertEquals(List.of(), page.getTopology().getLineageEdges());
     assertFalse(JsonUtils.pojoToJson(page).contains(hidden.getName()));
+  }
+
+  private static void assertADeletedEndpointDropsTheEdge(
+      final Ontology ontology,
+      final List<NativeOntologyLoadedPrefix> loaded,
+      final Table endpoint) {
+    admin().tables().delete(endpoint.getId());
+    final var page = graphPage(admin(), ontology, loaded, clusterPage(0, 12));
+    assertEquals(List.of(), page.getTopology().getLineageEdges());
   }
 
   private static SqlQueryCounter prefixLineageRows(final List<Long> candidateRows) {
