@@ -54,7 +54,6 @@ import { ColumnsType } from '../../../../common/Table/Table.interface';
 import Table from '../../../../common/Table/TableV2';
 import { SelectedRowDetails } from '../ingestion.interface';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
-import './ingestion-list-table.less';
 import {
   IngestionListTableProps,
   ModifiedIngestionPipeline,

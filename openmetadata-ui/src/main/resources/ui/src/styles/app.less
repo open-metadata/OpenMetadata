@@ -142,8 +142,7 @@ p {
   padding: 0 var(--om-space-24) var(--om-space-16) var(--om-space-24);
 }
 
-a,
-a.ant-typography {
+a {
   &:hover {
     text-decoration: underline;
   }
@@ -620,19 +619,7 @@ a[href].link-text-grey,
   align-items: flex-start;
 }
 
-.multiple-label-field
-  .ant-form-item-label
-  > label.ant-form-item-required:not(
-    .ant-form-item-required-mark-optional
-  )::before {
-  line-height: 24px;
-}
-
 // Switch Inline Field
-
-.switch-field .ant-form-item {
-  margin: 0;
-}
 
 .common-left-panel-card-heading {
   color: @group-title-color;
@@ -677,26 +664,9 @@ a[href].link-text-grey,
 }
 
 /* Tabs */
-.ant-tabs-top > .ant-tabs-nav::before {
-  border-color: @border-color;
-}
 
 // Entity Details Page css
 .entity-details-page-tabs {
-  .ant-tabs-tabpane {
-    height: @entity-details-tab-height;
-    overflow-y: auto;
-
-    .activity-feed-tab {
-      height: 100%;
-
-      .right-container,
-      .center-container {
-        height: 100%;
-      }
-    }
-  }
-
   /* Lineage tab panel styling */
   [id*='rc-tabs-'][id*='-panel-contract'],
   [id*='rc-tabs-'][id*='-panel-lineage'],
@@ -968,8 +938,6 @@ a[href].link-text-grey,
 // Ant Typography links (a.ant-typography / .ant-typography a, colored @blue-9 in
 // fonts.less at 0,1,1) aren't caught by the base-specificity `:where(.dark-mode) a`.
 // Retint them in dark at a higher specificity that wins regardless of load order.
-.dark-mode a.ant-typography,
-.dark-mode .ant-typography a,
 .dark-mode .prose-typography a {
   color: var(--color-text-link);
 }
@@ -977,9 +945,6 @@ a[href].link-text-grey,
 // Ant secondary text is @text-color-secondary (fade(@black, 45%)), compiled to a
 // static near-black that vanishes on dark surfaces. The variable can't take a
 // var() (antd runs shade() on it), so retint the class in dark only.
-.dark-mode .ant-typography.ant-typography-secondary {
-  color: var(--om-color-text-tertiary);
-}
 
 // "No description" and other muted placeholders use @text-grey-muted, a fixed
 // #757575 that falls below AA on dark surfaces; retint the class in dark only.
@@ -1144,7 +1109,6 @@ a[href].link-text-grey,
     flex-wrap: wrap;
 
     &:hover {
-      .ant-typography,
       > * {
         color: @primary-color;
       }
@@ -1228,81 +1192,6 @@ a[href].link-text-grey,
 // #f5f5f5 disabled fill and cell hover, 6%-black panel rules, and the
 // theme-agnostic --ant-primary-1 range tint (near-white in dark). Light keeps
 // antd's values.
-.dark-mode {
-  .ant-picker-suffix,
-  .ant-picker-separator,
-  .ant-picker-clear,
-  .ant-picker-header button,
-  .ant-picker-cell:not(.ant-picker-cell-in-view),
-  .ant-picker-cell-disabled {
-    color: var(--om-color-text-quaternary);
-  }
-
-  .ant-picker-focused .ant-picker-separator,
-  .ant-picker-clear:hover {
-    color: var(--om-color-text-tertiary);
-  }
-
-  .ant-picker-input > input::placeholder,
-  .ant-picker-input-placeholder > input {
-    color: var(--om-color-text-placeholder);
-  }
-
-  .ant-picker.ant-picker-disabled,
-  .ant-picker-input > input[disabled] {
-    background-color: var(--om-color-bg-disabled);
-    color: var(--om-color-text-disabled);
-  }
-
-  .ant-picker-header {
-    color: var(--om-color-text-primary);
-  }
-
-  .ant-picker-panel,
-  .ant-picker-header,
-  .ant-picker-panel .ant-picker-footer,
-  .ant-picker-footer-extra:not(:last-child),
-  .ant-picker-datetime-panel .ant-picker-time-panel,
-  .ant-picker-time-panel-column:not(:first-child) {
-    border-color: var(--om-color-border-secondary);
-  }
-
-  .ant-picker-cell:hover:not(.ant-picker-cell-in-view) .ant-picker-cell-inner,
-  .ant-picker-cell:hover:not(.ant-picker-cell-selected):not(
-      .ant-picker-cell-range-start
-    ):not(.ant-picker-cell-range-end):not(
-      .ant-picker-cell-range-hover-start
-    ):not(.ant-picker-cell-range-hover-end)
-    .ant-picker-cell-inner,
-  .ant-picker-time-panel-column
-    > li.ant-picker-time-panel-cell
-    .ant-picker-time-panel-cell-inner:hover {
-    background-color: var(--om-color-bg-secondary-hover);
-  }
-
-  .ant-picker-cell-disabled::before {
-    background-color: var(--om-color-bg-disabled);
-  }
-
-  .ant-picker-cell-in-view.ant-picker-cell-in-range::before,
-  .ant-picker-cell-in-view.ant-picker-cell-range-start:not(
-      .ant-picker-cell-range-start-single
-    )::before,
-  .ant-picker-cell-in-view.ant-picker-cell-range-end:not(
-      .ant-picker-cell-range-end-single
-    )::before {
-    background-color: var(--om-color-bg-brand);
-  }
-}
 
 // antd multi-select tags use @background-color-base / @border-color-split,
 // both fixed light hexes: white chips with near-invisible text in dark.
-.dark-mode .ant-select-multiple .ant-select-selection-item {
-  background: var(--om-color-bg-secondary);
-  border-color: var(--om-color-border-secondary);
-  color: var(--om-color-text-primary);
-
-  .ant-select-selection-item-remove {
-    color: var(--om-color-text-tertiary);
-  }
-}

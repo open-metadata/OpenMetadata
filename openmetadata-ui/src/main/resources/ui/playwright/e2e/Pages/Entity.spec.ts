@@ -1306,11 +1306,8 @@ pickEntityMatrix(
           await waitForAllLoadersToDisappear(page);
 
           const taggedRow = page.locator(`[${rowSelector}="${taggedKey}"]`);
-          // Match both engines without a positional pick: AntD rows live in
-          // a <table> nested inside .ant-table (excluded here, the wrapper
-          // matches instead); TableV2 renders one plain <table>.
           const childTable = page
-            .locator('.ant-table, table:not(.ant-table table)')
+            .locator('table')
             .filter({ has: taggedRow });
           const rows = childTable.locator(`[${rowSelector}]`);
 

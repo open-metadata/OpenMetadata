@@ -62,9 +62,6 @@ test.describe('Dashboards', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await page.getByRole('tab', { name: 'Dashboards' }).click();
 
-    await page.locator('.ant-spin').waitFor({
-      state: 'detached',
-    });
 
     await expect(page.getByTestId('pagination')).toBeVisible();
     await expect(page.getByTestId('previous')).toBeDisabled();
@@ -82,9 +79,6 @@ test.describe('Dashboards', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await page.getByText('25 / Page').click();
     await childrenResponse;
 
-    await page.locator('.ant-spin').waitFor({
-      state: 'detached',
-    });
 
     await expect(page.getByTestId('next')).toBeDisabled();
     await expect(page.getByTestId('previous')).toBeDisabled();
@@ -326,9 +320,6 @@ test.describe(
 
       await waitForAllLoadersToDisappear(page);
 
-      await page.locator('.ant-spin').waitFor({
-        state: 'detached',
-      });
 
       const dataModelLink = page.getByTestId(
         `data-model-${dataModelResponseData.name}`

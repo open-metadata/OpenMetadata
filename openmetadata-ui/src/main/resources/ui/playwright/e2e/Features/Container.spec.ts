@@ -137,9 +137,6 @@ test.describe('Container entity specific tests ', () => {
     await page.getByText('25 / Page').click();
     await childrenResponseSizeChange;
 
-    await page.locator('.ant-spin').waitFor({
-      state: 'detached',
-    });
 
     await expect(page.getByTestId('next')).toBeDisabled();
     await expect(page.getByTestId('previous')).toBeDisabled();
@@ -157,9 +154,6 @@ test.describe('Container entity specific tests ', () => {
     await page.getByText('15 / Page').click();
     await childrenResponseSizeChange2;
 
-    await page.locator('.ant-spin').waitFor({
-      state: 'detached',
-    });
 
     await expect(page.getByTestId('previous')).toBeDisabled();
     await expect(page.getByTestId('page-indicator')).toContainText(

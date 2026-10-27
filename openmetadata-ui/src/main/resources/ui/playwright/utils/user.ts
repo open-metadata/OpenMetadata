@@ -266,47 +266,6 @@ export const editDisplayName = async (page: Page, editedUserName: string) => {
   expect(userName).toContain(editedUserName);
 };
 
-export const editTeams = async (page: Page, teamName: string) => {
-  await page.click('[data-testid="edit-teams-button"]');
-  await page.click('.ant-select-selection-item-remove > .anticon');
-
-  await page.click('[data-testid="team-select"]');
-  await page.getByTestId('team-select').fill(teamName);
-
-  // Click the team from the dropdown
-  await page.click('.filter-node > .ant-select-tree-node-content-wrapper');
-
-  const updateTeamResponse = page.waitForResponse('/api/v1/users/*');
-  await page.click('[data-testid="inline-save-btn"]');
-  await updateTeamResponse;
-
-  // Verify the new team link is visible
-  await expect(page.locator(`[data-testid="${teamName}-link"]`)).toBeVisible();
-};
-
-export const editDescription = async (
-  page: Page,
-  updatedDescription: string
-) => {
-  await page.click('[data-testid="edit-description"]');
-
-  // Clear and type the new description
-  await fillDescriptionBox(page, updatedDescription);
-
-  const updateDescription = page.waitForResponse('/api/v1/users/*');
-  await page.click('[data-testid="save"]');
-  await updateDescription;
-
-  await page.click('.ant-collapse-expand-icon > .anticon > svg');
-
-  // Verify the updated description
-  const description = page.locator(
-    `[data-testid="asset-description-container"] ${descriptionBoxReadOnly}`
-  );
-
-  await expect(description).toContainText(updatedDescription);
-};
-
 export const handleAdminUpdateDetails = async (
   page: Page,
   editedUserName: string
