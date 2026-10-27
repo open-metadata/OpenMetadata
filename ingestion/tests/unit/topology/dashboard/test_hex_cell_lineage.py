@@ -116,10 +116,14 @@ class TestCellSqlParsing:
     def test_unparseable_sql_is_skipped(self):
         assert parse_cell_sql("select * from where", "snowflake") is None
 
-    def test_quoted_alias_keeps_its_case(self):
-        assert outputs('select region as "Sales Region" from prod.sales.orders') == {
-            "Sales Region": {(ORDERS, "region")}
-        }
+    def test_quoted_identifiers_resolve_whatever_their_case(self):
+        users = ("prod", "public", "users")
+        schema = {"prod": {"public": {"users": {"createdAt": "unknown", "id": "unknown"}}}}
+
+        assert outputs(
+            'select u."createdAt", id as "Sales Id" from prod.public.users u', schema, connection_type="postgres"
+        ) == {"createdat": {(users, "createdat")}, "sales id": {(users, "id")}}
+        assert outputs('select o."REGION" from prod.sales.orders o') == {"region": {(ORDERS, "region")}}
 
     def test_star_over_a_dataframe_keeps_the_known_tables_columns(self):
         assert outputs("select c.*, t.* from prod.sales.customers c join df_targets t on c.id = t.id") == {
@@ -572,6 +576,75 @@ class TestHexCellLineage:
         assert request.columns[0].name.root == "Revenue _ target"
         assert [child.name.root for child in request.columns[0].children] == ["region_code"]
 
+    def test_chained_cell_reads_a_table_its_upstream_cell_found_by_connection_defaults(self, make_source):
+        def sql_cell(cell_id, sql, variable, connection):
+            return Cell(
+                id=cell_id,
+                label=variable,
+                cellType="SQL",
+                dataConnectionId=connection,
+                resultVariableName=variable,
+                contents={"sqlCell": {"source": sql}},
+            )
+
+        source = make_source(
+            [
+                sql_cell("c1", "select * from orders", "base_orders", "conn_snowflake"),
+                sql_cell("c2", "select region from base_orders", "regions", None),
+            ]
+        )
+        source.client.get_data_connections.return_value = {
+            "conn_snowflake": DataConnection(
+                id="conn_snowflake",
+                name="Snowflake",
+                type="snowflake",
+                connectionDetails={"snowflake": {"database": "prod", "schema": "sales"}},
+            )
+        }
+
+        _, (edge,) = run(source)
+
+        assert column_lineage(edge)[f"{SERVICE}.model.{PROJECT.id}.regions.region"] == [
+            "snowflake_prod.prod.sales.orders.region"
+        ]
+
+    def test_a_column_passed_through_keeps_its_tables_casing(self, make_source):
+        events = make_table("events", {"createdAt": DataType.TIMESTAMP})
+        cell = REVENUE_CELL.model_copy(
+            update={"contents": CellContents(sqlCell=SqlCellContents(source='select "createdAt" from sales.events'))}
+        )
+        source = make_source([cell], tables=(events,))
+
+        (request,), (edge,) = run(source)
+
+        assert [(c.name.root, c.dataType) for c in request.columns[0].children] == [("createdAt", DataType.TIMESTAMP)]
+        assert column_lineage(edge) == {
+            f"{SERVICE}.model.{PROJECT.id}.Revenue by region.createdAt": ["snowflake_prod.prod.sales.events.createdAt"]
+        }
+
+    def test_column_names_stay_unique_once_made_valid(self, make_source):
+        cell = REVENUE_CELL.model_copy(
+            update={
+                "contents": CellContents(
+                    sqlCell=SqlCellContents(source='select region as "x::y", amount as "x_y" from sales.orders')
+                )
+            }
+        )
+        source = make_source([cell])
+
+        (request,), _ = run(source)
+
+        assert [child.name.root for child in request.columns[0].children] == ["x_y", "x_y_2"]
+
+    def test_a_failed_data_model_lookup_does_not_fail_the_dashboard(self, make_source):
+        source = make_source(None)
+        source.metadata.get_by_name = MagicMock(side_effect=ConnectionError("server unavailable"))
+        source.context.get.return_value = SimpleNamespace(dashboard_service=SERVICE, charts=[], dataModels=[])
+
+        (dashboard,) = source.yield_dashboard(PROJECT)
+
+        assert dashboard.right.dataModels == []
+
 
 class TestHexApiClientCells:
     @pytest.fixture
@@ -657,9 +730,15 @@ cells:
         assert client.client.get.call_args_list[1].kwargs["data"] == {"limit": 100, "after": "p2"}
 
     def test_no_data_connections_when_the_api_fails(self, client):
-        client.client.get.side_effect = Exception("403 Forbidden")
+        client.client.get.side_effect = HTTPError(response=SimpleNamespace(status_code=500))
 
         assert client.get_data_connections() is None
+
+    def test_data_connections_the_token_cant_read_are_none_known(self, client):
+        """Unread would keep every data model as it is forever: it can't be read on a retry either"""
+        client.client.get.side_effect = HTTPError(response=SimpleNamespace(status_code=403))
+
+        assert client.get_data_connections() == {}
 
     def test_rate_limited_requests_are_retried(self):
         client = HexApiClient(HexConnection(hostPort="https://app.hex.tech", token="token"))

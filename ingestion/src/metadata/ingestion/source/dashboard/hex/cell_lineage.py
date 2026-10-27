@@ -32,6 +32,11 @@ TableKey = tuple[str, str, str]
 
 # Hex runs SQL over dataframes with DuckDB
 DATAFRAME_SQL_DIALECT = "duckdb"
+# Resolving columns case-insensitively, quoted or not, matches them to the table's
+# columns whatever casing the SQL or the warehouse uses: Snowflake's "REGION" is the
+# region column OpenMetadata stores, Postgres' "createdAt" its createdAt. Output names
+# come out lower-cased as a result.
+CASE_INSENSITIVE = sqlglot.Dialect.get_or_raise("duckdb, normalization_strategy=case_insensitive")
 JINJA_EXPRESSION = re.compile(r"\{\{.*?\}\}", re.DOTALL)
 JINJA_STATEMENT = re.compile(r"\{%.*?%\}", re.DOTALL)
 
@@ -115,7 +120,7 @@ def table_key(table: exp.Table) -> TableKey:
 
 
 def get_output_columns(
-    expression: exp.Expression,
+    expression: exp.Query,
     schema: dict[str, dict[str, dict[str, dict[str, str]]]],
 ) -> list[OutputColumn]:
     """
@@ -126,27 +131,36 @@ def get_output_columns(
     table references in `expression` must already use those same names.
     """
     _drop_unknown_stars(expression, schema)
-    # Qualifying with the default dialect lower-cases unquoted identifiers, so names
-    # line up with the schema and with each other whatever the warehouse's casing.
-    expression = qualify(expression, schema=schema or None, validate_qualify_columns=False, identify=False)
-    scope = build_scope(expression)
-    if scope is None or not isinstance(expression, exp.Query):
-        return []
+    try:
+        qualified = qualify(
+            expression,
+            schema=schema or None,
+            dialect=CASE_INSENSITIVE,
+            validate_qualify_columns=False,
+            identify=False,
+        )
+        scope = build_scope(qualified)
+    except SqlglotError:
+        qualified, scope = expression, None
+    if scope is None or not isinstance(qualified, exp.Query):
+        # Still list what the query outputs, only without where each column comes from
+        return [
+            OutputColumn(name=name)
+            for name in dict.fromkeys(select.alias_or_name for select in expression.selects)
+            if name and name != "*"
+        ]
 
     columns: dict[str, OutputColumn] = {}
-    for select in expression.selects:
+    for select in qualified.selects:
         name = select.alias_or_name
         if not name or name == "*" or name in columns:
             continue
         column = OutputColumn(name=name)
-        # The identifier keeps a quoted alias' case; lineage() lower-cases a plain string
-        alias = select.args.get("alias")
-        target = exp.Column(this=alias.copy()) if isinstance(alias, exp.Identifier) else name
         try:
-            node = lineage(target, expression, scope=scope, trim_selects=False, copy=False)
+            node = lineage(name, qualified, scope=scope, dialect=CASE_INSENSITIVE, trim_selects=False, copy=False)
             nodes = list(node.walk())
             column.sources = {
-                (table_key(leaf.source), leaf.name.split(".")[-1].lower())
+                (table_key(leaf.source), leaf.name.split(".")[-1].strip('"`').lower())
                 for leaf in nodes
                 if isinstance(leaf.source, exp.Table)
             }
