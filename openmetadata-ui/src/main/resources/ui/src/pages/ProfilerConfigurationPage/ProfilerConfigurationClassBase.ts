@@ -12,9 +12,21 @@
  */
 
 import { FieldProps } from '@rjsf/utils';
+import { ComponentType } from 'react';
+
+export interface SparkAgentConfigProps {
+  /**
+   * How a delete is confirmed. The settings modal confirms in an anchored
+   * popover (ADR:2026-10-27-settings-modal-confirms-in-anchored-popovers);
+   * the legacy page keeps its modal.
+   */
+  confirmation?: 'modal' | 'popover';
+}
 
 class ProfilerConfigurationClassBase {
-  public getSparkAgentConfigComponent(): (() => JSX.Element) | undefined {
+  public getSparkAgentConfigComponent():
+    | ComponentType<SparkAgentConfigProps>
+    | undefined {
     return undefined;
   }
 

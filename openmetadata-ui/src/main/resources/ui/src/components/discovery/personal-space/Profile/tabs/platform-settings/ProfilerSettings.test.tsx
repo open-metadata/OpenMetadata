@@ -104,7 +104,11 @@ describe('Profiler configuration settings', () => {
 
   it('view falls back to the defaults and renders the Collate Spark section when present', async () => {
     mockStored(undefined);
-    mockSparkConfig.mockReturnValue(() => <div data-testid="spark-config" />);
+    mockSparkConfig.mockReturnValue(
+      ({ confirmation }: { confirmation?: string }) => (
+        <div data-confirmation={confirmation} data-testid="spark-config" />
+      )
+    );
     render(
       <ProfilerSettings
         onNavigate={onNavigate}
@@ -118,7 +122,11 @@ describe('Profiler configuration settings', () => {
     expect(screen.getByTestId('store-sample-data-value')).toHaveTextContent(
       'label.enabled'
     );
-    expect(screen.getByTestId('spark-config')).toBeInTheDocument();
+    // Inside the settings modal its deletes confirm in a popover.
+    expect(screen.getByTestId('spark-config')).toHaveAttribute(
+      'data-confirmation',
+      'popover'
+    );
   });
 
   it('form saves rows, expanding "All" to every metric, and returns to the view', async () => {
