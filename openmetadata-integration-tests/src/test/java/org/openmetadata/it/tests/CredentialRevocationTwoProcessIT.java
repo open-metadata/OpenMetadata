@@ -29,6 +29,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIf;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.bench.BenchmarkMetrics;
@@ -49,8 +50,10 @@ import org.openmetadata.service.security.credentials.CredentialSourceTestSupport
  * credential is shared between the two but the database (and Redis, in the Redis lane), so the
  * result does not depend on any static of the test JVM.
  *
- * <p>Both lanes run this class: without Redis the change reaches B through B's sweep, with Redis
- * through the nudge as well. The sweep counter assertion applies to the lane without Redis only.
+ * <p>Both lanes run this class. In each, B rejects a revoked, rotated or soft-deleted credential
+ * within the bound and accepts a created one. Without Redis a test also checks that B's sweep saw the
+ * change; with Redis, a test checks that B received a nudge from A. Whether the nudge or the sweep
+ * delivered a given change is not asserted, because either may arrive first.
  *
  * <p>Bench mode ({@code -Dcredential.propagation.bench=true}) measures propagation latency, 100
  * trials per mode and the modes the lane can run: without Redis, with Redis, the slowest sweep the
@@ -61,6 +64,7 @@ import org.openmetadata.service.security.credentials.CredentialSourceTestSupport
 @ExtendWith(TestNamespaceExtension.class)
 class CredentialRevocationTwoProcessIT {
   private static final Duration CLIENT_SLACK = Duration.ofMillis(100);
+  private static final Duration MISS_REFRESH_MIN_AGE = Duration.ofMillis(500);
   private static final long POLL_MILLIS = 25;
   private static final int WARM_REQUESTS = 1000;
   private static final String SLOWEST_SWEEP = "sweepInterval";
@@ -102,17 +106,60 @@ class CredentialRevocationTwoProcessIT {
   }
 
   @Test
-  void patCreatedThroughAIsAcceptedByBOnItsFirstUse(TestNamespace ns) {
+  void patCreatedThroughAIsAcceptedByBOnASingleRequestOnceMissRefreshMinAgeHasPassed(
+      TestNamespace ns) {
     User owner = CredentialFixtures.createUser(ns, "tpnew");
     PersonalAccessToken first = CredentialFixtures.createPat(owner, ns.prefix("first"));
     assertEquals(200, statusOnB(first.getJwtToken()), "B has the owner cached");
-
     PersonalAccessToken second = CredentialFixtures.createPat(owner, ns.prefix("second"));
 
-    Awaitility.await("B accepts a PAT created on A, within missRefreshMinAge")
-        .atMost(Duration.ofSeconds(2))
-        .pollInterval(25, TimeUnit.MILLISECONDS)
-        .untilAsserted(() -> assertEquals(200, statusOnB(second.getJwtToken())));
+    Awaitility.await("missRefreshMinAge has passed on B")
+        .pollDelay(MISS_REFRESH_MIN_AGE.multipliedBy(2))
+        .until(() -> true);
+
+    assertEquals(200, statusOnB(second.getJwtToken()), "B's first answer for the new PAT");
+  }
+
+  @Test
+  void botTokenRotatedThroughAIsReplacedOnB(TestNamespace ns) {
+    User bot = CredentialFixtures.createBot(ns, "tprot");
+    String oldToken = CredentialFixtures.botToken(bot);
+    assertEquals(200, statusOnB(oldToken), "B accepts the bot token before the rotation");
+
+    String newToken = CredentialFixtures.botToken(bot);
+
+    awaitUnauthorizedOnB(oldToken);
+    awaitOkOnB(newToken);
+  }
+
+  @Test
+  void principalSoftDeletedThroughAIsRejectedByB(TestNamespace ns) {
+    User owner = CredentialFixtures.createUser(ns, "tpdel");
+    PersonalAccessToken pat = CredentialFixtures.createPat(owner, ns.prefix("pat"));
+    assertEquals(200, statusOnB(pat.getJwtToken()), "B accepts the PAT before the delete");
+
+    CredentialFixtures.softDeleteUser(owner);
+
+    awaitUnauthorizedOnB(pat.getJwtToken());
+  }
+
+  @Test
+  @EnabledIf("org.openmetadata.it.bootstrap.TestSuiteBootstrap#isRedisEnabled")
+  void withRedisBIsToldOfARevokeThroughTheNudge(TestNamespace ns) {
+    User bot = CredentialFixtures.createBot(ns, "tpnudge");
+    String token = CredentialFixtures.botToken(bot);
+    assertEquals(200, statusOnB(token), "B caches the bot");
+    double before = nodeB.metric("om_credential_nudges_total", "outcome", "queued");
+
+    CredentialFixtures.revokeBotToken(bot);
+
+    Awaitility.await("B received a credential nudge from A")
+        .atMost(Duration.ofSeconds(5))
+        .pollInterval(POLL_MILLIS, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    nodeB.metric("om_credential_nudges_total", "outcome", "queued") > before));
   }
 
   @Test
@@ -213,7 +260,8 @@ class CredentialRevocationTwoProcessIT {
 
   private double requestThreadReads() {
     return nodeB.metric("om_credential_reads_total", "reason", "miss")
-        + nodeB.metric("om_credential_reads_total", "reason", "stale");
+        + nodeB.metric("om_credential_reads_total", "reason", "stale")
+        + nodeB.metric("om_credential_reads_total", "reason", "unknown_token");
   }
 
   private static int statusOnB(String token) {
@@ -222,6 +270,14 @@ class CredentialRevocationTwoProcessIT {
 
   private static Duration maxStaleness() {
     return CredentialSourceTestSupport.serverMaxStaleness();
+  }
+
+  private static void awaitOkOnB(String token) {
+    Duration bound = maxStaleness();
+    Awaitility.await("B answers 200 within maxStaleness " + bound)
+        .atMost(bound.plusSeconds(1).toMillis(), TimeUnit.MILLISECONDS)
+        .pollInterval(POLL_MILLIS, TimeUnit.MILLISECONDS)
+        .untilAsserted(() -> assertEquals(200, statusOnB(token)));
   }
 
   private static void awaitUnauthorizedOnB(String token) {
