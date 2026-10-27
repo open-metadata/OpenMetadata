@@ -14,7 +14,6 @@ import org.openmetadata.schema.type.OntologyDefinitionStatus;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.OntologyReleaseDAO.MemberVersion;
 
 /**
@@ -123,10 +122,11 @@ public final class OntologyDefinitionStatusResolver {
     }
     final Map<Key, Double> versions = new HashMap<>();
     for (final MemberVersion member :
-        EntityDAO.queryInChunks(
+        OntologyReleaseMemberQuery.run(
+            releaseIds,
             memberIds,
-            chunk ->
-                dao.ontologyReleaseDAO().listMemberVersions(releaseIds, kind.value(), chunk))) {
+            (releases, members) ->
+                dao.ontologyReleaseDAO().listMemberVersions(releases, kind.value(), members))) {
       versions.put(
           new Key(UUID.fromString(member.releaseId()), UUID.fromString(member.memberId())),
           member.sourceVersion());
@@ -154,10 +154,11 @@ public final class OntologyDefinitionStatusResolver {
     final List<String> releaseIds = releaseIds(byOntology);
     final Map<Key, OntologyReleaseMember> payloads = new HashMap<>();
     for (final OntologyReleaseMember member :
-        EntityDAO.queryInChunks(
+        OntologyReleaseMemberQuery.run(
+            releaseIds,
             new ArrayList<>(stale),
-            chunk ->
-                dao.ontologyReleaseDAO().listMemberPayloads(releaseIds, kind.value(), chunk))) {
+            (releases, members) ->
+                dao.ontologyReleaseDAO().listMemberPayloads(releases, kind.value(), members))) {
       payloads.put(new Key(member.getReleaseId(), member.getMemberId()), member);
     }
     return payloads;

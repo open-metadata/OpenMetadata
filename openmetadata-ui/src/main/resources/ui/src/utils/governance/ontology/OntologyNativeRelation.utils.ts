@@ -109,7 +109,13 @@ export interface NativeRelationType extends NativeRelationPartner {
 
 export type NativeRelationStep =
   | { readonly kind: 'property'; readonly request: CreateOntologyProperty }
-  | { readonly kind: 'link'; readonly id: string; readonly patch: Operation[] }
+  | {
+      readonly kind: 'link';
+      readonly id: string;
+      /** The patched property's FQN, by which the UI reads its edit rights. */
+      readonly fqn: string;
+      readonly patch: Operation[];
+    }
   | { readonly kind: 'axiom'; readonly request: CreateOntologyAxiom };
 
 export interface RelationshipTypeDraft {
@@ -291,6 +297,7 @@ const linkStep = (
   primary: OntologyProperty,
   inverse: string
 ): NativeRelationStep => ({
+  fqn: primary.fullyQualifiedName,
   id: primary.id,
   kind: 'link',
   patch: [
@@ -302,53 +309,77 @@ const linkStep = (
   ],
 });
 
+type DeclaredProperty = (iri: string) => OntologyProperty | undefined;
+
+/** The live object property that holds each predicate, indexed once so a whole catalog plans in linear time. */
+const declaredProperties = (model: OntologyStudioModel): DeclaredProperty => {
+  const byIri = new Map(
+    model.properties
+      .filter(isLiveObjectProperty)
+      .map((property) => [property.iri, property])
+  );
+
+  return (iri) => byIri.get(iri);
+};
+
 /** The properties the ontology still lacks for the type, the inverse-less side first so the second can name it. */
 const planProperties = (
   model: OntologyStudioModel,
-  type: NativeRelationType
+  type: NativeRelationType,
+  declared: DeclaredProperty
 ): NativeRelationStep[] => {
-  const declared = (iri: string) =>
-    model.properties.find(
-      (property) => property.iri === iri && isLiveObjectProperty(property)
-    );
+  const partner = otherSideOf(type);
+  const partnerPending = partner && !declared(partner.id);
+  const primary = declared(type.id);
+  const wanted = type.inverse?.id;
+  if (primary && !partnerPending) {
+    return wanted && primary.inverse !== wanted
+      ? [linkStep(primary, wanted)]
+      : [];
+  }
   const taken = new Set(model.properties.map((property) => property.name));
   const declare = (
-    partner: NativeRelationPartner,
+    side: NativeRelationPartner,
     inverse?: string
   ): NativeRelationStep => {
-    const name = getAvailableName(
-      toCamelCase(partner.name) || 'relatesTo',
-      taken
-    );
+    const name = getAvailableName(toCamelCase(side.name) || 'relatesTo', taken);
     taken.add(name);
 
     return {
       kind: 'property',
       request: {
-        displayName: partner.label,
+        displayName: side.label,
         inverse,
-        iri: partner.id,
+        iri: side.id,
         kind: CreatePropertyKind.Object,
         name,
         ontology: model.ontology.fullyQualifiedName,
       },
     };
   };
-  const partner = otherSideOf(type);
-  const partnerPending = partner && !declared(partner.id);
-  const primary = declared(type.id);
-  const wanted = type.inverse?.id;
-  const steps: NativeRelationStep[] = [];
-  if (partnerPending) {
-    steps.push(declare(partner, primary ? type.id : undefined));
-  }
-  if (!primary) {
-    steps.push(declare(type, wanted));
-  } else if (wanted && !partnerPending && primary.inverse !== wanted) {
-    steps.push(linkStep(primary, wanted));
-  }
 
-  return steps;
+  return [
+    ...(partnerPending
+      ? [declare(partner, primary ? type.id : undefined)]
+      : []),
+    ...(primary ? [] : [declare(type, wanted)]),
+  ];
+};
+
+/** The property writes each type's relation makes before its axiom; a hierarchy relation makes none. */
+export const planNativeProperties = (
+  model: OntologyStudioModel,
+  catalog: readonly NativeRelationType[]
+): Array<{ type: NativeRelationType; steps: NativeRelationStep[] }> => {
+  const declared = declaredProperties(model);
+
+  return catalog.map((type) => ({
+    steps:
+      type.kind === 'objectProperty'
+        ? planProperties(model, type, declared)
+        : [],
+    type,
+  }));
 };
 
 interface NativeRelationInput {
@@ -388,7 +419,7 @@ export const planNativeRelation = ({
   const statement = `${from.name} ${type.label} ${to.name}`;
 
   return [
-    ...planProperties(model, type),
+    ...planProperties(model, type, declaredProperties(model)),
     {
       kind: 'axiom',
       request: {
