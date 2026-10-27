@@ -53,6 +53,7 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.NativeOntologyCsvCodec;
 import org.openmetadata.service.ontology.NativeOntologyDocument;
 import org.openmetadata.service.ontology.OntologyFormatDetector;
+import org.openmetadata.service.ontology.OntologyPropertyLists;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -65,8 +66,19 @@ public final class NativeOntologyRdfImporter {
   private static final String FORMAT_REQUIRED =
       "Specify format as one of turtle, rdfxml, ntriples, jsonld, or csv";
 
-  /** One parsed source: the format the server parsed it with and the definitions it states. */
-  public record Source(NativeOntologyImportFormat format, NativeOntologyDocument document) {}
+  /**
+   * One parsed source: the format the server parsed it with and the definitions it states.
+   *
+   * @param propertyRows the CSV row each property was declared on, by IRI; empty for RDF
+   */
+  public record Source(
+      NativeOntologyImportFormat format,
+      NativeOntologyDocument document,
+      Map<String, Integer> propertyRows) {
+    public Source(final NativeOntologyImportFormat format, final NativeOntologyDocument document) {
+      this(format, document, Map.of());
+    }
+  }
 
   public Model parse(final String data, final RdfSerializationFormat format) {
     return new SafeRdfModelParser().parse(data, format);
@@ -81,7 +93,9 @@ public final class NativeOntologyRdfImporter {
         OntologyFormatDetector.resolve(request)
             .orElseThrow(() -> new BadRequestException(FORMAT_REQUIRED));
     if (format == NativeOntologyImportFormat.CSV) {
-      return new Source(format, NativeOntologyCsvCodec.read(request.getData()));
+      final NativeOntologyCsvCodec.Located csv =
+          NativeOntologyCsvCodec.readLocated(request.getData());
+      return new Source(format, csv.document(), csv.propertyRows());
     }
     return new Source(format, readRdf(request.getData(), grammar(request, format)));
   }
@@ -97,6 +111,7 @@ public final class NativeOntologyRdfImporter {
   public NativeOntologyImportPreview preview(
       final Source source, final OntologyWorkingSnapshot.Snapshot working) {
     final Stored stored = Stored.index(working);
+    requireUsableLists(source.document(), stored, source.propertyRows());
     final Outcomes outcomes = classify(source.document(), stored);
     return new NativeOntologyImportPreview()
         .withSummary(summary(source.format(), source.document().header(), outcomes))
@@ -104,6 +119,7 @@ public final class NativeOntologyRdfImporter {
   }
 
   public NativeOntologyImportSummary summarize(final Source source) {
+    requireUsableLists(source.document(), Stored.EMPTY, source.propertyRows());
     return summary(
         source.format(), source.document().header(), classify(source.document(), Stored.EMPTY));
   }
@@ -111,7 +127,33 @@ public final class NativeOntologyRdfImporter {
   public CreateOntologyChangeSet reconcile(
       final Model model, final OntologyWorkingSnapshot.Snapshot working) {
     final Stored stored = Stored.index(working);
-    return plan(classify(read(model), stored), stored, working, SourceFamily.RDF);
+    final NativeOntologyDocument document = read(model);
+    requireUsableLists(document, stored, Map.of());
+    return plan(classify(document, stored), stored, working, SourceFamily.RDF);
+  }
+
+  /** Applying a draft refuses these properties, so a preview must not count them as importable. */
+  private static void requireUsableLists(
+      final NativeOntologyDocument document,
+      final Stored stored,
+      final Map<String, Integer> propertyRows) {
+    for (final OntologyProperty parsed : document.properties()) {
+      final String iri = parsed.getIri().toString();
+      final OntologyProperty current = stored.properties().get(iri);
+      final OntologyPropertyLists.Violation violation =
+          OntologyPropertyLists.firstViolation(
+              parsed,
+              () ->
+                  current != null
+                      && JsonUtils.pojoToJson(current.getEnumValues())
+                          .equals(JsonUtils.pojoToJson(parsed.getEnumValues())));
+      if (violation != null) {
+        final Integer row = propertyRows.get(iri);
+        final String where =
+            row == null ? "Property " + iri + ", " : "CSV row " + row + ", column ";
+        throw new BadRequestException(where + violation.field() + ": " + violation.message());
+      }
+    }
   }
 
   private NativeOntologyDocument readRdf(final String data, final RdfSerializationFormat format) {
