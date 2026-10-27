@@ -178,6 +178,23 @@ public interface EntityManagementClient {
   }
 
   /**
+   * Runs {@code updates} on every document where {@code field} under one of {@code nestedPaths}
+   * (nested fields, such as owners) or {@code objectPaths} (object fields, such as domains) equals
+   * any of {@code values}: the documents holding a copy of a reference. Asynchronous, like {@link
+   * #updateChildrenByNestedField}, because a widely used reference fans out to many documents.
+   */
+  default void updateReferenceCopies(
+      List<String> indexNames,
+      List<String> nestedPaths,
+      List<String> objectPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    throw new UnsupportedOperationException("Reference-copy updates are not supported");
+  }
+
+  /**
    * Gets a document by ID from the specified index.
    *
    * @param indexName the name of the index

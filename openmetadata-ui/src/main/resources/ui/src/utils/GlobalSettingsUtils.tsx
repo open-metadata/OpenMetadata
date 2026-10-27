@@ -25,7 +25,7 @@ export interface SettingMenuItem {
   key: string;
   icon: SvgComponent;
   // Draws `icon` (a plain core glyph) on a tinted tile, for icons without a baked-in background.
-  iconColor?: 'blue';
+  iconColor?: 'blue' | 'green';
   description: string;
   category?: string;
   label?: string;
@@ -67,6 +67,7 @@ const SETTING_OPTION_BY_ENTITY_TYPE: Partial<
   [EntityType.FILE]: GlobalSettingOptions.FILES,
   [EntityType.SPREADSHEET]: GlobalSettingOptions.SPREADSHEETS,
   [EntityType.WORKSHEET]: GlobalSettingOptions.WORKSHEETS,
+  [EntityType.KNOWLEDGE_PAGE]: GlobalSettingOptions.ARTICLES,
 };
 
 export const getSettingOptionByEntityType = (entityType: EntityType) =>

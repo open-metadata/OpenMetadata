@@ -16,6 +16,7 @@ import {
   expect,
   Locator,
   Page,
+  Request,
   Response,
 } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../constant/common';
@@ -52,15 +53,6 @@ export interface BulkIdsRequest {
   ids?: string[];
 }
 
-interface UploadMultipart {
-  file: {
-    name: string;
-    mimeType: string;
-    buffer: Buffer;
-  };
-  folder?: string;
-}
-
 interface CapturedDownload {
   download: string;
   href: string;
@@ -81,17 +73,14 @@ export const uploadDocument = async (
   buffer: Buffer,
   folderFqn?: string
 ): Promise<ContextCenterDocument> => {
-  const multipart: UploadMultipart = {
+  const multipart = {
     file: {
       name,
       mimeType: 'text/plain',
       buffer,
     },
+    ...(folderFqn ? { folder: folderFqn } : {}),
   };
-
-  if (folderFqn) {
-    multipart.folder = folderFqn;
-  }
 
   const response = await apiContext.post(
     '/api/v1/contextCenter/drive/files/upload',
@@ -137,7 +126,7 @@ export const responseMatchesRequestPath = (
   response: Response,
   expectedPath: string
 ): boolean => {
-  let request = response.request();
+  let request: Request | null = response.request();
 
   while (request) {
     if (request.url().includes(expectedPath)) {

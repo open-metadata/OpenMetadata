@@ -86,6 +86,12 @@ test.describe('Table Constraints', {}, () => {
         table.additionalEntityTableResponseData[0]?.['columns'][1]
           .fullyQualifiedName;
 
+      if (!relatedColumnFQN) {
+        throw new Error(
+          'The related table column is missing its fully qualified name'
+        );
+      }
+
       await clickOnForeignKeySelector(page);
 
       await selectOptionWithRetry(

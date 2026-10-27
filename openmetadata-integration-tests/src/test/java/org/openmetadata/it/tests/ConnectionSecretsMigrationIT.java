@@ -173,17 +173,23 @@ class ConnectionSecretsMigrationIT {
     String id = created.path("id").asText();
     String path = collection(mlflow) + "/" + id;
     assertEquals(MASK, secret(created, mlflow));
-    assertEquals(MASK, secret(read(SdkClients.testUserClient(), path), mlflow));
+    assertFalse(read(SdkClients.testUserClient(), path).hasNonNull("connection"));
+    assertFalse(
+        read(
+                SdkClients.testUserClient(),
+                collection(mlflow) + "/name/" + created.path("name").asText())
+            .hasNonNull("connection"));
+    assertEquals(MASK, secret(read(SdkClients.adminClient(), path), mlflow));
     assertEquals(
         MASK,
         secret(
             read(
-                SdkClients.testUserClient(),
+                SdkClients.adminClient(),
                 collection(mlflow) + "/name/" + created.path("name").asText()),
             mlflow));
     assertEquals(CURRENT, secret(read(SdkClients.botClient(), path), mlflow));
     JsonNode listed =
-        read(SdkClients.testUserClient(), collection(mlflow) + "?fields=connection&limit=1000000");
+        read(SdkClients.adminClient(), collection(mlflow) + "?fields=connection&limit=1000000");
     assertTrue(listed.path("data").findValuesAsText("id").contains(id));
     listed
         .path("data")
@@ -216,7 +222,7 @@ class ConnectionSecretsMigrationIT {
                 + "\",\"value\":\"*********\"}]");
     write(HttpMethod.PATCH, path, patch);
     assertEquals(CURRENT, secret(read(SdkClients.botClient(), path), mlflow));
-    JsonNode history = read(SdkClients.testUserClient(), path + "/versions");
+    JsonNode history = read(SdkClients.adminClient(), path + "/versions");
     assertFalse(history.path("versions").isEmpty());
     history
         .path("versions")

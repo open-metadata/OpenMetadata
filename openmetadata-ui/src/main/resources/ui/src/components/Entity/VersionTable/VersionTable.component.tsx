@@ -234,7 +234,7 @@ function VersionTable<T extends Column | SearchIndexField>({
     ]
   );
 
-  const versionTableColumns: ColumnsType<T> = useMemo(
+  const versionTableColumns = useMemo<ColumnsType<T>>(
     () => [
       {
         title: t('label.name'),

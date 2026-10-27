@@ -18,23 +18,21 @@ import withVersionFallback, {
 import { EntityType } from '../enums/entity.enum';
 import entityUtilClassBase from './EntityUtilClassBase';
 
-type VersionComponentType = ReturnType<typeof withVersionFallback>;
-
 class EntityVersionClassBase {
-  protected componentMap: Partial<Record<EntityType, VersionComponentType>> = {
+  protected componentMap = {
     [EntityType.TABLE]: withVersionFallback(
       lazy(
         () =>
           import('../components/Database/TableVersion/TableVersion.component')
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.TOPIC]: withVersionFallback(
       lazy(
         () => import('../components/Topic/TopicVersion/TopicVersion.component')
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.DASHBOARD]: withVersionFallback(
       lazy(
         () =>
@@ -43,7 +41,7 @@ class EntityVersionClassBase {
           )
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.PIPELINE]: withVersionFallback(
       lazy(
         () =>
@@ -52,7 +50,7 @@ class EntityVersionClassBase {
           )
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.MLMODEL]: withVersionFallback(
       lazy(
         () =>
@@ -61,7 +59,7 @@ class EntityVersionClassBase {
           )
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.CONTAINER]: withVersionFallback(
       lazy(
         () =>
@@ -70,11 +68,11 @@ class EntityVersionClassBase {
           )
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.SEARCH_INDEX]: withVersionFallback(
       lazy(() => import('../components/SearchIndexVersion/SearchIndexVersion')),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.DASHBOARD_DATA_MODEL]: withVersionFallback(
       lazy(
         () =>
@@ -83,7 +81,7 @@ class EntityVersionClassBase {
           )
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.STORED_PROCEDURE]: withVersionFallback(
       lazy(
         () =>
@@ -92,7 +90,7 @@ class EntityVersionClassBase {
           )
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.API_ENDPOINT]: withVersionFallback(
       lazy(
         () =>
@@ -101,17 +99,17 @@ class EntityVersionClassBase {
           )
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.METRIC]: withVersionFallback(
       lazy(() => import('../components/Metric/MetricVersion/MetricVersion')),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.CHART]: withVersionFallback(
       lazy(
         () => import('../components/Chart/ChartVersion/ChartVersion.component')
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.DIRECTORY]: withVersionFallback(
       lazy(
         () =>
@@ -120,13 +118,13 @@ class EntityVersionClassBase {
           )
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.FILE]: withVersionFallback(
       lazy(
         () => import('../components/DriveService/File/FileVersion/FileVersion')
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.SPREADSHEET]: withVersionFallback(
       lazy(
         () =>
@@ -135,7 +133,7 @@ class EntityVersionClassBase {
           )
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.WORKSHEET]: withVersionFallback(
       lazy(
         () =>
@@ -144,18 +142,18 @@ class EntityVersionClassBase {
           )
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.DATABASE]: withVersionFallback(
       lazy(() => import('../pages/DatabaseVersionPage/DatabaseVersionPage')),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.DATABASE_SCHEMA]: withVersionFallback(
       lazy(
         () =>
           import('../pages/DatabaseSchemaVersionPage/DatabaseSchemaVersionPage')
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.DATA_PRODUCT]: withVersionFallback(
       lazy(
         () =>
@@ -164,17 +162,17 @@ class EntityVersionClassBase {
           )
       ),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
     [EntityType.API_COLLECTION]: withVersionFallback(
       lazy(() => import('../pages/APICollectionPage/APICollectionVersionPage')),
       TAB_CONTENT_FALLBACK
-    ) as VersionComponentType,
+    ),
   };
 
-  public getEntityVersionComponent(
-    entityType: string
-  ): VersionComponentType | null {
-    return this.componentMap[entityType as EntityType] ?? null;
+  public getEntityVersionComponent<
+    T extends keyof EntityVersionClassBase['componentMap']
+  >(entityType: T) {
+    return this.componentMap[entityType] ?? null;
   }
 
   public getEntityDetailComponent(entityType: string): FC | null {

@@ -19,8 +19,10 @@ import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
+import org.openmetadata.service.migration.utils.v208.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
+
   public Migration(final MigrationFile migrationFile) {
     super(migrationFile);
   }
@@ -32,5 +34,24 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ConnectionSecretsEncryptionMigration.STEP_NAME,
         () -> ConnectionSecretsEncryptionMigration.encryptConnectionSecrets(handle, MYSQL));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        MigrationUtil.NEGATED_LIST_DATA_CONTRACT_STEP,
+        () -> MigrationUtil.rewriteDataContractRules(collectionDAO));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        MigrationUtil.NEGATED_LIST_ENTITY_RULES_STEP,
+        MigrationUtil::rewriteEntityRules);
+    // `migrate` runs data migrations before it starts Flowable, and this step deploys workflows.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        MigrationUtil.NEGATED_LIST_WORKFLOW_STEP,
+        () -> {
+          initializeWorkflowHandler();
+          MigrationUtil.rewriteWorkflowRules();
+        });
   }
 }

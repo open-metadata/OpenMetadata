@@ -30,6 +30,7 @@ import org.openmetadata.mcp.auth.exception.AuthorizeException;
 import org.openmetadata.mcp.auth.exception.RegistrationException;
 import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
+import org.openmetadata.mcp.server.auth.html.HtmlTemplates;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
@@ -58,7 +59,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
  *
  * <ol>
  *   <li><b>SSO Flow:</b> Redirects to SSO provider (Google, Okta, Azure, etc.), handles callback,
- *       and generates authorization codes
+ *       asks the user to approve the MCP client, and generates authorization codes
  *   <li><b>Basic Auth Flow:</b> Displays login form, validates username/password, displays
  *       authorization code to user for manual copy
  *   <li>Generates MCP authorization codes linked to authenticated users
@@ -90,6 +91,18 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // Request attribute the persister sets once it has linked the OIDC round-trip state to the MCP
   // pending request, so the provider can confirm the link succeeded before it reports the redirect.
   public static final String MCP_STATE_LINKED = "mcp.state.linked";
+
+  /** Where the consent page posts the user's decision; the transport routes it here. */
+  public static final String CONSENT_PATH = "/mcp/consent";
+
+  // Fields of the consent page (HtmlTemplates.generateConsentForm) posted to CONSENT_PATH.
+  static final String AUTH_REQUEST_ID_PARAM = "auth_request_id";
+  static final String CONSENT_TOKEN_PARAM = "consent_token";
+  static final String CONSENT_DECISION_PARAM = "decision";
+  static final String CONSENT_APPROVE = "approve";
+
+  /** An SSO-authenticated user and the authorization request they have not approved yet. */
+  private record PendingConsent(String token, String authRequestId, String userName) {}
 
   private static final long JWT_EXPIRY_SECONDS = 600L;
 
@@ -471,8 +484,11 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
    * Handle SSO callback using database-backed state lookup. This method survives cross-domain
    * redirects where HTTP session cookies may be lost due to SameSite cookie policies.
    *
+   * <p>No authorization code is issued here. The method ends on a consent page, and {@link
+   * #handleConsentDecision} issues the code once the user approves the client.
+   *
    * @param request The HTTP request from Google callback
-   * @param response The HTTP response to redirect to client
+   * @param response The HTTP response the consent page is written to
    * @param userName The authenticated user's username from Google ID token
    * @param email The authenticated user's email from Google ID token
    * @param ssoState The state parameter from Google callback (contains "mcp:{authRequestId}")
@@ -548,20 +564,45 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           "Pending auth request not found or expired: " + authRequestId);
     }
 
-    // Load client to validate redirect URI (security: prevent open redirect)
-    OAuthClientInformation client = clientRepository.findByClientId(pendingRequest.clientId());
+    final OAuthClientInformation client = requireRegisteredRedirect(pendingRequest);
+
+    // Clients register themselves and the IdP only sees OpenMetadata's own client id, so the round
+    // trip proves who the user is, not that they want this client to act for them. The user
+    // approves the client on our page before a code exists, asked after the round trip so the
+    // answer comes from the browser that authenticated. The pending approval is kept on the
+    // pending request row, not in the HttpSession, so any server can answer the POST.
+    // ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
+    // The id is read back from the stored row, so the page never echoes the request's RelayState.
+    final PendingConsent consent =
+        new PendingConsent(generateSecureToken(32), pendingRequest.authRequestId(), userName);
+    if (pendingAuthRepository.storeConsent(consent.authRequestId(), consent.token(), userName)) {
+      serveConsentPage(response, client, URI.create(pendingRequest.redirectUri()), consent);
+    } else {
+      LOG.warn("MCP authorization request {} already has a sign-in waiting", authRequestId);
+      response.sendError(
+          HttpServletResponse.SC_BAD_REQUEST,
+          "This authorization request was already used. Please restart the authorization flow.");
+    }
+  }
+
+  /**
+   * Loads the client of a pending request and checks its redirect URI is still registered for it
+   * (security: prevent open redirect).
+   */
+  private OAuthClientInformation requireRegisteredRedirect(McpPendingAuthRequest pendingRequest) {
+    final OAuthClientInformation client =
+        clientRepository.findByClientId(pendingRequest.clientId());
     if (client == null) {
       throw new IllegalStateException(
           "Client not found for pending auth request: " + pendingRequest.clientId());
     }
 
     // Validate redirect URI against registered URIs to prevent open redirect attacks
-    URI requestedRedirectUri = URI.create(pendingRequest.redirectUri());
     try {
-      client.validateRedirectUri(requestedRedirectUri);
+      client.validateRedirectUri(URI.create(pendingRequest.redirectUri()));
     } catch (Exception e) {
       LOG.error(
-          "SECURITY ALERT: Redirect URI validation failed in SSO callback for client {}: {}. "
+          "SECURITY ALERT: Redirect URI validation failed in MCP authorization for client {}: {}. "
               + "This may indicate an attack or configuration error.",
           client.getClientId(),
           e.getMessage());
@@ -571,36 +612,126 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
               + ". The redirect URI may have been tampered with.",
           e);
     }
+    return client;
+  }
 
-    // Generate MCP authorization code
-    String authCode =
-        generateAuthorizationCode(
-            userName,
-            pendingRequest.clientId(),
-            pendingRequest.codeChallenge(),
-            requestedRedirectUri,
-            pendingRequest.scopes());
+  private void serveConsentPage(
+      HttpServletResponse response,
+      OAuthClientInformation client,
+      URI redirectUri,
+      PendingConsent consent)
+      throws IOException {
+    LOG.info("Serving consent page for MCP client {}", client.getClientId());
+    response.setStatus(HttpServletResponse.SC_OK);
+    response.setContentType("text/html; charset=UTF-8");
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("X-Frame-Options", "DENY");
+    // Added next to any policy the web security headers set; browsers enforce both.
+    response.addHeader("Content-Security-Policy", "frame-ancestors 'none'");
+    response
+        .getWriter()
+        .write(
+            HtmlTemplates.generateConsentForm(
+                client.getClientName(),
+                consent.userName(),
+                describeRedirectTarget(redirectUri),
+                UriUtils.withoutTrailingSlash(getBaseUrl())
+                    + CONSENT_PATH
+                    + "?"
+                    + AUTH_REQUEST_ID_PARAM
+                    + "="
+                    + consent.authRequestId(),
+                consent.token()));
+  }
 
-    LOG.debug("Generated MCP authorization code via SSO");
+  /**
+   * Handles the POST of the consent page served by {@link #handleSSOCallbackWithDbState}: issues
+   * the authorization code if the user approved the MCP client and relays {@code access_denied}
+   * (RFC 6749 §4.1.2.1) otherwise.
+   *
+   * <p>The user comes from the pending request row, never from the form. The form carries the
+   * request id, the decision and the single-use token of the rendered page, which only the browser
+   * that was shown the page has, so another site cannot submit the approval on the user's behalf.
+   */
+  public void handleConsentDecision(HttpServletRequest request, HttpServletResponse response)
+      throws IOException {
+    final String authRequestId = request.getParameter(AUTH_REQUEST_ID_PARAM);
+    final String userName =
+        pendingAuthRepository.takeConsent(authRequestId, request.getParameter(CONSENT_TOKEN_PARAM));
+    if (userName == null) {
+      LOG.warn("No waiting MCP client approval matches the submitted consent");
+      response.sendError(
+          HttpServletResponse.SC_FORBIDDEN,
+          "This approval is no longer valid. Please restart the authorization flow.");
+    } else {
+      final boolean approved = CONSENT_APPROVE.equals(request.getParameter(CONSENT_DECISION_PARAM));
+      relayConsentDecision(authRequestId, userName, approved, response);
+    }
+  }
 
-    // Build redirect URL with MCP state (original client state, not SSO state)
-    // Properly encode query parameters to prevent injection attacks
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("code", authCode);
+  private void relayConsentDecision(
+      String authRequestId, String userName, boolean approved, HttpServletResponse response)
+      throws IOException {
+    final McpPendingAuthRequest pendingRequest =
+        pendingAuthRepository.findByAuthRequestId(authRequestId);
+    if (pendingRequest == null) {
+      response.sendError(
+          HttpServletResponse.SC_BAD_REQUEST,
+          "Authorization request expired. Please restart the flow.");
+    } else {
+      // The client may have been removed or changed since the consent page was served.
+      requireRegisteredRedirect(pendingRequest);
+      final String redirectUrl =
+          UriUtils.constructAuthorizationResponseUri(
+              pendingRequest.redirectUri(),
+              consentResponseParams(userName, pendingRequest, approved),
+              issuer);
+      serveConsentOutcome(response, redirectUrl, approved, pendingRequest.clientId());
+      deletePendingRequest(authRequestId);
+    }
+  }
+
+  /** The client callback's query: a code on approval, {@code access_denied} otherwise. */
+  private Map<String, String> consentResponseParams(
+      String userName, McpPendingAuthRequest pendingRequest, boolean approved) {
+    final Map<String, String> queryParams = new HashMap<>();
+    if (approved) {
+      queryParams.put(
+          "code",
+          generateAuthorizationCode(
+              userName,
+              pendingRequest.clientId(),
+              pendingRequest.codeChallenge(),
+              URI.create(pendingRequest.redirectUri()),
+              pendingRequest.scopes()));
+      LOG.debug("Generated MCP authorization code via SSO");
+    } else {
+      queryParams.put("error", "access_denied");
+    }
+    // The original client state, not the SSO state
     if (pendingRequest.mcpState() != null) {
       queryParams.put("state", pendingRequest.mcpState());
     }
-    String redirectUrl =
-        UriUtils.constructAuthorizationResponseUri(
-            pendingRequest.redirectUri(), queryParams, issuer);
+    return queryParams;
+  }
 
-    // Serve an HTML success page that auto-redirects to the client callback.
-    // A raw 302 redirect leaves the SSO provider's login page visible in the browser
-    // (e.g., Azure's "Enter password" form stuck with loading dots). By serving our own
-    // HTML page first, the browser replaces the SSO page with a clear success message.
-    LOG.info("Serving success page with redirect to client callback");
-    serveSuccessPage(response, redirectUrl);
+  private void serveConsentOutcome(
+      HttpServletResponse response, String redirectUrl, boolean approved, String clientId)
+      throws IOException {
+    if (approved) {
+      LOG.info("Serving success page with redirect to client callback");
+      serveSuccessPage(response, redirectUrl);
+    } else {
+      LOG.info("User denied MCP client {}", clientId);
+      serveErrorPage(
+          response,
+          redirectUrl,
+          "Access Denied",
+          "You did not approve access for the application.");
+    }
+  }
 
+  private void deletePendingRequest(String authRequestId) {
     // Best-effort cleanup — failure here doesn't affect the user
     try {
       pendingAuthRepository.delete(authRequestId);
@@ -610,6 +741,20 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           authRequestId,
           e.getMessage());
     }
+  }
+
+  /**
+   * What the consent page shows as the place the authorization code will be sent to. The client
+   * name is chosen by whoever registered the client, so this is the one thing on the page the user
+   * can check. Userinfo, path and query are left out because they can be made to look like a host.
+   * The raw authority is used rather than {@link URI#getHost()}, which is null for hosts such as
+   * {@code a_b.example} that a browser still navigates to.
+   */
+  private static String describeRedirectTarget(URI redirectUri) {
+    final String authority = redirectUri.getRawAuthority();
+    final String hostAndPort =
+        authority == null ? "" : "//" + authority.substring(authority.lastIndexOf('@') + 1);
+    return redirectUri.getScheme() + ":" + hostAndPort;
   }
 
   /**
@@ -696,7 +841,11 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         errorDescription,
         pendingRequest.clientId(),
         pendingRequest.redirectUri());
-    serveErrorPage(response, redirectUrl);
+    serveErrorPage(
+        response,
+        redirectUrl,
+        "Authentication Failed",
+        "The identity provider could not complete authentication.");
 
     // Best-effort cleanup — failure here doesn't affect the relayed error.
     try {
@@ -1084,10 +1233,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   }
 
   /**
-   * Serves an HTML success page that auto-redirects to the client callback URL.
-   * A raw 302 redirect leaves the SSO provider's login page visible in the browser
-   * (e.g., Azure's "Enter password" form stuck with loading dots). By serving our own
-   * HTML page first, the browser replaces the SSO page with a clear success message.
+   * Serves an HTML success page that auto-redirects to the client callback URL, so the browser
+   * replaces the consent form with a clear success message.
    */
   private void serveSuccessPage(HttpServletResponse response, String redirectUrl)
       throws IOException {
@@ -1185,7 +1332,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   }
 
   /**
-   * Serves an HTML page that informs the user authentication failed and auto-redirects the
+   * Serves an HTML page that informs the user no access was granted and auto-redirects the
    * browser to the MCP client's {@code redirect_uri} carrying the OAuth error response.
    *
    * <p>Mirrors {@link #serveSuccessPage}: a raw 302 would leave the browser on the SSO callback
@@ -1197,7 +1344,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
    * the registered client and this server's own config. The raw upstream values are in the WARN
    * log in {@link #handleSSOErrorCallback} for the operator.
    */
-  private void serveErrorPage(HttpServletResponse response, String redirectUrl) throws IOException {
+  private void serveErrorPage(
+      HttpServletResponse response, String redirectUrl, String title, String message)
+      throws IOException {
     response.setStatus(HttpServletResponse.SC_OK);
     response.setContentType("text/html; charset=UTF-8");
 
@@ -1222,8 +1371,12 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
                 + "p{margin:4px 0;color:#666}"
                 + "</style></head><body>"
                 + "<div class=\"card\">"
-                + "<h1>Authentication Failed</h1>"
-                + "<p>The identity provider could not complete authentication.</p>"
+                + "<h1>"
+                + HtmlTemplates.escapeHtml(title)
+                + "</h1>"
+                + "<p>"
+                + HtmlTemplates.escapeHtml(message)
+                + "</p>"
                 + "<p style=\"font-size:13px;margin-top:16px\">"
                 + "Redirecting back to your application...</p>"
                 + "</div>"

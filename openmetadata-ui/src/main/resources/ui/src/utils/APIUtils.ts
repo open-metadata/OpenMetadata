@@ -139,18 +139,19 @@ export const parseExportErrorMessage = async (
 
 export const omitDeep = <T>(
   obj: T,
-  predicate: (value: string, key: string | number | symbol) => boolean
+  predicate: (value: unknown, key: string | number | symbol) => boolean
 ): T => {
   return transform(obj as object, function (result, value, key) {
-    if (isObject(value)) {
-      value = omitDeep(value, predicate) as unknown as string;
-    }
-    const doOmit = predicate(value, key);
+    const transformedValue = isObject(value)
+      ? omitDeep(value, predicate)
+      : value;
+    const doOmit = predicate(transformedValue, key);
     if (!doOmit) {
       if (isArray(obj) && isArray(result)) {
-        result.push(value);
+        result.push(transformedValue);
       } else {
-        (result as Record<string | number | symbol, unknown>)[key] = value;
+        (result as Record<string | number | symbol, unknown>)[key] =
+          transformedValue;
       }
     }
   });

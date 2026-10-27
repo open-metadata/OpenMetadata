@@ -6,6 +6,38 @@ import { Edit01 } from '@/icons';
 import { Button } from './button';
 import { ButtonUtility } from './button-utility';
 
+describe('ButtonUtility activation', () => {
+  it('supports pointer and keyboard presses', async () => {
+    const user = userEvent.setup();
+    const onPress = vi.fn();
+    render(<ButtonUtility tooltip="Edit" onPress={onPress} />);
+    const button = screen.getByRole('button', { name: 'Edit' });
+
+    await user.click(button);
+    await user.keyboard('{Enter}');
+    await user.keyboard(' ');
+
+    expect(onPress.mock.calls.map(([event]) => event.pointerType)).toEqual([
+      'mouse',
+      'keyboard',
+      'keyboard',
+    ]);
+  });
+
+  it('does not press a disabled button', async () => {
+    const user = userEvent.setup();
+    const onPress = vi.fn();
+    render(<ButtonUtility isDisabled tooltip="Edit" onPress={onPress} />);
+    const button = screen.getByRole('button', { name: 'Edit' });
+
+    expect(button).toBeDisabled();
+
+    await user.click(button);
+
+    expect(onPress).not.toHaveBeenCalled();
+  });
+});
+
 describe('Button', () => {
   it('renders its children', () => {
     render(<Button>Click me</Button>);
