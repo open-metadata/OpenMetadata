@@ -970,7 +970,7 @@ public class MetricRepository extends EntityRepository<Metric> {
     private void updateRelatedMetrics(Metric original, Metric updated) {
       List<EntityReference> originalRelatedMetrics = listOrEmpty(original.getRelatedMetrics());
       List<EntityReference> updatedRelatedMetrics =
-          operation.isPut() && updatedByBot() && !overrideMetadata
+          operation.isPut() && updatedByBot()
               ? withUnrequestedRelatedMetrics(originalRelatedMetrics, updated.getRelatedMetrics())
               : listOrEmpty(updated.getRelatedMetrics());
       updated.setRelatedMetrics(updatedRelatedMetrics);
@@ -987,11 +987,8 @@ public class MetricRepository extends EntityRepository<Metric> {
     }
 
     /**
-     * A related-metric edge is one undirected relationship read from both ends, but ingestion PUTs
-     * each metric with only the metrics it references. A bot PUT therefore never drops an edge the
-     * request did not repeat; otherwise every re-ingestion deletes and re-adds each edge, versioning
-     * both ends (#34920). A user PUT, PATCH, or a bot force-sync (overrideMetadata) still replaces
-     * the list. See ADR:2026-10-27-a-bot-put-never-removes-a-related-metric-edge.
+     * A bot PUT adds related metrics and never removes one. See
+     * ADR:2026-10-27-a-bot-put-never-removes-a-related-metric-edge.
      */
     private List<EntityReference> withUnrequestedRelatedMetrics(
         List<EntityReference> original, List<EntityReference> requested) {

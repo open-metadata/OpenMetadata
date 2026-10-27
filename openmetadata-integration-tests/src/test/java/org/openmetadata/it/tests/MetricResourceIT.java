@@ -2361,17 +2361,30 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
-  void put_byBotKeepsUnrepeatedRelatedMetricUnlessOverridingMetadata(TestNamespace ns)
-      throws Exception {
-    Metric referenced = createEntity(createRequest(ns.prefix("bot_put_referenced_metric"), ns));
+  void put_byBotNeverRemovesRelatedMetric(TestNamespace ns) throws Exception {
+    String referencedName = ns.prefix("bot_put_referenced_metric");
     String referencingName = ns.prefix("bot_put_referencing_metric");
+    Metric referenced = createEntity(createRequest(referencedName, ns));
     Metric referencing =
         createEntity(
             createRequest(referencingName, ns)
                 .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
     String botToken = BulkApi.botToken();
 
-    BulkApi.upsert("metrics", List.of(createRequest(referencingName, ns)), false, botToken);
+    BulkOperationResult dropped =
+        BulkApi.upsert("metrics", List.of(createRequest(referencingName, ns)), false, botToken);
+    BulkOperationResult forceSynced =
+        BulkApi.upsert(
+            "metrics",
+            List.of(
+                createRequest(referencedName, ns),
+                createRequest(referencingName, ns)
+                    .withRelatedMetrics(List.of(referenced.getFullyQualifiedName()))),
+            true,
+            botToken);
+
+    assertEquals(0, dropped.getNumberOfRowsFailed());
+    assertEquals(0, forceSynced.getNumberOfRowsFailed());
     assertEquals(
         List.of(referenced.getId()),
         getEntityWithFields(referencing.getId().toString(), "relatedMetrics")
@@ -2379,10 +2392,13 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
             .stream()
             .map(EntityReference::getId)
             .toList());
-
-    BulkApi.upsert("metrics", List.of(createRequest(referencingName, ns)), true, botToken);
-    assertNoRelatedMetrics(referenced);
-    assertNoRelatedMetrics(referencing);
+    assertEquals(
+        List.of(referencing.getId()),
+        getEntityWithFields(referenced.getId().toString(), "relatedMetrics")
+            .getRelatedMetrics()
+            .stream()
+            .map(EntityReference::getId)
+            .toList());
   }
 
   @Test
