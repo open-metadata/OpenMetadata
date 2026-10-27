@@ -194,15 +194,17 @@ class DbtSource(DbtServiceSource):
     def lineage_connection_type(self) -> str:
         # The server returns a service connection only to bots and to users who can edit the
         # service, so a run with a personal token may have none; serviceType names the same dialect
-        if self.config.serviceConnection is not None:
-            return str(self.config.serviceConnection.root.config.type.value)
+        connection_config = self.config.serviceConnection.root.config if self.config.serviceConnection else None
+        if connection_config is not None and connection_config.type is not None:
+            return str(connection_config.type.value)
+        service_name = self.config.serviceName
+        if not service_name:
+            return ""
         try:
-            service = self.metadata.get_by_name(entity=DatabaseService, fqn=self.config.serviceName)
+            service = self.metadata.get_by_name(entity=DatabaseService, fqn=service_name)
         except APIError as exc:
             # Cached as well, so one failed read does not repeat for every model
-            logger.warning(
-                "Parsing dbt lineage as ANSI SQL: could not read service [%s]: %s", self.config.serviceName, exc
-            )
+            logger.warning("Parsing dbt lineage as ANSI SQL: could not read service [%s]: %s", service_name, exc)
             return ""
         return str(service.serviceType.value) if service else ""
 
