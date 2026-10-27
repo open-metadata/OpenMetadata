@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "{{modules}} gerektirir",
     "ontology-pack-module-description": "Bağımlılıklar otomatik seçilir ve sayılar anında güncellenir.",
     "ontology-pack-preview-description": "Seçilen modüller standardın çevresinde vurgulanır.",
+    "ontology-prefix-check-unavailable": "Ad alanı denetlenmeden önce ontoloji listesinin yüklenmesi gerekir.",
     "ontology-prefix-in-use": "Başka bir ontoloji bu ad alanını zaten kullanıyor. Ön eki değiştirin.",
     "ontology-preview-ready": "Önizleme oluşturuldu",
     "ontology-property-not-bound": "Not bound to a column",

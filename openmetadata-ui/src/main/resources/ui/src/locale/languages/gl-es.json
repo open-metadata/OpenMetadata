@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "Require {{modules}}",
     "ontology-pack-module-description": "As dependencias selecciónanse automaticamente e os recontos actualízanse de inmediato.",
     "ontology-pack-preview-description": "Os módulos seleccionados aparecen resaltados arredor do estándar.",
+    "ontology-prefix-check-unavailable": "A lista de ontoloxías debe cargarse antes de poder comprobar o espazo de nomes.",
     "ontology-prefix-in-use": "Outra ontoloxía xa usa este espazo de nomes. Cambia o prefixo.",
     "ontology-preview-ready": "Vista previa xerada",
     "ontology-property-not-bound": "Not bound to a column",

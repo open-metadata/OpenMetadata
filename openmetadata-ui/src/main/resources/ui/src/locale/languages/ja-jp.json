@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "{{modules}} が必要です",
     "ontology-pack-module-description": "依存関係は自動的に選択され、件数はすぐに更新されます。",
     "ontology-pack-preview-description": "選択したモジュールが標準の周囲に強調表示されます。",
+    "ontology-prefix-check-unavailable": "名前空間を確認するには、先にオントロジー一覧を読み込む必要があります。",
     "ontology-prefix-in-use": "別のオントロジーがすでにこの名前空間を使用しています。プレフィックスを変更してください。",
     "ontology-preview-ready": "プレビューを生成しました",
     "ontology-property-not-bound": "Not bound to a column",

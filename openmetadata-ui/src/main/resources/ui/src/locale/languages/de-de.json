@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "Erfordert {{modules}}",
     "ontology-pack-module-description": "Abhängigkeiten werden automatisch ausgewählt und Zähler sofort aktualisiert.",
     "ontology-pack-preview-description": "Ausgewählte Module werden um den Standard hervorgehoben.",
+    "ontology-prefix-check-unavailable": "Die Ontologieliste muss geladen sein, bevor der Namensraum geprüft werden kann.",
     "ontology-prefix-in-use": "Eine andere Ontologie verwendet diesen Namensraum bereits. Ändern Sie das Präfix.",
     "ontology-preview-ready": "Vorschau erstellt",
     "ontology-property-not-bound": "Not bound to a column",

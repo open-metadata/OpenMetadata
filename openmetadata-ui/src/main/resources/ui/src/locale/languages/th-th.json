@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "ต้องใช้ {{modules}}",
     "ontology-pack-module-description": "ระบบจะเลือกการขึ้นต่อกันโดยอัตโนมัติและอัปเดตจำนวนทันที",
     "ontology-pack-preview-description": "โมดูลที่เลือกจะถูกเน้นรอบมาตรฐาน",
+    "ontology-prefix-check-unavailable": "ต้องโหลดรายการออนโทโลยีก่อนจึงจะตรวจสอบเนมสเปซได้",
     "ontology-prefix-in-use": "ออนโทโลยีอื่นใช้เนมสเปซนี้อยู่แล้ว โปรดเปลี่ยนคำนำหน้า",
     "ontology-preview-ready": "สร้างตัวอย่างแล้ว",
     "ontology-property-not-bound": "Not bound to a column",

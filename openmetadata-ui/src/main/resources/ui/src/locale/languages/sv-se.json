@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "Kräver {{modules}}",
     "ontology-pack-module-description": "Beroenden väljs automatiskt och antalen uppdateras omedelbart.",
     "ontology-pack-preview-description": "Valda moduler markeras runt standarden.",
+    "ontology-prefix-check-unavailable": "Ontologilistan måste laddas innan namnrymden kan kontrolleras.",
     "ontology-prefix-in-use": "En annan ontologi använder redan den här namnrymden. Ändra prefixet.",
     "ontology-preview-ready": "Förhandsvisning genererad",
     "ontology-property-not-bound": "Not bound to a column",

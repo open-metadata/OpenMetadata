@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "需要 {{modules}}",
     "ontology-pack-module-description": "系统会自动选择依赖项并立即更新数量。",
     "ontology-pack-preview-description": "所选模块会在标准周围突出显示。",
+    "ontology-prefix-check-unavailable": "需先加载本体列表，才能检查命名空间。",
     "ontology-prefix-in-use": "已有其他本体使用此命名空间。请更改前缀。",
     "ontology-preview-ready": "已生成预览",
     "ontology-property-not-bound": "Not bound to a column",

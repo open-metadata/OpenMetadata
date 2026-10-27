@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "{{modules}} आवश्यक",
     "ontology-pack-module-description": "अवलंबित्वे आपोआप निवडली जातात आणि संख्या त्वरित अद्ययावत होतात.",
     "ontology-pack-preview-description": "निवडलेली मॉड्यूल मानकाभोवती ठळक केली आहेत.",
+    "ontology-prefix-check-unavailable": "नामविश्व तपासण्यापूर्वी ऑन्टोलॉजी यादी लोड होणे आवश्यक आहे.",
     "ontology-prefix-in-use": "दुसरी ऑन्टोलॉजी आधीपासून हे नामविश्व वापरत आहे. उपसर्ग बदला.",
     "ontology-preview-ready": "पूर्वावलोकन तयार केले",
     "ontology-property-not-bound": "Not bound to a column",

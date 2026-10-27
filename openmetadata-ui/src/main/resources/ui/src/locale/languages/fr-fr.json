@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "Nécessite {{modules}}",
     "ontology-pack-module-description": "Les dépendances sont sélectionnées automatiquement et les compteurs sont mis à jour immédiatement.",
     "ontology-pack-preview-description": "Les modules sélectionnés sont mis en évidence autour de la norme.",
+    "ontology-prefix-check-unavailable": "La liste des ontologies doit être chargée avant de pouvoir vérifier l'espace de noms.",
     "ontology-prefix-in-use": "Une autre ontologie utilise déjà cet espace de noms. Modifiez le préfixe.",
     "ontology-preview-ready": "Aperçu généré",
     "ontology-property-not-bound": "Not bound to a column",

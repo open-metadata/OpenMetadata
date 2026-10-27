@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "Requires {{modules}}",
     "ontology-pack-module-description": "Dependencies are selected automatically and counts update immediately.",
     "ontology-pack-preview-description": "Selected modules are highlighted around the standard.",
+    "ontology-prefix-check-unavailable": "The ontology list must load before the namespace can be checked.",
     "ontology-prefix-in-use": "Another ontology already uses this namespace. Change the prefix.",
     "ontology-preview-ready": "Preview generated",
     "ontology-property-not-bound": "Not bound to a column",

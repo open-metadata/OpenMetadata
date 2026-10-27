@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "Richiede {{modules}}",
     "ontology-pack-module-description": "Le dipendenze vengono selezionate automaticamente e i conteggi si aggiornano subito.",
     "ontology-pack-preview-description": "I moduli selezionati sono evidenziati attorno allo standard.",
+    "ontology-prefix-check-unavailable": "L'elenco delle ontologie deve essere caricato prima di poter controllare il namespace.",
     "ontology-prefix-in-use": "Un'altra ontologia usa già questo namespace. Cambia il prefisso.",
     "ontology-preview-ready": "Anteprima generata",
     "ontology-property-not-bound": "Not bound to a column",

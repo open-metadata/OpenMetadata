@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "Требуется {{modules}}",
     "ontology-pack-module-description": "Зависимости выбираются автоматически, а счётчики обновляются сразу.",
     "ontology-pack-preview-description": "Выбранные модули выделены вокруг стандарта.",
+    "ontology-prefix-check-unavailable": "Чтобы проверить пространство имён, сначала необходимо загрузить список онтологий.",
     "ontology-prefix-in-use": "Другая онтология уже использует это пространство имён. Измените префикс.",
     "ontology-preview-ready": "Предпросмотр создан",
     "ontology-property-not-bound": "Not bound to a column",

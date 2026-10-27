@@ -40,7 +40,7 @@ import {
 const RDF_STATUS_QUERY_KEY = 'ontology-rdf-status';
 
 interface OntologyCreateDialogProps {
-  readonly ontologies: readonly Ontology[];
+  readonly ontologies: readonly Ontology[] | undefined;
   readonly onClose: () => void;
   readonly onCreated: (ontology: Ontology) => void;
 }
@@ -67,11 +67,13 @@ const OntologyCreateDialog = ({
   const isPrefixValid = isValidPrefix(prefix);
   const preview = baseUri ? ontologyIris(baseUri, prefix).namespace : '';
   const isPrefixTaken =
-    isPrefixValid && ontologies.some(({ namespace }) => namespace === preview);
+    isPrefixValid &&
+    Boolean(ontologies?.some(({ namespace }) => namespace === preview));
   const canCreate = [
     Boolean(name.trim()),
     isPrefixValid,
     !isPrefixTaken,
+    Boolean(ontologies),
     Boolean(baseUri),
     !isSaving,
   ].every(Boolean);
@@ -81,7 +83,13 @@ const OntologyCreateDialog = ({
       return t('message.invalid-ontology-prefix');
     }
 
-    return isPrefixTaken ? t('message.ontology-prefix-in-use') : undefined;
+    if (isPrefixTaken) {
+      return t('message.ontology-prefix-in-use');
+    }
+
+    return ontologies
+      ? undefined
+      : t('message.ontology-prefix-check-unavailable');
   };
 
   const handleClose = () => {

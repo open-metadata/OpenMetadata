@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "به {{modules}} نیاز دارد",
     "ontology-pack-module-description": "وابستگی‌ها به‌طور خودکار انتخاب می‌شوند و شمارش‌ها فوراً به‌روزرسانی می‌شوند.",
     "ontology-pack-preview-description": "ماژول‌های انتخاب‌شده پیرامون استاندارد برجسته می‌شوند.",
+    "ontology-prefix-check-unavailable": "پیش از بررسی فضای نام، فهرست هستی‌شناسی‌ها باید بارگذاری شود.",
     "ontology-prefix-in-use": "هستی‌شناسی دیگری هم‌اکنون از این فضای نام استفاده می‌کند. پیشوند را تغییر دهید.",
     "ontology-preview-ready": "پیش‌نمایش ایجاد شد",
     "ontology-property-not-bound": "Not bound to a column",

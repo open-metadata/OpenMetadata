@@ -1938,7 +1938,11 @@ const OntologyExplorerPage: React.FC = () => {
       {renderPublicationModal()}
       {isCreateDialogOpen ? (
         <OntologyCreateDialog
-          ontologies={availableOntologies}
+          ontologies={
+            studioScopes.isOntologyLoading || studioScopes.isOntologyError
+              ? undefined
+              : availableOntologies
+          }
           onClose={() => setIsCreateDialogOpen(false)}
           onCreated={handleOntologyCreated}
         />

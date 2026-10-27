@@ -5642,6 +5642,7 @@
     "ontology-pack-module-dependencies": "يتطلب {{modules}}",
     "ontology-pack-module-description": "يتم تحديد التبعيات تلقائيًا وتتحدث الأعداد فورًا.",
     "ontology-pack-preview-description": "يتم تمييز الوحدات المحددة حول المعيار.",
+    "ontology-prefix-check-unavailable": "يجب تحميل قائمة الأنطولوجيات قبل أن يمكن التحقق من نطاق الأسماء.",
     "ontology-prefix-in-use": "هناك أنطولوجيا أخرى تستخدم نطاق الأسماء هذا بالفعل. غيّر البادئة.",
     "ontology-preview-ready": "تم إنشاء المعاينة",
     "ontology-property-not-bound": "Not bound to a column",
