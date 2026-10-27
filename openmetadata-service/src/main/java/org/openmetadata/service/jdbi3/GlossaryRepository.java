@@ -621,27 +621,18 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     ConversationRepository conversations = Entity.getConversationRepository();
     conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
 
-    List<GlossaryTerm> childTerms = getAllTerms(updated);
-
-    // A glossary rename cascades the FQN to every child term, so their open approval tasks (keyed
-    // by
-    // aboutFqnHash) and workflow-instance relatedEntity must follow the rename exactly as a term
-    // move/rename does — otherwise the tasks become unfindable at the new FQN and the workflow
-    // history card goes stale.
-    Map<String, String> taskFqnHashUpdates = new HashMap<>();
-    for (GlossaryTerm child : childTerms) {
+    for (GlossaryTerm child : getAllTerms(updated)) {
       String childNewFqn = child.getFullyQualifiedName();
       if (!nullOrEmpty(childNewFqn) && childNewFqn.startsWith(newFqn)) {
         String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
         conversations.updateEntityReference(child.getEntityReference(), childOldFqn);
-        taskFqnHashUpdates.put(
-            FullyQualifiedName.buildHash(childOldFqn), FullyQualifiedName.buildHash(childNewFqn));
       }
     }
-    // The glossary FQN is the prefix of every child term's FQN, so one subtree repoint covers them
-    // all; child approval tasks (opaque hash) are rewritten per term.
-    updateTaskAboutFqnHashes(taskFqnHashUpdates);
-    repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
+  }
+
+  @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(GLOSSARY_TERM);
   }
 
   private List<GlossaryTerm> getAllTerms(Glossary glossary) {

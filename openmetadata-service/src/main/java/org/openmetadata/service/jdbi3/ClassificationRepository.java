@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -105,6 +106,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       Operation operation,
       ChangeSource changeSource) {
     return new ClassificationUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(TAG);
   }
 
   @Override

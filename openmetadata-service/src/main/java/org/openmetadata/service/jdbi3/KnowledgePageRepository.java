@@ -324,6 +324,11 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(Entity.PAGE);
+  }
+
+  @Override
   public void setFullyQualifiedName(Page page) {
     if (page.getParent() == null) {
       page.setFullyQualifiedName(page.getName());
