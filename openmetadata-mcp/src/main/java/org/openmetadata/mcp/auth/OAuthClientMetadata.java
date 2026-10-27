@@ -5,7 +5,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * RFC 7591 OAuth 2.0 Dynamic Client Registration metadata. See
@@ -16,12 +18,12 @@ import java.util.List;
 public class OAuthClientMetadata {
 
   /**
-   * Most scopes one authorization or refresh request may name. The granted list is stored with the
-   * code and refresh token, put in the JWT and compared on every refresh, so its length must not
-   * grow with the request body. A registration (scope capped at 255 characters) cannot name more
-   * than this. ADR:2026-10-26-mcp-oauth-requests-name-at-most-128-scopes
+   * Every scope the server's OAuth metadata can advertise. Authorization and refresh keep only
+   * these and drop the rest, so a granted list stays this short however many scopes a request
+   * names. ADR:2026-10-27-mcp-oauth-keeps-only-the-scopes-it-knows
    */
-  public static final int MAX_REQUESTED_SCOPES = 128;
+  public static final Set<String> KNOWN_SCOPES =
+      Set.of("openid", "profile", "email", "offline_access");
 
   @JsonProperty("redirect_uris")
   private List<URI> redirectUris;
@@ -81,7 +83,7 @@ public class OAuthClientMetadata {
    * all requested scopes are allowed.
    * @param requestedScope The scope requested by the client
    * @return List of validated scopes or null if no scope was requested
-   * @throws InvalidScopeException if the requested scope is not allowed or names too many scopes
+   * @throws InvalidScopeException if the requested scope is not allowed
    */
   public List<String> validateScope(String requestedScope) throws InvalidScopeException {
     if (requestedScope == null) {
@@ -89,15 +91,10 @@ public class OAuthClientMetadata {
     }
 
     List<String> requestedScopes = Arrays.asList(requestedScope.split(" "));
-    if (requestedScopes.size() > MAX_REQUESTED_SCOPES) {
-      throw new InvalidScopeException(
-          "At most " + MAX_REQUESTED_SCOPES + " scopes can be requested");
-    }
-    requestedScopes = requestedScopes.stream().distinct().toList();
 
     // If client didn't register specific scopes, allow any scope
     if (scope == null || scope.trim().isEmpty()) {
-      return requestedScopes;
+      return grantedScopes(requestedScopes);
     }
 
     List<String> allowedScopes = Arrays.asList(scope.split(" "));
@@ -109,7 +106,18 @@ public class OAuthClientMetadata {
       }
     }
 
-    return requestedScopes;
+    return grantedScopes(requestedScopes);
+  }
+
+  /** The known scopes among {@code scopes}, each once, in request order. */
+  public static List<String> keepKnownScopes(Collection<String> scopes) {
+    return scopes.stream().filter(KNOWN_SCOPES::contains).distinct().toList();
+  }
+
+  /** Null when no known scope is left, so the request gets the default scopes. */
+  private static List<String> grantedScopes(List<String> requestedScopes) {
+    List<String> known = keepKnownScopes(requestedScopes);
+    return known.isEmpty() ? null : known;
   }
 
   /**

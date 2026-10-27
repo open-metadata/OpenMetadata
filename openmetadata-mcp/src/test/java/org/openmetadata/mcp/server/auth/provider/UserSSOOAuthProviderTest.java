@@ -10,7 +10,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,13 +17,12 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.net.URI;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
-import org.openmetadata.mcp.auth.OAuthClientMetadata;
 import org.openmetadata.mcp.auth.RefreshToken;
 import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
@@ -362,59 +360,20 @@ class UserSSOOAuthProviderTest {
   // ── refresh token exchange ────────────────────────────────────────────────
 
   @Test
-  void exchangeRefreshToken_moreScopesThanTheLimit_isRefusedBeforeAnyLookup() throws Exception {
-    OAuthTokenRepository tokenRepo = mock(OAuthTokenRepository.class);
-    UserSSOOAuthProvider provider =
-        newProvider(
-            mock(McpPendingAuthRequestRepository.class), mock(OAuthClientRepository.class), ISSUER);
-    setField(provider, "tokenRepository", tokenRepo);
-    RefreshToken refreshToken = new RefreshToken();
-    refreshToken.setToken("refresh-token");
-    List<String> tooMany =
-        Collections.nCopies(OAuthClientMetadata.MAX_REQUESTED_SCOPES + 1, "openid");
+  void exchangeRefreshToken_aGrantHoldingUnknownScopes_stillRefreshes() throws Exception {
+    List<String> granted = new ArrayList<>(List.of("openid"));
+    IntStream.range(0, 10_000).mapToObj(index -> "scope" + index).forEach(granted::add);
 
-    TokenException refused =
-        assertThrows(
-            TokenException.class,
-            () -> provider.exchangeRefreshToken(registeredClient(), refreshToken, tooMany));
-
-    assertThat(refused.getError()).isEqualTo("invalid_scope");
-    verifyNoInteractions(tokenRepo);
-  }
-
-  @Test
-  void exchangeRefreshToken_aGrantHoldingMoreScopesThanTheLimit_mustSignInAgain() throws Exception {
-    OAuthTokenRepository tokenRepo = mock(OAuthTokenRepository.class);
-
-    TokenException refused =
-        refreshFailure(
-            tokenRepo, distinctScopes(OAuthClientMetadata.MAX_REQUESTED_SCOPES + 1), null);
-
-    assertThat(refused.getError()).isEqualTo("invalid_grant");
-    verify(tokenRepo).revokeRefreshToken("refresh-token");
-  }
-
-  @Test
-  void exchangeRefreshToken_aGrantAtTheLimit_stillRefreshes() throws Exception {
-    assertThat(
-            refreshFailure(
-                mock(OAuthTokenRepository.class),
-                distinctScopes(OAuthClientMetadata.MAX_REQUESTED_SCOPES),
-                null))
-        .isNull();
+    assertThat(refreshFailure(mock(OAuthTokenRepository.class), granted, null)).isNull();
   }
 
   @Test
   void exchangeRefreshToken_askingForAScopeNeverGranted_isRefused() throws Exception {
     TokenException refused =
         refreshFailure(
-            mock(OAuthTokenRepository.class), List.of("openid"), List.of("openid", "admin"));
+            mock(OAuthTokenRepository.class), List.of("openid"), List.of("openid", "email"));
 
     assertThat(refused.getError()).isEqualTo("invalid_scope");
-  }
-
-  private static List<String> distinctScopes(int count) {
-    return IntStream.range(0, count).mapToObj(index -> "scope" + index).toList();
   }
 
   /**

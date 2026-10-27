@@ -5,8 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class OAuthClientMetadataTest {
@@ -24,9 +22,9 @@ class OAuthClientMetadataTest {
     OAuthClientMetadata metadata = new OAuthClientMetadata();
     metadata.setScope(null);
 
-    List<String> result = metadata.validateScope("custom admin");
+    List<String> result = metadata.validateScope("custom openid admin profile");
 
-    assertThat(result).containsExactly("custom", "admin");
+    assertThat(result).containsExactly("openid", "profile");
   }
 
   @Test
@@ -34,35 +32,28 @@ class OAuthClientMetadataTest {
     OAuthClientMetadata metadata = new OAuthClientMetadata();
     metadata.setScope("  ");
 
-    List<String> result = metadata.validateScope("anything");
+    List<String> result = metadata.validateScope("anything email");
 
-    assertThat(result).containsExactly("anything");
+    assertThat(result).containsExactly("email");
   }
 
   @Test
   void testValidateScope_validSubsetAccepted() throws InvalidScopeException {
     OAuthClientMetadata metadata = new OAuthClientMetadata();
-    metadata.setScope("read write admin");
+    metadata.setScope("openid profile email");
 
-    List<String> result = metadata.validateScope("read write");
+    List<String> result = metadata.validateScope("openid profile");
 
-    assertThat(result).containsExactly("read", "write");
+    assertThat(result).containsExactly("openid", "profile");
   }
 
   @Test
-  void testValidateScope_moreScopesThanTheLimitThrows() throws InvalidScopeException {
+  void testValidateScope_noKnownScopeGetsTheDefaults() throws InvalidScopeException {
     OAuthClientMetadata metadata = new OAuthClientMetadata();
     metadata.setScope(null);
-    String atTheLimit =
-        IntStream.range(0, OAuthClientMetadata.MAX_REQUESTED_SCOPES)
-            .mapToObj(index -> "s" + index)
-            .collect(Collectors.joining(" "));
 
-    assertThat(metadata.validateScope(atTheLimit))
-        .hasSize(OAuthClientMetadata.MAX_REQUESTED_SCOPES);
-    assertThatThrownBy(() -> metadata.validateScope(atTheLimit + " extra"))
-        .isInstanceOf(InvalidScopeException.class)
-        .hasMessageContaining("At most");
+    assertThat(metadata.validateScope("*")).isNull();
+    assertThat(metadata.validateScope("scope0 scope1 scope2")).isNull();
   }
 
   @Test

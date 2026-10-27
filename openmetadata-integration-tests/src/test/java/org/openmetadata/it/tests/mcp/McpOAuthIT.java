@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -20,7 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.mcp.auth.OAuthClientMetadata;
 import org.openmetadata.mcp.auth.RefreshToken;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 
@@ -368,36 +368,26 @@ public class McpOAuthIT extends McpTestBase {
 
   @Test
   @Order(14)
-  void testRefreshOfAGrantOverTheScopeLimit_isRefusedAndRevoked() throws Exception {
+  void testRefreshOfAGrantHoldingUnknownScopes_keepsOnlyTheKnownOnes() throws Exception {
     Assumptions.assumeTrue(
         registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
-    String refreshToken = seedRefreshToken(OAuthClientMetadata.MAX_REQUESTED_SCOPES + 1);
-
-    HttpResponse<String> response = refresh(refreshToken);
-
-    assertThat(response.statusCode()).isEqualTo(400);
-    assertThat(OBJECT_MAPPER.readTree(response.body()).get("error").asText())
-        .isEqualTo("invalid_grant");
-    assertThat(new OAuthTokenRepository().findRefreshToken(refreshToken)).isNull();
-  }
-
-  @Test
-  @Order(15)
-  void testRefreshOfAGrantAtTheScopeLimit_issuesTokens() throws Exception {
-    Assumptions.assumeTrue(
-        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
-    String refreshToken = seedRefreshToken(OAuthClientMetadata.MAX_REQUESTED_SCOPES);
+    List<String> granted =
+        Stream.concat(
+                Stream.of("openid"), IntStream.range(0, 200).mapToObj(index -> "scope" + index))
+            .toList();
+    String refreshToken = seedRefreshToken(granted);
 
     HttpResponse<String> response = refresh(refreshToken);
 
     assertThat(response.statusCode()).isEqualTo(200);
-    assertThat(OBJECT_MAPPER.readTree(response.body()).has("access_token")).isTrue();
+    String rotated = OBJECT_MAPPER.readTree(response.body()).get("refresh_token").asText();
+    assertThat(new OAuthTokenRepository().findRefreshToken(rotated).getScopes())
+        .containsExactly("openid");
   }
 
-  /** Stores a refresh token for admin granting {@code scopeCount} scopes, as a sign-in would. */
-  private static String seedRefreshToken(int scopeCount) {
+  /** Stores a refresh token for admin granting {@code scopes}, as a sign-in would. */
+  private static String seedRefreshToken(List<String> scopes) {
     String value = UUID.randomUUID().toString();
-    List<String> scopes = IntStream.range(0, scopeCount).mapToObj(i -> "scope" + i).toList();
     long expiresAt = System.currentTimeMillis() + Duration.ofDays(1).toMillis();
     new OAuthTokenRepository()
         .storeRefreshToken(
