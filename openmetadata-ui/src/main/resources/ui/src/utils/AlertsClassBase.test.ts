@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -26,10 +26,6 @@ import {
   SubscriptionType,
 } from '../generated/events/eventSubscription';
 import {
-  ModifiedCreateEventSubscription,
-  ModifiedDestination,
-} from '../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import {
   getConfigHeaderArrayFromObject,
   getConfigHeaderObjectFromArray,
   getConfigQueryParamsArrayFromObject,
@@ -40,6 +36,10 @@ import alertsClassBase, {
   AlertsClassBase,
   destinationsAsAWholeListReplace,
 } from './AlertsClassBase';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+} from './AlertsClassBase.interface';
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { showSuccessToast } from './ToastUtils';

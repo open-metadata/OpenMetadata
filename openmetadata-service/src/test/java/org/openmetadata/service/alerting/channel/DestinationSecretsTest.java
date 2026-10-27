@@ -353,8 +353,7 @@ class DestinationSecretsTest {
     SubscriptionDestination masked = DestinationSecrets.mask(List.of(stored)).getFirst();
     SubscriptionDestination sentAgain =
         incomingWebhook(SubscriptionType.SLACK).withId(stored.getId());
-    SubscriptionDestination moved =
-        incomingWebhook(SubscriptionType.SLACK).withId(stored.getId());
+    SubscriptionDestination moved = incomingWebhook(SubscriptionType.SLACK).withId(stored.getId());
     moved.withConfig(new LinkedHashMap<>(Map.of("endpoint", "https://hooks.example.com/moved")));
 
     assertFalse(DestinationSecrets.targetMoved(stored, masked));

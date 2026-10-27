@@ -318,11 +318,16 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     return new EventSubscriptionUpdater(original, updated, operation);
   }
 
-  /** PATCH is the one write that can read a stored secret, through a copy or move operation. */
+  /**
+   * PATCH is the one write that can read a stored secret, through a copy or move operation, and
+   * the one that carries a stored secret it never wrote: a row stored before secrets were
+   * encrypted holds plaintext, which the updater's guard cannot tell from a value entered again.
+   */
   @Override
   protected void validatePatch(
       EventSubscription original, EventSubscription updated, JsonPatch patch) {
     DestinationSecretGuards.requireSecretsOnlyInSecretFields(original, updated, patch);
+    DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, updated, patch);
   }
 
   public class EventSubscriptionUpdater extends EntityUpdater {

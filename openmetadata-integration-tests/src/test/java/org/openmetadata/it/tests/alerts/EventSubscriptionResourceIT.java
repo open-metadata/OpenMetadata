@@ -2253,8 +2253,7 @@ public class EventSubscriptionResourceIT
     assertEquals(otherEndpoint, decrypted(storedConfig(created.getId()).get("endpoint")));
     assertEquals(
         headerValue, decrypted(headersOf(storedConfig(created.getId())).get("Authorization")));
-    assertEquals(
-        secretKey, decrypted(authTypeOf(storedConfig(created.getId())).get("secretKey")));
+    assertEquals(secretKey, decrypted(authTypeOf(storedConfig(created.getId())).get("secretKey")));
     assertNoSecretOrCiphertext(
         rawGet(SdkClients.adminClient(), path + "/versions"),
         List.of(otherEndpoint, headerValue, secretKey));

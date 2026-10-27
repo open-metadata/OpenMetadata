@@ -1,6 +1,7 @@
 package org.openmetadata.service.alerting.channel;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.alerting.channel.DestinationSecretsTest.TOKEN;
@@ -10,8 +11,10 @@ import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSW
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.Json;
+import jakarta.json.JsonArray;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.BadRequestException;
+import java.io.StringReader;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -205,16 +208,90 @@ class DestinationSecretGuardsTest {
 
     assertThrows(
         BadRequestException.class,
-        () ->
-            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, alertWith(moved)),
+        () -> DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, alertWith(moved)),
         "the stored value would follow the moved endpoint");
 
     config.put("headers", new LinkedHashMap<>(Map.of("Authorization", TOKEN)));
     moved.withConfig(config);
     assertDoesNotThrow(
-        () ->
-            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, alertWith(moved)),
+        () -> DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, alertWith(moved)),
         "every secret is entered again");
+  }
+
+  // A row stored before secrets were encrypted holds plaintext, which a patch that writes only
+  // the endpoint carries along; by value it reads as entered, so the patch itself has to tell.
+  @Test
+  void aPatchMovingATargetEntersEveryLegacyPlaintextSecretAgain() {
+    EventSubscription original = alertWith(incomingWebhook(SubscriptionType.SLACK));
+    JsonPatch endpointOnly =
+        Json.createPatchBuilder().replace(ENDPOINT_PATH, "https://hooks.example.com/moved").build();
+    EventSubscription carried = patched(original, endpointOnly);
+
+    assertDoesNotThrow(
+        () -> DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, carried),
+        "plaintext left in place is not a mask or ciphertext");
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(
+                original, carried, endpointOnly),
+        "the header value was never entered by this patch");
+
+    JsonPatch everySecret =
+        Json.createPatchBuilder()
+            .replace(ENDPOINT_PATH, "https://hooks.example.com/moved")
+            .replace(HEADER_PATH, TOKEN)
+            .build();
+    EventSubscription reentered = patched(original, everySecret);
+    assertDoesNotThrow(
+        () ->
+            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(
+                original, reentered, everySecret),
+        "the same value entered again moves the destination");
+
+    JsonPatch wholeList =
+        Json.createPatchBuilder()
+            .replace("/destinations", jsonArrayOf(carried.getDestinations()))
+            .build();
+    assertDoesNotThrow(
+        () ->
+            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, carried, wholeList),
+        "a whole-list replace writes every field; what it wrote is judged by value");
+  }
+
+  @Test
+  void aPatchThatKeepsTheTargetMayLeaveLegacyPlaintextInPlace() {
+    EventSubscription original = alertWith(incomingWebhook(SubscriptionType.SLACK));
+    JsonPatch description = Json.createPatchBuilder().replace("/description", "typed").build();
+    assertDoesNotThrow(
+        () ->
+            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(
+                original, patched(original, description), description));
+  }
+
+  // The patch is replayed, not read: an operation naming a position that another operation
+  // shifted is judged by where the secret ends up, not by the path it was written at.
+  @Test
+  void aReshapedListIsJudgedByWhereEachSecretEndsUp() {
+    SubscriptionDestination first = incomingWebhook(SubscriptionType.SLACK);
+    SubscriptionDestination second = incomingWebhook(SubscriptionType.SLACK);
+    EventSubscription original =
+        new EventSubscription().withName("alert").withDestinations(List.of(first, second));
+    JsonPatch headerOfTheRemovedOne =
+        Json.createPatchBuilder()
+            .replace(HEADER_PATH, "Bearer typed")
+            .remove("/destinations/0")
+            .replace(ENDPOINT_PATH, "https://hooks.example.com/moved")
+            .build();
+    EventSubscription patched = patched(original, headerOfTheRemovedOne);
+    assertEquals(second.getId(), patched.getDestinations().getFirst().getId());
+
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(
+                original, patched, headerOfTheRemovedOne),
+        "the surviving destination moved with the header value it was stored with");
   }
 
   @Test
@@ -233,8 +310,7 @@ class DestinationSecretGuardsTest {
         () ->
             DestinationSecretGuards.requireServedChannelUnchanged(
                 original,
-                alertWith(
-                    JsonUtils.deepCopy(storedDestination, SubscriptionDestination.class))),
+                alertWith(JsonUtils.deepCopy(storedDestination, SubscriptionDestination.class))),
         "what is unchanged does not refuse");
     assertDoesNotThrow(
         () ->
@@ -245,6 +321,17 @@ class DestinationSecretGuardsTest {
                         .withId(UUID.randomUUID())
                         .withChannel("ActivityFeed"))),
         "a new destination is served by the channel its save chooses");
+  }
+
+  private static final String ENDPOINT_PATH = "/destinations/0/config/endpoint";
+  private static final String HEADER_PATH = "/destinations/0/config/headers/Authorization";
+
+  private static JsonArray jsonArrayOf(List<SubscriptionDestination> destinations) {
+    return Json.createReader(new StringReader(JsonUtils.pojoToJson(destinations))).readArray();
+  }
+
+  private static EventSubscription patched(EventSubscription original, JsonPatch patch) {
+    return JsonUtils.applyPatch(original, patch, EventSubscription.class);
   }
 
   private static SubscriptionDestination stored() {

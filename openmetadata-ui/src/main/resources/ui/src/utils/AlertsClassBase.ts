@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -63,6 +63,8 @@ export interface AddAlertFormWidgetProps {
   templateResourcePermission?: OperationPermission;
 }
 
+const DESTINATIONS_PATH = '/destinations';
+
 /**
  * The diff of a destination list pairs the destination at each index with the one now beside it,
  * and a destination's secrets read only as the mask, so removing the first of two keeps the
@@ -73,13 +75,15 @@ export const destinationsAsAWholeListReplace = (
   jsonPatch: Operation[],
   destinations: EventSubscription['destinations']
 ): Operation[] => {
-  if (!jsonPatch.some((op) => op.path.startsWith('/destinations'))) {
+  const touchesDestinations = (op: Operation) =>
+    op.path.startsWith(DESTINATIONS_PATH);
+  if (!jsonPatch.some(touchesDestinations)) {
     return jsonPatch;
   }
 
   return [
-    ...jsonPatch.filter((op) => !op.path.startsWith('/destinations')),
-    { op: 'replace', path: '/destinations', value: destinations },
+    ...jsonPatch.filter((op) => !touchesDestinations(op)),
+    { op: 'replace', path: DESTINATIONS_PATH, value: destinations },
   ];
 };
 

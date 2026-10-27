@@ -1,7 +1,7 @@
 # An alert destination's endpoint, header values and credentials are encrypted at rest, masked in every response, and restored from the stored alert when the mask is sent back
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial); v2 2026-10-26 (bind stored OAuth2 test credentials to their token URL); v3 2026-10-27 (a stored secret does not follow a moved target; a destination keeps its served channel)
+- **Revisions:** v1 2026-10-23 (initial); v2 2026-10-26 (bind stored OAuth2 test credentials to their token URL); v3 2026-10-27 (a stored secret does not follow a moved target; a destination keeps its served channel); v4 2026-10-27 (a PATCH that moves a target must itself write every secret, since a row stored in plaintext reads as entered)
 - **Deciders:** Teddy Crepineau
 - **Guard:** `DestinationSecretsTest`, `DestinationSecretGuardsTest`, `EventSubscriptionResourceIT#test_destinationSecretsAreMaskedEncryptedAndRestored`
 - **Related:** ADR:2026-10-20-mcp-responses-mask-stored-credentials
@@ -41,7 +41,11 @@ mask back, decrypt only at the point of use.
   moves either, and keeps any stored or masked value at another secret field, is refused with 400
   and asked to enter every credential again — a caller who only ever read the mask may not choose
   where someone else's credentials are delivered. Re-entering every secret, the stored values
-  included, moves the destination as it reads them fresh.
+  included, moves the destination as it reads them fresh. A PATCH is applied to the alert as
+  stored, so on a row stored before this change (v4:2026-10-27) it carries the plaintext of every
+  secret it does not write, which by value reads as entered; the patch is replayed on the stored
+  alert with a marker at every secret, and a destination whose target moved is refused unless the
+  patch wrote each of its secrets. A PUT carries only what its caller typed, since reads are masked.
 - A destination an update keeps by its id serves through the channel it is stored under; the
   update that names another channel is refused, since the channel's rules would no longer name
   the secrets its configuration carries. A replacement destination carries a new id and chooses

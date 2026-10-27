@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -49,6 +50,10 @@ public final class DestinationSecretGuards {
   private static final JsonPointer TOKEN_URL = JsonPointer.compile("/authType/tokenUrl");
   private static final List<String> SERVER_SET_FIELDS =
       List.of("changeDescription", "incrementalChangeDescription", "updatedBy");
+  private static final String DESTINATION_CONFIG = "/destinations/%d/config";
+  // Stands in for every stored secret while a patch is replayed; unguessable, so a patch cannot
+  // write it on purpose and pass a carried secret off as one it entered.
+  private static final String LEFT_IN_PLACE = "left-in-place:" + UUID.randomUUID();
 
   private DestinationSecretGuards() {}
 
@@ -139,6 +144,53 @@ public final class DestinationSecretGuards {
                   firstSecret(
                           sent, value -> PASSWORD_MASK.equals(value) || Fernet.isTokenized(value))
                       .ifPresent(field -> refuse(MOVED_TARGET_MESSAGE, sent, field)));
+    }
+  }
+
+  /**
+   * The PATCH form. A patch is applied to the alert as stored, so a secret field it does not write
+   * keeps the stored value: in a row stored before secrets were encrypted, the plaintext, which the
+   * caller never read either, and which reads as entered to the form above. The same patch replayed
+   * on the stored alert with a marker at every secret leaves the marker wherever it wrote nothing,
+   * and that tells a secret the patch entered again from one it carried to the moved target.
+   */
+  public static void requireFreshSecretsOnAMovedTarget(
+      EventSubscription original, EventSubscription updated, JsonPatch patch) {
+    List<SubscriptionDestination> stored = listOrEmpty(original.getDestinations());
+    List<SubscriptionDestination> incoming = listOrEmpty(updated.getDestinations());
+    JsonNode replayed = null;
+    for (int position = 0; position < incoming.size(); position++) {
+      SubscriptionDestination sent = incoming.get(position);
+      boolean moved =
+          DestinationSecrets.counterpart(stored, sent, position)
+              .filter(it -> DestinationSecrets.targetMoved(it, sent))
+              .isPresent();
+      if (!moved) {
+        continue;
+      }
+      if (replayed == null) {
+        replayed = replayedOnMarkedSecrets(original, patch);
+      }
+      JsonNode config = replayed.at(DESTINATION_CONFIG.formatted(position));
+      firstSecret(sent, (field, value) -> LEFT_IN_PLACE.equals(config.at(field).asText(null)))
+          .ifPresent(field -> refuse(MOVED_TARGET_MESSAGE, sent, field));
+    }
+  }
+
+  // A replay that fails (a test operation on a secret, say) leaves the marker everywhere, so every
+  // secret of a moved destination reads as carried along and the patch is refused.
+  private static JsonNode replayedOnMarkedSecrets(EventSubscription original, JsonPatch patch) {
+    EventSubscription marked = JsonUtils.deepCopy(original, EventSubscription.class);
+    for (SubscriptionDestination destination : listOrEmpty(marked.getDestinations())) {
+      JsonNode config = JsonUtils.valueToTree(destination.getConfig());
+      DestinationSecrets.secretFieldsOf(destination, config)
+          .forEach(field -> DestinationSecrets.set(config, field, LEFT_IN_PLACE));
+      destination.withConfig(JsonUtils.treeToValue(config, Object.class));
+    }
+    try {
+      return JsonUtils.valueToTree(JsonUtils.applyPatch(marked, patch, EventSubscription.class));
+    } catch (RuntimeException e) {
+      return JsonUtils.valueToTree(marked);
     }
   }
 
