@@ -21,6 +21,7 @@ import {
   stubUserPreferencesAppMode,
 } from '../e2e/Utils/appMode';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForAntOverlayToOpen } from './waitHelpers';
 
 export type SettingOptionsType =
   | keyof typeof SETTINGS_OPTIONS_PATH
@@ -39,6 +40,12 @@ export const clickSidebarLink = async (page: Page, testId: string) => {
     .getByTestId(testId)
     .filter({ visible: true });
   await expect(targetElement).toBeVisible();
+  const popup = page
+    .locator('.ant-menu-submenu-popup')
+    .filter({ has: page.getByTestId(testId) });
+  if (await popup.count()) {
+    await waitForAntOverlayToOpen(popup);
+  }
   await targetElement.focus();
   const href = await targetElement.getAttribute('href');
   await targetElement.click();
