@@ -103,6 +103,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    MUTED_TABLE_SURFACE_CLASSES: jest.requireActual(
+      '@openmetadata/ui-core-components'
+    ).MUTED_TABLE_SURFACE_CLASSES,
     Button,
     Dropdown: {
       Root: ({ children }: { children: ReactNode }) => <>{children}</>,

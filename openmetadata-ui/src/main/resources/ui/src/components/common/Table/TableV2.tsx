@@ -41,6 +41,7 @@
  */
 
 import {
+  MUTED_TABLE_SURFACE_CLASSES,
   PaginationCardWithControls,
   Table as UntitledTable,
 } from '@openmetadata/ui-core-components';
@@ -514,8 +515,7 @@ const getRowInteractionProps = (
 // `!important` utility can lift it onto the muted step; the bg-secondary row
 // hover is the same step as the muted rows, hence the translucent hover.
 // ADR:2026-10-27-settings-modal-surfaces-use-the-muted-step
-const MUTED_CONTAINER_CLASSES =
-  'tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt! tw:dark:[&_table:not(table_table)]:bg-primary_alt tw:[&_tbody_tr:hover_td]:bg-primary_hover';
+const MUTED_CONTAINER_CLASSES = `tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt! ${MUTED_TABLE_SURFACE_CLASSES}`;
 
 /**
  * AntD's `bordered` draws a full grid. Rows already carry their own horizontal
