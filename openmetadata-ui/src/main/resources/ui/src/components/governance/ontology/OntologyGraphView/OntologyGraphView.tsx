@@ -134,12 +134,15 @@ const loadRegistry = () =>
 
 interface RelationshipTypeDialogProps {
   readonly label: string;
+  /** The inverse's back link is a patch on the inverse type, which the registry authorizes as EditAll. */
+  readonly canLinkInverse: boolean;
   readonly onCancel: () => void;
   readonly onSubmit: (draft: RelationshipTypeDraft) => void;
 }
 
 const RelationshipTypeDialog = ({
   label,
+  canLinkInverse,
   onCancel,
   onSubmit,
 }: RelationshipTypeDialogProps) => {
@@ -194,7 +197,13 @@ const RelationshipTypeDialog = ({
               </Typography>
             ) : (
               <Input
+                hint={
+                  canLinkInverse
+                    ? undefined
+                    : t('message.no-permission-for-action')
+                }
                 inputDataTestId="relationship-type-inverse"
+                isDisabled={!canLinkInverse}
                 label={t('label.inverse-name')}
                 size="sm"
                 value={inverseName}
@@ -336,12 +345,12 @@ const OntologyGraphView = ({
     [graph]
   );
   const { permissions } = usePermissionProvider();
-  const canCreateDefinition = (resource: ResourceEntity) =>
-    isEditing &&
-    !ontology.deleted &&
+  const flagsOf = (resource: ResourceEntity) =>
     getDerivedPermissionFlags(
       permissions[resource] ?? DEFAULT_ENTITY_PERMISSION
-    ).canCreate;
+    );
+  const canCreateDefinition = (resource: ResourceEntity) =>
+    isEditing && !ontology.deleted && flagsOf(resource).canCreate;
   const canCreateConcept = canCreateDefinition(ResourceEntity.ONTOLOGY_CONCEPT);
   const canCreateChangeSet = canCreateDefinition(
     ResourceEntity.ONTOLOGY_CHANGE_SET
@@ -355,6 +364,7 @@ const OntologyGraphView = ({
     ResourceEntity.ONTOLOGY_PROPERTY,
     ResourceEntity.ONTOLOGY_AXIOM,
   ].every(canCreateDefinition);
+  const canLinkInverse = flagsOf(ResourceEntity.RELATIONSHIP_TYPE).canEditAll;
   const conceptPermissionId = conceptEditor?.conceptId ?? selectedId;
   const { canEditAll: canEditConcept } = useEntityPermissions(
     ResourceEntity.ONTOLOGY_CONCEPT,
@@ -830,6 +840,7 @@ const OntologyGraphView = ({
   const renderTypeDialog = () =>
     typeDraft ? (
       <RelationshipTypeDialog
+        canLinkInverse={canLinkInverse}
         label={typeDraft.label}
         onCancel={() => typeDraft.resolve(undefined)}
         onSubmit={typeDraft.resolve}

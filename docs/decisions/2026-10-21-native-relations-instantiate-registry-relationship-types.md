@@ -1,7 +1,7 @@
 # Native relations instantiate registry relationship types
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-21 (initial)
+- **Revisions:** v1 2026-10-21 (initial) · v2 2026-10-26 (an inverse needs edit rights on the registry)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** IndependentOntologyInverseIT, OntologyHierarchyStorageTest, OntologyNativeRelation.utils.test.ts, OntologyGraphView.test.tsx, RelationshipTypePicker.component.test.tsx
 - **Related:** #35987, ADR:2026-10-14-ontology-definitions-have-independent-entity-storage, ADR:2026-10-17-glossaries-do-not-own-ontology-models, ADR:2026-10-19-native-ontology-imports-use-working-drafts
@@ -27,3 +27,7 @@ The picker's create option appears only for users who can create a `Relationship
 ## Consequences
 
 Glossaries and native ontologies share one vocabulary of relation names, predicates, and inverses, and a custom type created from the Studio is available to glossary pickers as well. Exported releases carry `owl:inverseOf` in both directions. A registry type edited after instantiation does not rename the native properties made from it; they are independent definitions with their own display names, per the records above. A data steward, who has no `Create` on `relationshipType`, sees the registry's types but no create option.
+
+## Amendment: an inverse needs edit rights on the registry (v2, 2026-10-26)
+
+Creating a type with `inverse` stores the reference on the new type only. The reciprocal link on the other type is a `PATCH` of its `/inverse`, and the server authorizes an unmapped patch path as `EditAll` on `relationshipType`. The creator holds no owner right on the types it just made, because the create request carries no owners. A user whose policy grants `Create` without `EditAll` could therefore register both types and then fail on the back link, leaving a half-linked pair. The create dialog enables its inverse field only for users who can edit relationship types, and shows the others the standard permission message under the disabled field. A user with `Create` alone still registers one type and instantiates it, either without an inverse or as a symmetric type, which the server marks as its own inverse during the create. The create option itself still needs only `Create`.
