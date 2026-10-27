@@ -38,9 +38,9 @@ interface CredentialSource {
    * {@code previous} holds a record for the subject whose {@code mechanismVersion} (md5 and
    * {@code updatedAt}) equals the row's: then {@code previous.mechanismDigest()} is reused. Pass an
    * empty map to force every decrypt, as the deep verify does so a secret edited inside the
-   * secrets manager is seen. A subject that read leaves out is unconfirmed from then on, also when
-   * the secrets manager cannot answer, so its checks read it again and answer 503 until a read
-   * converts it.
+   * secrets manager is seen. A subject the deep verify's read leaves out is unconfirmed from then
+   * on, also when the secrets manager cannot answer, so its checks read it again and answer 503
+   * until a read converts it.
    *
    * @param previous the cached records for these subjects, possibly missing some or empty
    */

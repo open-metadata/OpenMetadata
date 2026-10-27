@@ -92,8 +92,13 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   than `maxStaleness`. Session tokens and identity-provider tokens that claim neither `isBot=true`
   nor `tokenType=PERSONAL_ACCESS` are not affected.
 - While the secrets manager cannot decrypt a bot's secret, the bot's requests answer 503 from the
-  next deep pass on, so within `deepVerifyInterval`, until a read decrypts the secret again. Its
-  failing reads are limited as above, to about two per second per server.
+  next deep pass on, so within `deepVerifyInterval`, until a read decrypts the secret again. On
+  each server, each bot that keeps sending requests costs about two check reads a second, each
+  with a decrypt, and once its stored rows change, a decrypt on every sweep as well. A decrypt
+  that hangs holds a request-read thread until the secrets manager answers, so with more such bots
+  than request-read threads, other checks that need a read wait for a thread or answer 503. The
+  warning about a principal whose credentials cannot be converted is logged at most once a minute
+  per server.
 - Operators alert when `om.credential.sweep.last.complete.age.seconds` (Prometheus name
   `om_credential_sweep_last_complete_age_seconds`) exceeds `maxStaleness`, and watch
   `om.credential.unavailable`. The gauge is the age of the last sweep that re-confirmed every

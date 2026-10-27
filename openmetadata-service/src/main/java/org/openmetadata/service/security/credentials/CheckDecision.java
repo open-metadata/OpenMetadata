@@ -82,8 +82,8 @@ enum CheckDecision {
    * After one load: ACCEPT or REJECT when the loaded entry is within maxStaleness, so one request
    * does at most one read. A load that completes outside the bound confirms nothing and answers
    * LOAD_STALE, which the verifier reports as "cannot confirm", never as "revoked". {@code loaded}
-   * is confirmed: the verifier answers "cannot confirm" before this for a read that left it
-   * unconfirmed.
+   * is confirmed: when the entry after the read is one that a newer deep read left unconfirmed, the
+   * verifier answers "cannot confirm" before this.
    */
   static CheckDecision decideAfterLoad(
       VerifiedCredentials loaded, long nowNanos, TokenDigest digest, Policy policy) {
