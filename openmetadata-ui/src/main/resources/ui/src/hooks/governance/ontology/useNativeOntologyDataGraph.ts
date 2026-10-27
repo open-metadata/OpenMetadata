@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { NativeOntologyDataGraphPage } from '../../../generated/api/data/nativeOntologyDataGraphPage';
 import { NativeOntologyDataGraphPageRequest } from '../../../generated/api/data/nativeOntologyDataGraphPageRequest';
@@ -27,6 +28,7 @@ import {
   stageTopologyPage,
   topologyRequest,
 } from '../../../utils/governance/ontology/OntologyNativeDataGraph.utils';
+import { subscribeToConceptBindingWrites } from './useOntologyConceptBindings';
 
 export type NativeDataGraphRetry =
   | { kind: 'reload' }
@@ -36,6 +38,13 @@ export type NativeDataGraphRetry =
 export interface NativeDataGraphFailure {
   reason: PageFailure;
   retry: NativeDataGraphRetry;
+}
+
+export interface NativeDataGraphOptions {
+  /** A hidden surface sends nothing, so edits made meanwhile cost one reload when it shows. */
+  isActive?: boolean;
+  /** Bumped by the owner whenever the model the graph projects changes. */
+  revision?: number;
 }
 
 export interface NativeDataGraphView {
@@ -70,15 +79,42 @@ interface SelectionPlan {
   apply: Apply;
   readFailureRetry: NativeDataGraphRetry;
   continuesPast?: (page: NativeOntologyDataGraphPage) => boolean;
+  followedBy?: (page: NativeOntologyDataGraphPage) => SelectionPlan | undefined;
 }
 
 const RELOAD: NativeDataGraphRetry = { kind: 'reload' };
+const CLUSTERS: NativeDataGraphRetry = { kind: 'clusters' };
 
-const reloadPlan = (): SelectionPlan => ({
-  request: clustersRequest([], 0),
-  apply: applyClustersPage,
-  readFailureRetry: RELOAD,
+const hasEmptyClustersTail = (page: NativeOntologyDataGraphPage) =>
+  (page.clusters ?? []).length === 0 &&
+  page.nextClusterOffset !== undefined &&
+  !page.contextFull;
+
+// The server drops a cluster the caller cannot view but still advertises the
+// next offset, so an empty page is not the end while the offset moves forward.
+const clustersPlan = (
+  loaded: NativeOntologyDataGraphPageRequest['loaded'],
+  offset: number,
+  readFailureRetry: NativeDataGraphRetry,
+  apply: Apply = applyClustersPage
+): SelectionPlan => ({
+  request: clustersRequest(loaded, offset),
+  apply,
+  readFailureRetry,
+  followedBy: (page) =>
+    hasEmptyClustersTail(page) && (page.nextClusterOffset ?? 0) > offset
+      ? clustersPlan(page.loaded, page.nextClusterOffset ?? 0, CLUSTERS)
+      : undefined,
 });
+
+const replaceClusters: Apply = (graph, page) =>
+  applyClustersPage(
+    { ...EMPTY_NATIVE_DATA_GRAPH, topology: graph.topology },
+    page
+  );
+
+const reloadPlan = (): SelectionPlan =>
+  clustersPlan([], 0, RELOAD, replaceClusters);
 
 const newGeneration = (): Generation => ({
   controller: new AbortController(),
@@ -94,7 +130,16 @@ const hasEmptyBindingsTail = (page: NativeOntologyDataGraphPage) =>
  * context the server needs on every request. Requests run one at a time,
  * because each response replaces the context the next request must carry.
  */
-export const useNativeOntologyDataGraph = (ontologyId: string) => {
+export const useNativeOntologyDataGraph = (
+  ontologyId: string,
+  { isActive = true, revision = 0 }: NativeDataGraphOptions = {}
+) => {
+  const client = useQueryClient();
+  const [bindingWrites, setBindingWrites] = useState(0);
+  const staleKey = `${revision}:${bindingWrites}`;
+  const staleKeyRef = useRef(staleKey);
+  staleKeyRef.current = staleKey;
+  const loadedKeyRef = useRef(staleKey);
   const graphRef = useRef<NativeDataGraph>(EMPTY_NATIVE_DATA_GRAPH);
   const isLoadingRef = useRef(true);
   const isLoadingClustersRef = useRef(false);
@@ -198,7 +243,6 @@ export const useNativeOntologyDataGraph = (ontologyId: string) => {
         return { done: fail(reason, RELOAD) };
       }
       generation.staleReloads += 1;
-      graphRef.current = EMPTY_NATIVE_DATA_GRAPH;
       isLoadingRef.current = true;
       publish();
 
@@ -217,8 +261,12 @@ export const useNativeOntologyDataGraph = (ontologyId: string) => {
         return failAttempt(generation, first.reason, plan.readFailureRetry);
       }
       graphRef.current = plan.apply(graphRef.current, first.page);
-      isLoadingRef.current = false;
+      const followed = plan.followedBy?.(first.page);
+      isLoadingRef.current = isLoadingRef.current && Boolean(followed);
       publish();
+      if (followed) {
+        return { again: followed };
+      }
       if (plan.continuesPast?.(first.page)) {
         return { done: 'continue' };
       }
@@ -308,11 +356,10 @@ export const useNativeOntologyDataGraph = (ontologyId: string) => {
       isLoadingClustersRef.current = true;
       publish();
       try {
-        await runSelection(generation, {
-          request: clustersRequest(loaded, nextClusterOffset),
-          apply: applyClustersPage,
-          readFailureRetry: { kind: 'clusters' },
-        });
+        await runSelection(
+          generation,
+          clustersPlan(loaded, nextClusterOffset, CLUSTERS)
+        );
       } finally {
         isLoadingClustersRef.current = false;
         publish();
@@ -349,9 +396,11 @@ export const useNativeOntologyDataGraph = (ontologyId: string) => {
   }, []);
 
   const reload = useCallback(
-    (generation: Generation) =>
+    (generation: Generation, keepGraph = false) =>
       enqueue(generation, async () => {
-        graphRef.current = EMPTY_NATIVE_DATA_GRAPH;
+        if (!keepGraph) {
+          graphRef.current = EMPTY_NATIVE_DATA_GRAPH;
+        }
         isLoadingRef.current = true;
         loadingConceptIdsRef.current = new Set();
         isLoadingClustersRef.current = false;
@@ -365,11 +414,33 @@ export const useNativeOntologyDataGraph = (ontologyId: string) => {
     failureRef.current = undefined;
     graphRef.current = EMPTY_NATIVE_DATA_GRAPH;
     isLoadingRef.current = true;
+    loadedKeyRef.current = staleKeyRef.current;
     reload(beginGeneration());
-    const { controller } = generationRef.current;
 
-    return () => controller.abort();
+    return () => {
+      generationRef.current.controller.abort();
+      const dead = newGeneration();
+      dead.controller.abort();
+      generationRef.current = dead;
+    };
   }, [beginGeneration, reload]);
+
+  useEffect(
+    () =>
+      subscribeToConceptBindingWrites(client, () =>
+        setBindingWrites((count) => count + 1)
+      ),
+    [client]
+  );
+
+  useEffect(() => {
+    if (!isActive || loadedKeyRef.current === staleKey) {
+      return;
+    }
+    loadedKeyRef.current = staleKey;
+    failureRef.current = undefined;
+    reload(beginGeneration(), true);
+  }, [beginGeneration, isActive, reload, staleKey]);
 
   const loadMoreClusters = useCallback(() => {
     const generation = generationRef.current;

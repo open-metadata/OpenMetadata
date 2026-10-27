@@ -542,12 +542,12 @@ describe('changing the ontology', () => {
 });
 
 describe('an empty clusters page that advertises more clusters', () => {
-  const emptyPage = (offset?: number) =>
+  const emptyPage = (offset?: number, isLast = false) =>
     pageFixture({
       clusters: [],
       loaded: [],
       nextClusterOffset: offset,
-      topologyAfter: 'must-not-be-followed',
+      topologyAfter: isLast ? undefined : 'must-not-be-followed',
     });
   const clustersAt = (offset: number) => ({
     loaded: [],
@@ -594,7 +594,7 @@ describe('an empty clusters page that advertises more clusters', () => {
   it('stops when the server repeats an offset', async () => {
     fetchPage
       .mockResolvedValueOnce(emptyPage(12))
-      .mockResolvedValueOnce(emptyPage(12));
+      .mockResolvedValueOnce(emptyPage(12, true));
     const { result } = render();
     await settle();
 
@@ -606,7 +606,7 @@ describe('an empty clusters page that advertises more clusters', () => {
   it('stops when the offset is gone', async () => {
     fetchPage
       .mockResolvedValueOnce(emptyPage(12))
-      .mockResolvedValueOnce(emptyPage(undefined));
+      .mockResolvedValueOnce(emptyPage(undefined, true));
     const { result } = render();
     await settle();
 
