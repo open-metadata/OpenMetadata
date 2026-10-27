@@ -15,7 +15,7 @@ Pydantic definition for storing entities for patching
 import json
 import logging
 import traceback
-from typing import Dict, List, Optional, Tuple  # noqa: UP035
+from typing import Dict, List, Optional, Tuple, cast  # noqa: UP035
 
 import jsonpatch
 from pydantic import BaseModel
@@ -443,7 +443,8 @@ def build_patch(  # noqa: C901
                     )
                 )
                 if src_json.get(field) != dst_json.get(field):
-                    patch.patch.append(
+                    # jsonpatch 1.38 types the operations as a Sequence; every patch built here holds a list
+                    cast("list[dict]", patch.patch).append(
                         {
                             "op": "replace",
                             "path": f"/{field}",

@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -36,10 +37,13 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -324,6 +328,92 @@ class PatchEntityToolTest {
           .hasMessageContaining("Nothing was changed");
     }
     verifyNoInteractions(authorizer);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "[{\"op\":\"replace\",\"path\":\"/connection/config/authType/password\",\"value\":\"*\"}]",
+        "[{\"op\":\"replace\",\"path\":\"/connection\",\"value\":{}}]",
+        "[{\"op\":\"replace\",\"path\":\"\",\"value\":{}}]",
+        "[{\"op\":\"copy\",\"from\":\"/connection/config/authType/password\",\"path\":\"/description\"}]",
+        "[{\"op\":\"test\",\"path\":\"/connection/config/authType/password\",\"value\":\"guess\"}]"
+      })
+  void execute_rejectsPatchesThatReachAServiceConnection(String patch) {
+    DatabaseServiceRepository serviceRepository = mock(DatabaseServiceRepository.class);
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.DATABASE_SERVICE);
+    params.put("fqn", "mysqlService");
+    params.put("patch", patch);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SERVICE))
+          .thenReturn(serviceRepository);
+
+      assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("'/connection'")
+          .hasMessageContaining("Nothing was changed");
+    }
+    verifyNoInteractions(authorizer, serviceRepository);
+  }
+
+  @Test
+  void execute_servicePatchOutsideTheConnectionReachesTheRepository() {
+    DatabaseServiceRepository serviceRepository = mock(DatabaseServiceRepository.class);
+    doReturn(
+            new RestUtil.PatchResponse<>(
+                Response.Status.OK, mock(EntityInterface.class), EventType.ENTITY_UPDATED))
+        .when(serviceRepository)
+        .patch(any(), any(String.class), any(), any(), any(), any(), any());
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.DATABASE_SERVICE);
+    params.put("fqn", "mysqlService");
+    params.put("patch", "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"x\"}]");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
+        MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SERVICE))
+          .thenReturn(serviceRepository);
+      jsonMock.when(() -> JsonUtils.convertValue(any(), eq(Map.class))).thenReturn(Map.of());
+
+      new PatchEntityTool().execute(authorizer, securityContext, params);
+
+      verify(serviceRepository).patch(any(), any(String.class), any(), any(), any(), any(), any());
+    }
+  }
+
+  /** A field-scoped edit, such as a description, does not entitle the caller to the connection. */
+  @Test
+  void execute_servicePatchResponseOmitsTheConnectionForCallersWhoCannotEditTheService() {
+    DatabaseServiceRepository serviceRepository = McpResponseUtilsTest.databaseServiceRepository();
+    doReturn(
+            new RestUtil.PatchResponse<>(
+                Response.Status.OK, McpResponseUtilsTest.mysqlService(), EventType.ENTITY_UPDATED))
+        .when(serviceRepository)
+        .patch(any(), any(String.class), any(), any(), any(), any(), any());
+    EntityMaskerFactory.createEntityMasker();
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.DATABASE_SERVICE);
+    params.put("fqn", "mysqlService");
+    params.put("patch", "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"x\"}]");
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entityMock =
+            McpResponseUtilsTest.mockServiceLookups(serviceRepository);
+        MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class)) {
+      result =
+          new PatchEntityTool()
+              .execute(
+                  McpResponseUtilsTest.authorizerWithEditAll(Access.NOT_ALLOW),
+                  securityContext,
+                  params);
+    }
+
+    assertThat(result).doesNotContainKey("connection").containsEntry("name", "mysqlService");
   }
 
   @ParameterizedTest

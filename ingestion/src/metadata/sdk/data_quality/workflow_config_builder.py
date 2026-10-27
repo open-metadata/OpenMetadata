@@ -50,6 +50,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata as OMeta
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.entity_reference import require_entity_reference_id
 
 T = TypeVar("T", bound=BaseModel)
@@ -130,6 +131,12 @@ class WorkflowConfigBuilder:
         service = self._safe_get_by_id(DatabaseService, service_id)
 
         self.service_connection = cast(DatabaseConnection, service.connection)  # noqa: TC006
+        if self.service_connection is None:
+            raise ValueError(
+                f"No connection came back for service '{model_str(service.name)}'. OpenMetadata returns a "
+                "service connection only to bot accounts and to users who can edit the service, so "
+                "authenticate with a bot token (for example ingestion-bot)."
+            )
         return self
 
     def with_force_test_update(self, force_test_update: bool) -> Self:
