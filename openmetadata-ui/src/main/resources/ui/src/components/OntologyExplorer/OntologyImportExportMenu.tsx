@@ -26,6 +26,7 @@ import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import OntologyNativeImportDialog from '../governance/ontology/OntologyNativeImportDialog/OntologyNativeImportDialog';
 import OntologyReleaseExportModal from '../governance/ontology/OntologyReleaseExportModal/OntologyReleaseExportModal';
 import OntologyImportExportModal from './OntologyImportExportModal';
 
@@ -53,6 +54,7 @@ type OntologyImportExportMenuProps =
   | NativeOntologyExportProps
   | {
       readonly kind: 'allOntologies';
+      readonly isCatalogEmpty: boolean;
       readonly ontologies: Ontology[];
       readonly onApplied: () => void;
     };
@@ -85,6 +87,9 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
       return null;
     }
     if (props.kind === 'allOntologies') {
+      if (props.isCatalogEmpty) {
+        return <OntologyNativeImportDialog onClose={() => setIsOpen(false)} />;
+      }
       if (selectedOwner) {
         return (
           <OntologyReleaseExportModal
