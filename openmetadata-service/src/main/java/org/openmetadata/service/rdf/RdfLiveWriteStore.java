@@ -28,7 +28,8 @@ public final class RdfLiveWriteStore {
   private static final long MAX_HEALTHY_LAG_MILLIS = Duration.ofSeconds(30).toMillis();
   private static final int MAX_ERROR_LENGTH = 8192;
   private static final int MAX_DELIVERY_ATTEMPTS = 10;
-  // Bounds how long one enqueue holds the producer lock while a cascade enqueues its writes.
+  // Bounds how long one enqueue holds the producer lock while a cascade enqueues its writes
+  // (ADR:2026-10-26-the-rdf-graph-projects-the-live-catalog-only).
   private static final int MAX_WRITES_PER_ENQUEUE = 500;
   private static final String WRITER_LOCK =
       "SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE";

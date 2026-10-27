@@ -27,6 +27,11 @@ the order in which a cascade restores its entities.
 Clients need no deleted-entity filter. A restore costs one live write per edge and per entity that
 references the restored one.
 
+Cascade and restore-plan live writes are enqueued in transactions of at most 500 writes, so a large
+cascade does not hold the outbox producer lock in one long transaction. The enqueue is therefore not
+atomic: a failure partway through leaves the earlier chunks enqueued and marks the projection
+degraded, and a reindex repairs the graph.
+
 No migration: a graph built before this rule keeps its soft-deleted entities until the next RDF
 reindex, run with Recreate and Blue/Green on.
 
