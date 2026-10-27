@@ -76,7 +76,6 @@ import {
   getHeaderLayout,
   getHeaderTagsClassName,
   getHeaderTagsItemClassName,
-  isCommentEditorOpen,
 } from './ActivityFeedcardNew.utils';
 import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
@@ -268,7 +267,6 @@ const ActivityFeedCardNew = ({
     isPostsLoading,
     postActivityComment,
     activityReplies,
-    focusReplyEditor,
   } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
@@ -698,17 +696,10 @@ const ActivityFeedCardNew = ({
     isOpenInDrawer
   );
 
-  const isFeedEditorOpen = isCommentEditorOpen(
-    showFeedEditor,
-    isThreadPanel,
-    focusReplyEditor
-  );
-
   const renderCommentInput = (editorClassName?: string) =>
-    isFeedEditorOpen ? (
+    showFeedEditor ? (
       <ActivityFeedEditorNew
-        // Revealed by a click on its trigger, or by a reply request, so it
-        // takes focus.
+        // Revealed by a click on its trigger, so it takes focus.
         focused
         className={classNames(
           'feed-editor activity-feed-editor-container-new',

@@ -980,11 +980,17 @@ test.describe('ActivityFeed: conversation actions on the Activity tab', () => {
     ]);
     await ownerPage.keyboard.press('Escape');
 
+    // The drawer lists the replies over the comment input, as the
+    // description drawer does; the editor opens, focused, from that input.
     await card.getByTestId('reply-button').click();
+    const drawerComments = ownerPage.getByTestId('thread-panel-comments');
+    const editor = drawerComments.locator('[contenteditable="true"]');
     await expect(
-      ownerPage
-        .getByTestId('thread-panel-comments')
-        .locator('[contenteditable="true"]')
-    ).toBeFocused();
+      drawerComments.getByTestId('comments-input-field')
+    ).toBeVisible();
+    await expect(editor).toHaveCount(0);
+
+    await drawerComments.getByTestId('comments-input-field').click();
+    await expect(editor).toBeFocused();
   });
 });

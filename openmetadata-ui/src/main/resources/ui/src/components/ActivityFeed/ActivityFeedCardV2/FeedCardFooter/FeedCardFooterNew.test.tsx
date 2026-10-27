@@ -33,15 +33,9 @@ jest.mock('../../ActivityFeedDrawer/ActivityFeedDrawer', () =>
     const { useActivityFeedProvider } = jest.requireActual(
       '../../ActivityFeedProvider/ActivityFeedProvider'
     );
-    const { selectedThread, focusReplyEditor } = useActivityFeedProvider();
+    const { selectedThread } = useActivityFeedProvider();
 
-    return (
-      <p
-        data-focus-reply-editor={String(focusReplyEditor)}
-        data-testid="replies-drawer">
-        {selectedThread?.message}
-      </p>
-    );
+    return <p data-testid="replies-drawer">{selectedThread?.message}</p>;
   })
 );
 
@@ -123,15 +117,14 @@ describe('FeedCardFooterNew', () => {
   });
 
   // Regression: on the entity Activity tab this press opened nothing.
-  it('opens the replies with the reply editor focused from the reply button', async () => {
+  it('opens the replies from the reply button', async () => {
     await renderFooter();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.reply' }));
 
-    const drawer = await screen.findByTestId('replies-drawer');
-
-    expect(drawer).toHaveTextContent('Footer conversation');
-    expect(drawer).toHaveAttribute('data-focus-reply-editor', 'true');
+    expect(await screen.findByTestId('replies-drawer')).toHaveTextContent(
+      'Footer conversation'
+    );
   });
 
   it('hides the avatars and reply button on a reply', async () => {

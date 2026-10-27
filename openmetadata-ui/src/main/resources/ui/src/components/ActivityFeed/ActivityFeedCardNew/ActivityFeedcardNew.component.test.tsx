@@ -41,7 +41,6 @@ const mockProviderValue = {
   updateFeed: jest.fn(),
   deleteFeed: jest.fn(),
   updateReactions: jest.fn(),
-  focusReplyEditor: false,
 };
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -195,7 +194,6 @@ const activityReply: ConversationReply = {
 describe('ActivityFeedCardNew', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockProviderValue.focusReplyEditor = false;
     mockProviderValue.activityReplies = [];
   });
 
@@ -578,28 +576,5 @@ describe('ActivityFeedCardNew', () => {
     expect(
       await screen.findByTestId('comments-input-field')
     ).toBeInTheDocument();
-  });
-
-  it('opens the thread panel editor focused when a reply was requested', async () => {
-    mockProviderValue.focusReplyEditor = true;
-
-    render(
-      <MemoryRouter>
-        <ActivityFeedCardNew
-          isOpenInDrawer
-          isThreadPanel
-          showThread
-          feed={conversation}
-        />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByTestId('reply-editor')).toHaveAttribute(
-      'data-focused',
-      'true'
-    );
-    expect(
-      screen.queryByTestId('comments-input-field')
-    ).not.toBeInTheDocument();
   });
 });

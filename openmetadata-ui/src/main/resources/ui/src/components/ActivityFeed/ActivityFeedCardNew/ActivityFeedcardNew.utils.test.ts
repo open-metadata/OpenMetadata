@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 import { Conversation } from '../../../generated/entity/feed/conversation';
-import {
-  canManageConversation,
-  isCommentEditorOpen,
-} from './ActivityFeedcardNew.utils';
+import { canManageConversation } from './ActivityFeedcardNew.utils';
 
 const conversation = {
   id: 'conversation-1',
@@ -47,17 +44,5 @@ describe('canManageConversation', () => {
     expect(
       canManageConversation({ ...author, isAdmin: true }, undefined, true)
     ).toBe(false);
-  });
-});
-
-describe('isCommentEditorOpen', () => {
-  it('opens once its trigger is clicked, on any surface', () => {
-    expect(isCommentEditorOpen(true, false, false)).toBe(true);
-  });
-
-  it('opens on a reply request in a thread panel only', () => {
-    expect(isCommentEditorOpen(false, true, true)).toBe(true);
-    expect(isCommentEditorOpen(false, false, true)).toBe(false);
-    expect(isCommentEditorOpen(false, true, false)).toBe(false);
   });
 });

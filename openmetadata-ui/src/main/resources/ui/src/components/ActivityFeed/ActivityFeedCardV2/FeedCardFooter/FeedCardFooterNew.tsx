@@ -50,8 +50,7 @@ function FeedCardFooterNew({
   showReplyCount = false,
 }: Readonly<FeedCardFooterProps>) {
   const { t } = useTranslation();
-  const { showDrawer, updateEditorFocus, updateReactions } =
-    useActivityFeedProvider();
+  const { showDrawer, updateReactions } = useActivityFeedProvider();
 
   const postLength = useMemo(
     () => conversation?.replyCount ?? 0,
@@ -89,9 +88,8 @@ function FeedCardFooterNew({
   const showReplies = useCallback(() => {
     if (conversation) {
       showDrawer(conversation);
-      updateEditorFocus(true);
     }
-  }, [showDrawer, updateEditorFocus, conversation]);
+  }, [showDrawer, conversation]);
 
   // A press handed to the caller keeps bubbling to the card behind this
   // footer, as it did when these were native buttons. Opening the drawer
