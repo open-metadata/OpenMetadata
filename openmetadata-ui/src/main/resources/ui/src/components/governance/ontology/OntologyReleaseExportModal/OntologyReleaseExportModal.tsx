@@ -26,17 +26,26 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useOntologyReleaseExport } from '../../../../hooks/governance/ontology/useOntologyReleaseExport';
+import { useOntologyReleaseShacl } from '../../../../hooks/governance/ontology/useOntologyReleaseShacl';
 import {
-  EXPORT_FORMAT_TO_ACCEPT_HEADER,
-  EXPORT_FORMAT_TO_FILE_EXTENSION,
-  OntologyExportFormat,
-} from '../../../../rest/rdfAPI';
+  NATIVE_EXPORT_EXTENSIONS,
+  NATIVE_EXPORT_MEDIA_TYPES,
+  ONTOLOGY_RELEASE_EXPORT_DEFAULTS,
+} from '../../../../rest/ontologyExport.constants';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { downloadFile } from '../../../../utils/Export/ExportUtils';
 import OntologyNativeImportPanel from './OntologyNativeImportPanel';
 import OntologyReleaseExportContent, {
-  OntologyReleaseExportContentState,
+  OntologyReleaseExportSelection,
 } from './OntologyReleaseExportContent';
+import {
+  resolveExportFormat,
+  resolvePreviewFormat,
+} from './OntologyReleaseExportModal.constants';
+import {
+  resolveContentOptions,
+  resolveContentState,
+} from './OntologyReleaseExportModal.utils';
 
 interface OntologyReleaseExportModalProps {
   readonly ontology: Ontology;
@@ -53,8 +62,14 @@ const OntologyReleaseExportModal = ({
 }: OntologyReleaseExportModalProps) => {
   const { t } = useTranslation();
   const [isImportBusy, setIsImportBusy] = useState(false);
-  const [format, setFormat] = useState<OntologyExportFormat>('rdfxml');
+  const [selection, setSelection] = useState<OntologyReleaseExportSelection>({
+    card: 'rdfxml',
+    options: ONTOLOGY_RELEASE_EXPORT_DEFAULTS,
+    skosXl: false,
+  });
   const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
+  const format = resolveExportFormat(selection.card, selection.skosXl);
+  const contentOptions = resolveContentOptions(selection);
   const {
     content,
     isActiveReleaseLoading,
@@ -62,21 +77,22 @@ const OntologyReleaseExportModal = ({
     isPreviewLoading,
     release,
     retry,
-  } = useOntologyReleaseExport(ontology.id, format);
-  let contentState: OntologyReleaseExportContentState;
-  if (isActiveReleaseLoading) {
-    contentState = { kind: 'loading' };
-  } else if (isError) {
-    contentState = { kind: 'error', onRetry: retry };
-  } else if (!release) {
-    contentState = { kind: 'empty' };
-  } else {
-    contentState = {
-      content,
-      isPreviewLoading,
-      kind: 'ready',
-    };
-  }
+  } = useOntologyReleaseExport(
+    ontology.id,
+    resolvePreviewFormat(format),
+    contentOptions
+  );
+  const shacl = useOntologyReleaseShacl(release?.id);
+  const isGateBlocking =
+    selection.options.shaclGate && shacl.report?.valid === false;
+  const contentState = resolveContentState({
+    content,
+    isActiveReleaseLoading,
+    isError,
+    isPreviewLoading,
+    release,
+    retry,
+  });
 
   const handleClose = () => {
     if (!isImportBusy) {
@@ -85,16 +101,29 @@ const OntologyReleaseExportModal = ({
   };
 
   const handleExport = () => {
-    if (isImportBusy || !release || !content) {
+    if (isImportBusy || !release || isGateBlocking) {
       return;
     }
     const safeName = ontology.name.replaceAll(/[^a-zA-Z0-9-_]/g, '_');
-    downloadFile(
-      content,
-      `${safeName}-release-${release.releaseRevision}.${EXPORT_FORMAT_TO_FILE_EXTENSION[format]}`,
-      EXPORT_FORMAT_TO_ACCEPT_HEADER[format]
+    shacl.download(
+      {
+        format,
+        options: { ...contentOptions, shaclGate: selection.options.shaclGate },
+      },
+      {
+        onSuccess: (file) => {
+          if (file === undefined) {
+            return;
+          }
+          downloadFile(
+            file,
+            `${safeName}-release-${release.releaseRevision}.${NATIVE_EXPORT_EXTENSIONS[format]}`,
+            NATIVE_EXPORT_MEDIA_TYPES[format]
+          );
+          handleClose();
+        },
+      }
     );
-    handleClose();
   };
 
   return (
@@ -159,9 +188,12 @@ const OntologyReleaseExportModal = ({
             <Dialog.Content>
               <Tabs.Panel id="export">
                 <OntologyReleaseExportContent
-                  format={format}
+                  isShaclRunning={shacl.isRunning}
+                  selection={selection}
+                  shaclReport={shacl.report}
                   state={contentState}
-                  onFormatChange={setFormat}
+                  onRunShacl={shacl.run}
+                  onSelectionChange={setSelection}
                 />
               </Tabs.Panel>
               <Tabs.Panel id="import">
@@ -183,8 +215,10 @@ const OntologyReleaseExportModal = ({
                   color="primary"
                   data-testid="ontology-run-release-export"
                   iconLeading={Download01}
-                  isDisabled={isImportBusy || !content || isError}
-                  isLoading={isPreviewLoading}
+                  isDisabled={
+                    isImportBusy || !content || isError || isGateBlocking
+                  }
+                  isLoading={isPreviewLoading || shacl.isDownloading}
                   onPress={handleExport}>
                   {t('label.export')}
                 </Button>

@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { AxiosError, AxiosResponse } from 'axios';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -21,6 +28,10 @@ import {
   OperationType,
 } from '../../../../generated/api/data/createOntologyChangeSet';
 import { Format } from '../../../../generated/api/data/nativeOntologyImportSummary';
+import {
+  FindingSeverity,
+  OntologyReleaseValidation,
+} from '../../../../generated/api/data/ontologyReleaseValidation';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
   OntologyChangeSet,
@@ -40,6 +51,7 @@ import {
   exportOntologyRelease,
   getOntologyChangeSet,
   getOntologyRelease,
+  getOntologyReleaseValidation,
   getOntologyState,
   previewNativeOntologyImport,
   releaseOntologyEditLock,
@@ -62,6 +74,7 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   releaseOntologyEditLock: jest.fn(),
   exportOntologyRelease: jest.fn(),
   getOntologyRelease: jest.fn(),
+  getOntologyReleaseValidation: jest.fn(),
   getOntologyState: jest.fn(),
 }));
 
@@ -129,6 +142,9 @@ const mockExportOntologyRelease = exportOntologyRelease as jest.MockedFunction<
 const mockGetOntologyRelease = getOntologyRelease as jest.MockedFunction<
   typeof getOntologyRelease
 >;
+const mockGetValidation = getOntologyReleaseValidation as jest.MockedFunction<
+  typeof getOntologyReleaseValidation
+>;
 const mockGetOntologyState = getOntologyState as jest.MockedFunction<
   typeof getOntologyState
 >;
@@ -156,7 +172,7 @@ describe('OntologyReleaseExportModal', () => {
     mockExportOntologyRelease.mockResolvedValue('<rdf>sealed release</rdf>');
   });
 
-  it('previews and exports the active immutable release in the selected format', async () => {
+  it('previews the active immutable release as Turtle and downloads the selected format', async () => {
     const onClose = jest.fn();
     renderWithQueryClient(
       <MemoryRouter>
@@ -172,24 +188,28 @@ describe('OntologyReleaseExportModal', () => {
     expect(
       await screen.findByTestId('ontology-release-export-preview')
     ).toHaveTextContent('<rdf>sealed release</rdf>');
-
-    fireEvent.click(screen.getByTestId('ontology-release-format-turtle'));
-
-    await waitFor(() =>
-      expect(mockExportOntologyRelease).toHaveBeenLastCalledWith(
-        release.id,
-        'turtle',
-        expect.any(AbortSignal)
-      )
+    expect(mockExportOntologyRelease).toHaveBeenLastCalledWith(
+      release.id,
+      'turtle',
+      { includeBoundAssets: false, includeInverses: true },
+      expect.any(AbortSignal)
     );
+
     const exportButton = screen.getByTestId('ontology-run-release-export');
     await waitFor(() => expect(exportButton).toBeEnabled());
     fireEvent.click(exportButton);
 
+    await waitFor(() => expect(mockDownloadFile).toHaveBeenCalled());
+
+    expect(mockExportOntologyRelease).toHaveBeenLastCalledWith(
+      release.id,
+      'rdfxml',
+      { includeBoundAssets: false, includeInverses: true, shaclGate: false }
+    );
     expect(mockDownloadFile).toHaveBeenCalledWith(
       '<rdf>sealed release</rdf>',
-      'Sales-release-1.ttl',
-      'text/turtle'
+      'Sales-release-1.rdf',
+      'application/rdf+xml'
     );
     expect(onClose).toHaveBeenCalled();
   });
@@ -204,7 +224,7 @@ describe('OntologyReleaseExportModal', () => {
       </MemoryRouter>
     );
     await screen.findByTestId('ontology-release-export-preview');
-    await user.click(screen.getByRole('radio', { name: /label.turtle/ }));
+    await user.click(screen.getByRole('radio', { name: /label.json-ld/ }));
     const exportTab = screen.getByRole('tab', { name: 'label.export' });
     const importTab = screen.getByRole('tab', { name: 'label.import' });
     await user.click(exportTab);
@@ -232,7 +252,7 @@ describe('OntologyReleaseExportModal', () => {
     expect(
       screen.getByRole('tabpanel', { name: 'label.export' })
     ).toBeVisible();
-    expect(screen.getByRole('radio', { name: /label.turtle/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /label.json-ld/ })).toBeChecked();
   });
 
   it('resets the native import panel on a tab change and closes from the header', async () => {
@@ -312,6 +332,150 @@ describe('OntologyReleaseExportModal', () => {
 
     expect(await screen.findByText(/Release 1/)).toBeVisible();
     expect(mockGetOntologyState).toHaveBeenCalledTimes(2);
+  });
+
+  describe('native formats, options, and the SHACL gate', () => {
+    const invalidReport = {
+      contentDigest: release.contentDigest,
+      deprecationImpacts: [],
+      releaseId: release.id,
+      shacl: {
+        findings: [
+          {
+            focusIri: 'urn:sales:Broken',
+            message: 'A concept needs a label',
+            severity: FindingSeverity.Violation,
+            shapeIri: 'urn:shape',
+          },
+        ],
+        truncated: false,
+        violationCount: 1,
+        warningCount: 0,
+      },
+      structure: { valid: true, violationCount: 0, violations: [] },
+      valid: false,
+    } as unknown as OntologyReleaseValidation;
+
+    const renderModal = async () => {
+      const onClose = jest.fn();
+      renderWithQueryClient(
+        <MemoryRouter>
+          <OntologyReleaseExportModal ontology={ontology} onClose={onClose} />
+        </MemoryRouter>
+      );
+      await screen.findByTestId('ontology-release-export-preview');
+
+      return onClose;
+    };
+    const lastCall = () => mockExportOntologyRelease.mock.calls.at(-1);
+
+    it('offers the four formats and previews SKOS and SKOS-XL as written', async () => {
+      await renderModal();
+      for (const card of ['rdfxml', 'skos', 'jsonld', 'csv']) {
+        expect(
+          screen.getByTestId(`ontology-release-format-${card}`)
+        ).toBeVisible();
+      }
+
+      expect(
+        screen.queryByTestId('ontology-export-skos-xl')
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('ontology-release-format-skos'));
+      await waitFor(() => expect(lastCall()?.[1]).toBe('skos'));
+
+      fireEvent.click(screen.getByTestId('ontology-export-skos-xl'));
+      await waitFor(() => expect(lastCall()?.[1]).toBe('skos-xl'));
+
+      fireEvent.click(screen.getByTestId('ontology-release-format-csv'));
+      await waitFor(() => expect(lastCall()?.[1]).toBe('csv'));
+
+      expect(
+        screen.queryByTestId('ontology-export-skos-xl')
+      ).not.toBeInTheDocument();
+    });
+
+    it('refreshes the Turtle preview with each content option', async () => {
+      await renderModal();
+
+      fireEvent.click(screen.getByTestId('ontology-export-bound-assets'));
+      await waitFor(() =>
+        expect(lastCall()?.[2]).toEqual({
+          includeBoundAssets: true,
+          includeInverses: true,
+        })
+      );
+
+      fireEvent.click(screen.getByTestId('ontology-export-inverses'));
+      await waitFor(() =>
+        expect(lastCall()?.slice(1, 3)).toEqual([
+          'turtle',
+          { includeBoundAssets: true, includeInverses: false },
+        ])
+      );
+    });
+
+    it('never asks CSV for bound asset links', async () => {
+      await renderModal();
+      fireEvent.click(screen.getByTestId('ontology-export-bound-assets'));
+      fireEvent.click(screen.getByTestId('ontology-release-format-csv'));
+
+      await waitFor(() => expect(lastCall()?.[1]).toBe('csv'));
+
+      expect(lastCall()?.[2]).toEqual({
+        includeBoundAssets: false,
+        includeInverses: true,
+      });
+      expect(
+        within(screen.getByTestId('ontology-export-bound-assets')).getByRole(
+          'checkbox'
+        )
+      ).toBeDisabled();
+    });
+
+    it('shows the SHACL report and blocks the download while the gate is on', async () => {
+      mockGetValidation.mockResolvedValue(invalidReport);
+      await renderModal();
+      fireEvent.click(screen.getByTestId('ontology-export-shacl-gate'));
+      fireEvent.click(screen.getByTestId('ontology-run-export-shacl'));
+
+      expect(
+        await screen.findByTestId('ontology-export-shacl-status')
+      ).toHaveTextContent('message.shacl-violation-count');
+      expect(
+        screen.getByTestId('ontology-export-shacl-findings')
+      ).toHaveTextContent('urn:sales:Broken');
+      expect(screen.getByTestId('ontology-run-release-export')).toBeDisabled();
+
+      fireEvent.click(screen.getByTestId('ontology-export-shacl-gate'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('ontology-run-release-export')).toBeEnabled()
+      );
+    });
+
+    it('shows the report a gated download is refused with and starts no download', async () => {
+      const onClose = await renderModal();
+      mockExportOntologyRelease.mockRejectedValueOnce(
+        new AxiosError('blocked', 'ERR_BAD_REQUEST', undefined, undefined, {
+          data: invalidReport,
+          status: 422,
+        } as AxiosResponse)
+      );
+      fireEvent.click(screen.getByTestId('ontology-export-shacl-gate'));
+      fireEvent.click(screen.getByTestId('ontology-run-release-export'));
+
+      expect(
+        await screen.findByTestId('ontology-export-shacl-status')
+      ).toHaveTextContent('message.shacl-violation-count');
+      expect(lastCall()?.[2]).toEqual({
+        includeBoundAssets: false,
+        includeInverses: true,
+        shaclGate: true,
+      });
+      expect(mockDownloadFile).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    });
   });
 });
 

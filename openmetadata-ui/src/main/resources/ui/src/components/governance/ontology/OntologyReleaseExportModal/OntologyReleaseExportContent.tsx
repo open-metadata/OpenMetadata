@@ -15,6 +15,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Grid,
   RadioButton,
   RadioGroup,
@@ -22,14 +23,22 @@ import {
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import {
-  EXPORT_FORMAT_TO_FILE_EXTENSION,
-  OntologyExportFormat,
-} from '../../../../rest/rdfAPI';
+import { OntologyReleaseExportOptions } from '../../../../generated/api/data/ontologyReleaseExportOptions';
+import { OntologyReleaseValidation } from '../../../../generated/api/data/ontologyReleaseValidation';
+import { NATIVE_EXPORT_EXTENSIONS } from '../../../../rest/ontologyExport.constants';
 import {
   ONTOLOGY_RELEASE_EXPORT_FORMATS,
   ONTOLOGY_RELEASE_PREVIEW_LIMIT,
+  OntologyReleaseExportCard,
+  resolveExportFormat,
 } from './OntologyReleaseExportModal.constants';
+import OntologyReleaseExportShacl from './OntologyReleaseExportShacl';
+
+export interface OntologyReleaseExportSelection {
+  readonly card: OntologyReleaseExportCard;
+  readonly options: Required<OntologyReleaseExportOptions>;
+  readonly skosXl: boolean;
+}
 
 export type OntologyReleaseExportContentState =
   | { readonly kind: 'empty' }
@@ -42,17 +51,28 @@ export type OntologyReleaseExportContentState =
     };
 
 interface OntologyReleaseExportContentProps {
-  readonly format: OntologyExportFormat;
+  readonly isShaclRunning: boolean;
+  readonly selection: OntologyReleaseExportSelection;
+  readonly shaclReport?: OntologyReleaseValidation;
   readonly state: OntologyReleaseExportContentState;
-  readonly onFormatChange: (format: OntologyExportFormat) => void;
+  readonly onRunShacl: () => void;
+  readonly onSelectionChange: (
+    selection: OntologyReleaseExportSelection
+  ) => void;
 }
 
 const OntologyReleaseExportContent = ({
-  format,
+  isShaclRunning,
+  selection,
+  shaclReport,
   state,
-  onFormatChange,
+  onRunShacl,
+  onSelectionChange,
 }: OntologyReleaseExportContentProps) => {
   const { t } = useTranslation();
+  const { card, options, skosXl } = selection;
+  const setOption = (changes: Partial<typeof options>) =>
+    onSelectionChange({ ...selection, options: { ...options, ...changes } });
 
   return (
     <Box direction="col" gap={5}>
@@ -80,13 +100,13 @@ const OntologyReleaseExportContent = ({
           <Grid.Item className="tw:min-w-0 tw:md:col-span-13">
             <RadioGroup
               label={t('label.format')}
-              value={format}
+              value={card}
               onChange={(value) => {
                 const option = ONTOLOGY_RELEASE_EXPORT_FORMATS.find(
                   (candidate) => candidate.format === value
                 );
                 if (option) {
-                  onFormatChange(option.format);
+                  onSelectionChange({ ...selection, card: option.format });
                 }
               }}>
               {ONTOLOGY_RELEASE_EXPORT_FORMATS.map((option) => (
@@ -96,13 +116,46 @@ const OntologyReleaseExportContent = ({
                   key={option.format}
                   label={t(option.labelKey)}
                   trailing={`.${
-                    EXPORT_FORMAT_TO_FILE_EXTENSION[option.format]
+                    NATIVE_EXPORT_EXTENSIONS[
+                      resolveExportFormat(option.format, skosXl)
+                    ]
                   }`}
                   value={option.format}
                   variant="card"
                 />
               ))}
             </RadioGroup>
+            <Box className="tw:mt-4" direction="col" gap={2}>
+              {card === 'skos' ? (
+                <Checkbox
+                  data-testid="ontology-export-skos-xl"
+                  isSelected={skosXl}
+                  label={t('label.use-skos-xl-labels')}
+                  onChange={(value) =>
+                    onSelectionChange({ ...selection, skosXl: value })
+                  }
+                />
+              ) : null}
+              <Checkbox
+                data-testid="ontology-export-inverses"
+                isSelected={options.includeInverses}
+                label={t('message.include-inverse-relationships')}
+                onChange={(value) => setOption({ includeInverses: value })}
+              />
+              <Checkbox
+                data-testid="ontology-export-bound-assets"
+                isDisabled={card === 'csv'}
+                isSelected={options.includeBoundAssets && card !== 'csv'}
+                label={t('label.include-bound-assets')}
+                onChange={(value) => setOption({ includeBoundAssets: value })}
+              />
+              <Checkbox
+                data-testid="ontology-export-shacl-gate"
+                isSelected={options.shaclGate}
+                label={t('label.shacl-gate')}
+                onChange={(value) => setOption({ shaclGate: value })}
+              />
+            </Box>
           </Grid.Item>
           <Grid.Item className="tw:min-w-0 tw:md:col-span-11">
             <Box className="tw:h-full" direction="col" gap={2}>
@@ -121,6 +174,11 @@ const OntologyReleaseExportContent = ({
                   : state.content?.slice(0, ONTOLOGY_RELEASE_PREVIEW_LIMIT) ??
                     '—'}
               </pre>
+              <OntologyReleaseExportShacl
+                isRunning={isShaclRunning}
+                report={shaclReport}
+                onRun={onRunShacl}
+              />
             </Box>
           </Grid.Item>
         </Grid>

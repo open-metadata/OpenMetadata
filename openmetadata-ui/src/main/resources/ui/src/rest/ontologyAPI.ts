@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosResponse, isAxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { InferenceMaterializationResult } from '../generated/api/configuration/rdf/inferenceMaterializationResult';
@@ -34,6 +34,7 @@ import { DeleteOntologyResource } from '../generated/api/data/deleteOntologyReso
 import { InstallOntologyPack } from '../generated/api/data/installOntologyPack';
 import type { NativeOntologyImportDetection } from '../generated/api/data/nativeOntologyImportDetection';
 import type { NativeOntologyImportSummary } from '../generated/api/data/nativeOntologyImportSummary';
+import type { OntologyReleaseExportOptions } from '../generated/api/data/ontologyReleaseExportOptions';
 import { OntologyBulkJob } from '../generated/api/data/ontologyBulkJob';
 import { OntologyBulkJobList } from '../generated/api/data/ontologyBulkJobList';
 import { OntologyBulkRequest } from '../generated/api/data/ontologyBulkRequest';
@@ -97,7 +98,10 @@ import {
 } from '../interface/governance/ontology/ontologyConceptBindings.types';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
-import { EXPORT_FORMAT_TO_ACCEPT_HEADER, OntologyExportFormat } from './rdfAPI';
+import {
+  NATIVE_EXPORT_MEDIA_TYPES,
+  OntologyReleaseExportFormat,
+} from './ontologyExport.constants';
 
 const RELATIONSHIP_TYPES_PATH = '/relationshipTypes';
 const ONTOLOGIES_PATH = '/ontologies';
@@ -468,22 +472,44 @@ export const getOntologyReleaseValidation = async (
   return response.data;
 };
 
+/** The gated export answers 422 with the validation report as JSON, which a text response leaves unparsed. */
+const parseGateReport = (error: unknown) => {
+  if (
+    isAxiosError<string>(error) &&
+    error.response?.status === 422 &&
+    typeof error.response.data === 'string'
+  ) {
+    try {
+      error.response.data = JSON.parse(error.response.data);
+    } catch {
+      return error;
+    }
+  }
+
+  return error;
+};
+
 export const exportOntologyRelease = async (
   releaseId: string,
-  format: OntologyExportFormat,
+  format: OntologyReleaseExportFormat,
+  options: OntologyReleaseExportOptions = {},
   signal?: AbortSignal
 ) => {
-  const response = await APIClient.get<string>(
-    `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(releaseId)}/export`,
-    {
-      params: { format },
-      headers: { Accept: EXPORT_FORMAT_TO_ACCEPT_HEADER[format] },
-      responseType: 'text',
-      ...(signal ? { signal } : {}),
-    }
-  );
+  try {
+    const response = await APIClient.get<string>(
+      `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(releaseId)}/export`,
+      {
+        params: { format, ...options },
+        headers: { Accept: NATIVE_EXPORT_MEDIA_TYPES[format] },
+        responseType: 'text',
+        signal,
+      }
+    );
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    throw parseGateReport(error);
+  }
 };
 
 type OntologyChangeSetCreation =
