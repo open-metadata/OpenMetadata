@@ -13,6 +13,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Webhook;
@@ -88,6 +89,31 @@ class AlertLimitsTest {
     assertThrows(
         BadRequestException.class,
         () -> AlertLimits.requireTestSendWithin(pastIt.getDestinations()));
+  }
+
+  // Users or teams are found by name, however many people that is: only typed addresses count.
+  @Test
+  void aDestinationOfUsersOrTeamsIsNotHeldToTheReceiverLimit() {
+    for (SubscriptionDestination.SubscriptionCategory category :
+        List.of(
+            SubscriptionDestination.SubscriptionCategory.USERS,
+            SubscriptionDestination.SubscriptionCategory.TEAMS)) {
+      SubscriptionDestination named =
+          new SubscriptionDestination()
+              .withId(UUID.randomUUID())
+              .withType(SubscriptionDestination.SubscriptionType.EMAIL)
+              .withCategory(category)
+              .withConfig(new EmailAlertConfig().withReceivers(names(PAST_THE_LIMIT)));
+      EventSubscription alert = alert(List.of(named), ORDINARY_BATCH);
+
+      assertDoesNotThrow(() -> AlertLimits.requireWithin(null, alert), category.value());
+      assertDoesNotThrow(
+          () -> AlertLimits.requireTestSendWithin(alert.getDestinations()), category.value());
+    }
+  }
+
+  private static Set<String> names(int count) {
+    return IntStream.range(0, count).mapToObj(index -> "name" + index).collect(Collectors.toSet());
   }
 
   // An alert saved before the limit existed keeps its receivers through edits of the destination,

@@ -30,7 +30,7 @@ public final class AlertLimits {
   /** The most destinations one alert, or one test send, may hold. */
   public static final int MAX_DESTINATIONS = 50;
 
-  /** The most receivers one email or webhook destination may list. */
+  /** The most receivers a user may type into one email or webhook destination. */
   public static final int MAX_RECEIVERS_PER_DESTINATION = 100;
 
   private AlertLimits() {}
@@ -65,7 +65,14 @@ public final class AlertLimits {
   }
 
   private static void requireReceiversWithin(long held, long receivers) {
-    requireNoGrowthPast("receivers", held, receivers, MAX_RECEIVERS_PER_DESTINATION);
+    boolean grewPastTheLimit = receivers > MAX_RECEIVERS_PER_DESTINATION && receivers > held;
+    if (grewPastTheLimit) {
+      throw new BadRequestException(
+          String.format(
+              "receivers must be less than or equal to %d, got %d. To reach more people, send to a"
+                  + " team or to a mailing list instead of listing each address",
+              MAX_RECEIVERS_PER_DESTINATION, receivers));
+    }
   }
 
   // An alert that reads no event at a time never reads one again.
