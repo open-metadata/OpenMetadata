@@ -1043,23 +1043,26 @@ export const domainWithDataProducts = async (
 
 const DAY = 86_400_000;
 
-/** Picks `date` in the core DatePicker opened by `trigger`, paging months forward. */
-const pickDate = async (trigger: Locator, date: Date) => {
+/** Picks `date` in the core DatePicker opened by `trigger`, paging months to it. */
+export const pickDate = async (trigger: Locator, date: Date) => {
   await userEvent.click(trigger);
   const calendar = page
     .getByRole('dialog')
     .filter({ has: page.getByRole('grid') });
   const heading = calendar.getByRole('heading');
-  const month = date.toLocaleString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  });
+  const target = date.getFullYear() * 12 + date.getMonth();
+  const monthOf = (text: string) => {
+    const shown = new Date(`1 ${text}`);
+
+    return shown.getFullYear() * 12 + shown.getMonth();
+  };
 
   await expect.element(heading).toBeVisible();
 
-  while (!heading.element().textContent?.includes(month)) {
+  while (monthOf(heading.element().textContent ?? '') !== target) {
     const shown = heading.element().textContent ?? '';
-    await userEvent.click(calendar.getByCSS('button[slot="next"]'));
+    const slot = monthOf(shown) < target ? 'next' : 'previous';
+    await userEvent.click(calendar.getByCSS(`button[slot="${slot}"]`));
 
     await expect.element(heading).not.toHaveTextContent(shown);
   }
@@ -1069,7 +1072,11 @@ const pickDate = async (trigger: Locator, date: Date) => {
       disabled: false,
     })
   );
-  await userEvent.click(calendar.getByRole('button', { name: 'Apply' }));
+  // The announcement form's range picker confirms; a property's date does not.
+  const apply = calendar.getByRole('button', { name: 'Apply' });
+  if (apply.query()) {
+    await userEvent.click(apply);
+  }
 
   await expect.element(calendar).not.toBeInTheDocument();
 };

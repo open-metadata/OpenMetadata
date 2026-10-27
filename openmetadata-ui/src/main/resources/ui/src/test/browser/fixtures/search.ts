@@ -47,10 +47,12 @@ export const serveSearch = (corpus: SearchCorpus) => {
     http.get('/api/v1/search/query', ({ request }) => {
       const params = new URL(request.url).searchParams;
       queries.push(params);
-      const index = (params.get('index') ?? '').replace(/_search_index$/, '');
-      const docs = (corpus[index] ?? []).filter((doc) =>
-        matches(doc, params.get('q') ?? '')
-      );
+      // A comma-separated index (e.g. `user_search_index,team_search_index`)
+      // searches each one.
+      const docs = (params.get('index') ?? '')
+        .split(',')
+        .flatMap((index) => corpus[index.replace(/_search_index$/, '')] ?? [])
+        .filter((doc) => matches(doc, params.get('q') ?? ''));
 
       return HttpResponse.json({
         hits: {

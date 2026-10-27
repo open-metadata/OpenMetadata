@@ -134,7 +134,8 @@ const ownStore = (columns: Column[]): ColumnStore => {
  * Serves `/api/v1/<parent>/name/:fqn/columns` (paged like ChildFieldPageReader)
  * and its `/search`, `GET /api/v1/columns/name/:fqn` (any column, nested ones included) and
  * `PUT /api/v1/columns/name/:fqn`, which updates only the fields sent and
- * clears a blank displayName/description (ColumnRepository.updateColumn).
+ * clears a blank displayName/description (ColumnRepository.updateColumn);
+ * custom property values arrive in `extension`.
  * Pass a `store` to keep the columns inside an entity the page also PATCHes.
  */
 export const serveColumns = (
@@ -201,6 +202,9 @@ export const serveColumns = (
         }
         if (body.tags !== undefined) {
           updated.tags = body.tags as Column['tags'];
+        }
+        if (body.extension !== undefined) {
+          updated.extension = body.extension;
         }
 
         return updated;

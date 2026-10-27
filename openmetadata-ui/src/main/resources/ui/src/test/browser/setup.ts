@@ -14,6 +14,7 @@ import { initCoreI18n } from '@openmetadata/ui-core-components';
 import { afterAll, afterEach, beforeAll, expect } from 'vitest';
 import { cleanup } from 'vitest-browser-react';
 import '../../styles/globalStyles';
+import { useExploreCache } from '../../hooks/useExploreCache';
 import i18next from '../../utils/i18next/LocalUtil';
 import { worker } from './msw';
 
@@ -66,6 +67,9 @@ afterEach(async () => {
   worker.resetHandlers();
   globalThis.history.replaceState(null, '', runnerUrl);
   localStorage.clear();
+  // Explore keeps search results for 30 s across mounts (as across a user's
+  // tab switches); a later test would render this test's results first.
+  useExploreCache.getState().clearCache();
 
   expect(unhandled, 'API calls without an MSW handler').toEqual([]);
 });
