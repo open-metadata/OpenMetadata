@@ -180,7 +180,9 @@ def _flatten_export_cells(export_cells: list[dict]) -> list[Cell]:
         if export_cell.get("cellType") == "SQL":
             cells.append(
                 Cell(
+                    # The export's cellId is the cells API's staticId, the id kept across versions
                     id=export_cell["cellId"],
+                    staticId=export_cell["cellId"],
                     cellType="SQL",
                     label=export_cell.get("cellLabel"),
                     dataConnectionId=config.get("dataConnectionId"),

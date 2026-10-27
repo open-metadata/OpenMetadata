@@ -164,8 +164,8 @@ class TestCellSqlParsing:
         assert parse_cell_sql("create table t as select 1", "snowflake") is None
 
 
-def make_table(name: str, columns: dict[str, DataType]) -> Table:
-    table_fqn = f"snowflake_prod.prod.sales.{name}"
+def make_table(name: str, columns: dict[str, DataType], schema_fqn: str = "snowflake_prod.prod.sales") -> Table:
+    table_fqn = f"{schema_fqn}.{name}"
     return Table(
         id=uuid.uuid4(),
         name=name,
@@ -343,10 +343,10 @@ class TestHexCellLineage:
 
         assert request.name.root == PROJECT.id
         assert request.dataModelType == DataModelType.HexDataModel
-        # The second cell shares the first one's label, and the dataframe cell reads no warehouse table
-        assert [(column.name.root, column.dataType) for column in request.columns] == [
-            ("Revenue by region", DataType.STRUCT),
-            ("Revenue by region_2", DataType.STRUCT),
+        # Named by cell id, which a rename keeps; the dataframe cell reads no warehouse table
+        assert [(column.name.root, column.displayName, column.dataType) for column in request.columns] == [
+            ("c1", "Revenue by region", DataType.STRUCT),
+            ("c2", "Revenue by region", DataType.STRUCT),
         ]
         assert [(child.name.root, child.dataType) for child in request.columns[0].children] == [
             ("region", DataType.VARCHAR),
@@ -367,13 +367,13 @@ class TestHexCellLineage:
         assert set(by_table) == {"snowflake_prod.prod.sales.orders", "snowflake_prod.prod.sales.customers"}
         assert all(edge.toEntity.type == "dashboardDataModel" for edge in edges)
         assert column_lineage(by_table["snowflake_prod.prod.sales.orders"]) == {
-            f"{model_fqn}.Revenue by region.region": ["snowflake_prod.prod.sales.orders.region"],
-            f"{model_fqn}.Revenue by region.revenue": ["snowflake_prod.prod.sales.orders.amount"],
+            f"{model_fqn}.c1.region": ["snowflake_prod.prod.sales.orders.region"],
+            f"{model_fqn}.c1.revenue": ["snowflake_prod.prod.sales.orders.amount"],
         }
         assert column_lineage(by_table["snowflake_prod.prod.sales.customers"]) == {
-            f"{model_fqn}.Revenue by region.segment": ["snowflake_prod.prod.sales.customers.segment"],
-            f"{model_fqn}.Revenue by region_2.id": ["snowflake_prod.prod.sales.customers.id"],
-            f"{model_fqn}.Revenue by region_2.segment": ["snowflake_prod.prod.sales.customers.segment"],
+            f"{model_fqn}.c1.segment": ["snowflake_prod.prod.sales.customers.segment"],
+            f"{model_fqn}.c2.id": ["snowflake_prod.prod.sales.customers.id"],
+            f"{model_fqn}.c2.segment": ["snowflake_prod.prod.sales.customers.segment"],
         }
         # Each table is looked up once even though both cells read customers
         assert len(source.metadata.searches) == 2
@@ -443,7 +443,7 @@ class TestHexCellLineage:
 
         (request,), (edge,) = run(source)
 
-        assert [column.name.root for column in request.columns] == ["base_orders", "by_region", "pacing"]
+        assert [column.displayName for column in request.columns] == ["base_orders", "by_region", "pacing"]
         assert [(child.name.root, child.dataType) for child in request.columns[2].children] == [
             ("region", DataType.VARCHAR),
             ("revenue", DataType.UNKNOWN),
@@ -451,12 +451,10 @@ class TestHexCellLineage:
         ]
         model_fqn = f"{SERVICE}.model.{PROJECT.id}"
         assert {
-            to_column: from_columns
-            for to_column, from_columns in column_lineage(edge).items()
-            if ".pacing." in to_column
+            to_column: from_columns for to_column, from_columns in column_lineage(edge).items() if ".c3." in to_column
         } == {
-            f"{model_fqn}.pacing.region": ["snowflake_prod.prod.sales.orders.region"],
-            f"{model_fqn}.pacing.revenue": ["snowflake_prod.prod.sales.orders.amount"],
+            f"{model_fqn}.c3.region": ["snowflake_prod.prod.sales.orders.region"],
+            f"{model_fqn}.c3.revenue": ["snowflake_prod.prod.sales.orders.amount"],
         }
 
     def test_dashboard_links_its_data_model(self, make_source):
@@ -587,8 +585,19 @@ class TestHexCellLineage:
 
         (request,), _ = run(source)
 
-        assert request.columns[0].name.root == "Revenue _ target"
+        # The label is only displayed, so any text is fine there
+        assert (request.columns[0].name.root, request.columns[0].displayName) == ("c1", "Revenue > target")
         assert [child.name.root for child in request.columns[0].children] == ["region_code"]
+
+    def test_a_renamed_cell_keeps_its_column_group(self, make_source):
+        first_run = make_source([REVENUE_CELL])
+        renamed = make_source([REVENUE_CELL.model_copy(update={"label": "Revenue per region"})])
+
+        (before,), _ = run(first_run)
+        (after,), _ = run(renamed)
+
+        assert before.columns[0].name == after.columns[0].name
+        assert after.columns[0].displayName == "Revenue per region"
 
     def test_chained_cell_reads_a_table_its_upstream_cell_found_by_connection_defaults(self, make_source):
         source = make_source(
@@ -608,7 +617,7 @@ class TestHexCellLineage:
 
         _, (edge,) = run(source)
 
-        assert column_lineage(edge)[f"{SERVICE}.model.{PROJECT.id}.regions.region"] == [
+        assert column_lineage(edge)[f"{SERVICE}.model.{PROJECT.id}.c2.region"] == [
             "snowflake_prod.prod.sales.orders.region"
         ]
 
@@ -623,7 +632,7 @@ class TestHexCellLineage:
 
         assert [(c.name.root, c.dataType) for c in request.columns[0].children] == [("createdAt", DataType.TIMESTAMP)]
         assert column_lineage(edge) == {
-            f"{SERVICE}.model.{PROJECT.id}.Revenue by region.createdAt": ["snowflake_prod.prod.sales.events.createdAt"]
+            f"{SERVICE}.model.{PROJECT.id}.c1.createdAt": ["snowflake_prod.prod.sales.events.createdAt"]
         }
 
     def test_column_names_stay_unique_once_made_valid(self, make_source):
@@ -745,7 +754,7 @@ class TestHexCellLineage:
             to_column: from_columns for edge in edges for to_column, from_columns in column_lineage(edge).items()
         }
         # Postgres' own regions table, not the Snowflake cell named regions
-        assert lineage[f"{model_fqn}.same_name.region"] == ["postgres_prod.crm.analytics.regions.region"]
+        assert lineage[f"{model_fqn}.c3.region"] == ["postgres_prod.crm.analytics.regions.region"]
 
     def test_a_dataframe_cell_reads_its_own_names_as_dataframes(self, make_source):
         """orders here is a pandas dataframe: the warehouse table of that name is not what it reads"""
@@ -764,19 +773,54 @@ class TestHexCellLineage:
         _, edges = run(source, prefixes=prefixes)
 
         assert [edge.fromEntity.fullyQualifiedName for edge in edges] == ["snowflake_prod.prod.sales.customers"]
-        assert column_lineage(edges[0])[f"{SERVICE}.model.{PROJECT.id}.mixed.segment"] == [
+        assert column_lineage(edges[0])[f"{SERVICE}.model.{PROJECT.id}.c2.segment"] == [
             "snowflake_prod.prod.sales.customers.segment"
         ]
 
     def test_filtered_out_data_model_is_not_ingested(self, make_source):
+        first_run = make_source([REVENUE_CELL])
+        run(first_run)
         source = make_source([REVENUE_CELL])
+        # The data model an earlier run created is deleted by this one, so lineage can't point at it
+        source.metadata.entities.update(first_run.metadata.entities)
         source.source_config.dataModelFilterPattern = FilterPattern(excludes=["Sales.*"])
         source.status = MagicMock()
 
         data_models, edges = run(source)
 
         assert data_models == []
+        assert f"{SERVICE}.model.{PROJECT.id}" not in source.datamodel_source_state
         assert {edge.toEntity.type for edge in edges} == {"dashboard"}
+
+    def test_a_cte_inside_an_inlined_cell_does_not_hide_a_table(self, make_source):
+        """paid's own orders CTE is not the warehouse orders table the joining cell reads"""
+        raw_orders = make_table("orders", {"id": DataType.INT, "amount": DataType.DOUBLE}, "snowflake_prod.prod.raw")
+        cells = [
+            sql_cell(
+                "c1",
+                "with orders as (select * from raw.orders where amount > 0) select id, amount from orders",
+                "paid",
+            ),
+            sql_cell("c2", "select o.region, p.amount from paid p join orders o on o.id = p.id", "joined"),
+        ]
+        source = make_source(cells, tables=(ORDERS_TABLE, raw_orders))
+        source.client.get_data_connections.return_value = {
+            "conn_snowflake": DataConnection(
+                id="conn_snowflake",
+                name="Snowflake",
+                type="snowflake",
+                connectionDetails={"snowflake": {"database": "prod", "schema": "sales"}},
+            )
+        }
+
+        _, edges = run(source)
+
+        lineage = {
+            to_column: from_columns for edge in edges for to_column, from_columns in column_lineage(edge).items()
+        }
+        model_fqn = f"{SERVICE}.model.{PROJECT.id}"
+        assert lineage[f"{model_fqn}.c2.region"] == ["snowflake_prod.prod.sales.orders.region"]
+        assert lineage[f"{model_fqn}.c2.amount"] == ["snowflake_prod.prod.raw.orders.amount"]
 
 
 class TestHexApiClientCells:

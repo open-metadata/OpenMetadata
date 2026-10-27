@@ -403,10 +403,11 @@ class HexSource(DashboardServiceSource):
                 dataModelType=DataModelType.HexDataModel,
                 serviceType=self.service_connection.type.value,
                 sourceUrl=SourceUrl(self.client.get_project_url(dashboard_details)),
-                sql=SqlQuery("\n\n".join(f"-- {cell.name}\n{cell.sql}" for cell in cells)),
+                sql=SqlQuery("\n\n".join(f"-- {cell.label}\n{cell.sql}" for cell in cells)),
                 columns=[
                     Column(
                         name=ColumnName(cell.name),
+                        displayName=cell.label,
                         dataType=DataType.STRUCT,
                         children=[
                             Column(name=ColumnName(column.name), dataType=column.data_type) for column in cell.columns
@@ -444,7 +445,9 @@ class HexSource(DashboardServiceSource):
                 self.metadata.get_by_name(
                     entity=DashboardDataModel, fqn=self._build_fqn(DashboardDataModel, dashboard_details)
                 )
+                # A filtered-out data model left from an earlier run is deleted by this one
                 if self.source_config.includeDataModels
+                and not filter_by_datamodel(self.source_config.dataModelFilterPattern, dashboard_details.title)
                 else None
             )
             target = data_model or self.metadata.get_by_name(
@@ -587,7 +590,8 @@ class HexSource(DashboardServiceSource):
         if not inline_upstream_cells(expression, readable) and not cell.dataConnectionId:
             return None
 
-        lineage = HexCellLineage(name=cell.label or cell.staticId or cell.id, sql=cell.sql)
+        cell_id = cell.staticId or cell.id
+        lineage = HexCellLineage(name=cell_id, label=cell.label or cell_id, sql=cell.sql)
         tables_by_key: dict[tuple[str, str, str], Table] = {}
         schema: dict[str, dict[str, dict[str, dict[str, str]]]] = {}
         for reference in get_table_references(expression):
