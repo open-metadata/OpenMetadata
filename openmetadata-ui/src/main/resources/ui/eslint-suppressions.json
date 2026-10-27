@@ -752,7 +752,7 @@
   },
   "playwright/utils/task.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 1
     }
   },
   "playwright/utils/taskWorkflow.ts": {
