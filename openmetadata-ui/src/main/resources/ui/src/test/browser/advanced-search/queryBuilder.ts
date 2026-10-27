@@ -234,18 +234,10 @@ const pickSuggestion = async (scope: Locator, value: string) => {
   await userEvent.click(option, { timeout: 10_000 });
 };
 
-/**
- * Fills rule `index`: its field, its operator and (unless the operator takes
- * none) its value — typed for text operators, picked from the suggestions
- * otherwise, and confirmed in the widget either way.
- */
-export const fillRule = async (
+/** One pass of `fillRule`. */
+const enterRule = async (
   index: number,
-  {
-    field,
-    operator,
-    value,
-  }: { field: string; operator: string; value?: string }
+  { field, operator, value }: RuleSpec
 ) => {
   await pickField(index, [field]);
   await pickOperator(index, operator);
@@ -277,6 +269,32 @@ export const fillRule = async (
   await userEvent.click(
     modal().getByRole('heading', { includeHidden: true }).first()
   );
+};
+
+interface RuleSpec {
+  field: string;
+  operator: string;
+  value?: string;
+}
+
+/**
+ * Fills rule `index`: its field, its operator and (unless the operator takes
+ * none) its value — typed for text operators, picked from the suggestions
+ * otherwise, and confirmed in the widget either way. A rule added a moment
+ * ago can still be initialising, and that update resets a field picked
+ * meanwhile to the default (the select then shows the default again); the
+ * rule is filled again when the field it ends up with is not `field`.
+ */
+export const fillRule = async (index: number, spec: RuleSpec) => {
+  const fieldInput = fieldSelect(index).getByRole('combobox');
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await enterRule(index, spec);
+    if ((fieldInput.element() as HTMLInputElement).value === spec.field) {
+      return;
+    }
+  }
+
+  throw new Error(`Rule ${index} would not keep the field ${spec.field}`);
 };
 
 /** The `query_filter` of the result search a `search` sent, parsed. */
