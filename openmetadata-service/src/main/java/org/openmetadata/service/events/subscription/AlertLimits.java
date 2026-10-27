@@ -1,9 +1,12 @@
 package org.openmetadata.service.events.subscription;
 
 import jakarta.ws.rs.BadRequestException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -75,24 +78,56 @@ public final class AlertLimits {
     }
   }
 
-  // Each destination against what the same destination held before; a new one held none.
+  // Each destination against what it held before; a new one held none. Each stored receiver list
+  // is held once: first by the destination that keeps it, then, since a PUT carries no ids and
+  // every destination of one gets a new id, by a destination under another id that sends it
+  // unchanged. So re-sending an alert never makes its stored lists look new, and copying a list
+  // past the limit into a second destination is still refused.
   private static void requireNoDestinationGrowsPastTheReceiverLimit(
       EventSubscription original, EventSubscription updated) {
-    Map<UUID, Long> before = receiversById(original);
+    Map<UUID, Set<String>> byId = receiversById(original);
+    Map<Set<String>, Integer> unclaimed = countOfEachList(original);
+    List<SubscriptionDestination> resent = new ArrayList<>();
     for (SubscriptionDestination destination : destinations(updated)) {
-      requireNoGrowthPast(
-          RECEIVERS,
-          before.getOrDefault(destination.getId(), 0L),
-          receiversOf(destination),
-          MAX_RECEIVERS_PER_DESTINATION);
+      Set<String> receivers = receiversOf(destination);
+      if (receivers.equals(byId.get(destination.getId()))) {
+        claim(unclaimed, receivers);
+      } else {
+        resent.add(destination);
+      }
+    }
+    for (SubscriptionDestination destination : resent) {
+      Set<String> receivers = receiversOf(destination);
+      long held =
+          claim(unclaimed, receivers)
+              ? receivers.size()
+              : byId.getOrDefault(destination.getId(), Set.of()).size();
+      requireNoGrowthPast(RECEIVERS, held, receivers.size(), MAX_RECEIVERS_PER_DESTINATION);
     }
   }
 
-  private static Map<UUID, Long> receiversById(EventSubscription alert) {
-    return destinations(alert).stream()
+  private static boolean claim(Map<Set<String>, Integer> unclaimed, Set<String> receivers) {
+    int left = unclaimed.getOrDefault(receivers, 0);
+    boolean claimed = left > 0;
+    if (claimed) {
+      unclaimed.put(receivers, left - 1);
+    }
+    return claimed;
+  }
+
+  private static Map<Set<String>, Integer> countOfEachList(EventSubscription alert) {
+    Map<Set<String>, Integer> counts = new HashMap<>();
+    destinations(alert)
+        .forEach(destination -> counts.merge(receiversOf(destination), 1, Integer::sum));
+    return counts;
+  }
+
+  private static Map<UUID, Set<String>> receiversById(EventSubscription alert) {
+    Map<UUID, Set<String>> byId = new HashMap<>();
+    destinations(alert).stream()
         .filter(destination -> destination.getId() != null)
-        .collect(
-            Collectors.toMap(SubscriptionDestination::getId, AlertLimits::receiversOf, Math::max));
+        .forEach(destination -> byId.put(destination.getId(), receiversOf(destination)));
+    return byId;
   }
 
   private static long destinationsOf(EventSubscription alert) {
@@ -103,11 +138,13 @@ public final class AlertLimits {
     return alert == null || alert.getBatchSize() == null ? 0 : alert.getBatchSize();
   }
 
-  private static long receiversOf(SubscriptionDestination destination) {
+  private static Set<String> receiversOf(SubscriptionDestination destination) {
     Object config = destination.getConfig();
     Object receivers =
         config == null ? null : JsonUtils.convertValue(config, Map.class).get(RECEIVERS);
-    return receivers instanceof Collection<?> listed ? listed.size() : 0;
+    return receivers instanceof Collection<?> listed
+        ? listed.stream().map(String::valueOf).collect(Collectors.toSet())
+        : Set.of();
   }
 
   private static List<SubscriptionDestination> destinations(EventSubscription alert) {

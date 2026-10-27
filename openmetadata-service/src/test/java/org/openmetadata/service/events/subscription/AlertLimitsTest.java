@@ -80,6 +80,32 @@ class AlertLimitsTest {
     assertThrows(
         BadRequestException.class,
         () -> AlertLimits.requireWithin(stored, alert(List.of(large, grown), 100)));
+    assertThrows(
+        BadRequestException.class,
+        () -> AlertLimits.requireWithin(stored, alert(List.of(grown, large), 100)));
+  }
+
+  // A PUT carries no ids, so each destination it sends gets a new one.
+  @Test
+  void aStoredListPastTheLimitSentAgainUnderANewIdIsKept() {
+    SubscriptionDestination large = webhookTo(AlertLimits.MAX_RECEIVERS_PER_DESTINATION * 2);
+    EventSubscription stored = alert(List.of(large), 100);
+    SubscriptionDestination resent =
+        webhookTo(AlertLimits.MAX_RECEIVERS_PER_DESTINATION * 2).withId(UUID.randomUUID());
+
+    assertDoesNotThrow(() -> AlertLimits.requireWithin(stored, alert(List.of(resent), 100)));
+  }
+
+  @Test
+  void aStoredListPastTheLimitCannotBeCopiedIntoAnotherDestination() {
+    int pastTheLimit = AlertLimits.MAX_RECEIVERS_PER_DESTINATION * 2;
+    EventSubscription stored = alert(List.of(webhookTo(pastTheLimit), webhookTo(10)), 100);
+    SubscriptionDestination first = webhookTo(pastTheLimit).withId(UUID.randomUUID());
+    SubscriptionDestination second = webhookTo(pastTheLimit).withId(UUID.randomUUID());
+
+    assertThrows(
+        BadRequestException.class,
+        () -> AlertLimits.requireWithin(stored, alert(List.of(first, second), 100)));
   }
 
   @Test

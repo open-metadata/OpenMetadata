@@ -8,6 +8,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -107,6 +108,32 @@ class AlertConfigLimitsIT {
     assertEquals(60, edited.getDestinations().size());
   }
 
+  // A PUT that leaves out the destination ids gets new ones; the stored receivers are still kept.
+  @Test
+  void anAlertStoredPastTheReceiverLimitCanBePutWithoutDestinationIds(TestNamespace ns) {
+    CreateEventSubscription request = request(ns, "put_without_ids", destinations(1));
+    EventSubscription alert = SdkClients.adminClient().eventSubscriptions().create(request);
+    SubscriptionDestination stored =
+        destination(0)
+            .withConfig(webhookWithReceivers(AlertLimits.MAX_RECEIVERS_PER_DESTINATION + 50));
+    writeBehindTheServer(alert.withDestinations(List.of(stored)));
+    SubscriptionDestination sentWithoutId =
+        JsonUtils.deepCopy(stored, SubscriptionDestination.class).withId(null);
+
+    assertDoesNotThrow(
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PUT,
+                    ALERTS_PATH,
+                    request.withDestinations(List.of(sentWithoutId)).withDescription("edited"),
+                    EventSubscription.class));
+    assertEquals(
+        "edited",
+        SdkClients.adminClient().eventSubscriptions().get(alert.getId()).getDescription());
+  }
+
   @Test
   void aPatchCannotStopAnAlertFromReadingEvents(TestNamespace ns) {
     EventSubscription alert = create(ns, "reads_nothing", 1);
@@ -157,5 +184,14 @@ class AlertConfigLimitsIT {
         .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
         .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
         .withConfig(new Webhook().withEndpoint(URI.create(ENDPOINT + index)));
+  }
+
+  private static Webhook webhookWithReceivers(int receivers) {
+    return new Webhook()
+        .withEndpoint(URI.create(ENDPOINT + "main"))
+        .withReceivers(
+            IntStream.range(0, receivers)
+                .mapToObj(index -> ENDPOINT + "receiver/" + index)
+                .collect(Collectors.toSet()));
   }
 }
