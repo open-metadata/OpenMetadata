@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -107,6 +108,33 @@ class EntityRepositoryKeysetEndTest {
     assertEquals(
         List.of("a1", "a2", "a3"), page.getData().stream().map(Pipeline::getName).toList());
     assertEquals(cursor(a3), page.getPaging().getAfter());
+  }
+
+  @Test
+  void readFailsWhenTheBoundaryKeepsChangingSoThePartitionRetriesFromItsStartKey() {
+    Pipeline a1 = pipeline("a1");
+    Pipeline end = pipeline("a2");
+    Pipeline c1 = pipeline("c1");
+    when(pipelineDAO.listAfter(any(ListFilter.class), eq(1), eq("a2"), eq(id(end))))
+        .thenReturn(
+            List.of(json(pipeline("b1"))),
+            List.of(json(pipeline("b2"))),
+            List.of(json(pipeline("b3"))),
+            List.of(json(pipeline("b4"))));
+    when(pipelineDAO.listAfter(any(ListFilter.class), eq(LIMIT + 1), any(), any()))
+        .thenReturn(List.of(json(a1), json(end), json(c1), json(pipeline("c2"))));
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repo.listAfterKeyset(
+                new ListFilter(Include.ALL),
+                LIMIT,
+                null,
+                cursor(end),
+                0,
+                true,
+                new Fields(Set.of())));
   }
 
   private static Pipeline pipeline(String name) {

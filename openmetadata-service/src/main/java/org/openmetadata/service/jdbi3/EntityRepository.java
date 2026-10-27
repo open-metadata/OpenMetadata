@@ -373,8 +373,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   private static final int BULK_HARD_DELETE_TXN_CHUNK_SIZE = 500;
 
   /**
-   * How often a keyset page re-checks a boundary that keeps changing under it before it is returned
-   * uncut; see ADR:2026-10-26-reindex-partitions-are-key-ranges-fixed-at-job-creation.
+   * How often a keyset page re-checks a boundary that keeps changing under it before the read fails;
+   * see ADR:2026-10-26-reindex-partitions-are-key-ranges-fixed-at-job-creation.
    */
   private static final int MAX_BOUNDARY_CHECKS = 3;
 
@@ -3075,7 +3075,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /**
    * Reads the page and cuts it at the boundary (the first row after {@code end}). The boundary is
    * looked up again after the read and the page re-read if it changed, so a boundary row deleted
-   * in between (e.g. a hard delete during a reindex) cannot let the page run past {@code end}.
+   * in between (e.g. a hard delete during a reindex) cannot let the page run past {@code end}. A
+   * boundary that never settles fails the read rather than return a cursor that may be past it.
    */
   private BoundedPage readBoundedPage(
       ListFilter filter, int limit, String afterName, String afterId, String end) {
@@ -3092,6 +3093,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         boundary = indexOfId(jsons, boundaryId);
         settled = boundary >= 0;
       }
+    }
+    if (!settled) {
+      throw new IllegalStateException(
+          String.format(
+              "Keyset boundary after the end cursor of %s kept changing after %d checks",
+              entityType, MAX_BOUNDARY_CHECKS));
     }
     return boundary >= 0
         ? new BoundedPage(jsons.subList(0, boundary), true)

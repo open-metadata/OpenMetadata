@@ -1,7 +1,7 @@
 # Reindex partitions are key ranges fixed when the job is created, and every server reads them from the partition row
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial); v2 2026-10-26 (boundary re-checked after each page read)
+- **Revisions:** v1 2026-10-26 (initial); v2 2026-10-26 (boundary re-checked after each page read); v3 2026-10-27 (unsettled boundary fails the read)
 - **Deciders:** Sonika Shah
 - **Guard:** `DistributedReindexConcurrentWritesIT`, `PartitionWorkerTest`
   (`keyRangePartitionReadsFromItsStartKeyUntilTheReaderReportsNoMoreRows`,
@@ -33,7 +33,8 @@ no partition and disappeared from search when the new index was promoted, while 
   DAO's order and collation; no comparison happens in Java. The boundary is looked up again after
   each page read, and the page re-read if it changed, so a boundary row deleted between the two
   queries cannot carry the cursor past the end key. A boundary still changing after
-  `MAX_BOUNDARY_CHECKS` (3) checks returns the page uncut: rows may be read twice, never skipped.
+  `MAX_BOUNDARY_CHECKS` (3) checks fails the read, so the partition is retried from its start key
+  rather than continuing from a cursor that may be past its end.
 - A partition without a start key (time series, a type whose walk failed, a partition created
   before this change) keeps the offset range.
 - In a key range, a batch that was read but not written is counted failed and reading continues
