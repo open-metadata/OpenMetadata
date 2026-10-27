@@ -9,12 +9,17 @@ import static org.openmetadata.service.rdf.OntologyReleaseExportFixture.EX;
 import static org.openmetadata.service.rdf.OntologyReleaseExportFixture.PARTY;
 import static org.openmetadata.service.rdf.OntologyReleaseExportFixture.SUPPLIER;
 
+import java.net.URI;
 import java.util.List;
+import java.util.Set;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.SKOS;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.type.OntologyExpression;
+import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.rdf.OntologyReleaseExportFixture.Sealed;
 
@@ -106,6 +111,73 @@ class OntologySkosProjectionTest {
   }
 
   @Test
+  void everyNamedParentOfAMultiExpressionAxiomBecomesBroader() {
+    final OntologyConcept agent = OntologyReleaseExportFixture.concept("Agent", null);
+    final Sealed sealed =
+        OntologyReleaseExportFixture.seal(
+            List.of(
+                CUSTOMER,
+                PARTY,
+                agent,
+                OntologyReleaseExportFixture.parents(
+                    "customer-parents",
+                    CUSTOMER,
+                    List.of(
+                        OntologyReleaseExportFixture.named(PARTY),
+                        OntologyReleaseExportFixture.named(agent)))));
+    final Model actual =
+        new OntologySkosProjection(false).build(sealed.release(), sealed.members());
+    final Model expected =
+        OntologyReleaseExportFixture.turtle(
+            """
+            @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+            @prefix ex: <https://example.org/model/> .
+            ex:Customer skos:broader ex:Party, ex:Agent .
+            """);
+    assertTrue(actual.containsAll(expected), () -> "Missing " + expected.difference(actual));
+    assertEquals(2, actual.listObjectsOfProperty(SKOS.broader).toList().size());
+  }
+
+  @Test
+  void aNamedParentBesideARestrictionStillBecomesBroader() {
+    final Sealed sealed =
+        OntologyReleaseExportFixture.seal(
+            List.of(
+                CUSTOMER,
+                PARTY,
+                OntologyReleaseExportFixture.parents(
+                    "customer-parents",
+                    CUSTOMER,
+                    List.of(
+                        OntologyReleaseExportFixture.named(PARTY),
+                        new OntologyExpression()
+                            .withKind(OntologyExpressionKind.RESTRICTION)
+                            .withPropertyIri(URI.create(EX + "buysFrom"))))));
+    final Model actual =
+        new OntologySkosProjection(false).build(sealed.release(), sealed.members());
+    assertEquals(
+        List.of(actual.createResource(PARTY.getIri().toString())),
+        actual.listObjectsOfProperty(SKOS.broader).toList());
+  }
+
+  @Test
+  void aSynonymThatRepeatsThePreferredLabelIsNotAnAlternativeLabel() {
+    final OntologyConcept client =
+        OntologyReleaseExportFixture.concept("Client", "Client")
+            .withSynonyms(Set.of("Client", "Buyer"));
+    final Sealed sealed = OntologyReleaseExportFixture.seal(List.of(client));
+    final Model actual = new OntologySkosProjection(true).build(sealed.release(), sealed.members());
+    final Resource subject = actual.createResource(EX + "Client");
+    assertEquals(
+        List.of("Buyer"),
+        actual.listObjectsOfProperty(subject, SKOS.altLabel).toList().stream()
+            .map(node -> node.asLiteral().getString())
+            .toList());
+    assertEquals(
+        2, actual.listSubjectsWithProperty(RDF.type, actual.createResource(LABEL)).toList().size());
+  }
+
+  @Test
   void refusesAReleaseThatIsNotSealed() {
     final Sealed sealed = OntologyReleaseExportFixture.release();
     sealed.release().setContentDigest("0".repeat(64));
@@ -113,6 +185,8 @@ class OntologySkosProjectionTest {
         BadRequestException.class,
         () -> new OntologySkosProjection(false).build(sealed.release(), sealed.members()));
   }
+
+  private static final String LABEL = OntologySkosProjection.SKOSXL_NAMESPACE + "Label";
 
   private static String label(final OntologyConcept concept) {
     return OntologyReleaseExportFixture.VERSION_IRI + ":CONCEPT:" + concept.getId();

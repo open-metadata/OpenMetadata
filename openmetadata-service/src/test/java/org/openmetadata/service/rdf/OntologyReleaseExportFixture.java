@@ -126,6 +126,17 @@ final class OntologyReleaseExportFixture {
                     .withClassIri(parent.getIri())));
   }
 
+  static OntologyAxiom parents(
+      final String name, final OntologyConcept child, final List<OntologyExpression> expressions) {
+    return parent(name, child, child).withExpressions(expressions);
+  }
+
+  static OntologyExpression named(final OntologyConcept concept) {
+    return new OntologyExpression()
+        .withKind(OntologyExpressionKind.NAMED_CLASS)
+        .withClassIri(concept.getIri());
+  }
+
   static OntologyProperty property(final String name, final String inverse) {
     return new OntologyProperty()
         .withId(id(name))

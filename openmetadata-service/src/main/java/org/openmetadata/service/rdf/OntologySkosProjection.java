@@ -3,9 +3,9 @@ package org.openmetadata.service.rdf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.jena.rdf.model.Model;
@@ -22,11 +22,9 @@ import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyRelease;
-import org.openmetadata.schema.type.OntologyAxiomType;
-import org.openmetadata.schema.type.OntologyExpression;
-import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.ontology.OntologyClassHierarchy;
 import org.openmetadata.service.ontology.OntologyReleaseManifest;
 import org.openmetadata.service.ontology.OntologyReleaseReader;
 
@@ -132,12 +130,21 @@ public final class OntologySkosProjection {
     if (!nullOrEmpty(concept.getDescription())) {
       subject.addProperty(SKOS.definition, concept.getDescription());
     }
-    final String labelBase = release.getVersionIri() + ":CONCEPT:" + concept.getId();
-    label(subject, SKOS.prefLabel, XL_PREF_LABEL, labelBase + ":prefLabel", label(concept));
+    labels(subject, release.getVersionIri() + ":CONCEPT:" + concept.getId(), concept);
+    mappings(subject, concept);
+    deprecation(subject, concept);
+  }
+
+  private void labels(
+      final Resource subject, final String labelBase, final OntologyConcept concept) {
+    final String preferred = label(concept);
+    label(subject, SKOS.prefLabel, XL_PREF_LABEL, labelBase + ":prefLabel", preferred);
     final List<String> synonyms =
-        nullOrEmpty(concept.getSynonyms())
-            ? List.of()
-            : concept.getSynonyms().stream().sorted().toList();
+        Optional.ofNullable(concept.getSynonyms()).stream()
+            .flatMap(Set::stream)
+            .filter(synonym -> !synonym.equals(preferred))
+            .sorted()
+            .toList();
     for (int index = 0; index < synonyms.size(); index++) {
       label(
           subject,
@@ -146,13 +153,15 @@ public final class OntologySkosProjection {
           labelBase + ":altLabel:" + index,
           synonyms.get(index));
     }
+  }
+
+  private static void mappings(final Resource subject, final OntologyConcept concept) {
     listOrEmpty(concept.getConceptMappings())
         .forEach(
             mapping ->
                 subject.addProperty(
                     OntologyRdfVocabulary.mapping(mapping.getMappingType()),
-                    model.createResource(mapping.getConceptIri().toString())));
-    deprecation(subject, concept);
+                    subject.getModel().createResource(mapping.getConceptIri().toString())));
   }
 
   private void label(
@@ -186,24 +195,13 @@ public final class OntologySkosProjection {
 
   private static void broader(
       final Model model, final Set<String> conceptIris, final OntologyAxiom axiom) {
-    final URI parent = namedParent(axiom);
-    if (parent != null && conceptIris.contains(axiom.getSubjectIri().toString())) {
-      model
-          .createResource(axiom.getSubjectIri().toString())
-          .addProperty(SKOS.broader, model.createResource(parent.toString()));
+    if (axiom.getSubjectIri() == null || !conceptIris.contains(axiom.getSubjectIri().toString())) {
+      return;
     }
-  }
-
-  private static URI namedParent(final OntologyAxiom axiom) {
-    final List<OntologyExpression> expressions = listOrEmpty(axiom.getExpressions());
-    final boolean plainSubclass =
-        axiom.getAxiomType() == OntologyAxiomType.SUBCLASS_OF
-            && axiom.getPropertyIri() == null
-            && axiom.getTargetIri() == null
-            && axiom.getLiteral() == null
-            && expressions.size() == 1
-            && expressions.getFirst().getKind() == OntologyExpressionKind.NAMED_CLASS;
-    return plainSubclass ? expressions.getFirst().getClassIri() : null;
+    final Resource subject = model.createResource(axiom.getSubjectIri().toString());
+    OntologyClassHierarchy.namedParents(axiom)
+        .forEach(
+            parent -> subject.addProperty(SKOS.broader, model.createResource(parent.toString())));
   }
 
   private static String label(final OntologyDefinition definition) {
