@@ -106,6 +106,59 @@ class VerifiedCredentialsTest {
   }
 
   @Test
+  void unconfirmedAtKeepsTheRecordAndTheFullReadStampUnderTheDeepReadStamp() {
+    VerifiedCredentials entry = entryAt(100L);
+    entry.confirm(FINGERPRINT, 200L);
+
+    VerifiedCredentials unconfirmed = entry.unconfirmedAt(300L);
+
+    assertFalse(unconfirmed.isConfirmed());
+    assertTrue(entry.isConfirmed());
+    assertSame(RECORD, unconfirmed.record());
+    assertEquals(300L, unconfirmed.verifiedAtNanos());
+    assertEquals(100L, unconfirmed.fullReadAtNanos());
+  }
+
+  @Test
+  void aDeepReadAtTheInstantOfTheLastReconfirmationStillUnconfirms() {
+    VerifiedCredentials entry = entryAt(100L);
+    entry.confirm(FINGERPRINT, 300L);
+
+    VerifiedCredentials unconfirmed = entry.unconfirmedAt(300L);
+
+    assertFalse(unconfirmed.isConfirmed());
+    assertEquals(300L, unconfirmed.verifiedAtNanos());
+  }
+
+  @Test
+  void unconfirmedAtLeavesAnEntryALaterReadProduced() {
+    VerifiedCredentials later = entryAt(400L);
+
+    assertSame(later, later.unconfirmedAt(300L));
+    assertTrue(later.isConfirmed());
+  }
+
+  @Test
+  void anUnconfirmedEntryComparesItsFingerprintButNeverMovesItsStamp() {
+    VerifiedCredentials unconfirmed = entryAt(100L).unconfirmedAt(300L);
+
+    assertTrue(unconfirmed.confirm(FINGERPRINT, 500L));
+    assertFalse(unconfirmed.confirm(SourceFingerprint.of("b"), 500L));
+    assertEquals(300L, unconfirmed.verifiedAtNanos());
+    assertFalse(unconfirmed.isConfirmed());
+  }
+
+  @Test
+  void newerKeepsAnUnconfirmedEntryOverAnOlderReadAndYieldsToALaterOne() {
+    VerifiedCredentials unconfirmed = entryAt(100L).unconfirmedAt(300L);
+    VerifiedCredentials older = entryAt(200L);
+    VerifiedCredentials later = entryAt(400L);
+
+    assertSame(unconfirmed, VerifiedCredentials.newer(unconfirmed, older));
+    assertSame(later, VerifiedCredentials.newer(unconfirmed, later));
+  }
+
+  @Test
   void concurrentConfirmationsLeaveTheLatestStamp() throws Exception {
     VerifiedCredentials entry = entryAt(0L);
     List<Callable<Boolean>> confirmations =

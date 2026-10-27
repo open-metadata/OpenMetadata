@@ -196,6 +196,14 @@ class CheckDecisionTest {
   }
 
   @Test
+  void anUnconfirmedEntryNeedsALoadHoweverFreshItsStampIs() {
+    VerifiedCredentials unconfirmed = ENTRY.unconfirmedAt(STAMP);
+
+    assertEquals(LOAD_STALE, CheckDecision.decide(unconfirmed, STAMP, HELD, POLICY));
+    assertEquals(LOAD_STALE, CheckDecision.decide(unconfirmed, STAMP, UNKNOWN, POLICY));
+  }
+
+  @Test
   void onlyTheLoadDecisionsNeedALoad() {
     assertFalse(ACCEPT.needsLoad());
     assertFalse(REJECT.needsLoad());

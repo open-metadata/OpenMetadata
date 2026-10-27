@@ -21,6 +21,7 @@ package org.openmetadata.service.security.credentials;
  *
  * <pre>
  * entry == null                     -> LOAD_MISSING
+ * unconfirmed                       -> LOAD_STALE
  * age > maxStaleness                -> LOAD_STALE
  * entry holds digest                -> ACCEPT
  * fullReadAge >= missRefreshMinAge  -> LOAD_UNKNOWN_TOKEN
@@ -32,7 +33,10 @@ enum CheckDecision {
   REJECT,
   /** No entry for the subject: first use on this server, evicted, or idle-expired. */
   LOAD_MISSING,
-  /** The entry is older than maxStaleness; trusting it would break the bound. */
+  /**
+   * The entry is older than maxStaleness, so trusting it would break the bound, or a deep read
+   * could not convert its subject, so nothing confirms it.
+   */
   LOAD_STALE,
   /**
    * A fresh entry lacks the digest and its last full read is at least missRefreshMinAge old: the
@@ -58,19 +62,28 @@ enum CheckDecision {
 
   static CheckDecision decide(
       VerifiedCredentials entry, long nowNanos, TokenDigest digest, Policy policy) {
-    return entry == null
-        ? LOAD_MISSING
-        : decideOn(
-            entry.ageNanos(nowNanos),
-            entry.fullReadAgeNanos(nowNanos),
-            entry.record().holds(digest),
-            policy);
+    CheckDecision decision;
+    if (entry == null) {
+      decision = LOAD_MISSING;
+    } else if (!entry.isConfirmed()) {
+      decision = LOAD_STALE;
+    } else {
+      decision =
+          decideOn(
+              entry.ageNanos(nowNanos),
+              entry.fullReadAgeNanos(nowNanos),
+              entry.record().holds(digest),
+              policy);
+    }
+    return decision;
   }
 
   /**
    * After one load: ACCEPT or REJECT when the loaded entry is within maxStaleness, so one request
    * does at most one read. A load that completes outside the bound confirms nothing and answers
-   * LOAD_STALE, which the verifier reports as "cannot confirm", never as "revoked".
+   * LOAD_STALE, which the verifier reports as "cannot confirm", never as "revoked". {@code loaded}
+   * is confirmed: the verifier answers "cannot confirm" before this for a read that left it
+   * unconfirmed.
    */
   static CheckDecision decideAfterLoad(
       VerifiedCredentials loaded, long nowNanos, TokenDigest digest, Policy policy) {

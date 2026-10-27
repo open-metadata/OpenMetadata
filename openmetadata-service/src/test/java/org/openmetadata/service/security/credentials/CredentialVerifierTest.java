@@ -963,8 +963,48 @@ class CredentialVerifierTest {
     assertEquals(8, source.decrypts(), "and once more by the retry a minute later");
   }
 
+  /**
+   * Bob's rows stop converting before the deep pass at 10 min, which leaves him out. Each pass is
+   * still a success, so the next ones run at 20 and 30 min, and each healthy bot is decrypted once
+   * per pass. The idle expiry is raised so the bots outlive the passes without checks.
+   */
   @Test
-  void aDeepPassThatLeavesASubjectOutIsRetriedAtTheRetryInterval() {
+  void aSubjectTheDeepReadCannotConvertDoesNotBringTheNextDeepPassForward() {
+    List<String> bots = List.of("u1", "u2", "u3");
+    bots.forEach(bot -> source.withJwtMechanism(bot, "jwt-" + bot));
+    source.withPats(BOB, TOKEN_A);
+    verifier(
+        new CredentialVerificationConfig(
+            null, null, null, null, null, Duration.hours(1), null, null, null));
+    bots.forEach(bot -> assertAccepted(bot, "jwt-" + bot));
+    assertAccepted(BOB, TOKEN_A);
+    source.failConversionOf(BOB);
+
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    verifier.sweepOnce();
+    assertEquals(6, source.decrypts(), "the deep pass at 10 min decrypts each healthy bot once");
+    sweepsAfterInterval(299);
+    assertEquals(6, source.decrypts(), "no deep pass before 20 min");
+    sweepAfterInterval();
+    assertEquals(9, source.decrypts(), "the deep pass at 20 min decrypts each healthy bot once");
+    sweepsAfterInterval(299);
+    assertEquals(9, source.decrypts(), "no deep pass before 30 min");
+    sweepAfterInterval();
+
+    assertEquals(12, source.decrypts(), "the deep pass at 30 min decrypts each healthy bot once");
+    assertEquals(3.0, counter("om.credential.reads", "reason", "deep", "outcome", "ok"));
+    assertEquals(4, source.fullReadsOf(BOB), "bob is read by his first check and each deep pass");
+    bots.forEach(bot -> assertAccepted(bot, "jwt-" + bot));
+    assertEquals(4, source.fullReadsOf("u1"));
+  }
+
+  /**
+   * The deep pass at 10 min reconfirms bob by fingerprint and then cannot convert him. From then on
+   * his checks read instead of trusting the entry: unavailable while his rows still do not convert,
+   * at most one read per missRefreshMinAge, and the first read that converts them decides.
+   */
+  @Test
+  void aSubjectTheDeepReadCannotConvertIsReadAgainByItsNextCheck() {
     source.withPats(BOB, TOKEN_A).withJwtMechanism(ALICE, JWT_OLD);
     verifier(DEFAULTS);
     assertAccepted(BOB, TOKEN_A);
@@ -973,14 +1013,157 @@ class CredentialVerifierTest {
 
     ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
     verifier.sweepOnce();
+
+    assertUnavailable(BOB, TOKEN_A);
+    assertUnavailable(BOB, TOKEN_A);
+    assertEquals(3, source.fullReadsOf(BOB));
+    assertAccepted(ALICE, JWT_OLD);
+    assertEquals(2, source.fullReadsOf(ALICE));
+    ticker.advanceNanos(MISS_REFRESH_MIN_AGE);
+    assertUnavailable(BOB, TOKEN_A);
+    assertEquals(4, source.fullReadsOf(BOB));
     source.restoreConversionOf(BOB);
     source.replacePatInPlace(BOB, TOKEN_A, TOKEN_B);
-    ticker.advanceNanos(MINUTE);
+    ticker.advanceNanos(MISS_REFRESH_MIN_AGE);
+
+    assertAccepted(BOB, TOKEN_B);
+    assertRejected(BOB, TOKEN_A);
+    assertEquals(5, source.fullReadsOf(BOB));
+    assertEquals(2.0, counter("om.credential.unavailable", "cause", "subject_read_failed"));
+    assertEquals(1.0, counter("om.credential.unavailable", "cause", "backoff"));
+  }
+
+  /**
+   * Bob's entry is stale at 10 min, so a check reads him; that read is stamped first and converts
+   * him. While it is in flight the deep pass runs, stamped 1 ms later, and cannot convert him. The
+   * check's record is older than the deep read's verdict, so it confirms nothing, and the entry
+   * stays unconfirmed until a read stamped after the deep read converts him.
+   */
+  @Test
+  void aCheckReadStampedBeforeADeepReadThatCannotConvertItsSubjectDoesNotRestoreTheOlderRecord() {
+    source.withSecretReferenceMechanism(BOB, JWT_OLD);
+    verifier(loadTimeoutOf(Duration.seconds(4)));
+    assertAccepted(BOB, JWT_OLD);
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    source.duringNextRead(
+        () -> {
+          ticker.advanceNanos(MILLISECOND);
+          source.failConversionOf(BOB);
+          verifier.sweepOnce();
+        });
+
+    assertUnavailable(BOB, JWT_OLD);
+
+    assertEquals(3, source.fullReadsOf(BOB));
+    assertUnavailable(BOB, JWT_OLD);
+    source.restoreConversionOf(BOB);
+    ticker.advanceNanos(MISS_REFRESH_MIN_AGE);
+    assertAccepted(BOB, JWT_OLD);
+    assertEquals(5, source.fullReadsOf(BOB));
+    assertEquals(2.0, counter("om.credential.unavailable", "cause", "subject_read_failed"));
+  }
+
+  /**
+   * The deep pass at 10 min has seen bob's rows and cannot convert them when a token added to him
+   * is checked 1 ms later. That check's read converts him and installs its entry. The deep read's
+   * verdict is older than that entry, so it leaves the entry confirmed, and bob's next check is
+   * answered from it without a read.
+   */
+  @Test
+  void aDeepReadThatCannotConvertASubjectLeavesTheEntryALaterCheckReadInstalled() {
+    source.withPats(BOB, TOKEN_A);
+    verifier(DEFAULTS);
+    assertAccepted(BOB, TOKEN_A);
+    source.failConversionOf(BOB);
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    AtomicReference<Throwable> checkDuringTheDeepRead =
+        new AtomicReference<>(new AssertionError("no check ran during the deep read"));
+    source.duringNextRead(
+        () -> {
+          source.restoreConversionOf(BOB);
+          source.addPat(BOB, TOKEN_B);
+          ticker.advanceNanos(MILLISECOND);
+          checkDuringTheDeepRead.set(checkOutcome(BOB, TOKEN_B));
+        });
+
     verifier.sweepOnce();
 
-    assertRejected(BOB, TOKEN_A);
-    assertAccepted(BOB, TOKEN_B);
-    assertAccepted(ALICE, JWT_OLD);
+    assertNull(checkDuringTheDeepRead.get());
+    assertAccepted(BOB, TOKEN_A);
+    assertEquals(
+        3, source.fullReadsOf(BOB), "bob's first check, the deep read and the later check");
+  }
+
+  @Test
+  void aSweepDoesNotConfirmAnUnconfirmedEntryByItsFingerprint() {
+    source.withPats(BOB, TOKEN_A);
+    verifier(DEFAULTS);
+    assertAccepted(BOB, TOKEN_A);
+    source.failConversionOf(BOB);
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    verifier.sweepOnce();
+
+    sweepsAfterInterval(30);
+
+    assertEquals(31, source.fingerprintReads());
+    assertEquals(2, source.fullReadsOf(BOB), "no sweep re-read and no deep retry");
+    assertEquals(0.0, counter("om.credential.sweep.changed.subjects"));
+    assertUnavailable(BOB, TOKEN_A);
+    assertEquals(3, source.fullReadsOf(BOB));
+  }
+
+  /**
+   * A check read stamped after the deep read converts bob; while it is in flight a sweep finds his
+   * fingerprint unchanged. The sweep must not move the unconfirmed entry's stamp past that read, or
+   * the read could never replace it.
+   */
+  @Test
+  void aSweepDoesNotMoveAnUnconfirmedEntryPastAConvertingReadInFlight() throws Exception {
+    source.withPats(BOB, TOKEN_A);
+    verifier(loadTimeoutOf(Duration.seconds(4)));
+    assertAccepted(BOB, TOKEN_A);
+    source.failConversionOf(BOB);
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    verifier.sweepOnce();
+    source.restoreConversionOf(BOB);
+    ticker.advanceNanos(MILLISECOND);
+    source.blockNextRead();
+    RunningCheck check = startCheck(BOB, TOKEN_A);
+    source.awaitReadStarted();
+
+    sweepAfterInterval();
+    source.releaseReads();
+
+    assertNull(check.result());
+    assertAccepted(BOB, TOKEN_A);
+    assertEquals(3, source.fullReadsOf(BOB));
+  }
+
+  /**
+   * Bob's secret cannot be read during the deep pass, then reads with a new value, while his row
+   * keeps its stored mechanism version. A PAT added to him moves his fingerprint, so the sweep
+   * re-reads him: it decrypts instead of reusing the digest from before the deep pass.
+   */
+  @Test
+  void aSweepRereadOfAnUnconfirmedSubjectDecryptsInsteadOfReusingItsDigest() {
+    source.withSecretReferenceMechanism(BOB, JWT_OLD);
+    verifier(DEFAULTS);
+    assertAccepted(BOB, JWT_OLD);
+    source.failConversionOf(BOB);
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    verifier.sweepOnce();
+    source.restoreConversionOf(BOB);
+    source.rotateSecretWithoutTouchingTheRow(BOB, JWT_NEW);
+    source.addPat(BOB, TOKEN_A);
+
+    sweepAfterInterval();
+
+    assertAccepted(BOB, JWT_NEW);
+    assertRejected(BOB, JWT_OLD);
+    assertAccepted(BOB, TOKEN_A);
+    assertEquals(2, source.decrypts());
+    assertEquals(3, source.fullReadsOf(BOB));
+    assertEquals(0.0, counter("om.credential.decrypts", "outcome", "skipped_unchanged"));
   }
 
   @Test
@@ -1669,6 +1852,12 @@ class CredentialVerifierTest {
   private void sweepAfterInterval() {
     ticker.advanceNanos(2 * SECOND);
     verifier.sweepOnce();
+  }
+
+  private void sweepsAfterInterval(int sweeps) {
+    for (int sweep = 0; sweep < sweeps; sweep++) {
+      sweepAfterInterval();
+    }
   }
 
   /** Sequential checks one millisecond apart; the meters record what each one answered. */

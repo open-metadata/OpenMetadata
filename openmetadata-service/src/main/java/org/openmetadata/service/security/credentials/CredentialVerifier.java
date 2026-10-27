@@ -109,7 +109,8 @@ public final class CredentialVerifier implements Managed {
    * A read of one subject that may create its entry: a check's read, a refresh or a nudge. It stays
    * registered in {@link #inFlight} until it has installed its result or failed, so checks of the
    * subject join it instead of reading again. Its future completes with the entry to decide on,
-   * with null when the source left the subject out, or exceptionally with whatever the read threw.
+   * which is unconfirmed when a deep read stamped later could not convert the subject, with null
+   * when the source left the subject out, or exceptionally with whatever the read threw.
    * A refresh or nudge supersedes the read it finds registered: no check can join that read any
    * more, and it never creates an entry, though it may still replace an older one. Once the
    * superseding read has finished, a check that needs a load can start one more pool read of the
@@ -472,11 +473,14 @@ public final class CredentialVerifier implements Managed {
     }
   }
 
-  /** Every waiter, the one that started the read included, waits within its own check's budget. */
+  /**
+   * Every waiter, the one that started the read included, waits within its own check's budget. A
+   * result that is absent or unconfirmed confirms nothing.
+   */
   private VerifiedCredentials awaitRead(
       CredentialSubject subject, InFlightRead read, long deadlineNanos) {
     VerifiedCredentials loaded = resultWithin(subject, read, deadlineNanos);
-    if (loaded == null) {
+    if (loaded == null || !loaded.isConfirmed()) {
       throw unavailable(
           UnavailableCause.SUBJECT_READ_FAILED,
           "The stored credentials of " + subject.principal() + " could not be converted",
@@ -726,16 +730,9 @@ public final class CredentialVerifier implements Managed {
   private boolean deepReadQuietly(List<CredentialSubject> batch) {
     boolean succeeded = false;
     try {
-      boolean allConverted = reread(batch, ReadReason.DEEP, Map.of());
+      reread(batch, ReadReason.DEEP, Map.of());
       metrics.recordSweepQuery(SweepQuery.FULL);
-      succeeded = allConverted;
-      if (!allConverted) {
-        LOG.warn(
-            "Deep credential verification left some of {} subjects unconverted; the pass is retried"
-                + " in {} ms",
-            batch.size(),
-            TimeUnit.NANOSECONDS.toMillis(deepRetryIntervalNanos));
-      }
+      succeeded = true;
     } catch (Throwable failure) {
       LOG.warn(
           "Deep credential verification of {} subjects failed; they stay trusted by fingerprint and"
@@ -783,10 +780,10 @@ public final class CredentialVerifier implements Managed {
   }
 
   /**
-   * A sweep's or a deep verify's read: it replaces cached entries and never creates one. Answers
-   * whether the source converted every requested subject.
+   * A sweep's or a deep verify's read: it replaces cached entries and never creates one. A subject
+   * the deep read leaves out is unconfirmed from the read's stamp on.
    */
-  private boolean reread(
+  private void reread(
       List<CredentialSubject> subjects,
       ReadReason reason,
       Map<CredentialSubject, CredentialRecord> previous) {
@@ -796,9 +793,18 @@ public final class CredentialVerifier implements Managed {
       CredentialRecord record = records.get(subject);
       if (record != null) {
         install(subject, new VerifiedCredentials(record, stamp), NEVER_CREATES);
+      } else if (reason == ReadReason.DEEP) {
+        unconfirm(subject, stamp);
       }
     }
-    return records.keySet().containsAll(subjects);
+  }
+
+  /**
+   * Under the subject's slot lock, as an install is, so the two order by stamp. An entry that idled
+   * out stays absent.
+   */
+  private void unconfirm(CredentialSubject subject, long stampNanos) {
+    entries.asMap().computeIfPresent(subject, (key, entry) -> entry.unconfirmedAt(stampNanos));
   }
 
   /**
@@ -900,7 +906,8 @@ public final class CredentialVerifier implements Managed {
 
   /**
    * Cached records for decrypt reuse, read without touching idle expiry. Empty for a reason that
-   * may not reuse, so the source decrypts every mechanism.
+   * may not reuse, so the source decrypts every mechanism. An unconfirmed entry offers no record,
+   * so its subject's mechanism is decrypted again.
    */
   private Map<CredentialSubject, CredentialRecord> cachedRecords(
       Collection<CredentialSubject> subjects, ReadReason reason) {
@@ -910,7 +917,7 @@ public final class CredentialVerifier implements Managed {
     }
     for (CredentialSubject subject : subjects) {
       VerifiedCredentials entry = entries.policy().getIfPresentQuietly(subject);
-      if (entry != null) {
+      if (entry != null && entry.isConfirmed()) {
         previous.put(subject, entry.record());
       }
     }
