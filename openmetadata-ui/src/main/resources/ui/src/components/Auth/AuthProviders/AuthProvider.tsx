@@ -460,6 +460,8 @@ export const AuthProvider = ({
       // `handleRefreshFailed` recovery would never see the logout finish and
       // the SPA would be left half-logged-out with the flag stuck armed.
       isSigningOutRef.current = false;
+      // Refreshes were held off for the logout; the next sign-in needs them.
+      authCoordinator.resume();
       // A recovery that stood down for this logout returned without
       // navigating, so nothing reset this. Logout lands on /signin without a
       // reload; left set, it would swallow every refresh failure after the

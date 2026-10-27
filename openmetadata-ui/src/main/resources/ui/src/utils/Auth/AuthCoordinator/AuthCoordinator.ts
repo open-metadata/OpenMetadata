@@ -84,8 +84,10 @@ export class AuthCoordinator {
   // RefreshFailedPayload.staleToken). Set where a cycle starts: a counted
   // 401 (its bearer) or a fast-path read that found the stored token expired.
   private cycleStaleToken: string | null = null;
-  // Bumped by pause(). A refresh that sees it change while in flight was
-  // overtaken by a sign-out (or a re-auth redirect) and must not land.
+  // Set by pause() while a sign-out (or a re-auth redirect) runs: no refresh
+  // may start or land until resume(). The generation is bumped on both, so a
+  // refresh already in flight when either happens is dropped too.
+  private paused = false;
   private pauseGeneration = 0;
   private disposeCrossTabDone: (() => void) | null = null;
   private readonly bus = new TypedEventBus();
@@ -224,12 +226,14 @@ export class AuthCoordinator {
   }
 
   pause(): void {
+    this.paused = true;
     this.pauseGeneration += 1;
     this.timer.cancel();
   }
 
   resume(): void {
-    this.ensureFreshToken().catch(() => undefined);
+    this.paused = false;
+    this.pauseGeneration += 1;
   }
 
   dispose(): void {
@@ -305,19 +309,24 @@ export class AuthCoordinator {
   }
 
   private async doRefresh(): Promise<string> {
+    // Checked before the renewer runs, after it resolves, and before anything
+    // is persisted or emitted. The stored marker covers a sign-out in another
+    // tab whose storage event has not reached this one yet.
+    const startedAt = Date.now();
+    const pauseGeneration = this.pauseGeneration;
+    const signedOut = () =>
+      this.paused ||
+      this.pauseGeneration !== pauseGeneration ||
+      hasSignedOutSince(startedAt);
+
     await this.awaitRenewer();
     const renewer = this.renewer;
     if (!renewer) {
       throw new Error('No renewer registered');
     }
-
-    // Checked after the renewer resolves and before anything is persisted or
-    // emitted. The stored marker covers a sign-out in another tab whose
-    // storage event has not reached this one yet.
-    const startedAt = Date.now();
-    const pauseGeneration = this.pauseGeneration;
-    const signedOut = () =>
-      this.pauseGeneration !== pauseGeneration || hasSignedOutSince(startedAt);
+    if (signedOut()) {
+      throw new SignedOutDuringRefreshError();
+    }
 
     return this.runExclusiveRefresh(renewer, 0, signedOut);
   }

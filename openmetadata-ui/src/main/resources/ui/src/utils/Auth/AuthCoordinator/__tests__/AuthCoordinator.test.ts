@@ -1518,17 +1518,37 @@ describe('AuthCoordinator', () => {
 
       await expect(
         coordinator.ensureFreshToken({ force: true })
-      ).rejects.toThrow('Signed out during token refresh'
-      );
+      ).rejects.toThrow('Signed out during token refresh');
       expect(setOidcTokenStrict).not.toHaveBeenCalled();
+      expect(events).toEqual([]);
+    });
+
+    it('does not start a refresh for a 401 that lands mid-logout', async () => {
+      const renewer = jest.fn();
+      coordinator.registerRenewer(renewer);
+      const { axios, triggerError } = createMockAxios();
+      coordinator.install(axios, () => true);
+      coordinator.pause();
+
+      await expect(
+        triggerError({
+          response: { status: 401, data: {} },
+          config: { url: '/api/v1/tables', headers: {} },
+        })
+      ).rejects.toBeInstanceOf(RefreshFailedError);
+      expect(renewer).not.toHaveBeenCalled();
       expect(events).toEqual([]);
     });
 
     it('refreshes normally for the next session', async () => {
       const first = await startRefreshBehind401();
       coordinator.pause();
+      // Logout finished; an overtaken refresh still must not land after it.
+      coordinator.resume();
       first.resolve();
       await first.pending?.catch(() => undefined);
+
+      expect(events).toEqual([]);
 
       // Signed back in: a refresh that starts after the sign-out lands.
       coordinator.registerRenewer(async () => ({
