@@ -2455,6 +2455,7 @@
     "open-original": "開啟原始檔",
     "open-session": "開啟工作階段",
     "open-socket": "開啟通訊端",
+    "open-task": "開啟任務",
     "open-task-plural": "開啟的任務",
     "opened-on": "開啟於",
     "openmetadata-role-plural": "{{brandName}}角色",

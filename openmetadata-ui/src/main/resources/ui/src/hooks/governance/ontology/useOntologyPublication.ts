@@ -404,8 +404,21 @@ export const useOntologyPublication = (
   );
   const reconcileCapture = useCallback(
     async (attempt: Extract<PublicationReceipt, { operation: 'capture' }>) => {
+      const fresh = await getOntologyState(attempt.ontologyId);
+      if (fresh.ontologyId !== attempt.ontologyId) {
+        throw new Error('Capture recovery owner does not match');
+      }
       const captured = await findCapturedAttempt(attempt);
       if (!captured) {
+        // The state is read before the history, so a capture whose
+        // revisions had already moved cannot have landed in between.
+        if (
+          fresh.workingRevision !== attempt.state.workingRevision ||
+          fresh.activationRevision !== attempt.state.activationRevision
+        ) {
+          storeReceipt(null, attempt, attempt);
+        }
+
         return;
       }
       if (attempt.intent === 'capture') {

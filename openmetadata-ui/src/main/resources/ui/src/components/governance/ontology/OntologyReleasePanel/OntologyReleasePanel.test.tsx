@@ -32,6 +32,7 @@ import {
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../../generated/type/ontologyState';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import enUS from '../../../../locale/languages/en-us.json';
 import APIClient from '../../../../rest/axiosClient';
 import {
   useEnUsTranslations,
@@ -1010,6 +1011,10 @@ describe('OntologyReleasePanel', () => {
       expect(put).not.toHaveBeenCalled();
     }
   );
+
+  it('ships the Open task label the button renders', () => {
+    expect(enUS.label['open-task']).toBe('Open task');
+  });
 
   it('opens the native task UUID through the Studio callback', async () => {
     currentRelease = {

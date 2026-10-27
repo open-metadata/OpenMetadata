@@ -236,6 +236,51 @@ describe('native OntologyTreeView', () => {
     expect(screen.getAllByTestId('ontology-tree-term-leaf')).toHaveLength(2);
   });
 
+  it('keeps the clicked placement while the selected prop lags behind a router transition', () => {
+    const index = buildNativeTreeIndex(graph, filters, []);
+    const onSelect = jest.fn();
+    const { rerender } = render(
+      <OntologyTreeView
+        source={{ kind: 'native', index }}
+        onSelect={onSelect}
+      />
+    );
+    const underB = screen
+      .getAllByTestId('ontology-tree-term-c')
+      .find(
+        (row) =>
+          row.getAttribute('data-key') ===
+          nativeTreePlacementKey(index, ['b', 'c'])
+      );
+    if (!underB) {
+      throw new Error('Expected placement under b');
+    }
+    fireEvent.click(underB);
+
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'c' }));
+    expect(
+      screen
+        .getAllByTestId('ontology-tree-term-c')
+        .filter((row) => row.getAttribute('aria-selected') === 'true')
+        .map((row) => row.getAttribute('data-key'))
+    ).toEqual([nativeTreePlacementKey(index, ['b', 'c'])]);
+
+    rerender(
+      <OntologyTreeView
+        selectedNodeId="c"
+        source={{ kind: 'native', index }}
+        onSelect={onSelect}
+      />
+    );
+
+    expect(
+      screen
+        .getAllByTestId('ontology-tree-term-c')
+        .filter((row) => row.getAttribute('aria-selected') === 'true')
+        .map((row) => row.getAttribute('data-key'))
+    ).toEqual([nativeTreePlacementKey(index, ['b', 'c'])]);
+  });
+
   it('replaces bounded windows and retains focus on explicit navigation controls', async () => {
     const index = buildNativeTreeIndex(
       {

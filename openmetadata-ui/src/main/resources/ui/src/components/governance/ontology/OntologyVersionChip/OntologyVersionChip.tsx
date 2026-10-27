@@ -75,11 +75,11 @@ const OntologyVersionChip = ({
 
   return (
     <Button
-      aria-label={t('label.release-history')}
       color="secondary"
       data-testid="ontology-release-history-trigger"
       isDisabled={isDisabled}
       size="xs"
+      tooltip={t('label.release-history')}
       onPress={onPress}>
       {parts.join(' · ')}
     </Button>
