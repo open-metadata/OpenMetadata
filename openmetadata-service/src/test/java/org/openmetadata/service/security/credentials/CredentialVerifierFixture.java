@@ -56,6 +56,14 @@ public final class CredentialVerifierFixture implements AutoCloseable {
     verifier.refreshNow(CredentialSubject.of(principal));
   }
 
+  /**
+   * Removes every stored token of {@code principal} and tells nobody, so this verifier notices
+   * only through a {@link Credentials#changed} hint or its sweep.
+   */
+  public void removeTokensSilently(String principal) {
+    source.revokeAll(principal);
+  }
+
   /** From now on every statement against the source throws, as an unreachable database does. */
   public void failReads() {
     source.failReads();

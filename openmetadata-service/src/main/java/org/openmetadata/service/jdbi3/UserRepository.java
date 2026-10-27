@@ -361,8 +361,8 @@ public class UserRepository extends EntityRepository<User> {
 
     store(user, update);
     // A new user has no other stored credential, so only a JWT mechanism is worth a hint;
-    // storeEntities
-    // (bulk import) skips it because one hint per row would publish one Redis message per row.
+    // storeEntities (bulk import) skips it because one hint per row would publish one Redis
+    // message per row.
     if (!update && carriesJwt(user.getAuthenticationMechanism())) {
       Credentials.changed(user.getName());
     }
