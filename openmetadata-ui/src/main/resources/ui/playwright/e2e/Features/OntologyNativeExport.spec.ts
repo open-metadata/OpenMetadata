@@ -12,6 +12,11 @@
  */
 import { Page } from '@playwright/test';
 import { readFile } from 'fs/promises';
+import {
+  FindingSeverity,
+  LogicalCheck,
+  OntologyReleaseValidation,
+} from '../../../src/generated/api/data/ontologyReleaseValidation';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
@@ -229,19 +234,32 @@ test.describe(
         });
 
         await test.step('The gate blocks the download while the stubbed report has a violation', async () => {
-          const report = {
+          const report: OntologyReleaseValidation = {
+            releaseId: release.id,
+            contentDigest: release.contentDigest,
             valid: false,
+            logicalCheck: LogicalCheck.NotRun,
+            deprecationImpacts: [],
             shacl: {
               violationCount: 1,
+              warningCount: 0,
+              truncated: false,
               findings: [
                 {
-                  severity: 'Violation',
+                  severity: FindingSeverity.Violation,
                   message: 'Concept needs a label',
                   focusIri: customer.iri,
+                  shapeIri: `${customer.iri}Shape`,
                 },
               ],
             },
-            structure: { valid: true, violationCount: 0 },
+            structure: {
+              releaseId: release.id,
+              contentDigest: release.contentDigest,
+              valid: true,
+              violationCount: 0,
+              violations: [],
+            },
           };
           await page.route(
             `**/api/v1/ontologyReleases/${release.id}/validation`,
