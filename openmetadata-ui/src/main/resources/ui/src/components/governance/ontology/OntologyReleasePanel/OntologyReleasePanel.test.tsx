@@ -19,7 +19,6 @@ import {
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
-import enUS from '../../../../locale/languages/en-us.json';
 import {
   Ontology,
   OntologyApprovalRule,
@@ -33,6 +32,7 @@ import {
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../../generated/type/ontologyState';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import enUS from '../../../../locale/languages/en-us.json';
 import APIClient from '../../../../rest/axiosClient';
 import {
   renderWithQueryClient,
