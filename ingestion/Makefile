@@ -79,8 +79,7 @@ unit_ingestion: python_tools  ## Run Python unit tests
 	$(NOX) --no-venv -s unit-tests -- $(ARGS)
 
 .PHONY: unit_ingestion_dev_env
-unit_ingestion_dev_env: python_tools  ## Run Python unit tests except some specific ones. Only for local development!
-	$(NOX) --no-venv -s unit-dev -- $(ARGS)
+unit_ingestion_dev_env: unit_ingestion  ## Compatibility alias for unit_ingestion
 
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests

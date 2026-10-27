@@ -260,64 +260,6 @@ def lint(session):
     )
 
 
-@nox.session(name="unit-dev", reuse_venv=True, venv_backend="uv|venv", python=get_python_versions(), default=False)
-def unit_dev(session):
-    python = prepare(session, "test")
-    session.run(
-        str(python.parent / "pytest"),
-        "-c",
-        "pyproject.toml",
-        "tests/unit",
-        "--ignore=tests/unit/profiler/sqlalchemy/azuresql/test_azuresql_sampling.py",
-        "--ignore-glob=*airflow*",
-        *session.posargs,
-    )
-
-
-@nox.session(name="unit", reuse_venv=True, venv_backend="uv|venv", python=get_python_versions())
-def unit(session):
-    python = prepare(session, "test")
-    # TODO: We need to remove ignored test once they can be run properly within nox
-    # Run unit tests
-    ignored_tests = [
-        "test_ometa_endpoints.py",
-        "test_ometa_mlmodel.py",
-        "test_dbt.py",
-        "test_sample_usage.py",
-        "test_ssl_manager.py",
-        "test_usage_filter.py",
-        "test_suite/",
-        "profiler/test_profiler_partitions.py",
-        "profiler/test_workflow.py",
-        "workflow",
-        "topology",
-    ]
-    ignore_args = [f"--ignore=tests/unit/{test}" for test in ignored_tests]
-
-    # run pytest with the ignore arguments and in parallel mode
-    session.run(str(python.parent / "pytest"), "tests/unit/", *ignore_args)
-
-
-# TEST PLUGINS
-PLUGINS_TESTS = {
-    "great-expectations": "tests/unit/great_expectations",
-}
-PLUGINS = list(PLUGINS_TESTS.keys())
-
-
-@nox.session(
-    name="unit-plugins",
-    reuse_venv=False,
-    venv_backend="uv|venv",
-    python=get_python_versions(),
-)
-@nox.parametrize("plugin", PLUGINS)
-def unit_plugins(session, plugin):
-    python = prepare(session, "test")
-    # Assuming the plugin has its own tests in a specific directory
-    session.run(str(python.parent / "pytest"), PLUGINS_TESTS[plugin])
-
-
 # ---------------------------------------------------------------------------
 # Static checks
 # ---------------------------------------------------------------------------

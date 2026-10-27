@@ -616,6 +616,36 @@ is a repository-root target. Test paths passed through Make's `ARGS` are relativ
 `ingestion/`, since Nox runs tests there. `make coverage` runs the unit and integration suites as well
 as reporting, so it requires their services and test prerequisites.
 
+Use the single Nox `unit-tests` session for unit tests, locally and in CI. The former
+`unit`, `unit-dev` and `unit-plugins` sessions are replaced by explicit pytest selections.
+`make unit_ingestion_dev_env` remains a compatibility alias for `make unit_ingestion`;
+it now runs the same selection, without its former Airflow/Azure SQL exclusions.
+
+To run fewer tests, pass pytest arguments through Make's `ARGS` (from either root or
+`ingestion/`):
+
+```bash
+# One file
+make unit_ingestion ARGS="-n 0 tests/unit/models/test_custom_basemodel_validation.py -q"
+# One directory
+make unit_ingestion ARGS="-n 0 tests/unit/models/ -q"
+# One test by its pytest node ID
+make unit_ingestion ARGS="-n 0 tests/unit/models/test_custom_basemodel_validation.py::test_generated_model_transforms_name -q"
+# A name expression; preserve the inner quotes
+make unit_ingestion ARGS="-n 0 tests/unit/models/test_custom_basemodel_validation.py -k 'transform and not service' -q"
+# Exclude tests marked slow
+make unit_ingestion ARGS="-n 0 tests/unit/models/ -m 'not slow' -q"
+```
+
+An explicit path replaces the default unit-suite selection; `-k` and `-m` filter the selected
+tests. `-n 0` disables parallel workers for small runs or debugging; omit it to use the
+session's default parallel execution. With Nox directly, pass the same arguments after `--`:
+
+```bash
+# From ingestion/, with Nox available on PATH
+nox --no-venv -s unit-tests -- -n 0 tests/unit/models/test_custom_basemodel_validation.py -q
+```
+
 Nox owns synchronization and command execution in `ingestion/noxfile.py`. Make bootstraps
 uv 0.13.4 and the locked Nox dependencies into `ingestion/.nox/bootstrap`; no global uv or
 Nox installation is needed. Each session synchronizes `ingestion/uv.lock` with `--locked`

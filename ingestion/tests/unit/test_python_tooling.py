@@ -90,6 +90,56 @@ def reported_test_names(repo: Path, suite: str) -> list[str]:
     return [case.attrib["name"] for case in report.findall(".//testcase")]
 
 
+@pytest.mark.parametrize("directory", [".", "ingestion"])
+@pytest.mark.parametrize("target", ["unit_ingestion", "unit_ingestion_dev_env"])
+def test_make_unit_commands_use_the_complete_selection(nox_repo: Path, directory: str, target: str) -> None:
+    for relative, name in (
+        ("workflow/test_workflow_selection.py", "test_workflow_selected"),
+        ("test_airflow_selection.py", "test_airflow_selected"),
+        ("profiler/sqlalchemy/azuresql/test_azuresql_sampling.py", "test_azuresql_selected"),
+    ):
+        test = nox_repo / "ingestion/tests/unit" / relative
+        test.parent.mkdir(parents=True, exist_ok=True)
+        test.write_text(f"def {name}():\n    pass\n")
+
+    report = nox_repo / "ingestion/junit/test-results-unit.xml"
+    assert_success(run("make", target, f"ARGS=-n 0 --junitxml={report}", cwd=nox_repo / directory))
+
+    assert sorted(reported_test_names(nox_repo, "unit")) == [
+        "test_airflow_selected",
+        "test_azuresql_selected",
+        "test_unit_rejected",
+        "test_unit_selected",
+        "test_workflow_selected",
+    ]
+
+
+@pytest.mark.parametrize("entrypoint", ["make", "nox"])
+@pytest.mark.parametrize("selection", ["node", "keyword", "marker"])
+def test_unit_commands_run_only_the_requested_subset(nox_repo: Path, entrypoint: str, selection: str) -> None:
+    (nox_repo / "ingestion/tests/unit/test_selection.py").write_text(
+        "import pytest\n\n@pytest.mark.slow\ndef test_unit_selected():\n    pass\n\n"
+        "def test_unit_rejected():\n    assert False, 'Unrequested test executed'\n"
+    )
+    args = {
+        "node": ["tests/unit/test_selection.py::test_unit_selected"],
+        "keyword": ["-k", "unit_selected and not rejected"],
+        "marker": ["-m", "slow"],
+    }[selection]
+    if entrypoint == "make":
+        selection_args = {
+            "node": "tests/unit/test_selection.py::test_unit_selected",
+            "keyword": "-k 'unit_selected and not rejected'",
+            "marker": "-m slow",
+        }[selection]
+        result = run("make", "unit_ingestion", f"ARGS=-n 0 {selection_args}", cwd=nox_repo)
+    else:
+        result = nox_tests(nox_repo, "unit", "-n", "0", *args)
+
+    assert_success(result)
+    assert reported_test_names(nox_repo, "unit") == ["test_unit_selected"]
+
+
 @pytest.mark.parametrize("suite", ["unit", "integration"])
 def test_nox_preserves_keyword_expression(nox_repo: Path, suite: str) -> None:
     assert_success(nox_tests(nox_repo, suite, "-k", "selected and not rejected"))
