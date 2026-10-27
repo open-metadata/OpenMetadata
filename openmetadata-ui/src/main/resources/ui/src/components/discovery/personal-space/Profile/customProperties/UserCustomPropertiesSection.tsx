@@ -28,7 +28,7 @@ import { useAuth } from '../../../../../hooks/authHooks';
 import { useCustomPropertyEditor } from '../../../../../hooks/discovery/personal-space/useCustomPropertyEditor';
 import { useUserCustomPropertyAccess } from '../../../../../hooks/discovery/personal-space/useUserCustomPropertyAccess';
 import { useSettingsHash } from '../../../../../hooks/useSettingsHash';
-import { entityTypeDetailSubPath } from '../panels/CustomPropertiesPanel/CustomPropertiesPanel.utils';
+import { entityTypeDetailSubPath } from '../tabs/custom-properties/CustomPropertiesPanel.utils';
 import CustomPropertyRow from './CustomPropertyRow';
 import { COLLAPSED_ROW_COUNT } from './UserCustomProperties.constants';
 import { UserCustomPropertiesProps } from './UserCustomProperties.types';
