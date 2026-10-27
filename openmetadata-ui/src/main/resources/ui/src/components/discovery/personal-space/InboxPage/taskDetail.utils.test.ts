@@ -22,8 +22,10 @@ import { TaskDetailRow } from './taskDetail.types';
 import {
   deriveTaskAboutEntity,
   getPlainDescription,
+  getProposingAgent,
   getTaskDetailDescriptor,
   getTaskTypeBadge,
+  getTaskTypeKey,
   resolveIncidentTestCaseFqn,
   withExistingValues,
 } from './taskDetail.utils';
@@ -763,5 +765,73 @@ describe('metadata completion tasks', () => {
         ['missingFields', 'conditions'].includes(row.key)
       )
     ).toEqual([]);
+  });
+
+  it('reads a revise and resubmit task as its own kind, with the reviewer comment', () => {
+    const revision = buildTask({
+      type: TaskType.MetadataCompletion,
+      payload: {
+        stage: 'In Review',
+        missingFields: [],
+        revision: { comment: 'Name a business owner', requestedBy: 'karan' },
+      },
+    });
+    const descriptor = getTaskDetailDescriptor(revision, t);
+
+    expect(getTaskTypeBadge(revision, t)).toEqual({
+      label: 'label.revise-and-resubmit',
+      color: 'warning',
+      icon: 'approval',
+    });
+    expect(getTaskTypeKey(revision)).not.toBe(getTaskTypeKey(task));
+    expect(descriptor.callout?.text).toBe(
+      'message.metadata-completion-revision'
+    );
+    expect(
+      descriptor.rows.find((row) => row.key === 'revisionComment')?.value
+    ).toEqual({ kind: 'text', text: 'Name a business owner' });
+    expect(
+      descriptor.rows.find((row) => row.key === 'revisionRequestedBy')?.value
+    ).toEqual({ kind: 'text', text: 'karan' });
+  });
+});
+
+describe('getProposingAgent', () => {
+  const approval = (payload: unknown) =>
+    buildTask({
+      type: TaskType.RequestApproval,
+      category: TaskCategory.Approval,
+      createdBy: { id: 'bot', name: 'aiautomationapplicationbot' },
+      payload,
+    } as Partial<Task>);
+
+  it('names the agent that proposed the term, in place of its bot', () => {
+    const task = approval({
+      proposal: { provider: 'automation', agent: 'Glossary Agent' },
+    });
+
+    expect(getProposingAgent(task, t)).toBe('Glossary Agent');
+    expect(
+      getTaskDetailDescriptor(task, t).rows.find(
+        (row) => row.key === 'createdBy'
+      )?.value
+    ).toEqual({ kind: 'agent', name: 'Glossary Agent' });
+  });
+
+  it('falls back to a generic agent when the proposal names none', () => {
+    expect(
+      getProposingAgent(approval({ proposal: { provider: 'automation' } }), t)
+    ).toBe('label.ai-agent');
+  });
+
+  it('keeps the person who opened any other task', () => {
+    const task = approval({ glossaryTerm: { id: 'g1', type: 'glossaryTerm' } });
+
+    expect(getProposingAgent(task, t)).toBeUndefined();
+    expect(
+      getTaskDetailDescriptor(task, t).rows.find(
+        (row) => row.key === 'createdBy'
+      )?.value
+    ).toEqual(expect.objectContaining({ kind: 'users' }));
   });
 });

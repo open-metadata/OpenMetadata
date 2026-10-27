@@ -62,7 +62,7 @@ const borderless: Partial<Record<keyof typeof styles, keyof typeof styles>> = {
 /**
  * Common props shared between button and anchor variants
  */
-export interface CommonProps {
+export interface CommonProps extends Pick<AriaButtonProps, 'onPress'> {
   /** Disables the button and shows a disabled state */
   isDisabled?: boolean;
   /** The size variant of the button */

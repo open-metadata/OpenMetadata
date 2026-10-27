@@ -80,10 +80,11 @@ export enum Event {
 /**
  * Entity-specific filters with optional default
  */
-export interface FilterConditionObject {
+export type FilterConditionObject = {
     /**
      * Default filter for entity types not explicitly configured
      */
     default?: string;
+} & {
     [property: string]: string;
-}
+};

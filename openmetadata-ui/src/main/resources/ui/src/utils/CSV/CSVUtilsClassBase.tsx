@@ -56,6 +56,9 @@ import type { RenderEditCellProps } from 'react-data-grid';
 import { createPortal } from 'react-dom';
 import { withSuspenseFallback } from '../../components/AppRouter/withSuspenseFallback';
 import Certification from '../../components/Certification/Certification.component';
+import ClassificationTagPicker, {
+  ClassificationTagPickerProps,
+} from '../../components/common/ClassificationTagPicker/ClassificationTagPicker';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
 import CsvCellPreview from '../../components/common/EntityImport/CsvCellPreview/CsvCellPreview.component';
@@ -92,8 +95,12 @@ import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Language } from '../../generated/entity/data/metric';
 import { Config, EntityReference, Type } from '../../generated/entity/type';
-import { TagLabel, TagSource } from '../../generated/type/tagLabel';
-import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../generated/type/tagLabel';
 import { fetchDataProductsElasticSearch } from '../../rest/dataProductAPI';
 import { getDomainList } from '../../rest/domainAPI';
 import { getGlossariesList, getGlossaryTerms } from '../../rest/glossaryAPI';
@@ -410,46 +417,67 @@ const isCustomPropertyEnumMultiSelect = (
   return isRecord(config) && Boolean(config.multiSelect);
 };
 
-const isEntityReferenceValue = (
-  value: ExtensionDataTypes | undefined
-): value is EntityReference =>
-  isRecord(value) &&
-  typeof value.type === 'string' &&
-  Boolean(value.fullyQualifiedName ?? value.name ?? value.id);
+type CsvEntityReference = Omit<EntityReference, 'id'> & { id?: string };
 
-const getEntityReferenceOptionValue = (reference: EntityReference) =>
-  reference.fullyQualifiedName ?? reference.name ?? reference.id;
+const isEntityReferenceValue = (
+  value: unknown
+): value is CsvEntityReference => {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return false;
+  }
+
+  const validStrings = [
+    'id',
+    'name',
+    'fullyQualifiedName',
+    'displayName',
+    'description',
+    'href',
+  ].every((key) => value[key] === undefined || typeof value[key] === 'string');
+  const validFlags = ['deleted', 'inherited'].every(
+    (key) => value[key] === undefined || typeof value[key] === 'boolean'
+  );
+
+  return (
+    validStrings &&
+    validFlags &&
+    Boolean(value.fullyQualifiedName ?? value.name ?? value.id)
+  );
+};
+
+const getEntityReferenceOptionValue = (reference: CsvEntityReference) =>
+  reference.fullyQualifiedName ?? reference.name ?? reference.id ?? '';
 
 const getEntityReferenceOption = (
-  reference: EntityReference
+  reference: CsvEntityReference
 ): DataAssetOption => {
   const label = getEntityName(reference);
+  const value = getEntityReferenceOptionValue(reference);
 
   return {
     displayName: label,
     label,
     name: reference.name,
-    reference,
-    value: getEntityReferenceOptionValue(reference),
+    reference: { ...reference, id: reference.id ?? value },
+    value,
   };
 };
 
 const getEntityReferenceInitialOptions = (
   value: ExtensionDataTypes | undefined
 ) => {
-  const singleReference = isEntityReferenceValue(value) ? [value] : [];
-  const references = Array.isArray(value)
-    ? value.filter(isEntityReferenceValue)
-    : singleReference;
+  const values: unknown[] = Array.isArray(value) ? value : [value];
 
-  return references.map(getEntityReferenceOption);
+  return values.filter(isEntityReferenceValue).map(getEntityReferenceOption);
 };
 
 const getEntityReferenceSelectValue = (
   value: ExtensionDataTypes | undefined
 ) => {
   if (Array.isArray(value)) {
-    return value
+    const references: unknown[] = value;
+
+    return references
       .filter(isEntityReferenceValue)
       .map(getEntityReferenceOptionValue);
   }
@@ -2131,8 +2159,8 @@ const getCsvOwnerEditor: CSVEditorFactory = ({
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row?.[column.key];
-    const owners = value?.split(';') ?? [];
+    const value = String(row[column.key] ?? '');
+    const owners = value.split(';').filter(Boolean);
     const ownerEntityRef = owners.map((owner: string) => {
       const [type, user] = owner.split(':');
 
@@ -2221,7 +2249,7 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const handleSave = async (description: string) => {
       onRowChange({ ...row, [column.key]: description }, true);
       focusActiveGridCell();
@@ -2247,85 +2275,169 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
   };
 };
 
+const CSV_TAGS_PICKER_TESTID = 'csv-tags-picker';
+const CSV_GLOSSARY_PICKER_TESTID = 'csv-glossary-terms-picker';
+// Matches react-aria's own trigger-to-popover gap.
+const CSV_PICKER_POPOVER_GAP = 8;
+
+// CSV stores tags and glossary terms as a `;`-joined list of FQNs.
+const csvValueToClassificationTags = (value: string): TagLabel[] =>
+  value
+    ? value.split(';').map((tagFQN) => ({
+        tagFQN,
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+        name: Fqn.split(tagFQN).pop(),
+      }))
+    : [];
+
+const csvValueToGlossaryTags = (value: string): TagLabel[] =>
+  fqnsToGlossaryTags(value ? value.split(';') : []);
+
+type CsvPickerProps = Pick<
+  ClassificationTagPickerProps,
+  | 'isOpen'
+  | 'className'
+  | 'data-testid'
+  | 'offset'
+  | 'renderTrigger'
+  | 'value'
+  | 'onChange'
+  | 'onOpenChange'
+>;
+
+interface CsvPickerCellEditorProps
+  extends RenderEditCellProps<Record<string, unknown>, unknown> {
+  options: CSVEditorOptions;
+  testId: string;
+  toTags: (value: string) => TagLabel[];
+  renderPicker: (props: CsvPickerProps) => ReactNode;
+}
+
+const CsvPickerCellEditor = ({
+  row,
+  rowIdx,
+  onRowChange,
+  onClose,
+  column,
+  options,
+  testId,
+  toTags,
+  renderPicker,
+}: CsvPickerCellEditorProps) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLDivElement | null>(null);
+  const [popoverEl, setPopoverEl] = useState<HTMLElement | null>(null);
+  const [popoverOffset, setPopoverOffset] = useState(CSV_PICKER_POPOVER_GAP);
+  const popoverSelector = `[data-testid="${testId}-popover"]`;
+
+  // The popover is portaled and mounts a frame late, so poll until it is there.
+  useEffect(() => {
+    let frame = 0;
+    const findPopover = () => {
+      const el = document.querySelector<HTMLElement>(popoverSelector);
+      if (el) {
+        setPopoverEl(el);
+      } else {
+        frame = requestAnimationFrame(findPopover);
+      }
+    };
+    findPopover();
+
+    return () => cancelAnimationFrame(frame);
+  }, [popoverSelector]);
+
+  // Hang the popover off the cell: its own gap would overlap the taller row.
+  useLayoutEffect(() => {
+    const trigger = triggerRef.current;
+    const cell = trigger?.closest('.rdg-cell');
+
+    if (trigger && cell) {
+      setPopoverOffset(
+        cell.getBoundingClientRect().bottom -
+          trigger.getBoundingClientRect().bottom +
+          CSV_PICKER_POPOVER_GAP
+      );
+    }
+  }, []);
+
+  // Focus the popover's search box: the in-cell trigger has nothing to type into.
+  const focusTrapOptions = useMemo(
+    () => ({ initialFocus: `${popoverSelector} input` }),
+    [popoverSelector]
+  );
+
+  useMultiContainerFocusTrap({
+    containers: [containerRef.current, popoverEl],
+    active: true,
+    options: focusTrapOptions,
+  });
+
+  useEditCellHeightReporter(
+    containerRef,
+    rowIdx,
+    options.onEditCellHeightChange
+  );
+
+  const value = toString(row[column.key] ?? '');
+  const tags = useMemo(() => toTags(value), [toTags, value]);
+
+  const handleChange = (selected: TagLabel[]) => {
+    onRowChange({
+      ...row,
+      [column.key]: selected.map((tag) => tag.tagFQN).join(';'),
+    });
+  };
+
+  return (
+    // No save/cancel: each toggle is written to the row, so closing is enough.
+    // No height: the row is measured from this container, so it must not stretch.
+    <div
+      ref={containerRef}
+      role="presentation"
+      onKeyDown={onKeyDownStopPropagation}>
+      {renderPicker({
+        isOpen: true,
+        // Fill the cell; the wrapper is inline-block, which would shrink the trigger.
+        className: 'tw:block tw:w-full',
+        'data-testid': testId,
+        offset: popoverOffset,
+        // A custom trigger moves the search box and footer into the popover.
+        renderTrigger: () => (
+          <div
+            className="bulk-edit-custom-property-cell-trigger"
+            data-testid={testId}
+            ref={triggerRef}>
+            <CsvCellPreview column={column.key} value={value} />
+          </div>
+        ),
+        value: tags,
+        onChange: handleChange,
+        onOpenChange: (open) => !open && onClose(true, true),
+      })}
+    </div>
+  );
+};
+
 const getCsvTagsEditor: CSVEditorFactory = ({ options }) => {
   // Commit the picker draft and close together so the CSV export sees the selected tags.
   if (options.usePlainTextEditor) {
     return getInlineBulkEditReferencePickerEditor('tags');
   }
 
-  return ({
-    row,
-    rowIdx,
-    onRowChange,
-    onClose,
-    column,
-  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
-    useMultiContainerFocusTrap({
-      containers: [containerRef.current, dropdownContainerRef.current],
-      active: true,
-    });
-    useEditCellHeightReporter(
-      containerRef,
-      rowIdx,
-      options.onEditCellHeightChange
-    );
-
-    const tags = row[column.key]
-      ? row[column.key]?.split(';').map(
-          (tag: string) =>
-            ({
-              tagFQN: tag,
-              source: TagSource.Classification,
-              name: Fqn.split(tag).pop(),
-            } as TagLabel)
-        )
-      : undefined;
-
-    const handleChange = (tags: TagLabel[]) => {
-      onRowChange({
-        ...row,
-        [column.key]: tags.map((tag) => tag.tagFQN).join(';'),
-      });
-    };
-
-    return (
-      <KeyDownStopPropagationWrapper>
-        <div ref={containerRef}>
-          <InlineEdit
-            onCancel={() => onClose(false)}
-            onSave={() => onClose(true)}>
-            <TagSuggestion
-              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
-              autoFocus
-              dropdownContainerRef={dropdownContainerRef}
-              selectProps={{
-                className: 'react-grid-select-dropdown',
-                getPopupContainer: () => document.body,
-                size: 'small',
-              }}
-              value={tags}
-              onChange={handleChange}
-            />
-          </InlineEdit>
-        </div>
-      </KeyDownStopPropagationWrapper>
-    );
-  };
+  return (props: RenderEditCellProps<Record<string, unknown>, unknown>) => (
+    <CsvPickerCellEditor
+      {...props}
+      options={options}
+      renderPicker={(pickerProps) => (
+        <ClassificationTagPicker {...pickerProps} />
+      )}
+      testId={CSV_TAGS_PICKER_TESTID}
+      toTags={csvValueToClassificationTags}
+    />
+  );
 };
-
-const CSV_GLOSSARY_PICKER_TESTID = 'csv-glossary-terms-picker';
-// Matches react-aria's own trigger-to-popover gap.
-const CSV_PICKER_POPOVER_GAP = 8;
-// Focus the popover's search box: the in-cell trigger has nothing to type into.
-const CSV_PICKER_FOCUS_TRAP = {
-  initialFocus: `[data-testid="${CSV_GLOSSARY_PICKER_TESTID}-popover"] input`,
-};
-
-// CSV stores glossary terms as a `;`-joined list of FQNs.
-const csvValueToGlossaryTags = (value: string): TagLabel[] =>
-  fqnsToGlossaryTags(value ? value.split(';') : []);
 
 const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
   column,
@@ -2340,101 +2452,15 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     return getInlineBulkEditReferencePickerEditor('glossaryTerms');
   }
 
-  return ({
-    row,
-    rowIdx,
-    onRowChange,
-    onClose,
-    column,
-  }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const triggerRef = useRef<HTMLDivElement | null>(null);
-    const [popoverEl, setPopoverEl] = useState<HTMLElement | null>(null);
-    const [popoverOffset, setPopoverOffset] = useState(CSV_PICKER_POPOVER_GAP);
-
-    // The popover is portaled and mounts a frame late, so poll until it is there.
-    useEffect(() => {
-      let frame = 0;
-      const findPopover = () => {
-        const el = document.querySelector<HTMLElement>(
-          `[data-testid="${CSV_GLOSSARY_PICKER_TESTID}-popover"]`
-        );
-        if (el) {
-          setPopoverEl(el);
-        } else {
-          frame = requestAnimationFrame(findPopover);
-        }
-      };
-      findPopover();
-
-      return () => cancelAnimationFrame(frame);
-    }, []);
-
-    // Hang the popover off the cell: its own gap would overlap the taller row.
-    useLayoutEffect(() => {
-      const trigger = triggerRef.current;
-      const cell = trigger?.closest('.rdg-cell');
-
-      if (trigger && cell) {
-        setPopoverOffset(
-          cell.getBoundingClientRect().bottom -
-            trigger.getBoundingClientRect().bottom +
-            CSV_PICKER_POPOVER_GAP
-        );
-      }
-    }, []);
-
-    useMultiContainerFocusTrap({
-      containers: [containerRef.current, popoverEl],
-      active: true,
-      options: CSV_PICKER_FOCUS_TRAP,
-    });
-
-    useEditCellHeightReporter(
-      containerRef,
-      rowIdx,
-      options.onEditCellHeightChange
-    );
-
-    const value = toString(row[column.key] ?? '');
-    const terms = useMemo(() => csvValueToGlossaryTags(value), [value]);
-
-    const handleChange = (selected: TagLabel[]) => {
-      onRowChange({
-        ...row,
-        [column.key]: selected.map((term) => term.tagFQN).join(';'),
-      });
-    };
-
-    return (
-      // No save/cancel: each toggle is written to the row, so closing is enough.
-      // No height: the row is measured from this container, so it must not stretch.
-      <div
-        ref={containerRef}
-        role="presentation"
-        onKeyDown={onKeyDownStopPropagation}>
-        <GlossaryTermPicker
-          isOpen
-          // Fill the cell; the wrapper is inline-block, which would shrink the trigger.
-          className="tw:block tw:w-full"
-          data-testid={CSV_GLOSSARY_PICKER_TESTID}
-          offset={popoverOffset}
-          // A custom trigger moves the search box and footer into the popover.
-          renderTrigger={() => (
-            <div
-              className="bulk-edit-custom-property-cell-trigger"
-              data-testid={CSV_GLOSSARY_PICKER_TESTID}
-              ref={triggerRef}>
-              <CsvCellPreview column={column.key} value={value} />
-            </div>
-          )}
-          value={terms}
-          onChange={handleChange}
-          onOpenChange={(open) => !open && onClose(true, true)}
-        />
-      </div>
-    );
-  };
+  return (props: RenderEditCellProps<Record<string, unknown>, unknown>) => (
+    <CsvPickerCellEditor
+      {...props}
+      options={options}
+      renderPicker={(pickerProps) => <GlossaryTermPicker {...pickerProps} />}
+      testId={CSV_GLOSSARY_PICKER_TESTID}
+      toTags={csvValueToGlossaryTags}
+    />
+  );
 };
 
 const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
@@ -2475,7 +2501,7 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const handleChange = async (tag?: Tag) => {
       onRowChange(
         {
@@ -2512,7 +2538,7 @@ const getCsvCertificationEditor: CSVEditorFactory =
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     // eslint-disable-next-line sonarjs/no-identical-functions -- distinct editor closure
     const handleChange = async (tag?: Tag) => {
       onRowChange(
@@ -2551,7 +2577,7 @@ const getCsvDomainsEditor: CSVEditorFactory = ({ entityType, options }) => {
     onRowChange,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const domains = value
       ? (value?.split(';') ?? []).map((domain: string) => {
           const fqn = removeOuterEscapes(domain.trim());
@@ -2618,8 +2644,8 @@ const getCsvReviewersEditor: CSVEditorFactory = ({ entityType, options }) => {
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
-    const reviewers = value?.split(';') ?? [];
+    const value = String(row[column.key] ?? '');
+    const reviewers = value.split(';').filter(Boolean);
     const reviewersEntityRef = reviewers.map((reviewer: string) => {
       const [type, user] = reviewer.split(':');
 
@@ -2684,7 +2710,7 @@ const getCsvExtensionEditor: CSVEditorFactory = ({ entityType, options }) => {
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const handleSave = async (extension?: string) => {
       onRowChange({ ...row, [column.key]: extension }, true);
     };
@@ -2713,7 +2739,7 @@ const getCsvEntityTypeEditor: CSVEditorFactory =
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const handleChange = (typeValue: string) =>
       onRowChange({ ...row, [column.key]: typeValue }, true);
     const translatedEntityTypeOptions = () =>
@@ -2757,7 +2783,7 @@ const getCsvMultiSelectEditor: CSVEditorFactory = ({
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const selected = value ? String(value).split(';').filter(Boolean) : [];
     const handleChange = (values: string[]) => {
       onRowChange({ ...row, [column.key]: values.join(';') }, true);
@@ -2822,7 +2848,9 @@ const getCsvExpressionCodeEditor: CSVEditorFactory =
 
     return (
       <>
-        <ValueRendererOnEditCell>{row[column.key]}</ValueRendererOnEditCell>
+        <ValueRendererOnEditCell>
+          {String(row[column.key] ?? '')}
+        </ValueRendererOnEditCell>
         <ExpressionCodeCell
           language={language}
           value={String(row[column.key] ?? '')}
@@ -2841,7 +2869,7 @@ const getCsvEnumEditor: CSVEditorFactory =
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const handleChange = (selectedValue: string) => {
       onRowChange({ ...row, [column.key]: selectedValue }, true);
       onClose(true);
@@ -2875,7 +2903,7 @@ const getCsvCodeEditor: CSVEditorFactory = ({ options }) => {
     onClose,
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
-    const value = row[column.key];
+    const value = String(row[column.key] ?? '');
     const handleChange = (value: string) => {
       onRowChange({ ...row, [column.key]: value });
     };

@@ -136,6 +136,7 @@ QUICKTYPE=$(npx --yes -p quicktype@20.0.27 -c 'command -v quicktype' 2>/dev/null
 
 process_schema_files
 wait $(jobs -p)
+node openmetadata-ui/src/main/resources/ui/scripts/normalize-generated-map-types.mjs "$QUICKTYPE" "$UI_OUTPUT_DIRECTORY" || exit 1
 
 # Cleanup
 rm -rf "$TEMP_DIR"

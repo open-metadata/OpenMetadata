@@ -11,23 +11,17 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Input,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Input } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { CustomProperty } from '../../../../generated/entity/type';
 import { buildUpdatedExtension } from '../../../../utils/CustomProperty.utils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { CustomPropertyListItem } from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertyListItem';
-import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import PanelEmptyPlaceholder from '../../../common/EmptyPlaceholder/PanelEmptyPlaceholder';
+import PermissionPlaceholder from '../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import { ExtensionDataProps } from '../../../Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
 import { CustomPropertiesSectionProps } from './CustomPropertiesSection.interface';
@@ -87,55 +81,34 @@ const CustomPropertiesSection = ({
     [extensionData, onExtensionUpdate]
   );
 
-  const emptyState = useMemo(() => {
-    if (searchText) {
-      return (
-        <Typography
-          as="p"
-          className="tw:p-2 tw:text-center tw:text-tertiary"
-          data-testid="no-matching-custom-properties"
-          size="text-sm">
-          {t('message.no-entity-found-for-name', {
-            entity: t('label.custom-property-plural'),
-            name: searchText,
-          })}
-        </Typography>
-      );
-    }
-
-    return (
+  const emptyState = useMemo(
+    () => (
       <div className="lineage-items-list tw:min-w-0 tw:px-4">
-        <ErrorPlaceHolderNew
-          className="text-grey-14"
-          icon={<AddPlaceHolderIcon height={100} width={100} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <div className="p-t-md no-data-placeholder tw:text-center tw:break-words">
-            <Tooltip
-              title={t('label.documentation')}
-              triggerClassName="tw:block tw:whitespace-normal">
-              <span>
-                <Transi18next
-                  i18nKey="message.no-custom-properties-entity"
-                  renderElement={
-                    <a
-                      aria-label={t('label.documentation')}
-                      href={CUSTOM_PROPERTIES_DOCS}
-                      rel="noreferrer"
-                      target="_blank"
-                    />
-                  }
-                  values={{
-                    entity: emptyStateMessage ?? t('label.entity'),
-                    docs: t('label.doc-plural-lowercase'),
-                  }}
+        <PanelEmptyPlaceholder
+          description={
+            <Transi18next
+              i18nKey="message.no-custom-properties-entity"
+              renderElement={
+                <a
+                  aria-label={t('label.documentation')}
+                  href={CUSTOM_PROPERTIES_DOCS}
+                  rel="noreferrer"
+                  target="_blank"
                 />
-              </span>
-            </Tooltip>
-          </div>
-        </ErrorPlaceHolderNew>
+              }
+              values={{
+                entity: emptyStateMessage ?? t('label.entity'),
+                docs: t('label.doc-plural-lowercase'),
+              }}
+            />
+          }
+          searchResultsTestId="no-matching-custom-properties"
+          searchText={searchText}
+        />
       </div>
-    );
-  }, [searchText, emptyStateMessage, t]);
+    ),
+    [searchText, emptyStateMessage, t]
+  );
 
   if (isEntityDataLoading) {
     return <Loader size="default" />;
@@ -144,19 +117,9 @@ const CustomPropertiesSection = ({
   if (!viewCustomPropertiesPermission) {
     return (
       <div className="lineage-items-list">
-        <ErrorPlaceHolderNew
-          className="text-grey-14 permission-error-placeholder"
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}>
-          <Transi18next
-            i18nKey="message.no-access-placeholder"
-            renderElement={<span />}
-            values={{
-              entity: t('label.view-entity', {
-                entity: t('label.custom-property-plural'),
-              }),
-            }}
-          />
-        </ErrorPlaceHolderNew>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder data-testid="permission-error-placeholder" />
+        </div>
       </div>
     );
   }

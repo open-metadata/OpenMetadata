@@ -92,7 +92,8 @@ const Chip = ({
       {hasMoreElement && (
         <Badge
           bordered={false}
-          className="tw:mr-2 m-l-xss chip-text cursor-pointer"
+          className="tw:mr-2 m-l-xss cursor-pointer"
+          color="brand"
           data-testid="plus-more-count"
           size="sm"
           type="color"

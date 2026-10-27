@@ -57,7 +57,7 @@ const DqFilterChip = ({
       <UserTeamSelectableList
         hasPermission
         owner={filter.selectedOwners}
-        popoverProps={{ open: isOpen, placement: 'bottomLeft', onOpenChange }}
+        popoverProps={{ open: isOpen, onOpenChange }}
         // `UserTeamSelectableList` closes itself by clearing its internal
         // visibility state, but `popoverProps` is spread onto the Popover last,
         // so the `open` above wins and that internal close does nothing. Owning

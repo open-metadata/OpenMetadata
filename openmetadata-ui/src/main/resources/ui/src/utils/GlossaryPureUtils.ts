@@ -17,6 +17,7 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType } from '../enums/entity.enum';
 import {
   EntityStatus,
+  ProviderType,
   type GlossaryTerm,
 } from '../generated/entity/data/glossaryTerm';
 import type { Task } from '../generated/entity/tasks/task';
@@ -287,6 +288,36 @@ export const glossaryTermTableColumnsWidth = () => {
   };
 };
 
+interface TermStatusNode {
+  fullyQualifiedName?: string;
+  entityStatus?: EntityStatus;
+  children?: unknown[];
+}
+
+/** The term tree with one term's status replaced, wherever it sits. */
+export const updateGlossaryTermStatus = <T extends TermStatusNode>(
+  terms: T[],
+  targetFqn: string,
+  newStatus: EntityStatus
+): T[] =>
+  terms.map((term) => {
+    if (term.fullyQualifiedName === targetFqn) {
+      return { ...term, entityStatus: newStatus };
+    }
+    if (term.children?.length) {
+      return {
+        ...term,
+        children: updateGlossaryTermStatus(
+          term.children as T[],
+          targetFqn,
+          newStatus
+        ),
+      };
+    }
+
+    return term;
+  });
+
 export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
   `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFQN}>`;
 
@@ -337,3 +368,15 @@ export const referenceURLValidator = (
     new Error(i18n.t('message.url-must-start-with-http-or-https'))
   );
 };
+
+const AWAITING_DECISION = new Set<EntityStatus>([
+  EntityStatus.Draft,
+  EntityStatus.InReview,
+]);
+
+/** A term an automation (an AI agent) created that no one has approved yet. */
+export const isAiGeneratedDraft = (
+  term: Pick<GlossaryTerm, 'entityStatus' | 'provider'>
+): boolean =>
+  term.provider === ProviderType.Automation &&
+  AWAITING_DECISION.has(term.entityStatus ?? EntityStatus.Approved);

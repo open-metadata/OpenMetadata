@@ -67,7 +67,6 @@ import {
   NODE_HEIGHT_WITH_CHILDREN,
   NODE_WIDTH,
 } from '../../../constants/Lineage.constants';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import {
   LineageBand,
@@ -119,6 +118,7 @@ import {
   getConnectedFieldLineagePathHighlight,
   getConnectedLineagePathHighlight,
   getDrillBand,
+  getDrilledRootBreadcrumb,
   getLensRootLabelKey,
   getLineageMapEmptyState,
   getParentSceneRequest,
@@ -900,6 +900,41 @@ const LineageMapBreadcrumbs = ({
   );
 };
 
+// A drilled-in scene with nothing in it replaces the canvas, breadcrumb
+// included, so the empty state carries the way back to the root.
+const LineageMapEmptyPlaceholder = ({
+  scene,
+  onBack,
+}: {
+  scene?: LineageScene;
+  onBack: (breadcrumb: LineageSceneBreadcrumb) => void;
+}) => {
+  const { t } = useTranslation();
+  const rootBreadcrumb = getDrilledRootBreadcrumb(scene);
+
+  return (
+    <NoDataPlaceholder
+      actions={
+        rootBreadcrumb && scene
+          ? [
+              {
+                key: 'back-to-root',
+                label: t('label.back-to-entity', {
+                  entity: t(getLensRootLabelKey(scene.lens)),
+                }),
+                color: 'secondary',
+                iconLeading: Home02,
+                onPress: () => onBack(rootBreadcrumb),
+              },
+            ]
+          : undefined
+      }
+      icon={<PlatformLineage />}
+      title={t('message.no-lineage-data-available')}
+    />
+  );
+};
+
 const LineageMapStatusPanel = ({
   scene,
   error,
@@ -959,12 +994,6 @@ const LineageMapCanvas = ({
   const { t } = useTranslation();
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const { isTourOpen, isTourPage, tourMockDatasetData } = useTourProvider();
-  // The tour's table is mock data, so its scene is too — never ask the server.
-  const tourLineageScene = isTourPage
-    ? (tourMockDatasetData as { lineageScene?: LineageScene } | undefined)
-        ?.lineageScene
-    : undefined;
   const { activeDomain, isDomainRestricted } = useDomainStore();
   const { onNodeClick: onProviderNodeClick } = useLineageHandlers();
   const request = useMemo(
@@ -1159,12 +1188,11 @@ const LineageMapCanvas = ({
   }, []);
 
   useEffect(() => {
-    const isOnboardingContext =
-      Boolean(isPlatformLineage) && !deleted && !isTourOpen && !isTourPage;
+    const isOnboardingContext = Boolean(isPlatformLineage) && !deleted;
     const hasSeenOnboarding =
       cookieStorage.getItem(LINEAGE_MAP_ONBOARDING_COOKIE) === 'true';
     setShowOnboarding(isOnboardingContext && !hasSeenOnboarding);
-  }, [deleted, isPlatformLineage, isTourOpen, isTourPage]);
+  }, [deleted, isPlatformLineage]);
 
   const getOriginRequestTarget = useCallback(
     (currentScene?: LineageScene): LineageSceneFocus =>
@@ -1209,10 +1237,7 @@ const LineageMapCanvas = ({
       try {
         response = await sceneCache.load(
           cacheKey,
-          () =>
-            tourLineageScene
-              ? Promise.resolve(tourLineageScene)
-              : getLineageScene({ ...nextRequest, config, queryFilter }),
+          () => getLineageScene({ ...nextRequest, config, queryFilter }),
           options.bypassCache
         );
         if (sceneRequestIdRef.current === requestId) {
@@ -1239,7 +1264,7 @@ const LineageMapCanvas = ({
 
       return response;
     },
-    [config, queryFilter, sceneCache, tourLineageScene]
+    [config, queryFilter, sceneCache]
   );
   const refetchCurrentScene = useCallback(
     async (isExpectedScene?: (response: LineageScene) => boolean) => {
@@ -1265,10 +1290,6 @@ const LineageMapCanvas = ({
   const prefetchAdjacentBands = useMemo(
     () =>
       debounce((currentScene: LineageScene) => {
-        // The tour scene is a fixed mock; there is nothing to prefetch.
-        if (tourLineageScene) {
-          return;
-        }
         prefetchSceneBands(
           currentScene,
           request,
@@ -1277,7 +1298,7 @@ const LineageMapCanvas = ({
           sceneCache
         );
       }, 300),
-    [config, queryFilter, request, sceneCache, tourLineageScene]
+    [config, queryFilter, request, sceneCache]
   );
 
   useEffect(() => {
@@ -1923,9 +1944,9 @@ const LineageMapCanvas = ({
         />
       ),
       empty: (
-        <NoDataPlaceholder
-          description={t('message.no-lineage-data-available')}
-          icon={<PlatformLineage className="tw:text-secondary" />}
+        <LineageMapEmptyPlaceholder
+          scene={scene}
+          onBack={handleBreadcrumbFocus}
         />
       ),
     };

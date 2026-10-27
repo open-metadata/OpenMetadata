@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { useSystemAnnouncement } from '../../../../../hooks/platform/useSystemAnnouncements';
 import { AnnouncementEntity } from '../../../../../rest/announcementsAPI';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../common/Loader/Loader';
 import SystemAnnouncementForm from '../SystemAnnouncementForm/SystemAnnouncementForm';
 import { SystemAnnouncementFormMode } from '../SystemAnnouncementForm/SystemAnnouncementForm.types';
@@ -24,6 +25,7 @@ interface SystemAnnouncementFormLoaderProps {
   id?: string;
   onCancel: () => void;
   onSaved: (announcement: AnnouncementEntity) => void;
+  centered?: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ const SystemAnnouncementFormLoader = ({
   id,
   onCancel,
   onSaved,
+  centered,
 }: SystemAnnouncementFormLoaderProps) => {
   const { t } = useTranslation();
   const needsSource = mode !== 'create';
@@ -52,12 +55,11 @@ const SystemAnnouncementFormLoader = ({
   if (needsSource && (isError || !data || data.entityLink)) {
     return (
       <Box className="tw:relative tw:min-h-60">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="announcement-not-found"
           title={t('label.no-entity-found', {
             entity: t('label.announcement'),
           })}
-          variant="blank"
         />
       </Box>
     );
@@ -66,6 +68,7 @@ const SystemAnnouncementFormLoader = ({
   return (
     <SystemAnnouncementForm
       announcement={needsSource ? data : undefined}
+      centered={centered}
       key={data?.id ?? 'new'}
       mode={mode}
       onCancel={onCancel}

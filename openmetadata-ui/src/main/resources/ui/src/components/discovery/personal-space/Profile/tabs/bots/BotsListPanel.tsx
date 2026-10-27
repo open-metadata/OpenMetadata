@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
   Input,
   PaginationCardWithControls,
   Skeleton,
@@ -25,7 +24,9 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  CpuChip01,
   NoSearch,
+  Plus,
   Search,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
@@ -59,6 +60,8 @@ import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { escapeESReservedCharacters } from '../../../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { BotsView } from './BotsPanel.types';
 
@@ -464,11 +467,19 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
 
     if (searchTerm.trim()) {
       return (
-        <div className="tw:relative tw:min-h-60">
-          <EmptyPlaceholder
+        <div className="tw:relative tw:min-h-70">
+          <NoSearchResultsPlaceholder
+            actions={[
+              {
+                color: 'primary' as const,
+                key: 'clear-filters',
+                label: t('label.clear-entity', { entity: t('label.all') }),
+                onPress: () => handleSearch(''),
+              },
+            ]}
             data-testid="search-error-placeholder"
             description={t('message.check-spelling-or-try-different-term')}
-            icon={<NoSearch className="tw:text-quaternary" />}
+            icon={<NoSearch />}
             title={t('label.no-matching-results')}
           />
         </div>
@@ -476,13 +487,14 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
     }
 
     return (
-      <div className="tw:relative tw:min-h-60">
-        <EmptyPlaceholder
+      <div className="tw:relative tw:min-h-70">
+        <NoDataPlaceholder
           actions={
             isAdminUser && !showDeleted
               ? [
                   {
                     color: 'primary' as const,
+                    iconLeading: Plus,
                     key: 'add-bot',
                     label: t('label.add-entity', {
                       entity: t('label.bot'),
@@ -492,13 +504,14 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
                 ]
               : undefined
           }
-          title={t('label.no-entity-found', {
-            entity: t('label.bot-plural'),
-          })}
+          description={t('label.no-bots-yet-description')}
+          icon={<CpuChip01 className="tw:text-fg-brand-primary" />}
+          title={t('label.no-bots-yet')}
         />
       </div>
     );
   }, [
+    handleSearch,
     isAdminUser,
     isLoading,
     onNavigate,
@@ -514,7 +527,9 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
       data-testid="bots-list-panel"
       direction="col"
       gap={4}>
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col tw:rounded-xl tw:shadow-none"
+        size="compact">
         <Box
           align="center"
           className="tw:border-b tw:border-subtle tw:px-4 tw:py-3"

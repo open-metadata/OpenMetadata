@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
   ButtonGroup,
   ButtonGroupItem,
   Divider,
   Dropdown,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { FilterLines } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -50,7 +50,7 @@ import {
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
@@ -75,7 +75,9 @@ import { getFeedTotalCount } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
@@ -92,6 +94,8 @@ import {
   ActivityFeedTabs,
   TaskFilterBarProps,
 } from './ActivityFeedTab.interface';
+import { isListLoadFailed } from './ActivityFeedTab.utils';
+
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
     import('../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
@@ -291,7 +295,7 @@ const TaskFilterBar = ({
       : `${t('label.closed')} (${countData?.closedTaskCount ?? 0})`;
 
   return (
-    <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
+    <div className="d-flex gap-4 task-filter-container justify-between items-center tw:flex-wrap">
       <Dropdown.Root>
         <Button
           color="secondary"
@@ -335,6 +339,7 @@ const TaskFilterBar = ({
 const ActivityFeedTabList = ({
   activityEvents,
   emptyPlaceholderText,
+  emptyPlaceholderDescription,
   entityThread,
   isActivityLoading,
   isAllTab,
@@ -360,6 +365,7 @@ const ActivityFeedTabList = ({
     return (
       <TaskListV1
         activeFeedId={selectedTask?.id}
+        emptyPlaceholderDescription={emptyPlaceholderDescription}
         emptyPlaceholderText={emptyPlaceholderText}
         handlePanelResize={onPanelResize}
         isFullWidth={isFullWidth}
@@ -378,6 +384,7 @@ const ActivityFeedTabList = ({
       activeFeedId={selectedActivity?.id ?? selectedThread?.id}
       activityList={isAllTab ? activityEvents : undefined}
       componentsVisibility={componentsVisibility}
+      emptyPlaceholderDescription={emptyPlaceholderDescription}
       emptyPlaceholderText={emptyPlaceholderText}
       feedList={entityThread}
       handlePanelResize={onPanelResize}
@@ -394,6 +401,40 @@ const ActivityFeedTabList = ({
   );
 };
 
+/**
+ * The list's empty placeholder, or why it is empty when its fetch failed: a
+ * failure must not read as "no tasks".
+ */
+// Rendered in place of the list, not as its empty text: the list wraps that
+// text in a legacy illustration the core placeholder would sit on top of.
+const ActivityFeedListError = ({
+  error,
+  isTaskList,
+  onRetry,
+}: {
+  error: AxiosError;
+  isTaskList: boolean;
+  onRetry: () => void;
+}) => {
+  const { t } = useTranslation();
+  const entity = isTaskList ? t('label.task-plural') : t('label.activity-feed');
+
+  return (
+    <Box className="tw:relative tw:min-h-[calc(100vh_-_24rem)] tw:w-full">
+      {error.response?.status === ClientErrors.FORBIDDEN ? (
+        <PermissionPlaceholder
+          permissionValue={t('label.view-entity', { entity })}
+        />
+      ) : (
+        <SomethingWentWrongPlaceholder
+          description={t('server.entity-fetch-error', { entity })}
+          onReload={onRetry}
+        />
+      )}
+    </Box>
+  );
+};
+
 const ActivityFeedTabRightPanel = ({
   content,
   hasSelection,
@@ -402,6 +443,7 @@ const ActivityFeedTabRightPanel = ({
   loader,
   loading,
   placeholder,
+  placeholderDescription,
 }: ActivityFeedTabRightPanelProps) => {
   const isThreePanel = layoutType === ActivityFeedLayoutType.THREE_PANEL;
 
@@ -419,15 +461,14 @@ const ActivityFeedTabRightPanel = ({
           ? content
           : !loading && (
               <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
-                <ErrorPlaceHolderNew
-                  icon={<NoConversationsIcon />}
-                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <Typography
-                    as="div"
-                    className="placeholder-text tw:mb-4 tw:break-words">
-                    {placeholder}
-                  </Typography>
-                </ErrorPlaceHolderNew>
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  <NoDataPlaceholder
+                    data-testid="no-data-placeholder"
+                    description={placeholderDescription}
+                    icon={<NoConversationsIcon />}
+                    title={placeholder}
+                  />
+                </div>
               </div>
             )}
       </div>
@@ -486,6 +527,7 @@ export const ActivityFeedTab = ({
     getFeedData,
     getTaskData,
     loading,
+    listError,
     entityPaging,
     tasks,
     selectedTask,
@@ -550,45 +592,23 @@ export const ActivityFeedTab = ({
 
   const placeholderText = useMemo(() => {
     if (isAllTab) {
-      return (
-        <div className="d-flex flex-col gap-4">
-          <Typography className="placeholder-title">
-            {t('message.no-activity-feed-title')}
-          </Typography>
-          <Typography className="placeholder-text">
-            {t('message.no-activity-feed-description')}
-          </Typography>
-        </div>
-      );
+      return {
+        title: t('message.no-activity-feed-title'),
+        description: t('message.no-activity-feed-description'),
+      };
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return (
-        <Typography className="placeholder-text">
-          {t('message.no-mentions')}
-        </Typography>
-      );
+      return { description: t('message.no-mentions') };
     } else if (taskFilter === TaskStatusGroup.Closed) {
-      return (
-        <div className="d-flex flex-col gap-4">
-          <Typography className="placeholder-title">
-            {t('message.no-closed-tasks-title')}
-          </Typography>
-          <Typography className="placeholder-text">
-            {t('message.no-closed-tasks-description')}
-          </Typography>
-        </div>
-      );
-    } else {
-      return (
-        <div className="d-flex flex-col gap-4">
-          <Typography className="placeholder-title">
-            {t('message.no-open-tasks-title')}
-          </Typography>
-          <Typography className="placeholder-text">
-            {t('message.no-open-tasks-description')}
-          </Typography>
-        </div>
-      );
+      return {
+        title: t('message.no-closed-tasks-title'),
+        description: t('message.no-closed-tasks-description'),
+      };
     }
+
+    return {
+      title: t('message.no-open-tasks-title'),
+      description: t('message.no-open-tasks-description'),
+    };
   }, [activeTab, isAllTab, taskFilter, t]);
 
   const handleFeedCount = useCallback(
@@ -989,6 +1009,8 @@ export const ActivityFeedTab = ({
       : !isEmpty(entityThread);
   }, [isTaskActiveTab, isAllTab, tasks, activityEvents, entityThread]);
 
+  const showListError = isListLoadFailed(listError, loading, hasListRows);
+
   const getRightPanelContent = () => {
     if (isTaskActiveTab && selectedTask) {
       return (
@@ -1060,23 +1082,13 @@ export const ActivityFeedTab = ({
 
   const getRightPanelPlaceholder = useMemo(() => {
     if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return (
-        <Typography className="placeholder-text m-t-0">
-          {t('message.no-mentions')}
-        </Typography>
-      );
+      return { description: t('message.no-mentions') };
     }
 
-    return (
-      <div className="d-flex flex-col gap-4">
-        <Typography className="placeholder-title m-t-md">
-          {t('message.no-conversations')}
-        </Typography>
-        <Typography className="placeholder-text">
-          {t('message.no-conversations-description')}
-        </Typography>
-      </div>
-    );
+    return {
+      title: t('message.no-conversations'),
+      description: t('message.no-conversations-description'),
+    };
   }, [activeTab, t]);
 
   return (
@@ -1096,7 +1108,7 @@ export const ActivityFeedTab = ({
       />
       <div
         className={classNames('center-container', {
-          'full-width': isFullWidth,
+          'full-width': isFullWidth || showListError,
           'three-panel-layout':
             layoutType === ActivityFeedLayoutType.THREE_PANEL,
         })}
@@ -1109,26 +1121,35 @@ export const ActivityFeedTab = ({
           taskFilterOptions={taskFilterOptions}
           taskToggle={TaskToggle()}
         />
-        <ActivityFeedTabList
-          activityEvents={activityEvents}
-          emptyPlaceholderText={placeholderText}
-          entityThread={entityThread}
-          isActivityLoading={isActivityLoading}
-          isAllTab={isAllTab}
-          isFirstLoad={isFirstLoad}
-          isFullWidth={isFullWidth}
-          isTaskListTab={isTaskActiveTab}
-          loading={loading}
-          selectedActivity={selectedActivity}
-          selectedTask={selectedTask}
-          selectedThread={selectedThread}
-          tasks={tasks}
-          onActivityClick={handleActivityClick}
-          onAfterClose={handleAfterTaskClose}
-          onFeedClick={handleFeedClick}
-          onPanelResize={handlePanelResize}
-          onTaskClick={handleTaskClick}
-        />
+        {showListError ? (
+          <ActivityFeedListError
+            error={listError as AxiosError}
+            isTaskList={isTaskActiveTab}
+            onRetry={() => handleFeedFetchFromFeedList()}
+          />
+        ) : (
+          <ActivityFeedTabList
+            activityEvents={activityEvents}
+            emptyPlaceholderDescription={placeholderText.description}
+            emptyPlaceholderText={placeholderText.title}
+            entityThread={entityThread}
+            isActivityLoading={isActivityLoading}
+            isAllTab={isAllTab}
+            isFirstLoad={isFirstLoad}
+            isFullWidth={isFullWidth}
+            isTaskListTab={isTaskActiveTab}
+            loading={loading}
+            selectedActivity={selectedActivity}
+            selectedTask={selectedTask}
+            selectedThread={selectedThread}
+            tasks={tasks}
+            onActivityClick={handleActivityClick}
+            onAfterClose={handleAfterTaskClose}
+            onFeedClick={handleFeedClick}
+            onPanelResize={handlePanelResize}
+            onTaskClick={handleTaskClick}
+          />
+        )}
         {!isFirstLoad && loader}
         {hasListRows && !loading && (
           <div
@@ -1141,15 +1162,18 @@ export const ActivityFeedTab = ({
         )}
       </div>
 
-      <ActivityFeedTabRightPanel
-        content={getRightPanelContent()}
-        hasSelection={hasRightPanelSelection}
-        isFullWidth={isFullWidth}
-        layoutType={layoutType}
-        loader={loader}
-        loading={loading}
-        placeholder={getRightPanelPlaceholder}
-      />
+      {!showListError && (
+        <ActivityFeedTabRightPanel
+          content={getRightPanelContent()}
+          hasSelection={hasRightPanelSelection}
+          isFullWidth={isFullWidth}
+          layoutType={layoutType}
+          loader={loader}
+          loading={loading}
+          placeholder={getRightPanelPlaceholder.title}
+          placeholderDescription={getRightPanelPlaceholder.description}
+        />
+      )}
     </div>
   );
 };

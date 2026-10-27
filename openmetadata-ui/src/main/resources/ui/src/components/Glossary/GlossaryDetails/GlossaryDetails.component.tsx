@@ -35,6 +35,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
+import { getReviewTab } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -152,6 +153,13 @@ const GlossaryDetails = ({
       },
       ...(!isVersionView
         ? [
+            getReviewTab({
+              activeTab,
+              entityFqn: glossary.fullyQualifiedName ?? '',
+              name: tabLabelMap[EntityTabs.REVIEW],
+              openTaskCount: feedCount.openTaskCount,
+              onTasksChange: fetchTaskCounts,
+            }),
             {
               label: (
                 <TabsLabel
@@ -213,6 +221,8 @@ const GlossaryDetails = ({
     glossary.fullyQualifiedName,
     feedCount.conversationCount,
     feedCount.totalTasksCount,
+    feedCount.openTaskCount,
+    fetchTaskCounts,
     activeTab,
     isVersionView,
   ]);

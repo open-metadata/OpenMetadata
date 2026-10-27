@@ -14,20 +14,18 @@
 import {
   Autocomplete,
   Button,
-  ButtonUtility,
   Divider,
   Popover,
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ActivityOwnerChanged as RoleIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
-import { ReactComponent as RoleIcon } from '../../../../../assets/svg/ic-roles.svg';
 import { TERM_ADMIN } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Role } from '../../../../../generated/entity/teams/role';
@@ -36,6 +34,7 @@ import { searchRoles } from '../../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Chip from '../../../../common/Chip/Chip.component';
+import { WidgetEditButton } from '../../../../common/WidgetActionButton/WidgetActionButton';
 import '../../users.less';
 import UserProfileInheritedRoles from '../UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
@@ -69,7 +68,7 @@ const UserProfileRoles = ({
     }
 
     return options;
-  }, [roles, isUserAdmin, getEntityName]);
+  }, [roles, isUserAdmin]);
 
   const selectedRoleItems = useMemo(
     () =>
@@ -173,7 +172,7 @@ const UserProfileRoles = ({
         showNoDataPlaceholder={!isUserAdmin}
       />
     ),
-    [userRoles, isUserAdmin]
+    [userRoles, isUserAdmin, t]
   );
 
   const handleCloseEditRole = useCallback(() => {
@@ -209,7 +208,7 @@ const UserProfileRoles = ({
     if (isRolesEdit) {
       fetchRoles();
     }
-  }, [isRolesEdit]);
+  }, [isRolesEdit, fetchRoles]);
 
   useEffect(() => {
     return () => {
@@ -219,11 +218,11 @@ const UserProfileRoles = ({
 
   return (
     <div
-      className="d-flex flex-col m-b-0 w-full p-[20px] user-profile-card"
+      className="tw:flex tw:w-full tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:pt-5 tw:pb-2.5"
       data-testid="user-profile-roles">
-      <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
-        <div className="d-flex flex-center user-page-icon">
-          <RoleIcon height={16} />
+      <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
+        <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center">
+          <RoleIcon size={16} />
         </div>
         <div className="d-flex justify-between w-full">
           <Typography className="text-sm font-medium">
@@ -231,12 +230,9 @@ const UserProfileRoles = ({
           </Typography>
           {isAdminUser && (
             <PopoverTrigger isOpen={isRolesEdit} onOpenChange={setIsRolesEdit}>
-              <ButtonUtility
-                color="tertiary"
+              <WidgetEditButton
                 data-testid="edit-roles-button"
-                icon={<EditIcon height={16} width={16} />}
-                size="xs"
-                tooltip={t('label.edit-entity', {
+                title={t('label.edit-entity', {
                   entity: t('label.role-plural'),
                 })}
               />
@@ -249,7 +245,7 @@ const UserProfileRoles = ({
                   data-testid="user-profile-edit-popover">
                   <div className="d-flex justify-start items-center gap-2 m-b-sm">
                     <div className="d-flex flex-start items-center">
-                      <RoleIcon height={16} />
+                      <RoleIcon size={16} />
                     </div>
                     <Typography className="user-profile-edit-popover-card-title">
                       {t('label.role-plural')}
@@ -303,8 +299,8 @@ const UserProfileRoles = ({
           )}
         </div>
       </div>
-      <div className="user-profile-card-body d-flex justify-start gap-2">
-        <div className="d-flex flex-center user-page-icon">
+      <div className="tw:mb-2.5 tw:flex tw:justify-start tw:gap-2">
+        <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center">
           <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
         </div>
         <div>{rolesRenderElement}</div>

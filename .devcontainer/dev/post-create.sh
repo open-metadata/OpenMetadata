@@ -19,6 +19,15 @@ echo "=== Setting up OpenMetadata Development Environment ==="
 
 cd "$REPO_ROOT"
 
+# The node feature installs nvm only (version "none") so the UI's .nvmrc stays the one Node pin.
+echo "Setting up Node from .nvmrc..."
+# shellcheck disable=SC1091
+. "${NVM_DIR:-/usr/local/share/nvm}/nvm.sh"
+NODE_VERSION="$(cat openmetadata-ui/src/main/resources/ui/.nvmrc)"
+nvm install "$NODE_VERSION"
+nvm alias default "$NODE_VERSION"
+npm install -g yarn@1.22.22 --force
+
 # Ensure ANTLR4 is available
 echo "Setting up ANTLR4..."
 # Ensure user-local binaries are available for this script and child processes.

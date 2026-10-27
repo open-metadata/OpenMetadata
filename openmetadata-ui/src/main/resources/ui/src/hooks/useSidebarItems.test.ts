@@ -128,6 +128,10 @@ describe('useSidebarItems', () => {
       plugins: [],
       applications: [],
       extensionRegistry: {} as never,
+      isLoading: false,
+      contributionsVersion: 0,
+      contributionsReady: true,
+      getContributions: () => [],
     });
     mockFilterHiddenNavigationItems.mockReturnValue(mockSidebarItems);
   });
@@ -149,6 +153,10 @@ describe('useSidebarItems', () => {
       plugins: mockPlugins,
       applications: [],
       extensionRegistry: {} as never,
+      isLoading: false,
+      contributionsVersion: 0,
+      contributionsReady: true,
+      getContributions: () => [],
     });
 
     const { result } = renderHook(() => useSidebarItems());
@@ -178,6 +186,10 @@ describe('useSidebarItems', () => {
       plugins: undefined as unknown as AppPlugin[],
       applications: [],
       extensionRegistry: {} as never,
+      isLoading: false,
+      contributionsVersion: 0,
+      contributionsReady: true,
+      getContributions: () => [],
     });
 
     const { result } = renderHook(() => useSidebarItems());
@@ -226,6 +238,10 @@ describe('useSidebarItems', () => {
       plugins: mockPlugins,
       applications: [],
       extensionRegistry: {} as never,
+      isLoading: false,
+      contributionsVersion: 0,
+      contributionsReady: true,
+      getContributions: () => [],
     });
 
     rerender();
@@ -291,6 +307,10 @@ describe('useSidebarItems', () => {
       plugins: multiplePlugins,
       applications: [],
       extensionRegistry: {} as never,
+      isLoading: false,
+      contributionsVersion: 0,
+      contributionsReady: true,
+      getContributions: () => [],
     });
 
     const { result } = renderHook(() => useSidebarItems());
