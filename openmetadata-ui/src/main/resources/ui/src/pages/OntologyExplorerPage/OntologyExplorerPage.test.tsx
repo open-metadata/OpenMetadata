@@ -734,10 +734,9 @@ describe('OntologyExplorerPage', () => {
   it('does not flash the empty state while the first ontology list loads', async () => {
     mockUseRealScopes = true;
     mockSearchParams = new URLSearchParams();
-    let resolveList: (page: {
-      data: Ontology[];
-      paging: object;
-    }) => void = () => undefined;
+    let resolveList:
+      | ((page: { data: Ontology[]; paging: object }) => void)
+      | undefined;
     (listOntologies as jest.Mock).mockReturnValue(
       new Promise((resolve) => {
         resolveList = resolve;
@@ -751,7 +750,7 @@ describe('OntologyExplorerPage', () => {
     ).not.toBeInTheDocument();
 
     await act(async () => {
-      resolveList({ data: [], paging: { total: 0 } });
+      resolveList?.({ data: [], paging: { total: 0 } });
     });
 
     expect(await screen.findByTestId('ontology-empty-state')).toBeVisible();
@@ -768,6 +767,7 @@ describe('OntologyExplorerPage', () => {
     ['view', 'edit', 'query'].forEach((mode) =>
       expect(screen.queryByTestId(`mode-tab-${mode}`)).not.toBeInTheDocument()
     );
+
     expect(
       screen.queryByTestId('ontology-publication-trigger')
     ).not.toBeInTheDocument();

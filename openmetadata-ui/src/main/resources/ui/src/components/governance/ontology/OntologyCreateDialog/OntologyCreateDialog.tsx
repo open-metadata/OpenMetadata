@@ -68,12 +68,13 @@ const OntologyCreateDialog = ({
   const preview = baseUri ? ontologyIris(baseUri, prefix).namespace : '';
   const isPrefixTaken =
     isPrefixValid && ontologies.some(({ namespace }) => namespace === preview);
-  const canCreate =
-    Boolean(name.trim()) &&
-    isPrefixValid &&
-    !isPrefixTaken &&
-    Boolean(baseUri) &&
-    !isSaving;
+  const canCreate = [
+    Boolean(name.trim()),
+    isPrefixValid,
+    !isPrefixTaken,
+    Boolean(baseUri),
+    !isSaving,
+  ].every(Boolean);
 
   const getPrefixHint = () => {
     if (!isPrefixValid) {

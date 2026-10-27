@@ -647,6 +647,7 @@ describe('Ontology Studio mode-switch integration', () => {
         'true'
       )
     );
+
     expect(
       screen.queryByTestId('ontology-new-class-panel')
     ).not.toBeInTheDocument();

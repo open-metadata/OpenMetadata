@@ -184,6 +184,7 @@ describe('OntologyCreateDialog', () => {
     await waitFor(() =>
       expect(screen.getByText('message.ontology-prefix-in-use')).toBeVisible()
     );
+
     expect(createButton()).toBeDisabled();
 
     await user.type(prefixInput(), 'cust360');
