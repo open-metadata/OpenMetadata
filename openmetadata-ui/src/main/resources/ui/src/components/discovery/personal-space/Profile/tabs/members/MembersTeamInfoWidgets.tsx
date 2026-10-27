@@ -514,6 +514,9 @@ const OwnerField: FC<MembersTeamInfoWidgetsProps> = ({
           <UserTeamSelectableList
             hasPermission
             owner={owners}
+            // As a plain inline box the trigger span's line box is taller than
+            // the icon button, which lifts it off-centre in the widget header.
+            triggerClassName="tw:inline-flex"
             onUpdate={(next) => void onPatch({ ...team, owners: next })}>
             <EditPencil
               dataTestId="edit-owners"

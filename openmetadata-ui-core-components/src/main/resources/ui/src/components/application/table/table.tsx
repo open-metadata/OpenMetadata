@@ -152,6 +152,7 @@ export type TableCardVariant = 'default' | 'muted';
 // mode, so the default `bg-secondary` row hover (same step) would be invisible,
 // and an 8%-white edge over them lands on the modal's own colour, so the frame
 // (header top included) takes the header divider's solid border-primary.
+// ADR:2026-10-27-settings-modal-surfaces-use-the-muted-step
 const TABLE_CARD_VARIANTS: Record<TableCardVariant, string> = {
   default: 'tw:bg-surface tw:after:outline-subtle',
   muted:

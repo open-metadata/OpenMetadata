@@ -255,6 +255,7 @@ describe('TableCard theme roles', () => {
       'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
       'tw:[&_tbody_tr:hover]:bg-primary_hover'
     );
-    expect(card).not.toHaveClass('tw:bg-surface', 'tw:after:outline-subtle');
+    expect(card).not.toHaveClass('tw:bg-surface');
+    expect(card).not.toHaveClass('tw:after:outline-subtle');
   });
 });

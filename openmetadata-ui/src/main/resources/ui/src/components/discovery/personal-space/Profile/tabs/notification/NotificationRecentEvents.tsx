@@ -247,10 +247,7 @@ function NotificationRecentEvents({
               const eventKey = `${changeEventData.id}-${changeEventData.timestamp}`;
 
               return (
-                <AccordionItem
-                  className="tw:bg-primary_alt"
-                  id={eventKey}
-                  key={eventKey}>
+                <AccordionItem id={eventKey} key={eventKey} variant="muted">
                   <AccordionHeader>
                     <Box
                       align="center"

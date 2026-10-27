@@ -513,6 +513,7 @@ const getRowInteractionProps = (
 // `.table-container` paints bg-surface from unlayered LESS, so only an
 // `!important` utility can lift it onto the muted step; the bg-secondary row
 // hover is the same step as the muted rows, hence the translucent hover.
+// ADR:2026-10-27-settings-modal-surfaces-use-the-muted-step
 const MUTED_CONTAINER_CLASSES =
   'tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt! tw:dark:[&_table:not(table_table)]:bg-primary_alt tw:[&_tbody_tr:hover_td]:bg-primary_hover';
 

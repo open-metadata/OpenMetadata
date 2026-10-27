@@ -32,6 +32,19 @@ import type {
 } from './Members.types';
 import { toImportRows } from './Members.utils';
 
+// Muted surface inline rather than TableCard.Root: the card's overflow-hidden
+// would stop this stickyHeader table sticking.
+const IMPORT_RESULT_CONTAINER_CLASS = [
+  'tw:rounded-lg',
+  'tw:border',
+  'tw:border-secondary',
+  'tw:dark:border-primary',
+  'tw:bg-primary_alt',
+  'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
+  'tw:[&_tbody_tr:hover]:bg-primary_hover',
+  'tw:[&_tbody_tr:hover_td]:bg-primary_hover',
+].join(' ');
+
 // The result CSV carries one `status`/`details` pair per row — `status` gets a
 // coloured badge (with the failure reason inline), `details` is folded into it,
 // so every other header becomes a plain text column in its CSV order.
@@ -84,7 +97,7 @@ const MembersImportResultTable: FC<MembersImportResultTableProps> = ({
     <Table
       stickyHeader
       aria-label={t('label.import-entity', { entity: t('label.result') })}
-      containerClassName="tw:rounded-lg tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt tw:dark:[&_table]:bg-primary_alt tw:[&_tbody_tr:hover]:bg-primary_hover"
+      containerClassName={IMPORT_RESULT_CONTAINER_CLASS}
       data-testid="import-result-table"
       size="sm">
       <Table.Header>
