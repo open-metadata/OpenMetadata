@@ -14,6 +14,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
@@ -35,10 +36,12 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
   public static final String COLLECTION_PATH = "/v1/ontologyProperties/";
 
   /**
-   * The deleted object properties the write in progress holds. When that write is a restore, it
-   * brings every one of them back, as restoring an ontology does with all its properties at once.
+   * The deleted object properties the write in progress holds, by declaration. When that write is
+   * a restore, it brings every one of them back, as restoring an ontology does with all its
+   * properties at once.
    */
-  private static final ThreadLocal<Set<Declaration>> RESTORING = ThreadLocal.withInitial(Set::of);
+  private static final ThreadLocal<Map<Declaration, OntologyProperty>> RESTORING =
+      ThreadLocal.withInitial(Map::of);
 
   private record Declaration(UUID ontologyId, String iri) {}
 
@@ -94,7 +97,7 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         entities,
         () -> {
           workingState.beforeValidation(entityType, this::reconcileInverses);
-          final Set<Declaration> enclosing = RESTORING.get();
+          final Map<Declaration, OntologyProperty> enclosing = RESTORING.get();
           RESTORING.set(deletedObjectProperties(entities));
           try {
             return work.get();
@@ -104,17 +107,19 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         });
   }
 
-  private static Set<Declaration> deletedObjectProperties(final List<OntologyProperty> entities) {
-    return Set.copyOf(
-        entities.stream()
-            .filter(
+  private static Map<Declaration, OntologyProperty> deletedObjectProperties(
+      final List<OntologyProperty> entities) {
+    return entities.stream()
+        .filter(
+            property ->
+                Boolean.TRUE.equals(property.getDeleted())
+                    && property.getKind() == OntologyPropertyKind.OBJECT)
+        .collect(
+            Collectors.toUnmodifiableMap(
                 property ->
-                    Boolean.TRUE.equals(property.getDeleted())
-                        && property.getKind() == OntologyPropertyKind.OBJECT)
-            .map(
-                property ->
-                    new Declaration(property.getOntology().getId(), property.getIri().toString()))
-            .toList());
+                    new Declaration(property.getOntology().getId(), property.getIri().toString()),
+                property -> property,
+                (first, second) -> first));
   }
 
   @Override
@@ -134,7 +139,10 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
    * A restore brings back the inverse the property held when it was deleted. When that partner
    * has gone since and does not return in the same write, the link is dropped rather than
    * refused: the property cannot be edited while deleted, so refusing would leave it unrestorable.
-   * A self-inverse is kept, because its own declaration goes live in this write.
+   * When the partner returns in the same write, the link is kept only if the partner still names
+   * this property. A property deleted on its own keeps a claim that its partner has since released
+   * or given to another property, and the partner's own inverse is the later statement. A
+   * self-inverse is kept, because its own declaration goes live in this write.
    */
   @Override
   public EntityUpdater getUpdater(
@@ -147,15 +155,19 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         && updated.getInverse() != null
         && !updated.getInverse().equals(updated.getIri())
         && Boolean.TRUE.equals(find(original.getId(), Include.ALL).getDeleted())
-        && !partnerLiveAfterWrite(updated.getOntology().getId(), updated.getInverse().toString())) {
+        && !partnerLinksBack(updated)) {
       updated.setInverse(null);
     }
     return super.getUpdater(original, updated, operation, source);
   }
 
-  private boolean partnerLiveAfterWrite(final UUID ontologyId, final String partner) {
-    return RESTORING.get().contains(new Declaration(ontologyId, partner))
-        || declaresObjectProperty(ontologyId, partner);
+  private boolean partnerLinksBack(final OntologyProperty property) {
+    final UUID ontologyId = property.getOntology().getId();
+    final String partner = property.getInverse().toString();
+    final OntologyProperty restored = RESTORING.get().get(new Declaration(ontologyId, partner));
+    return restored == null
+        ? declaresObjectProperty(ontologyId, partner)
+        : property.getIri().toString().equals(iriText(restored.getInverse()));
   }
 
   private boolean declaresObjectProperty(final UUID ontologyId, final String iri) {
