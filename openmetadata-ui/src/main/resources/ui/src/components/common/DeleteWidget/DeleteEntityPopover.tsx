@@ -17,9 +17,8 @@ import {
   RadioGroup,
   Typography,
 } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { startCase } from 'lodash';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DeleteType } from './DeleteWidget.interface';
 import { useEntityDelete, UseEntityDeleteOptions } from './useEntityDelete';
@@ -65,9 +64,21 @@ const DeleteEntityPopover = ({
   const { t } = useTranslation();
   const deleteEntityWith = useEntityDelete(deleteOptions);
   const entity = startCase(deleteOptions.entityType).toLowerCase();
-  const [deleteType, setDeleteType] = useState<DeleteType>(
-    allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE
-  );
+  const defaultType = allowSoftDelete
+    ? DeleteType.SOFT_DELETE
+    : DeleteType.HARD_DELETE;
+  const [deleteType, setDeleteType] = useState<DeleteType>(defaultType);
+
+  // The popover stays mounted around its trigger, so every open and close
+  // starts again from the safer default rather than a choice left behind.
+  const handleOpenChange = (open: boolean) => {
+    setDeleteType(defaultType);
+    onOpenChange?.(open);
+  };
+
+  useEffect(() => {
+    setDeleteType(defaultType);
+  }, [defaultType]);
 
   const options = [
     {
@@ -89,33 +100,21 @@ const DeleteEntityPopover = ({
       aria-label={t('label.delete-entity', {
         entity: deleteOptions.entityName,
       })}
-      className="tw:gap-1"
+      className="tw:gap-2"
       data-testid={`${dataTestId}-options`}
       size="sm"
       value={deleteType}
       onChange={(value) => setDeleteType(value as DeleteType)}>
       {options.map((option) => (
         <RadioButton
-          className={({ isSelected }) =>
-            classNames(
-              'tw:cursor-pointer tw:rounded-lg tw:p-2',
-              isSelected && 'tw:bg-secondary'
-            )
-          }
           data-testid={`${dataTestId}-${option.type}`}
-          hint={
-            <Typography as="span" className="tw:text-tertiary" size="text-sm">
-              {option.hint}
-            </Typography>
-          }
+          hint={option.hint}
           key={option.type}
           label={
             <Typography
               as="span"
-              className={
-                option.type === DeleteType.HARD_DELETE
-                  ? 'tw:text-error-primary'
-                  : 'tw:text-primary'
+              color={
+                option.type === DeleteType.HARD_DELETE ? 'danger' : undefined
               }
               size="text-sm"
               weight="semibold">
@@ -124,6 +123,7 @@ const DeleteEntityPopover = ({
           }
           size="sm"
           value={option.type}
+          variant="card"
         />
       ))}
     </RadioGroup>
@@ -151,7 +151,7 @@ const DeleteEntityPopover = ({
       triggerRef={triggerRef}
       onCancel={onCancel}
       onConfirm={() => deleteEntityWith(deleteType)}
-      onOpenChange={onOpenChange}>
+      onOpenChange={handleOpenChange}>
       {children}
     </ConfirmPopover>
   );

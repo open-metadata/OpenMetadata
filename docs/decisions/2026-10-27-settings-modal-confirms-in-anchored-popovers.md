@@ -1,7 +1,7 @@
 # Confirmations inside the settings modal use an anchored popover, not a modal
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-27 (initial) · v2 2026-10-27 (shared tables report the pressed control; `useLastPressedTrigger` removed)
+- **Revisions:** v1 2026-10-27 (initial) · v2 2026-10-27 (shared tables report the pressed control; `useLastPressedTrigger` removed) · v3 2026-10-27 (entity delete is a radio choice)
 - **Deciders:** UI team
 - **Guard:** `confirm-popover.test.tsx`, `DeleteEntityPopover.test.tsx`, `useAnchoredConfirm.test.tsx`; reviewer for new panels
 - **Related:** ADR:2026-10-12-dark-mode-targets-ai-mode-core-surfaces-only
@@ -16,9 +16,10 @@ the table the user was acting on.
   that asked for it, never a modal. Form, viewer, export and unsaved-changes dialogs are out of scope.
 - An action handler resolves to whether it succeeded: resolving `false` or rejecting keeps the
   popover open so the user can retry; anything else closes it.
-- Entity deletes use `DeleteEntityPopover`. When soft delete is allowed it is the default (confirm)
-  action and permanent delete is a secondary footer action, replacing `DeleteEntityModal`'s radio
-  choice; otherwise confirm is the permanent delete.
+- Entity deletes use `DeleteEntityPopover`. When soft delete is allowed it asks soft or permanent
+  delete with a radio choice, soft selected by default and reset to it whenever the popover opens or
+  closes; confirm is named after and performs the chosen delete. Otherwise confirm is the permanent
+  delete.
 - When the action comes from a menu or a shared table that only reports a callback, the table
   passes the pressed control (the button, or the row menu's trigger) as the callback's second
   argument — `onDelete(row, trigger)` — and `useAnchoredConfirm().open(row, trigger)` anchors the
@@ -39,3 +40,11 @@ table that reports an action as a callback now passes the pressed control as the
 argument, `onDelete(row, trigger)`; legacy callers that take only `row` are unaffected.
 `useAnchoredConfirm().open(row, trigger)` stores it as the popover's anchor; it no longer returns a
 `containerRef`. A panel that calls `open(row)` without a trigger leaves the popover unanchored.
+
+## Amendment — v3: entity delete is a radio choice
+
+v1 put permanent delete in a secondary footer action next to a soft-delete confirm. Following the
+design, `DeleteEntityPopover` now shows Soft delete and Delete permanently as radio options (core
+`RadioButton`, `variant="card"`), soft selected by default; the confirm button is named after the
+choice and performs it. The choice resets to soft whenever the popover opens or closes, so a
+cancelled permanent choice never carries over to the next delete.

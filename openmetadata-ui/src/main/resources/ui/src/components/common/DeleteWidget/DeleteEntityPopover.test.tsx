@@ -161,4 +161,25 @@ describe('DeleteEntityPopover', () => {
     expect(mockOnLogoutHandler).toHaveBeenCalled();
     expect(mockAfterDeleteAction).not.toHaveBeenCalled();
   });
+
+  it('starts again from soft delete after a permanent choice is cancelled', async () => {
+    renderPopover();
+    await open();
+    await click('delete-entity-popover-hard-delete');
+
+    expect(
+      screen.getByTestId('delete-entity-popover-confirm')
+    ).toHaveTextContent('label.permanently-delete');
+
+    await click('delete-entity-popover-cancel');
+    await open();
+
+    expect(
+      screen.getByTestId('delete-entity-popover-confirm')
+    ).toHaveTextContent('label.soft-delete');
+
+    await click('delete-entity-popover-confirm');
+
+    expect(deleteEntity).toHaveBeenCalledWith('teams', 'team-id', false, false);
+  });
 });
