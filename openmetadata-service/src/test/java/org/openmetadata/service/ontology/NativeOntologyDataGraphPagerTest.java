@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.macasaet.fernet.Key;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +36,7 @@ import org.openmetadata.service.util.RestUtil;
 
 class NativeOntologyDataGraphPagerTest {
   private static final NativeOntologyTopologyCursorCodec CODEC =
-      new NativeOntologyTopologyCursorCodec();
+      new NativeOntologyTopologyCursorCodec(List.of(Key.generateKey()));
 
   @Test
   void contextDigestIsOrderIndependentAndIncludesScopeRevisionAndScanTail() {
@@ -176,6 +177,29 @@ class NativeOntologyDataGraphPagerTest {
             499);
     assertEquals(1, next.links().size());
     assertEquals(true, next.done());
+  }
+
+  @Test
+  void aCursorOffsetPastAShrunkVisibleAxiomAsksForARefreshAndAHiddenOneIsSkipped() {
+    final var axiom =
+        new OntologyAxiom()
+            .withSubjectIri(URI.create("urn:source"))
+            .withTargetIri(URI.create("urn:target"))
+            .withPropertyIri(URI.create("urn:property"))
+            .withAxiomType(OntologyAxiomType.OBJECT_PROPERTY_ASSERTION);
+    final var row = new EdgeAxiomRow("shrunk", UUID.randomUUID(), JsonUtils.pojoToJson(axiom));
+    final var stale =
+        new Cursor(1, "context", row.position(), 2, LineagePosition.FIRST, false, true);
+    final var concepts = Map.of("urn:source", UUID.randomUUID(), "urn:target", UUID.randomUUID());
+    assertThrows(
+        PreconditionFailedException.class,
+        () ->
+            NativeOntologyDataGraphPager.semanticPage(
+                List.of(row), Set.of(row.id()), concepts, stale, 500));
+    final var hidden =
+        NativeOntologyDataGraphPager.semanticPage(List.of(row), Set.of(), concepts, stale, 500);
+    assertEquals(Set.of(), hidden.links());
+    assertEquals(row.position(), hidden.after());
   }
 
   @Test

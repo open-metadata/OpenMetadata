@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.ontology;
 
+import com.macasaet.fernet.Key;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -26,6 +28,11 @@ import org.openmetadata.service.util.RestUtil;
 public final class NativeOntologyTopologyCursorCodec {
   static final int MAX_LENGTH = 8192;
   private static final int VERSION = 1;
+  private final List<Key> keys;
+
+  public NativeOntologyTopologyCursorCodec(final List<Key> keys) {
+    this.keys = List.copyOf(keys);
+  }
 
   String encode(final Cursor cursor) {
     return RestUtil.encodeCursor(JsonUtils.pojoToJson(WireCursor.of(cursor)));
