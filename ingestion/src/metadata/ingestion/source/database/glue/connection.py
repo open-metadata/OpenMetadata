@@ -38,8 +38,6 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
@@ -59,6 +57,13 @@ MAX_DATABASES_TO_PROBE = 10
 # the whole probe reads so the check cannot outrun its step timeout.
 # ADR:2026-10-27-glue-test-connection-probes-what-ingestion-reads
 MAX_TABLES_TO_SCAN = 1000
+
+# Likewise for a selective databaseFilterPattern or schemaFilterPattern: cap the
+# databases read while looking for targeted ones.
+MAX_DATABASES_TO_SCAN = 1000
+
+# Ingestion keeps the first 128 characters of a Glue table name and filters on that.
+TABLE_NAME_MAX_LENGTH = 128
 
 
 # Only what is specific to Glue: its IAM actions and its not-found code.
@@ -155,6 +160,7 @@ class GlueFilters:
         )
 
     def excludes_table(self, database: dict[str, Any], table_name: str) -> bool:
+        table_name = table_name[:TABLE_NAME_MAX_LENGTH]
         parts = {**self._schema_parts(database), "table_name": table_name, "skip_es_search": True}
         return filter_by_table(self.table, self._qualify(Table, table_name, **parts))
 
@@ -168,21 +174,26 @@ class GlueFilters:
         return fqn.build(None, entity_type=entity_type, service_name=self.service_name, **parts) or name
 
 
-def _targeted_databases(client: Any, filters: GlueFilters) -> Iterator[dict[str, Any]]:
-    """Yield the Glue databases ingestion would read, at most ``MAX_DATABASES_TO_PROBE``.
+def _targeted_databases(client: Any, filters: GlueFilters) -> tuple[list[dict[str, Any]], bool]:
+    """Return the Glue databases ingestion would read, at most ``MAX_DATABASES_TO_PROBE``,
+    and whether ``MAX_DATABASES_TO_SCAN`` ran out before the listing ended.
 
     The filters apply while paging, not after a capped listing: the targeted
     database can sort well past the cap, and a database the filters exclude - one
     the identity may not even be allowed to read - must never be probed."""
-    probed = 0
-    for page in client.get_paginator("get_databases").paginate():
+    targeted: list[dict[str, Any]] = []
+    scanned = 0
+    pages = client.get_paginator("get_databases").paginate(PaginationConfig={"MaxItems": MAX_DATABASES_TO_SCAN})
+    for page in pages:
         for database in page.get("DatabaseList", []):
-            if filters.excludes_database(database):
-                continue
-            yield database
-            probed += 1
-            if probed >= MAX_DATABASES_TO_PROBE:
-                return
+            scanned += 1
+            if not filters.excludes_database(database):
+                targeted.append(database)
+                if len(targeted) >= MAX_DATABASES_TO_PROBE:
+                    return targeted, False
+            if scanned >= MAX_DATABASES_TO_SCAN:
+                return targeted, True
+    return targeted, False
 
 
 def _targeted_tables(
@@ -217,10 +228,10 @@ def list_tables(client: Any, filters: GlueFilters | None = None, limit: int = DE
     empty list rather than an error when grants are missing."""
     filters = filters or GlueFilters()
     command = "glue:GetDatabases"
-    probed, budget = 0, MAX_TABLES_TO_SCAN
+    budget = MAX_TABLES_TO_SCAN
     try:
-        for database in _targeted_databases(client, filters):
-            probed += 1
+        databases, databases_cut_short = _targeted_databases(client, filters)
+        for database in databases:
             name = database["Name"]
             command = f"glue:GetTables (DatabaseName={name})"
             tables, scanned = _targeted_tables(client, database, filters, limit, budget)
@@ -231,14 +242,25 @@ def list_tables(client: Any, filters: GlueFilters | None = None, limit: int = DE
                 return Evidence(
                     summary=f"no kept table in the first {count(MAX_TABLES_TO_SCAN, 'table')} read",
                     command=command,
-                    caveat=_scan_budget_caveat(),
+                    caveat=_scan_budget_caveat(
+                        f"table among the first {MAX_TABLES_TO_SCAN}", "tableFilterPattern keeps the tables"
+                    ),
                 )
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
-    if not probed:
+    if databases_cut_short:
+        return Evidence(
+            summary=f"no kept table in the first {count(MAX_DATABASES_TO_SCAN, 'database')} read",
+            command=command,
+            caveat=_scan_budget_caveat(
+                f"database among the first {MAX_DATABASES_TO_SCAN}",
+                "databaseFilterPattern and schemaFilterPattern keep the databases",
+            ),
+        )
+    if not databases:
         return Evidence(summary="no databases available to probe", command=command, caveat=_no_tables_caveat())
     return Evidence(
-        summary=f"no tables in the first {count(probed, 'database')}",
+        summary=f"no tables in the first {count(len(databases), 'database')}",
         command=command,
         caveat=_no_tables_caveat(),
     )
@@ -263,14 +285,14 @@ def _tables_summary(tables: list[Any], database: str, limit: int, budget_spent: 
     return summary
 
 
-def _scan_budget_caveat() -> Diagnosis:
+def _scan_budget_caveat(excluded: str, verify: str) -> Diagnosis:
     # Running out of reads proves nothing about what ingestion collects, so this must
     # not reuse the "would collect nothing" caveat.
     return Diagnosis(
         title="Table probe stopped early",
-        remediation=f"The filters excluded every table among the first {MAX_TABLES_TO_SCAN} read, so the "
-        "probe stopped before finding one they keep. This does not mean ingestion would collect "
-        "nothing; verify tableFilterPattern keeps the tables you expect.",
+        remediation=f"The filters excluded every {excluded} read, so the probe stopped before "
+        f"finding a table they keep. This does not mean ingestion would collect nothing; verify "
+        f"{verify} you expect.",
     )
 
 

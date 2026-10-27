@@ -72,7 +72,7 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
-from metadata.ingestion.source.database.glue.connection import GlueFilters
+from metadata.ingestion.source.database.glue.connection import TABLE_NAME_MAX_LENGTH, GlueFilters
 from metadata.ingestion.source.database.glue.models import Column as GlueColumn
 from metadata.ingestion.source.database.glue.models import (
     DatabasePage,
@@ -520,7 +520,7 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         return next((fmt for fmt in FileFormat if fmt.value in library.lower()), None)
 
     def standardize_table_name(self, _: str, table: str) -> str:
-        return table[:128]
+        return table[:TABLE_NAME_MAX_LENGTH]
 
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """We don't pick up tags from Glue"""

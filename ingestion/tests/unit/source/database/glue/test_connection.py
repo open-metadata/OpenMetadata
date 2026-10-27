@@ -31,7 +31,9 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.glue.connection import (
     GLUE_ERRORS,
     MAX_DATABASES_TO_PROBE,
+    MAX_DATABASES_TO_SCAN,
     MAX_TABLES_TO_SCAN,
+    TABLE_NAME_MAX_LENGTH,
     GlueChecks,
     GlueConnection,
     GlueFilters,
@@ -427,6 +429,45 @@ def test_get_tables_stops_once_the_table_scan_budget_is_spent():
     assert evidence.caveat is not None
     assert evidence.caveat.title == "Table probe stopped early"
     assert "does not mean ingestion would collect nothing" in evidence.caveat.remediation
+
+
+def test_get_tables_stops_once_the_database_scan_budget_is_spent():
+    # A schema filter that matches nothing must not page through a large catalog to the end.
+    excluded = [{"Name": f"other_{i}"} for i in range(MAX_DATABASES_TO_SCAN)]
+    client = _client_denying(
+        denied="", databases=[*excluded, {"Name": "sales"}], tables={"sales": [{"Name": "orders"}]}
+    )
+
+    evidence = _checks(client, schema=FilterPattern(includes=["^sales$"])).get_tables()
+
+    assert evidence.summary == f"no kept table in the first {MAX_DATABASES_TO_SCAN} databases read"
+    assert evidence.caveat is not None
+    assert evidence.caveat.title == "Table probe stopped early"
+    assert "does not mean ingestion would collect nothing" in evidence.caveat.remediation
+    assert [c for c in client.get_paginator.call_args_list if c.args == ("get_tables",)] == []
+
+
+def test_get_tables_caps_the_databases_glue_returns():
+    client = MagicMock()
+    databases_paginator = _paginator([{"DatabaseList": [{"Name": "sales"}]}])
+    tables_paginator = _paginator([{"TableList": []}])
+    client.get_paginator.side_effect = lambda operation: (
+        tables_paginator if operation == "get_tables" else databases_paginator
+    )
+
+    _checks(client).get_tables()
+
+    databases_paginator.paginate.assert_called_once_with(PaginationConfig={"MaxItems": MAX_DATABASES_TO_SCAN})
+
+
+def test_get_tables_matches_the_table_filter_on_the_name_ingestion_keeps():
+    # Ingestion truncates a long Glue table name before filtering; an anchored pattern must agree.
+    long_name = "t" * TABLE_NAME_MAX_LENGTH + "_suffix"
+    client = _client_denying(denied="", databases=[{"Name": "sales"}], tables={"sales": [{"Name": long_name}]})
+
+    evidence = _checks(client, table=FilterPattern(includes=[f"^t{{{TABLE_NAME_MAX_LENGTH}}}$"])).get_tables()
+
+    assert evidence.summary == "1 table in database 'sales'"
 
 
 def test_get_tables_flags_a_count_cut_short_by_the_scan_budget():
