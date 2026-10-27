@@ -653,9 +653,15 @@ const OntologyExplorerPage: React.FC = () => {
     { id: selectedOntologyId },
     { enabled: Boolean(selectedOntology), deleted: selectedOntology?.deleted }
   );
-  const { canCreate: canCreateNativeConcept } = getDerivedPermissionFlags(
-    permissions[ResourceEntity.ONTOLOGY_CONCEPT] ?? DEFAULT_ENTITY_PERMISSION,
-    selectedOntology?.deleted
+  const canCreateNativeClass = [
+    ResourceEntity.ONTOLOGY_CONCEPT,
+    ResourceEntity.ONTOLOGY_CHANGE_SET,
+  ].every(
+    (resource) =>
+      getDerivedPermissionFlags(
+        permissions[resource] ?? DEFAULT_ENTITY_PERMISSION,
+        selectedOntology?.deleted
+      ).canCreate
   );
   const [publicationScopeKey, setPublicationScopeKey] = useState<string>();
   const [publicationTab, setPublicationTab] = useState<'changes' | 'releases'>(
@@ -1248,7 +1254,7 @@ const OntologyExplorerPage: React.FC = () => {
 
   function renderPrimaryAction() {
     const canAddConcept = isNativeOntology
-      ? canCreateNativeConcept && editSurface === 'graph'
+      ? canCreateNativeClass && canEditNativeOntology && editSurface === 'graph'
       : canCreateConcept;
 
     if (mode === 'edit' && canAddConcept) {
