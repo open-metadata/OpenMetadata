@@ -38,6 +38,7 @@ from metadata.ingestion.source.dashboard.hex.cell_lineage import (
     get_output_columns,
     get_table_references,
     inline_upstream_cells,
+    node_count,
     parse_cell_sql,
 )
 from metadata.ingestion.source.dashboard.hex.client import HexApiClient
@@ -127,6 +128,19 @@ class TestCellSqlParsing:
             "id": {(CUSTOMERS, "id")},
             "segment": {(CUSTOMERS, "segment")},
             "name": {(CUSTOMERS, "name")},
+        }
+
+    def test_an_alias_reused_for_an_unknown_table_keeps_the_known_ones_columns(self):
+        """t is orders in a and an unknown table in b: only b's t.* is dropped"""
+        assert outputs(
+            "with a as (select t.*, 1 as marker from prod.sales.orders t), "
+            "b as (select t.* from unknown_table t) select * from a"
+        ) == {
+            "id": {(ORDERS, "id")},
+            "cust_id": {(ORDERS, "cust_id")},
+            "amount": {(ORDERS, "amount")},
+            "region": {(ORDERS, "region")},
+            "marker": set(),
         }
 
     def test_inlining_keeps_a_recursive_cte_a_cte(self):
@@ -871,13 +885,39 @@ class TestHexCellLineage:
         ]
         source = make_source(cells)
 
-        with patch("metadata.ingestion.source.dashboard.hex.metadata.MAX_INLINED_NODES", 1):
+        with patch("metadata.ingestion.source.dashboard.hex.cell_lineage.MAX_INLINED_NODES", 1):
             (request,), (edge,) = run(source)
 
         # The chained cell still lists its columns, only without where they come from
         assert [child.name.root for child in request.columns[1].children] == ["region"]
         assert not any(".c2." in to_column for to_column in column_lineage(edge))
         assert source.metadata.searches == ["*.*.sales.orders"]
+
+    def test_cells_past_the_projects_budget_leave_their_chained_cells_untraced(self, make_source):
+        cells = [
+            sql_cell("c1", "select region from sales.orders", "first"),
+            sql_cell("c2", "select id, segment from sales.customers", "second"),
+            sql_cell("c3", "select region from first", "reads_first", connection=None),
+            sql_cell("c4", "select segment from second", "reads_second", connection=None),
+        ]
+        source = make_source(cells)
+        first_size = node_count(parse_cell_sql("select region from prod.sales.orders", "snowflake"))
+
+        with patch("metadata.ingestion.source.dashboard.hex.cell_lineage.MAX_STORED_NODES", first_size):
+            _, edges = run(source)
+
+        traced = {to_column for edge in edges for to_column in column_lineage(edge)}
+        model_fqn = f"{SERVICE}.model.{PROJECT.id}"
+        assert f"{model_fqn}.c3.region" in traced
+        assert f"{model_fqn}.c4.segment" not in traced
+
+    def test_tables_still_resolve_once_the_lookup_cache_is_full(self, make_source):
+        source = make_source([REVENUE_CELL])
+
+        with patch("metadata.ingestion.source.dashboard.hex.metadata.MAX_RESOLVED_TABLES", 1):
+            _, edges = run(source)
+
+        assert len(edges) == 2
 
     def test_each_project_gets_its_own_cells(self, make_source):
         other_project = Project(id="proj_2", title="Customers")

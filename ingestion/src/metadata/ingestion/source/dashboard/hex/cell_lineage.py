@@ -47,6 +47,8 @@ UNRESOLVED = "hex_unresolved"
 # A cell inlines every cell it chains to, with theirs, so a notebook where each cell
 # joins the ones before it doubles in size per cell. Real cells are a few hundred nodes.
 MAX_INLINED_NODES = 10_000
+# What a project keeps for its chained cells, all cells together
+MAX_STORED_NODES = 100_000
 
 
 @dataclass
@@ -155,6 +157,34 @@ def node_count(expression: exp.Expression) -> int:
     return sum(1 for _ in expression.walk())
 
 
+class ChainedCells:
+    """
+    The queries of a project's cells so far, by result variable, for the SQL cells
+    chained to them. A cell over MAX_INLINED_NODES, or past MAX_STORED_NODES for the
+    project, is kept as None: the cells reading it are left unresolved rather than
+    reading its name as a warehouse table.
+    """
+
+    def __init__(self) -> None:
+        self._cells: dict[str, tuple[str | None, exp.Query | None]] = {}
+        self._stored_nodes = 0
+
+    def add(self, name: str, connection_id: str | None, expression: exp.Query) -> None:
+        nodes = node_count(expression)
+        fits = nodes <= MAX_INLINED_NODES and self._stored_nodes + nodes <= MAX_STORED_NODES
+        if fits:
+            self._stored_nodes += nodes
+        self._cells[name.lower()] = (connection_id, expression.copy() if fits else None)
+
+    def readable_by(self, connection_id: str | None) -> dict[str, exp.Query | None]:
+        """Hex chains a warehouse cell only to cells on its own connection; SQL on dataframes reads any"""
+        return {
+            name: query
+            for name, (cell_connection_id, query) in self._cells.items()
+            if not connection_id or cell_connection_id == connection_id
+        }
+
+
 def table_key(table: exp.Table) -> TableKey:
     return (table.catalog.lower(), table.db.lower(), table.name.lower())
 
@@ -245,12 +275,22 @@ def _drop_unknown_stars(expression: exp.Expression, schema: dict) -> None:
     its columns can't be known, and sqlglot expands no star in a SELECT that has
     one it can't expand, which would hide the columns of the known tables too.
     """
-    unknown_aliases = {
-        table.alias_or_name
-        for table in get_table_references(expression)
-        if table.name not in schema.get(table.catalog, {}).get(table.db, {})
-    }
-    for select in expression.find_all(exp.Select):
+    try:
+        root = build_scope(expression)
+    except (SqlglotError, IndexError, KeyError):
+        return
+    # Scope by scope: an alias names different tables in different CTEs
+    for scope in root.traverse() if root else []:
+        select = scope.expression
+        if not isinstance(select, exp.Select):
+            continue
+        unknown_aliases = {
+            alias
+            for alias, source in scope.sources.items()
+            if isinstance(source, exp.Table) and source.name not in schema.get(source.catalog, {}).get(source.db, {})
+        }
+        if not unknown_aliases:
+            continue
         _spell_out_bare_star(select, unknown_aliases)
         projections = [
             projection
