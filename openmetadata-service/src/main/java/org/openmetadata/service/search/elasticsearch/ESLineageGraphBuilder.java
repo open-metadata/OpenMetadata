@@ -564,14 +564,8 @@ public class ESLineageGraphBuilder
   private void addRootEntityWithPagingCounts(
       SearchLineageRequest lineageRequest, SearchLineageResult result, boolean isDirectionBased)
       throws IOException {
-    Map<String, Object> rootEntityMap =
-        EsUtils.searchEntityByKey(
-            esClient,
-            null,
-            GLOBAL_SEARCH_ALIAS,
-            FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
-            Pair.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
-            SOURCE_FIELDS_TO_EXCLUDE);
+    final Map<String, Object> rootEntityMap =
+        loadRootEntity(lineageRequest.getFqn(), this::fetchRootEntity);
 
     if (!rootEntityMap.isEmpty()) {
       String rootFqn = rootEntityMap.get(FQN_FIELD).toString();
@@ -593,6 +587,16 @@ public class ESLineageGraphBuilder
           getNodeInformation(rootEntityMap, downstreamCount, upstreamCount, 0);
       result.getNodes().put(rootFqn, rootNode);
     }
+  }
+
+  private Map<String, Object> fetchRootEntity(final String fqn) throws IOException {
+    return EsUtils.searchEntityByKey(
+        esClient,
+        null,
+        GLOBAL_SEARCH_ALIAS,
+        FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
+        Pair.of(FullyQualifiedName.buildHash(fqn), fqn),
+        SOURCE_FIELDS_TO_EXCLUDE);
   }
 
   private int countDownstreamEntities(String fqn, SearchLineageRequest lineageRequest)

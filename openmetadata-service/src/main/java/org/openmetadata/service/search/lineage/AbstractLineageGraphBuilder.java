@@ -25,6 +25,8 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.search.ColumnMetadataCache.EntityDocumentFetcher;
 import org.openmetadata.service.search.LineagePathPreserver;
 import org.openmetadata.service.search.QueryFilterParser;
 import org.openmetadata.service.search.lineage.LineageFilterClassifier.FilterClassification;
@@ -47,6 +49,15 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
     this.config = LineageGraphConfiguration.fromSettings();
     this.strategySelector = new LineageStrategySelector(this);
     this.cache = new GuavaLineageGraphCache(config);
+  }
+
+  protected final Map<String, Object> loadRootEntity(
+      final String fqn, final EntityDocumentFetcher fetcher) throws IOException {
+    try {
+      return fetcher.fetchEntity(fqn);
+    } catch (final MissingLineageEntityException e) {
+      throw EntityNotFoundException.byName(fqn, e);
+    }
   }
 
   /**
