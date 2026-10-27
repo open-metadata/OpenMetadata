@@ -131,14 +131,18 @@ ORDER BY v.seqno
 # separates them: user-created routines carry an upper-case mode, Informix's own
 # carry lower case. Verified by creating routines and reading them back -- on a
 # stock 14.10 database the filter leaves exactly the ones a user wrote.
+#
+# Informix allows overloading, so procname alone is not unique; paramtypes
+# renders the signature that tells overloads apart, e.g. "integer,char".
 INFORMIX_GET_STORED_PROCEDURES = """
 SELECT TRIM(p.procname) AS name,
        p.isproc AS is_proc,
-       p.procid AS proc_id
+       p.procid AS proc_id,
+       TRIM(p.paramtypes::LVARCHAR) AS param_types
 FROM sysprocedures p
 WHERE p.owner = :owner
   AND p.mode MATCHES '[A-Z]'
-ORDER BY p.procname
+ORDER BY p.procname, p.procid
 """
 
 # datakey 'T' is the routine's own text; seqno reassembles it.

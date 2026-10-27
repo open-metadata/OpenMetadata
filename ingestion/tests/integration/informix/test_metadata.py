@@ -163,7 +163,21 @@ class TestViewsAndRoutines:
 
     def test_builtin_routines_are_not_ingested(self, ingested_procedures):
         """A stock database has ~560 of them; they would bury the user's own."""
-        assert len(ingested_procedures) == 3, sorted(ingested_procedures)
+        assert len(ingested_procedures) == 5, sorted(ingested_procedures)
+
+    def test_overloads_are_ingested_separately(self, ingested_procedures):
+        """Informix allows overloading; sharing one FQN, they would overwrite each other."""
+        assert {"scale(integer)", "scale(integer,integer)"} <= ingested_procedures
+        assert "scale" not in ingested_procedures
+
+    @pytest.mark.parametrize(
+        ("name", "body"), [("scale(integer)", "RETURN a * 2"), ("scale(integer,integer)", "RETURN a * factor")]
+    )
+    def test_each_overload_carries_its_own_code(self, metadata, db_service, ingested_procedures, name, body):
+        fqn = f"{db_service.fullyQualifiedName.root}.itest.informix.{name}"
+        procedure = metadata.get_by_name(entity=StoredProcedure, fqn=fqn)
+        assert procedure is not None, f"{fqn} was not ingested"
+        assert body in model_str(procedure.storedProcedureCode.code)
 
     def test_routine_carries_its_code(self, metadata, db_service):
         fqn = f"{db_service.fullyQualifiedName.root}.itest.informix.add_two"
