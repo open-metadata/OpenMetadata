@@ -66,7 +66,7 @@ from metadata.ingestion.source.dashboard.hex.cell_lineage import (
     parse_cell_sql,
     table_key,
 )
-from metadata.ingestion.source.dashboard.hex.models import Cell, Project
+from metadata.ingestion.source.dashboard.hex.models import Cell, DataConnection, Project
 from metadata.ingestion.source.dashboard.hex.query_fetcher import (
     HexProjectLineage,
     HexQueryFetcher,
@@ -79,6 +79,12 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 HEX_TAG_CATEGORY = "HexCategories"
+
+
+class TableSearchError(Exception):
+    """The table search failed, so whether a table exists is unknown"""
+
+
 INVALID_COLUMN_NAME_CHARS = re.compile(r'::|[>"\x00-\x1f]')
 
 
@@ -103,7 +109,7 @@ class HexSource(DashboardServiceSource):
 
         # Single slot: the data model and lineage stages of the same project share it
         self._cell_lineage: tuple[str, list[HexCellLineage] | None] | None = None
-        self._connection_types: dict[str, str] | None = None
+        self._data_connections: dict[str, DataConnection] | None = None
 
     @classmethod
     def create(
@@ -293,14 +299,19 @@ class HexSource(DashboardServiceSource):
         Lineage from the tables the project's SQL cells read, falling back to the
         Hex queries found in the warehouse query history.
         """
-        cell_lineage = self._get_cell_lineage(dashboard_details)
-        if cell_lineage:
-            yield from self._yield_cell_lineage(dashboard_details, cell_lineage, db_service_prefix)
-            return
+        cell_lineage = self._get_cell_lineage(dashboard_details) or []
+        yield from self._yield_cell_lineage(dashboard_details, cell_lineage, db_service_prefix)
+        # The query history can still name tables no cell resolved, e.g. one a cell reads
+        # by a bare name that matches several tables in OpenMetadata
+        resolved_by_cells = {table_id for cell in cell_lineage for table_id in cell.tables}
 
-        # Check if we have lineage data for this project
         project_lineage = self.hex_project_lineage.get(dashboard_details.id)
-        if not project_lineage or not project_lineage.upstream_tables:
+        upstream_tables = [
+            table
+            for table in (project_lineage.upstream_tables if project_lineage else [])
+            if table and table.id and model_str(table.id) not in resolved_by_cells
+        ]
+        if not upstream_tables:
             logger.debug(f"No lineage found for Hex project: {dashboard_details.id}")
             return
 
@@ -312,12 +323,13 @@ class HexSource(DashboardServiceSource):
                 return
 
             logger.info(
-                f"Creating lineage for Hex project {dashboard_details.title} "
-                f"with {len(project_lineage.upstream_tables)} upstream tables"
+                "Creating lineage for Hex project %s with %d upstream tables",
+                dashboard_details.title,
+                len(upstream_tables),
             )
 
             # Create lineage for each upstream table
-            for table_entity in project_lineage.upstream_tables:
+            for table_entity in upstream_tables:
                 try:
                     # We already have the table entity from query_fetcher
                     if not table_entity or not table_entity.id:
@@ -368,8 +380,9 @@ class HexSource(DashboardServiceSource):
             return
         cell_lineage = self._get_cell_lineage(dashboard_details)
         if cell_lineage is None:
-            if kept := self._kept_data_model_fqn(dashboard_details):
-                self.datamodel_source_state.add(kept)
+            # Unread is not gone: marking the existing data model as seen keeps this run
+            # from deleting it and its lineage. Marking one that doesn't exist is harmless.
+            self.datamodel_source_state.add(self._build_fqn(DashboardDataModel, dashboard_details))
             return
         cells = [cell for cell in cell_lineage if cell.columns]
         if not cells:
@@ -416,6 +429,8 @@ class HexSource(DashboardServiceSource):
         edges when data models are off. Only the tables found under this prefix,
         as this runs once per db service prefix.
         """
+        if not any(cell.tables for cell in cells):
+            return
         try:
             data_model = (
                 self.metadata.get_by_name(
@@ -483,12 +498,19 @@ class HexSource(DashboardServiceSource):
     def _kept_data_model_fqn(self, project: Project) -> str | None:
         """
         The data model an earlier run created for a project whose cells this run could
-        not read. It is kept as is: a failed API call must not delete it and its lineage.
+        not read, so the dashboard stays linked to it. None when it can't be confirmed:
+        linking a data model that doesn't exist would fail the dashboard.
         """
         if not self.source_config.includeDataModels or self._get_cell_lineage(project) is not None:
             return None
         data_model_fqn = self._build_fqn(DashboardDataModel, project)
-        return data_model_fqn if self.metadata.get_by_name(entity=DashboardDataModel, fqn=data_model_fqn) else None
+        try:
+            found = self.metadata.get_by_name(entity=DashboardDataModel, fqn=data_model_fqn)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not look up data model %s: %s", data_model_fqn, exc)
+            return None
+        return data_model_fqn if found else None
 
     def _build_cell_lineage(self, project: Project) -> list[HexCellLineage] | None:
         cells = self.client.get_project_cells(project.id)
@@ -496,18 +518,23 @@ class HexSource(DashboardServiceSource):
             return None
         # Without its connection's dialect a cell may not parse (BigQuery backticks),
         # which would drop its columns instead of leaving them as they are
-        connection_types = self._get_connection_types()
-        if connection_types is None:
+        data_connections = self._get_data_connections()
+        if data_connections is None:
             return None
         # Cells of a project tend to read the same tables, so look each one up once
-        resolved_tables: dict[tuple[str, str, str], tuple[Table, str | None] | None] = {}
+        resolved_tables: dict[tuple, tuple[Table, str | None] | None] = {}
         # Result variable -> query of the cells seen so far, for the chained SQL cells after them
         upstream: dict[str, exp.Query] = {}
         cell_lineage: list[HexCellLineage] = []
         taken_names: set[str] = set()
         for cell in cells:
             try:
-                lineage = self._build_sql_cell_lineage(cell, connection_types, upstream, resolved_tables)
+                lineage = self._build_sql_cell_lineage(cell, data_connections, upstream, resolved_tables)
+            except TableSearchError as exc:
+                # A table that can't be looked up is not a table that isn't there: building
+                # the data model now would drop its columns and their lineage
+                logger.warning("Could not search the tables of Hex project %s: %s", project.id, exc)
+                return None
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning("Could not parse SQL cell %s of Hex project %s: %s", cell.id, project.id, exc)
@@ -520,16 +547,15 @@ class HexSource(DashboardServiceSource):
     def _build_sql_cell_lineage(
         self,
         cell: Cell,
-        connection_types: dict[str, str],
+        data_connections: dict[str, DataConnection],
         upstream: dict[str, exp.Query],
-        resolved_tables: dict[tuple[str, str, str], tuple[Table, str | None] | None],
+        resolved_tables: dict[tuple, tuple[Table, str | None] | None],
     ) -> HexCellLineage | None:
         if not cell.sql:
             return None
-        connection_type = (
-            connection_types.get(cell.dataConnectionId) if cell.dataConnectionId else DATAFRAME_SQL_DIALECT
-        )
-        expression = parse_cell_sql(cell.sql, connection_type)
+        connection = data_connections.get(cell.dataConnectionId) if cell.dataConnectionId else None
+        dialect = connection.type if connection else None if cell.dataConnectionId else DATAFRAME_SQL_DIALECT
+        expression = parse_cell_sql(cell.sql, dialect)
         if expression is None:
             logger.debug("Skipping Hex cell %s: its SQL could not be parsed", cell.id)
             return None
@@ -544,9 +570,14 @@ class HexSource(DashboardServiceSource):
         tables_by_key: dict[tuple[str, str, str], Table] = {}
         schema: dict[str, dict[str, dict[str, dict[str, str]]]] = {}
         for reference in get_table_references(expression):
-            key = table_key(reference)
+            # The connection is part of the key: it fills in what the reference leaves out
+            key = (cell.dataConnectionId, *table_key(reference))
             if key not in resolved_tables:
-                resolved_tables[key] = self._resolve_table(reference.catalog, reference.db, reference.name)
+                resolved_tables[key] = self._resolve_table(
+                    reference.catalog or (connection.default_database if connection else None),
+                    reference.db or (connection.default_schema if connection else None),
+                    reference.name,
+                )
             resolved = resolved_tables[key]
             if not resolved:
                 continue
@@ -582,12 +613,14 @@ class HexSource(DashboardServiceSource):
             )
         return lineage
 
-    def _resolve_table(self, database: str, schema: str, table: str) -> tuple[Table, str | None] | None:
+    def _resolve_table(self, database: str | None, schema: str | None, table: str) -> tuple[Table, str | None] | None:
         """
-        Find the table in the first db service prefix it matches, any service when none
-        is set. A name matching several tables (the same schema.table in two services,
-        or a bare table name) resolves to none: lineage must not guess.
+        The one table the reference names across the db service prefixes (any service
+        when none is set), with the prefix it was found under. Lineage must not guess,
+        so a reference without a schema, or matching several tables (the same
+        schema.table in two services), resolves to none.
         """
+        matches: dict[str, tuple[Table, str | None]] = {}
         for prefix in self.get_db_service_prefixes() or [None]:
             service, prefix_database, prefix_schema, prefix_table = self.parse_db_service_prefix(prefix)
             if any(
@@ -595,22 +628,30 @@ class HexSource(DashboardServiceSource):
                 for expected, actual in ((prefix_database, database), (prefix_schema, schema), (prefix_table, table))
             ):
                 continue
-            tables = self.metadata.search_in_any_service(
-                entity_type=Table,
-                fqn_search_string=build_es_fqn_search_string(
-                    database_name=database or prefix_database,
-                    schema_name=schema or prefix_schema,
-                    service_name=service or "*",
-                    table_name=table,
-                ),
-                fetch_multiple_entities=True,
+            if not (schema or prefix_schema):
+                continue
+            search = build_es_fqn_search_string(
+                database_name=database or prefix_database,
+                schema_name=schema or prefix_schema,
+                service_name=service or "*",
+                table_name=table,
             )
-            if isinstance(tables, list) and len(tables) == 1:
-                return tables[0], prefix
-            if tables:
-                logger.debug("Skipping Hex table reference %s: it matches several tables", table)
-                return None
-        return None
+            for found in self._search_tables(search):
+                matches.setdefault(model_str(found.id), (found, prefix))
+        if len(matches) > 1:
+            logger.debug("Skipping Hex table reference %s: it matches %d tables", table, len(matches))
+        return next(iter(matches.values())) if len(matches) == 1 else None
+
+    def _search_tables(self, fqn_search_string: str) -> list[Table]:
+        try:
+            tables = self.metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=fqn.prefix_entity_for_wildcard_search(entity_type=Table, fqn=fqn_search_string),
+                raise_on_error=True,
+            )
+        except Exception as exc:
+            raise TableSearchError(f"searching {fqn_search_string}: {exc}") from exc
+        return [table for table in tables or [] if table is not None]
 
     @staticmethod
     def _unique_cell_name(name: str, taken: set[str]) -> str:
@@ -622,11 +663,11 @@ class HexSource(DashboardServiceSource):
         taken.add(unique)
         return unique
 
-    def _get_connection_types(self) -> dict[str, str] | None:
+    def _get_data_connections(self) -> dict[str, DataConnection] | None:
         """Fetched once per run; a failed fetch is retried for the next project"""
-        if self._connection_types is None:
-            self._connection_types = self.client.get_data_connection_types()
-        return self._connection_types
+        if self._data_connections is None:
+            self._data_connections = self.client.get_data_connections()
+        return self._data_connections
 
     def _build_fqn(self, entity_type: type[Dashboard] | type[DashboardDataModel], project: Project) -> str:
         # fqn.build is only None for entity types that need a search; these two never do
