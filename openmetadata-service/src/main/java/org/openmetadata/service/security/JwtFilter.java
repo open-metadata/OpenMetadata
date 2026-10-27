@@ -84,6 +84,7 @@ import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.security.session.SessionProviders;
 import org.openmetadata.service.security.session.SessionService;
@@ -445,22 +446,24 @@ public class JwtFilter implements ContainerRequestFilter {
   /**
    * The legacy claim flow names the user after a claim's local part, so a provider token for any
    * address with that local part would resolve to the account of that name. When {@code
-   * allowedEmailDomains} is set, a provider-issued token that carries an email must carry one in an
-   * allowed domain. A token that carries no email is left to the legacy resolution, which builds the
-   * address as {@code claim@principalDomain} - and {@code principalDomain} is itself one of the
-   * allowed domains - so there is no caller-supplied domain to reject and nothing to lock out.
+   * allowedEmailDomains} is set, the address the request runs as must be in an allowed domain: the
+   * token's email when it carries one, otherwise {@code userName@principalDomain}, the address the
+   * legacy flow builds. Either way, a provider token never resolves to a bot account.
    */
   private void validateLegacyProviderIdentity(Map<String, Claim> claims, String userName) {
     String claimedEmail = claimedEmail(claims);
     if (!nullOrEmpty(allowedEmailDomains)) {
-      if (claimedEmail != null) {
-        validateConfiguredEmailDomain(
-            claimedEmail,
-            allowedEmailDomains,
-            principalDomain,
-            allowedDomains,
-            enforcePrincipalDomain);
-      }
+      // With no email claim the legacy flow runs as userName@principalDomain (principalDomain
+      // carries
+      // the allowedEmailDomains fallback), so check that derived address rather than skipping the
+      // allowlist for a bare principal claim.
+      String emailToCheck = claimedEmail != null ? claimedEmail : userName + "@" + principalDomain;
+      validateConfiguredEmailDomain(
+          emailToCheck,
+          allowedEmailDomains,
+          principalDomain,
+          allowedDomains,
+          enforcePrincipalDomain);
     } else if (enforcePrincipalDomain) {
       validateDomainEnforcement(
           jwtPrincipalClaimsMapping,
@@ -470,22 +473,25 @@ public class JwtFilter implements ContainerRequestFilter {
           allowedDomains,
           enforcePrincipalDomain);
     }
-    // Only a token that carries an email can name a bot account by its email's local part; a bare
-    // principal claim resolves through the sign-up path and never loads an account here.
-    if (claimedEmail != null) {
-      rejectProviderTokenForBotAccount(userName);
-    }
+    rejectProviderTokenForBotAccount(userName);
   }
 
   /**
    * A provider token names the user after a claim's local part, so one whose local part matches a bot
-   * account's name would otherwise sign in as that bot. Bots authenticate with their own issued
-   * tokens, never through the provider flow, so a provider token must never resolve to a bot account.
+   * account's name - with or without an email - would otherwise sign in as that bot and inherit its
+   * roles. Bots authenticate with their own issued tokens, never through the provider flow, so a
+   * provider token must never resolve to a bot account. Uses the cached user context so this stays off
+   * the database on the per-request path.
    */
   private static void rejectProviderTokenForBotAccount(String userName) {
-    User account =
-        Entity.getUserRepository()
-            .findByNameOrNull(EntityInterfaceUtil.quoteName(userName), Include.NON_DELETED);
+    User account;
+    try {
+      account = SubjectCache.getUserContext(userName);
+    } catch (EntityNotFoundException e) {
+      // No account holds the name yet: a first login, which provisioning handles. Any other failure
+      // propagates, so an unreadable account is refused rather than waved through.
+      return;
+    }
     if (account != null && Boolean.TRUE.equals(account.getIsBot())) {
       throw new AuthenticationException(
           "Authentication failed: a provider token cannot sign in to a bot account");

@@ -354,10 +354,11 @@ class JwtFilterTest {
   void aLegacyProviderTokenSignsInWhenTheStoredEmailDiffers() {
     ContainerRequestContext context =
         createRequestContextWithJwt(legacyProviderJwt("sam@other.example"));
-    UserRepository users = repositoryWith(new User().withName("sam").withEmail("sam@gmail.com"));
 
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      entity.when(Entity::getUserRepository).thenReturn(users);
+    try (MockedStatic<SubjectCache> subjectCache = mockStatic(SubjectCache.class)) {
+      subjectCache
+          .when(() -> SubjectCache.getUserContext("sam"))
+          .thenReturn(new User().withName("sam").withEmail("sam@gmail.com"));
       jwtFilter.filter(context);
     }
     verify(context, times(1)).setSecurityContext(any());
@@ -367,28 +368,47 @@ class JwtFilterTest {
   void aProviderTokenNeverSignsInToABotAccount() {
     ContainerRequestContext context =
         createRequestContextWithJwt(legacyProviderJwt("ingestion-bot@openmetadata.org"));
-    UserRepository users =
-        repositoryWith(
-            new User()
-                .withName("ingestion-bot")
-                .withEmail("ingestion-bot@openmetadata.org")
-                .withIsBot(true));
 
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      entity.when(Entity::getUserRepository).thenReturn(users);
+    try (MockedStatic<SubjectCache> subjectCache = mockStatic(SubjectCache.class)) {
+      subjectCache
+          .when(() -> SubjectCache.getUserContext("ingestion-bot"))
+          .thenReturn(botAccount("ingestion-bot"));
 
       assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     }
+    verify(context, never()).setSecurityContext(any());
   }
 
+  /** A bare principal claim names the account just as an email's local part does. */
+  @Test
+  void aBareProviderPrincipalNeverSignsInToABotAccount() {
+    String bareBotPrincipal =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "ingestion-bot")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(bareBotPrincipal);
+
+    try (MockedStatic<SubjectCache> subjectCache = mockStatic(SubjectCache.class)) {
+      subjectCache
+          .when(() -> SubjectCache.getUserContext("ingestion-bot"))
+          .thenReturn(botAccount("ingestion-bot"));
+
+      assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    }
+    verify(context, never()).setSecurityContext(any());
+  }
+
+  /** A name no account holds yet makes the user lookup throw; that is a first login, not a bot. */
   @Test
   void aProviderTokenForANameNoAccountHoldsIsAFirstLogin() {
     ContainerRequestContext context =
         createRequestContextWithJwt(legacyProviderJwt("new@gmail.com"));
-    UserRepository noAccounts = mock(UserRepository.class);
 
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      entity.when(Entity::getUserRepository).thenReturn(noAccounts);
+    try (MockedStatic<SubjectCache> subjectCache = mockStatic(SubjectCache.class)) {
+      subjectCache
+          .when(() -> SubjectCache.getUserContext("new"))
+          .thenThrow(EntityNotFoundException.byMessage("user instance for new not found"));
       jwtFilter.filter(context);
     }
 
@@ -412,11 +432,9 @@ class JwtFilterTest {
         createRequestContextWithJwt(legacyProviderJwt("sam@gmail.com"));
     assertThrows(AuthenticationException.class, () -> legacyWithAllowList.filter(outsider));
 
-    // A token that carries no email is left alone: the legacy flow builds sam@openmetadata.org,
-    // whose
-    // domain is allowed, so a deployment whose first principal claim is a bare username keeps
-    // working
-    // instead of being locked out on upgrade.
+    // A token with no email runs as sam@openmetadata.org, an allowed domain, so a deployment whose
+    // first principal claim is a bare username keeps working instead of being locked out on
+    // upgrade.
     String subjectOnly =
         JWT.create()
             .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
@@ -425,6 +443,30 @@ class JwtFilterTest {
     ContainerRequestContext noEmail = createRequestContextWithJwt(subjectOnly);
     legacyWithAllowList.filter(noEmail);
     verify(noEmail, times(1)).setSecurityContext(any());
+  }
+
+  /** With no email, the address the legacy flow builds must still be in an allowed domain. */
+  @Test
+  void aBareClaimOutsideTheAllowedDomainsIsRejected() {
+    JwtFilter principalDomainOutsideAllowList =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub", "email"),
+            "contractor.example",
+            false,
+            null,
+            null,
+            List.of("openmetadata.org"));
+    String subjectOnly =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(subjectOnly);
+
+    assertThrows(
+        AuthenticationException.class, () -> principalDomainOutsideAllowList.filter(context));
+    verify(context, never()).setSecurityContext(any());
   }
 
   @Test
@@ -504,6 +546,10 @@ class JwtFilterTest {
         .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
         .withClaim("email", email)
         .sign(algorithm);
+  }
+
+  private static User botAccount(String name) {
+    return new User().withName(name).withEmail(name + "@openmetadata.org").withIsBot(true);
   }
 
   private static UserRepository repositoryWith(User account) {

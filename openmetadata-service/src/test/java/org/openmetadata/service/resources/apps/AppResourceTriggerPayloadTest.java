@@ -66,4 +66,27 @@ class AppResourceTriggerPayloadTest {
     App app = new App().withAppConfiguration(Map.of("scheduleType", "Scheduled"));
     assertFalse(AppResource.overridesConfiguredValue(app, Map.of()));
   }
+
+  /**
+   * The seeded search indexing config leaves recreateIndex to its schema default, so setting it is
+   * an override even though no stored value is replaced.
+   */
+  @Test
+  void settingAKeyTheStoredConfigOmitsIsAnOverride() {
+    App searchIndexing =
+        new App().withAppConfiguration(Map.of("type", "SearchIndexing", "batchSize", "100"));
+    assertTrue(AppResource.overridesConfiguredValue(searchIndexing, Map.of("recreateIndex", true)));
+  }
+
+  @Test
+  void aRuntimeParameterCannotCarryAConfigKey() {
+    Map<String, Object> stored = new HashMap<>();
+    stored.put("type", "AutoPilotApplication");
+    stored.put("entityLink", null);
+    App autoPilot = new App().withAppConfiguration(stored);
+
+    assertTrue(
+        AppResource.overridesConfiguredValue(
+            autoPilot, Map.of("entityLink", "<#E::table::svc.db.sch.t>", "recreateIndex", true)));
+  }
 }

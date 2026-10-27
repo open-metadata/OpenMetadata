@@ -47,6 +47,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -1358,23 +1359,28 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return Response.status(Response.Status.OK).entity("App has been configured.").build();
   }
 
+  // Keys supplied at trigger time that target or parameterise the run rather than change the app's
+  // stored configuration. Setting one of these is part of a normal Trigger; changing anything else
+  // is
+  // a configuration override that needs EditAll - including a key the stored config omits and
+  // leaves
+  // at its schema default (recreateIndex drops and rebuilds every index; a retention period of 1
+  // wipes history), which comparing only against present values would let a Trigger-only user set.
+  private static final Set<String> RUNTIME_TRIGGER_PARAMETERS = Set.of("entityLink");
+
   /**
-   * Whether the trigger payload changes or removes a value the app's configuration already sets.
-   * Supplying a value for a key the configuration leaves null or absent — a runtime parameter such as
-   * AutoPilot's {@code entityLink} — is part of a normal Trigger, not a configuration override.
+   * Whether the trigger payload changes a value the configuration holds or sets one it leaves to its
+   * schema default. A value for a declared runtime parameter ({@link #RUNTIME_TRIGGER_PARAMETERS},
+   * e.g. AutoPilot's {@code entityLink}) is part of a normal Trigger, not a configuration override.
    */
   static boolean overridesConfiguredValue(App app, Map<String, Object> configPayload) {
     if (configPayload == null || configPayload.isEmpty()) {
       return false;
     }
     Map<String, Object> configured = JsonUtils.getMap(app.getAppConfiguration());
-    for (Map.Entry<String, Object> entry : configPayload.entrySet()) {
-      Object current = configured.get(entry.getKey());
-      if (current != null && !current.equals(entry.getValue())) {
-        return true;
-      }
-    }
-    return false;
+    return configPayload.entrySet().stream()
+        .filter(entry -> !RUNTIME_TRIGGER_PARAMETERS.contains(entry.getKey()))
+        .anyMatch(entry -> !Objects.equals(configured.get(entry.getKey()), entry.getValue()));
   }
 
   @POST

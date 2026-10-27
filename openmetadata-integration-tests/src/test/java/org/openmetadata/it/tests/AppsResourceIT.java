@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -31,7 +32,9 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -43,6 +46,7 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -67,6 +71,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ConflictException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -586,6 +591,53 @@ public class AppsResourceIT {
                 httpClient.execute(
                     HttpMethod.POST, "/v1/apps/trigger/" + appName, config, Void.class));
     assertTrue(exception.getMessage().contains("thisShouldFail"));
+  }
+
+  /**
+   * The seeded DataSteward role may trigger any app but edit none. Its holder may pass a declared
+   * runtime parameter, but changing a configuration key, even one the stored config leaves unset,
+   * needs EditAll. Both requests fail before a run starts, so the shared indexing app never
+   * reindexes.
+   */
+  @Test
+  void test_triggerApp_triggerOnlyPrincipalCannotOverrideConfiguration(TestNamespace ns) {
+    String trigger = "/v1/apps/trigger/SearchIndexingApplication";
+    HttpClient dataSteward = dataStewardClient(ns).getHttpClient();
+
+    Map<String, Object> configurationKey = new HashMap<>();
+    configurationKey.put("notAConfiguredKey", true);
+    OpenMetadataException denied =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> dataSteward.execute(HttpMethod.POST, trigger, configurationKey, Void.class));
+    assertEquals(403, denied.getStatusCode());
+    assertTrue(denied.getMessage().contains("EditAll"), denied.getMessage());
+
+    // The runtime parameter clears both authorization checks; search indexing then rejects it as an
+    // unknown key during configuration validation, before anything is scheduled.
+    Map<String, Object> runtimeParameter = new HashMap<>();
+    runtimeParameter.put("entityLink", "<#E::table::" + ns.prefix("svc") + ".db.schema.table>");
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> dataSteward.execute(HttpMethod.POST, trigger, runtimeParameter, Void.class));
+    assertNotEquals(403, rejected.getStatusCode(), rejected.getMessage());
+  }
+
+  /**
+   * A user of its own holding the seeded DataSteward role. The shared data-steward client only mints
+   * a token, so its account exists only if another test happened to create it first.
+   */
+  private static OpenMetadataClient dataStewardClient(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String name = "trigger_steward_" + UUID.randomUUID().toString().substring(0, 8);
+    CreateUser createUser = new CreateUser();
+    createUser.setName(name);
+    createUser.setEmail(name + "@test.om.org");
+    createUser.setRoles(List.of(admin.roles().getByName("DataSteward").getId()));
+    User steward = ns.trackRoot(Entity.USER, admin.users().create(createUser));
+    return SdkClients.createClient(
+        steward.getName(), steward.getEmail(), new String[] {"DataSteward"});
   }
 
   @Test

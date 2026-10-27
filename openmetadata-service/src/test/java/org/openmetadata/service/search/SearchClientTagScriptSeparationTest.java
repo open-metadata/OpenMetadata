@@ -14,13 +14,16 @@ package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.Field;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -209,34 +212,66 @@ class SearchClientTagScriptSeparationTest {
                 + " rejects the program. Rename the outer variable so names do not collide.");
   }
 
+  @Test
+  void noPainlessScriptRedeclaresAVariableInScope() throws IllegalAccessException {
+    // Painless compiles each *_SCRIPT constant, appended fragments included, as one program, and a
+    // name redeclared while an enclosing declaration of it is in scope fails the whole script.
+    // Checking every constant, not only the one that broke, catches the next collision two composed
+    // scripts introduce.
+    Map<String, List<String>> offenders = new TreeMap<>();
+    for (Field field : SearchClient.class.getFields()) {
+      if (field.getType() != String.class || !field.getName().endsWith("_SCRIPT")) {
+        continue;
+      }
+      List<String> redeclared = redeclaredWhileInScope((String) field.get(null));
+      if (!redeclared.isEmpty()) {
+        offenders.put(field.getName(), redeclared);
+      }
+    }
+    assertTrue(
+        offenders.isEmpty(),
+        () -> "These painless scripts redeclare a variable that is still in scope: " + offenders);
+  }
+
   /**
    * Names declared while a declaration of the same name is still in scope - the current block or any
-   * enclosing one - which is exactly what painless rejects.
+   * enclosing one - which is exactly what painless rejects. A classic for-loop variable belongs to
+   * the loop body, so two loops in a row may each declare {@code int i}.
    */
   private static List<String> redeclaredWhileInScope(String script) {
     List<String> offenders = new ArrayList<>();
     Deque<Set<String>> scopes = new ArrayDeque<>();
     scopes.push(new HashSet<>());
+    Set<String> loopVariables = new HashSet<>();
     Matcher matcher = DECLARATION.matcher(script);
     int cursor = 0;
     while (matcher.find()) {
       for (int i = cursor; i < matcher.start(); i++) {
         char c = script.charAt(i);
         if (c == '{') {
-          scopes.push(new HashSet<>());
+          scopes.push(new HashSet<>(loopVariables));
+          loopVariables.clear();
         } else if (c == '}' && scopes.size() > 1) {
           scopes.pop();
         }
       }
       cursor = matcher.start();
       String name = matcher.group(2);
-      if (scopes.stream().anyMatch(scope -> scope.contains(name))) {
+      if (loopVariables.contains(name) || scopes.stream().anyMatch(scope -> scope.contains(name))) {
         offenders.add(name);
+      } else if (isForLoopInitializer(script, matcher.start())) {
+        loopVariables.add(name);
       } else {
         scopes.peek().add(name);
       }
     }
     return offenders;
+  }
+
+  private static boolean isForLoopInitializer(String script, int declarationStart) {
+    String before = script.substring(0, declarationStart).stripTrailing();
+    return before.endsWith("(")
+        && before.substring(0, before.length() - 1).stripTrailing().endsWith("for");
   }
 
   /** Names declared with {@code def}/{@code boolean}/{@code int} at brace depth 0. */
