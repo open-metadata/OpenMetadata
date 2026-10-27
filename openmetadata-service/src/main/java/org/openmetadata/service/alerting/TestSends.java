@@ -36,6 +36,7 @@ public final class TestSends {
       List<SubscriptionDestination> destinations,
       Function<SubscriptionDestination, T> send,
       Function<SubscriptionDestination, T> timedOut) {
+    AlertLimits.requireTestSendWithin(destinations);
     return within(SENDING, DEADLINE, destinations, send, timedOut);
   }
 

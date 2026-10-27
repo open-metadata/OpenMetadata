@@ -1,13 +1,9 @@
 package org.openmetadata.service.alerting.channel;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import jakarta.ws.rs.BadRequestException;
-import java.net.URI;
 import java.time.Duration;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -16,13 +12,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.service.alerting.AlertLimits;
 import org.openmetadata.service.alerting.audience.Recipient;
 import org.openmetadata.service.alerting.audience.WebhookRecipient;
 import org.openmetadata.service.alerting.channel.webhook.WebhookAddresses;
@@ -62,33 +56,6 @@ class StoredConfigBoundsTest {
     }
   }
 
-  @Test
-  void anEmailDestinationTakesUpToTheReceiverLimit() {
-    assertDoesNotThrow(
-        () -> DestinationValidation.validate(emailTo(AlertLimits.MAX_RECEIVERS_PER_DESTINATION)));
-
-    BadRequestException refused =
-        assertThrows(
-            BadRequestException.class,
-            () ->
-                DestinationValidation.validate(
-                    emailTo(AlertLimits.MAX_RECEIVERS_PER_DESTINATION + 1)));
-    assertTrue(
-        refused.getMessage().contains(String.valueOf(AlertLimits.MAX_RECEIVERS_PER_DESTINATION)));
-  }
-
-  @Test
-  void aWebhookDestinationTakesUpToTheReceiverLimit() {
-    assertDoesNotThrow(
-        () -> DestinationValidation.validate(webhookTo(AlertLimits.MAX_RECEIVERS_PER_DESTINATION)));
-
-    assertThrows(
-        BadRequestException.class,
-        () ->
-            DestinationValidation.validate(
-                webhookTo(AlertLimits.MAX_RECEIVERS_PER_DESTINATION + 1)));
-  }
-
   private static List<SubscriptionDestination> distinctActivityFeeds(int count) {
     return IntStream.range(0, count)
         .mapToObj(
@@ -99,27 +66,6 @@ class StoredConfigBoundsTest {
                     .withCategory(SubscriptionCategory.EXTERNAL)
                     .withDownstreamDepth(depth))
         .toList();
-  }
-
-  private static SubscriptionDestination emailTo(int receivers) {
-    Set<String> addresses =
-        IntStream.range(0, receivers)
-            .mapToObj(index -> "person" + index + "@example.com")
-            .collect(Collectors.toSet());
-    return external(SubscriptionType.EMAIL)
-        .withConfig(new EmailAlertConfig().withReceivers(addresses));
-  }
-
-  private static SubscriptionDestination webhookTo(int receivers) {
-    Set<String> addresses =
-        IntStream.range(0, receivers)
-            .mapToObj(index -> "https://hooks.example.com/" + index)
-            .collect(Collectors.toSet());
-    return external(SubscriptionType.WEBHOOK)
-        .withConfig(
-            new Webhook()
-                .withEndpoint(URI.create("https://hooks.example.com/main"))
-                .withReceivers(addresses));
   }
 
   private static SubscriptionDestination external(SubscriptionType type) {

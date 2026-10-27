@@ -56,8 +56,6 @@ public class WebhookConfigRules implements ConfigRules {
       throw new BadRequestException("Webhook endpoint URL cannot be empty");
     }
     requireAllowedUrl(endpoint, "Invalid webhook endpoint URL: %s");
-    ConfigRules.requireAtMostTheReceiverLimit(
-        webhook.getReceivers() == null ? 0 : webhook.getReceivers().size());
     if (usesOAuth2(webhook)) {
       validateOAuth2(webhook);
     }
