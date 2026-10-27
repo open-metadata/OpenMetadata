@@ -17,6 +17,7 @@ import {
   createOrFetch,
   deleteFixtureEntity,
   okJson,
+  requireEntityIdentity,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
@@ -32,7 +33,7 @@ type UserTeamRef = {
   id?: string;
 };
 
-type ResponseDataType = {
+type DomainData = {
   name: string;
   displayName: string;
   description: string;
@@ -43,11 +44,13 @@ type ResponseDataType = {
   experts?: string[];
 };
 
+type ResponseDataType = DomainData & { id: string; fullyQualifiedName: string };
+
 export class Domain extends EntityClass {
-  data: ResponseDataType;
+  data: DomainData;
   responseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(data?: ResponseDataType) {
+  constructor(data?: DomainData) {
     super(EntityTypeEndpoint.Domain);
     const id = uuid();
     this.data = data ?? {
@@ -66,12 +69,15 @@ export class Domain extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const data = await createOrFetch(apiContext, {
-      label: 'Domain.create',
-      createPath: '/api/v1/domains',
-      fqnSegments: [this.data.name],
-      data: this.data,
-    });
+    const data = requireEntityIdentity(
+      await createOrFetch<DomainData>(apiContext, {
+        label: 'Domain.create',
+        createPath: '/api/v1/domains',
+        fqnSegments: [this.data.name],
+        data: this.data,
+      }),
+      'Domain.create'
+    );
     this.responseData = data;
 
     return data;
@@ -107,7 +113,10 @@ export class Domain extends EntityClass {
         },
       })
     );
-    this.responseData = await okJson(response, 'Domain.patch');
+    this.responseData = requireEntityIdentity(
+      await okJson<DomainData>(response, 'Domain.patch'),
+      'Domain.patch'
+    );
 
     return {
       entity: this.responseData,

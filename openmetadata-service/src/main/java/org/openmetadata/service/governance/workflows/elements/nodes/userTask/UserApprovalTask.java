@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
+import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ApprovalTaskCompletionValidator;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.AutoApproveServiceTaskImpl;
@@ -90,6 +91,7 @@ public class UserApprovalTask implements NodeInterface {
       TaskEntityType taskType,
       TaskCategory taskCategory,
       boolean holdsChanges) {
+    requireSafeNodeReference(nodeDefinition.getName());
     String subProcessId = nodeDefinition.getName();
     String assigneesVarName = getFlowableElementId(subProcessId, "assignees");
 
@@ -426,6 +428,11 @@ public class UserApprovalTask implements NodeInterface {
       throw new IllegalArgumentException(
           "expiryTimer.transitionId is required on node '" + nodeDefinition.getName() + "'");
     }
+    if (hasDateVariable) {
+      requireSafeTimerVariable(dateVariable, "dateVariable", nodeDefinition.getName());
+    } else {
+      requireSafeTimerVariable(durationVariable, "durationVariable", nodeDefinition.getName());
+    }
 
     TimerEventDefinition timerDef = new TimerEventDefinition();
     if (hasDateVariable) {
@@ -582,6 +589,32 @@ public class UserApprovalTask implements NodeInterface {
 
   private boolean hasTimerVariable(String value) {
     return !nullOrEmpty(value) && !value.isBlank();
+  }
+
+  // The node's name prefixes generated process-variable references (${<node>_result, ...}), so it
+  // must read as a variable reference and nothing more; the same contract Edge enforces on
+  // conditional-edge sources.
+  private static void requireSafeNodeReference(String nodeName) {
+    if (!WorkflowExpressionValidator.isSafeNodeReference(nodeName)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Node name '%s' must only contain letters, digits and '_' — the name prefixes "
+                  + "generated process-variable references",
+              nodeName));
+    }
+  }
+
+  // The timer's process-variable name is interpolated alone inside a JUEL expression
+  // ({"${" + variable + "}"}), so it must read as a variable reference and nothing more.
+  private static void requireSafeTimerVariable(String variableName, String field, String nodeName) {
+    if (!WorkflowExpressionValidator.isSafeExpressionVariable(variableName)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "expiryTimer.%s on node '%s' must be a bare process-variable name "
+                  + "(letters, digits, '_', starting with a letter or underscore, not a reserved "
+                  + "word); got '%s'",
+              field, nodeName, variableName));
+    }
   }
 
   private BoundaryEvent getTerminationEvent(String subProcessId) {

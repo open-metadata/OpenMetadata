@@ -12,19 +12,15 @@
  */
 import { Teams as TeamsIcon } from '../../../icons/Teams';
 import type { ReactNode } from 'react';
-import {
-  Link as AriaLink,
-  Tooltip as AriaTooltip,
-  TooltipTrigger as AriaTooltipTrigger,
-} from 'react-aria-components';
+import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 import { cx } from '@/utils/cx';
+import { HoverCard } from '../../application/hover-card/hover-card';
 import {
   getOwnerRenderer,
   resolveOwnerHref,
 } from '../../application/owner/owner-renderer';
 import { OwnerOverflowPopoverContent } from '../../application/owner/owner-overflow-popover-content';
 import type { AvatarSize, OwnerEntityReference } from '../../../types';
-import { TooltipTrigger } from '../tooltip/tooltip';
 import { getFirstAlphanumeric } from './utils';
 import type { AvatarProps } from './avatar';
 import { Avatar } from './avatar';
@@ -165,14 +161,28 @@ export const AvatarGroup = ({
         </span>
       ))}
       {overflowCount > 0 && (
-        <AriaTooltipTrigger closeDelay={200} delay={300}>
-          {/* TooltipTrigger (AriaButton) reads FocusableContext set by AriaTooltipTrigger
-              — plain <button> does not read that context so hover wiring is silently dropped */}
-          <TooltipTrigger
+        // A hover card, not a Tooltip: the list holds owner links, and a
+        // react-aria Link inside a TooltipTrigger takes over the trigger's ref,
+        // so the tooltip positioned itself against its own last link.
+        <HoverCard
+          className="tw:max-h-96 tw:w-72 tw:overflow-y-auto tw:p-0 tw:py-2"
+          content={
+            <OwnerOverflowPopoverContent
+              avatarSize={avatarSize}
+              overflowTeamsLabel={overflowTeamsLabel}
+              overflowTitleLabel={overflowTitleLabel}
+              overflowUsersLabel={overflowUsersLabel}
+              ownerDisplayName={ownerDisplayName}
+              owners={owners}
+              showHeadings={showOverflowHeadings}
+            />
+          }
+          placement="bottom start">
+          <AriaButton
             aria-label={`+${overflowCount} more ${
               overflowTitleLabel ?? 'owners'
             }`}
-            className="tw:rounded-full tw:bg-transparent tw:p-0"
+            className="tw:h-max tw:w-max tw:rounded-full tw:bg-transparent tw:p-0 tw:outline-hidden"
             data-testid="avatar-group-overflow"
             style={{
               marginLeft: `-${overlapPx}px`,
@@ -185,30 +195,8 @@ export const AvatarGroup = ({
               initials={`+${overflowCount}`}
               size={resolvedSize}
             />
-          </TooltipTrigger>
-          <AriaTooltip
-            className={({ isEntering, isExiting }) =>
-              cx(
-                'tw:z-50 tw:max-h-96 tw:w-72 tw:overflow-y-auto tw:rounded-xl tw:bg-overlay-surface tw:py-2 tw:shadow-lg tw:outline tw:outline-1 tw:outline-secondary tw:will-change-transform',
-                isEntering &&
-                  'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in',
-                isExiting &&
-                  'tw:duration-100 tw:ease-in tw:animate-out tw:fade-out'
-              )
-            }
-            offset={8}
-            placement="bottom start">
-            <OwnerOverflowPopoverContent
-              avatarSize={avatarSize}
-              overflowTeamsLabel={overflowTeamsLabel}
-              overflowTitleLabel={overflowTitleLabel}
-              overflowUsersLabel={overflowUsersLabel}
-              ownerDisplayName={ownerDisplayName}
-              owners={owners}
-              showHeadings={showOverflowHeadings}
-            />
-          </AriaTooltip>
-        </AriaTooltipTrigger>
+          </AriaButton>
+        </HoverCard>
       )}
     </div>
   );

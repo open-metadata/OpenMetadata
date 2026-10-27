@@ -191,7 +191,7 @@ const StoredProcedureTab = () => {
           />
         ),
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<ServicePageData>(),
     ],
     [searchValue]
   );

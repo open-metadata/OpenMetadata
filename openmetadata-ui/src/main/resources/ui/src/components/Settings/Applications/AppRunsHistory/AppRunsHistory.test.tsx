@@ -316,7 +316,7 @@ describe('AppRunsHistory', () => {
   });
 
   it('should fetch data based on startTs and endTs for external app onclick of NextPrevious', async () => {
-    jest.useFakeTimers('modern').setSystemTime(new Date('2024-02-05'));
+    jest.useFakeTimers().setSystemTime(new Date('2024-02-05'));
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
@@ -548,5 +548,50 @@ describe('AppRunsHistory', () => {
     });
 
     expect(screen.getByText('Running')).toBeInTheDocument();
+  });
+
+  it('toggles a run with stats from the expand chevron', async () => {
+    mockHasAppRunStats.mockReturnValue(true);
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [
+        { ...mockApplicationData, id: 'run-chevron', status: Status.Failed },
+      ],
+      paging: { offset: 0, total: 1 },
+    });
+
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    fireEvent.click(screen.getByTestId('expand-icon'));
+
+    expect(screen.getByText('AppLogsViewer')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('expand-icon'));
+
+    expect(screen.queryByText('AppLogsViewer')).not.toBeInTheDocument();
+  });
+
+  it('hands the run to onViewRunConfig instead of opening the config dialog', async () => {
+    const onViewRunConfig = jest.fn();
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [
+        { ...mockApplicationData, id: 'run-config', status: Status.Failed },
+      ],
+      paging: { offset: 0, total: 1 },
+    });
+
+    render(
+      <AppRunsHistory {...mockProps1} onViewRunConfig={onViewRunConfig} />
+    );
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    fireEvent.click(screen.getByText('label.config'));
+
+    expect(onViewRunConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ status: Status.Failed })
+    );
+    expect(
+      screen.queryByTestId('edit-table-type-property-modal')
+    ).not.toBeInTheDocument();
   });
 });

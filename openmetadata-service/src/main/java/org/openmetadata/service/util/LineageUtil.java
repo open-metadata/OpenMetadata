@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -68,6 +69,14 @@ public class LineageUtil {
   }
 
   private LineageUtil() {}
+
+  /** A successful HTTP response can still contain incomplete hits after a search timeout. */
+  public static void rejectTimedOutSearch(final boolean timedOut, final String indexAlias) {
+    if (timedOut) {
+      throw new SearchException(
+          String.format("Lineage search for index [%s] timed out.", indexAlias));
+    }
+  }
 
   /**
    * Open a lineage-ES deferral scope on the current thread. While open, the lineage-ES leaves

@@ -316,8 +316,7 @@ const DUMMY_DATA_BY_PAGE_TYPE = {
   [PageType.SearchIndex]: () => searchIndexClassBase.getDummyData(),
   [PageType.Dashboard]: () => dashboardDetailsClassBase.getDummyData(),
   [PageType.Domain]: () => domainClassBase.getDummyData(),
-  [PageType.DataMarketplace]: () =>
-    dataMarketplaceClassBase.getDummyData() as EntityUnion,
+  [PageType.DataMarketplace]: () => dataMarketplaceClassBase.getDummyData(),
   [PageType.DataProduct]: () => dataProductClassBase.getDummyData(),
   [PageType.APICollection]: () => apiCollectionClassBase.getDummyData(),
   [PageType.APIEndpoint]: () => apiEndpointClassBase.getDummyData(),
