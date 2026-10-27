@@ -50,6 +50,28 @@ export const Delete: StoryObj = {
   ),
 };
 
+const DELETE_OPTIONS = [
+  {
+    value: 'soft',
+    label: 'Soft delete',
+    hint: 'Turn off this user. You can restore it later.',
+  },
+  {
+    value: 'hard',
+    label: 'Delete permanently',
+    hint: "Delete this user and all its metadata forever. This can't be undone.",
+  },
+];
+
+// Same card as the app's DeleteEntityModal: a 1px outline stacked outside the
+// border reads as 2px when selected without shifting layout.
+const deleteOptionClassName = ({ isSelected }: { isSelected: boolean }) =>
+  `tw:cursor-pointer tw:rounded-xl tw:border tw:p-4 tw:transition-colors ${
+    isSelected
+      ? 'tw:border-brand tw:outline-1 tw:outline-brand'
+      : 'tw:border-secondary'
+  }`;
+
 export const SoftOrHardDelete: StoryObj = {
   render: () => {
     const SoftOrHardDeleteExample = () => {
@@ -62,36 +84,34 @@ export const SoftOrHardDelete: StoryObj = {
           content={
             <RadioGroup
               aria-label="Delete jane.doe"
-              className="tw:gap-2"
+              className="tw:gap-3"
               size="sm"
               value={choice}
               onChange={(value) => setChoice(value as 'soft' | 'hard')}>
-              <RadioButton
-                hint="Turn off this user. You can restore it later."
-                label={
-                  <Typography as="span" size="text-sm" weight="semibold">
-                    Soft delete
-                  </Typography>
-                }
-                size="sm"
-                value="soft"
-                variant="card"
-              />
-              <RadioButton
-                hint="Delete this user and all its metadata forever. This can't be undone."
-                label={
-                  <Typography
-                    as="span"
-                    color="danger"
-                    size="text-sm"
-                    weight="semibold">
-                    Delete permanently
-                  </Typography>
-                }
-                size="sm"
-                value="hard"
-                variant="card"
-              />
+              {DELETE_OPTIONS.map((option) => (
+                <RadioButton
+                  className={deleteOptionClassName}
+                  hint={
+                    <Typography
+                      as="span"
+                      className="tw:text-tertiary"
+                      size="text-sm">
+                      {option.hint}
+                    </Typography>
+                  }
+                  key={option.value}
+                  label={
+                    <Typography
+                      as="span"
+                      className="tw:text-primary"
+                      size="text-sm">
+                      {option.label}
+                    </Typography>
+                  }
+                  size="sm"
+                  value={option.value}
+                />
+              ))}
             </RadioGroup>
           }
           title='Delete "jane.doe"'
