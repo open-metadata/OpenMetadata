@@ -198,7 +198,7 @@
          CVE-2026-19864 (jetty-client), all fixed in 12.1.13. -->
     <jetty.version>12.1.14</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>1.1.1</mcp-sdk.version>
+    <mcp-sdk.version>1.1.5</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
     <flyway.version>9.22.3</flyway.version>
     <angus-mail.version>2.0.4</angus-mail.version>

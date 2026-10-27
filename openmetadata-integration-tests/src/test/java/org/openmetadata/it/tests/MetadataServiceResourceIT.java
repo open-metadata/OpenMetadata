@@ -22,7 +22,9 @@ import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
 import org.openmetadata.schema.services.connections.metadata.AtlasConnection;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -31,6 +33,9 @@ import org.openmetadata.sdk.network.HttpMethod;
 @Execution(ExecutionMode.CONCURRENT)
 public class MetadataServiceResourceIT
     extends BaseServiceIT<MetadataService, CreateMetadataService> {
+
+  private static final String OM_SERVICE = "OpenMetadata";
+  private static final String MASKED = "*********";
 
   {
     supportsListHistoryByTimestamp = true;
@@ -244,6 +249,63 @@ public class MetadataServiceResourceIT
     service.setConnection(new MetadataConnection().withConfig(updatedConn));
     MetadataService updated = patchEntity(service.getId().toString(), service);
     assertNotNull(updated.getConnection());
+  }
+
+  /**
+   * A service connection is returned in full only to bots, masked to admins, and not at all to any
+   * other user account.
+   */
+  @Test
+  void serviceConnection_maskedForEditor_nullForViewer_fullForBot(TestNamespace ns) {
+    final CreateMetadataService request = createMinimalRequest(ns); // sets Amundsen password "test"
+    request.setName(ns.prefix("svc_conn_scope"));
+    final String fqn = createEntity(request).getFullyQualifiedName();
+
+    // An editor (admin holds EDIT_ALL) gets the connection with the password masked, not cleartext.
+    final MetadataService asEditor = SdkClients.adminClient().metadataServices().getByName(fqn);
+    assertNotNull(asEditor.getConnection());
+    final AmundsenConnection editorConn =
+        JsonUtils.convertValue(asEditor.getConnection().getConfig(), AmundsenConnection.class);
+    assertEquals(MASKED, editorConn.getPassword());
+
+    final MetadataService asViewer =
+        SdkClients.dataConsumerClient().metadataServices().getByName(fqn);
+    assertNull(asViewer.getConnection());
+
+    final MetadataService asBot = SdkClients.botClient().metadataServices().getByName(fqn);
+    assertNotNull(asBot.getConnection());
+    final AmundsenConnection botConn =
+        JsonUtils.convertValue(asBot.getConnection().getConfig(), AmundsenConnection.class);
+    assertEquals("test", botConn.getPassword());
+  }
+
+  /**
+   * The built-in OpenMetadata service must not carry the Elasticsearch sink or a stored ingestion-bot
+   * JWT, and a viewer who cannot edit it must not receive its connection.
+   */
+  @Test
+  void builtInOpenMetadataService_hasNoEsSinkOrStoredBotToken() {
+    final MetadataService asEditor =
+        SdkClients.adminClient().metadataServices().getByName(OM_SERVICE);
+    assertNotNull(asEditor.getConnection());
+    final OpenMetadataConnection editorCfg =
+        JsonUtils.convertValue(asEditor.getConnection().getConfig(), OpenMetadataConnection.class);
+    assertNull(editorCfg.getElasticsSearch());
+    assertTrue(
+        editorCfg.getSecurityConfig() == null
+            || editorCfg.getSecurityConfig().getJwtToken() == null);
+
+    final MetadataService asViewer =
+        SdkClients.dataConsumerClient().metadataServices().getByName(OM_SERVICE);
+    assertNull(asViewer.getConnection());
+
+    final MetadataService asBot = SdkClients.botClient().metadataServices().getByName(OM_SERVICE);
+    assertNotNull(asBot.getConnection());
+    final OpenMetadataConnection botCfg =
+        JsonUtils.convertValue(asBot.getConnection().getConfig(), OpenMetadataConnection.class);
+    assertNull(botCfg.getElasticsSearch());
+    assertTrue(
+        botCfg.getSecurityConfig() == null || botCfg.getSecurityConfig().getJwtToken() == null);
   }
 
   @Test

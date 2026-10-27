@@ -1643,9 +1643,11 @@ describe('OntologyReleasePanel', () => {
     groupedWorking = true;
     await renderPanel(true, 'changes');
 
-    expect(
-      await screen.findByTestId('ontology-working-concept-group')
-    ).toHaveTextContent(
+    const summary = await screen.findByTestId(
+      'ontology-working-concept-summary'
+    );
+
+    expect(summary.textContent).toBe(
       'Class FundsTransfer ⊑ Payment, Transaction · 3 properties'
     );
     expect(
@@ -1661,9 +1663,11 @@ describe('OntologyReleasePanel', () => {
     groupedPropertyCount = 1;
     await renderPanel(true, 'changes');
 
-    expect(
-      await screen.findByTestId('ontology-working-concept-group')
-    ).toHaveTextContent(
+    const summary = await screen.findByTestId(
+      'ontology-working-concept-summary'
+    );
+
+    expect(summary.textContent).toBe(
       'Class FundsTransfer ⊑ Payment, Transaction · 1 property'
     );
   });

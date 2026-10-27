@@ -164,7 +164,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
 export const softDeleteUserProfilePage = async (
   page: Page,
   userName: string,
-  displayName: string
+  _displayName: string
 ) => {
   const userResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=*&from=0&size=*'
@@ -225,7 +225,7 @@ export const restoreUserProfilePage = async (page: Page, fqn: string) => {
 
 export const hardDeleteUserProfilePage = async (
   page: Page,
-  displayName: string
+  _displayName: string
 ) => {
   await page.getByTestId('user-profile-manage-btn').click();
   await page.getByText('Delete Profile').click();

@@ -667,6 +667,7 @@ describe('OntologyGraphView', () => {
       expect.objectContaining({
         canCreateRelationType: true,
         isEditMode: true,
+        keepCanvasOnAdd: true,
       })
     );
     expect(graphProps.relationTypeGroups).toEqual([
@@ -1526,20 +1527,26 @@ describe('OntologyGraphView', () => {
   });
 
   it('does not replay an old add-concept request after the graph remounts', async () => {
-    render(
+    const view = (createConceptRequestKey: number) => (
       <OntologyGraphView
         isEditing
-        createConceptRequestKey={4}
+        createConceptRequestKey={createConceptRequestKey}
         ontology={ontology}
         surface="graph"
         onRequestGraphSurface={jest.fn()}
       />
     );
+    const first = render(view(0));
+    first.rerender(view(4));
 
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+
+    first.unmount();
+    render(view(4));
     await screen.findByTestId('native-ontology-graph');
 
     expect(
-      screen.queryByTestId('ontology-concept-editor')
+      screen.queryByTestId('ontology-new-class-panel')
     ).not.toBeInTheDocument();
   });
 

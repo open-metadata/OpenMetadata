@@ -12,6 +12,7 @@
  */
 import {
   AnnouncementColored,
+  ArticleSettings,
   DefaultAppMode,
   DefaultTime,
   GlossaryTerm,
@@ -953,6 +954,16 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
             icon: WorksheetIcon,
+          },
+          {
+            label: t('label.article-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.article-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.ARTICLES}`,
+            icon: ArticleSettings,
+            iconColor: 'green' as const,
           },
           {
             label: t('label.team-plural'),
