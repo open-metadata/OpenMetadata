@@ -81,6 +81,10 @@ logger = ingestion_logger()
 HEX_TAG_CATEGORY = "HexCategories"
 
 
+# Marks a table reference an upstream cell could not resolve
+UNRESOLVED = "hex_unresolved"
+
+
 class TableSearchError(Exception):
     """The table search failed, so whether a table exists is unknown"""
 
@@ -526,8 +530,9 @@ class HexSource(DashboardServiceSource):
             return None
         # Cells of a project tend to read the same tables, so look each one up once
         resolved_tables: dict[tuple, tuple[Table, str | None] | None] = {}
-        # Result variable -> query of the cells seen so far, for the chained SQL cells after them
-        upstream: dict[str, exp.Query] = {}
+        # Result variable -> (connection, query) of the cells seen so far, for the chained
+        # SQL cells after them
+        upstream: dict[str, tuple[str | None, exp.Query]] = {}
         cell_lineage: list[HexCellLineage] = []
         taken_names: set[str] = set()
         for cell in cells:
@@ -551,7 +556,7 @@ class HexSource(DashboardServiceSource):
         self,
         cell: Cell,
         data_connections: dict[str, DataConnection],
-        upstream: dict[str, exp.Query],
+        upstream: dict[str, tuple[str | None, exp.Query]],
         resolved_tables: dict[tuple, tuple[Table, str | None] | None],
     ) -> HexCellLineage | None:
         if not cell.sql:
@@ -564,13 +569,22 @@ class HexSource(DashboardServiceSource):
             return None
         # SQL without a data connection runs on dataframes; it only reaches the
         # warehouse through the SQL cells it reads
-        if not inline_upstream_cells(expression, upstream) and not cell.dataConnectionId:
+        # Hex chains a warehouse cell only to cells on its own connection; SQL on
+        # dataframes reads any cell's result
+        readable = {
+            name: query
+            for name, (connection_id, query) in upstream.items()
+            if not cell.dataConnectionId or connection_id == cell.dataConnectionId
+        }
+        if not inline_upstream_cells(expression, readable) and not cell.dataConnectionId:
             return None
 
         lineage = HexCellLineage(name=cell.label or cell.staticId or cell.id, sql=cell.sql)
         tables_by_key: dict[tuple[str, str, str], Table] = {}
         schema: dict[str, dict[str, dict[str, dict[str, str]]]] = {}
         for reference in get_table_references(expression):
+            if reference.meta.get(UNRESOLVED):
+                continue
             # The connection is part of the key: it fills in what the reference leaves out
             key = (cell.dataConnectionId, *table_key(reference))
             searched_database = reference.catalog or (connection.default_database if connection else None)
@@ -579,12 +593,9 @@ class HexSource(DashboardServiceSource):
                 resolved_tables[key] = self._resolve_table(searched_database, searched_schema, reference.name)
             resolved = resolved_tables[key]
             if not resolved:
-                # A later cell inlining this one, without this connection's defaults,
-                # must search no wider than this cell did
-                if searched_schema:
-                    reference.set("db", exp.to_identifier(searched_schema))
-                    if searched_database:
-                        reference.set("catalog", exp.to_identifier(searched_database))
+                # A later cell inlining this one lacks this connection's defaults and
+                # would search wider; what this cell couldn't resolve stays unresolved
+                reference.meta[UNRESOLVED] = True
                 continue
             table, prefix = resolved
             _, database, schema_name, table_name = fqn.split(model_str(table.fullyQualifiedName))
@@ -602,7 +613,7 @@ class HexSource(DashboardServiceSource):
         # Stored once its references name the tables found, so a later cell inlining it
         # doesn't have to resolve them again without this cell's connection defaults
         if cell.resultVariableName:
-            upstream[cell.resultVariableName.lower()] = expression.copy()
+            upstream[cell.resultVariableName.lower()] = (cell.dataConnectionId, expression.copy())
 
         taken_names: set[str] = set()
         for output in get_output_columns(expression, schema):

@@ -144,6 +144,12 @@ class TestCellSqlParsing:
             "total": {(ORDERS, "amount")},
         }
 
+    def test_union_with_a_star_over_an_unknown_table_keeps_its_columns(self):
+        columns = outputs("select * from prod.sales.orders union all select * from prod.sales.orders_archive")
+
+        assert list(columns) == ["id", "cust_id", "amount", "region"]
+        assert (ORDERS, "id") in columns["id"]
+
     def test_query_reading_no_other_cell_is_left_alone(self):
         expression = parse_cell_sql("select * from prod.sales.orders", "snowflake")
         assert not inline_upstream_cells(expression, {"base_orders": parse_cell_sql("select 1", None)})
@@ -677,6 +683,73 @@ class TestHexCellLineage:
         _, edges = run(source)
 
         assert edges == []
+
+    def test_chained_cell_does_not_resolve_what_its_upstream_cell_could_not(self, make_source):
+        """Without a default schema the upstream cell resolves nothing; a prefix must not resolve it downstream"""
+        prefixes = ["snowflake_prod.analytics.sales"]
+        orders_in_analytics = ORDERS_TABLE.model_copy(
+            update={"fullyQualifiedName": FullyQualifiedEntityName("snowflake_prod.analytics.sales.orders")}
+        )
+        cells = [
+            Cell(
+                id=cell_id,
+                label=variable,
+                cellType="SQL",
+                dataConnectionId=connection,
+                resultVariableName=variable,
+                contents={"sqlCell": {"source": sql}},
+            )
+            for cell_id, sql, variable, connection in [
+                ("c1", "select region from orders", "base", "conn_snowflake"),
+                ("c2", "select region from base", "down", None),
+            ]
+        ]
+        source = make_source(cells, prefixes=prefixes, tables=(orders_in_analytics,))
+        source.client.get_data_connections.return_value = {
+            "conn_snowflake": DataConnection(
+                id="conn_snowflake",
+                name="Snowflake",
+                type="snowflake",
+                connectionDetails={"snowflake": {"database": "prod"}},
+            )
+        }
+
+        _, edges = run(source, prefixes=prefixes)
+
+        assert edges == []
+
+    def test_a_warehouse_cell_only_chains_to_cells_on_its_connection(self, make_source):
+        cells = [
+            Cell(
+                id=cell_id,
+                label=variable,
+                cellType="SQL",
+                dataConnectionId=connection,
+                resultVariableName=variable,
+                contents={"sqlCell": {"source": sql}},
+            )
+            for cell_id, sql, variable, connection in [
+                ("c1", "select region from sales.orders", "regions", "conn_snowflake"),
+                # A table of the other warehouse that happens to share the result variable's name
+                ("c2", "select region from analytics.regions", "postgres_regions", "conn_postgres"),
+                ("c3", "select region from regions", "same_name", "conn_postgres"),
+            ]
+        ]
+        source = make_source(cells)
+        source.client.get_data_connections.return_value = {
+            "conn_snowflake": DataConnection(id="conn_snowflake", name="Snowflake", type="snowflake"),
+            "conn_postgres": DataConnection(
+                id="conn_postgres",
+                name="Postgres",
+                type="postgres",
+                connectionDetails={"postgres": {"schema": "analytics"}},
+            ),
+        }
+
+        _, edges = run(source)
+
+        model_fqn = f"{SERVICE}.model.{PROJECT.id}"
+        assert all(f"{model_fqn}.same_name." not in to_column for edge in edges for to_column in column_lineage(edge))
 
 
 class TestHexApiClientCells:

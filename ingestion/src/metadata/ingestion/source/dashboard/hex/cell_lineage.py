@@ -146,7 +146,7 @@ def get_output_columns(
             identify=False,
         )
         scope = build_scope(qualified)
-    except SqlglotError:
+    except (SqlglotError, IndexError, KeyError):
         qualified, scope = expression, None
     if scope is None or not isinstance(qualified, exp.Query):
         # Still list what the query outputs, only without where each column comes from
@@ -175,7 +175,8 @@ def get_output_columns(
                 for step in nodes
                 if isinstance(step.expression, exp.Alias)
             )
-        except SqlglotError:
+        # sqlglot raises IndexError on a UNION branch selecting * from an unknown table
+        except (SqlglotError, IndexError, KeyError):
             pass
         columns[name] = column
     return list(columns.values())
