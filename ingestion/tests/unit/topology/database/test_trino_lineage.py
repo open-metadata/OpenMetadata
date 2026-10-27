@@ -54,10 +54,10 @@ def test_mapping_entry_returned_verbatim():
     """When the schema name is found in the pre-populated mapping, return its FQN as-is."""
     source = _make_source()
     table = _table_stub("public")
-    mapping = {"svc2.db": {"public": "svc2.db.public"}}
+    mapping = {"svc2.db": {"public": "svc2.db.PUBLIC"}}
     with patch("metadata.utils.fqn.search_database_schema_from_es", return_value=[]):
         result = source._get_cross_database_schema_fqn("svc2.db", table, mapping)
-    assert result == "svc2.db.public"
+    assert result == "svc2.db.PUBLIC"
 
 
 def test_none_schema_name_no_fqn_returns_none():

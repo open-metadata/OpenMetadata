@@ -25,13 +25,13 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.trino.queries import TRINO_SQL_STATEMENT
 from metadata.ingestion.source.database.trino.query_parser import (
     TRINO_QUERY_BATCH_SIZE,
     TrinoQueryParserSource,
 )
-from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
