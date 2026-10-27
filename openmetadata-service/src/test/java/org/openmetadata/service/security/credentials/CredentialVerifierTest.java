@@ -1064,6 +1064,28 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void aRefreshStartedInsideADeepPassNeverReplacesItsResultWithAnOlderDigest() throws Exception {
+    source.withSecretReferenceMechanism(BOB, JWT_OLD);
+    verifier(DEFAULTS);
+    assertAccepted(BOB, JWT_OLD);
+    source.rotateSecretWithoutTouchingTheRow(BOB, JWT_NEW);
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    AtomicReference<Future<?>> refreshInsideThePass = new AtomicReference<>();
+    source.duringNextRead(
+        () -> {
+          ticker.advanceNanos(MILLISECOND);
+          refreshInsideThePass.set(threads.submit(() -> verifier.refreshNow(subject(BOB))));
+          await().atMost(10, TimeUnit.SECONDS).until(() -> refreshInsideThePass.get().isDone());
+        });
+
+    verifier.sweepOnce();
+
+    refreshInsideThePass.get().get(10, TimeUnit.SECONDS);
+    assertAccepted(BOB, JWT_NEW);
+    assertRejected(BOB, JWT_OLD);
+  }
+
+  @Test
   void externalSecretsRotationIsSeenWithinTheBound() {
     source.withSecretReferenceMechanism(BOB, JWT_OLD);
     verifier(DEFAULTS);
