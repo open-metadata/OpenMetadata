@@ -12,8 +12,8 @@
  */
 import { RJSFSchema } from '@rjsf/utils';
 import { App } from '../../../../generated/entity/applications/app';
-import { AppRunRecordWithId } from '../AppRunsHistory/AppRunsHistory.interface';
 import { TableComponentProps } from '../../../common/Table/Table.interface';
+import { AppRunRecordWithId } from '../AppRunsHistory/AppRunsHistory.interface';
 
 export interface AppScheduleProps {
   appData: App;

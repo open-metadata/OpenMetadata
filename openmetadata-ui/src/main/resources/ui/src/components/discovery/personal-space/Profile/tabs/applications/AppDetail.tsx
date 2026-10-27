@@ -470,8 +470,8 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
           <AppRunsHistory
             appData={appData}
             jsonSchema={jsonSchema}
-            onViewRunConfig={handleViewRunConfig}
             variant="muted"
+            onViewRunConfig={handleViewRunConfig}
           />
         ),
       },

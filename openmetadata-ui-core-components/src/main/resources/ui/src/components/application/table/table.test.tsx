@@ -85,6 +85,26 @@ describe('Table sizes', () => {
   });
 });
 
+describe('Table variant', () => {
+  const container = () => screen.getByRole('grid').parentElement;
+
+  it('leaves the container unframed by default', () => {
+    renderTable();
+
+    expect(container()).not.toHaveClass('tw:bg-primary_alt');
+  });
+
+  it('frames the container on the muted step with a single-layer hover', () => {
+    renderTable({ variant: 'muted' });
+
+    expect(container()).toHaveClass(
+      'tw:bg-primary_alt',
+      'tw:dark:border-primary',
+      'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover'
+    );
+  });
+});
+
 describe('Table selection', () => {
   it('renders a checkbox per row and a select-all for multiple selection', () => {
     renderTable({ selectionBehavior: 'toggle', selectionMode: 'multiple' });
@@ -253,7 +273,7 @@ describe('TableCard theme roles', () => {
       'tw:after:outline-secondary',
       'tw:dark:after:outline-primary',
       'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
-      'tw:[&_tbody:not(table_table_tbody)>tr:hover]:bg-primary_hover',
+      'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover',
       // Clamped markdown must fade into the muted row, not the surface.
       'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!'
     );

@@ -153,12 +153,12 @@ export type TableCardVariant = 'default' | 'muted';
  * lands once (ADR:2026-10-27-settings-modal-surfaces-use-the-muted-step). Only
  * the outermost table is repainted; tables nested in an expanded row keep theirs.
  * The default `bg-secondary` hover is the muted row's own step, hence the
- * translucent one. Clamped markdown fades into `--markdown-clamp-fade-color`,
+ * translucent one, painted on the cells only so it never stacks with a row
+ * tint. Clamped markdown fades into `--markdown-clamp-fade-color`,
  * which the unlayered tbody LESS default pins to bg-surface (hence the `!`).
  */
 export const MUTED_TABLE_SURFACE_CLASSES = [
   'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
-  'tw:[&_tbody:not(table_table_tbody)>tr:hover]:bg-primary_hover',
   'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover',
   'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!',
   'tw:dark:[&_tbody:not(table_table_tbody)>tr:hover]:[--markdown-clamp-fade-color:color-mix(in_srgb,var(--tw-color-bg-secondary),white_6%)]!',
@@ -268,6 +268,12 @@ interface TableRootProps
   stickyHeader?: boolean;
   containerStyle?: React.CSSProperties;
   containerClassName?: string;
+  /**
+   * `muted` frames the table's own container on the muted step, for a table
+   * that cannot sit in a `TableCard` (whose overflow-hidden stops a
+   * `stickyHeader` sticking).
+   */
+  variant?: TableCardVariant;
 }
 
 const TableRoot = ({
@@ -276,6 +282,7 @@ const TableRoot = ({
   stickyHeader = false,
   containerStyle,
   containerClassName,
+  variant = 'default',
   ...props
 }: TableRootProps) => {
   const context = useContext(TableContext);
@@ -285,7 +292,15 @@ const TableRoot = ({
   return (
     <TableContext.Provider value={{ size: resolvedSize, stickyHeader }}>
       <div
-        className={cx('tw:overflow-x-auto', containerClassName)}
+        className={cx(
+          'tw:overflow-x-auto',
+          variant === 'muted' &&
+            cx(
+              'tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt',
+              MUTED_TABLE_SURFACE_CLASSES
+            ),
+          containerClassName
+        )}
         style={containerStyle}>
         <AriaTable
           className={(state) =>

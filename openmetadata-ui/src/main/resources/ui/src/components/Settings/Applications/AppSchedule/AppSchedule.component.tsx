@@ -257,8 +257,8 @@ const AppSchedule = ({
           maxRecords={1}
           ref={appRunsHistoryRef}
           showPagination={false}
-          onViewRunConfig={onViewRunConfig}
           variant={runsHistoryVariant}
+          onViewRunConfig={onViewRunConfig}
         />
       );
     }

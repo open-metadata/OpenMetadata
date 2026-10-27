@@ -14,7 +14,6 @@
 import {
   Badge,
   Box,
-  MUTED_TABLE_SURFACE_CLASSES,
   Table,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -32,10 +31,6 @@ import type {
   ParsedImportResult,
 } from './Members.types';
 import { toImportRows } from './Members.utils';
-
-// Muted surface inline rather than TableCard.Root: the card's overflow-hidden
-// would stop this stickyHeader table sticking.
-const IMPORT_RESULT_CONTAINER_CLASS = `tw:rounded-lg tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt ${MUTED_TABLE_SURFACE_CLASSES}`;
 
 // The result CSV carries one `status`/`details` pair per row — `status` gets a
 // coloured badge (with the failure reason inline), `details` is folded into it,
@@ -89,9 +84,10 @@ const MembersImportResultTable: FC<MembersImportResultTableProps> = ({
     <Table
       stickyHeader
       aria-label={t('label.import-entity', { entity: t('label.result') })}
-      containerClassName={IMPORT_RESULT_CONTAINER_CLASS}
+      containerClassName="tw:rounded-lg"
       data-testid="import-result-table"
-      size="sm">
+      size="sm"
+      variant="muted">
       <Table.Header>
         <Table.Head id={STATUS_KEY} label={t('label.status')} />
         {dataColumns.map((header) => (

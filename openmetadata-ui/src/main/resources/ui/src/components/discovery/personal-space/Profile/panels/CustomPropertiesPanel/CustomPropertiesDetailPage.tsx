@@ -200,7 +200,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
 
           <Tabs.Panel id="schema">
             <SchemaEditor
-              className="custom-properties-schemaEditor tw:dark:[&_.cm-editor]:bg-primary_alt"
+              className="custom-properties-schemaEditor tw:dark:[&_.cm-editor]:bg-primary_alt!"
               editorClass="custom-entity-schema"
               value={typeDetail?.schema ?? '{}'}
             />
