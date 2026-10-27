@@ -61,6 +61,7 @@ public abstract class ServiceEntityResource<
         R extends ServiceEntityRepository<T, S>,
         S extends ServiceConnectionEntityInterface>
     extends EntityResource<T, R> {
+  private static final String CONNECTION_FIELD = "connection";
 
   @Getter private final ServiceEntityRepository<T, S> serviceEntityRepository;
 
@@ -219,7 +220,7 @@ public abstract class ServiceEntityResource<
    */
   static boolean patchMayChangeConnection(JsonPatch patch) {
     return JsonPatchUtils.replacesWholeDocument(patch)
-        || JsonUtils.extractPatchedFields(patch).contains("connection");
+        || JsonUtils.extractPatchedFields(patch).contains(CONNECTION_FIELD);
   }
 
   private void requireSecretsReenteredOnRetarget(T original, JsonPatch patch) {

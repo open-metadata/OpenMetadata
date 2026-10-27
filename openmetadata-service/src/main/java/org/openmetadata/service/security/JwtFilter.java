@@ -109,6 +109,9 @@ public class JwtFilter implements ContainerRequestFilter {
   private static final Pattern TENANT_ID =
       Pattern.compile(
           "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+  // The path segment after the tenant in a v2 endpoint authority, as in .../{tenant}/v2.0.
+  private static final String AUTHORITY_VERSION_SEGMENT = "v2.0";
+  private static final String EMAIL_SEPARATOR = "@";
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   @Getter private String jwtTeamClaimMapping;
@@ -457,7 +460,8 @@ public class JwtFilter implements ContainerRequestFilter {
       // carries
       // the allowedEmailDomains fallback), so check that derived address rather than skipping the
       // allowlist for a bare principal claim.
-      String emailToCheck = claimedEmail != null ? claimedEmail : userName + "@" + principalDomain;
+      String emailToCheck =
+          claimedEmail != null ? claimedEmail : userName + EMAIL_SEPARATOR + principalDomain;
       validateConfiguredEmailDomain(
           emailToCheck,
           allowedEmailDomains,
@@ -505,7 +509,7 @@ public class JwtFilter implements ContainerRequestFilter {
             ? SecurityUtil.getFirstMatchJwtClaim(jwtPrincipalClaims, claims)
             : SecurityUtil.getClaimOrObject(
                 claims.get(jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY)));
-    return value != null && value.contains("@") ? value : null;
+    return value != null && value.contains(EMAIL_SEPARATOR) ? value : null;
   }
 
   public void checkValidationsForToken(
@@ -695,7 +699,7 @@ public class JwtFilter implements ContainerRequestFilter {
     List<String> segments =
         Stream.of(
                 URI.create(authenticationConfiguration.getAuthority().trim()).getPath().split("/"))
-            .filter(segment -> !segment.isEmpty() && !"v2.0".equals(segment))
+            .filter(segment -> !segment.isEmpty() && !AUTHORITY_VERSION_SEGMENT.equals(segment))
             .toList();
     String tenant = segments.isEmpty() ? null : segments.get(segments.size() - 1);
     if (tenant == null || MULTI_TENANT_AUTHORITIES.contains(tenant.toLowerCase(Locale.ROOT))) {
