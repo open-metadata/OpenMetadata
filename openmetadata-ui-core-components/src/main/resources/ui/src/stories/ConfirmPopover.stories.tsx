@@ -16,6 +16,11 @@ import { ConfirmPopover } from '../components/application/confirm-popover/confir
 import { Button } from '../components/base/buttons/button';
 import { ButtonUtility } from '../components/base/buttons/button-utility';
 import { Input } from '../components/base/input/input';
+import {
+  RadioButton,
+  RadioGroup,
+} from '../components/base/radio-buttons/radio-buttons';
+import { Typography } from '../components/foundations/typography';
 import { Trash01 } from '../icons';
 
 const wait = () => new Promise<void>((resolve) => setTimeout(resolve, 1000));
@@ -46,20 +51,64 @@ export const Delete: StoryObj = {
 };
 
 export const SoftOrHardDelete: StoryObj = {
-  render: () => (
-    <ConfirmPopover
-      actions={[{ key: 'soft', label: 'Soft delete', onPress: wait }]}
-      description="Soft delete hides it and can be restored. Delete removes it forever."
-      title='Delete "jane.doe"?'
-      onConfirm={wait}>
-      <ButtonUtility
-        color="tertiary"
-        icon={Trash01}
-        size="xs"
-        tooltip="Delete"
-      />
-    </ConfirmPopover>
-  ),
+  render: () => {
+    const SoftOrHardDeleteExample = () => {
+      const [choice, setChoice] = useState<'soft' | 'hard'>('soft');
+
+      return (
+        <ConfirmPopover
+          className="tw:w-90"
+          confirmText={choice === 'soft' ? 'Soft delete' : 'Delete permanently'}
+          content={
+            <RadioGroup
+              aria-label="Delete jane.doe"
+              className="tw:gap-2"
+              size="sm"
+              value={choice}
+              onChange={(value) => setChoice(value as 'soft' | 'hard')}>
+              <RadioButton
+                hint="Turn off this user. You can restore it later."
+                label={
+                  <Typography as="span" size="text-sm" weight="semibold">
+                    Soft delete
+                  </Typography>
+                }
+                size="sm"
+                value="soft"
+                variant="card"
+              />
+              <RadioButton
+                hint="Delete this user and all its metadata forever. This can't be undone."
+                label={
+                  <Typography
+                    as="span"
+                    color="danger"
+                    size="text-sm"
+                    weight="semibold">
+                    Delete permanently
+                  </Typography>
+                }
+                size="sm"
+                value="hard"
+                variant="card"
+              />
+            </RadioGroup>
+          }
+          title='Delete "jane.doe"'
+          onConfirm={wait}
+          onOpenChange={() => setChoice('soft')}>
+          <ButtonUtility
+            color="tertiary"
+            icon={Trash01}
+            size="xs"
+            tooltip="Delete"
+          />
+        </ConfirmPopover>
+      );
+    };
+
+    return <SoftOrHardDeleteExample />;
+  },
 };
 
 export const WithContent: StoryObj = {
