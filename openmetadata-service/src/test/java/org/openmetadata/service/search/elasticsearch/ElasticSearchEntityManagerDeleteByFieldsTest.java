@@ -2,9 +2,7 @@ package org.openmetadata.service.search.elasticsearch;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,36 +13,15 @@ import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import java.util.List;
 import java.util.function.Function;
 import org.apache.commons.lang3.tuple.Pair;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.MockedStatic;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.SearchRepository;
 
 class ElasticSearchEntityManagerDeleteByFieldsTest {
-
-  private ElasticsearchClient client;
-  private MockedStatic<Entity> entity;
-
-  @BeforeEach
-  void setUp() {
-    client = mock(ElasticsearchClient.class);
-    SearchRepository searchRepository = mock(SearchRepository.class);
-    when(searchRepository.getIndexOrAliasName(anyString())).thenAnswer(call -> call.getArgument(0));
-    entity = mockStatic(Entity.class);
-    entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
-  }
-
-  @AfterEach
-  void tearDown() {
-    entity.close();
-  }
 
   @Test
   @SuppressWarnings("unchecked")
   void deletingChildrenByFieldProceedsPastVersionConflicts() throws Exception {
+    ElasticsearchClient client = mock(ElasticsearchClient.class);
     DeleteByQueryResponse response = mock(DeleteByQueryResponse.class);
     when(response.deleted()).thenReturn(4L);
     when(response.versionConflicts()).thenReturn(2L);
