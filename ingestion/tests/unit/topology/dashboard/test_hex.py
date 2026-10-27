@@ -190,7 +190,7 @@ class TestHexSource(TestCase):
         self.hex_source.client = MagicMock()
         self.hex_source.client.get_projects = MagicMock(return_value=[SAMPLE_PROJECT, SAMPLE_PROJECT_2])
         self.hex_source.client.get_project_url = MagicMock(
-            return_value="https://app.hex.tech/app/projects/proj_123456789"
+            return_value="https://app.hex.tech/ws-uuid/app/proj_123456789"
         )
 
         # Initialize lineage components
@@ -320,10 +320,21 @@ class TestHexSource(TestCase):
         )
         self.assertEqual(
             dashboard_request.sourceUrl,
-            SourceUrl("https://app.hex.tech/app/projects/proj_123456789"),
+            SourceUrl("https://app.hex.tech/ws-uuid/app/proj_123456789"),
         )
         self.assertEqual(dashboard_request.tags, mock_tag_labels)
         self.assertEqual(dashboard_request.owners, mock_owner_ref)
+
+    def test_yield_dashboard_without_url(self):
+        """The dashboard is still ingested, without a link, when no URL can be built"""
+        self.hex_source.client.get_project_url = MagicMock(return_value=None)
+        self.hex_source._get_dashboard_tags = MagicMock(return_value=None)
+        self.hex_source.get_owner_ref = MagicMock(return_value=None)
+
+        results = list(self.hex_source.yield_dashboard(SAMPLE_PROJECT))
+
+        self.assertIsNone(results[0].left)
+        self.assertIsNone(results[0].right.sourceUrl)
 
     def test_yield_dashboard_error(self):
         """Test dashboard creation with error"""
