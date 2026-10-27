@@ -12,37 +12,37 @@
  */
 
 import {
-  Box,
-  Button,
-  ButtonUtility,
-  Input,
-  PaginationCardWithControls,
-  Skeleton,
-  Table,
-  TableCard,
-  Toggle,
-  Typography,
+    Box,
+    Button,
+    ButtonUtility,
+    Input,
+    PaginationCardWithControls,
+    Skeleton,
+    Table,
+    TableCard,
+    Toggle,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  CpuChip01,
-  NoSearch,
-  Plus,
-  Search,
-  Trash01,
+    CpuChip01,
+    NoSearch,
+    Plus,
+    Search,
+    Trash01
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM
 } from '../../../../../../constants/constants';
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../../../enums/entity.enum';

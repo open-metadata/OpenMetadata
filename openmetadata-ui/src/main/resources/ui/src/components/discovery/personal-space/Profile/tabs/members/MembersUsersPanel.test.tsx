@@ -12,11 +12,11 @@
  */
 
 import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 

@@ -12,11 +12,11 @@
  */
 
 import {
-  act,
-  fireEvent,
-  screen,
-  waitFor,
-  within,
+    act,
+    fireEvent,
+    screen,
+    waitFor,
+    within
 } from '@testing-library/react';
 import { useState } from 'react';
 import { User } from '../../../../../../generated/entity/teams/user';

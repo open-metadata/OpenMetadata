@@ -17,7 +17,7 @@ import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import { deleteEntity } from '../../../rest/miscAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import DeleteEntityPopover, {
-  DeleteEntityPopoverProps,
+    DeleteEntityPopoverProps
 } from './DeleteEntityPopover';
 
 const mockOnLogoutHandler = jest.fn();

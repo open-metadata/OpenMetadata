@@ -12,13 +12,13 @@
  */
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import {
-  AnnouncementStatus,
-  AnnouncementType,
+    AnnouncementStatus,
+    AnnouncementType
 } from '../../../../../generated/entity/feed/announcement';
 import { SystemAnnouncementsListState } from '../../../../../hooks/platform/useSystemAnnouncements';
 import {
-  AnnouncementEntity,
-  deleteAnnouncement,
+    AnnouncementEntity,
+    deleteAnnouncement
 } from '../../../../../rest/announcementsAPI';
 import { renderWithQueryClient } from '../../../../../test/unit/test-utils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';

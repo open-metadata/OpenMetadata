@@ -11,32 +11,32 @@
  *  limitations under the License.
  */
 import { act, renderHook } from '@testing-library/react';
-import { EntityType } from '../../enums/entity.enum';
-import { deleteEntity } from '../../rest/miscAPI';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { DeleteType } from '../../components/common/DeleteWidget/DeleteWidget.interface';
+import { EntityType } from '../../../enums/entity.enum';
+import { deleteEntity } from '../../../rest/miscAPI';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { DeleteType } from './DeleteWidget.interface';
 import { useEntityDelete, UseEntityDeleteOptions } from './useEntityDelete';
 
 const CURRENT_USER_ID = 'current-user-id';
 const mockOnLogoutHandler = jest.fn();
 const mockAfterDeleteAction = jest.fn();
 
-jest.mock('../../rest/miscAPI', () => ({
+jest.mock('../../../rest/miscAPI', () => ({
   deleteEntity: jest.fn(),
 }));
 
-jest.mock('../useApplicationStore', () => ({
+jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(
     (selector: (state: { currentUser: { id: string } }) => unknown) =>
       selector({ currentUser: { id: 'current-user-id' } })
   ),
 }));
 
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
+jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
   useAuthProvider: jest.fn(() => ({ onLogoutHandler: mockOnLogoutHandler })),
 }));
 
-jest.mock('../../utils/ToastUtils', () => ({
+jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
 }));

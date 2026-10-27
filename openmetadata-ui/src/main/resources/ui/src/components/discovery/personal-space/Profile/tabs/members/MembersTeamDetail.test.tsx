@@ -17,9 +17,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { deleteEntity } from '../../../../../../rest/miscAPI';
 import {
-  getTeams,
-  getTeamsAssetCounts,
-  patchTeamDetail,
+    getTeams,
+    getTeamsAssetCounts,
+    patchTeamDetail
 } from '../../../../../../rest/teamsAPI';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';

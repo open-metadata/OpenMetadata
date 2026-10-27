@@ -12,36 +12,36 @@
  */
 
 import {
-  Box,
-  Button,
-  ButtonUtility,
-  PaginationCardWithControls,
-  Popover,
-  PopoverTrigger,
-  Skeleton,
-  Table,
-  TableCard,
-  Typography,
+    Box,
+    Button,
+    ButtonUtility,
+    PaginationCardWithControls,
+    Popover,
+    PopoverTrigger,
+    Skeleton,
+    Table,
+    TableCard,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM
 } from '../../../../../../constants/constants';
 import {
-  NO_PERMISSION_FOR_ACTION,
-  NO_PERMISSION_TO_VIEW,
+    NO_PERMISSION_FOR_ACTION,
+    NO_PERMISSION_TO_VIEW
 } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../../../../enums/entity.enum';
@@ -54,9 +54,9 @@ import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getRoles } from '../../../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
-  checkPermission,
-  LIST_CAP,
-  userPermissions,
+    checkPermission,
+    LIST_CAP,
+    userPermissions
 } from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';

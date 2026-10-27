@@ -13,11 +13,11 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor
 } from '@testing-library/react';
 import { useCallback, useState } from 'react';
 import type { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';

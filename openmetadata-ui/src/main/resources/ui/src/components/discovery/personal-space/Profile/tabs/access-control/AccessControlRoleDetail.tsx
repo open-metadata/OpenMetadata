@@ -12,32 +12,32 @@
  */
 
 import {
-  Autocomplete,
-  Box,
-  Button,
-  ButtonUtility,
-  Card,
-  Input,
-  SelectItemType,
-  Table,
-  TableCard,
-  Tabs,
-  Typography,
+    Autocomplete,
+    Box,
+    Button,
+    ButtonUtility,
+    Card,
+    Input,
+    SelectItemType,
+    Table,
+    TableCard,
+    Tabs,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
-  Edit01 as Edit,
-  Trash01 as Delete,
+    Copy01,
+    Edit01 as Edit,
+    Trash01 as Delete
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    FC,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useFilter } from 'react-aria';
 import type { Key } from 'react-aria-components';
@@ -54,21 +54,21 @@ import { useAuth } from '../../../../../../hooks/authHooks';
 import { useClipboard } from '../../../../../../hooks/useClipBoard';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
-  getPolicies,
-  getRoleByName,
-  patchRole,
+    getPolicies,
+    getRoleByName,
+    patchRole
 } from '../../../../../../rest/rolesAPIV1';
 import {
-  getTeamByName,
-  patchTeamDetail,
+    getTeamByName,
+    patchTeamDetail
 } from '../../../../../../rest/teamsAPI';
 import { getUserById, updateUserDetail } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../utils/ToastUtils';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';

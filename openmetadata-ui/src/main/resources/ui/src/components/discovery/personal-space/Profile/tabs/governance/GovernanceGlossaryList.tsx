@@ -13,8 +13,8 @@
 
 /* eslint-disable openmetadata-imports/no-lower-layer-page-imports -- shared settings widget reused here */
 import {
-  ConfirmPopover,
-  PaginationCardWithControls,
+    ConfirmPopover,
+    PaginationCardWithControls
 } from '@openmetadata/ui-core-components';
 import { GlossaryTerm as GlossaryTermIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -22,21 +22,21 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaceholder from '../../../../../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM
 } from '../../../../../../constants/constants';
 import { RelationshipType } from '../../../../../../generated/entity/data/relationshipType';
 import { useAnchoredConfirm } from '../../../../../../hooks/popover/useAnchoredConfirm';
 import RelationshipTypeTable from '../../../../../../pages/GlossaryTermRelationSettings/RelationshipTypeTable';
 import { getRelationTypeUsageCounts } from '../../../../../../rest/glossaryAPI';
 import {
-  deleteRelationshipType,
-  listRelationshipTypes,
+    deleteRelationshipType,
+    listRelationshipTypes
 } from '../../../../../../rest/ontologyAPI';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../utils/ToastUtils';
 import { GovernanceView } from './Governance.types';
 

@@ -12,37 +12,37 @@
  */
 
 import {
-  Badge,
-  Box,
-  Button,
-  ConfirmPopover,
-  Dropdown,
-  Skeleton,
-  Tabs,
-  Typography,
+    Badge,
+    Box,
+    Button,
+    ConfirmPopover,
+    Dropdown,
+    Skeleton,
+    Tabs,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  Clock,
-  GridView,
-  LinkExternal01,
-  RefreshCcw01,
-  SlashCircle01,
-  Trash01,
-  User01,
+    Clock,
+    GridView,
+    LinkExternal01,
+    RefreshCcw01,
+    SlashCircle01,
+    Trash01,
+    User01
 } from '@openmetadata/ui-core-components/icons';
 import { RJSFSchema } from '@rjsf/utils';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, noop } from 'lodash';
 import {
-  FC,
-  ReactNode,
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    FC,
+    ReactNode,
+    RefObject,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -51,8 +51,8 @@ import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimit
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import {
-  App,
-  ScheduleTimeline,
+    App,
+    ScheduleTimeline
 } from '../../../../../../generated/entity/applications/app';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourcePermission';
 import { EntityReference } from '../../../../../../generated/entity/type';
@@ -60,20 +60,20 @@ import { Include } from '../../../../../../generated/type/include';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
-  configureApp,
-  deployApp,
-  getApplicationByName,
-  patchApplication,
-  restoreApp,
-  triggerOnDemandApp,
-  uninstallApp,
+    configureApp,
+    deployApp,
+    getApplicationByName,
+    patchApplication,
+    restoreApp,
+    triggerOnDemandApp,
+    uninstallApp
 } from '../../../../../../rest/applicationAPI';
 import { isCacheWarmupApplication } from '../../../../../../utils/ApplicationUtils';
 import { getRelativeTime } from '../../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
@@ -85,20 +85,20 @@ import AppSchedule from '../../../../../Settings/Applications/AppSchedule/AppSch
 import type { AppPlugin } from '../../../../../Settings/Applications/plugins/AppPlugin';
 import { HintToggle } from './AppConfigForm';
 import {
-  SUB_PAGE_EDIT_SCHEDULE,
-  SUB_PAGE_RUN_CONFIG,
-  TAB_CONFIGURATION,
-  TAB_LABEL_KEYS,
-  TAB_LIVE_INDEXING,
-  TAB_RUNS,
-  TAB_SCHEDULE,
+    SUB_PAGE_EDIT_SCHEDULE,
+    SUB_PAGE_RUN_CONFIG,
+    TAB_CONFIGURATION,
+    TAB_LABEL_KEYS,
+    TAB_LIVE_INDEXING,
+    TAB_RUNS,
+    TAB_SCHEDULE
 } from './AppDetail.constants';
 import type { ApplicationsViewProps } from './Applications.types';
 import {
-  getConfigTabKind,
-  hasScheduleTab,
-  isAppUnavailable,
-  isRuntimeDisabled,
+    getConfigTabKind,
+    hasScheduleTab,
+    isAppUnavailable,
+    isRuntimeDisabled
 } from './Applications.utils';
 import AppScheduleEdit from './AppScheduleEdit';
 import McpConfigForm from './McpConfigForm';

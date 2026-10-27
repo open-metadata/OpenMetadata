@@ -12,19 +12,19 @@
  */
 
 import {
-  Badge,
-  Box,
-  ButtonUtility,
-  ConfirmPopover,
-  Typography,
+    Badge,
+    Box,
+    ButtonUtility,
+    ConfirmPopover,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { DIMENSION_COLOR_PALETTE } from '../../../../../../constants/DataQualityDimension.constants';
 import {
-  DataQualityDimension,
-  ProviderType,
+    DataQualityDimension,
+    ProviderType
 } from '../../../../../../generated/tests/dataQualityDimension';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 

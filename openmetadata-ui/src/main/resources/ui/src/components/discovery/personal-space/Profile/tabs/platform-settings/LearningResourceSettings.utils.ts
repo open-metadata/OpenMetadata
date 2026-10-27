@@ -13,17 +13,17 @@
 
 import { PAGE_SIZE_BASE } from '../../../../../../constants/constants';
 import {
-  CATEGORIES,
-  DURATIONS,
-  LearningResourceStatus,
-  MAX_CHAIN_PAGES,
-  PAGE_IDS,
+    CATEGORIES,
+    DURATIONS,
+    LearningResourceStatus,
+    MAX_CHAIN_PAGES,
+    PAGE_IDS
 } from '../../../../../../constants/Learning.constants';
 import type { PageViewMode } from '../../../../../../generated/type/personaPreferences';
 import {
-  CreateLearningResource,
-  LearningResource,
-  LearningResourceType,
+    CreateLearningResource,
+    LearningResource,
+    LearningResourceType
 } from '../../../../../../rest/learningResourceAPI';
 
 export interface SelectItem {

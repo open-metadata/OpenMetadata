@@ -12,17 +12,17 @@
  */
 
 import {
-  Box,
-  Button,
-  Input,
-  Table,
-  TableCard,
-  Typography,
+    Box,
+    Button,
+    Input,
+    Table,
+    TableCard,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  DataQuality,
-  Plus,
-  Search,
+    DataQuality,
+    Plus,
+    Search
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
@@ -30,19 +30,19 @@ import { useTranslation } from 'react-i18next';
 import { DataQualityDimension } from '../../../../../../generated/tests/dataQualityDimension';
 import { deleteDataQualityDimension } from '../../../../../../rest/dataQualityDimensionAPI';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
-  countFor,
-  fetchDimensionList,
-  filterDimensions,
+    countFor,
+    fetchDimensionList,
+    filterDimensions
 } from './DataQualitySettings.utils';
 import {
-  DimensionActionsCell,
-  DimensionNameCell,
-  DimensionTypeCell,
+    DimensionActionsCell,
+    DimensionNameCell,
+    DimensionTypeCell
 } from './DimensionCells';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';

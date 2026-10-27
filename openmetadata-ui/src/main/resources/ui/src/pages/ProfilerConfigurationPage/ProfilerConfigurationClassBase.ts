@@ -15,8 +15,8 @@ import { FieldProps } from '@rjsf/utils';
 import type { TFunction } from 'i18next';
 import type { ComponentType } from 'react';
 import type {
-  PlatformSettingsFormProps,
-  PlatformSettingsPageProps,
+    PlatformSettingsFormProps,
+    PlatformSettingsPageProps
 } from '../../components/discovery/personal-space/Profile/tabs/platform-settings/PlatformSettings.types';
 
 export interface SparkAgentConfigProps {

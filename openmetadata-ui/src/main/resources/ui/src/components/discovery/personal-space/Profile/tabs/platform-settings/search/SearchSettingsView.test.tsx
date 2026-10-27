@@ -12,24 +12,24 @@
  */
 
 import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
+    act,
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+    within
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import {
-  getSettingsByType,
-  restoreSettingsConfig,
-  updateSettingsConfig,
+    getSettingsByType,
+    restoreSettingsConfig,
+    updateSettingsConfig
 } from '../../../../../../../rest/settingConfigAPI';
 import searchSettingsClassBase from '../../../../../../../utils/SearchSettingsClassBase';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../../utils/ToastUtils';
 import SearchSettingsView from './SearchSettingsView';
 

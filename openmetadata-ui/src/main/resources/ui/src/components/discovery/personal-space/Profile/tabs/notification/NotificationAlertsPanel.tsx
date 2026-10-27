@@ -12,47 +12,47 @@
  */
 
 import {
-  Box,
-  Button,
-  ButtonUtility,
-  PaginationCardWithControls,
-  Skeleton,
-  Table,
-  TableCard,
-  Typography,
+    Box,
+    Button,
+    ButtonUtility,
+    PaginationCardWithControls,
+    Skeleton,
+    Table,
+    TableCard,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  Edit01 as Edit,
-  Trash01 as Delete,
+    Edit01 as Edit,
+    Trash01 as Delete
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM
 } from '../../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import {
-  AlertType,
-  EventSubscription,
-  ProviderType,
+    AlertType,
+    EventSubscription,
+    ProviderType
 } from '../../../../../../generated/events/eventSubscription';
 import { Paging } from '../../../../../../generated/type/paging';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import {
-  getAlertsFromName,
-  getAllAlerts,
+    getAlertsFromName,
+    getAllAlerts
 } from '../../../../../../rest/alertsAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
