@@ -17,8 +17,9 @@ Run profiler metrics on the table
 import traceback
 from abc import ABC, abstractmethod
 from collections import namedtuple
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime as _datetime
+from typing import Any
 
 from sqlalchemy import (
     BigInteger,
@@ -32,7 +33,7 @@ from sqlalchemy import (
 )
 from sqlalchemy import text as sa_text
 from sqlalchemy.exc import ProgrammingError
-from sqlalchemy.sql.expression import ColumnOperators, and_, cte
+from sqlalchemy.sql.expression import ColumnElement, ColumnOperators, and_, cte
 from sqlalchemy.types import String
 
 from metadata.generated.schema.entity.data.table import Table as OMTable
@@ -173,7 +174,7 @@ class AbstractTableMetricComputer(ABC):
 
     def _build_query(
         self,
-        columns: list[Column],
+        columns: Sequence[ColumnElement[Any]],
         table: Table,
         where_clause: list[ColumnOperators] | None = None,
     ):
