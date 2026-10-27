@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T03:34:29Z",
+  "generatedAt": "2026-10-27T03:35:55Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "38996045093",
-      "sourceSha": "b68f1d73b530ff98e65eeee5474df0b536cf8711",
-      "recordedAt": "2026-10-17T03:35:44Z"
-    },
     {
       "runId": "39091104477",
       "sourceSha": "38286a8af62e39573727bf879248f413ddca1b10",
@@ -53,6 +48,11 @@
       "runId": "40261121182",
       "sourceSha": "f862ad021059f748ac55880ffa495166c1836498",
       "recordedAt": "2026-10-26T03:34:29Z"
+    },
+    {
+      "runId": "40440462393",
+      "sourceSha": "c226e1fa0129852bdbfa62568459efd107d56bb3",
+      "recordedAt": "2026-10-27T03:35:55Z"
     }
   ],
   "entries": {
@@ -96,16 +96,6 @@
       "file": "Pages/UserCreationWithPersona.spec.ts",
       "title": "Create user with persona \u203a Create user with persona and verify on profile",
       "lastSeenSha": "5cbc32a8c916ac86f7f343fd99c73bbcd5398dd0",
-      "hardFailure": false
-    },
-    "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database": {
-      "observations": [
-        "38996045093"
-      ],
-      "project": "ImportExport",
-      "file": "Features/BulkImport.spec.ts",
-      "title": "Bulk Import Export \u203a Database",
-      "lastSeenSha": "b68f1d73b530ff98e65eeee5474df0b536cf8711",
       "hardFailure": false
     },
     "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database Schema": {
@@ -263,16 +253,6 @@
       "title": "Multiple Filters Alert",
       "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
       "hardFailure": true
-    },
-    "chromium :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Create Data Contract and validate for Database Schema": {
-      "observations": [
-        "38996045093"
-      ],
-      "project": "chromium",
-      "file": "Pages/DataContracts.spec.ts",
-      "title": "Data Contracts \u203a Create Data Contract and validate for Database Schema",
-      "lastSeenSha": "b68f1d73b530ff98e65eeee5474df0b536cf8711",
-      "hardFailure": false
     },
     "chromium :: Pages/Entity.spec.ts :: Api Endpoint \u203a Inactive Announcement create & delete": {
       "observations": [
