@@ -355,8 +355,11 @@ const OntologyGraphView = ({
   const canCreateChangeSet = canCreateDefinition(
     ResourceEntity.ONTOLOGY_CHANGE_SET
   );
-  const canCreateNewClass =
-    canCreateConcept && canCreateChangeSet && canEditOntology;
+  const canCreateNewClass = [
+    canCreateConcept,
+    canCreateChangeSet,
+    canEditOntology,
+  ].every(Boolean);
   const canCreateProperty = canCreateDefinition(
     ResourceEntity.ONTOLOGY_PROPERTY
   );
@@ -851,7 +854,7 @@ const OntologyGraphView = ({
     ) : null;
 
   const renderAddConcept = () =>
-    canCreateNewClass && onRequestCreateConcept ? (
+    [canCreateNewClass, Boolean(onRequestCreateConcept)].every(Boolean) ? (
       <Button
         className="tw:absolute tw:bottom-4 tw:right-4 tw:z-6"
         data-testid="ontology-canvas-add-concept"
