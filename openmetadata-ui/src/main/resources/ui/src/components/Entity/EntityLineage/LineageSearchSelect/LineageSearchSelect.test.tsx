@@ -71,9 +71,8 @@ const mockReactFlowInstance = {
   ]),
 };
 
-// Default `useLineageStore` state, merged for both the single-object call
-// (`useLineageStore()`) and the `useShallow` multi-field selector call the
-// component makes. Individual tests override via `mockStoreImplementation`.
+// The default store state; each test starts from it and overrides fields with
+// `setStoreState`.
 const mockDefaultStoreValue = {
   nodes: mockedNodes,
   reactFlowInstance: mockReactFlowInstance as
@@ -88,27 +87,27 @@ const mockDefaultStoreValue = {
   setSelectedColumn: mockColumnClick,
 };
 
-const mockStoreImplementation =
-  (overrides: Partial<typeof mockDefaultStoreValue> = {}) =>
-  (selector?: (state: typeof mockDefaultStoreValue) => unknown) => {
-    const state = { ...mockDefaultStoreValue, ...overrides };
-
-    return selector ? selector(state) : state;
-  };
-
 jest.mock('../../../Lineage/Lineage/LineageHandlersContext', () => ({
   useLineageHandlers: jest.fn(),
 }));
 
+// A real zustand store, so subscriptions re-render the component as they do
+// in the app. It starts empty; beforeEach fills it.
 jest.mock('../../../../hooks/useLineageStore', () => ({
-  useLineageStore: Object.assign(
-    jest.fn((selector) =>
-      selector ? selector(mockDefaultStoreValue) : mockDefaultStoreValue
-    ),
-    // The component reads `nodes` imperatively rather than subscribing to it.
-    { getState: () => mockDefaultStoreValue }
-  ),
+  useLineageStore: jest.requireActual('zustand').create(() => ({})),
 }));
+
+const setStoreState = (
+  state: Partial<typeof mockDefaultStoreValue>,
+  replace = false
+) =>
+  act(() => {
+    (
+      useLineageStore as unknown as {
+        setState: (next: object, replace?: boolean) => void;
+      }
+    ).setState(state, replace);
+  });
 
 describe('LineageSearchSelect', () => {
   let user: ReturnType<typeof userEvent.setup>;
@@ -125,9 +124,7 @@ describe('LineageSearchSelect', () => {
     (useLineageHandlers as jest.Mock).mockImplementation(() => ({
       onNodeClick: mockNodeClick,
     }));
-    (useLineageStore as unknown as jest.Mock).mockImplementation(
-      mockStoreImplementation()
-    );
+    setStoreState({ ...mockDefaultStoreValue }, true);
   });
 
   afterEach(() => jest.useRealTimers());
@@ -195,6 +192,24 @@ describe('LineageSearchSelect', () => {
     expect(screen.queryByTestId('option-test1')).not.toBeInTheDocument();
   });
 
+  it('should add nodes loaded while the menu is open', async () => {
+    render(<LineageSearchSelect />);
+    await openDropdown();
+    await screen.findByTestId('option-test1');
+
+    setStoreState({
+      nodes: [
+        ...mockedNodes,
+        {
+          data: { node: { fullyQualifiedName: 'test4', name: 'test4' } },
+          position: { x: 400, y: 400 },
+        },
+      ],
+    });
+
+    expect(await screen.findByTestId('option-test4')).toBeInTheDocument();
+  });
+
   it('should show the selection and clear the column when the input is cleared', async () => {
     render(<LineageSearchSelect />);
     await openDropdown();
@@ -208,9 +223,7 @@ describe('LineageSearchSelect', () => {
   });
 
   it('should not render when platform lineage is enabled', () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementation(
-      mockStoreImplementation({ isPlatformLineage: true })
-    );
+    setStoreState({ isPlatformLineage: true });
 
     const { container } = render(<LineageSearchSelect />);
 
@@ -218,9 +231,7 @@ describe('LineageSearchSelect', () => {
   });
 
   it('should not render when platform view is not None', () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementation(
-      mockStoreImplementation({ platformView: LineagePlatformView.Service })
-    );
+    setStoreState({ platformView: LineagePlatformView.Service });
 
     const { container } = render(<LineageSearchSelect />);
 

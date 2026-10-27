@@ -47,6 +47,7 @@ import {
   getSceneSearch,
   getScreenFill,
   getSemanticZoomDirection,
+  isSceneNodeDrillableWithChildren,
   type SceneLayoutBox,
 } from './LineageMap.utils';
 
@@ -477,6 +478,17 @@ describe('LineageMap utils', () => {
         getRailDrillFallbackNode([service('empty', 0), service('full', 64)])
           ?.fullyQualifiedName
       ).toBe('full');
+    });
+
+    it('treats an empty or non-expandable node as no unaimed drill target', () => {
+      expect(isSceneNodeDrillableWithChildren(service('full', 64))).toBe(true);
+      expect(isSceneNodeDrillableWithChildren(service('empty', 0))).toBe(false);
+      expect(
+        isSceneNodeDrillableWithChildren({
+          ...service('ghost', 5),
+          isExpandable: false,
+        })
+      ).toBe(false);
     });
 
     it('falls back to the first drillable node when none report children', () => {

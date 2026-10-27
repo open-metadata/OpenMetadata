@@ -137,6 +137,7 @@ import {
   getSemanticZoomDirection,
   isContainerSceneNode,
   isSceneNodeDrillable,
+  isSceneNodeDrillableWithChildren,
   LineageMapEmptyState,
   LINEAGE_MAP_RAIL_STOPS,
   type LineageSceneRequest,
@@ -158,6 +159,7 @@ const LINEAGE_MAP_ONBOARDING_COOKIE = 'lineageMapsOnboardingSeen';
 const SEMANTIC_ZOOM_COOLDOWN = 450;
 // A drill waits for the zoom gesture to settle, so overshooting a pinch while
 // zooming in to read a card does not open the next level.
+// ADR:2026-10-27-lineage-semantic-zoom-drills-at-35-percent-after-settling
 const SEMANTIC_ZOOM_IN_SETTLE_MS = 250;
 // Button and keyboard zoom drill the drillable node nearest the canvas centre,
 // looking only inside this share of the canvas on each axis.
@@ -1533,7 +1535,8 @@ const LineageMapCanvas = ({
 
   // Only drill into a node the user is plainly zooming into: the one under the
   // pointer for wheel and pinch, otherwise the selected node or the drillable
-  // node nearest the canvas centre. Anything else stays a plain zoom.
+  // node with children nearest the canvas centre. Anything else stays a plain
+  // zoom, and the rail falls back to getRailDrillFallbackNode.
   const pickZoomTargetNode = useCallback(
     (event?: ZoomGestureEvent | null) => {
       if (!reactFlowInstance || !wrapperRef.current) {
@@ -1580,7 +1583,7 @@ const LineageMapCanvas = ({
           ...region,
         }) as Node<SceneFlowNodeData>[]
       )
-        .filter(isDrillable)
+        .filter((node) => isSceneNodeDrillableWithChildren(node.data.sceneNode))
         .map((node) => ({
           node,
           ...(node.positionAbsolute ?? node.position),

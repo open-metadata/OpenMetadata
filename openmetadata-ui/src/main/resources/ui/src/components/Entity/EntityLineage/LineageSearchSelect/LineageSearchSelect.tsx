@@ -23,6 +23,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { Collection, Key, ListBoxLoadMoreItem } from 'react-aria-components';
@@ -43,6 +44,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { useLineageHandlers } from '../../../Lineage/Lineage/LineageHandlersContext';
+import { getVisibleOptions } from './LineageSearchSelect.utils';
 
 type LineageSearchOption = SelectItemType & {
   label: string;
@@ -52,7 +54,11 @@ type LineageSearchOption = SelectItemType & {
 const LineageSearchSelect = () => {
   const { t } = useTranslation();
   const { onNodeClick } = useLineageHandlers();
-  // `nodes` is read when needed, not subscribed to: it changes every drag frame.
+  // `nodes` itself is read when needed, not subscribed to: it changes every
+  // drag frame. The id key changes only when nodes are added or removed.
+  const nodeIdsKey = useLineageStore((s) =>
+    s.nodes.map((node) => node.id).join('|')
+  );
   const {
     reactFlowInstance,
     zoomValue,
@@ -73,6 +79,9 @@ const LineageSearchSelect = () => {
     []
   );
   const [searchValue, setSearchValue] = useState<string>('');
+  const searchValueRef = useRef(searchValue);
+  searchValueRef.current = searchValue;
+  const isOpenRef = useRef(false);
   const [inputValue, setInputValue] = useState<string>('');
   const [selectedOption, setSelectedOption] =
     useState<LineageSearchOption | null>(null);
@@ -161,13 +170,6 @@ const LineageSearchSelect = () => {
     return Array.from(optionsMap.values());
   }, []);
 
-  const getVisibleOptions = (options: LineageSearchOption[], value: string) =>
-    value
-      ? options.filter((option) =>
-          option.label.toLowerCase().includes(value.toLowerCase())
-        )
-      : options.slice(0, INITIAL_NODE_ITEMS_LENGTH);
-
   const filterOptions = useCallback(
     (value: string) => setRenderedOptions(getVisibleOptions(allOptions, value)),
     [allOptions]
@@ -193,15 +195,27 @@ const LineageSearchSelect = () => {
     );
   };
 
-  // Options are rebuilt on every open, so they always match the current graph.
-  // Typing into the focused input also reopens the menu, after the filter for
-  // that text was queued; rebuilding cancels it, so apply the text here.
+  // Rebuilding replaces `allOptions`, which cancels a queued filter (typing
+  // into the focused input reopens the menu after queueing one), so the
+  // current text is applied here.
+  const refreshOptions = useCallback(() => {
+    const options = generateNodeOptions();
+    setAllOptions(options);
+    setRenderedOptions(getVisibleOptions(options, searchValueRef.current));
+  }, [generateNodeOptions]);
+
+  // While open, follow nodes being added or removed, but not drag updates.
+  useEffect(() => {
+    if (isOpenRef.current) {
+      refreshOptions();
+    }
+  }, [nodeIdsKey, refreshOptions]);
+
   const handleOpenChange = useCallback(
     (open: boolean) => {
+      isOpenRef.current = open;
       if (open) {
-        const options = generateNodeOptions();
-        setAllOptions(options);
-        setRenderedOptions(getVisibleOptions(options, searchValue));
+        refreshOptions();
 
         return;
       }
@@ -209,7 +223,7 @@ const LineageSearchSelect = () => {
       setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
       debouncedFilterOptions.cancel();
     },
-    [allOptions, debouncedFilterOptions, generateNodeOptions, searchValue]
+    [allOptions, debouncedFilterOptions, refreshOptions]
   );
 
   const onOptionSelect = useCallback(

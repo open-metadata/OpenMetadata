@@ -650,12 +650,15 @@ export const isSceneNodeDrillable = (
 } => Boolean(node?.isExpandable && node.fullyQualifiedName && node.entityType);
 
 // The scene API marks every container expandable, even a service with no
-// assets left, so a blind rail drill prefers a node with children to land on.
-// The childrenCount check can go once the API stops marking empty containers.
+// assets left, so a drill that the user did not aim at a node lands only on a
+// node with children. The childrenCount check can go once the API stops
+// marking empty containers.
+export const isSceneNodeDrillableWithChildren = (node?: LineageSceneNode) =>
+  isSceneNodeDrillable(node) && (node.childrenCount ?? 0) > 0;
+
 export const getRailDrillFallbackNode = (nodes: LineageSceneNode[]) =>
-  nodes.find(
-    (node) => isSceneNodeDrillable(node) && (node.childrenCount ?? 0) > 0
-  ) ?? nodes.find(isSceneNodeDrillable);
+  nodes.find(isSceneNodeDrillableWithChildren) ??
+  nodes.find(isSceneNodeDrillable);
 
 export const getDrillBand = (node: LineageSceneNode) => {
   if (node.band === LineageBand.Layer) {
@@ -795,7 +798,7 @@ export const getLineageEditColumnPair = (
 // fills, not by a zoom value, so it behaves the same for 5 nodes or 500.
 export const ZOOM_OUT_SCREEN_FILL = 1 / 3;
 // A 340px container on a ~1400px canvas drills at zoom ~1.43, well short of
-// the 2.5 maximum.
+// the 2.5 maximum. ADR:2026-10-27-lineage-semantic-zoom-drills-at-35-percent-after-settling
 export const ZOOM_IN_SCREEN_FILL = 0.35;
 
 interface Size {
