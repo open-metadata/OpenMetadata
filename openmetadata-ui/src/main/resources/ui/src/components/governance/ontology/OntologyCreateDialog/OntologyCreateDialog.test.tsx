@@ -59,12 +59,15 @@ const status = (baseUri: string) => ({
   storageType: 'FUSEKI',
 });
 
-const renderDialog = async (ontologies: Ontology[] = []) => {
+const renderDialog = async (
+  ontologies: Ontology[] = [],
+  isListKnown = true
+) => {
   const onClose = jest.fn();
   const onCreated = jest.fn();
   renderWithQueryClient(
     <OntologyCreateDialog
-      ontologies={ontologies}
+      ontologies={isListKnown ? ontologies : undefined}
       onClose={onClose}
       onCreated={onCreated}
     />
@@ -193,6 +196,17 @@ describe('OntologyCreateDialog', () => {
       screen.queryByText('message.ontology-prefix-in-use')
     ).not.toBeInTheDocument();
     expect(createButton()).toBeEnabled();
+  });
+
+  it('keeps Create disabled and says why while the ontology list is unknown', async () => {
+    const user = userEvent.setup();
+    await renderDialog([], false);
+    await user.type(nameInput(), 'Customer 360');
+
+    expect(
+      screen.getByText('message.ontology-prefix-check-unavailable')
+    ).toBeVisible();
+    expect(createButton()).toBeDisabled();
   });
 
   it.each(['.', '..', '.hidden', '-dash'])(

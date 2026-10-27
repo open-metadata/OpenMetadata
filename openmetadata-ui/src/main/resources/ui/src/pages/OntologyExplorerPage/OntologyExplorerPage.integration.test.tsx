@@ -653,6 +653,108 @@ describe('Ontology Studio mode-switch integration', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('opens the New class panel for an ontology created while another one is selected', async () => {
+    const created: Ontology = {
+      id: 'created',
+      name: 'Created',
+      fullyQualifiedName: 'Created',
+      iri: 'urn:created',
+      namespace: 'urn:created#',
+    };
+    const other: Ontology = {
+      id: 'other',
+      name: 'Other',
+      fullyQualifiedName: 'Other',
+      iri: 'urn:other',
+      namespace: 'urn:other#',
+    };
+    let catalog: Ontology[] = [other];
+    mockFetchRdfConfig.mockResolvedValue(rdfStatus);
+    mockListOntologies.mockImplementation(async () => ({
+      data: catalog,
+      paging: { total: catalog.length },
+    }));
+    mockCreateOntology.mockImplementation(async () => {
+      catalog = [created, other];
+
+      return created;
+    });
+    mockGetOntology.mockImplementation((id) =>
+      Promise.resolve(id === created.id ? created : other)
+    );
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/?ontology=other']}>
+          <OntologyExplorerPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+        'data-scope-key',
+        'ontology:other'
+      )
+    );
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(await screen.findByTestId('ontology-create'));
+    fireEvent.change(await screen.findByTestId('ontology-create-name'), {
+      target: { value: 'Created' },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-create-submit')).toBeEnabled()
+    );
+    fireEvent.click(screen.getByTestId('ontology-create-submit'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+        'data-scope-key',
+        'ontology:created'
+      )
+    );
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+  });
+
+  it('keeps Create disabled when the ontology list failed to load', async () => {
+    const other: Ontology = {
+      id: 'other',
+      name: 'Other',
+      fullyQualifiedName: 'Other',
+      iri: 'https://open-metadata.org/onto/customer',
+      namespace: 'https://open-metadata.org/onto/customer#',
+    };
+    mockFetchRdfConfig.mockResolvedValue(rdfStatus);
+    mockListOntologies.mockRejectedValue({ response: { status: 500 } });
+    mockGetOntology.mockResolvedValue(other);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/?ontology=other']}>
+          <OntologyExplorerPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+        'data-scope-key',
+        'ontology:other'
+      )
+    );
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(await screen.findByTestId('ontology-create'));
+    fireEvent.change(await screen.findByTestId('ontology-create-name'), {
+      target: { value: 'Customer 360' },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('ontology-create-iri-preview')
+      ).toHaveTextContent('https://open-metadata.org/onto/customer#')
+    );
+
+    expect(
+      screen.getByText('message.ontology-prefix-check-unavailable')
+    ).toBeVisible();
+    expect(screen.getByTestId('ontology-create-submit')).toBeDisabled();
+  });
+
   it.each(['pending', 'resolved'])(
     'hydrates Settings from detail when the request is %s',
     async (status) => {
