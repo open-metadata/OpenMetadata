@@ -1252,6 +1252,19 @@ test.describe('Context Center - Documents Page', () => {
       .waitFor({ state: 'visible' });
     await waitForAllLoadersToDisappear(page);
 
+    // "All" is one newest-first page of 15 across every worker, so another
+    // worker archiving its pagination docs at the same moment pushes these two
+    // off it. Each worker signs in as its own user, so "Created by me" holds
+    // only this worker's archive.
+    const mineResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/contextCenter/drive/files?') &&
+        response.url().includes('updatedBy=')
+    );
+    await page.getByRole('tab', { name: 'Created by me' }).click();
+    await mineResponse;
+    await waitForAllLoadersToDisappear(page);
+
     await expect(page.getByTestId(`archive-row-${doc1.id}`)).toBeVisible();
     await expect(page.getByTestId(`archive-row-${doc2.id}`)).toBeVisible();
   });
