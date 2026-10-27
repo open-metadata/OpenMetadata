@@ -1657,8 +1657,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
       AutoPilotAppConfig runtimeConfig =
           JsonUtils.readOrConvertValue(
               AutoPilotApp.getRuntimeConfig(app, configPayload), AutoPilotAppConfig.class);
+      if (runtimeConfig.getActive() == null) {
+        throw new BadRequestException("AutoPilot active must be a boolean");
+      }
       if (!runtimeConfig.getActive()) {
         return;
+      }
+      if (nullOrEmpty(runtimeConfig.getEntityLink())) {
+        throw new BadRequestException("AutoPilot requires a service entity link");
       }
       EntityLink entityLink = EntityLink.parse(runtimeConfig.getEntityLink());
       if (!Entity.getServiceEntityTypes().contains(entityLink.getEntityType())) {

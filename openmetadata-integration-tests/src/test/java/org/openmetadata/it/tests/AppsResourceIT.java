@@ -83,6 +83,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -1005,6 +1006,53 @@ public class AppsResourceIT {
   }
 
   @Test
+  void test_autopilotInvalidPayloadDoesNotStartWorkflow(TestNamespace ns) {
+    User caller = createAutoPilotTriggerCaller(ns);
+    OpenMetadataClient client =
+        SdkClients.createClient(caller.getEmail(), caller.getEmail(), new String[] {});
+    App app = Apps.getByName("AutoPilotApplication");
+    Object originalConfig = app.getAppConfiguration();
+    List<String> instancesBefore =
+        autoPilotInstances(null).stream().map(ProcessInstance::getId).sorted().toList();
+    try {
+      setAutoPilotConfig(app, Map.of("active", true));
+      String triggerPath = "/v1/apps/trigger/AutoPilotApplication";
+      assertEquals(
+          400,
+          assertThrows(
+                  InvalidRequestException.class,
+                  () -> client.getHttpClient().executeForString(HttpMethod.POST, triggerPath, null))
+              .getStatusCode());
+      for (String payload :
+          List.of(
+              "{}",
+              "{\"active\":null}",
+              "{\"active\":\"invalid\"}",
+              "{\"entityLink\":null}",
+              "{\"entityLink\":\"\"}",
+              "{\"entityLink\":\" \"}",
+              "{\"entityLink\":\"invalid-link\"}")) {
+        assertEquals(
+            400,
+            assertThrows(
+                    InvalidRequestException.class,
+                    () ->
+                        client
+                            .getHttpClient()
+                            .executeForString(HttpMethod.POST, triggerPath, payload),
+                    payload)
+                .getStatusCode(),
+            payload);
+      }
+      assertEquals(
+          instancesBefore,
+          autoPilotInstances(null).stream().map(ProcessInstance::getId).sorted().toList());
+    } finally {
+      setAutoPilotConfig(app, originalConfig);
+    }
+  }
+
+  @Test
   void test_autopilotInactiveDoesNotRequireTarget(TestNamespace ns) {
     User caller = createAutoPilotTriggerCaller(ns);
     OpenMetadataClient client =
@@ -1027,12 +1075,22 @@ public class AppsResourceIT {
               HttpMethod.POST,
               "/v1/apps/trigger/AutoPilotApplication",
               Map.of("entityLink", "invalid-link"));
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.POST, "/v1/apps/trigger/AutoPilotApplication", "{\"entityLink\":null}");
 
       setAutoPilotConfig(app, Map.of("active", true));
       client
           .getHttpClient()
           .executeForString(
               HttpMethod.POST, "/v1/apps/trigger/AutoPilotApplication", Map.of("active", false));
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.POST,
+              "/v1/apps/trigger/AutoPilotApplication",
+              "{\"active\":false,\"entityLink\":null}");
       assertEquals(
           instancesBefore,
           autoPilotInstances(null).stream().map(ProcessInstance::getId).sorted().toList());
