@@ -19,17 +19,12 @@ import {
   Card,
   Checkbox,
   Dialog,
-  FeaturedIcon,
   Input,
   Modal,
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Search,
-  Share07,
-  XClose,
-} from '@openmetadata/ui-core-components/icons';
+import { Search, XClose } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import {
@@ -95,6 +90,7 @@ import { NEW_RELATION_TYPE_PREFIX } from '../../../OntologyExplorer/Relationship
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
+import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
 import OntologyConceptDataGraph from '../OntologyGraphView/OntologyConceptDataGraph';
 import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
@@ -277,49 +273,6 @@ export interface OntologyModelStats {
 interface ConceptEditorRequest {
   readonly conceptId?: string;
 }
-
-const OntologyEmptyCard = ({
-  canAdd,
-  onAdd,
-}: {
-  canAdd: boolean;
-  onAdd: () => void;
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <div className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-7 tw:flex tw:items-center tw:justify-center">
-      <Card
-        className="tw:pointer-events-auto tw:w-85"
-        data-testid="ontology-empty-card"
-        variant="elevated">
-        <Card.Content>
-          <Box
-            align="center"
-            className="tw:py-4 tw:text-center"
-            direction="col"
-            gap={3}>
-            <FeaturedIcon color="brand" icon={Share07} size="md" />
-            <Typography as="h3" size="text-md" weight="semibold">
-              {t('label.ontology-has-no-concepts')}
-            </Typography>
-            <Typography color="secondary" size="text-xs">
-              {t('message.ontology-empty-card-description')}
-            </Typography>
-            {canAdd ? (
-              <Button
-                data-testid="ontology-empty-card-add-concept"
-                size="sm"
-                onPress={onAdd}>
-                {t('label.add-entity', { entity: t('label.concept') })}
-              </Button>
-            ) : null}
-          </Box>
-        </Card.Content>
-      </Card>
-    </div>
-  );
-};
 
 const OntologyGraphView = ({
   ontology,
