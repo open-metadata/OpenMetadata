@@ -78,8 +78,8 @@ interface UseLeftPanelCrossDropProps {
  *
  * Both directions are hit-tested with the pointer against the panel's box.
  * Rows map one to one between the grids, which share row height and margin;
- * the panel's grid starts one margin of padding below the panel's top, so a
- * drop into it takes that off and a drop out of it does not.
+ * the panel's edit grid has no container padding, so both directions map the
+ * pointer's offset from the panel's top straight to a row.
  */
 export const useLeftPanelCrossDrop = ({
   leftPanelWidget,

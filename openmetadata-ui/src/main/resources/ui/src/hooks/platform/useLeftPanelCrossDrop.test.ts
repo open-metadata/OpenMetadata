@@ -73,7 +73,7 @@ describe('useLeftPanelCrossDrop', () => {
         domain,
         dragged,
         dragged,
-        // Right half, in the panel grid's third row (one margin of padding).
+        // Right half, in the panel grid's third row (no container padding).
         pointerAt(450, 2 * 116 + 10),
         {} as HTMLElement
       )
