@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DataModelType,
 )
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.dashboard.hexConnection import HexConnection
 from metadata.generated.schema.entity.services.dashboardService import DashboardServiceType
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardServiceMetadataPipeline,
@@ -200,16 +201,17 @@ class FakeOpenMetadata:
         self.entities: dict[str, object] = {}
         self.searches: list[str] = []
 
-    def search_in_any_service(self, entity_type, fqn_search_string):
+    def search_in_any_service(self, entity_type, fqn_search_string, fetch_multiple_entities=False):
+        """The server's FQN wildcard search is case-insensitive"""
         self.searches.append(fqn_search_string)
-        return next(
-            (
-                table
-                for table in self.tables
-                if fnmatch.fnmatch(table.fullyQualifiedName.root.lower(), fqn_search_string.lower())
-            ),
-            None,
-        )
+        hits = [
+            table
+            for table in self.tables
+            if fnmatch.fnmatch(table.fullyQualifiedName.root.lower(), fqn_search_string.lower())
+        ]
+        if not hits:
+            return None
+        return hits if fetch_multiple_entities else hits[0]
 
     def get_by_name(self, entity, fqn, **_):
         found = self.entities.get(fqn)
@@ -270,8 +272,10 @@ def make_source():
         source.client.get_data_connection_types.return_value = {"conn_snowflake": "snowflake"}
         source.client.get_project_url.return_value = "https://app.hex.tech/app/projects/proj_1"
         source.datamodel_source_state = set()
+        source.dashboard_source_state = set()
         source.hex_project_lineage = {}
         source._cell_lineage = None
+        source._connection_types = None
         return source
 
     return _make
@@ -432,6 +436,57 @@ class TestHexCellLineage:
             f"{model_fqn}.pacing.revenue": ["snowflake_prod.prod.sales.orders.amount"],
         }
 
+    def test_dashboard_links_its_data_model(self, make_source):
+        source = make_source([REVENUE_CELL])
+        source.context.get.return_value = SimpleNamespace(dashboard_service=SERVICE, charts=[], dataModels=[PROJECT.id])
+
+        (either,) = source.yield_dashboard(PROJECT)
+
+        assert [model.root for model in either.right.dataModels] == [f"{SERVICE}.model.{PROJECT.id}"]
+
+    def test_dashboard_links_no_data_model_when_they_are_off(self, make_source):
+        source = make_source([REVENUE_CELL], include_data_models=False)
+        source.context.get.return_value = SimpleNamespace(dashboard_service=SERVICE, charts=[], dataModels=[])
+
+        (either,) = source.yield_dashboard(PROJECT)
+
+        assert either.right.dataModels is None
+
+    @pytest.mark.parametrize(
+        "cells, connection_types",
+        [(None, {"conn_snowflake": "snowflake"}), ([REVENUE_CELL], None)],
+        ids=["cells unreadable", "data connections unreadable"],
+    )
+    def test_a_failed_hex_read_keeps_the_existing_data_model(self, make_source, cells, connection_types):
+        first_run = make_source([REVENUE_CELL])
+        run(first_run)
+        source = make_source(cells)
+        source.client.get_data_connection_types.return_value = connection_types
+        source.metadata.entities.update(first_run.metadata.entities)
+        source.context.get.return_value = SimpleNamespace(dashboard_service=SERVICE, charts=[], dataModels=[])
+
+        data_models, _ = run(source)
+        (dashboard,) = source.yield_dashboard(PROJECT)
+
+        model_fqn = f"{SERVICE}.model.{PROJECT.id}"
+        # Not rewritten, still marked as seen so the run doesn't delete it, and still linked
+        assert data_models == []
+        assert model_fqn in source.datamodel_source_state
+        assert [model.root for model in dashboard.right.dataModels] == [model_fqn]
+
+    def test_a_table_name_matching_several_tables_gets_no_lineage(self, make_source):
+        orders_in_dev = Table(
+            id=uuid.uuid4(),
+            name="orders",
+            fullyQualifiedName="snowflake_dev.prod.sales.orders",
+            columns=ORDERS_TABLE.columns,
+        )
+        source = make_source([REVENUE_CELL], tables=(ORDERS_TABLE, orders_in_dev, CUSTOMERS_TABLE))
+
+        _, edges = run(source)
+
+        assert [edge.fromEntity.fullyQualifiedName for edge in edges] == ["snowflake_prod.prod.sales.customers"]
+
 
 class TestHexApiClientCells:
     @pytest.fixture
@@ -484,3 +539,23 @@ cells:
         client.client.get.side_effect = Exception("403 Forbidden")
 
         assert client.get_project_cells("proj_1") is None
+
+    def test_data_connection_types_follow_pagination(self, client):
+        client.client.get.side_effect = [
+            {"values": [{"id": "conn_1", "name": "Warehouse", "type": "snowflake"}], "pagination": {"after": "p2"}},
+            {"values": [{"id": "conn_2", "name": "Lake", "type": "bigquery"}], "pagination": None},
+        ]
+
+        assert client.get_data_connection_types() == {"conn_1": "snowflake", "conn_2": "bigquery"}
+        assert client.client.get.call_args_list[1].kwargs["data"] == {"limit": 100, "after": "p2"}
+
+    def test_no_data_connection_types_when_the_api_fails(self, client):
+        client.client.get.side_effect = Exception("403 Forbidden")
+
+        assert client.get_data_connection_types() is None
+
+    def test_rate_limited_requests_are_retried(self):
+        client = HexApiClient(HexConnection(hostPort="https://app.hex.tech", token="token"))
+
+        assert 429 in client.client.config.retry_codes
+        assert 429 not in client.client.config.limit_codes
