@@ -42,6 +42,7 @@ import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { RelationshipType } from '../../../../generated/entity/data/relationshipType';
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
+import { useBulkEntityPermissions } from '../../../../hooks/useEntityPermissions/useBulkEntityPermissions';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   createOntologyAxiom,
@@ -59,6 +60,7 @@ import {
   MAX_RELATIONSHIP_TYPE_PAGES,
   NativeRelationStep,
   NativeRelationType,
+  planNativeProperties,
   planNativeRelation,
   planRelationshipType,
   RelationshipTypeDraft,
@@ -383,13 +385,50 @@ const OntologyGraphView = ({
     () => catalogOf(relationTypes),
     [catalogOf, relationTypes]
   );
+  // Every relation ends in an axiom, so nothing is planned without the right to create one.
+  // Label lookups keep the whole catalog, so a type hidden here is reused, never registered twice.
+  const propertyWrites = useMemo(
+    () => (model && canCreateAxiom ? planNativeProperties(model, catalog) : []),
+    [canCreateAxiom, catalog, model]
+  );
+  const relinkedPropertyFqns = useMemo(
+    () =>
+      propertyWrites.flatMap(({ steps }) =>
+        steps.flatMap((step) => (step.kind === 'link' ? [step.fqn] : []))
+      ),
+    [propertyWrites]
+  );
+  // Edit rights are read per property, because a property inherits the ontology's owners and a
+  // resource-level read counts an owner rule as denied.
+  const { flagsByFqn: propertyFlags } = useBulkEntityPermissions(
+    ResourceEntity.ONTOLOGY_PROPERTY,
+    relinkedPropertyFqns
+  );
+  const canWrite = useCallback(
+    (step: NativeRelationStep): boolean => {
+      switch (step.kind) {
+        case 'property':
+          return canCreateProperty;
+        case 'link':
+          return Boolean(propertyFlags[step.fqn]?.canEditAll);
+        case 'axiom':
+          return canCreateAxiom;
+      }
+    },
+    [canCreateAxiom, canCreateProperty, propertyFlags]
+  );
   const relationTypeGroups = useMemo(
     () =>
-      buildNativeRelationGroups(catalog, {
-        core: t('label.core-owl-skos'),
-        custom: t('label.custom-admin-defined'),
-      }),
-    [catalog, t]
+      buildNativeRelationGroups(
+        propertyWrites
+          .filter(({ steps }) => steps.every(canWrite))
+          .map(({ type }) => type),
+        {
+          core: t('label.core-owl-skos'),
+          custom: t('label.custom-admin-defined'),
+        }
+      ),
+    [canWrite, propertyWrites, t]
   );
 
   const showWriteError = useCallback(
@@ -456,7 +495,7 @@ const OntologyGraphView = ({
       toId: string,
       relationType: string
     ): Promise<boolean> => {
-      if (!model || !canCreateAxiom) {
+      if (!model) {
         return false;
       }
       const from = model.concepts.find((concept) => concept.id === fromId);
@@ -477,7 +516,13 @@ const OntologyGraphView = ({
         if (!type) {
           return false;
         }
-        for (const step of planNativeRelation({ from, model, to, type })) {
+        const steps = planNativeRelation({ from, model, to, type });
+        if (!steps.every(canWrite)) {
+          showErrorToast(t('message.no-permission-for-action'));
+
+          return false;
+        }
+        for (const step of steps) {
           written = true;
           await writeStep(step);
           onWorkingChange?.();
@@ -495,7 +540,7 @@ const OntologyGraphView = ({
       }
     },
     [
-      canCreateAxiom,
+      canWrite,
       catalog,
       createType,
       model,
