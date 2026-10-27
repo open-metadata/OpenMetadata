@@ -57,9 +57,9 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   runs the deep pass, reuses a decrypted digest for an unchanged stored mechanism. Check and
   refresh reads decrypt, so no read replaces a deep pass's result with a digest decrypted before
   it, and a check read of a bot whose secret lives in an external secrets manager makes one call
-  to it. A deep pass that throws, or that
-  leaves a principal out because its rows could not be converted, is retried after
-  `min(deepVerifyInterval, 1 min)`, and the principals stay trusted by fingerprint until then.
+  to it. A deep pass that throws, or that leaves a principal out because its rows could not be
+  converted, is retried after `min(deepVerifyInterval, 1 min)`, and the principals stay trusted by
+  fingerprint until then.
 - When the verifier cannot confirm within `loadTimeout` (2 s), the request gets 503 with
   `Retry-After` (the sweep interval, rounded up), and an MCP tool or prompt call gets JSON-RPC
   error -32003. It never gets 401, and it is never accepted unconfirmed.

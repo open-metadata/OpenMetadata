@@ -28,7 +28,8 @@ import org.openmetadata.service.security.credentials.CredentialMetrics.DecryptOu
  *
  * <p>{@code mechanismVersion} and {@code mechanismDigest} remember which stored mechanism the
  * digest was decrypted from, so a later sweep or nudge read of an unchanged mechanism skips the
- * secrets-manager call. Both are null when the mechanism is not a JWT (or the user is absent).
+ * secrets-manager call. Both are null when the mechanism is not a JWT, the user is absent or the
+ * user is deleted.
  *
  * <p>{@code mechanismDigestOrigin} says how this read obtained {@code mechanismDigest}: decrypted,
  * or reused from the previous record. The verifier counts it for every record a read returns,
