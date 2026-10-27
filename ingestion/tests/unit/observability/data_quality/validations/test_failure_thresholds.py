@@ -32,8 +32,14 @@ from metadata.data_quality.validations.column.sqlalchemy.columnValueMeanToBeBetw
 from metadata.data_quality.validations.column.sqlalchemy.columnValueMinToBeBetween import (
     ColumnValueMinToBeBetweenValidator,
 )
+from metadata.data_quality.validations.column.sqlalchemy.columnValuesMissingCount import (
+    ColumnValuesMissingCountValidator,
+)
 from metadata.data_quality.validations.table.sqlalchemy.tableColumnCountToBeBetween import (
     TableColumnCountToBeBetweenValidator,
+)
+from metadata.data_quality.validations.table.sqlalchemy.tableColumnCountToEqual import (
+    TableColumnCountToEqualValidator,
 )
 from metadata.data_quality.validations.table.sqlalchemy.tableRowCountToBeBetween import (
     TableRowCountToBeBetweenValidator,
@@ -326,3 +332,47 @@ def test_unbounded_statistic_tolerance_uses_metric_units():
     )
 
     assert "a 4.5 metric units tolerance did not widen" in sentence
+
+
+@pytest.mark.parametrize(
+    "validator_class,parameter,observed,noun,entity_link",
+    [
+        (TableColumnCountToEqualValidator, "columnCount", 11, "columns", "<#E::table::service.db.users>"),
+        (TableRowCountToEqualValidator, "value", 80, "rows", "<#E::table::service.db.users>"),
+        (
+            ColumnValuesMissingCountValidator,
+            "missingCountValue",
+            20,
+            "rows",
+            "<#E::table::service.db.users::columns::age>",
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "difference,threshold,unit,status",
+    [
+        (1, 1, ABSOLUTE, TestCaseStatus.Success),
+        (2, 1, ABSOLUTE, TestCaseStatus.Failed),
+        (1, 10, PERCENTAGE, TestCaseStatus.Success),
+        (1, 1, PERCENTAGE, TestCaseStatus.Failed),
+        (0, 0, ABSOLUTE, TestCaseStatus.Success),
+        (1, 0, ABSOLUTE, TestCaseStatus.Failed),
+    ],
+)
+def test_exact_count_tolerance_message_uses_count_units(
+    create_sqlite_table, validator_class, parameter, observed, noun, entity_link, difference, threshold, unit, status
+):
+    expected = observed - difference
+    test_case = _test_case(
+        [TestCaseParameterValue(name=parameter, value=str(expected))] + _threshold_params(threshold, unit),
+        entity_link=entity_link,
+    )
+
+    result = validator_class(create_sqlite_table, test_case, int(datetime.now().timestamp())).run_validation()
+
+    assert result.testCaseStatus == status
+    assert f"is {observed}. Expected {expected}," in result.result
+    tolerance = f"{threshold}%" if unit is PERCENTAGE else f"{threshold} {noun}"
+    expected_tolerance = f"with a {tolerance} tolerance" if threshold else "with no tolerance"
+    assert expected_tolerance in result.result
+    assert result_messages.verdict(status is TestCaseStatus.Success) in result.result

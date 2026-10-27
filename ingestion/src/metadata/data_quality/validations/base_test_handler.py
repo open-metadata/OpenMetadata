@@ -930,6 +930,7 @@ class BaseTestValidator(ABC):
         expected,
         matched: bool,
         dimension_info: DimensionInfo | None = None,
+        noun: str = "rows",
     ) -> str:
         """Message for a deviation test against an exact value: statistic, expectation, verdict
 
@@ -939,6 +940,7 @@ class BaseTestValidator(ABC):
             expected: the value the test case expects
             matched: the verdict
             dimension_info: dimension details, for a dimensional row
+            noun: units of an absolute deviation
 
         Returns:
             str: e.g. "Row count is 9,981. Expected 10,000, with a 1.00% tolerance, so this test
@@ -950,6 +952,7 @@ class BaseTestValidator(ABC):
             expected,
             self.get_failure_threshold(),
             matched,
+            noun,
         )
 
     def column_label(self, fallback: str = "the column") -> str:

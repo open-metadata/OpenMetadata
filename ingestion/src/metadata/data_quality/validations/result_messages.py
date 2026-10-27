@@ -218,6 +218,7 @@ def expected_value_sentence(
     expected,
     threshold: FailureThreshold,
     passed: bool,
+    noun: str = "rows",
 ) -> str:
     """A deviation verdict against an exact value: the observed statistic, what was expected, the verdict.
 
@@ -227,12 +228,15 @@ def expected_value_sentence(
         expected: the value the test case expects
         threshold: the tolerance that was applied around `expected`
         passed: the verdict
+        noun: units of an absolute deviation, e.g. "rows" or "columns"
 
     Returns:
         str: e.g. "Row count is 9,981. Expected 10,000, with a 1.00% tolerance, so this test passed."
     """
     tolerance = (
-        f"with a {format_threshold(threshold)} tolerance" if threshold.value else f"with {format_threshold(threshold)}"
+        f"with a {format_threshold(threshold, noun)} tolerance"
+        if threshold.value
+        else f"with {format_threshold(threshold, noun)}"
     )
     return f"{statistic} is {format_value(value)}. Expected {format_value(expected)}, {tolerance}, {verdict(passed)}."
 
