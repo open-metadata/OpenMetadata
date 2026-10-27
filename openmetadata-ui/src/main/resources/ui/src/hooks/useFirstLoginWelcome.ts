@@ -13,8 +13,8 @@
 import { useEffect, useState } from 'react';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../constants/constants';
 import { useIsRouteVisible } from '../context/RouteVisibilityProvider/RouteVisibilityProvider';
-import { useTourProvider } from '../context/TourProvider/TourProvider';
 import { updateUserDetail } from '../rest/userAPI';
+import { useProductTourStore } from './product-tour/useProductTourStore';
 import { useApplicationStore } from './useApplicationStore';
 import { useWelcomeStore } from './useWelcomeStore';
 
@@ -38,7 +38,8 @@ const isSeenInThisBrowser = (userName: string) =>
 export const useFirstLoginWelcome = () => {
   const { currentUser, updateCurrentUser } = useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
-  const { isTourPage } = useTourProvider();
+  // A tour shows the home page itself; the welcome screen would cover it.
+  const isTourRunning = useProductTourStore((state) => state.isActive);
   const isRouteVisible = useIsRouteVisible();
 
   const [showWelcome, setShowWelcome] = useState(false);
@@ -64,7 +65,7 @@ export const useFirstLoginWelcome = () => {
     }
     const isFirstVisit =
       currentUser.isFirstTimeUser && !isSeenInThisBrowser(currentUser.name);
-    setShowWelcome(Boolean(isFirstVisit) && isWelcomeVisible && !isTourPage);
+    setShowWelcome(Boolean(isFirstVisit) && isWelcomeVisible && !isTourRunning);
     markReturningUser();
   }, []);
 

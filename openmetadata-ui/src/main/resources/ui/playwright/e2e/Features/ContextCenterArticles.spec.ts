@@ -1433,41 +1433,37 @@ test.describe('Context Center Articles', () => {
         page.getByTestId('popover-content').filter({ hasText: /admin/i }).last()
       ).toContainText(/admin/i);
 
-      await mainMessage.hover();
-      const resolveResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(`/api/v1/conversations/${createdConversation.id}`) &&
-          response.request().method() === 'PATCH'
-      );
-      await mainMessage.getByTestId('toggle-resolved').click();
-      await resolveResponse;
-      await mainMessage.hover();
-      await expect(mainMessage.getByTestId('toggle-resolved')).toHaveAttribute(
-        'aria-label',
-        'Open'
-      );
+      // The reply count opens the conversation inside the drawer. That view
+      // already lists the replies, so it shows no reply count of its own.
+      await mainMessage.getByTestId('reply-button').click();
+      await expect(page.getByTestId('thread-panel-comments')).toBeVisible();
+      await expect(mainMessage.getByTestId('reply-button')).toHaveCount(0);
+      await page.getByTestId('thread-back').click();
+      await expect(mainMessage.getByTestId('reply-button')).toBeVisible();
 
-      await mainMessage.hover();
-      await mainMessage.getByTestId('edit-message').click();
+      // In the drawer a conversation's Edit / Delete sit in its menu, which
+      // renders in a popover outside the card.
+      await mainMessage.getByTestId('conversation-actions').click();
+      await page.getByRole('menuitem', { name: 'Edit' }).click();
 
       const updatedMessage = `Updated Thread Message ${uuid()}`;
-      await editor.click();
-      await editor.clear();
-      await editor.fill(updatedMessage);
+      const editForm = mainMessage.getByTestId('edit-message-editor');
+      const editEditor = editForm.locator('[contenteditable="true"]');
+      await editEditor.click();
+      await editEditor.clear();
+      await editEditor.fill(updatedMessage);
 
       const updateThreadPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/conversations') &&
           response.request().method() === 'PATCH'
       );
-      await page.locator('[data-testid="save-button"]').click();
+      await editForm.getByTestId('send-button').click();
       await updateThreadPromise;
       await expect(page.getByText(updatedMessage)).toBeVisible();
 
-      await mainMessage.hover();
-      await mainMessage.getByTestId('delete-message').click();
+      await mainMessage.getByTestId('conversation-actions').click();
+      await page.getByRole('menuitem', { name: 'Delete' }).click();
       const deletePostPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/conversations') &&

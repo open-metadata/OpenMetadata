@@ -13,7 +13,7 @@
 import { EntityType } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
 
-export const PageTypeToEntityTypeMap = {
+export const PageTypeToEntityTypeMap: Partial<Record<PageType, EntityType>> = {
   [PageType.Topic]: EntityType.TOPIC,
   [PageType.APICollection]: EntityType.API_COLLECTION,
   [PageType.APIEndpoint]: EntityType.API_ENDPOINT,

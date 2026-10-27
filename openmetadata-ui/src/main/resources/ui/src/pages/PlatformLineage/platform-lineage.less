@@ -16,6 +16,10 @@
 
 .platform-lineage-container {
   height: calc(100vh - @om-navbar-height - @platform-page-header-height);
+  // AI mode: the core PageLayout content region sizes the canvas.
+  &.platform-lineage-container-fill {
+    height: 100%;
+  }
   .lineage-card {
     height: 100%;
     min-height: 0;

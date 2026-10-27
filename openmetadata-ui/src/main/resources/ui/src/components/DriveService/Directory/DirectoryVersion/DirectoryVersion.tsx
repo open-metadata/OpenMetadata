@@ -160,7 +160,7 @@ const DirectoryVersion = ({
         dataIndex: 'type',
         key: 'type',
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<EntityReference>(),
     ],
     []
   );

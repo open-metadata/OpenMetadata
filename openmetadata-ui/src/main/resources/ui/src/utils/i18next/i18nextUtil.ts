@@ -48,6 +48,7 @@ export const getInitOptions = (): InitOptions => {
 
 // Returns the current locale to use in cronstrue
 export const getCurrentLocaleForConstrue = () => {
+  const resolvedLanguage = i18next.resolvedLanguage ?? SupportedLocales.English;
   // For cronstrue, we need to pass the locale in the format 'pt_BR' and not 'pt-BR'
   // for some selected languages
   if (
@@ -56,12 +57,12 @@ export const getCurrentLocaleForConstrue = () => {
       SupportedLocales['Português (Portugal)'],
       SupportedLocales.简体中文,
       SupportedLocales.繁體中文,
-    ].includes(i18next.resolvedLanguage as SupportedLocales)
+    ].some((locale) => locale === resolvedLanguage)
   ) {
-    return i18next.resolvedLanguage.replaceAll('-', '_');
+    return resolvedLanguage.replaceAll('-', '_');
   }
 
-  return i18next.resolvedLanguage.split('-')[0];
+  return resolvedLanguage.split('-')[0];
 };
 
 // Map common language codes to supported locales

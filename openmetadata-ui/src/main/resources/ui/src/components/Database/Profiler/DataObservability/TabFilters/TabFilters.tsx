@@ -24,7 +24,6 @@ import {
   DEFAULT_SELECTED_RANGE,
 } from '../../../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
-import { useTourProvider } from '../../../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { Operation } from '../../../../../generated/entity/policies/policy';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
@@ -40,9 +39,8 @@ import profilerClassBase from '../../TableProfiler/ProfilerClassBase';
 import { useTableProfiler } from '../../TableProfiler/TableProfilerProvider';
 
 const TabFilters = () => {
-  const { isTourOpen } = useTourProvider();
   const location = useCustomLocation();
-  const { subTab: activeTab = profilerClassBase.getDefaultTabKey(isTourOpen) } =
+  const { subTab: activeTab = profilerClassBase.getDefaultTabKey() } =
     useParams<{ subTab: ProfilerTabPath }>();
 
   const { formType, activeColumnFqn, dateRangeObject } = useMemo(() => {
@@ -75,7 +73,7 @@ const TabFilters = () => {
       formType: TestLevel;
       dateRangeObject: DateRangeObject;
     };
-  }, [location.search, activeTab, isTourOpen]);
+  }, [location.search, activeTab]);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 

@@ -10,18 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityInfoItemV1 } from './CommonEntitySummaryInfoV1.interface';
+
 export interface OverviewSectionProps {
   onEdit?: () => void;
   showEditButton?: boolean;
-  entityInfoV1?: Array<{
-    name: string;
-    value?: unknown;
-    url?: string;
-    linkProps?: import('react-router-dom').To;
-    isLink?: boolean;
-    isExternal?: boolean;
-    visible?: string[];
-  }>;
+  entityInfoV1?: EntityInfoItemV1[];
   componentType?: string;
   isDomainVisible?: boolean;
   onLinkClick?: () => void;

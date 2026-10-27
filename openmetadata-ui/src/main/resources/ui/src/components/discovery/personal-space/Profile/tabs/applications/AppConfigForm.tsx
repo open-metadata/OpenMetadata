@@ -23,7 +23,12 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Hint } from '@openmetadata/ui-core-components/icons';
 import { IChangeEvent } from '@rjsf/core';
-import { FieldProps, FieldTemplateProps, RJSFSchema } from '@rjsf/utils';
+import {
+  FieldProps,
+  FieldTemplateProps,
+  RJSFSchema,
+  UiSchema,
+} from '@rjsf/utils';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { App } from '../../../../../../generated/entity/applications/app';
@@ -46,6 +51,8 @@ export interface AppConfigFormProps {
   cancelLabel?: string;
   /** Render the form without edit controls (user lacks edit permission). */
   isReadOnly?: boolean;
+  /** Overrides the default app UI schema, e.g. to lock fields managed elsewhere. */
+  uiSchema?: UiSchema;
   onCancel?: () => void;
   onSave: (data: {
     formData: Record<string, unknown>;
@@ -153,6 +160,7 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
   submitLabel,
   cancelLabel,
   isReadOnly = false,
+  uiSchema = applicationsClassBase.getJSONUISchema(),
   onCancel,
   onSave,
 }) => {
@@ -182,7 +190,7 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
         readonly={isReadOnly}
         schema={jsonSchema}
         templates={APP_FORM_TEMPLATES}
-        uiSchema={applicationsClassBase.getJSONUISchema()}
+        uiSchema={uiSchema}
         onSubmit={handleSubmit}
       />
       {!isReadOnly && (

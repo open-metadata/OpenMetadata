@@ -566,6 +566,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           align="center"
           className="layout-space layout-space-horizontal w-full justify-between m-b-lg"
           data-testid="header"
+          data-tour-step="services"
           gap={2}
           itemClassName="layout-space-item">
           <PageHeader
