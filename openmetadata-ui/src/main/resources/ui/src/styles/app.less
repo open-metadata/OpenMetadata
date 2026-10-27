@@ -619,8 +619,6 @@ a[href].link-text-grey,
   align-items: flex-start;
 }
 
-// Switch Inline Field
-
 .common-left-panel-card-heading {
   color: @group-title-color;
   font-size: var(--om-font-size-xs);
@@ -662,8 +660,6 @@ a[href].link-text-grey,
     color: @primary-8;
   }
 }
-
-/* Tabs */
 
 // Entity Details Page css
 .entity-details-page-tabs {
@@ -935,16 +931,11 @@ a[href].link-text-grey,
 // (Bare-anchor dark link color is handled in tailwind.css via `:where(.dark-mode) a`
 // so it keeps base specificity and doesn't override nav/chrome anchors.)
 
-// Ant Typography links (a.ant-typography / .ant-typography a, colored @blue-9 in
-// fonts.less at 0,1,1) aren't caught by the base-specificity `:where(.dark-mode) a`.
+// Prose links aren't caught by the base-specificity `:where(.dark-mode) a`.
 // Retint them in dark at a higher specificity that wins regardless of load order.
 .dark-mode .prose-typography a {
   color: var(--color-text-link);
 }
-
-// Ant secondary text is @text-color-secondary (fade(@black, 45%)), compiled to a
-// static near-black that vanishes on dark surfaces. The variable can't take a
-// var() (antd runs shade() on it), so retint the class in dark only.
 
 // "No description" and other muted placeholders use @text-grey-muted, a fixed
 // #757575 that falls below AA on dark surfaces; retint the class in dark only.
@@ -1183,15 +1174,3 @@ a[href].link-text-grey,
     width: @size-lg;
   }
 }
-
-// antd Alert paints static light tints per type (and antd heading-colour
-// text);
-
-// antd DatePicker/RangePicker compile static light values: 25%-black
-// suffix/separator/clear icons and out-of-month cells, #bfbfbf placeholder,
-// #f5f5f5 disabled fill and cell hover, 6%-black panel rules, and the
-// theme-agnostic --ant-primary-1 range tint (near-white in dark). Light keeps
-// antd's values.
-
-// antd multi-select tags use @background-color-base / @border-color-split,
-// both fixed light hexes: white chips with near-invisible text in dark.
