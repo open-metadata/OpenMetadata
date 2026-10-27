@@ -122,7 +122,7 @@ class TestCellSqlParsing:
 
         assert outputs(
             'select u."createdAt", id as "Sales Id" from prod.public.users u', schema, connection_type="postgres"
-        ) == {"createdat": {(users, "createdat")}, "sales id": {(users, "id")}}
+        ) == {"createdat": {(users, "createdat")}, "Sales Id": {(users, "id")}}
         assert outputs('select o."REGION" from prod.sales.orders o') == {"region": {(ORDERS, "region")}}
 
     def test_star_over_a_dataframe_keeps_the_known_tables_columns(self):
@@ -644,6 +644,39 @@ class TestHexCellLineage:
         (dashboard,) = source.yield_dashboard(PROJECT)
 
         assert dashboard.right.dataModels == []
+
+    def test_chained_cell_does_not_widen_an_unresolved_upstream_reference(self, make_source):
+        """The upstream cell searched prod.sales.orders and found nothing: dev.sales.orders is not it"""
+        orders_in_dev = ORDERS_TABLE.model_copy(
+            update={"fullyQualifiedName": FullyQualifiedEntityName("snowflake_prod.dev.sales.orders")}
+        )
+        cells = [
+            Cell(
+                id=cell_id,
+                label=variable,
+                cellType="SQL",
+                dataConnectionId=connection,
+                resultVariableName=variable,
+                contents={"sqlCell": {"source": sql}},
+            )
+            for cell_id, sql, variable, connection in [
+                ("c1", "select region from sales.orders", "base", "conn_snowflake"),
+                ("c2", "select region from base", "down", None),
+            ]
+        ]
+        source = make_source(cells, tables=(orders_in_dev,))
+        source.client.get_data_connections.return_value = {
+            "conn_snowflake": DataConnection(
+                id="conn_snowflake",
+                name="Snowflake",
+                type="snowflake",
+                connectionDetails={"snowflake": {"database": "prod"}},
+            )
+        }
+
+        _, edges = run(source)
+
+        assert edges == []
 
 
 class TestHexApiClientCells:

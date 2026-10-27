@@ -490,7 +490,10 @@ class HexSource(DashboardServiceSource):
             )
 
     def _get_cell_lineage(self, project: Project) -> list[HexCellLineage] | None:
-        """None when the cells API could not be read, so callers fall back to the warehouse queries"""
+        """
+        None when the project's cells, the data connections or the table search could
+        not be read: the data model is then left as it is
+        """
         if not self._cell_lineage or self._cell_lineage[0] != project.id:
             self._cell_lineage = (project.id, self._build_cell_lineage(project))
         return self._cell_lineage[1]
@@ -570,14 +573,18 @@ class HexSource(DashboardServiceSource):
         for reference in get_table_references(expression):
             # The connection is part of the key: it fills in what the reference leaves out
             key = (cell.dataConnectionId, *table_key(reference))
+            searched_database = reference.catalog or (connection.default_database if connection else None)
+            searched_schema = reference.db or (connection.default_schema if connection else None)
             if key not in resolved_tables:
-                resolved_tables[key] = self._resolve_table(
-                    reference.catalog or (connection.default_database if connection else None),
-                    reference.db or (connection.default_schema if connection else None),
-                    reference.name,
-                )
+                resolved_tables[key] = self._resolve_table(searched_database, searched_schema, reference.name)
             resolved = resolved_tables[key]
             if not resolved:
+                # A later cell inlining this one, without this connection's defaults,
+                # must search no wider than this cell did
+                if searched_schema:
+                    reference.set("db", exp.to_identifier(searched_schema))
+                    if searched_database:
+                        reference.set("catalog", exp.to_identifier(searched_database))
                 continue
             table, prefix = resolved
             _, database, schema_name, table_name = fqn.split(model_str(table.fullyQualifiedName))
@@ -607,7 +614,7 @@ class HexSource(DashboardServiceSource):
                 if model_str(column.name).lower() == column_name and column.fullyQualifiedName
             ]
             passthrough = sources[0][1] if output.passthrough and len(sources) == 1 else None
-            # Output names are lower-cased; a column passed through keeps its table's casing
+            # Unaliased output names are lower-cased; a column passed through keeps its table's casing
             name = (
                 model_str(passthrough.name)
                 if passthrough and model_str(passthrough.name).lower() == output.name.lower()
