@@ -737,8 +737,10 @@ describe('ServiceDocPanel Component', () => {
         expect(requirementsBlock).toBeInTheDocument();
         expect(fieldBlock).toBeInTheDocument();
         expect(
-          requirementsBlock?.compareDocumentPosition(fieldBlock as Node) &
-            Node.DOCUMENT_POSITION_FOLLOWING
+          requirementsBlock &&
+            fieldBlock &&
+            requirementsBlock.compareDocumentPosition(fieldBlock) &
+              Node.DOCUMENT_POSITION_FOLLOWING
         ).toBeTruthy();
       });
     });

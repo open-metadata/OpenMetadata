@@ -129,7 +129,8 @@ const ConnectionsSecondaryNav = ({
   return (
     <aside
       className="tw:w-66 tw:shrink-0 tw:self-stretch tw:overflow-y-auto tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:px-3.5 tw:pb-48 tw:pt-5"
-      data-testid="connections-secondary-nav">
+      data-testid="connections-secondary-nav"
+      data-tour-step="connections">
       <nav aria-label={t('label.connection-plural')}>
         <NavigationItem
           count={total}

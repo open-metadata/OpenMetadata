@@ -118,7 +118,7 @@ def mssql_om_engine(mssql_container, query_store_db, scheme):
     config = MssqlConnectionConfig(
         username=mssql_container.username,
         password=mssql_container.password,
-        hostPort="localhost:" + mssql_container.get_exposed_port(mssql_container.port),
+        hostPort=mssql_container.host_port,
         database=query_store_db,
         scheme=scheme,
         connectionOptions={"TrustServerCertificate": "yes", "MARS_Connection": "yes"},
@@ -132,7 +132,7 @@ def azuresql_om_engine(mssql_container, query_store_db):
     config = AzureSQLConnection(
         username=mssql_container.username,
         password=mssql_container.password,
-        hostPort="localhost:" + mssql_container.get_exposed_port(mssql_container.port),
+        hostPort=mssql_container.host_port,
         database=query_store_db,
         connectionOptions={"TrustServerCertificate": "yes", "MARS_Connection": "yes"},
     )
