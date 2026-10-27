@@ -167,7 +167,7 @@ ENV PIP_QUIET=1
 ENV CFLAGS="-Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=int-conversion"
 
 ARG INGESTION_DEPENDENCY="all"
-ARG RI_VERSION="2.0.0.0.dev0"
+ARG RI_VERSION="2.1.0.0"
 RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 

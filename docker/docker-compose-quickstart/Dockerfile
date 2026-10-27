@@ -12,7 +12,7 @@
 # Fetch and unpack the release. alpine only for busybox wget and tar; nothing
 # from this stage reaches the runtime image except the runtime shims below.
 FROM alpine:3 AS dist
-ARG RI_VERSION="2.0.0-SNAPSHOT"
+ARG RI_VERSION="2.1.0"
 ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/${RI_VERSION}-release/openmetadata-${RI_VERSION}.tar.gz"
 
 RUN mkdir -p /opt/openmetadata && \
@@ -125,7 +125,7 @@ RUN set -eu; \
 # fixing the libc.
 FROM gcr.io/distroless/base-debian13:debug-nonroot
 
-ARG RI_VERSION="2.0.0-SNAPSHOT"
+ARG RI_VERSION="2.1.0"
 ARG BUILD_DATE
 ARG COMMIT_ID
 LABEL maintainer="OpenMetadata"
