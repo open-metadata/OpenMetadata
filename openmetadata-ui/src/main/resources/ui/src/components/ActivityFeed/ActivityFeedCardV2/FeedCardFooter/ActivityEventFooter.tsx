@@ -49,14 +49,15 @@ function ActivityEventFooter({
     [updateActivityReaction, activity.id]
   );
 
-  // The press must keep bubbling: the card container behind this footer
-  // selects the activity on click, as it did when this was a native button.
-  // Feed tabs (the drawer included) hand the press to the caller; the entity
-  // Activity tab opens the activity in the reply drawer.
+  // Feed tabs (the drawer included) hand the press to the caller, and it keeps
+  // bubbling to the card behind this footer, as it did when this was a native
+  // button. The entity Activity tab opens the activity in the reply drawer,
+  // which selects it, so that press stops here: the card's own click would
+  // fetch its replies a second time.
   const handleCommentPress = useCallback(
     (event: PressEvent) => {
-      event.continuePropagation();
       if (isForFeedTab) {
+        event.continuePropagation();
         onActivityClick?.(activity);
       } else {
         showActivityDrawer(activity);

@@ -93,13 +93,14 @@ function FeedCardFooterNew({
     }
   }, [showDrawer, updateEditorFocus, conversation]);
 
-  // The press must keep bubbling: the card container behind this footer
-  // selects the conversation on click, as it did when these were native
-  // buttons.
+  // A press handed to the caller keeps bubbling to the card behind this
+  // footer, as it did when these were native buttons. Opening the drawer
+  // selects the conversation itself, so that press stops here: the card's own
+  // click would fetch its replies a second time.
   const handleRepliesPress = useCallback(
     (event: PressEvent) => {
-      event.continuePropagation();
       if (onReplyPress) {
+        event.continuePropagation();
         onReplyPress();
       } else {
         showReplies();
