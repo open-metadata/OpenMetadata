@@ -135,6 +135,21 @@ class DataConnection(BaseModel):
     name: str
     type: str | None = None
     description: str | None = None
+    # Keyed by type, e.g. {"snowflake": {"database": "analytics", ...}}
+    connectionDetails: dict | None = None  # noqa: N815
+
+    @property
+    def default_database(self) -> str | None:
+        return self._details.get("database")
+
+    @property
+    def default_schema(self) -> str | None:
+        return self._details.get("schema")
+
+    @property
+    def _details(self) -> dict:
+        details = (self.connectionDetails or {}).get(self.type or "")
+        return details if isinstance(details, dict) else {}
 
 
 class DataConnectionsResponse(PagedResponse):
@@ -178,4 +193,3 @@ class CellListResponse(PagedResponse):
     """List Cells API Response"""
 
     values: list[Cell] = Field(default_factory=list)
-    nextPage: str | None = Field(None, alias="next_page")  # noqa: N815

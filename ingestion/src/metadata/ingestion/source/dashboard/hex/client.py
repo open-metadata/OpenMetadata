@@ -27,6 +27,7 @@ from metadata.ingestion.source.dashboard.hex.models import (
     Cell,
     CellContents,
     CellListResponse,
+    DataConnection,
     DataConnectionsResponse,
     PagedResponse,
     Project,
@@ -41,6 +42,9 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 PageT = TypeVar("PageT", bound=PagedResponse)
+
+# The token may not be allowed to export a project; any other failure is transient
+EXPORT_UNAVAILABLE_STATUSES = {403, 404}
 
 HEADERS = {
     "accept": "application/json",
@@ -103,18 +107,23 @@ class HexApiClient:
 
     def get_project_cells(self, project_id: str) -> list[Cell] | None:
         """
-        Fetch the SQL cells of a project, in notebook order. None means neither the
-        export nor the cells API could be read, as opposed to a project with no cells.
+        Fetch the SQL cells of a project, in notebook order. None means they could not
+        be read this time, as opposed to a project with no cells.
 
         The export comes first: only it names each cell's result variable, which
-        chained SQL cells query instead of a warehouse table.
+        chained SQL cells query instead of a warehouse table. The cells API, which
+        loses those chains, is only used when the export is not allowed at all; on a
+        transient export failure the cells it would give are incomplete, so None.
         """
         try:
             export = ProjectExport.model_validate(self.client.post("/projects/export", json={"projectId": project_id}))
             return _flatten_export_cells(yaml.safe_load(export.content).get("cells") or [])
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug("Could not export Hex project %s, reading its cells instead: %s", project_id, exc)
+            if _status_code(exc) not in EXPORT_UNAVAILABLE_STATUSES:
+                logger.warning("Error exporting Hex project %s: %s", project_id, exc)
+                return None
+            logger.debug("Hex project %s can't be exported, reading its cells instead: %s", project_id, exc)
         try:
             return [
                 cell
@@ -126,17 +135,16 @@ class HexApiClient:
             logger.warning("Error fetching cells for project %s: %s", project_id, exc)
             return None
 
-    def get_data_connection_types(self) -> dict[str, str] | None:
+    def get_data_connections(self) -> dict[str, DataConnection] | None:
         """
-        Map each data connection id to its warehouse type (snowflake, bigquery, ...).
-        None when the data connections can't be read.
+        Data connections by id, for their warehouse type and default database and
+        schema. None when they can't be read.
         """
         try:
             return {
-                connection.id: connection.type
+                connection.id: connection
                 for page in self._paginate("/data-connections", {}, DataConnectionsResponse)
                 for connection in page.values
-                if connection.type
             }
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -177,3 +185,9 @@ def _flatten_export_cells(export_cells: list[dict]) -> list[Cell]:
             )
         cells.extend(_flatten_export_cells(config.get("cells") or []))
     return cells
+
+
+def _status_code(exc: Exception) -> int | None:
+    """HTTP status of a failed call: an APIError carries it, a requests HTTPError on its response"""
+    status = getattr(exc, "status_code", None)
+    return status if status is not None else getattr(getattr(exc, "response", None), "status_code", None)
