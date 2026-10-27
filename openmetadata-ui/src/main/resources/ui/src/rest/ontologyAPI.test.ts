@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError, AxiosResponse } from 'axios';
 import { OntologyConceptType } from '../generated/api/data/createOntologyConcept';
 import { Operation } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
@@ -23,6 +24,7 @@ import {
   createOntology,
   createOntologyConcept,
   deleteOntologyConceptBinding,
+  exportOntologyRelease,
   generateOntologyDomainDraft,
   generateOntologySparql,
   getOntologyBulkTemplate,
@@ -650,6 +652,22 @@ describe('ontologyAPI', () => {
     );
     expect(result).toEqual(response.data);
   });
+});
+
+it('hands a gated export refusal back with its JSON report parsed from the text body', async () => {
+  const report = { valid: false, shacl: { violationCount: 1 } };
+  (APIClient.get as jest.Mock).mockRejectedValueOnce(
+    new AxiosError('blocked', 'ERR_BAD_REQUEST', undefined, undefined, {
+      data: JSON.stringify(report),
+      status: 422,
+    } as AxiosResponse)
+  );
+
+  const refusal = await exportOntologyRelease('release-id', 'turtle', {
+    shaclGate: true,
+  }).catch((error: AxiosError) => error);
+
+  expect((refusal as AxiosError).response?.data).toEqual(report);
 });
 
 it('reads a bounded review page with the server total and after cursor', async () => {
