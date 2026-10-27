@@ -101,6 +101,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     items,
     selectedKey,
     onSelectionChange,
+    inputValue,
+    onInputChange,
     isDisabled,
     label,
     ...rest
@@ -108,21 +110,32 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     items?: { id: string; label: string }[];
     selectedKey?: string | null;
     onSelectionChange?: (key: string) => void;
+    inputValue?: string;
+    onInputChange?: (value: string) => void;
     isDisabled?: boolean;
     label?: string;
   } & Record<string, unknown>) => (
-    <select
-      aria-label={label}
-      data-testid={rest['data-testid'] as string}
-      disabled={isDisabled}
-      value={selectedKey ?? ''}
-      onChange={(event) => onSelectionChange?.(event.target.value)}>
-      {(items ?? []).map((item) => (
-        <option key={item.id} value={item.id}>
-          {item.label}
-        </option>
-      ))}
-    </select>
+    <>
+      <input
+        aria-label={`${label} input`}
+        data-testid={`${rest['data-testid']}-input`}
+        disabled={isDisabled}
+        value={inputValue ?? ''}
+        onChange={(event) => onInputChange?.(event.target.value)}
+      />
+      <select
+        aria-label={label}
+        data-testid={rest['data-testid'] as string}
+        disabled={isDisabled}
+        value={selectedKey ?? ''}
+        onChange={(event) => onSelectionChange?.(event.target.value)}>
+        {(items ?? []).map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.label}
+          </option>
+        ))}
+      </select>
+    </>
   ),
   Grid: Object.assign(
     ({ children, ...rest }: Record<string, unknown>) => (
@@ -648,6 +661,38 @@ describe('ScheduleInterval', () => {
     });
 
     expect(onTimezoneChange).toHaveBeenCalledWith('Asia/Tokyo');
+  });
+
+  it('should narrow the timezone list to the typed text and show all zones again for the selected one', async () => {
+    await renderComponent({
+      value: '0 0 * * *',
+      timezone: 'Europe/Tallinn',
+      onTimezoneChange: jest.fn(),
+    });
+
+    const allOptions = screen.getByTestId('timezone-select').querySelectorAll(
+      'option'
+    ).length;
+
+    expect(allOptions).toBeGreaterThan(100);
+
+    fireEvent.change(screen.getByTestId('timezone-select-input'), {
+      target: { value: 'new_york' },
+    });
+
+    const narrowed = Array.from(
+      screen.getByTestId('timezone-select').querySelectorAll('option')
+    ).map((option) => option.value);
+
+    expect(narrowed).toEqual(['America/New_York']);
+
+    fireEvent.change(screen.getByTestId('timezone-select-input'), {
+      target: { value: 'Europe/Tallinn' },
+    });
+
+    expect(
+      screen.getByTestId('timezone-select').querySelectorAll('option').length
+    ).toBe(allOptions);
   });
 
   it('should not render the timezone picker for an on-demand schedule', async () => {

@@ -93,7 +93,8 @@ const CronOptionSelect = ({
   </Grid.Item>
 );
 
-// Several hundred IANA zones: searchable, unlike the short pickers above.
+// Several hundred IANA zones: searchable, unlike the short pickers above. The core
+// ComboBox leaves controlled items unfiltered, so the typed text narrows them here.
 const TimezoneSelect = ({
   disabled,
   items,
@@ -106,20 +107,47 @@ const TimezoneSelect = ({
   onChange: (timezone: string) => void;
 }) => {
   const { t } = useTranslation();
+  const [inputValue, setInputValue] = useState(value ?? '');
+
+  useEffect(() => {
+    setInputValue(value ?? '');
+  }, [value]);
+
+  // While the input still shows the selected zone, opening the list must show
+  // every zone, not just the one already picked.
+  const filteredItems = useMemo(() => {
+    const needle = inputValue.trim().toLowerCase();
+    if (!needle || needle === (value ?? '').toLowerCase()) {
+      return items;
+    }
+
+    return items.filter((item) => item.id.toLowerCase().includes(needle));
+  }, [items, inputValue, value]);
+
+  const handleSelectionChange = useCallback(
+    (key: Key | null) => {
+      if (key !== null) {
+        onChange(String(key));
+        setInputValue(String(key));
+      }
+    },
+    [onChange]
+  );
 
   return (
     <div data-testid="timezone-container">
       <ComboBox
+        allowsEmptyCollection
         data-testid="timezone-select"
+        inputValue={inputValue}
         isDisabled={disabled}
-        items={items}
+        items={filteredItems}
         label={t('label.timezone')}
         selectedKey={value ?? null}
         shortcut={false}
         size="sm"
-        onSelectionChange={(key: Key | null) =>
-          key !== null && onChange(String(key))
-        }>
+        onInputChange={setInputValue}
+        onSelectionChange={handleSelectionChange}>
         {(item) => (
           <Select.Item id={item.id} key={item.id} textValue={item.label}>
             {item.label}
