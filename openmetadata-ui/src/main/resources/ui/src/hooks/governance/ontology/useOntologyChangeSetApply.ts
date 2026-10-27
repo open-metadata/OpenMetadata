@@ -32,6 +32,14 @@ import { useOntologyEditLease } from './useOntologyEditLease';
 
 const CHANGE_SET_FIELDS = 'operations,applicationResult';
 
+// A 4xx is the server's definite refusal. With no response, or a 5xx, the
+// apply may still commit, so its outcome stays unknown.
+const isRefusedByServer = (error: unknown) =>
+  isAxiosError(error) &&
+  error.response !== undefined &&
+  error.response.status >= 400 &&
+  error.response.status < 500;
+
 const validateDraft = (
   draft: OntologyChangeSet,
   plan: CreateOntologyChangeSet
@@ -281,6 +289,7 @@ export const useOntologyChangeSetApply = ({
     }
     setStatus({ kind: 'busy', step: 'applying' });
     const id = current.draft.id;
+    let applyRequested = false;
     const apply = async () => {
       const draft = validateDraft(
         await getOntologyChangeSet(id, CHANGE_SET_FIELDS),
@@ -307,6 +316,7 @@ export const useOntologyChangeSetApply = ({
 
         return;
       }
+      applyRequested = true;
       finish(
         await applyOntologyChangeSet(id, {
           lease: {
@@ -333,7 +343,7 @@ export const useOntologyChangeSetApply = ({
 
         return;
       }
-      block(undefined, error);
+      block(undefined, error, applyRequested && !isRefusedByServer(error));
     });
   }, [
     block,

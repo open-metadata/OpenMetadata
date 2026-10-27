@@ -373,7 +373,10 @@ const OntologyReleasePanel = ({
               <Card size="sm">
                 <Card.Content>
                   <Box gap={2} justify="between">
-                    <Typography size="text-sm" weight="semibold">
+                    <Typography
+                      data-testid="ontology-working-concept-summary"
+                      size="text-sm"
+                      weight="semibold">
                       {group.concept
                         ? t('message.ontology-class-change-summary', {
                             concept: group.iri

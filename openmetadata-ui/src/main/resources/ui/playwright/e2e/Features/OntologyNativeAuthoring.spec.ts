@@ -253,7 +253,8 @@ test.describe(
           await expect(
             page
               .getByTestId('ontology-working-concept-group')
-              .filter({ hasText: 'Funds Transfer' })
+              .filter({ hasText: 'FundsTransfer' })
+              .getByTestId('ontology-working-concept-summary')
           ).toHaveText(
             'Class FundsTransfer ⊑ Payment, Transaction · 3 properties'
           );

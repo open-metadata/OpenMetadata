@@ -1041,7 +1041,7 @@ function computePrecomputedAssetPositions(
 function buildAdditiveBakedNodes(
   graphData: GraphData,
   context: AdditiveUpdateContext,
-  precomputedAssetPositions: Record<string, [number, number]>
+  pinnedPositions: Record<string, [number, number]>
 ): NodeData[] {
   const { currentPositions, centerX, maxY } = context;
   const COLS = Math.max(1, Math.ceil(Math.sqrt(context.addedNodes.length)));
@@ -1050,11 +1050,11 @@ function buildAdditiveBakedNodes(
   return (graphData.nodes ?? []).map((node) => {
     const id = String(node.id);
 
-    const ringPos = precomputedAssetPositions[id];
-    if (ringPos) {
+    const pinnedPos = pinnedPositions[id];
+    if (pinnedPos) {
       return {
         ...node,
-        style: { ...node.style, x: ringPos[0], y: ringPos[1] },
+        style: { ...node.style, x: pinnedPos[0], y: pinnedPos[1] },
       };
     }
 
@@ -1081,28 +1081,38 @@ function buildAdditiveBakedNodes(
   });
 }
 
+function pinPlacedPositions(
+  addedNodes: NodeData[],
+  placedPositions: Record<string, { x: number; y: number }> | undefined
+): Record<string, [number, number]> {
+  return Object.fromEntries(
+    addedNodes.flatMap((node): Array<[string, [number, number]]> => {
+      const placed = placedPositions?.[String(node.id)];
+
+      return placed ? [[String(node.id), [placed.x, placed.y]]] : [];
+    })
+  );
+}
+
 function applyAdditiveUpdate(
   graph: Graph,
   graphData: GraphData,
   isDataMode: boolean,
   context: AdditiveUpdateContext,
-  assetToTermMap: Record<string, string[]>
+  assetToTermMap: Record<string, string[]>,
+  placedPositions?: Record<string, { x: number; y: number }>
 ): void {
-  const precomputedAssetPositions = isDataMode
+  const pinnedPositions = isDataMode
     ? computePrecomputedAssetPositions(
         context.addedNodes,
         context.currentPositions,
         assetToTermMap
       )
-    : {};
+    : pinPlacedPositions(context.addedNodes, placedPositions);
 
   const bakedData = {
     ...graphData,
-    nodes: buildAdditiveBakedNodes(
-      graphData,
-      context,
-      precomputedAssetPositions
-    ),
+    nodes: buildAdditiveBakedNodes(graphData, context, pinnedPositions),
   };
 
   const addedNodeIds = new Set(context.addedNodes.map((n) => String(n.id)));
@@ -1687,6 +1697,10 @@ export function useOntologyGraph({
         : inputNodes.length,
     [explorationMode, inputNodes]
   );
+  // Studio adds classes to the live graph, so only an empty canvas rekeys it.
+  const graphInstanceKey = studioMode
+    ? Math.min(termNodeCount, 1)
+    : termNodeCount;
 
   const hasBakedPositions = useMemo(() => {
     if (explorationMode === 'data') {
@@ -1703,7 +1717,7 @@ export function useOntologyGraph({
   }, [explorationMode, layoutType]);
 
   useEffect(() => {
-    if (!containerRef.current || termNodeCount === 0) {
+    if (!containerRef.current || graphInstanceKey === 0) {
       return;
     }
 
@@ -2162,7 +2176,7 @@ export function useOntologyGraph({
     };
   }, [
     applyBakedPositions,
-    termNodeCount,
+    graphInstanceKey,
     explorationMode,
     hasBakedPositions,
     layoutType,
@@ -2232,7 +2246,8 @@ export function useOntologyGraph({
         graphData,
         isDataMode,
         additiveContext,
-        assetToTermMapRef.current
+        assetToTermMapRef.current,
+        nodePositionsRef.current
       );
       commitTermFingerprintIfChanged(
         termFingerprintRef,
