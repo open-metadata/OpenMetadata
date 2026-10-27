@@ -44,10 +44,10 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getActivityEventHeaderText } from '../../../utils/FeedUtils';
 import {
+  canManageFeedPost,
   entityDisplayName,
   getEntityFQN,
   getEntityType,
-  isFeedPostAuthor,
 } from '../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -463,8 +463,6 @@ const ActivityFeedCardNew = ({
     !isActivityEvent && !isPost
   ) ? (
     <ActivityFeedActions
-      canDelete
-      canEdit
       className={ACTIONS_CLASS_NAME}
       conversation={feed}
       conversationId={feed.id}
@@ -507,9 +505,7 @@ const ActivityFeedCardNew = ({
         direction="col">
         {orderedPosts.map((reply, index, arr) => {
           const conversationId = activity?.id ?? feed?.id ?? '';
-          const canManage =
-            isFeedPostAuthor(currentUser, reply.author) ||
-            Boolean(currentUser?.isAdmin);
+          const canManage = canManageFeedPost(currentUser, reply.author);
 
           return (
             <CommentCard

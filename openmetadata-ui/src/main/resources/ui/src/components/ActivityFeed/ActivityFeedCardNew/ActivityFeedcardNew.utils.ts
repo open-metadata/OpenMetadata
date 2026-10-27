@@ -12,7 +12,7 @@
  */
 import classNames from 'classnames';
 import { Conversation } from '../../../generated/entity/feed/conversation';
-import { isFeedPostAuthor } from '../../../utils/FeedUtilsPure';
+import { canManageFeedPost } from '../../../utils/FeedUtilsPure';
 import {
   DEFAULT_HEADER_LAYOUT,
   HEADER_ITEM_CLASS_NAME,
@@ -149,13 +149,10 @@ export const getFullCardBaseClassName = (isThreadPanel?: boolean): string =>
   );
 
 // A root conversation's menu, and the header room kept clear for it, show only
-// to its author or an admin: the rule ActivityFeedActions applies.
+// when ActivityFeedActions' own rule would render the menu.
 export const canManageConversation = (
-  currentUser: { id?: string; name?: string; isAdmin?: boolean } | undefined,
+  currentUser: Parameters<typeof canManageFeedPost>[0],
   feed: Conversation | undefined,
   isRoot: boolean
 ): feed is Conversation =>
-  Boolean(feed) &&
-  isRoot &&
-  (isFeedPostAuthor(currentUser, feed?.createdBy) ||
-    Boolean(currentUser?.isAdmin));
+  Boolean(feed) && isRoot && canManageFeedPost(currentUser, feed?.createdBy);

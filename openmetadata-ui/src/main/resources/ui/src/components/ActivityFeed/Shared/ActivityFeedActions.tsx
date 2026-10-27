@@ -21,7 +21,7 @@ import {
   ConversationReply,
 } from '../../../generated/entity/feed/conversation';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { isFeedPostAuthor } from '../../../utils/FeedUtilsPure';
+import { canManageFeedPost } from '../../../utils/FeedUtilsPure';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 
 const ConfirmationModal = withSuspenseFallback(
@@ -70,29 +70,13 @@ interface ActivityFeedActionsProps {
  * `resolveCommentPermissions` in utils/TaskCommentUtils.
  */
 const resolveActionVisibility = (
-  isAuthor: boolean,
-  isAdmin: boolean,
+  canManage: boolean,
   canEdit?: boolean,
   canDelete?: boolean
-) => {
-  const canManage = isAuthor || isAdmin;
-
-  return {
-    showEdit: canEdit ?? canManage,
-    showDelete: canDelete ?? canManage,
-  };
-};
-
-const getIsAuthor = (
-  isReply: boolean,
-  currentUser: { id?: string; name?: string } | undefined,
-  conversation?: Conversation,
-  reply?: ConversationReply
-): boolean =>
-  isFeedPostAuthor(
-    currentUser,
-    isReply ? reply?.author : conversation?.createdBy
-  );
+) => ({
+  showEdit: canEdit ?? canManage,
+  showDelete: canDelete ?? canManage,
+});
 
 const ActivityFeedActions = ({
   conversation,
@@ -107,7 +91,6 @@ const ActivityFeedActions = ({
 }: ActivityFeedActionsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const isAuthor = getIsAuthor(isReply, currentUser, conversation, reply);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { deleteFeed, hideDrawer } = useActivityFeedProvider();
@@ -154,8 +137,10 @@ const ActivityFeedActions = ({
   };
 
   const { showEdit, showDelete } = resolveActionVisibility(
-    isAuthor,
-    Boolean(currentUser?.isAdmin),
+    canManageFeedPost(
+      currentUser,
+      isReply ? reply?.author : conversation?.createdBy
+    ),
     canEdit,
     canDelete
   );
