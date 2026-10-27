@@ -18,21 +18,21 @@ public final class ConnectionSecretsEncryptionMigration {
   private static final String EXTENSION = "extension";
   private static final String JSON = "json";
 
-  private record Service(String table, String versionPrefix) {}
+  private record Service(String table, String versionPrefix, String connectionType) {}
 
   private record Snapshot(String id, String extension, String json) {}
 
   private static final List<Service> SERVICES =
       List.of(
-          new Service("mlmodel_service_entity", "mlmodelService.version.%"),
-          new Service("dbservice_entity", "databaseService.version.%"));
+          new Service("mlmodel_service_entity", "mlmodelService.version.%", "Mlflow"),
+          new Service("dbservice_entity", "databaseService.version.%", "Teradata"));
 
   private ConnectionSecretsEncryptionMigration() {}
 
   public static void encryptConnectionSecrets(Handle handle, ConnectionType connectionType) {
     for (Service service : SERVICES) {
       int current = encryptCurrent(handle, connectionType, service);
-      int history = encryptHistory(handle, connectionType, service.versionPrefix());
+      int history = encryptHistory(handle, connectionType, service);
       LOG.info(
           "Encrypted connection secrets in {} current rows and {} snapshots for {}",
           current,
@@ -46,7 +46,7 @@ public final class ConnectionSecretsEncryptionMigration {
     int encrypted = 0;
     List<Snapshot> rows;
     do {
-      rows = currentBatch(handle, service.table(), afterId);
+      rows = currentBatch(handle, connectionType, service, afterId);
       for (Snapshot row : rows) {
         encrypted += encryptRow(handle, connectionType, service.table(), row);
         afterId = row.id();
@@ -55,22 +55,28 @@ public final class ConnectionSecretsEncryptionMigration {
     return encrypted;
   }
 
-  private static List<Snapshot> currentBatch(Handle handle, String table, String afterId) {
+  private static List<Snapshot> currentBatch(
+      Handle handle, ConnectionType connectionType, Service service, String afterId) {
     return handle
         .createQuery(
-            "SELECT id, json FROM " + table + " WHERE id > :afterId ORDER BY id LIMIT :limit")
+            "SELECT id, json FROM "
+                + service.table()
+                + " WHERE "
+                + connectorFilter(connectionType)
+                + " AND id > :afterId ORDER BY id LIMIT :limit")
+        .bind("connectionType", service.connectionType())
         .bind("afterId", afterId)
         .bind("limit", BATCH_SIZE)
         .map((row, ctx) -> new Snapshot(row.getString(ID), null, row.getString(JSON)))
         .list();
   }
 
-  private static int encryptHistory(Handle handle, ConnectionType connectionType, String prefix) {
+  private static int encryptHistory(Handle handle, ConnectionType connectionType, Service service) {
     Snapshot cursor = new Snapshot("", "", null);
     int encrypted = 0;
     List<Snapshot> rows;
     do {
-      rows = historyBatch(handle, prefix, cursor);
+      rows = historyBatch(handle, connectionType, service, cursor);
       for (Snapshot row : rows) {
         encrypted += encryptRow(handle, connectionType, "entity_extension", row);
         cursor = row;
@@ -79,13 +85,17 @@ public final class ConnectionSecretsEncryptionMigration {
     return encrypted;
   }
 
-  private static List<Snapshot> historyBatch(Handle handle, String prefix, Snapshot cursor) {
+  private static List<Snapshot> historyBatch(
+      Handle handle, ConnectionType connectionType, Service service, Snapshot cursor) {
     return handle
         .createQuery(
             "SELECT id, extension, json FROM entity_extension WHERE extension LIKE :prefix"
+                + " AND "
+                + connectorFilter(connectionType)
                 + " AND (id > :afterId OR (id = :afterId AND extension > :afterExtension))"
                 + " ORDER BY id, extension LIMIT :limit")
-        .bind("prefix", prefix)
+        .bind("prefix", service.versionPrefix())
+        .bind("connectionType", service.connectionType())
         .bind("afterId", cursor.id())
         .bind("afterExtension", cursor.extension())
         .bind("limit", BATCH_SIZE)
@@ -93,6 +103,12 @@ public final class ConnectionSecretsEncryptionMigration {
             (row, ctx) ->
                 new Snapshot(row.getString(ID), row.getString(EXTENSION), row.getString(JSON)))
         .list();
+  }
+
+  private static String connectorFilter(ConnectionType connectionType) {
+    return connectionType == ConnectionType.POSTGRES
+        ? "json #>> '{connection,config,type}' = :connectionType"
+        : "JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.type')) = :connectionType";
   }
 
   private static int encryptRow(
