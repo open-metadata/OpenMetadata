@@ -131,6 +131,9 @@ const DeleteEntityPopover = ({
 
   return (
     <ConfirmPopover
+      // The soft / permanent choice carries two descriptions, so it is wider
+      // than the default confirmation.
+      className={allowSoftDelete ? 'tw:w-90' : undefined}
       confirmText={allowSoftDelete ? selectedOption.label : undefined}
       content={choice}
       data-testid={dataTestId}
