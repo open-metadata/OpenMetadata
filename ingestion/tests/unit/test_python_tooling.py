@@ -90,6 +90,26 @@ def reported_test_names(repo: Path, suite: str) -> list[str]:
     return [case.attrib["name"] for case in report.findall(".//testcase")]
 
 
+@pytest.mark.parametrize("entrypoint", ["make", "nox"])
+@pytest.mark.parametrize("workers", [None, "2", "0", "auto"], ids=["default", "two", "serial", "auto"])
+def test_unit_worker_count_defaults_to_four_and_respects_overrides(
+    nox_repo: Path, entrypoint: str, workers: str | None
+) -> None:
+    expected = {None: "4", "2": "2", "0": None, "auto": "1"}[workers]
+    (nox_repo / "ingestion/tests/unit/test_selection.py").write_text(
+        "import os\n\ndef test_worker_count():\n"
+        f"    assert os.environ.get('PYTEST_XDIST_WORKER_COUNT') == {expected!r}\n"
+    )
+    args = ["-n", workers] if workers is not None else []
+    if entrypoint == "make":
+        result = run("make", "unit_ingestion", "ARGS=" + " ".join(args), cwd=nox_repo)
+    else:
+        result = nox_tests(nox_repo, "unit", *args)
+
+    assert_success(result)
+    assert reported_test_names(nox_repo, "unit") == ["test_worker_count"]
+
+
 @pytest.mark.parametrize("directory", [".", "ingestion"])
 @pytest.mark.parametrize("target", ["unit_ingestion", "unit_ingestion_dev_env"])
 def test_make_unit_commands_use_the_complete_selection(nox_repo: Path, directory: str, target: str) -> None:

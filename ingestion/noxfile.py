@@ -318,7 +318,7 @@ def unit_tests(session):
         "--cov-config=pyproject.toml",
         "--junitxml=junit/test-results-unit.xml",
         "-n",
-        "auto",
+        "4",
         "--dist",
         "loadfile",
         "--timeout=300",

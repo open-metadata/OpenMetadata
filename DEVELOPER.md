@@ -638,8 +638,9 @@ make unit_ingestion ARGS="-n 0 tests/unit/models/ -m 'not slow' -q"
 ```
 
 An explicit path replaces the default unit-suite selection; `-k` and `-m` filter the selected
-tests. `-n 0` disables parallel workers for small runs or debugging; omit it to use the
-session's default parallel execution. With Nox directly, pass the same arguments after `--`:
+tests. Unit tests default to four workers. Use `-n 2` for lower resource usage, `-n 0` for
+small runs or debugging, or `-n auto` to let pytest-xdist choose based on the machine's CPUs.
+These explicit options override the default. With Nox directly, pass the same arguments after `--`:
 
 ```bash
 # From ingestion/, with Nox available on PATH
