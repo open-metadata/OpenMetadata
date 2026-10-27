@@ -11,32 +11,32 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Query } from '../../src/generated/entity/data/query';
 import { Table } from '../../src/generated/entity/data/table';
+import { okJson } from './apiResponse';
 
 export const createQueryByTableName = async (data: {
   apiContext: APIRequestContext;
   tableResponseData: Pick<Table, 'id' | 'name' | 'service'>;
 }) => {
   const { apiContext, tableResponseData } = data;
-  const queryResponse = await apiContext
-    .post('/api/v1/queries', {
-      data: {
-        query: `SELECT * FROM SALES-${tableResponseData?.['name']}`,
-        description: 'this is query description',
-        queryUsedIn: [
-          {
-            id: tableResponseData?.['id'],
-            type: 'table',
-          },
-        ],
-        duration: 6199,
-        queryDate: 1700225667191,
-        service: tableResponseData?.['service']?.['name'],
-      },
-    })
-    .then((response) => response.json());
+  const queryResponse = await apiContext.post('/api/v1/queries', {
+    data: {
+      query: `SELECT * FROM SALES-${tableResponseData?.['name']}`,
+      description: 'this is query description',
+      queryUsedIn: [
+        {
+          id: tableResponseData?.['id'],
+          type: 'table',
+        },
+      ],
+      duration: 6199,
+      queryDate: 1700225667191,
+      service: tableResponseData?.['service']?.['name'],
+    },
+  });
 
-  return await queryResponse;
+  return okJson<Query>(queryResponse, 'createQueryByTableName');
 };
 
 export const queryFilters = async ({
