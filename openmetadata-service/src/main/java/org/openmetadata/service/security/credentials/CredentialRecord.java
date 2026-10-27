@@ -27,7 +27,7 @@ import org.openmetadata.service.security.credentials.CredentialMetrics.DecryptOu
  * row. Empty for an absent or deleted user.
  *
  * <p>{@code mechanismVersion} and {@code mechanismDigest} remember which stored mechanism the
- * digest was decrypted from, so a later full read of an unchanged mechanism skips the
+ * digest was decrypted from, so a later sweep or nudge read of an unchanged mechanism skips the
  * secrets-manager call. Both are null when the mechanism is not a JWT (or the user is absent).
  *
  * <p>{@code mechanismDigestOrigin} says how this read obtained {@code mechanismDigest}: decrypted,
