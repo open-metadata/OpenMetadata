@@ -16,6 +16,7 @@ import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FreshReadScope;
 
 public final class UserTokenCache {
   private UserTokenCache() {}
@@ -67,7 +68,9 @@ public final class UserTokenCache {
   }
 
   private static Set<String> loadTokens(String userName) {
-    try {
+    // Fresh read for the same reason as BotTokenCache: a stale user on the thread must not resolve
+    // tokens for a user that was deleted since.
+    try (FreshReadScope.Handle freshRead = FreshReadScope.enter()) {
       return loadExistingTokens(userName);
     } catch (EntityNotFoundException ignored) {
       return Set.of();
