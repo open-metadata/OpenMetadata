@@ -25,6 +25,7 @@ import {
   waitForAllLoadersToDisappear,
 } from './entity';
 import { sidebarClick } from './sidebar';
+import { clickUntilVisible } from './waitHelpers';
 
 const ARTICLE_PATH_PREFIX = '/context-center/articles/';
 const FQN_PLACEHOLDER = ':fqn';
@@ -311,19 +312,18 @@ export const updateQuickLink = async (
   await descriptionTextarea.press('ControlOrMeta+a');
   await descriptionTextarea.fill(knowledgePageQuickLink.updatedDescription);
 
-  const tagsTrigger = modal.getByTestId('tags-container');
-  await tagsTrigger.click();
-
-  const searchInput = page
-    .getByTestId('drop-down-menu')
-    .getByTestId('search-input');
-  await searchInput.waitFor({ state: 'visible' });
-  await searchInput.fill(knowledgePageQuickLink.tag);
-
-  await page
-    .getByTestId('drop-down-menu')
-    .getByTestId(knowledgePageQuickLink.tagFqn)
-    .click();
+  const tagPicker = page.getByTestId('drop-down-menu');
+  const searchInput = tagPicker.getByTestId('search-input');
+  const tagOption = tagPicker.getByTestId(knowledgePageQuickLink.tagFqn);
+  // The tag picker is a non-modal react-aria popover, which closes on any
+  // scroll of the window or the trigger's ancestors. While the articles page
+  // behind the modal is still settling, that can shut it right after it opens
+  // or after the search is typed, so open, search and pick are retried as one.
+  await expect(async () => {
+    await clickUntilVisible(modal.getByTestId('tags-container'), searchInput);
+    await searchInput.fill(knowledgePageQuickLink.tag, { timeout: 5_000 });
+    await tagOption.click({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000, intervals: [500, 1_000] });
 
   await page.keyboard.press('Escape');
   await modal.getByRole('button', { name: 'Save' }).click();
@@ -787,7 +787,9 @@ export const verifyContentPersistence = async (
 ): Promise<void> => {
   await waitForAutoSave(page);
 
-  await page.reload();
+  // `load` waits on every in-flight XHR, which can outlast the test timeout on a
+  // slow runner; the editor and text waits below are the readiness signal.
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   const editor = await getEditor(page, true);

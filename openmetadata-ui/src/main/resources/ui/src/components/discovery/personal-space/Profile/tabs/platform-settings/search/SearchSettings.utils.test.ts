@@ -13,10 +13,12 @@
 
 import {
   complementWeight,
+  parseFieldValueBoostItemId,
   parseOptionalNumber,
   setSignalMaxBoost,
   setStageWeight,
   toEntityDraft,
+  toFieldValueBoostItemId,
   toggleHighlightField,
   toggleSearchField,
   updateSearchField,
@@ -26,6 +28,24 @@ import {
 } from './SearchSettings.utils';
 
 describe('SearchSettings.utils', () => {
+  it('round-trips the field value boost form item id', () => {
+    const cases = [
+      [undefined, undefined, 'field-value-boost'],
+      [undefined, 'totalVotes', 'field-value-boost/totalVotes'],
+      ['tables', undefined, 'tables/field-value-boost'],
+      [
+        'tables',
+        'usageSummary.count',
+        'tables/field-value-boost/usageSummary.count',
+      ],
+    ] as const;
+
+    cases.forEach(([entity, field, itemId]) => {
+      expect(toFieldValueBoostItemId(entity, field)).toBe(itemId);
+      expect(parseFieldValueBoostItemId(itemId)).toEqual({ entity, field });
+    });
+  });
+
   it('keeps keyword and semantic weights summing to 1', () => {
     expect(complementWeight(0.4)).toBe(0.6);
     expect(complementWeight(0.7)).toBe(0.3);

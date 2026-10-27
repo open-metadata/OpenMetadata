@@ -44,7 +44,8 @@ const OntologyStudioHeader = <M extends string>({
   return (
     <header
       className="tw:shrink-0 tw:border-b tw:border-secondary tw:bg-surface"
-      data-testid="ontology-studio-header">
+      data-testid="ontology-studio-header"
+      data-tour-step="ontology-studio">
       {breadcrumb ? <div className="tw:px-4 tw:pt-2">{breadcrumb}</div> : null}
       <Box align="center" className="tw:h-14 tw:px-4" gap={3}>
         <Box align="center" className="tw:shrink-0" gap={2}>
