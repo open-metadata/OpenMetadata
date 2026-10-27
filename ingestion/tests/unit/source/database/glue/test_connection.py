@@ -22,19 +22,25 @@ from metadata.core.connections.test_connection.check import CheckError, collect_
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection as GlueConnectionConfig,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.glue.connection import (
     GLUE_ERRORS,
     MAX_DATABASES_TO_PROBE,
+    MAX_TABLES_TO_SCAN,
     GlueChecks,
     GlueConnection,
     GlueFilters,
     list_databases,
 )
+from metadata.ingestion.source.database.glue.metadata import GlueSource
 
 CONNECTION_MODULE = "metadata.ingestion.source.database.glue.connection"
+SOURCE_MODULE = "metadata.ingestion.source.database.glue.metadata"
 
 _SEED = (
     Path(__file__).parents[6]
@@ -294,7 +300,9 @@ def test_get_tables_names_the_database_catalog():
 
     _checks(client).get_tables()
 
-    tables_paginator.paginate.assert_called_once_with(DatabaseName="sales", CatalogId="111")
+    tables_paginator.paginate.assert_called_once_with(
+        DatabaseName="sales", CatalogId="111", PaginationConfig={"MaxItems": MAX_TABLES_TO_SCAN}
+    )
 
 
 def test_get_tables_warns_when_the_schema_filter_excludes_every_database():
@@ -375,6 +383,102 @@ def test_glue_filters_skip_the_database_filter_when_database_name_is_set():
     )
 
     assert GlueFilters.of(config).database is None
+
+
+def test_get_tables_finds_a_targeted_database_on_a_later_page():
+    client = MagicMock()
+    pages = [{"DatabaseList": [{"Name": "linked_db"}, {"Name": "other"}]}, {"DatabaseList": [{"Name": "sales"}]}]
+    tables_paginator = MagicMock()
+    tables_paginator.paginate.side_effect = lambda **kwargs: [{"TableList": [{"Name": "orders"}]}]
+    client.get_paginator.side_effect = lambda operation: (
+        tables_paginator if operation == "get_tables" else _paginator(pages)
+    )
+
+    evidence = _checks(client, schema=FilterPattern(includes=["^sales$"])).get_tables()
+
+    assert evidence.summary == "1 table in database 'sales'"
+    tables_paginator.paginate.assert_called_once()
+
+
+def test_get_tables_stops_after_the_probe_cap():
+    databases = [{"Name": f"empty_{i:02d}"} for i in range(MAX_DATABASES_TO_PROBE + 5)]
+    client = _client({"get_databases": [{"DatabaseList": databases}], "get_tables": [{"TableList": []}]})
+
+    evidence = _checks(client).get_tables()
+
+    assert evidence.summary == f"no tables in the first {MAX_DATABASES_TO_PROBE} databases"
+    get_tables_calls = [c for c in client.get_paginator.call_args_list if c.args == ("get_tables",)]
+    assert len(get_tables_calls) == MAX_DATABASES_TO_PROBE
+
+
+def test_get_tables_stops_once_the_table_scan_budget_is_spent():
+    # A filter that keeps nothing must not read a large catalog to the end.
+    filtered_out = [{"Name": f"tmp_{i}"} for i in range(MAX_TABLES_TO_SCAN)]
+    client = _client_denying(
+        denied="",
+        databases=[{"Name": "big"}, {"Name": "sales"}],
+        tables={"big": filtered_out, "sales": [{"Name": "orders"}]},
+    )
+
+    evidence = _checks(client, table=FilterPattern(excludes=["^tmp_"])).get_tables()
+
+    assert evidence.summary == "no tables in the first 1 database"
+    assert evidence.caveat is not None
+
+
+def test_pipeline_filters_match_fully_qualified_names_with_use_fqn_for_filtering():
+    pipeline = DatabaseServiceMetadataPipeline(
+        useFqnForFiltering=True,
+        schemaFilterPattern=FilterPattern(includes=[r"^svc\.111\.sales$"]),
+        tableFilterPattern=FilterPattern(excludes=[r"^svc\.111\.sales\.tmp_"]),
+    )
+    filters = GlueFilters.of_pipeline(_config(), pipeline, service_name="svc")
+    client = _client_denying(
+        denied="linked_db",
+        databases=[{"Name": "linked_db", "CatalogId": "111"}, {"Name": "sales", "CatalogId": "111"}],
+        tables={"sales": [{"Name": "tmp_orders"}, {"Name": "orders"}]},
+    )
+
+    evidence = GlueChecks(catalog=Borrowed.of(client), filters=filters).get_tables()
+
+    assert evidence.summary == "1 table in database 'sales'"
+
+
+def test_pipeline_filters_use_the_pipeline_patterns_not_the_connection_defaults():
+    config = GlueConnectionConfig(
+        awsConfig=AWSCredentials(awsRegion="us-east-1"),
+        schemaFilterPattern=FilterPattern(includes=["^linked_db$"]),
+    )
+    pipeline = DatabaseServiceMetadataPipeline(schemaFilterPattern=FilterPattern(includes=["^sales$"]))
+
+    filters = GlueFilters.of_pipeline(config, pipeline, service_name="svc")
+
+    assert filters.schema == pipeline.schemaFilterPattern
+    assert filters.service_name is None
+
+
+def test_glue_source_probes_with_a_pipeline_only_schema_filter():
+    # The filter is set on the ingestion pipeline only; the connection has none.
+    client = _client_denying(
+        denied="linked_db",
+        databases=[{"Name": "linked_db", "CatalogId": "111"}, {"Name": "sales", "CatalogId": "111"}],
+        tables={"sales": [{"Name": "orders"}]},
+    )
+    source_config = {
+        "type": "glue",
+        "serviceName": "svc",
+        "serviceConnection": {"config": {"type": "Glue", "awsConfig": {"awsRegion": "us-east-1"}}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata", "schemaFilterPattern": {"includes": ["^sales$"]}}},
+    }
+    with (
+        patch.object(GlueConnection, "_get_client", return_value=client),
+        patch(f"{SOURCE_MODULE}.GlueSource.test_connection"),
+    ):
+        source = GlueSource.create(source_config, MagicMock())
+
+    evidence = source._connection.checks().get_tables()
+
+    assert evidence.summary == "1 table in database 'sales'"
 
 
 def test_error_pack_access_denied():

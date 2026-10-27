@@ -27,10 +27,14 @@ from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
 from metadata.core.connections.test_connection.checks.summary import count, enumerated, more_suffix
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection as GlueConnectionConfig,
 )
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 
 if TYPE_CHECKING:
@@ -38,6 +42,9 @@ if TYPE_CHECKING:
 
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+        DatabaseServiceMetadataPipeline,
+    )
     from metadata.generated.schema.type.filterPattern import FilterPattern
 
 
@@ -47,6 +54,10 @@ DEFAULT_LIST_LIMIT = 100
 # Catalogs commonly lead with an empty 'default' database, so the table probe keeps
 # looking past it - bounded, since each database costs a GetTables call.
 MAX_DATABASES_TO_PROBE = 10
+
+# A selective tableFilterPattern can match nothing in a large database; cap the tables
+# the whole probe reads so the check cannot outrun its step timeout.
+MAX_TABLES_TO_SCAN = 1000
 
 
 # Only what is specific to Glue: its IAM actions and its not-found code.
@@ -98,28 +109,62 @@ def list_databases(client: Any, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
 
 @dataclass(frozen=True)
 class GlueFilters:
-    """The connection's filter patterns, matched as ingestion matches them: the
+    """The filter patterns the probe honors, matched as ingestion matches them: the
     database pattern against the catalog ID, the schema pattern against the Glue
-    database name and the table pattern against the table name."""
+    database name and the table pattern against the table name - or against their
+    fully qualified names when ``service_name`` is set (``useFqnForFiltering``)."""
 
     database: FilterPattern | None = None
     schema: FilterPattern | None = None
     table: FilterPattern | None = None
+    service_name: str | None = None
+    database_name: str | None = None
 
     @classmethod
     def of(cls, connection: GlueConnectionConfig) -> GlueFilters:
+        """The connection's default patterns, for a test run outside an ingestion pipeline."""
         # With databaseName set, ingestion labels every catalog with it and skips the database filter.
         return cls(
             database=None if connection.databaseName else connection.databaseFilterPattern,
             schema=connection.schemaFilterPattern,
             table=connection.tableFilterPattern,
+            database_name=connection.databaseName,
+        )
+
+    @classmethod
+    def of_pipeline(
+        cls, connection: GlueConnectionConfig, pipeline: DatabaseServiceMetadataPipeline, service_name: str
+    ) -> GlueFilters:
+        """The patterns an ingestion run filters by, which can differ from the connection's defaults."""
+        return cls(
+            database=None if connection.databaseName else pipeline.databaseFilterPattern,
+            schema=pipeline.schemaFilterPattern,
+            table=pipeline.tableFilterPattern,
+            service_name=service_name if pipeline.useFqnForFiltering else None,
+            database_name=connection.databaseName,
         )
 
     def excludes_database(self, database: dict[str, Any]) -> bool:
         catalog_id = database.get("CatalogId")
-        return bool(catalog_id and filter_by_database(self.database, catalog_id)) or filter_by_schema(
-            self.schema, database["Name"]
+        excluded_catalog = bool(catalog_id) and filter_by_database(
+            self.database, self._qualify(Database, catalog_id, database_name=catalog_id)
         )
+        return excluded_catalog or filter_by_schema(
+            self.schema, self._qualify(DatabaseSchema, database["Name"], **self._schema_parts(database))
+        )
+
+    def excludes_table(self, database: dict[str, Any], table_name: str) -> bool:
+        parts = {**self._schema_parts(database), "table_name": table_name, "skip_es_search": True}
+        return filter_by_table(self.table, self._qualify(Table, table_name, **parts))
+
+    def _schema_parts(self, database: dict[str, Any]) -> dict[str, Any]:
+        return {"database_name": self.database_name or database.get("CatalogId"), "schema_name": database["Name"]}
+
+    def _qualify(self, entity_type: type, name: str, **parts: Any) -> str:
+        """The name a pattern is matched against: plain, or fully qualified as ingestion builds it."""
+        if self.service_name is None or parts.get("database_name") is None:
+            return name
+        return fqn.build(None, entity_type=entity_type, service_name=self.service_name, **parts) or name
 
 
 def _targeted_databases(client: Any, filters: GlueFilters) -> Iterator[dict[str, Any]]:
@@ -139,27 +184,31 @@ def _targeted_databases(client: Any, filters: GlueFilters) -> Iterator[dict[str,
                 return
 
 
-def _targeted_tables(client: Any, database: dict[str, Any], filters: GlueFilters, limit: int) -> list[Any]:
+def _targeted_tables(
+    client: Any, database: dict[str, Any], filters: GlueFilters, limit: int, budget: int
+) -> tuple[list[Any], int]:
     """Return at most ``limit + 1`` of the database's tables the table filter keeps,
-    paging past excluded ones rather than counting them against the cap."""
-    kwargs = {"DatabaseName": database["Name"]}
+    paging past excluded ones, and how many tables were read. Reads at most
+    ``budget`` tables, so a filter that keeps nothing cannot scan a whole catalog."""
+    kwargs: dict[str, Any] = {"DatabaseName": database["Name"], "PaginationConfig": {"MaxItems": budget}}
     # Name the database's own catalog, as ingestion does.
     if database.get("CatalogId"):
         kwargs["CatalogId"] = database["CatalogId"]
-    tables = []
+    tables, scanned = [], 0
     for page in client.get_paginator("get_tables").paginate(**kwargs):
         for table in page.get("TableList", []):
-            if filter_by_table(filters.table, table["Name"]):
+            scanned += 1
+            if filters.excludes_table(database, table["Name"]):
                 continue
             tables.append(table)
             if len(tables) > limit:
-                return tables
-    return tables
+                return tables, scanned
+    return tables, scanned
 
 
 def list_tables(client: Any, filters: GlueFilters | None = None, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
-    """Prove tables can be listed, probing the databases the connection's filters
-    target until one exposes a table they keep.
+    """Prove tables can be listed, probing the databases the filters target until
+    one exposes a table they keep, reading at most ``MAX_TABLES_TO_SCAN`` tables.
 
     Stopping at the first database would report zero tables for a healthy catalog
     that merely leads with an empty one. Nothing here fails the step: an empty
@@ -167,17 +216,20 @@ def list_tables(client: Any, filters: GlueFilters | None = None, limit: int = DE
     empty list rather than an error when grants are missing."""
     filters = filters or GlueFilters()
     command = "glue:GetDatabases"
-    probed = 0
+    probed, budget = 0, MAX_TABLES_TO_SCAN
     try:
         for database in _targeted_databases(client, filters):
             probed += 1
             name = database["Name"]
             command = f"glue:GetTables (DatabaseName={name})"
-            tables = _targeted_tables(client, database, filters, limit)
+            tables, scanned = _targeted_tables(client, database, filters, limit, budget)
+            budget -= scanned
             if tables:
                 shown = min(len(tables), limit)
                 summary = f"{count(shown, 'table')} in database '{name}'" + more_suffix(shown, len(tables) > limit)
                 return Evidence(summary=summary, command=command)
+            if budget <= 0:
+                break
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
     if not probed:
@@ -220,11 +272,17 @@ class GlueChecks:
 
 
 class GlueConnection(BaseConnection[GlueConnectionConfig, Any]):
+    _filters: GlueFilters | None = None
+
     def _get_client(self) -> Any:
         return AWSClient(self.service_connection.awsConfig).get_glue_client()
+
+    def scope_to(self, filters: GlueFilters) -> None:
+        """Probe what an ingestion run reads, instead of the connection's default filters."""
+        self._filters = filters
 
     def checks(self) -> ChecksProvider:
         return GlueChecks(
             catalog=self.borrow(),
-            filters=GlueFilters.of(self.service_connection),
+            filters=self._filters or GlueFilters.of(self.service_connection),
         )
