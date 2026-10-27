@@ -17,7 +17,7 @@ import { OverlayArrow as AriaOverlayArrow } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
 import { Typography } from '@/components/foundations/typography';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
-import { cx } from '@/utils/cx';
+import { cx, sortCx } from '@/utils/cx';
 import { Popover, PopoverTrigger } from '../popover/popover';
 
 /**
@@ -82,12 +82,12 @@ const CONFIRM_KEY = 'confirm';
 const BODY_CLASS = 'tw:flex tw:flex-col tw:gap-4 tw:p-4';
 
 // While open, the trigger reads as the target of the pending action.
-const ACTIVE_TRIGGER_CLASS = {
+const ACTIVE_TRIGGER_CLASS = sortCx({
   destructive:
     'tw:aria-expanded:bg-error-primary tw:aria-expanded:text-fg-error-primary tw:aria-expanded:outline-1 tw:aria-expanded:outline-error_subtle',
   primary:
     'tw:aria-expanded:bg-brand-primary tw:aria-expanded:text-brand-secondary',
-};
+});
 
 /**
  * A lightweight confirmation anchored to the control that asked

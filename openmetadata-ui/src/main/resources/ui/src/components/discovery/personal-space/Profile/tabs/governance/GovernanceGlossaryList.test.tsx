@@ -51,11 +51,11 @@ jest.mock(
 
 // Import AFTER mocks are defined so jest.requireMock returns the mocked module
 import { getRelationTypeUsageCounts } from '../../../../../../rest/glossaryAPI';
-import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import {
   deleteRelationshipType,
   listRelationshipTypes,
 } from '../../../../../../rest/ontologyAPI';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import GovernanceGlossaryList from './GovernanceGlossaryList';
 
 const mockListRelationshipTypes = listRelationshipTypes as jest.Mock;

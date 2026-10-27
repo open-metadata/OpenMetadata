@@ -70,7 +70,10 @@ import {
 } from '../../../../../Learning/Learning.interface';
 import { LearningResourceCard } from '../../../../../Learning/LearningResourceCard/LearningResourceCard.component';
 import { ResourceTypeIcon } from '../../../../../Learning/ResourceTypeIcon/ResourceTypeIcon';
-import { getInitialLearningListState } from './LearningResourceSettings.utils';
+import {
+  getInitialLearningListState,
+  getResourceName,
+} from './LearningResourceSettings.utils';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
 
@@ -86,9 +89,6 @@ const getCategoryLabel = (category: string) =>
 
 const getCategoryColor = (category: string) =>
   CATEGORY_BADGE_COLORS[category as ResourceCategory] ?? 'gray';
-
-const getResourceName = (resource: LearningResource) =>
-  resource.displayName || resource.name;
 
 const getContextLabel = (pageId: string) =>
   PAGE_IDS.find((page) => page.value === pageId)?.label ?? pageId;

@@ -21,12 +21,12 @@ import {
 } from '@testing-library/react';
 import React, { useState } from 'react';
 import { getBotByName, updateBotDetail } from '../../../../../../rest/botsAPI';
+import { deleteEntity } from '../../../../../../rest/miscAPI';
 import {
   getAuthMechanismForBotUser,
   getUserByName,
   updateUserDetail,
 } from '../../../../../../rest/userAPI';
-import { deleteEntity } from '../../../../../../rest/miscAPI';
 import BotDetailPanel from './BotDetailPanel';
 
 jest.mock('react-i18next', () => {

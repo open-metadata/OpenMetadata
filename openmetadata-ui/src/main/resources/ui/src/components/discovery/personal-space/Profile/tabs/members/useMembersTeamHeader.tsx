@@ -27,8 +27,8 @@ import {
   Trash01,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
-import { ReactNode, useEffect, useRef } from 'react';
 import type { TFunction } from 'i18next';
+import { ReactNode, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Team } from '../../../../../../generated/entity/teams/team';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';

@@ -13,13 +13,13 @@
 import { AxiosError } from 'axios';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../enums/entity.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { deleteEntity } from '../../../rest/miscAPI';
-import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
-import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
+import { EntityType } from '../../enums/entity.enum';
+import { useApplicationStore } from '../useApplicationStore';
+import { deleteEntity } from '../../rest/miscAPI';
+import deleteWidgetClassBase from '../../utils/DeleteWidget/DeleteWidgetClassBase';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
+import { DeleteType, DeleteWidgetModalProps } from '../../components/common/DeleteWidget/DeleteWidget.interface';
 
 export type UseEntityDeleteOptions = Pick<
   DeleteWidgetModalProps,

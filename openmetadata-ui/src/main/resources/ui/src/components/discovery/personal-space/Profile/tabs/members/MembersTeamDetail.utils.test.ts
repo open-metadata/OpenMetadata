@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { TFunction } from 'i18next';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { TFunction } from 'i18next';
 import { ReactElement } from 'react';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';

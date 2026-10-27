@@ -18,7 +18,10 @@ import { startCase } from 'lodash';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DeleteType } from './DeleteWidget.interface';
-import { useEntityDelete, UseEntityDeleteOptions } from './useEntityDelete';
+import {
+  useEntityDelete,
+  UseEntityDeleteOptions,
+} from '../../../hooks/common/useEntityDelete';
 
 export type DeleteEntityPopoverProps = UseEntityDeleteOptions &
   Pick<

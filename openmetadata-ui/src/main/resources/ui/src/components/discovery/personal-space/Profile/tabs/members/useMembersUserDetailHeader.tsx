@@ -22,9 +22,9 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
+import type { TFunction } from 'i18next';
 import type { Key, ReactNode } from 'react';
 import { useEffect, useMemo } from 'react';
-import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { User } from '../../../../../../generated/entity/teams/user';

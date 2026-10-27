@@ -157,3 +157,6 @@ export const getInitialLearningListState = (
     ? { ...state, currentPage: 1 }
     : state;
 };
+
+export const getResourceName = (resource: LearningResource) =>
+  resource.displayName || resource.name;

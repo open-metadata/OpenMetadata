@@ -24,9 +24,9 @@ import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
-import { useAnchoredConfirm } from '../../../../../../hooks/popover/useAnchoredConfirm';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
+import { useAnchoredConfirm } from '../../../../../../hooks/popover/useAnchoredConfirm';
 import {
   deleteCustomPropertyByName,
   getTypeByFQN,
