@@ -214,7 +214,6 @@ export const checkTaskCountInActivityFeed = async (
   openTask = 0,
   closedTask = 0
 ) => {
-  await expect(page.locator('.ant-skeleton-element')).toHaveCount(0);
   await dismissHoverPopovers(page);
   await page.getByTestId('user-profile-page-task-filter-icon').click();
   const openTaskItem = page

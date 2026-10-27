@@ -667,9 +667,6 @@ export const fillStoredProcedureCode = async (page: Page) => {
     undefined
   );
 
-  // Wait for the loader to disappear
-  await expect(page.locator('.ant-skeleton-content')).toHaveCount(0);
-
   await page
     .getByTestId('code-mirror-container')
     .getByRole('textbox')
@@ -714,6 +711,15 @@ const BULK_CUSTOM_PROPERTY_INPUTS: Record<
   },
 };
 
+/** Waits for the bulk-edit extension editor to swap its skeleton for the property list. */
+const waitForCustomPropertyEditorLoaded = async (page: Page) => {
+  await expect(
+    page
+      .getByTestId('custom-property-editor')
+      .getByTestId('custom-properties-widget')
+  ).toBeVisible();
+};
+
 /** Sets one custom property from the bulk-edit extension editor. */
 const editBulkCustomProperty = async (
   page: Page,
@@ -744,8 +750,7 @@ export const fillCustomPropertyDetails = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  // Wait for skeleton loaders to disappear
-  await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+  await waitForCustomPropertyEditorLoaded(page);
 
   for (const propertyName of Object.values(CUSTOM_PROPERTIES_TYPES)) {
     await editBulkCustomProperty(
@@ -788,8 +793,7 @@ export const fillExtensionDetails = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  // Wait for skeleton loader to disappear
-  await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+  await waitForCustomPropertyEditorLoaded(page);
 
   for (const propertyName of Object.values(CUSTOM_PROPERTIES_TYPES)) {
     await editBulkCustomProperty(
