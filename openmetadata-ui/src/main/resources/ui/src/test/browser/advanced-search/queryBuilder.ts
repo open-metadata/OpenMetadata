@@ -46,15 +46,11 @@ const listboxOf = (input: Locator) => {
   return id ? page.getByCSS(`[role="listbox"][id="${id}"]`) : undefined;
 };
 
-/**
- * Picks `label` in the react-aria ComboBox inside `control`: types it as a
- * filter (or, with `filter: false`, opens the full list), clicks the option
- * and confirms the box now shows it.
- */
-export const pickOption = async (
+/** One attempt of `pickOption`: choose `label`, then leave the box. */
+const chooseOption = async (
   control: Locator,
   label: string,
-  { filter = true }: { filter?: boolean } = {}
+  filter: boolean
 ) => {
   const input = control.getByRole('combobox');
 
@@ -76,17 +72,38 @@ export const pickOption = async (
     })
   );
 
-  await expect.element(input).toHaveValue(label);
-
-  // A builder re-render can reopen the popup under the click; it would then
-  // cover the next control. Click the dialog title to dismiss it.
-  if (listboxOf(input)?.query()) {
-    await userEvent.click(
-      modal().getByRole('heading', { includeHidden: true }).first()
-    );
-  }
+  // Leave the box (click the dialog title): it then commits, showing the
+  // option the rule holds rather than the text typed to filter the list, and
+  // its popup can no longer cover the next control.
+  await userEvent.click(
+    modal().getByRole('heading', { includeHidden: true }).first()
+  );
 
   await expect.poll(() => Boolean(listboxOf(input)?.query())).toBe(false);
+};
+
+/**
+ * Picks `label` in the react-aria ComboBox inside `control`: types it as a
+ * filter (or, with `filter: false`, opens the full list), clicks the option
+ * and confirms the box, once left, shows it. A click the popup re-renders
+ * under can miss the option; the box then shows the selection it kept, and
+ * the option is picked again.
+ */
+export const pickOption = async (
+  control: Locator,
+  label: string,
+  { filter = true }: { filter?: boolean } = {}
+) => {
+  const input = control.getByRole('combobox');
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await chooseOption(control, label, filter);
+    if ((input.element() as HTMLInputElement).value === label) {
+      break;
+    }
+  }
+
+  await expect.element(input).toHaveValue(label);
 };
 
 /** Picks `label` in a core Select (a button trigger, no text input). */
@@ -234,10 +251,18 @@ const pickSuggestion = async (scope: Locator, value: string) => {
   await userEvent.click(option, { timeout: 10_000 });
 };
 
-/** One pass of `fillRule`. */
-const enterRule = async (
+/**
+ * Fills rule `index`: its field, its operator and (unless the operator takes
+ * none) its value — typed for text operators, picked from the suggestions
+ * otherwise, and confirmed in the widget either way.
+ */
+export const fillRule = async (
   index: number,
-  { field, operator, value }: RuleSpec
+  {
+    field,
+    operator,
+    value,
+  }: { field: string; operator: string; value?: string }
 ) => {
   await pickField(index, [field]);
   await pickOperator(index, operator);
@@ -269,32 +294,6 @@ const enterRule = async (
   await userEvent.click(
     modal().getByRole('heading', { includeHidden: true }).first()
   );
-};
-
-interface RuleSpec {
-  field: string;
-  operator: string;
-  value?: string;
-}
-
-/**
- * Fills rule `index`: its field, its operator and (unless the operator takes
- * none) its value — typed for text operators, picked from the suggestions
- * otherwise, and confirmed in the widget either way. A rule added a moment
- * ago can still be initialising, and that update resets a field picked
- * meanwhile to the default (the select then shows the default again); the
- * rule is filled again when the field it ends up with is not `field`.
- */
-export const fillRule = async (index: number, spec: RuleSpec) => {
-  const fieldInput = fieldSelect(index).getByRole('combobox');
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    await enterRule(index, spec);
-    if ((fieldInput.element() as HTMLInputElement).value === spec.field) {
-      return;
-    }
-  }
-
-  throw new Error(`Rule ${index} would not keep the field ${spec.field}`);
 };
 
 /** The `query_filter` of the result search a `search` sent, parsed. */

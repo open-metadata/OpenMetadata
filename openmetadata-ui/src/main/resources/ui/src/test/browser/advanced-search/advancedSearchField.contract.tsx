@@ -28,7 +28,6 @@ import {
   applyAdvancedSearch,
   clearAdvancedSearch,
   Explore,
-  fieldSelect,
   fillRule,
   modal,
   openAdvancedSearch,
@@ -144,12 +143,6 @@ export const describeAdvancedSearchField = (field: SearchField) => {
           } else {
             await userEvent.click(page.getByTestId('advanced-search-add-rule'));
           }
-
-          // The new rule settles on the default field before it is edited.
-          await expect
-            .element(fieldSelect(1).getByRole('combobox'))
-            .toHaveValue('Owners');
-
           await fillRule(1, {
             field: field.id,
             operator: negative,
