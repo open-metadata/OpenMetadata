@@ -40,7 +40,6 @@ import {
   PaletteKey,
   RelationshipType,
 } from '../../../../generated/entity/data/relationshipType';
-import { pageFixture } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.mock';
 import {
   acquireOntologyEditLock,
   applyOntologyChangeSet,
@@ -58,6 +57,7 @@ import {
   releaseOntologyEditLock,
 } from '../../../../rest/ontologyAPI';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
+import { pageFixture } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.mock';
 import {
   buildOntologyStudioGraph,
   getModelRelations,

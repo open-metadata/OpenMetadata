@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   pageFixture,
   prefixFixture,
@@ -20,9 +19,10 @@ import {
   applyClustersPage,
   buildNativeDataGraph,
   EMPTY_NATIVE_DATA_GRAPH,
-  stageTopologyPage,
   EMPTY_NATIVE_TOPOLOGY,
+  stageTopologyPage,
 } from '../../utils/governance/ontology/OntologyNativeDataGraph.utils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import OntologyDataGraph from './OntologyDataGraph';
 
 const assetSeeds = (count: number) =>

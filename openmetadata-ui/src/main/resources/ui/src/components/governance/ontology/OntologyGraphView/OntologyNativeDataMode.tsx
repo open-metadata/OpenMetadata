@@ -20,13 +20,13 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useNativeOntologyDataGraph } from '../../../../hooks/governance/ontology/useNativeOntologyDataGraph';
+import { getOntologyAssetPath } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
 import {
   buildNativeDataGraph,
   NATIVE_CONTEXT_CONCEPT_LIMIT,
 } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.utils';
-import { getOntologyAssetPath } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
-import { OntologyNode } from '../../../OntologyExplorer/OntologyExplorer.interface';
 import OntologyDataGraph from '../../../OntologyExplorer/OntologyDataGraph';
+import { OntologyNode } from '../../../OntologyExplorer/OntologyExplorer.interface';
 
 const NO_RELATION_TYPES: never[] = [];
 const NO_COLORS: Record<string, never> = {};

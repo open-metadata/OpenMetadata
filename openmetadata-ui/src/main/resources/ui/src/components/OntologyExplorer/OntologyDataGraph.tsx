@@ -24,6 +24,7 @@ import {
   ChevronUp,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import { TFunction } from 'i18next';
 import {
   Fragment,
   MouseEvent,
@@ -34,7 +35,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
