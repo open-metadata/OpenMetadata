@@ -284,9 +284,9 @@ export const WIDGET_COMPONENTS = {
       showLabel={false}
     />
   ),
-  [DetailPageWidgetKeys.DESCRIPTION]: (data?: EntityUnion) => (
-    <RichTextEditorPreviewerV1 markdown={data?.description ?? ''} />
-  ),
+  [DetailPageWidgetKeys.DESCRIPTION]: (
+    data?: Pick<EntityUnion, 'description'>
+  ) => <RichTextEditorPreviewerV1 markdown={data?.description ?? ''} />,
   [DetailPageWidgetKeys.TABLE_SCHEMA]: () => <SchemaTable />,
   [DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]: () => (
     <FrequentlyJoinedTables renderAsExpandableCard={false} />

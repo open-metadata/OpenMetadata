@@ -375,29 +375,6 @@ export const fillDescriptionDetails = async (
   }
 };
 
-/**
- * Press an inline-editor save button and wait for the editor to close.
- *
- * `force` used to be the remedy here, for "grid cells and the fixed import
- * footer can overlap inline editors" — but force does not resolve an overlap,
- * it only skips the check for one. The press still lands on whatever is on
- * top, the button below never reacts, and the detach wait then burns the whole
- * test: 1026 polls over nine minutes on 084f07e7. A real click either lands or
- * names the element intercepting it, and a transient overlap is what the retry
- * is for.
- */
-const clickGridEditorSave = async (page: Page, testId: string) => {
-  const saveButton = page.getByTestId(testId);
-
-  await expect(async () => {
-    await saveButton.click({ timeout: 5_000 });
-    await expect(saveButton).toHaveCount(0, { timeout: 5_000 });
-  }).toPass({ timeout: 30_000 });
-};
-
-const clickAssociatedTagSave = async (page: Page) =>
-  clickGridEditorSave(page, 'saveAssociatedTag');
-
 // The owner cell mounts a react-aria picker that is force-opened on mount
 // (popoverProps={{ open: true }} in getCsvOwnerEditor). react-aria needs a
 // mount + paint cycle to position the overlay, which races the react-data-grid

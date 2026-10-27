@@ -106,6 +106,7 @@ const AnnouncementsNotificationSection = ({
 
   return (
     <SystemAnnouncementFormLoader
+      centered
       id={id}
       mode={view}
       onCancel={backToList}

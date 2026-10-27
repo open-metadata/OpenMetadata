@@ -12,6 +12,7 @@
  */
 import { Card, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { EntityTags } from 'Models';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
@@ -25,7 +26,6 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
-import { EntityTags } from '../../../Models';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ExtractedMemoriesCard from '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component';

@@ -93,10 +93,13 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<GlossaryAutomationReviewMigration> glossaryAutomationReview =
             mockStatic(GlossaryAutomationReviewMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
-        // v206 and v210 each have a MigrationUtil; the v210 one is imported above.
+        // v206, v207 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
             v206MigrationUtil =
-                mockStatic(org.openmetadata.service.migration.utils.v206.MigrationUtil.class)) {
+                mockStatic(org.openmetadata.service.migration.utils.v206.MigrationUtil.class);
+        MockedStatic<org.openmetadata.service.migration.utils.v207.MigrationUtil>
+            v207MigrationUtil =
+                mockStatic(org.openmetadata.service.migration.utils.v207.MigrationUtil.class)) {
       migration.runDataMigration();
 
       deltaLakeRetirement.verify(
@@ -116,6 +119,12 @@ class IngestionPipelineMigrationEntryPointTest {
           () ->
               org.openmetadata.service.migration.utils.v206.MigrationUtil
                   .addContractAndStatusToActivityFeedAlert(handle));
+      if (connectionType == ConnectionType.MYSQL) {
+        v207MigrationUtil.verify(
+            () ->
+                org.openmetadata.service.migration.utils.v207.MigrationUtil
+                    .addMcpConsentColumnsOnMySql(handle));
+      }
       // `migrate` runs before Flowable starts, so the step that deploys a workflow starts it.
       workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));
       glossaryAutomationReview.verify(

@@ -102,3 +102,6 @@ export const FEED_FOOTER_AVATAR_SIZE = 28;
 // Feed message content that renders without text, such as an image-only post or a divider.
 export const FEED_MESSAGE_RENDERED_CONTENT_SELECTOR =
   'img, hr, table, iframe, video, svg, [data-type]';
+
+// ADR:2026-10-24-conversation-drawers-are-40vw-wide-with-a-480px-floor
+export const FEED_DRAWER_WIDTH = 'max(40vw, 480px)';

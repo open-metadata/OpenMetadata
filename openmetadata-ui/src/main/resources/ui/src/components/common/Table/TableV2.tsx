@@ -152,7 +152,7 @@ type PaginationContract<T> =
       customPaginationProps?: undefined;
       pagination?: TableComponentProps<T>['pagination'];
     }
-  | { customPaginationProps: CustomPaginationProps; pagination: false };
+  | { customPaginationProps?: CustomPaginationProps; pagination: false };
 
 type TableV2Props<T extends object> = Omit<
   TableComponentProps<T>,

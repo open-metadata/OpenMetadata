@@ -186,7 +186,7 @@ interface BotDescriptionSectionProps {
   canEditAll: boolean;
   isEditingDesc: boolean;
   isSavingDesc: boolean;
-  descEditorRef: React.RefObject<EditorContentRef | null>;
+  descEditorRef: React.RefObject<EditorContentRef>;
   setIsEditingDesc: (v: boolean) => void;
   handleSaveDescription: () => void;
 }
@@ -342,12 +342,12 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
           {isRolesEdit ? (
             <Box className="tw:mt-2.5 tw:max-w-lg">
               <Autocomplete
+                aria-busy={isRolesLoading}
                 data-testid="select-role"
                 filterOption={(item, filterText) =>
                   contains(item.label || '', filterText) ||
                   contains(String(item.id), filterText)
                 }
-                isLoading={isRolesLoading}
                 items={roleItems}
                 placeholder={t('label.search-entity', {
                   entity: t('label.role-lowercase-plural'),
@@ -361,7 +361,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
                 onItemInserted={(key) =>
                   setSelectedRoles((prev) => [...prev, String(key)])
                 }
-                onSearch={debouncedFetchRoles}>
+                onSearchChange={debouncedFetchRoles}>
                 {(item) => (
                   <Autocomplete.Item id={item.id} key={item.id}>
                     {item.label}
@@ -399,7 +399,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
           <Typography size="text-sm" weight="medium">
             {t('label.inherited-role-plural')}
           </Typography>
-          <Box className="tw:mt-2.5 tw:flex-wrap" direction="row" gap={1.5}>
+          <Box className="tw:mt-2.5 tw:flex-wrap tw:gap-1.5" direction="row">
             {isEmpty(botUserData.inheritedRoles) ? (
               <Typography className="tw:text-tertiary" size="text-sm">
                 {t('message.no-inherited-roles-found')}
@@ -717,7 +717,7 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
         contains={contains}
         debouncedFetchRoles={debouncedFetchRoles}
         handleRolesChange={handleRolesChange}
-        isAdminUser={isAdminUser}
+        isAdminUser={isAdminUser ?? false}
         isRolesEdit={isRolesEdit}
         isRolesLoading={isRolesLoading}
         roleItems={roleItems}

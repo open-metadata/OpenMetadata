@@ -129,7 +129,7 @@ const GovernanceGlossaryFormPage: FC<GovernanceGlossaryFormPageProps> = ({
       data-testid="glossary-form-page"
       direction="col">
       <div className="tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0">
-        <div className="tw:w-[50%]">
+        <div className="tw:max-w-[50%] tw:w-full tw:mx-auto">
           <RelationshipTypeForm
             errors={formErrors}
             isEditing={isEditing}

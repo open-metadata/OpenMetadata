@@ -12,6 +12,7 @@
  */
 import { RJSFSchema } from '@rjsf/utils';
 import { App } from '../../../../generated/entity/applications/app';
+import { AppRunRecordWithId } from '../AppRunsHistory/AppRunsHistory.interface';
 
 export interface AppScheduleProps {
   appData: App;
@@ -29,4 +30,8 @@ export interface AppScheduleProps {
   onSave: (cron: string) => Promise<void>;
   onDemandTrigger: () => Promise<void>;
   onDeployTrigger: () => Promise<void>;
+  /** Opens schedule editing as a page instead of the built-in dialog. */
+  onEditSchedule?: () => void;
+  /** Opens a run's configuration as a page instead of the built-in dialog. */
+  onViewRunConfig?: (record: AppRunRecordWithId) => void;
 }

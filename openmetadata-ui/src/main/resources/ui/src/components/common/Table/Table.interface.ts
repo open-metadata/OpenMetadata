@@ -62,7 +62,12 @@ export type ColumnTitle<RecordType> =
 type GetComponentProps<DataType> = (
   data: DataType,
   index?: number
-) => React.HTMLAttributes<HTMLElement> | React.TdHTMLAttributes<HTMLElement>;
+) => (
+  | React.HTMLAttributes<HTMLElement>
+  | React.TdHTMLAttributes<HTMLElement>
+) & {
+  [attribute: `data-${string}`]: string | number | boolean | undefined;
+};
 
 export interface RenderedCell<RecordType> {
   props?: {
@@ -322,7 +327,7 @@ export interface TableProps<RecordType> {
         style?: React.CSSProperties;
         wrapperClassName?: string;
       };
-  size?: 'small' | 'middle' | 'large';
+  size?: 'small' | 'middle' | 'large' | 'compact';
   bordered?: boolean;
   locale?: TableLocale;
   onChange?: (
