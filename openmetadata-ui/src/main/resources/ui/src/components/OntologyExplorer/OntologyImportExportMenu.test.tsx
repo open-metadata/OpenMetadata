@@ -102,6 +102,7 @@ describe('OntologyImportExportMenu', () => {
     render(
       <MemoryRouter>
         <OntologyImportExportMenu
+          isCatalogEmpty
           kind="allOntologies"
           ontologies={[]}
           onApplied={jest.fn()}
@@ -119,6 +120,28 @@ describe('OntologyImportExportMenu', () => {
     ).toHaveTextContent('label.new-ontology');
     expect(
       screen.queryByTestId('ontology-import-target-picker')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the ontology picker when the list is empty only because it failed to load', () => {
+    render(
+      <MemoryRouter>
+        <OntologyImportExportMenu
+          isCatalogEmpty={false}
+          kind="allOntologies"
+          ontologies={[]}
+          onApplied={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
+
+    expect(screen.getByTestId('ontology-import-target-picker')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-native-import-file')
     ).not.toBeInTheDocument();
   });
 
@@ -162,6 +185,7 @@ describe('OntologyImportExportMenu', () => {
       }));
       render(
         <OntologyImportExportMenu
+          isCatalogEmpty={false}
           kind="allOntologies"
           ontologies={owners}
           onApplied={jest.fn()}

@@ -54,6 +54,7 @@ type OntologyImportExportMenuProps =
   | NativeOntologyExportProps
   | {
       readonly kind: 'allOntologies';
+      readonly isCatalogEmpty: boolean;
       readonly ontologies: Ontology[];
       readonly onApplied: () => void;
     };
@@ -86,7 +87,7 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
       return null;
     }
     if (props.kind === 'allOntologies') {
-      if (props.ontologies.length === 0) {
+      if (props.isCatalogEmpty) {
         return <OntologyNativeImportDialog onClose={() => setIsOpen(false)} />;
       }
       if (selectedOwner) {

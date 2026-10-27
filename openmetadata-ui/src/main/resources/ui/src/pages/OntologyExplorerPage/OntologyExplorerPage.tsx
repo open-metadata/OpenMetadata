@@ -1391,6 +1391,7 @@ const OntologyExplorerPage: React.FC = () => {
         ) : null}
         {isAllOntologies ? (
           <OntologyImportExportMenu
+            isCatalogEmpty={isCatalogEmpty}
             key={String(userId) + currentScopeKey}
             kind="allOntologies"
             ontologies={availableOntologies}
