@@ -22,7 +22,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
-import { MouseEvent, FC, useCallback, useMemo } from 'react';
+import { FC, MouseEvent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';

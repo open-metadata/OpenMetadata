@@ -20,7 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Edit05, Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { FC, useMemo, useState, useRef } from 'react';
+import { FC, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
