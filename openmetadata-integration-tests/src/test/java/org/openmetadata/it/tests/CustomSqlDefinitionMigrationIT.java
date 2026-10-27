@@ -136,8 +136,7 @@ public class CustomSqlDefinitionMigrationIT {
                 sql ->
                     sql.contains("UPDATE test_definition")
                         && sql.contains("tableCustomSQLQuery")
-                        && (sql.contains("'operator'")
-                            || sql.contains("'partitionExpression'")))
+                        && (sql.contains("'operator'") || sql.contains("'partitionExpression'")))
             .toList();
     assertEquals(
         BACKFILLED_PARAMETERS.size(),
