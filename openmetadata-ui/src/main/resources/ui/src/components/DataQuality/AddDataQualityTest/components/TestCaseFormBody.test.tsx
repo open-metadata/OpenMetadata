@@ -641,6 +641,75 @@ describe('TestCaseFormBody', () => {
     });
   });
 
+  describe('failure threshold with a dynamic assertion', () => {
+    // threshold/thresholdUnit are not learned bounds — ingestion widens the
+    // bound they configure downstream of bound resolution, so they must stay
+    // editable when the assertion is dynamic.
+    const DYNAMIC_THRESHOLD_DEFINITION = {
+      ...DYNAMIC_DEFINITION,
+      parameterDefinition: [
+        ...(DYNAMIC_DEFINITION.parameterDefinition ?? []),
+        {
+          name: 'threshold',
+          displayName: 'Failure Threshold',
+          dataType: 'NUMBER',
+          required: false,
+        },
+        {
+          name: 'thresholdUnit',
+          displayName: 'Threshold Unit',
+          dataType: 'STRING',
+          required: false,
+          optionValues: ['ABSOLUTE', 'PERCENTAGE'],
+        },
+      ],
+    } as unknown as TestDefinition;
+
+    const renderWithDynamicAssertion = async () => {
+      mockGetListTestDefinitions.mockResolvedValue({
+        data: [DYNAMIC_THRESHOLD_DEFINITION],
+        paging: { total: 1 },
+      } as never);
+
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE });
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      await act(async () => {
+        formRef?.setValue('testTypeId', {
+          id: TEST_DEFINITION_FQN,
+          label: 'Column Values To Be Between',
+        } as never);
+      });
+
+      expect(
+        await screen.findByTestId('parameter-minValue')
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        formRef?.setValue('useDynamicAssertion', true);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('parameter-minValue')
+        ).not.toBeInTheDocument();
+      });
+    };
+
+    it('keeps the threshold editable once the bounds are learned', async () => {
+      await renderWithDynamicAssertion();
+
+      expect(screen.getByTestId('threshold-row')).toBeInTheDocument();
+      expect(screen.getByTestId('parameter-threshold')).toBeInTheDocument();
+      expect(screen.getByTestId('parameter-thresholdUnit')).toBeInTheDocument();
+    });
+  });
+
   it('shows the compute-row-count switch only when the definition supports it', async () => {
     mockGetListTestDefinitions.mockResolvedValue({
       data: [ROW_LEVEL_DEFINITION],
