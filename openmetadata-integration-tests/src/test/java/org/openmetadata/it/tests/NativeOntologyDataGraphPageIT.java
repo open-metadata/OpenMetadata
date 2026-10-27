@@ -362,7 +362,6 @@ class NativeOntologyDataGraphPageIT extends BaseOntologyApprovalIT {
                     .execute());
   }
 
-  /** Distinct relationship keys for one asset pair, which differ only in relationType. */
   private static void insertDuplicatePairs(final Table source, final Table target) {
     Entity.getJdbi()
         .useHandle(

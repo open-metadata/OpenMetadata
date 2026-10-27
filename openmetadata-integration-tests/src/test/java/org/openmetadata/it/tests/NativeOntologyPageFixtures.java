@@ -86,7 +86,6 @@ final class NativeOntologyPageFixtures {
     return loaded;
   }
 
-  /** The status and message of the refusal a topology page with {@code after} receives. */
   static String refusal(
       final OpenMetadataClient client,
       final Ontology ontology,
@@ -99,7 +98,6 @@ final class NativeOntologyPageFixtures {
     return refused.getStatusCode() + " " + refused.getMessage();
   }
 
-  /** A cursor in the unsigned Base64 JSON format, naming {@code axiom} for the given context. */
   static String unsignedCursor(final String contextDigest, final UUID axiom) {
     return RestUtil.encodeCursor(cursorJson(contextDigest, axiom));
   }

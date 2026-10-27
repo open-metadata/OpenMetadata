@@ -173,7 +173,6 @@ class NativeOntologyDataGraphContextIT extends BaseOntologyApprovalIT {
     return combined;
   }
 
-  /** Loading one more asset of each loaded concept adds the lineage that asset takes part in. */
   private static NativeOntologyDataGraphPage assertLaterAssetsJoinTheLoadedClusters(
       final CombinedGraph combined,
       final NativeOntologyDataGraphPage first,
@@ -201,7 +200,6 @@ class NativeOntologyDataGraphContextIT extends BaseOntologyApprovalIT {
     assertStatus(412, () -> graphPage(admin(), combined.ontology(), latest, clusterPage(0, 1)));
   }
 
-  /** The next binding page of the loaded concept at {@code index}, after the cluster it showed. */
   private static NativeOntologyDataGraphPage moreBindings(
       final Ontology ontology,
       final NativeOntologyDataGraphPage current,
@@ -253,7 +251,6 @@ class NativeOntologyDataGraphContextIT extends BaseOntologyApprovalIT {
     return new ClusterWalk(seen, advertised, page);
   }
 
-  /** Loads the first {@code count} ranks in pages of eleven, so no page is clamped. */
   private static List<NativeOntologyLoadedPrefix> loadInPagesOfEleven(
       final OpenMetadataClient reader, final Ontology ontology, final int count) {
     List<NativeOntologyLoadedPrefix> loaded = List.of();
@@ -302,7 +299,6 @@ class NativeOntologyDataGraphContextIT extends BaseOntologyApprovalIT {
     }
   }
 
-  /** Customer and Order relate both ways, and four lineage edges join their sorted tables. */
   private record CombinedGraph(
       Ontology ontology,
       OntologyConcept customer,

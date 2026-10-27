@@ -54,7 +54,6 @@ import org.openmetadata.service.ontology.NativeOntologyDataGraphPager.Cursor;
 import org.openmetadata.service.ontology.NativeOntologyDataGraphService.Cluster;
 import org.openmetadata.service.ontology.OntologyConceptBindingService.Access;
 
-/** Whole requests through the pager, with the database and authorization reads stubbed. */
 class NativeOntologyDataGraphPagerRequestTest {
   private static final NativeOntologyTopologyCursorCodec CODEC =
       new NativeOntologyTopologyCursorCodec(List.of(Key.generateKey()));

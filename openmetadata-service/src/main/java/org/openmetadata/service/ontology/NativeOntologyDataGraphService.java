@@ -73,7 +73,6 @@ public final class NativeOntologyDataGraphService {
   public record Query(
       int limit, int offset, int assetsPerConcept, int edgeLimit, int lineageEdgeLimit) {}
 
-  /** Resolves entity references by id, one entity type at a time. */
   @FunctionalInterface
   public interface ReferenceLookup {
     List<EntityReference> byIds(String entityType, List<UUID> ids, Include include);
