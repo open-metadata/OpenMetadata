@@ -83,6 +83,10 @@ export default defineConfig(async (env) => {
         // that page's module graph; on a busy CI runner that alone has taken
         // >15 s. test:ui:coverage raises this to 45 s for istanbul's overhead.
         testTimeout: 30_000,
+        // expect.poll / expect.element default to 1 s, which a page's write
+        // round trip can exceed on a busy runner; a condition that never comes
+        // true still fails, just not early.
+        expect: { poll: { timeout: 10_000 } },
         // Reuse each worker's page across files: the app's module graph loads
         // once per worker instead of once per file (~10 s each). Tests stay
         // independent through setup.ts (unmount, handler reset, URL and
