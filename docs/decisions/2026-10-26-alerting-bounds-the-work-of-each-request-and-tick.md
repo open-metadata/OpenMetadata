@@ -22,7 +22,7 @@ Every such path has a fixed bound, chosen well above what the UI or a normal ale
 |---|---|
 | An alert's `batchSize` | 1 to 1000 |
 | Destinations per alert or per test send | 50 |
-| Receivers per destination | 100 |
+| Receivers per destination | 100 listed entries: typed addresses, or user and team names, since each name is looked up on every event; who a team expands to is not counted |
 | Rows per alert event listing | 1000, and no embedded `entity` |
 | One change-event read | 1000 rows and 8 MB of event JSON, always at least one event |
 | Unread events evaluated per pending count | 500; past that the response sets `countsAreLowerBound` (`relevantUnprocessedEventsCountIsLowerBound`) and the page shows "N+" |
@@ -39,6 +39,12 @@ A stored alert's bounds are checked by `AlertLimits` on every save, and a save m
 a value that grows past a bound. An alert stored past one, before the bound existed, keeps its
 value and stays editable. The create schema therefore states no bound, because PUT sends it
 for existing alerts; the schemas of requests that are never stored do.
+
+Receivers are judged for the whole alert, never by matching a destination to its stored
+version, because a PUT gives every destination a new id. A save is refused when the receivers
+past the limit, summed over the alert's destinations, exceed what the stored alert held. So an
+alert stored past the limit can keep or trim its lists on any save, but cannot add a receiver,
+copy a list into another destination, or reuse what one destination gave up.
 
 ## Consequences
 
