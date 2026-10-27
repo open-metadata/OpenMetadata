@@ -67,11 +67,7 @@ public class AutoPilotApp extends AbstractNativeApplication {
 
   @Override
   public void triggerOnDemand(Map<String, Object> config) {
-    // Trigger the application with the provided configuration payload
-    Map<String, Object> appConfig = JsonUtils.getMap(getApp().getAppConfiguration());
-    if (config != null) {
-      appConfig.putAll(config);
-    }
+    Map<String, Object> appConfig = getRuntimeConfig(getApp(), config);
     validateConfig(appConfig);
 
     AutoPilotAppConfig runtimeConfig =
@@ -92,6 +88,14 @@ public class AutoPilotApp extends AbstractNativeApplication {
           WORKFLOW_NAME,
           runtimeConfig.getEntityLink());
     }
+  }
+
+  public static Map<String, Object> getRuntimeConfig(App app, Map<String, Object> overrides) {
+    Map<String, Object> appConfig = JsonUtils.getMap(app.getAppConfiguration());
+    if (overrides != null) {
+      appConfig.putAll(overrides);
+    }
+    return appConfig;
   }
 
   private String readResource(String resourceFile) {
