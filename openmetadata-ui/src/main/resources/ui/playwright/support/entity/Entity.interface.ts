@@ -52,6 +52,7 @@ export enum EntityTypeEndpoint {
   File = 'drives/files',
   Spreadsheet = 'drives/spreadsheets',
   Worksheet = 'drives/worksheets',
+  KnowledgePage = 'contextCenter/pages',
 }
 
 export type EntityDataType = {

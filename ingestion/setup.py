@@ -69,6 +69,7 @@ VERSIONS = {
     "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy>=3.8.2,<3.9",
+    "preshed": "preshed<3.0.14",  # 3.0.14 rejects unsigned 64-bit spaCy tokenizer hashes.
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
@@ -80,7 +81,7 @@ VERSIONS = {
     "elasticsearch": "elasticsearch>=8.19.3,<9",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
-    "teradata": "teradatasqlalchemy==20.0.0.2",
+    "teradata": "teradatasqlalchemy==20.0.0.9",
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
@@ -102,6 +103,7 @@ VERSIONS = {
     "factory-boy": "factory-boy~=3.3.3",
     "rarfile": "rarfile~=4.2",
     "py7zr": "py7zr~=1.1.3",
+    "brotli": "Brotli>=1.2.1",  # CVE-2026-111497; py7zr only requires >=1.2.0
 }
 
 COMMONS = {
@@ -110,6 +112,7 @@ COMMONS = {
         VERSIONS["pyarrow"],
         VERSIONS["rarfile"],
         VERSIONS["py7zr"],
+        VERSIONS["brotli"],
     },
     "datalake": {
         VERSIONS["asammdf"],
@@ -369,8 +372,11 @@ plugins: dict[str, set[str]] = {
     },
     "iomete": {
         "iomete-sqlalchemy>=1.0.22",
-        "adbc-driver-flightsql",
-        "adbc-driver-manager",
+        # ADBC 1.13 requires Python >=3.11; retain 1.12 for Python 3.10 compatibility.
+        "adbc-driver-flightsql==1.12.0; python_version < '3.11'",
+        "adbc-driver-flightsql>=1.13.0; python_version >= '3.11'",
+        "adbc-driver-manager==1.12.0; python_version < '3.11'",
+        "adbc-driver-manager>=1.13.0; python_version >= '3.11'",
     },
     "impala": {
         "presto-types-parser>=0.0.2",
@@ -450,6 +456,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
         VERSIONS["spacy"],
+        VERSIONS["preshed"],
         VERSIONS["presidio-analyzer"],
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
@@ -470,7 +477,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["validators"],
         VERSIONS["packaging"],
     },
-    "teradata": {VERSIONS["teradata"]},
+    "teradata": {VERSIONS["teradata"], "teradatasql>=20.0.0.72"},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
     "vertica": {VERSIONS["sqlalchemy-vertica"], DATA_DIFF["vertica"]},
     # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
@@ -479,11 +486,12 @@ plugins: dict[str, set[str]] = {
     "pyarrow": {VERSIONS["pyarrow"]},
     "pii-processor": {
         VERSIONS["spacy"],
+        VERSIONS["preshed"],
         VERSIONS["pandas"],
         VERSIONS["numpy"],
         VERSIONS["presidio-analyzer"],
     },
-    "presidio-analyzer": {VERSIONS["presidio-analyzer"]},
+    "presidio-analyzer": {VERSIONS["presidio-analyzer"], VERSIONS["preshed"]},
 }
 
 dev = {

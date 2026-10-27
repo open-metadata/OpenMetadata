@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
   Badge,
   Box,
@@ -26,7 +27,8 @@ import { CustomProperty } from '../../../generated/type/customProperty';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { columnSorter } from '../../../utils/EntitySortUtils';
-import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import {
@@ -166,6 +168,7 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
   canDelete,
   emptyText,
   containerClassName,
+  variant,
   'data-testid': dataTestId = 'entity-custom-properties-table',
   onEdit,
   onDelete,
@@ -188,6 +191,9 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
     [typeFilters, typeOptions]
   );
   const isFiltered = Boolean(searchText) || activeTypeFilters.length > 0;
+  const EmptyStatePlaceholder = searchText
+    ? NoSearchResultsPlaceholder
+    : NoFilteredResultsPlaceholder;
 
   const filteredProperties = useMemo(
     () =>
@@ -296,7 +302,7 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
       loading={isLoading}
       locale={{
         emptyText: isFiltered ? (
-          <NoDataPlaceholder
+          <EmptyStatePlaceholder
             description={t('message.try-adjusting-filter')}
             title={t('label.no-entity-found', {
               entity: t('label.property-plural'),
@@ -318,6 +324,7 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
         typingInterval: 300,
         onSearch: setSearchText,
       }}
+      variant={variant}
     />
   );
 };

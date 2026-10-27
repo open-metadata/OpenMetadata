@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TableCardVariant } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { CustomProperty } from '../../../generated/type/customProperty';
 
@@ -20,6 +21,7 @@ export interface CustomPropertiesListTableProps {
   canDelete: boolean;
   emptyText: ReactNode;
   containerClassName?: string;
+  variant?: TableCardVariant;
   'data-testid'?: string;
   onEdit: (property: CustomProperty) => void;
   onDelete: (property: CustomProperty) => void;
