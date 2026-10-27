@@ -47,7 +47,7 @@ def fail_unfinished_runs(dag_id: str, session) -> bool:
     Mark the DAG's running or queued runs and their unfinished task instances as failed.
     :param dag_id: DAG whose runs to stop
     :param session: Airflow DB session; the caller commits
-    :return: whether there was anything to stop
+    :return: whether there was a run to stop
     """
     runs: list[DagRun] = (
         session.query(DagRun)
@@ -58,18 +58,31 @@ def fail_unfinished_runs(dag_id: str, session) -> bool:
         .all()
     )
 
-    instances: list[TaskInstance] = session.query(TaskInstance).filter(
-        TaskInstance.dag_id == dag_id,
-        TaskInstance.state.notin_((TaskInstanceState.SUCCESS, TaskInstanceState.FAILED)),
-    )
-
-    if not runs or not instances:
+    if not runs:
         return False
 
     for dag_run in runs:
         dag_run.set_state(DagRunState.FAILED)
 
-    for instance in instances:
-        instance.set_state(TaskInstanceState.FAILED)
+    fail_unfinished_task_instances(dag_id, session)
 
     return True
+
+
+def fail_unfinished_task_instances(dag_id: str, session) -> None:
+    """
+    Mark every unfinished task instance of the DAG as failed, whatever the state of its run.
+    :param dag_id: DAG whose task instances to stop
+    :param session: Airflow DB session; the caller commits
+    """
+    instances: list[TaskInstance] = (
+        session.query(TaskInstance)
+        .filter(
+            TaskInstance.dag_id == dag_id,
+            TaskInstance.state.notin_((TaskInstanceState.SUCCESS, TaskInstanceState.FAILED)),
+        )
+        .all()
+    )
+
+    for instance in instances:
+        instance.set_state(TaskInstanceState.FAILED)

@@ -17,6 +17,8 @@ from pathlib import Path
 
 from airflow import settings
 from airflow.exceptions import AirflowException, DagNotFound
+from airflow.models import TaskInstance
+from airflow.utils.state import TaskInstanceState
 from flask import Response
 
 try:
@@ -29,7 +31,10 @@ from openmetadata_managed_apis.api.config import (
     DAG_GENERATED_CONFIGS,
 )
 from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.operations.kill_all import fail_unfinished_runs
+from openmetadata_managed_apis.operations.kill_all import (
+    fail_unfinished_runs,
+    fail_unfinished_task_instances,
+)
 from openmetadata_managed_apis.utils.logger import operations_logger
 
 logger = operations_logger()
@@ -89,6 +94,16 @@ def _delete_dag_records(dag_id: str, session) -> int:
     except AirflowException:
         # Airflow refuses while a task is running (e.g. a scheduled run); the caller is deleting
         # the pipeline for good, so stop the run the same way kill does and delete again
+        if not _has_running_task_instances(dag_id, session):
+            raise
         logger.info("Stopping the active run of DAG %s before deleting it", dag_id)
         fail_unfinished_runs(dag_id, session)
+        fail_unfinished_task_instances(dag_id, session)
         return airflow_delete_dag(dag_id, session=session)
+
+
+def _has_running_task_instances(dag_id: str, session) -> bool:
+    running = session.query(TaskInstance).filter(
+        TaskInstance.dag_id == dag_id, TaskInstance.state == TaskInstanceState.RUNNING
+    )
+    return session.query(running.exists()).scalar()
