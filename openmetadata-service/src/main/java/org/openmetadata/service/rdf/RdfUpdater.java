@@ -194,9 +194,10 @@ public final class RdfUpdater {
         queue.accept(plan);
       }
     } catch (RuntimeException exception) {
-      // Without the plan the graph misses these entities' edges until a reindex.
+      // The restore has committed; without the plan the graph misses these entities' edges until
+      // a reindex, which a degraded projection asks for.
+      LOG.error("Failed to plan the RDF restore of {} entities", restored.size(), exception);
       RdfProjectionHealth.markDegraded(exception);
-      throw exception;
     }
   }
 

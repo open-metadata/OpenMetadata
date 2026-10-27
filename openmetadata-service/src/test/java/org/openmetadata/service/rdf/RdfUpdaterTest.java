@@ -198,29 +198,63 @@ class RdfUpdaterTest {
     }
   }
 
+  @Test
+  void aRestoreWhosePlanFailsStillReturnsAndMarksTheProjectionDegraded()
+      throws ReflectiveOperationException {
+    final Field plannerField = RdfUpdater.class.getDeclaredField("restorePlanner");
+    plannerField.setAccessible(true);
+    final Object originalPlanner = plannerField.get(null);
+    plannerField.set(
+        null,
+        new RdfRestorePlanner(
+            recordingSources(new ArrayList<>()),
+            (type, ids) -> {
+              throw new IllegalStateException("liveness unavailable");
+            }));
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", Entity.TABLE);
+    final Table table = new Table().withId(UUID.randomUUID()).withName("restored");
+    RdfProjectionHealth.markReady();
+    try {
+      final String response =
+          RdfUpdater.restoring(
+              () -> {
+                RdfUpdater.recordRestored(List.of(table));
+                return "restored";
+              });
+
+      assertEquals("restored", response);
+      assertTrue(RdfProjectionHealth.isDegraded());
+    } finally {
+      plannerField.set(null, originalPlanner);
+      RdfProjectionHealth.markReady();
+    }
+  }
+
   private static RdfRestorePlanner recordingPlanner(final List<List<UUID>> planned) {
-    return new RdfRestorePlanner(
-        new RdfRestorePlanner.Sources() {
-          @Override
-          public List<EntityRelationshipObject> relationshipsOf(
-              final String entityType, final List<UUID> entityIds) {
-            planned.add(entityIds);
-            return List.of();
-          }
+    return new RdfRestorePlanner(recordingSources(planned), (type, ids) -> Set.copyOf(ids));
+  }
 
-          @Override
-          public Set<RdfEntityLiveness.Endpoint> labelledEntities(
-              final String labelType, final List<UUID> labelIds) {
-            return Set.of();
-          }
+  private static RdfRestorePlanner.Sources recordingSources(final List<List<UUID>> planned) {
+    return new RdfRestorePlanner.Sources() {
+      @Override
+      public List<EntityRelationshipObject> relationshipsOf(
+          final String entityType, final List<UUID> entityIds) {
+        planned.add(entityIds);
+        return List.of();
+      }
 
-          @Override
-          public List<RdfRestorePlanner.GlossaryRelation> glossaryRelations(
-              final Collection<UUID> termIds) {
-            return List.of();
-          }
-        },
-        (type, ids) -> Set.copyOf(ids));
+      @Override
+      public Set<RdfEntityLiveness.Endpoint> labelledEntities(
+          final String labelType, final List<UUID> labelIds) {
+        return Set.of();
+      }
+
+      @Override
+      public List<RdfRestorePlanner.GlossaryRelation> glossaryRelations(
+          final Collection<UUID> termIds) {
+        return List.of();
+      }
+    };
   }
 
   @Test
