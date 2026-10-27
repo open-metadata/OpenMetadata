@@ -794,12 +794,36 @@ export const getLineageEditColumnPair = (
 // Semantic zoom switches level by how much of the screen the graph or a card
 // fills, not by a zoom value, so it behaves the same for 5 nodes or 500.
 export const ZOOM_OUT_SCREEN_FILL = 1 / 3;
-export const ZOOM_IN_SCREEN_FILL = 0.6;
+// At 0.6 a 340px container on a ~1400px canvas drilled at zoom 2.45 against a
+// 2.5 maximum, so drilling read as "zoom all the way in"; 0.35 drills at ~1.43.
+export const ZOOM_IN_SCREEN_FILL = 0.35;
 
 interface Size {
   width: number;
   height: number;
 }
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+/** The box whose centre is closest to `point`, or undefined when there is none. */
+export const getBoxNearestPoint = <T extends Point & Size>(
+  boxes: T[],
+  point: Point
+): T | undefined =>
+  boxes.reduce<{ box?: T; distance: number }>(
+    (nearest, box) => {
+      const distance = Math.hypot(
+        box.x + box.width / 2 - point.x,
+        box.y + box.height / 2 - point.y
+      );
+
+      return distance < nearest.distance ? { box, distance } : nearest;
+    },
+    { distance: Number.POSITIVE_INFINITY }
+  ).box;
 
 /** Largest share of the screen's width or height that `size` covers at `zoom`. */
 export const getScreenFill = (size: Size, zoom: number, screen: Size) =>
