@@ -193,9 +193,12 @@ class TestHexSource(TestCase):
             return_value="https://app.hex.tech/app/projects/proj_123456789"
         )
 
-        # Initialize lineage components
+        # Initialize lineage components. The cells API is unavailable here, so
+        # lineage falls back to the warehouse queries.
         self.hex_source.hex_project_lineage = {}
         self.hex_source.query_fetcher = MagicMock()
+        self.hex_source.client.get_project_cells = MagicMock(return_value=None)
+        self.hex_source._cell_lineage = None
 
         # Mock register_record
         self.hex_source.register_record = MagicMock()
