@@ -156,6 +156,23 @@ def get_output_columns(
             if name and name != "*"
         ]
 
+    # Two outputs can share a name (o.id, c.id, or * over a join); suffixing the
+    # repeats keeps each one, as lineage() can only tell columns apart by name
+    taken: set[str] = set()
+    renamed = False
+    for select in qualified.selects:
+        name = select.alias_or_name
+        unique, suffix = name, 1
+        while unique in taken:
+            suffix += 1
+            unique = f"{name}_{suffix}"
+        if unique != name and isinstance(select, exp.Alias):
+            select.set("alias", exp.to_identifier(unique))
+            renamed = True
+        taken.add(unique)
+    if renamed:
+        scope = build_scope(qualified)
+
     columns: dict[str, OutputColumn] = {}
     for select in qualified.selects:
         name = select.alias_or_name

@@ -33,6 +33,7 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.dashboard.hex.cell_lineage import (
     get_output_columns,
     get_table_references,
@@ -150,6 +151,11 @@ class TestCellSqlParsing:
         assert list(columns) == ["id", "cust_id", "amount", "region"]
         assert (ORDERS, "id") in columns["id"]
 
+    def test_outputs_sharing_a_name_are_all_kept(self):
+        assert outputs(
+            "select o.id, c.id, o.amount from prod.sales.orders o join prod.sales.customers c on o.cust_id = c.id"
+        ) == {"id": {(ORDERS, "id")}, "id_2": {(CUSTOMERS, "id")}, "amount": {(ORDERS, "amount")}}
+
     def test_query_reading_no_other_cell_is_left_alone(self):
         expression = parse_cell_sql("select * from prod.sales.orders", "snowflake")
         assert not inline_upstream_cells(expression, {"base_orders": parse_cell_sql("select 1", None)})
@@ -203,6 +209,18 @@ DATAFRAME_CELL = Cell(
     contents={"sqlCell": {"source": "select * from dataframe_1"}},
 )
 MARKDOWN_CELL = Cell(id="c4", cellType="MARKDOWN")
+
+
+def sql_cell(cell_id: str, sql: str, variable: str, connection: str | None = "conn_snowflake") -> Cell:
+    """A SQL cell as the export returns it; no connection means SQL on dataframes"""
+    return Cell(
+        id=cell_id,
+        label=variable,
+        cellType="SQL",
+        dataConnectionId=connection,
+        resultVariableName=variable,
+        contents={"sqlCell": {"source": sql}},
+    )
 
 
 class FakeOpenMetadata:
@@ -412,16 +430,6 @@ class TestHexCellLineage:
         source.client.get_project_cells.assert_called_once_with(PROJECT.id)
 
     def test_chained_cells_trace_back_to_the_warehouse(self, make_source):
-        def sql_cell(cell_id, sql, variable, connection="conn_snowflake"):
-            return Cell(
-                id=cell_id,
-                label=variable,
-                cellType="SQL",
-                dataConnectionId=connection,
-                resultVariableName=variable,
-                contents={"sqlCell": {"source": sql}},
-            )
-
         source = make_source(
             [
                 sql_cell("c1", "select * from sales.orders", "base_orders"),
@@ -583,16 +591,6 @@ class TestHexCellLineage:
         assert [child.name.root for child in request.columns[0].children] == ["region_code"]
 
     def test_chained_cell_reads_a_table_its_upstream_cell_found_by_connection_defaults(self, make_source):
-        def sql_cell(cell_id, sql, variable, connection):
-            return Cell(
-                id=cell_id,
-                label=variable,
-                cellType="SQL",
-                dataConnectionId=connection,
-                resultVariableName=variable,
-                contents={"sqlCell": {"source": sql}},
-            )
-
         source = make_source(
             [
                 sql_cell("c1", "select * from orders", "base_orders", "conn_snowflake"),
@@ -657,14 +655,7 @@ class TestHexCellLineage:
             update={"fullyQualifiedName": FullyQualifiedEntityName("snowflake_prod.dev.sales.orders")}
         )
         cells = [
-            Cell(
-                id=cell_id,
-                label=variable,
-                cellType="SQL",
-                dataConnectionId=connection,
-                resultVariableName=variable,
-                contents={"sqlCell": {"source": sql}},
-            )
+            sql_cell(cell_id, sql, variable, connection)
             for cell_id, sql, variable, connection in [
                 ("c1", "select region from sales.orders", "base", "conn_snowflake"),
                 ("c2", "select region from base", "down", None),
@@ -680,9 +671,11 @@ class TestHexCellLineage:
             )
         }
 
-        _, edges = run(source)
+        (request,), edges = run(source)
 
         assert edges == []
+        # The cells are still read: only the table no cell found is missing
+        assert [child.name.root for child in request.columns[1].children] == ["region"]
 
     def test_chained_cell_does_not_resolve_what_its_upstream_cell_could_not(self, make_source):
         """Without a default schema the upstream cell resolves nothing; a prefix must not resolve it downstream"""
@@ -691,14 +684,7 @@ class TestHexCellLineage:
             update={"fullyQualifiedName": FullyQualifiedEntityName("snowflake_prod.analytics.sales.orders")}
         )
         cells = [
-            Cell(
-                id=cell_id,
-                label=variable,
-                cellType="SQL",
-                dataConnectionId=connection,
-                resultVariableName=variable,
-                contents={"sqlCell": {"source": sql}},
-            )
+            sql_cell(cell_id, sql, variable, connection)
             for cell_id, sql, variable, connection in [
                 ("c1", "select region from orders", "base", "conn_snowflake"),
                 ("c2", "select region from base", "down", None),
@@ -714,20 +700,14 @@ class TestHexCellLineage:
             )
         }
 
-        _, edges = run(source, prefixes=prefixes)
+        (request,), edges = run(source, prefixes=prefixes)
 
         assert edges == []
+        assert [child.name.root for child in request.columns[1].children] == ["region"]
 
     def test_a_warehouse_cell_only_chains_to_cells_on_its_connection(self, make_source):
         cells = [
-            Cell(
-                id=cell_id,
-                label=variable,
-                cellType="SQL",
-                dataConnectionId=connection,
-                resultVariableName=variable,
-                contents={"sqlCell": {"source": sql}},
-            )
+            sql_cell(cell_id, sql, variable, connection)
             for cell_id, sql, variable, connection in [
                 ("c1", "select region from sales.orders", "regions", "conn_snowflake"),
                 # A table of the other warehouse that happens to share the result variable's name
@@ -735,7 +715,19 @@ class TestHexCellLineage:
                 ("c3", "select region from regions", "same_name", "conn_postgres"),
             ]
         ]
-        source = make_source(cells)
+        regions = Table(
+            id=uuid.uuid4(),
+            name="regions",
+            fullyQualifiedName="postgres_prod.crm.analytics.regions",
+            columns=[
+                Column(
+                    name="region",
+                    dataType=DataType.VARCHAR,
+                    fullyQualifiedName="postgres_prod.crm.analytics.regions.region",
+                )
+            ],
+        )
+        source = make_source(cells, tables=(ORDERS_TABLE, regions))
         source.client.get_data_connections.return_value = {
             "conn_snowflake": DataConnection(id="conn_snowflake", name="Snowflake", type="snowflake"),
             "conn_postgres": DataConnection(
@@ -749,7 +741,42 @@ class TestHexCellLineage:
         _, edges = run(source)
 
         model_fqn = f"{SERVICE}.model.{PROJECT.id}"
-        assert all(f"{model_fqn}.same_name." not in to_column for edge in edges for to_column in column_lineage(edge))
+        lineage = {
+            to_column: from_columns for edge in edges for to_column, from_columns in column_lineage(edge).items()
+        }
+        # Postgres' own regions table, not the Snowflake cell named regions
+        assert lineage[f"{model_fqn}.same_name.region"] == ["postgres_prod.crm.analytics.regions.region"]
+
+    def test_a_dataframe_cell_reads_its_own_names_as_dataframes(self, make_source):
+        """orders here is a pandas dataframe: the warehouse table of that name is not what it reads"""
+        prefixes = ["snowflake_prod.prod.sales"]
+        cells = [
+            sql_cell("c1", "select id, segment from sales.customers", "base"),
+            sql_cell(
+                "c2",
+                "select b.segment, o.amount from base b join orders o on b.id = o.cust_id",
+                "mixed",
+                connection=None,
+            ),
+        ]
+        source = make_source(cells, prefixes=prefixes)
+
+        _, edges = run(source, prefixes=prefixes)
+
+        assert [edge.fromEntity.fullyQualifiedName for edge in edges] == ["snowflake_prod.prod.sales.customers"]
+        assert column_lineage(edges[0])[f"{SERVICE}.model.{PROJECT.id}.mixed.segment"] == [
+            "snowflake_prod.prod.sales.customers.segment"
+        ]
+
+    def test_filtered_out_data_model_is_not_ingested(self, make_source):
+        source = make_source([REVENUE_CELL])
+        source.source_config.dataModelFilterPattern = FilterPattern(excludes=["Sales.*"])
+        source.status = MagicMock()
+
+        data_models, edges = run(source)
+
+        assert data_models == []
+        assert {edge.toEntity.type for edge in edges} == {"dashboard"}
 
 
 class TestHexApiClientCells:

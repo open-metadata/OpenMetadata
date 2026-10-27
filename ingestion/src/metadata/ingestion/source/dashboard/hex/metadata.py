@@ -73,6 +73,7 @@ from metadata.ingestion.source.dashboard.hex.query_fetcher import (
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
+from metadata.utils.filters import filter_by_datamodel
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import ingestion_logger
 
@@ -382,6 +383,9 @@ class HexSource(DashboardServiceSource):
         """
         if not self.source_config.includeDataModels:
             return
+        if filter_by_datamodel(self.source_config.dataModelFilterPattern, dashboard_details.title):
+            self.status.filter(dashboard_details.title, "Data model filtered out.")
+            return
         cell_lineage = self._get_cell_lineage(dashboard_details)
         if cell_lineage is None:
             # Unread is not gone: marking the existing data model as seen keeps this run
@@ -567,8 +571,12 @@ class HexSource(DashboardServiceSource):
         if expression is None:
             logger.debug("Skipping Hex cell %s: its SQL could not be parsed", cell.id)
             return None
-        # SQL without a data connection runs on dataframes; it only reaches the
-        # warehouse through the SQL cells it reads
+        if not cell.dataConnectionId:
+            # SQL without a data connection runs on dataframes: the names it reads are
+            # dataframes, not warehouse tables, and it reaches the warehouse only through
+            # the SQL cells it reads
+            for reference in get_table_references(expression):
+                reference.meta[UNRESOLVED] = True
         # Hex chains a warehouse cell only to cells on its own connection; SQL on
         # dataframes reads any cell's result
         readable = {
