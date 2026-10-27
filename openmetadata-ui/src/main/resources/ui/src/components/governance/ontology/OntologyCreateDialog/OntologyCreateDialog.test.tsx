@@ -19,8 +19,8 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Layer } from '../../../../generated/api/data/createOntology';
-import { Ontology } from '../../../../generated/entity/data/ontology';
 import { ProjectionState } from '../../../../generated/api/rdf/rdfStatus';
+import { Ontology } from '../../../../generated/entity/data/ontology';
 import { createOntology } from '../../../../rest/ontologyAPI';
 import { fetchRdfConfig } from '../../../../rest/rdfAPI';
 import {
