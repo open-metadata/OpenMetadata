@@ -19,10 +19,10 @@ concurrency:
 
 env:
   UI_DIR: openmetadata-ui/src/main/resources/ui
-  STABILITY_RUNS: 5
+  STABILITY_RUNS: 3
   # Each run (coverage and every stability run) is split across this many
-  # runners; one runner was taking ~10 min for the whole suite.
-  SHARDS: 3
+  # runners; with ~1,060 tests three shards ran past 10 min each.
+  SHARDS: 5
 
 jobs:
   browser-tests:
@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3] # keep in step with env.SHARDS
+        shard: [1, 2, 3, 4, 5] # keep in step with env.SHARDS
     steps:
       - uses: actions/checkout@v7
         with:
@@ -118,8 +118,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        run: [1, 2, 3, 4, 5]
-        shard: [1, 2, 3]
+        run: [1, 2, 3] # keep in step with env.STABILITY_RUNS
+        shard: [1, 2, 3, 4, 5] # keep in step with env.SHARDS
     steps:
       - uses: actions/checkout@v7
         with:
