@@ -70,6 +70,8 @@ For connector-specific development, see [skills/README.md](skills/README.md).
 
 ### Python Ingestion
 
+For local setup and test commands, see [Python commands](#locked-local-python-environments).
+
 ```
 1. /planning          — Choose connector architecture (SQLAlchemy vs REST vs SDK)
 2. /connector-standards — Load the relevant standards
@@ -585,122 +587,62 @@ Always import from `generated/` for API response types. Never hand-write interfa
 
 ## Locked local Python environments
 
-A profile selects dependency groups, published connector extras, and whether the editable
-ingestion package is installed. Definitions live in `ingestion/pyproject.toml`; exact package
-versions come from `ingestion/uv.lock`. Use an installed Python 3.10, 3.11 or 3.12 for the
-validated local profiles. Native build prerequisites and ANTLR remain necessary; use
-`./scripts/dev_setup.sh` to prepare the toolchain.
-
-`requires-python = ">=3.10"` has no upper bound, so newer interpreters remain available
-for experimentation. `tool.uv.required-environments` requires wheel availability for
-binary-only dependencies on the validated targets; it does not exclude newer Python
-versions. Use Nox `install --python` to select another interpreter, or `PYTHON_VERSIONS`
-to override the default Nox test matrix. Dependency and native-build compatibility on
-newer interpreters is not guaranteed.
-
-| Profile | Installed selection | Default environment | Usual entry point |
-| --- | --- | --- | --- |
-| `runtime` | Base ingestion framework/SDK | `env/` | `make install` |
-| `all` | Framework plus the published `all` connector extra, with its existing exclusions | `env/` | `make install_all` |
-| `dev` | Framework, development tools and the `sample-data` extra | `env/` | `make install_dev` |
-| `test` | Development/test tools, `all`, Airflow, Great Expectations and required NLP models | `env/` | `make install_test` or `make install_dev_env` |
-| `style` | Ruff and bootstrap tools | `ingestion/.nox/style` | `make py_format` or `make py_format_check` |
-| `generation` | Model generator, Ruff and bootstrap tools | `ingestion/.nox/generation` | `make generate ARGS=--python-only` |
-| `coverage` | Coverage reporting and bootstrap tools | `ingestion/.nox/coverage` | Reporting steps in `make coverage` |
-
-For ordinary ingestion development, keep the full `test` profile in `env/` and let Make
-select tool profiles automatically. From the repository root:
+From the **repository root**, install the test dependencies and activate the environment:
 
 ```bash
-make install_dev_env PYTHON=python3.11
-make py_format_check
-make generate ARGS=--python-only
-make unit_ingestion ARGS="-n 0 tests/unit/models/test_custom_basemodel_validation.py -q"
+make install_test PYTHON=python3.11
+source env/bin/activate
+export PYTHON_VERSIONS=3.11
 ```
 
-The install, formatting and unit-test targets also work from `ingestion/`. `make generate`
-is a repository-root target. Test paths passed through Make's `ARGS` are relative to
-`ingestion/`, since Nox runs tests there. `make coverage` runs the unit and integration suites as well
-as reporting, so it requires their services and test prerequisites.
+Set `PYTHON_VERSIONS` to your environment's version to run one Nox matrix entry.
+Python 3.10–3.12 are validated; newer versions remain available for experimentation
+(`requires-python` has no upper bound). Native build tools and ANTLR are required;
+use `./scripts/dev_setup.sh` for first-time toolchain setup.
 
-Use the single Nox `unit-tests` session for unit tests, locally and in CI. The former
-`unit`, `unit-dev` and `unit-plugins` sessions are replaced by explicit pytest selections.
-`make unit_ingestion_dev_env` remains a compatibility alias for `make unit_ingestion`;
-it now runs the same selection, without its former Airflow/Azure SQL exclusions.
-
-To run fewer tests, pass pytest arguments through Make's `ARGS` (from either root or
-`ingestion/`):
+**Unit tests** — run from root or `ingestion/`; paths in `ARGS` are always relative to `ingestion/`:
 
 ```bash
-# One file
-make unit_ingestion ARGS="-n 0 tests/unit/models/test_custom_basemodel_validation.py -q"
-# One directory
-make unit_ingestion ARGS="-n 0 tests/unit/models/ -q"
-# One test by its pytest node ID
-make unit_ingestion ARGS="-n 0 tests/unit/models/test_custom_basemodel_validation.py::test_generated_model_transforms_name -q"
-# A name expression; preserve the inner quotes
-make unit_ingestion ARGS="-n 0 tests/unit/models/test_custom_basemodel_validation.py -k 'transform and not service' -q"
-# Exclude tests marked slow
-make unit_ingestion ARGS="-n 0 tests/unit/models/ -m 'not slow' -q"
+make unit_ingestion                                      # Full unit suite
+make unit_ingestion ARGS="-n 0 tests/unit/models/"         # One directory
+make unit_ingestion ARGS="-n 0 tests/unit/models/test_custom_pydantic.py"  # One file
+# One test by node ID
+make unit_ingestion ARGS="-n 0 tests/unit/models/test_custom_pydantic.py::test_model_dump_secrets"
+# Filter names within a directory
+make unit_ingestion ARGS="-n 2 tests/unit/models/ -k 'secrets or validation'"
 ```
 
-An explicit path replaces the default unit-suite selection; `-k` and `-m` filter the selected
-tests. Unit tests default to four workers. Use `-n 2` for lower resource usage, `-n 0` for
-small runs or debugging, or `-n auto` to let pytest-xdist choose based on the machine's CPUs.
-These explicit options override the default. With Nox directly, pass the same arguments after `--`:
+The default is **four workers**. Override with `-n 2` for less load, `-n 0` for debugging,
+or `-n auto` for CPU-based selection. Use `-m 'not slow'` to omit slow-marked tests.
+An explicit path replaces the default suite; `-k` and `-m` filter that selection.
+
+| Command | Purpose |
+| --- | --- |
+| `make install_dev` | Smaller development setup; use `install_test` for tests |
+| `make install` / `make install_all` | Base SDK / all-connector installation |
+| `make py_format` / `make py_format_check` | Fix / check Python formatting and lint |
+| `make static-checks` | Type checks |
+| `make generate ARGS=--python-only` | Regenerate Python models/parsers; **root only** |
+| `python scripts/check_generated_models.py --check` | Check generated-file freshness |
+| `make run_ometa_integration_tests` | Integration tests; prepare required services first; accepts `ARGS` |
+| `make coverage` | Unit and integration suites plus coverage reports; requires their services |
+
+Make prepares pinned uv/Nox automatically. Application profiles reuse `env/` and remove
+packages outside the selected profile; switching from `test` to `dev` removes test-only
+packages. Formatting, generation and coverage tools use separate `ingestion/.nox/`
+environments. The test profile provisions the required classification models automatically.
+
+For another interpreter/environment, use Nox explicitly after setup:
 
 ```bash
-# From ingestion/, with Nox available on PATH
-nox --no-venv -s unit-tests -- -n 0 tests/unit/models/test_custom_basemodel_validation.py -q
+ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py \
+  -s install -- test --python python3.12 --environment /tmp/om-test-env
 ```
 
-Nox owns synchronization and command execution in `ingestion/noxfile.py`. Make bootstraps
-uv 0.13.4 and the locked Nox dependencies into `ingestion/.nox/bootstrap`; no global uv or
-Nox installation is needed. Each session synchronizes `ingestion/uv.lock` with `--locked`
-before executing its task. The existing classification-model installer verifies model versions,
-spaCy compatibility and successful model loading for the test profile. A stale lock stops
-the session; update it deliberately with
-`ingestion/.nox/bootstrap/bin/uv lock --project ingestion` and review the changes.
+Existing environments keep their interpreter. `OM_VENV_DIR` selects another application
+environment for Make. `make install_dev_env` aliases `install_test`;
+`make unit_ingestion_dev_env` aliases `unit_ingestion`.
 
-Use Make for the usual tasks. To prepare a selection without running a task, or to select
-an explicit interpreter and environment, use the Nox `install` session:
-
-```bash
-make python_tools PYTHON=python3.11
-ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py -s install -- dev --environment /tmp/my-dev-env --python python3.11
-ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py --no-venv -s unit-tests -- -n 0 tests/unit/test_python_tooling.py -q
-```
-
-The `install` session only synchronizes dependencies and provisions the profile's models. Task sessions run from
-`ingestion/`. Direct Nox task sessions normally use their own Nox virtual environment;
-`--no-venv` selects the same application or tool environment as Make. An already installed
-Nox can also invoke these sessions directly. To run another application command after
-installation, use that environment's executable, for example `env/bin/python -m metadata`;
-that direct command does not resynchronize dependencies.
-
-Application profiles `runtime`, `all`, `dev`, and `test` reuse the checkout's `env/`.
-Set `OM_VENV_DIR` or `OM_PYTHON_ENVIRONMENT`, or pass `--environment`, to select another
-virtual environment. Nonempty directories without `pyvenv.cfg` are rejected.
-Activating an unrelated virtual environment does not change this selection; use an explicit
-environment option or one of those variables to target it.
-Style, generation, and coverage tools use separate `ingestion/.nox/` environments;
-tool sync is additive even when an application environment is explicitly selected.
-Application sync removes packages outside the selected application profile. The `test`
-profile includes connector drivers and installs the pinned English, Spanish, Italian,
-and Polish classification models; a development-only installation is not full test setup.
-For example, switching the same `env/` from `test` to `dev` removes test-only packages such
-as pytest. Running the `style` profile in its separate tool environment leaves that
-application environment intact.
-
-`make install_dev_env` remains an alias for the locked test installation. Published extras
-and the public Nox aliases remain available. Root and ingestion Make test targets forward
-`ARGS` to Nox without splitting pytest option values. Direct Nox sessions prepare their own
-locked profile, including sessions invoked with `--no-venv`.
-Normal Nox sessions synchronize into their session virtual environments. With `--no-venv`,
-Nox uses the checkout application environment or the separate profile tool environment.
-
-Run `make generate ARGS=--python-only` to generate Python models and ANTLR parsers without
-changing UI output. Generation tools are installed before the editable application package.
-`python3 scripts/check_generated_models.py --check` validates the generated-output manifest,
-including schema, grammar, lock, and generation-script hashes. Generated models and the
-manifest are local artifacts; regenerate after dependency or schema changes.
+Dependency selections are in `ingestion/pyproject.toml`; sessions are in
+`ingestion/noxfile.py`. Commands reject a stale lock. After intentionally editing dependencies,
+run `ingestion/.nox/bootstrap/bin/uv lock --project ingestion` and review the diff.
