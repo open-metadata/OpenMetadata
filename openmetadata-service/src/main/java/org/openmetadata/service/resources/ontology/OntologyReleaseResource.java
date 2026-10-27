@@ -235,20 +235,25 @@ public final class OntologyReleaseResource
       final OntologyRelease release,
       final OntologyExportFormat format,
       final OntologyReleaseExportOptions options) {
-    final String content =
-        exporter.export(
-            release,
-            format,
-            options,
-            definitions ->
-                OntologyResourceAccess.requireView(authorizer, securityContext, definitions),
-            new OntologyBoundAssetLinks(
-                bindings,
-                new OntologyConceptBindingService.Access(uriInfo, securityContext),
-                assetBaseUri));
+    final String content = render(uriInfo, securityContext, release, format, options);
     return Response.ok(content, format.mediaType())
         .header("Content-Disposition", attachment(release, format))
         .build();
+  }
+
+  private String render(
+      final UriInfo uriInfo,
+      final SecurityContext securityContext,
+      final OntologyRelease release,
+      final OntologyExportFormat format,
+      final OntologyReleaseExportOptions options) {
+    final var access = new OntologyConceptBindingService.Access(uriInfo, securityContext);
+    return exporter.export(
+        release,
+        format,
+        options,
+        definitions -> OntologyResourceAccess.requireView(authorizer, securityContext, definitions),
+        new OntologyBoundAssetLinks(bindings, access, assetBaseUri));
   }
 
   private static String attachment(
