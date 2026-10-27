@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { fireEvent, screen } from '@testing-library/react';
-import OntologyEmptyState from './OntologyEmptyState';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
+import OntologyEmptyState from './OntologyEmptyState';
 
 const renderEmptyState = (canCreate = true) => {
   const handlers = {
