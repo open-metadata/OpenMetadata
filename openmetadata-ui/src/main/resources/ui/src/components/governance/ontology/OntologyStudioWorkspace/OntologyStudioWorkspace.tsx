@@ -102,7 +102,7 @@ const OntologyStudioWorkspace = ({
             </Tabs.Panel>
             <Tabs.Panel id="settings">
               <OntologyCreateForm
-                canCreate={canEditAll}
+                canEdit={canEditAll}
                 ontology={ontology}
                 onSaved={(saved) => {
                   onSaved(saved);
