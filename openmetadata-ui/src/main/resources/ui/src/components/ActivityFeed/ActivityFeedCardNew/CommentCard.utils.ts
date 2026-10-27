@@ -22,9 +22,9 @@ const REPLY_TEXT_LAYOUT = {
   name: 'tw:min-w-0 tw:wrap-anywhere',
 };
 
-// In the thread panels a reply reads compactly, as in the Inbox: a small
-// avatar, no separator before the time, reactions close under the message and
-// no rule between replies.
+// In the thread panels a reply reads compactly, as in the Inbox: no separator
+// before the time and no rule between replies. Its avatar is the size of the
+// message's and the comment input's.
 export const getReplyLayout = (
   isThreadPanel?: boolean,
   isLastReply?: boolean
@@ -34,9 +34,11 @@ export const getReplyLayout = (
         root: 'd-flex items-start justify-start relative gap-3',
         avatar: 'tw:shrink-0 tw:pt-0.5',
         ...REPLY_TEXT_LAYOUT,
-        avatarSize: 'xs' as const,
+        // The same small gap under the name and under the message.
+        body: `${REPLY_TEXT_LAYOUT.body} tw:flex tw:flex-col tw:gap-2`,
+        avatarSize: 'sm' as const,
         showSeparator: false,
-        reactions: 'tw:mt-1',
+        reactions: undefined,
       }
     : {
         root: classNames(

@@ -758,7 +758,15 @@ const ActivityFeedCardNew = ({
       data-testid="thread-panel-comments"
       direction="col"
       gap={4}>
-      {posts}
+      {posts ? (
+        // A rule sets the replies apart from the message. Out to the card's
+        // edges past the body's 20px padding, so it spans the whole card.
+        <Box
+          className="tw:-mx-5 tw:border-t tw:border-secondary tw:px-5 tw:pt-4"
+          direction="col">
+          {posts}
+        </Box>
+      ) : null}
       {renderCommentInput()}
     </Box>
   );
@@ -798,6 +806,7 @@ const ActivityFeedCardNew = ({
                   <ProfilePicture
                     key={feedId}
                     name={createdBy}
+                    size={headerLayout.avatarSize}
                     width={showThread ? '40' : '32'}
                   />
                 </Box>
