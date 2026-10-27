@@ -226,9 +226,7 @@ def list_tables(client: Any, filters: GlueFilters | None = None, limit: int = DE
             tables, scanned = _targeted_tables(client, database, filters, limit, budget)
             budget -= scanned
             if tables:
-                shown = min(len(tables), limit)
-                summary = f"{count(shown, 'table')} in database '{name}'" + more_suffix(shown, len(tables) > limit)
-                return Evidence(summary=summary, command=command)
+                return Evidence(summary=_tables_summary(tables, name, limit, budget_spent=budget <= 0), command=command)
             if budget <= 0:
                 return Evidence(
                     summary=f"no kept table in the first {count(MAX_TABLES_TO_SCAN, 'table')} read",
@@ -253,6 +251,16 @@ def _no_tables_caveat() -> Diagnosis:
         "Lake Formation DESCRIBE grants, and that databaseFilterPattern, schemaFilterPattern and "
         "tableFilterPattern are not excluding everything; ingestion would collect nothing as configured.",
     )
+
+
+def _tables_summary(tables: list[Any], database: str, limit: int, budget_spent: bool) -> str:
+    """``3 tables in database 'sales'``, flagging a count cut short by the listing cap
+    or by the scan budget - a budget-cut count is a floor, not the database's total."""
+    shown = min(len(tables), limit)
+    summary = f"{count(shown, 'table')} in database '{database}'" + more_suffix(shown, len(tables) > limit)
+    if budget_spent and len(tables) <= limit:
+        summary += f" (scan stopped after {MAX_TABLES_TO_SCAN} tables read; more may exist)"
+    return summary
 
 
 def _scan_budget_caveat() -> Diagnosis:

@@ -6,7 +6,8 @@
 - **Guard:** `ingestion/tests/unit/source/database/glue/test_connection.py`
   (`test_glue_source_probes_with_a_pipeline_only_schema_filter`,
   `test_pipeline_filters_match_fully_qualified_names_with_use_fqn_for_filtering`,
-  `test_get_tables_stops_once_the_table_scan_budget_is_spent`)
+  `test_get_tables_stops_once_the_table_scan_budget_is_spent`,
+  `test_get_tables_flags_a_count_cut_short_by_the_scan_budget`)
 - **Related:** open-metadata/OpenMetadata#36348, open-metadata/OpenMetadata#36347
 
 ## Context
@@ -28,7 +29,8 @@ that keeps nothing can read an entire large catalog and outrun the step timeout.
 - The probe reads at most `MAX_TABLES_TO_SCAN` = 1000 tables in total, across all probed
   databases. Spending the budget without finding a kept table returns the non-blocking "Table
   probe stopped early" caveat, never a failure and never the "ingestion would collect nothing"
-  caveat.
+  caveat. A count of kept tables found before the budget ran out is reported as a floor
+  ("scan stopped after 1000 tables read; more may exist").
 
 ## Consequences
 A filter excluding an unreadable database is enough to pass the check; no grant on that database is

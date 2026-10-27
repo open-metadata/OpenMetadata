@@ -429,6 +429,24 @@ def test_get_tables_stops_once_the_table_scan_budget_is_spent():
     assert "does not mean ingestion would collect nothing" in evidence.caveat.remediation
 
 
+def test_get_tables_flags_a_count_cut_short_by_the_scan_budget():
+    # Kept tables found before the budget ran out are a floor, not the database's total.
+    read = [{"Name": f"tmp_{i}"} for i in range(MAX_TABLES_TO_SCAN - 2)] + [{"Name": "orders"}, {"Name": "customers"}]
+    client = _client_denying(denied="", databases=[{"Name": "sales"}], tables={"sales": read})
+
+    evidence = _checks(client, table=FilterPattern(excludes=["^tmp_"])).get_tables()
+
+    assert evidence.summary == (
+        f"2 tables in database 'sales' (scan stopped after {MAX_TABLES_TO_SCAN} tables read; more may exist)"
+    )
+
+
+def test_get_tables_count_is_unflagged_when_the_budget_is_not_spent():
+    client = _client_denying(denied="", databases=[{"Name": "sales"}], tables={"sales": [{"Name": "orders"}]})
+
+    assert _checks(client).get_tables().summary == "1 table in database 'sales'"
+
+
 def test_pipeline_filters_match_fully_qualified_names_with_use_fqn_for_filtering():
     pipeline = DatabaseServiceMetadataPipeline(
         useFqnForFiltering=True,
