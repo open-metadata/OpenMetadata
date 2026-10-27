@@ -12,9 +12,36 @@
  */
 
 import { FieldProps } from '@rjsf/utils';
+import type { TFunction } from 'i18next';
+import type { ComponentType } from 'react';
+import type {
+  PlatformSettingsFormProps,
+  PlatformSettingsPageProps,
+} from '../../components/discovery/personal-space/Profile/tabs/platform-settings/PlatformSettings.types';
 
 class ProfilerConfigurationClassBase {
-  public getSparkAgentConfigComponent(): (() => JSX.Element) | undefined {
+  /** Rendered with no props on the classic settings page. */
+  public getSparkAgentConfigComponent():
+    | ComponentType<Partial<PlatformSettingsPageProps>>
+    | undefined {
+    return undefined;
+  }
+
+  /**
+   * A downstream add/edit sub-page served at
+   * `profiler-configuration/edit/<itemId>`; the item id format is the
+   * implementer's.
+   */
+  public getSettingsItemForm():
+    | ComponentType<PlatformSettingsFormProps>
+    | undefined {
+    return undefined;
+  }
+
+  public getSettingsItemFormTitle(
+    _t: TFunction,
+    _itemId: string
+  ): string | undefined {
     return undefined;
   }
 

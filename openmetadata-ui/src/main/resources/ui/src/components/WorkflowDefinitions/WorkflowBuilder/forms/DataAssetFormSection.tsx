@@ -107,7 +107,7 @@ export const DataAssetFormSection: React.FC<DataAssetFormSectionProps> = ({
 
   const handleItemCleared = (key: React.Key) => {
     const id = String(key);
-    selectedItems.remove(key);
+    selectedItems.remove(id);
     if (id === ALL_DATA_ASSETS_OPTION_VALUE) {
       onDataAssetsChange([]);
     } else {

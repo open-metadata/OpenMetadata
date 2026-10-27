@@ -98,7 +98,13 @@ export const DATA_CONTRACT_STATUS_OPTIONS = [
   { label: 'label.aborted', value: 'Aborted' },
 ];
 
-export const ALERT_EMPTY_STATE_FEATURES = [
+export const ALERT_EMPTY_STATE_FEATURES: {
+  key: string;
+  Icon: typeof ZapFast;
+  iconClassName: string;
+  titleKey: string;
+  descriptionKey: string;
+}[] = [
   {
     key: 'trigger',
     Icon: ZapFast,
