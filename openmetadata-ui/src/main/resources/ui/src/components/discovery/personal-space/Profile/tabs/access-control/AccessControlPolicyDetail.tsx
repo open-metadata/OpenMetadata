@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  ConfirmPopover,
   Input,
   Table,
   TableCard,
@@ -58,6 +59,7 @@ import {
   patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { t as translate } from '../../../../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
@@ -74,7 +76,6 @@ import { profileHash } from '../members/profileHash.utils';
 import type { AccessControlView } from './AccessControl.types';
 import { getCountLabel } from './AccessControl.utils';
 import AccessControlRulesTable from './AccessControlRulesTable';
-import RemoveFromParentButton from './RemoveFromParentButton';
 
 type PolicyTab = 'rules' | 'roles' | 'teams';
 type DetailColumnId = 'name' | 'description' | 'actions';
@@ -262,12 +263,27 @@ const renderRoleOrTeamCell = (
 
   if (colId === 'actions' && canEditAll) {
     return (
-      <RemoveFromParentButton
-        isDisabled={isLoadingOnSave}
-        name={getEntityName(item)}
-        parentName={parentName}
-        onRemove={() => onRemove(item)}
-      />
+      <ConfirmPopover
+        confirmText={translate('label.remove')}
+        data-testid="remove-entity-popover"
+        description={translate(
+          'message.are-you-sure-you-want-to-remove-child-from-parent',
+          { child: getEntityName(item), parent: parentName }
+        )}
+        title={translate('label.remove-entity', {
+          entity: getEntityName(item),
+        })}
+        onConfirm={() => onRemove(item)}>
+        <ButtonUtility
+          color="tertiary"
+          data-testid={`remove-${getEntityName(item)}`}
+          icon={Delete}
+          isDisabled={isLoadingOnSave}
+          size="xs"
+          tooltip={translate('label.remove')}
+          tooltipPlacement="left"
+        />
+      </ConfirmPopover>
     );
   }
 

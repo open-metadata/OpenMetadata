@@ -22,7 +22,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
-import { FC, useCallback, useMemo } from 'react';
+import { MouseEvent, FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
@@ -45,7 +45,8 @@ interface IntakeFormsTableProps {
   compactActionColumns?: boolean;
   forms: IntakeForm[];
   loading: boolean;
-  onDelete: (form: IntakeForm) => void;
+  /** `trigger` is the pressed delete button, to anchor a confirmation to. */
+  onDelete: (form: IntakeForm, trigger?: HTMLElement) => void;
   onEdit: (form: IntakeForm) => void;
   onToggleEnabled: (form: IntakeForm, enabled: boolean) => void;
 }
@@ -175,7 +176,9 @@ const IntakeFormsTable: FC<IntakeFormsTableProps> = ({
                       data-testid={`delete-${record.entityType}`}
                       iconLeading={Trash01}
                       size="sm"
-                      onClick={() => onDelete(record)}
+                      onClick={(event: MouseEvent<HTMLElement>) =>
+                        onDelete(record, event.currentTarget)
+                      }
                     />
                   </Tooltip>
                 </Box>

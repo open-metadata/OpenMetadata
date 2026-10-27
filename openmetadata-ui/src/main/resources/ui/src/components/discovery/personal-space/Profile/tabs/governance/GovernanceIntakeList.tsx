@@ -58,7 +58,6 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
   const [forms, setForms] = useState<IntakeForm[]>([]);
   const [loading, setLoading] = useState(false);
   const {
-    containerRef,
     target: deleteTarget,
     open: openDeleteConfirm,
     popoverProps,
@@ -204,7 +203,7 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
           />
         </div>
       ) : (
-        <div ref={containerRef}>
+        <>
           <IntakeFormsTable
             compactActionColumns
             forms={forms}
@@ -226,7 +225,7 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
               onConfirm={() => handleDelete(deleteTarget)}
             />
           )}
-        </div>
+        </>
       )}
     </Box>
   );

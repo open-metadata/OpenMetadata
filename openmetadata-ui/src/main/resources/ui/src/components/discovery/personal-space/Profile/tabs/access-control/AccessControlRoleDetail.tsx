@@ -16,6 +16,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  ConfirmPopover,
   Card,
   Input,
   SelectItemType,
@@ -64,6 +65,7 @@ import {
 } from '../../../../../../rest/teamsAPI';
 import { getUserById, updateUserDetail } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { t as translate } from '../../../../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
@@ -79,7 +81,6 @@ import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/Rich
 import { profileHash } from '../members/profileHash.utils';
 import type { AccessControlView } from './AccessControl.types';
 import { getCountLabel } from './AccessControl.utils';
-import RemoveFromParentButton from './RemoveFromParentButton';
 
 type RoleTab = 'policies' | 'teams' | 'users';
 type DetailColumnId = 'name' | 'description' | 'actions';
@@ -144,12 +145,27 @@ const renderEntityCell = (
 
   if (colId === 'actions' && showRemove) {
     return (
-      <RemoveFromParentButton
-        isDisabled={!canEditAll || isLoadingOnSave}
-        name={getEntityName(item)}
-        parentName={parentName}
-        onRemove={() => onRemove(item)}
-      />
+      <ConfirmPopover
+        confirmText={translate('label.remove')}
+        data-testid="remove-entity-popover"
+        description={translate(
+          'message.are-you-sure-you-want-to-remove-child-from-parent',
+          { child: getEntityName(item), parent: parentName }
+        )}
+        title={translate('label.remove-entity', {
+          entity: getEntityName(item),
+        })}
+        onConfirm={() => onRemove(item)}>
+        <ButtonUtility
+          color="tertiary"
+          data-testid={`remove-${getEntityName(item)}`}
+          icon={Delete}
+          isDisabled={!canEditAll || isLoadingOnSave}
+          size="xs"
+          tooltip={translate('label.remove')}
+          tooltipPlacement="left"
+        />
+      </ConfirmPopover>
     );
   }
 

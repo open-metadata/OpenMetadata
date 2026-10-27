@@ -77,6 +77,10 @@ describe('RelationshipTypeTable', () => {
 
     fireEvent.click(screen.getByTestId('delete-supersedes-btn'));
 
-    expect(onDelete).toHaveBeenCalledWith(unusedType);
+    // The pressed button comes along to anchor a confirmation to.
+    expect(onDelete).toHaveBeenCalledWith(
+      unusedType,
+      expect.any(HTMLButtonElement)
+    );
   });
 });

@@ -36,7 +36,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { DateTime } from 'luxon';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   SYSTEM_ANNOUNCEMENT_PAGE_SIZES,
@@ -131,16 +131,18 @@ const RowActions = ({
   onEdit,
 }: {
   announcement: AnnouncementEntity;
-  onDelete: (announcement: AnnouncementEntity) => void;
+  /** `trigger` is the row's actions button, to anchor a confirmation to. */
+  onDelete: (announcement: AnnouncementEntity, trigger?: HTMLElement) => void;
   onDuplicate: (announcement: AnnouncementEntity) => void;
   onEdit: (announcement: AnnouncementEntity) => void;
 }) => {
   const { t } = useTranslation();
+  const actionsButtonRef = useRef<HTMLButtonElement>(null);
 
   const handlers: Record<RowAction, typeof onEdit> = {
     edit: onEdit,
     duplicate: onDuplicate,
-    delete: onDelete,
+    delete: (row) => onDelete(row, actionsButtonRef.current ?? undefined),
   };
 
   return (
@@ -153,6 +155,7 @@ const RowActions = ({
           isPressed && !isFocusVisible ? 'tw:outline-0' : ''
         }
         data-testid={`announcement-actions-${announcement.name}`}
+        ref={actionsButtonRef}
       />
       <Dropdown.Popover className="tw:w-min">
         <Dropdown.Menu
@@ -200,7 +203,6 @@ const SystemAnnouncementsTable = ({
   const { t } = useTranslation();
   // The modal branch reads the same pending row; only the popover anchors to the pressed menu.
   const {
-    containerRef,
     target: pendingDelete,
     open: setPendingDelete,
     close: closeDelete,
@@ -450,7 +452,7 @@ const SystemAnnouncementsTable = ({
             />
           </Box>
         </Box>
-        <div className="tw:overflow-x-auto" ref={containerRef}>
+        <div className="tw:overflow-x-auto">
           <Table
             aria-label={t('label.announcement-plural')}
             // Below this the fixed columns would squeeze Title to nothing and

@@ -63,7 +63,6 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
     DEFAULT_ENTITY_PERMISSION
   );
   const {
-    containerRef,
     target: deleteTarget,
     open: openDeleteConfirm,
     popoverProps,
@@ -171,43 +170,41 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
           </Tabs.List>
 
           <Tabs.Panel id="custom-properties">
-            <div ref={containerRef}>
-              <CustomPropertiesListTable
-                canDelete={canDelete}
-                canEdit={canEditAll}
-                containerClassName="custom-card-with-table"
-                customProperties={customProperties}
-                data-testid="custom-property-table"
-                emptyText={
-                  <div className="tw:min-h-[250px] tw:relative">
-                    <NoDataPlaceholder
-                      actions={
-                        canCreate
-                          ? [
-                              {
-                                key: 'add',
-                                label: t('label.add-entity', {
-                                  entity: t('label.custom-property'),
-                                }),
-                                color: 'primary' as const,
-                                iconLeading: Expand,
-                                onPress: onAddProperty,
-                              },
-                            ]
-                          : undefined
-                      }
-                      description={t('message.no-custom-properties-defined')}
-                      title={t('label.no-entity-found', {
-                        entity: t('label.custom-property-plural'),
-                      })}
-                    />
-                  </div>
-                }
-                isLoading={isLoading}
-                onDelete={openDeleteConfirm}
-                onEdit={onEditProperty}
-              />
-            </div>
+            <CustomPropertiesListTable
+              canDelete={canDelete}
+              canEdit={canEditAll}
+              containerClassName="custom-card-with-table"
+              customProperties={customProperties}
+              data-testid="custom-property-table"
+              emptyText={
+                <div className="tw:min-h-[250px] tw:relative">
+                  <NoDataPlaceholder
+                    actions={
+                      canCreate
+                        ? [
+                            {
+                              key: 'add',
+                              label: t('label.add-entity', {
+                                entity: t('label.custom-property'),
+                              }),
+                              color: 'primary' as const,
+                              iconLeading: Expand,
+                              onPress: onAddProperty,
+                            },
+                          ]
+                        : undefined
+                    }
+                    description={t('message.no-custom-properties-defined')}
+                    title={t('label.no-entity-found', {
+                      entity: t('label.custom-property-plural'),
+                    })}
+                  />
+                </div>
+              }
+              isLoading={isLoading}
+              onDelete={openDeleteConfirm}
+              onEdit={onEditProperty}
+            />
           </Tabs.Panel>
 
           <Tabs.Panel id="schema">

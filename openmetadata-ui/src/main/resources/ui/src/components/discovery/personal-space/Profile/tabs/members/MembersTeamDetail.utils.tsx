@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  ButtonUtility,
+  ConfirmPopover,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import type { TFunction } from 'i18next';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
@@ -24,7 +30,6 @@ import type { MembersView } from './Members.types';
 import type { TeamTab } from './MembersTeamDetail.types';
 import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
 import { profileHash, ProfileHashTarget } from './profileHash.utils';
-import RemoveFromTeamButton from './RemoveFromTeamButton';
 
 const CUSTOM_PROPERTIES = 'custom-properties' as const;
 
@@ -251,12 +256,26 @@ export const getUserColumns = (
           key: 'actions',
           width: 80,
           render: (_: unknown, record: User) => (
-            <RemoveFromTeamButton
-              childName={getEntityName(record)}
-              data-testid={`remove-user-${record.name}`}
-              parentName={parentName}
-              onConfirm={() => onRemoveUser(record)}
-            />
+            <ConfirmPopover
+              confirmText={t('label.remove')}
+              data-testid="remove-from-team-popover"
+              description={t(
+                'message.are-you-sure-you-want-to-remove-child-from-parent',
+                { child: getEntityName(record), parent: parentName }
+              )}
+              title={t('label.remove-entity', {
+                entity: getEntityName(record),
+              })}
+              onConfirm={() => onRemoveUser(record)}>
+              <ButtonUtility
+                color="tertiary"
+                data-testid={`remove-user-${record.name}`}
+                icon={Trash01}
+                size="xs"
+                tooltip={t('label.remove')}
+                tooltipPlacement="left"
+              />
+            </ConfirmPopover>
           ),
         },
       ]
@@ -304,13 +323,27 @@ export const getEntityRefColumns = (
           key: 'actions',
           width: 80,
           render: (_: unknown, record: EntityReference) => (
-            <RemoveFromTeamButton
-              childName={getEntityName(record)}
-              data-testid={`remove-${getEntityName(record)}`}
-              isDisabled={isSavingInline}
-              parentName={parentName}
-              onConfirm={() => onRemove(record)}
-            />
+            <ConfirmPopover
+              confirmText={t('label.remove')}
+              data-testid="remove-from-team-popover"
+              description={t(
+                'message.are-you-sure-you-want-to-remove-child-from-parent',
+                { child: getEntityName(record), parent: parentName }
+              )}
+              title={t('label.remove-entity', {
+                entity: getEntityName(record),
+              })}
+              onConfirm={() => onRemove(record)}>
+              <ButtonUtility
+                color="tertiary"
+                data-testid={`remove-${getEntityName(record)}`}
+                icon={Trash01}
+                isDisabled={isSavingInline}
+                size="xs"
+                tooltip={t('label.remove')}
+                tooltipPlacement="left"
+              />
+            </ConfirmPopover>
           ),
         },
       ]

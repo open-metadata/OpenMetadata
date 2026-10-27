@@ -276,7 +276,11 @@ describe('IntakeFormsTable', () => {
       screen.getByTestId(`delete-${TargetEntityType.DataProduct}`)
     );
 
-    expect(mockOnDelete).toHaveBeenCalledWith(mockForms[0]);
+    // The pressed button comes along to anchor a confirmation to.
+    expect(mockOnDelete).toHaveBeenCalledWith(
+      mockForms[0],
+      expect.any(HTMLButtonElement)
+    );
   });
 
   it('calls onToggleEnabled when the toggle is changed', () => {

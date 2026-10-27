@@ -10,19 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback, useState } from 'react';
-import { useLastPressedTrigger } from './useLastPressedTrigger';
+import { useCallback, useRef, useState } from 'react';
 
 /**
- * State for a confirmation popover opened from a component that only reports
- * the action as a callback (a shared table's `onDelete(row)`). Wrap the
- * component in `containerRef`, pass `open` as its callback, and render
- * `<ConfirmPopover {...popoverProps} />` while `target` is set; it anchors to
- * the button that was pressed.
+ * State for a confirmation popover opened through a callback — typically a
+ * shared table's `onDelete(row, trigger)`, where `trigger` is the button that
+ * was pressed (or the row menu's button). Pass `open` as that callback and
+ * render `<ConfirmPopover {...popoverProps} />` while `target` is set; it
+ * anchors to `trigger`.
  */
 export const useAnchoredConfirm = <T>() => {
-  const { containerRef, triggerRef } = useLastPressedTrigger();
   const [target, setTarget] = useState<T>();
+  const triggerRef = useRef<HTMLElement | null>(null);
+
+  const open = useCallback((nextTarget: T, trigger?: HTMLElement) => {
+    triggerRef.current = trigger ?? null;
+    setTarget(nextTarget);
+  }, []);
   const close = useCallback(() => setTarget(undefined), []);
   const onOpenChange = useCallback(
     (isOpen: boolean) => {
@@ -34,9 +38,8 @@ export const useAnchoredConfirm = <T>() => {
   );
 
   return {
-    containerRef,
     target,
-    open: setTarget as (target: T) => void,
+    open,
     close,
     popoverProps: {
       isOpen: target !== undefined,

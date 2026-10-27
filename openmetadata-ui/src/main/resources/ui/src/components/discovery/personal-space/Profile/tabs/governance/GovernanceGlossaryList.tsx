@@ -75,7 +75,6 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
   const {
-    containerRef,
     target: deleteTarget,
     open: openDeleteConfirm,
     popoverProps,
@@ -161,7 +160,7 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
     }
 
     return (
-      <div className="tw:pt-0.25" ref={containerRef}>
+      <div className="tw:pt-0.25">
         <RelationshipTypeTable
           isAdminUser
           relationshipTypes={visibleItems}

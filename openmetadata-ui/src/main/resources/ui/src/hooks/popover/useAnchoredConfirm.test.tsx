@@ -24,11 +24,17 @@ const ROWS: Row[] = [
   { id: '2', name: 'Beta' },
 ];
 
-const Table = ({ onDelete }: { onDelete: (row: Row) => void }) => (
+const Table = ({
+  onDelete,
+}: {
+  onDelete: (row: Row, trigger?: HTMLElement) => void;
+}) => (
   <ul>
     {ROWS.map((row) => (
       <li key={row.id}>
-        <button type="button" onClick={() => onDelete(row)}>
+        <button
+          type="button"
+          onClick={(event) => onDelete(row, event.currentTarget)}>
           {`Delete ${row.name}`}
         </button>
       </li>
@@ -37,11 +43,10 @@ const Table = ({ onDelete }: { onDelete: (row: Row) => void }) => (
 );
 
 const Host = ({ onConfirm }: { onConfirm: (row: Row) => Promise<boolean> }) => {
-  const { containerRef, target, open, popoverProps } =
-    useAnchoredConfirm<Row>();
+  const { target, open, popoverProps } = useAnchoredConfirm<Row>();
 
   return (
-    <div ref={containerRef}>
+    <div>
       <Table onDelete={open} />
       {target && (
         <ConfirmPopover

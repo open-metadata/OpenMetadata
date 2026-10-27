@@ -20,7 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Edit05, Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
@@ -112,6 +112,7 @@ const CustomPropertyActions: FC<CustomPropertyActionsProps> = ({
   onDelete,
 }) => {
   const { t } = useTranslation();
+  const actionsButtonRef = useRef<HTMLButtonElement>(null);
 
   if (!canEdit && !canDelete) {
     return null;
@@ -122,13 +123,16 @@ const CustomPropertyActions: FC<CustomPropertyActionsProps> = ({
       <Dropdown.DotsButton
         className={ACTIONS_BUTTON_CLASS}
         data-testid="property-actions"
+        ref={actionsButtonRef}
       />
       <Dropdown.Popover className="tw:w-55">
         <Dropdown.Menu
           aria-label={t('label.action-plural')}
           selectionMode="none"
           onAction={(key) =>
-            key === OPERATION.DELETE ? onDelete(property) : onEdit(property)
+            key === OPERATION.DELETE
+              ? onDelete(property, actionsButtonRef.current ?? undefined)
+              : onEdit(property)
           }>
           {canEdit && (
             <Dropdown.Item
