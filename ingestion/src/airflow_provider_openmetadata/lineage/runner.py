@@ -295,13 +295,13 @@ class AirflowLineageRunner:
                 }
                 logger.info("Using Basic auth as fallback")
 
-            # Fetch DAG runs
-            # Airflow 3.x uses 'logical_date' instead of 'execution_date'
+            # Fetch DAG runs. `run_after` is never null, unlike `logical_date` on manually
+            # triggered runs, which the database would sort first or last depending on its engine.
             logger.info(f"Fetching DAG runs from: {api_url}")
-            logger.info(f"Params: limit={self.max_status}, order_by=-logical_date")
+            logger.info(f"Params: limit={self.max_status}, order_by=-run_after")
             response = requests.get(
                 api_url,
-                params={"limit": self.max_status, "order_by": "-logical_date"},
+                params={"limit": self.max_status, "order_by": "-run_after"},
                 headers=headers,
                 timeout=10,
             )
@@ -392,8 +392,10 @@ class AirflowLineageRunner:
                 else:
                     dag_status = StatusType.Successful.value
 
-                # Parse execution date
-                execution_date_str = dag_run.get("logical_date") or dag_run.get("execution_date")
+                # Manually triggered runs have no logical_date; same fallback as get_pipeline_status
+                execution_date_str = (
+                    dag_run.get("logical_date") or dag_run.get("execution_date") or dag_run.get("run_after")
+                )
                 execution_timestamp = None
                 if execution_date_str:
                     try:

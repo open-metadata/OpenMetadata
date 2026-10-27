@@ -158,3 +158,29 @@ def test_manually_triggered_run_is_reported_at_its_run_after(dag, airflow_sessio
         datetime_to_ts(manual_run_after),
         datetime_to_ts(FIRST_RUN + timedelta(days=4)),
     ]
+
+
+def test_rest_api_reports_manually_triggered_run_at_its_run_after(dag):
+    manual_run_after = FIRST_RUN + timedelta(days=10)
+    dag_runs = [
+        {"dag_run_id": "manual", "logical_date": None, "run_after": manual_run_after.isoformat()},
+        {"dag_run_id": "run_4", "logical_date": (FIRST_RUN + timedelta(days=4)).isoformat()},
+    ]
+    task_instances = [{"task_id": task.task_id, "state": "success"} for task in dag.tasks]
+
+    def airflow_api(url, params=None, **_):
+        body = {"task_instances": task_instances} if url.endswith("/taskInstances") else {"dag_runs": dag_runs}
+        return MagicMock(status_code=200, json=MagicMock(return_value=body))
+
+    runner = build_runner(dag, max_status=2)
+    with (
+        patch("requests.post", return_value=MagicMock(status_code=201, json=lambda: {"access_token": "token"})),
+        patch("requests.get", side_effect=airflow_api) as get,
+    ):
+        statuses = runner.get_pipeline_status_via_api()
+
+    assert get.call_args_list[0].kwargs["params"] == {"limit": 2, "order_by": "-run_after"}
+    assert [status.timestamp.root for status in statuses] == [
+        datetime_to_ts(manual_run_after),
+        datetime_to_ts(FIRST_RUN + timedelta(days=4)),
+    ]
