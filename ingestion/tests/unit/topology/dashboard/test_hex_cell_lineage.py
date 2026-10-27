@@ -15,7 +15,7 @@ Hex data models and column lineage built from the SQL cells of a project
 import fnmatch
 import uuid
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from requests import HTTPError
@@ -113,6 +113,32 @@ class TestCellSqlParsing:
             "select region, {{ target }} as target from prod.sales.orders "
             "{% if region %}where region = {{ region }}{% endif %}"
         ) == {"region": {(ORDERS, "region")}, "target": set()}
+
+    def test_only_the_first_branch_of_a_jinja_condition_is_kept(self):
+        assert outputs(
+            "select region from prod.sales.orders "
+            "{% if x %} where id = 1 {% elif y %} where id = 2 {% else %} where id = 3 {% endif %}"
+        ) == {"region": {(ORDERS, "region")}}
+
+    def test_bare_star_over_a_join_with_a_dataframe_keeps_the_known_tables_columns(self):
+        assert outputs(
+            "select * from prod.sales.customers c join df_targets t on c.id = t.id", connection_type="duckdb"
+        ) == {
+            "id": {(CUSTOMERS, "id")},
+            "segment": {(CUSTOMERS, "segment")},
+            "name": {(CUSTOMERS, "name")},
+        }
+
+    def test_inlining_keeps_a_recursive_cte_a_cte(self):
+        base = parse_cell_sql("select * from prod.sales.orders", "snowflake")
+        expression = parse_cell_sql(
+            "with recursive r as (select id from base union all select b.id from base b join r on b.cust_id = r.id) "
+            "select * from r",
+            "snowflake",
+        )
+
+        assert inline_upstream_cells(expression, {"base": base})
+        assert [table.sql() for table in get_table_references(expression)] == ["prod.sales.orders"]
 
     def test_unparseable_sql_is_skipped(self):
         assert parse_cell_sql("select * from where", "snowflake") is None
@@ -821,6 +847,48 @@ class TestHexCellLineage:
         model_fqn = f"{SERVICE}.model.{PROJECT.id}"
         assert lineage[f"{model_fqn}.c2.region"] == ["snowflake_prod.prod.sales.orders.region"]
         assert lineage[f"{model_fqn}.c2.amount"] == ["snowflake_prod.prod.raw.orders.amount"]
+
+    def test_a_cell_too_large_to_inline_leaves_its_chained_cells_untraced(self, make_source):
+        cells = [
+            sql_cell("c1", "select region from sales.orders", "base"),
+            sql_cell("c2", "select region from base", "down", connection=None),
+        ]
+        source = make_source(cells)
+
+        with patch("metadata.ingestion.source.dashboard.hex.metadata.MAX_INLINED_NODES", 1):
+            (request,), (edge,) = run(source)
+
+        # The chained cell still lists its columns, only without where they come from
+        assert [child.name.root for child in request.columns[1].children] == ["region"]
+        assert not any(".c2." in to_column for to_column in column_lineage(edge))
+        assert source.metadata.searches == ["*.*.sales.orders"]
+
+    def test_each_project_gets_its_own_cells(self, make_source):
+        other_project = Project(id="proj_2", title="Customers")
+        source = make_source(None)
+        source.client.get_project_cells.side_effect = lambda project_id: {
+            PROJECT.id: [REVENUE_CELL],
+            other_project.id: [CUSTOMERS_CELL],
+        }[project_id]
+
+        (first,) = [either.right for either in source.yield_datamodel(PROJECT)]
+        (second,) = [either.right for either in source.yield_datamodel(other_project)]
+
+        assert [child.name.root for child in first.columns[0].children] == ["region", "revenue", "segment"]
+        assert [child.name.root for child in second.columns[0].children] == ["id", "segment"]
+
+    def test_a_table_cells_resolved_gets_no_second_edge_from_the_query_history(self, make_source):
+        source = make_source([REVENUE_CELL])
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+
+        _, edges = run(source)
+
+        assert sorted((edge.fromEntity.fullyQualifiedName, edge.toEntity.type) for edge in edges) == [
+            ("snowflake_prod.prod.sales.customers", "dashboardDataModel"),
+            ("snowflake_prod.prod.sales.orders", "dashboardDataModel"),
+        ]
 
 
 class TestHexApiClientCells:
