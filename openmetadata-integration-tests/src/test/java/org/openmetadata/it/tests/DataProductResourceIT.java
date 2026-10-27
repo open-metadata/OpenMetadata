@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -1480,6 +1481,75 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         afterDescUpdate.getFullyQualifiedName(),
         tableWithDataProducts.getDataProducts().get(0).getFullyQualifiedName(),
         "Table's dataProducts reference should have updated FQN after consolidation");
+  }
+
+  @Test
+  void test_renameThenAddTagsPreservesAssets(TestNamespace ns) throws Exception {
+    String tagFqn = personalDataTagLabel().getTagFQN();
+    DataProduct updated =
+        renameThenUpdatePreservesAssets(
+            ns, "dp_rename_tags", dp -> dp.setTags(List.of(personalDataTagLabel())));
+    DataProduct fetched = getEntityWithFields(updated.getId().toString(), "tags");
+    assertTrue(fetched.getTags().stream().anyMatch(tag -> tagFqn.equals(tag.getTagFQN())));
+  }
+
+  @Test
+  void test_renameThenChangeOwnerPreservesAssets(TestNamespace ns) throws Exception {
+    DataProduct updated =
+        renameThenUpdatePreservesAssets(
+            ns, "dp_rename_owner", dp -> dp.setOwners(List.of(testUser2Ref())));
+    DataProduct fetched = getEntityWithFields(updated.getId().toString(), "owners");
+    assertEquals(
+        List.of(testUser2Ref().getId()),
+        fetched.getOwners().stream().map(EntityReference::getId).toList());
+  }
+
+  /**
+   * Renames a data product holding one table, applies {@code update} in the same session, and
+   * asserts the table is still its only asset and points at the renamed FQN.
+   */
+  private DataProduct renameThenUpdatePreservesAssets(
+      TestNamespace ns, String name, Consumer<DataProduct> update) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+    DataProduct dataProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix(name))
+                .withDescription("Rename consolidation")
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+    Table table = createTestTable(ns, name + "_table", domain);
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+    awaitOnlyAsset(dataProduct.getId(), table.getId());
+
+    dataProduct.setName("renamed-" + dataProduct.getName());
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+    update.accept(renamed);
+    DataProduct updated = patchEntity(renamed.getId().toString(), renamed);
+
+    assertEquals(dataProduct.getName(), updated.getName());
+    awaitOnlyAsset(updated.getId(), table.getId());
+    Table tableWithDataProducts =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertEquals(
+        List.of(updated.getFullyQualifiedName()),
+        tableWithDataProducts.getDataProducts().stream()
+            .map(EntityReference::getFullyQualifiedName)
+            .toList());
+    return updated;
+  }
+
+  private void awaitOnlyAsset(UUID dataProductId, UUID assetId) {
+    Awaitility.await("data product " + dataProductId + " holds only " + assetId)
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<EntityReference> assets = getAssets(dataProductId, 10, 0);
+              assertEquals(
+                  List.of(assetId), assets.getData().stream().map(EntityReference::getId).toList());
+            });
   }
 
   /**

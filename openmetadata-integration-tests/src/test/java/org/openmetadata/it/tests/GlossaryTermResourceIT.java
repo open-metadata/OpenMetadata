@@ -4919,4 +4919,27 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
                       + ") must still include the linked table");
             });
   }
+
+  /** Rename, then edit the description in the same session: the rename survives consolidation. */
+  @Test
+  void test_renameAndUpdateDescriptionConsolidation(TestNamespace ns) {
+    GlossaryTerm entity = createEntity(createMinimalRequest(ns));
+    GlossaryTerm updated = renameThenUpdateDescription(entity, "renamed_" + ns.uniqueShortId(), 1);
+    assertEquals(
+        updated.getFullyQualifiedName(),
+        getEntityByName(updated.getFullyQualifiedName()).getFullyQualifiedName());
+  }
+
+  private GlossaryTerm renameThenUpdateDescription(GlossaryTerm entity, String newName, int cycle) {
+    entity.setName(newName);
+    GlossaryTerm renamed = patchEntity(entity.getId().toString(), entity);
+    assertEquals(newName, renamed.getName());
+    String description = "Description after rename " + cycle;
+    renamed.setDescription(description);
+    GlossaryTerm updated = patchEntity(renamed.getId().toString(), renamed);
+    assertEquals(newName, updated.getName(), "Rename survives the in-session description edit");
+    assertEquals(description, updated.getDescription());
+    assertTrue(updated.getFullyQualifiedName().endsWith(newName), updated.getFullyQualifiedName());
+    return updated;
+  }
 }
