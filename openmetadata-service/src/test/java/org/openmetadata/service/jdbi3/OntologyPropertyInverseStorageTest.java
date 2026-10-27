@@ -1,13 +1,19 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
 
 import java.net.URI;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.entity.data.OntologyProperty;
@@ -19,6 +25,16 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 /** The reciprocity finalizer and the restore exception, at the repository, on both engines. */
 class OntologyPropertyInverseStorageTest {
+  /** Every order of three properties' ids, lowest first: a write applies its changes by id. */
+  private static final List<List<String>> ID_ORDERS =
+      List.of(
+          List.of("hasPart", "partOf", "wholeOf"),
+          List.of("hasPart", "wholeOf", "partOf"),
+          List.of("partOf", "hasPart", "wholeOf"),
+          List.of("partOf", "wholeOf", "hasPart"),
+          List.of("wholeOf", "hasPart", "partOf"),
+          List.of("wholeOf", "partOf", "hasPart"));
+
   @ParameterizedTest
   @EnumSource(
       value = ConnectionType.class,
@@ -149,6 +165,60 @@ class OntologyPropertyInverseStorageTest {
   @EnumSource(
       value = ConnectionType.class,
       names = {"MYSQL", "POSTGRES"})
+  void restoringTheOntologyDropsALinkItsPartnerNoLongerNamesBack(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          final var properties = new OntologyPropertyRepository();
+          final Map<List<String>, Map<String, OntologyProperty>> cases = new LinkedHashMap<>();
+          for (int i = 0; i < ID_ORDERS.size(); i++) {
+            final List<String> idOrder = ID_ORDERS.get(i);
+            final List<UUID> ascending =
+                Stream.generate(UUID::randomUUID).limit(3).sorted().toList();
+            final Map<String, UUID> idOf =
+                Map.of(
+                    idOrder.get(0), ascending.get(0),
+                    idOrder.get(1), ascending.get(1),
+                    idOrder.get(2), ascending.get(2));
+            final var hasPart =
+                properties.create(
+                    null, property(fixture, "hasPart" + i).withId(idOf.get("hasPart")));
+            final var partOf =
+                properties.create(
+                    null,
+                    property(fixture, "partOf" + i)
+                        .withId(idOf.get("partOf"))
+                        .withInverse(hasPart.getIri()));
+            properties.delete("admin", partOf.getId(), false, false);
+            final var wholeOf =
+                properties.create(
+                    null,
+                    property(fixture, "wholeOf" + i)
+                        .withId(idOf.get("wholeOf"))
+                        .withInverse(hasPart.getIri()));
+            assertEquals(hasPart.getIri(), inverseOf(properties, partOf));
+            cases.put(idOrder, Map.of("hasPart", hasPart, "partOf", partOf, "wholeOf", wholeOf));
+          }
+
+          fixture.ontologies.delete("admin", fixture.ontology.getId(), true, false);
+          fixture.ontologies.restoreEntity("admin", fixture.ontology.getId());
+
+          assertAll(
+              cases.entrySet().stream()
+                  .map(
+                      restored ->
+                          () ->
+                              assertEquals(
+                                  "hasPart -> wholeOf, partOf -> null, wholeOf -> hasPart",
+                                  partners(properties, restored.getValue()),
+                                  "ids ascending " + restored.getKey())));
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
   void aSelfInverseSurvivesItsRestore(ConnectionType dialect) {
     withCapture(
         dialect,
@@ -169,6 +239,21 @@ class OntologyPropertyInverseStorageTest {
 
   private static URI inverseOf(OntologyPropertyRepository properties, OntologyProperty property) {
     return properties.find(property.getId(), Include.ALL).getInverse();
+  }
+
+  /** Each live property's partner, named by role. */
+  private static String partners(
+      OntologyPropertyRepository properties, Map<String, OntologyProperty> byRole) {
+    final Map<URI, String> roles = new HashMap<>();
+    byRole.forEach((role, property) -> roles.put(property.getIri(), role));
+    return Stream.of("hasPart", "partOf", "wholeOf")
+        .map(
+            role -> {
+              final URI inverse =
+                  properties.find(byRole.get(role).getId(), Include.NON_DELETED).getInverse();
+              return role + " -> " + roles.getOrDefault(inverse, String.valueOf(inverse));
+            })
+        .collect(Collectors.joining(", "));
   }
 
   private static OntologyProperty property(OntologyCaptureFixture.Fixture fixture, String name) {
