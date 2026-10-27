@@ -655,7 +655,6 @@ const ActivityFeedCardNew = ({
             <FeedCardBodyNew
               activity={activity}
               feed={feed}
-              isActive={isActive}
               isEditPost={isEditPost}
               isFeedWidget={isFeedWidget}
               isForFeedTab={isForFeedTab}
@@ -859,7 +858,6 @@ const ActivityFeedCardNew = ({
             <FeedCardBodyNew
               activity={activity}
               feed={feed}
-              isActive={isActive}
               isEditPost={isEditPost}
               isForFeedTab={isForFeedTab}
               isPost={isPost}
