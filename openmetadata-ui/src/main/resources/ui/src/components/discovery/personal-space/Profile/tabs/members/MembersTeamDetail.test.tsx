@@ -266,8 +266,10 @@ describe('MembersTeamDetail', () => {
       const onNavigate = jest.fn();
       await openDeletePopover(onNavigate);
 
+      // Choose "Delete permanently", then confirm.
+      fireEvent.click(screen.getByTestId('delete-team-popover-hard-delete'));
       await act(async () => {
-        fireEvent.click(screen.getByTestId('delete-team-popover-hard-delete'));
+        fireEvent.click(screen.getByTestId('delete-team-popover-confirm'));
       });
 
       expect(deleteEntity).toHaveBeenCalledWith('teams', '1', true, true);

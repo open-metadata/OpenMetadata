@@ -214,6 +214,7 @@ test.describe('AI Profile Users', () => {
     await page.getByTestId(`delete-user-btn-${userName}`).click();
     await expect(page.getByTestId('delete-user-popover')).toBeVisible();
     await page.getByTestId('delete-user-popover-hard-delete').click();
+    await page.getByTestId('delete-user-popover-confirm').click();
     await hardDelete;
   });
 

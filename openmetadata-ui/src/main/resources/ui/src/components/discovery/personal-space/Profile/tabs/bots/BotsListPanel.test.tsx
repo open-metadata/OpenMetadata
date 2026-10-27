@@ -164,6 +164,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     // Real ones, so the delete confirmation opens from its trigger as in the app.
     ButtonUtility: actual.ButtonUtility,
     ConfirmPopover: actual.ConfirmPopover,
+    RadioButton: actual.RadioButton,
+    RadioGroup: actual.RadioGroup,
     Input: ({
       onChange,
       value,
@@ -425,8 +427,10 @@ describe('BotsListPanel', () => {
     );
 
     (getBots as jest.Mock).mockClear();
+    // Choose "Delete permanently", then confirm.
+    fireEvent.click(screen.getByTestId('delete-bot-popover-hard-delete'));
     await act(async () => {
-      fireEvent.click(screen.getByTestId('delete-bot-popover-hard-delete'));
+      fireEvent.click(screen.getByTestId('delete-bot-popover-confirm'));
     });
 
     expect(deleteEntity).toHaveBeenCalledWith('bots', 'b1', false, true);

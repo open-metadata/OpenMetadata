@@ -13,9 +13,13 @@
 import {
   ConfirmPopover,
   ConfirmPopoverProps,
+  RadioButton,
+  RadioGroup,
+  Typography,
 } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { startCase } from 'lodash';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DeleteType } from './DeleteWidget.interface';
 import { useEntityDelete, UseEntityDeleteOptions } from './useEntityDelete';
@@ -31,9 +35,9 @@ export type DeleteEntityPopoverProps = UseEntityDeleteOptions &
     | 'placement'
   > & {
     /**
-     * Offer a soft delete. When set, Soft delete is the default (confirm)
-     * action and permanent delete the secondary one, as in
-     * `DeleteEntityModal`. @default true
+     * Offer a soft delete. When set, the popover asks Soft delete (selected by
+     * default) or Delete permanently, as `DeleteEntityModal` does; otherwise
+     * confirm is a permanent delete. @default true
      */
     allowSoftDelete?: boolean;
     /** Replaces the default soft/permanent delete explanation. */
@@ -43,8 +47,8 @@ export type DeleteEntityPopoverProps = UseEntityDeleteOptions &
 
 /**
  * Anchored delete confirmation for an entity, the popover counterpart of
- * `DeleteEntityModal`. Soft and permanent delete are two footer actions
- * rather than a radio choice; the safer soft delete is the default one.
+ * `DeleteEntityModal`: a soft / permanent choice with the safer soft delete
+ * selected, and a confirm button named after the choice.
  */
 const DeleteEntityPopover = ({
   allowSoftDelete = true,
@@ -61,33 +65,80 @@ const DeleteEntityPopover = ({
   const { t } = useTranslation();
   const deleteEntityWith = useEntityDelete(deleteOptions);
   const entity = startCase(deleteOptions.entityType).toLowerCase();
+  const [deleteType, setDeleteType] = useState<DeleteType>(
+    allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE
+  );
+
+  const options = [
+    {
+      type: DeleteType.SOFT_DELETE,
+      label: t('label.soft-delete'),
+      hint: t('message.soft-delete-common-message', { entity }),
+    },
+    {
+      type: DeleteType.HARD_DELETE,
+      label: t('label.permanently-delete'),
+      hint: t('message.permanently-delete-common-message', { entity }),
+    },
+  ];
+  const selectedOption =
+    options.find((option) => option.type === deleteType) ?? options[0];
+
+  const choice = allowSoftDelete ? (
+    <RadioGroup
+      aria-label={t('label.delete-entity', {
+        entity: deleteOptions.entityName,
+      })}
+      className="tw:gap-1"
+      data-testid={`${dataTestId}-options`}
+      size="sm"
+      value={deleteType}
+      onChange={(value) => setDeleteType(value as DeleteType)}>
+      {options.map((option) => (
+        <RadioButton
+          className={({ isSelected }) =>
+            classNames(
+              'tw:cursor-pointer tw:rounded-lg tw:p-2',
+              isSelected && 'tw:bg-secondary'
+            )
+          }
+          data-testid={`${dataTestId}-${option.type}`}
+          hint={
+            <Typography as="span" className="tw:text-tertiary" size="text-sm">
+              {option.hint}
+            </Typography>
+          }
+          key={option.type}
+          label={
+            <Typography
+              as="span"
+              className={
+                option.type === DeleteType.HARD_DELETE
+                  ? 'tw:text-error-primary'
+                  : 'tw:text-primary'
+              }
+              size="text-sm"
+              weight="semibold">
+              {option.label}
+            </Typography>
+          }
+          size="sm"
+          value={option.type}
+        />
+      ))}
+    </RadioGroup>
+  ) : undefined;
 
   return (
     <ConfirmPopover
-      actions={
-        allowSoftDelete
-          ? [
-              {
-                key: DeleteType.HARD_DELETE,
-                label: t('label.permanently-delete'),
-                color: 'secondary-destructive',
-                onPress: () => deleteEntityWith(DeleteType.HARD_DELETE),
-                'data-testid': `${dataTestId}-hard-delete`,
-              },
-            ]
-          : []
-      }
-      confirmText={allowSoftDelete ? t('label.soft-delete') : undefined}
+      confirmText={allowSoftDelete ? selectedOption.label : undefined}
+      content={choice}
       data-testid={dataTestId}
       description={
-        description ?? (
-          <>
-            {allowSoftDelete && (
-              <p>{t('message.soft-delete-common-message', { entity })}</p>
-            )}
-            <p>{t('message.permanently-delete-common-message', { entity })}</p>
-          </>
-        )
+        description ??
+        (allowSoftDelete
+          ? undefined
+          : t('message.permanently-delete-common-message', { entity }))
       }
       isOpen={isOpen}
       placement={placement}
@@ -96,11 +147,7 @@ const DeleteEntityPopover = ({
       })}
       triggerRef={triggerRef}
       onCancel={onCancel}
-      onConfirm={() =>
-        deleteEntityWith(
-          allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE
-        )
-      }
+      onConfirm={() => deleteEntityWith(deleteType)}
       onOpenChange={onOpenChange}>
       {children}
     </ConfirmPopover>

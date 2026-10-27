@@ -187,6 +187,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .ButtonUtility,
   ConfirmPopover: jest.requireActual('@openmetadata/ui-core-components')
     .ConfirmPopover,
+  RadioButton: jest.requireActual('@openmetadata/ui-core-components')
+    .RadioButton,
+  RadioGroup: jest.requireActual('@openmetadata/ui-core-components').RadioGroup,
   EmptyPlaceholder: ({ title }: { title?: string }) => (
     <div data-testid="empty-placeholder">{title}</div>
   ),
@@ -351,8 +354,10 @@ describe('BotDetailPanel', () => {
     );
 
     fireEvent.click(screen.getByTestId('delete-bot-btn'));
+    // Choose "Delete permanently", then confirm.
+    fireEvent.click(screen.getByTestId('delete-bot-popover-hard-delete'));
     await act(async () => {
-      fireEvent.click(screen.getByTestId('delete-bot-popover-hard-delete'));
+      fireEvent.click(screen.getByTestId('delete-bot-popover-confirm'));
     });
 
     expect(deleteEntity).toHaveBeenCalledWith('bots', 'bot-1', false, true);

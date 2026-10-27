@@ -66,7 +66,7 @@ const click = (testId: string) =>
 describe('DeleteEntityPopover', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('soft-deletes on the default (confirm) action', async () => {
+  it('soft-deletes with the default choice', async () => {
     renderPopover();
     await open();
 
@@ -85,11 +85,17 @@ describe('DeleteEntityPopover', () => {
     expect(screen.queryByTestId('delete-entity-popover')).toBeNull();
   });
 
-  it('hard-deletes only from the secondary permanent-delete action', async () => {
+  it('hard-deletes once "Delete permanently" is chosen', async () => {
     renderPopover({ isRecursiveDelete: true });
     await open();
 
     await click('delete-entity-popover-hard-delete');
+
+    expect(
+      screen.getByTestId('delete-entity-popover-confirm')
+    ).toHaveTextContent('label.permanently-delete');
+
+    await click('delete-entity-popover-confirm');
 
     expect(deleteEntity).toHaveBeenCalledWith('teams', 'team-id', true, true);
     expect(mockAfterDeleteAction).toHaveBeenCalledWith(false, 2);

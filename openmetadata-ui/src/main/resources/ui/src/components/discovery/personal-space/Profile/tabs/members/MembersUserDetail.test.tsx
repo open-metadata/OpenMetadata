@@ -286,8 +286,10 @@ describe('MembersUserDetail', () => {
     await screen.findByTestId('tab-overview');
 
     fireEvent.click(screen.getByTestId('user-detail-delete-button'));
+    // Choose "Delete permanently", then confirm.
+    fireEvent.click(screen.getByTestId('delete-user-popover-hard-delete'));
     await act(async () => {
-      fireEvent.click(screen.getByTestId('delete-user-popover-hard-delete'));
+      fireEvent.click(screen.getByTestId('delete-user-popover-confirm'));
     });
 
     expect(mockDeleteEntity).toHaveBeenCalledWith(
