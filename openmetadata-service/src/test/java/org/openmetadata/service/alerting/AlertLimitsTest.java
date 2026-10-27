@@ -91,9 +91,9 @@ class AlertLimitsTest {
         () -> AlertLimits.requireTestSendWithin(pastIt.getDestinations()));
   }
 
-  // Users or teams are found by name, however many people that is: only typed addresses count.
+  // Each name is looked up on every event, so a list of user or team names counts as receivers.
   @Test
-  void aDestinationOfUsersOrTeamsIsNotHeldToTheReceiverLimit() {
+  void aListOfUserOrTeamNamesIsHeldToTheReceiverLimit() {
     for (SubscriptionDestination.SubscriptionCategory category :
         List.of(
             SubscriptionDestination.SubscriptionCategory.USERS,
@@ -106,9 +106,14 @@ class AlertLimitsTest {
               .withConfig(new EmailAlertConfig().withReceivers(names(PAST_THE_LIMIT)));
       EventSubscription alert = alert(List.of(named), ORDINARY_BATCH);
 
-      assertDoesNotThrow(() -> AlertLimits.requireWithin(null, alert), category.value());
-      assertDoesNotThrow(
-          () -> AlertLimits.requireTestSendWithin(alert.getDestinations()), category.value());
+      assertThrows(
+          BadRequestException.class,
+          () -> AlertLimits.requireWithin(null, alert),
+          category.value());
+      assertThrows(
+          BadRequestException.class,
+          () -> AlertLimits.requireTestSendWithin(alert.getDestinations()),
+          category.value());
     }
   }
 
@@ -129,6 +134,27 @@ class AlertLimitsTest {
     assertDoesNotThrow(() -> sendAgain(alert, webhookTo(id, stored, MOVED)));
     assertDoesNotThrow(() -> sendAgain(alert, webhookTo(id, oneFewer, MAIN)));
     assertDoesNotThrow(() -> sendAgain(alert, webhookTo(UUID.randomUUID(), stored, MOVED)));
+    assertDoesNotThrow(() -> sendAgain(alert, webhookTo(UUID.randomUUID(), oneFewer, MOVED)));
+  }
+
+  // What an alert stored past the limit holds can be kept once, not used again for another list.
+  @Test
+  void receiversStoredPastTheLimitCannotBeUsedTwice() {
+    Set<String> stored = receivers(PAST_THE_LIMIT);
+    Set<String> oneFewer = new HashSet<>(stored);
+    oneFewer.remove(stored.iterator().next());
+    UUID id = UUID.randomUUID();
+    EventSubscription alert = alert(List.of(webhookTo(id, stored, MAIN)), ORDINARY_BATCH);
+    SubscriptionDestination trimmed = webhookTo(id, oneFewer, MAIN);
+    SubscriptionDestination copy = webhookTo(UUID.randomUUID(), stored, COPY);
+
+    for (List<SubscriptionDestination> sent :
+        List.of(List.of(trimmed, copy), List.of(copy, trimmed))) {
+      assertThrows(
+          BadRequestException.class,
+          () -> AlertLimits.requireWithin(alert, alert(sent, ORDINARY_BATCH)),
+          "one stored list was used twice");
+    }
   }
 
   @Test
