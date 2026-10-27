@@ -667,6 +667,7 @@ describe('OntologyGraphView', () => {
       expect.objectContaining({
         canCreateRelationType: true,
         isEditMode: true,
+        keepCanvasOnAdd: true,
       })
     );
     expect(graphProps.relationTypeGroups).toEqual([

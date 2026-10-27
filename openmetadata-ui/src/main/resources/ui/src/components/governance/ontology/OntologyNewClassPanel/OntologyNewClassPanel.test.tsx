@@ -524,6 +524,65 @@ describe('after a failed attempt', () => {
     expect(lockChanged).toHaveBeenLastCalledWith(false);
   });
 
+  it('keeps Retry and the lock when a retried apply loses its response and the re-read still shows the earlier APPLY_FAILED', async () => {
+    const normalPost = post.getMockImplementation();
+    let applyCalls = 0;
+    let serverRecordedFailure = false;
+    post.mockImplementation(
+      async (url: string, body: Record<string, unknown>) => {
+        if (url.endsWith('/apply')) {
+          applyCalls += 1;
+          if (applyCalls === 1) {
+            throw new AxiosError(
+              'Request failed with status code 504',
+              AxiosError.ERR_BAD_RESPONSE,
+              undefined,
+              undefined,
+              { status: 504 } as AxiosResponse
+            );
+          }
+
+          throw new AxiosError('Network Error', AxiosError.ERR_NETWORK);
+        }
+
+        return normalPost?.(url, body);
+      }
+    );
+    get.mockImplementation(async (url: string) => {
+      if (url.endsWith('/state')) {
+        return { data: { workingRevision: 7 } };
+      }
+      const draft = readDraft(url);
+
+      return {
+        data:
+          serverRecordedFailure && url !== '/ontologyChangeSets'
+            ? { ...draft, state: 'APPLY_FAILED' }
+            : draft,
+      };
+    });
+    const lockChanged = jest.fn();
+    setup({ onLockChange: lockChanged });
+    await createFundsTransfer();
+
+    expect(
+      await screen.findByRole('button', { name: 'label.retry' })
+    ).toBeVisible();
+
+    serverRecordedFailure = true;
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+    });
+    await waitFor(() => expect(applyCalls).toBe(2));
+
+    expect(
+      await screen.findByRole('button', { name: 'label.retry' })
+    ).toBeVisible();
+    expect(screen.getByTestId('new-class-label')).toBeDisabled();
+    expect(screen.getByTestId('ontology-new-class-close')).toBeDisabled();
+    expect(lockChanged).toHaveBeenLastCalledWith(true);
+  });
+
   it('unlocks the form and Close when the server rejects the plan', async () => {
     rejectFirstApply();
     const lockChanged = jest.fn();
