@@ -818,6 +818,22 @@ class TestHexCellLineage:
         assert f"{SERVICE}.model.{PROJECT.id}" not in source.datamodel_source_state
         assert {edge.toEntity.type for edge in edges} == {"dashboard"}
 
+    def test_a_filtered_out_data_model_is_not_kept_on_a_failed_read(self, make_source):
+        first_run = make_source([REVENUE_CELL])
+        run(first_run)
+        source = make_source(None)
+        source.metadata.entities.update(first_run.metadata.entities)
+        source.source_config.dataModelFilterPattern = FilterPattern(excludes=["Sales.*"])
+        source.status = MagicMock()
+        source.context.get.return_value = SimpleNamespace(dashboard_service=SERVICE, charts=[], dataModels=[])
+
+        run(source)
+        (dashboard,) = source.yield_dashboard(PROJECT)
+
+        # This run deletes it, so the dashboard must not point at it
+        assert f"{SERVICE}.model.{PROJECT.id}" not in source.datamodel_source_state
+        assert dashboard.right.dataModels == []
+
     def test_a_cte_inside_an_inlined_cell_does_not_hide_a_table(self, make_source):
         """paid's own orders CTE is not the warehouse orders table the joining cell reads"""
         raw_orders = make_table("orders", {"id": DataType.INT, "amount": DataType.DOUBLE}, "snowflake_prod.prod.raw")
