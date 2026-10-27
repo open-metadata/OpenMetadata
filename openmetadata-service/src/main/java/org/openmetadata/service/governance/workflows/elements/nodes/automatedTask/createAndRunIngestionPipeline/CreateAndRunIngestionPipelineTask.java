@@ -17,6 +17,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.FieldExtensionBuilder;
@@ -31,6 +32,9 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
   public CreateAndRunIngestionPipelineTask(
       CreateAndRunIngestionPipelineTaskDefinition nodeDefinition, WorkflowConfiguration config) {
 
+    // The node's name prefixes generated process-variable references, so it must read as a
+    // variable reference; the same contract Edge enforces on conditional-edge sources.
+    requireSafeNodeReference(nodeDefinition.getName());
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess =
@@ -184,5 +188,15 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
   public void addToWorkflow(BpmnModel model, Process process) {
     process.addFlowElement(subProcess);
     process.addFlowElement(runtimeExceptionBoundaryEvent);
+  }
+
+  private static void requireSafeNodeReference(String nodeName) {
+    if (!WorkflowExpressionValidator.isSafeNodeReference(nodeName)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Node name '%s' must only contain letters, digits and '_' — the name prefixes "
+                  + "generated process-variable references",
+              nodeName));
+    }
   }
 }

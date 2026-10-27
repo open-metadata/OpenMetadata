@@ -24,6 +24,7 @@ import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EventType, Status } from '../../generated/events/api/typedEvent';
 import {
+  HTTPMethod,
   SubscriptionCategory,
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
@@ -1026,7 +1027,7 @@ describe('normalizeDestinationConfig', () => {
       endpoint: 'https://hooks.slack.com/services/xxx',
       headers: [{ key: 'header1', value: 'value1' }],
       queryParams: [{ key: 'param1', value: 'value1' }],
-      httpMethod: 'POST',
+      httpMethod: HTTPMethod.Post,
     };
 
     const result = normalizeDestinationConfig(config);

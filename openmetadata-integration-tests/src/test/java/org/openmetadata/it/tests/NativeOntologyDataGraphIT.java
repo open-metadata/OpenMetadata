@@ -322,7 +322,7 @@ class NativeOntologyDataGraphIT extends BaseOntologyApprovalIT {
     }
   }
 
-  private static Ontology boundOntology(
+  static Ontology boundOntology(
       final TestNamespace ns,
       final String name,
       final int concepts,

@@ -51,6 +51,7 @@ from metadata.profiler.processor.runner import PandasRunner
 from metadata.sampler.pandas.sampler import DatalakeSampler
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.datalake.object_stats import get_object_stats
+from metadata.utils.helpers import is_safe_pandas_query
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -325,6 +326,13 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         custom_metrics = []
 
         for metric in metrics:
+            if not is_safe_pandas_query(metric.expression):
+                logger.warning(
+                    "Skipping custom metric %s: Unsafe pandas query expression\n\n%s",
+                    metric.name.root,
+                    metric.expression,
+                )
+                continue
             try:
                 row = sum(
                     len(df.query(metric.expression).index) for df in runner() if len(df.query(metric.expression).index)

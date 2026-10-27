@@ -73,6 +73,22 @@ public final class OntologyConceptBindingStore {
         : JsonUtils.readValue(json, OntologyConceptBindings.class).getRevision();
   }
 
+  public Map<UUID, Long> revisions(final Collection<UUID> conceptIds) {
+    final Map<UUID, Long> revisions = new HashMap<>();
+    conceptIds.forEach(id -> revisions.put(id, 0L));
+    if (!conceptIds.isEmpty()) {
+      dao.entityExtensionDAO()
+          .getExtensionBatch(conceptIds.stream().map(UUID::toString).toList(), EXTENSION)
+          .forEach(
+              extension ->
+                  revisions.put(
+                      extension.id(),
+                      JsonUtils.readValue(extension.extensionJson(), OntologyConceptBindings.class)
+                          .getRevision()));
+    }
+    return revisions;
+  }
+
   public void requireLiveOntology(final OntologyConcept concept) {
     dao.ontologyEntityDAO().findEntityById(concept.getOntology().getId());
   }

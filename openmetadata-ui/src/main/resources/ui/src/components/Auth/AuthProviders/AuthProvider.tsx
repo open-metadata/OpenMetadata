@@ -57,6 +57,7 @@ import {
   hydrateBackendSyncedPreferences,
   resetBackendSyncState,
 } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useProductTourStore } from '../../../hooks/product-tour/useProductTourStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   AppModeHint,
@@ -432,6 +433,11 @@ export const AuthProvider = ({
       useExploreCache.getState().clearCache();
       clearEtagCache();
       queryClient.clear();
+
+      // End a tour this user left running, before the app mode is cleared:
+      // its step, return page and mode snapshot are theirs, and its mock
+      // must not answer the next user's requests.
+      useProductTourStore.getState().exit();
 
       // Drop the tab-scoped app-mode session so the next user boots into
       // their own persona/preference-resolved mode rather than inheriting
@@ -977,8 +983,8 @@ export const AuthProvider = ({
     // fresh token, and fetching with a token left over from before a silent
     // re-authentication would 401 into a refresh that races it.
     if (
-      ![ROUTES.AUTH_CALLBACK, ROUTES.CALLBACK, ROUTES.SILENT_CALLBACK].includes(
-        location.pathname
+      ![ROUTES.AUTH_CALLBACK, ROUTES.CALLBACK, ROUTES.SILENT_CALLBACK].some(
+        (route) => route === location.pathname
       )
     ) {
       // Fire-and-forget: `getLoggedInUserDetails` now re-throws a

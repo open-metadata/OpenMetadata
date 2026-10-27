@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.openmetadata.it.tests.NativeOntologyGraphScanProbe.assertInvisibleBindingRows;
 import static org.openmetadata.it.tests.NativeOntologyGraphScanProbe.insertMissingBindings;
 import static org.openmetadata.it.tests.NativeOntologyGraphScanProbe.shift;
+import static org.openmetadata.it.tests.NativeOntologyPageFixtures.bindingsPage;
+import static org.openmetadata.it.tests.NativeOntologyPageFixtures.clusterPage;
+import static org.openmetadata.it.tests.NativeOntologyPageFixtures.graphPage;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.CUSTOMER;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.ORDER;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.admin;
@@ -115,6 +118,33 @@ class NativeOntologyDataGraphBindingScanIT extends BaseOntologyApprovalIT {
       } while (after != null);
       assertEquals(List.of(visible.getLast()), remaining);
       assertEquals(10, emptyPages, "The binding endpoint must traverse both invisible stretches");
+      final var initialPage = graphPage(reader, ontology, List.of(), clusterPage(0, 12));
+      var loaded = initialPage.getLoaded();
+      String pageAfter = initialPage.getClusters().getFirst().getAfter();
+      final var pageRemaining = new ArrayList<UUID>();
+      int emptyPagePages = 0;
+      int pagePages = 0;
+      do {
+        assertTrue(++pagePages <= 11);
+        final var next =
+            graphPage(reader, ontology, loaded, bindingsPage(loaded.getFirst(), 10, pageAfter));
+        pageRemaining.addAll(
+            next.getBindings().getAssets().stream()
+                .map(OntologyHydratedAssetBinding::getAssetId)
+                .toList());
+        if (next.getBindings().getAssets().isEmpty()) {
+          emptyPagePages++;
+        }
+        if (next.getBindings().getAfter() != null) {
+          assertEquals(
+              RestUtil.decodeCursor(next.getBindings().getAfter()),
+              next.getLoaded().getFirst().getThroughAssetId().toString());
+        }
+        loaded = next.getLoaded();
+        pageAfter = next.getBindings().getAfter();
+      } while (pageAfter != null);
+      assertEquals(List.of(visible.getLast()), pageRemaining);
+      assertEquals(10, emptyPagePages);
       assertEquals(List.of(500L, 500L, 500L, 500L, 500L, 500L, 18L), observed.bindingRows());
       assertEquals(500, observed.largestInList());
       observed.assertBounded();

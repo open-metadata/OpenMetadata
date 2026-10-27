@@ -21,12 +21,12 @@ import AirflowStatusProvider from '../../context/AirflowStatusProvider/AirflowSt
 import AsyncDeleteProvider from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import PermissionProvider from '../../context/PermissionProvider/PermissionProvider';
 import RuleEnforcementProvider from '../../context/RuleEnforcementProvider/RuleEnforcementProvider';
-import TourProvider from '../../context/TourProvider/TourProvider';
 import WebSocketProvider from '../../context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { CsvJobsTrayContainer } from '../common/EntityImport/CsvJobsTray/CsvJobsTrayContainer.component';
 import { EntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { PersonaLandingRedirect } from '../platform/persona/PersonaLandingRedirect/PersonaLandingRedirect';
+import ProductTour from '../product-tour/ProductTour/ProductTour';
 import ApplicationsProvider from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from '../WebAnalytics/WebAnalyticsProvider';
 import { ThemeProvider as UntitledUIThemeProvider } from './../../context/UntitledUIThemeProvider/theme-provider';
@@ -64,30 +64,30 @@ const AuthenticatedApp: FC<AuthenticatedAppProps> = ({ children }) => {
   return (
     <UntitledUIThemeProvider brandColors={applicationConfig?.customTheme}>
       <ReactAriaRouterBridge>
-        <TourProvider>
-          <WebAnalyticsProvider>
-            <PermissionProvider>
-              <WebSocketProvider>
-                <ApplicationsProvider>
-                  <AsyncDeleteProvider>
-                    <EntityExportModalProvider>
-                      <AirflowStatusProvider>
-                        <RuleEnforcementProvider>
-                          <DndProvider backend={HTML5Backend}>
-                            <PersonaLandingRedirect>
-                              {children}
-                            </PersonaLandingRedirect>
-                          </DndProvider>
-                        </RuleEnforcementProvider>
-                      </AirflowStatusProvider>
-                      <CsvJobsTrayContainer />
-                    </EntityExportModalProvider>
-                  </AsyncDeleteProvider>
-                </ApplicationsProvider>
-              </WebSocketProvider>
-            </PermissionProvider>
-          </WebAnalyticsProvider>
-        </TourProvider>
+        <WebAnalyticsProvider>
+          <PermissionProvider>
+            <WebSocketProvider>
+              <ApplicationsProvider>
+                <AsyncDeleteProvider>
+                  <EntityExportModalProvider>
+                    <AirflowStatusProvider>
+                      <RuleEnforcementProvider>
+                        <DndProvider backend={HTML5Backend}>
+                          <PersonaLandingRedirect>
+                            {children}
+                          </PersonaLandingRedirect>
+                        </DndProvider>
+                      </RuleEnforcementProvider>
+                    </AirflowStatusProvider>
+                    <CsvJobsTrayContainer />
+                    {/* Above both shells, so a tour outlives its own mode switch. */}
+                    <ProductTour />
+                  </EntityExportModalProvider>
+                </AsyncDeleteProvider>
+              </ApplicationsProvider>
+            </WebSocketProvider>
+          </PermissionProvider>
+        </WebAnalyticsProvider>
       </ReactAriaRouterBridge>
     </UntitledUIThemeProvider>
   );
