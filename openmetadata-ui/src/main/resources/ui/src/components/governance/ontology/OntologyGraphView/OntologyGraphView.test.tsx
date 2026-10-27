@@ -342,6 +342,7 @@ describe('OntologyGraphView', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPermissions.ontologyConcept.Create = true;
+    mockPermissions.ontologyChangeSet.Create = true;
     mockPermissions.ontologyProperty.Create = true;
     mockPermissions.ontologyAxiom.Create = true;
     mockPermissions.relationshipType.Create = true;
@@ -1497,6 +1498,46 @@ describe('OntologyGraphView', () => {
     expect(screen.getByTestId('ontology-concept-inspector')).toHaveTextContent(
       'Customer'
     );
+  });
+
+  describe('canvas Add concept', () => {
+    const renderEditing = () =>
+      render(
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          surface="graph"
+          onRequestCreateConcept={jest.fn()}
+          onRequestGraphSurface={jest.fn()}
+        />
+      );
+
+    it('shows for a user who holds all three class-creation rights', async () => {
+      renderEditing();
+      await screen.findByTestId('native-ontology-graph');
+
+      expect(screen.getByTestId('ontology-canvas-add-concept')).toBeVisible();
+    });
+
+    it('hides without edit rights on the ontology', async () => {
+      mockCanEditConcept = false;
+      renderEditing();
+      await screen.findByTestId('native-ontology-graph');
+
+      expect(
+        screen.queryByTestId('ontology-canvas-add-concept')
+      ).not.toBeInTheDocument();
+    });
+
+    it('hides without Create on the change set', async () => {
+      mockPermissions.ontologyChangeSet.Create = false;
+      renderEditing();
+      await screen.findByTestId('native-ontology-graph');
+
+      expect(
+        screen.queryByTestId('ontology-canvas-add-concept')
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('keeps the inspector open and reports a failed authoring write', async () => {
