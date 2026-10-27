@@ -21,6 +21,8 @@ from pathlib import Path
 
 import pytest
 
+from ingestion.tests.utils.python_tooling import prepare_locked_tooling
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -49,6 +51,7 @@ def tooling_repo(tmp_path: Path, monkeypatch) -> Path:
     generated = tmp_path / "ingestion/src/metadata/generated"
     generated.mkdir(parents=True)
     (generated / "__init__.py").touch()
+    prepare_locked_tooling(tmp_path, monkeypatch)
     return tmp_path
 
 
@@ -236,3 +239,301 @@ def test_make_coverage_rejects_missing_data(tooling_repo: Path, directory: str, 
 
     assert result.returncode != 0, result.stdout + result.stderr
     assert "No data to report" in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        "scripts/generate_ingestion_models.py",
+        "ingestion/uv.lock",
+        "ingestion/pyproject.toml",
+        "ingestion/noxfile.py",
+        "ingestion/Makefile",
+        "ingestion/src/metadata/generated/__init__.py",
+    ],
+)
+def test_generation_manifest_detects_changes(tooling_repo: Path, changed: str) -> None:
+    command = (sys.executable, "scripts/check_generated_models.py", "--check")
+    assert_success(run(*command, cwd=tooling_repo))
+    path = tooling_repo / changed
+    path.write_text(path.read_text() + "\n# Changed generation contract.\n")
+
+    result = run(*command, cwd=tooling_repo)
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert changed in result.stdout
+    assert_success(run(sys.executable, "scripts/check_generated_models.py", "--write", cwd=tooling_repo))
+    assert_success(run(*command, cwd=tooling_repo))
+
+
+@pytest.mark.parametrize("directory", [".", "ingestion"])
+def test_locked_install_bootstraps_existing_env_and_prunes_extraneous(nox_repo: Path, directory: str) -> None:
+    environment = nox_repo / "env"
+    assert not environment.exists()
+    assert_success(run(sys.executable, "-m", "venv", str(environment), cwd=nox_repo))
+    assert_success(run("make", "install_test", cwd=nox_repo / directory))
+    python = str(environment / "bin/python")
+    assert_success(
+        run(python, "-c", "from metadata.sample import classify; assert classify(1) == 'positive'", cwd=nox_repo)
+    )
+    assert not (nox_repo / "ingestion/.venv").exists()
+
+    extra = nox_repo / "unused-package"
+    extra.mkdir()
+    (extra / "setup.py").write_text(
+        "from setuptools import setup\nsetup(name='om-unused-fixture',version='0.0.0',py_modules=['unused_fixture'])\n"
+    )
+    (extra / "unused_fixture.py").write_text("VALUE = 1\n")
+    assert_success(run("uv", "pip", "install", "--python", python, str(extra), cwd=nox_repo))
+    assert_success(run(python, "-c", "import unused_fixture", cwd=nox_repo))
+
+    assert_success(run("make", "install_test", cwd=nox_repo / directory))
+
+    assert_success(
+        run(
+            python,
+            "-c",
+            "from importlib.metadata import packages_distributions; import pytest, packaging, idna; assert idna.__version__ == '3.11'; "
+            "assert 'unused_fixture' not in packages_distributions()",
+            cwd=nox_repo,
+        )
+    )
+
+
+def test_ingestion_default_make_installs_application(nox_repo: Path) -> None:
+    assert_success(run("make", cwd=nox_repo / "ingestion"))
+    assert_success(
+        run(
+            str(nox_repo / "env/bin/python"),
+            "-I",
+            "-c",
+            "import idna; from importlib.metadata import version; assert version('python-tooling-fixture') == '0.0.0'",
+            cwd=nox_repo,
+        )
+    )
+    assert not (nox_repo / "ingestion/.venv").exists()
+
+
+@pytest.mark.parametrize("directory", [".", "ingestion"])
+def test_direct_nox_session_installs_locked_profile(nox_repo: Path, directory: str) -> None:
+    noxfile = "ingestion/noxfile.py" if directory == "." else "noxfile.py"
+    result = run(
+        "nox", "-f", noxfile, "-s", "unit-tests", "--", "-k", "selected and not rejected", cwd=nox_repo / directory
+    )
+    assert_success(result)
+    assert reported_test_names(nox_repo, "unit") == ["test_unit_selected"]
+    environments = list((nox_repo / "ingestion/.nox").glob("unit-tests*/bin/python"))
+    assert len(environments) == 1
+    assert not (nox_repo / ".nox").exists()
+    assert_success(run(str(environments[0]), "-c", "import pytest, coverage, uv", cwd=nox_repo))
+
+
+def test_nox_rejects_stale_lock_before_executing(nox_repo: Path) -> None:
+    sentinel = nox_repo / "unexpected-execution"
+    (nox_repo / "ingestion/tests/unit/test_sentinel.py").write_text(
+        f"from pathlib import Path\ndef test_sentinel():\n    Path({str(sentinel)!r}).touch()\n"
+    )
+    config = nox_repo / "ingestion/pyproject.toml"
+    config.write_text(config.read_text().replace("test = [", 'test = ["idna==3.11", '))
+    lock = nox_repo / "ingestion/uv.lock"
+    before = lock.read_bytes()
+    result = nox_tests(nox_repo, "unit", "tests/unit/test_sentinel.py", "-n", "0")
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert not sentinel.exists()
+    assert lock.read_bytes() == before
+
+
+def test_nox_refuses_a_non_venv_directory(tooling_repo: Path) -> None:
+    project = tooling_repo / "ingestion"
+    original = (project / "pyproject.toml").read_bytes()
+    result = run(
+        "nox",
+        "-f",
+        "ingestion/noxfile.py",
+        "-s",
+        "install",
+        "--",
+        "style",
+        "--environment",
+        str(project),
+        cwd=tooling_repo,
+    )
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert not (project / "pyvenv.cfg").exists()
+    assert (project / "pyproject.toml").read_bytes() == original
+
+
+@pytest.mark.parametrize("directory", [".", "ingestion"])
+def test_relative_environment_uses_invocation_directory(tooling_repo: Path, directory: str) -> None:
+    environment = tooling_repo / "custom-tools"
+    result = run(
+        "nox",
+        "-f",
+        str(tooling_repo / "ingestion/noxfile.py"),
+        "-s",
+        "install",
+        "--",
+        "style",
+        "--environment",
+        os.path.relpath(environment, tooling_repo / directory),
+        cwd=tooling_repo / directory,
+    )
+    assert_success(result)
+    assert (environment / "pyvenv.cfg").is_file()
+    assert_success(run(str(environment / "bin/python"), "-I", "-c", "import ruff", cwd=tooling_repo))
+    assert not (tooling_repo / "ingestion/custom-tools").exists()
+
+
+@pytest.mark.parametrize("directory", [".", "ingestion"])
+def test_relative_application_environment(nox_repo: Path, directory: str, monkeypatch) -> None:
+    environment = nox_repo / "custom-application"
+    monkeypatch.setenv("OM_PYTHON_ENVIRONMENT", os.path.relpath(environment, nox_repo / directory))
+    assert_success(run("make", "install_test", cwd=nox_repo / directory))
+    assert_success(
+        run(str(environment / "bin/python"), "-I", "-c", "from metadata.sample import classify", cwd=nox_repo)
+    )
+    assert not (nox_repo / "env").exists()
+    assert not (nox_repo / "ingestion/custom-application").exists()
+
+
+def test_empty_environment_bootstraps_pinned_uv_without_uv_on_path(nox_repo: Path, monkeypatch) -> None:
+    monkeypatch.setenv("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
+    assert shutil.which("uv") is None
+    assert shutil.which("nox") is None
+    assert_success(run("make", "install_test", f"PYTHON={sys.executable}", cwd=nox_repo))
+    result = run(str(nox_repo / "ingestion/.nox/bootstrap/bin/uv"), "--version", cwd=nox_repo)
+    assert_success(result)
+    assert result.stdout.startswith("uv 0.13.4 ")
+    assert_success(
+        run(
+            str(nox_repo / "env/bin/python"),
+            "-c",
+            "import pytest; from metadata.sample import classify; assert classify(1) == 'positive'",
+            cwd=nox_repo,
+        )
+    )
+
+
+def test_tool_profile_does_not_prune_application_dependencies(nox_repo: Path, monkeypatch) -> None:
+    assert_success(run("make", "install_test", cwd=nox_repo))
+    monkeypatch.setenv("OM_PYTHON_ENVIRONMENT", str(nox_repo / "env"))
+    assert_success(
+        run(
+            "nox",
+            "-f",
+            "ingestion/noxfile.py",
+            "-s",
+            "install",
+            "--",
+            "style",
+            cwd=nox_repo,
+        )
+    )
+    assert_success(
+        run(
+            str(nox_repo / "env/bin/python"),
+            "-c",
+            "import pytest, coverage; from metadata.sample import classify; assert classify(0) == 'other'",
+            cwd=nox_repo,
+        )
+    )
+    assert (nox_repo / "ingestion/.nox/style/bin/python").exists()
+
+
+def test_profile_checks_ignore_metadata_on_callers_pythonpath(nox_repo: Path) -> None:
+    metadata = nox_repo / "ingestion/src/foreign_fixture.egg-info"
+    metadata.mkdir()
+    (metadata / "PKG-INFO").write_text("Metadata-Version: 2.1\nName: foreign-fixture\nVersion: 0.0.0\n")
+    (metadata / "requires.txt").write_text("missing-foreign-fixture-dependency==0.0.0\n")
+
+    result = run(
+        "nox",
+        "-f",
+        "ingestion/noxfile.py",
+        "-s",
+        "install",
+        "--",
+        "style",
+        cwd=nox_repo,
+    )
+
+    assert_success(result)
+
+
+@pytest.mark.parametrize("directory", [".", "ingestion"])
+@pytest.mark.parametrize("profile", ["style", "coverage", "generation"])
+def test_explicit_tool_environment_preserves_application(nox_repo: Path, profile: str, directory: str) -> None:
+    assert_success(run("make", "install_test", cwd=nox_repo))
+    environment = nox_repo / "env"
+    assert_success(
+        run(
+            "nox",
+            "-f",
+            str(nox_repo / "ingestion/noxfile.py"),
+            "-s",
+            "install",
+            "--",
+            profile,
+            "--environment",
+            os.path.relpath(environment, nox_repo / directory),
+            cwd=nox_repo / directory,
+        )
+    )
+    assert_success(
+        run(
+            str(environment / "bin/python"),
+            "-I",
+            "-c",
+            "import pytest, coverage; from metadata.sample import classify; assert classify(1) == 'positive'",
+            cwd=nox_repo / directory,
+        )
+    )
+
+
+@pytest.mark.parametrize("exit_code", [0, 3])
+def test_reindex_session_keeps_token_out_of_logs(nox_repo: Path, exit_code: int) -> None:
+    script = nox_repo / "scripts/ingest_100k_containers.py"
+    script.write_text(
+        "import json, sys, idna\nfrom pathlib import Path\n"
+        "assert idna.__version__ == '3.11'\n"
+        "Path('reindex-result.json').write_text(json.dumps({'args':sys.argv[1:], 'environment':sys.prefix}))\n"
+        f"sys.exit({exit_code})\n"
+    )
+    token = "fixture-token"
+    result = run("nox", "-f", "ingestion/noxfile.py", "-s", "reindex-perf-ingest", "--", "--token", token, cwd=nox_repo)
+    assert result.returncode == (1 if exit_code else 0), result.stdout + result.stderr
+    assert token not in result.stdout + result.stderr
+    observed = json.loads((nox_repo / "ingestion/reindex-result.json").read_text())
+    assert observed == {"args": ["--token", token], "environment": str(nox_repo / "env")}
+
+
+def test_repeated_install_preserves_lock_and_package_selection(nox_repo: Path) -> None:
+    lock = nox_repo / "ingestion/uv.lock"
+    before = lock.read_bytes()
+    assert_success(run("make", "install_test", cwd=nox_repo))
+    command = (
+        str(nox_repo / "env/bin/python"),
+        "-I",
+        "-c",
+        "import importlib.metadata as m, json; "
+        "print(json.dumps(sorted((d.metadata['Name'],d.version) for d in m.distributions())))",
+    )
+    first = run(*command, cwd=nox_repo)
+    assert_success(first)
+    assert_success(run("make", "install_test", cwd=nox_repo))
+    second = run(*command, cwd=nox_repo)
+    assert_success(second)
+    assert first.stdout == second.stdout
+    assert lock.read_bytes() == before
+
+
+@pytest.mark.parametrize("directory", [".", "ingestion"])
+def test_nested_nox_reuses_explicit_application_environment(nox_repo: Path, directory: str) -> None:
+    environment = nox_repo / "custom-env"
+    assert_success(
+        run("make", "unit_ingestion", f"OM_VENV_DIR={environment}", "ARGS=-n 0 -k selected", cwd=nox_repo / directory)
+    )
+    assert reported_test_names(nox_repo, "unit") == ["test_unit_selected"]
+    assert (environment / "pyvenv.cfg").is_file()
+    assert not (nox_repo / "env").exists()
+    assert not (nox_repo / "ingestion/.venv").exists()

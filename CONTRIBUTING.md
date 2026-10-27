@@ -18,6 +18,11 @@ review. Automated tests are still required where applicable.
 
 Read [Build Code and Run Tests](https://docs.open-metadata.org/developers/contribute/build-code-and-run-tests) for how to setup your local development environment. Get started with our [Good first issues](https://github.com/open-metadata/OpenMetadata/issues?q=is%3Aissue+is%3Aopen+label%3A%22good-first-issue%22).
 
+For Python work in this checkout, use the [locked local Python environment guide](DEVELOPER.md#locked-local-python-environments).
+It documents the profiles, their Make commands, the Nox sessions and their bootstrap,
+and how application synchronization affects an existing `env/`. `make install_dev_env`
+prepares the full test profile; formatting and generation use separate tool environments.
+
 We also recommend joining the OpenMetadata [Slack Workspace](https://slack.open-metadata.org/) to meet the team, stay up to date with product features, and chat with other contributors! 
 
 Once joining our Slack we recommend Introducing yourself in the #introductions channel. Tell us a bit about yourself and how you are currently using OpenMetadata if you are.

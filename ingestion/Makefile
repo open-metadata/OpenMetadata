@@ -9,89 +9,90 @@ else
     ROOT_DIR := .
 endif
 
+PYTHON ?= python3
+INGESTION_ABS := $(abspath $(INGESTION_DIR))
+NOX_BOOTSTRAP := $(INGESTION_ABS)/.nox/bootstrap
+NOX = "$(NOX_BOOTSTRAP)/bin/nox" -f "$(INGESTION_ABS)/noxfile.py"
+PYTHON_UV_VERSION := $(shell sed -n 's/^required-version *= *"==\([^"]*\)" *$$/\1/p' "$(INGESTION_ABS)/pyproject.toml")
+export OM_VENV_DIR
+
 .PHONY: install
-install:  ## Install the ingestion module to the current environment
-	python -m pip install $(INGESTION_DIR)/
+install: python_tools  ## Install the ingestion module to the current environment
+	$(NOX) -s install -- runtime
+
+.PHONY: python_tools
+python_tools:  ## Bootstrap the locked Nox tools without installing the application
+	@test -n "$(PYTHON_UV_VERSION)"
+	@if [ ! -f "$(NOX_BOOTSTRAP)/pyvenv.cfg" ]; then $(PYTHON) -m venv "$(NOX_BOOTSTRAP)"; fi
+	@case "$$("$(NOX_BOOTSTRAP)/bin/uv" --version 2>/dev/null)" in \
+		"uv $(PYTHON_UV_VERSION) "*) ;; \
+		*) "$(NOX_BOOTSTRAP)/bin/python" -I -m pip install "uv==$(PYTHON_UV_VERSION)" ;; \
+	esac
+	@VIRTUAL_ENV="$(NOX_BOOTSTRAP)" UV_PROJECT_ENVIRONMENT="$(NOX_BOOTSTRAP)" "$(NOX_BOOTSTRAP)/bin/uv" sync --locked --inexact --project "$(INGESTION_ABS)" --only-group nox --python "$(NOX_BOOTSTRAP)/bin/python"
 
 .PHONY: install_dev_env
-install_dev_env:  ## Install all dependencies for development (in edit mode)
-	pip install --upgrade pip
-	pip install nox
-	python -m pip install -e "$(INGESTION_DIR)[all-dev-env, dev, test-unit]"
+install_dev_env: install_test  ## Install the locked development and test environment
 
 .PHONY: install_dev
-install_dev:  ## Install the ingestion module with dev dependencies
-	python -m pip install "$(INGESTION_DIR)[dev]/"
+install_dev: python_tools  ## Install the ingestion module with dev dependencies
+	$(NOX) -s install -- dev
 
 .PHONY: install_test
-install_test:  ## Install the ingestion module with test dependencies
-	python -m pip install --upgrade pip
-	python -m pip install "$(INGESTION_DIR)[test]/"
+install_test: python_tools  ## Install the ingestion module with test dependencies
+	$(NOX) -s install -- test
 
 .PHONY: install_all
-install_all:  ## Install the ingestion module with all dependencies
-	python -m pip install --upgrade pip
-	python -m pip install "$(INGESTION_DIR)[all]/"
+install_all: python_tools  ## Install the ingestion module with all dependencies
+	$(NOX) -s install -- all
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
 	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ "setuptools>=83"
 
 .PHONY: static-checks
-static-checks:  ## Run basedpyright type checks (delegates to nox so local matches CI)
-	cd $(INGESTION_DIR) && nox --no-venv -s static-checks
+static-checks: python_tools  ## Run basedpyright type checks (delegates to nox so local matches CI)
+	$(NOX) --no-venv -s static-checks -- $(ARGS)
 
 .PHONY: precommit_install
-precommit_install:  ## Install the project's precommit hooks from .pre-commit-config.yaml
+precommit_install: python_tools  ## Install the project's precommit hooks from .pre-commit-config.yaml
 	@echo "Installing pre-commit hooks"
-	@echo "Make sure to first run install_test first"
-	pre-commit install
+	$(NOX) -s precommit-install
 
 .PHONY: py_format
-py_format:  ## Run ruff to lint-fix and format the Python codebase
-	ruff check --fix $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
-	python $(INGESTION_DIR)/scripts/check_ruff_suppressions.py --prune
-	ruff format $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+py_format: python_tools  ## Run ruff to lint-fix and format the Python codebase
+	$(NOX) --no-venv -s lint -- --fix
 
 .PHONY: py_format_check
-py_format_check:  ## Check if Python sources are correctly formatted
-	ruff check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
-	python $(INGESTION_DIR)/scripts/check_ruff_suppressions.py --check
-	ruff format --check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+py_format_check: python_tools  ## Check if Python sources are correctly formatted
+	$(NOX) --no-venv -s lint
 
 .PHONY: generate_settings_docs
-generate_settings_docs:  ## Regenerate ingestion/SETTINGS.md from the OM_ settings classes
-	python $(INGESTION_DIR)/scripts/generate_settings_docs.py
+generate_settings_docs: python_tools  ## Regenerate ingestion/SETTINGS.md from the OM_ settings classes
+	$(NOX) -s generate-settings-docs
 
 .PHONY: check_import_layers
-check_import_layers:  ## Fail if a module imports a higher layer (import-cost guard, see ingestion/.importlinter)
-	cd $(INGESTION_DIR) && lint-imports
+check_import_layers: python_tools  ## Fail if a module imports a higher layer (import-cost guard, see ingestion/.importlinter)
+	$(NOX) -s check-import-layers
 
 .PHONY: unit_ingestion
-unit_ingestion:  ## Run Python unit tests
-	cd $(INGESTION_DIR) && pytest -c pyproject.toml --cov=metadata --cov-branch --cov-config=pyproject.toml --junitxml=junit/test-results-unit.xml -n auto tests/unit
+unit_ingestion: python_tools  ## Run Python unit tests
+	$(NOX) --no-venv -s unit-tests -- $(ARGS)
 
-# FIXME: This is a workaround to exclude the tests that require dependencies that are not straightforward to install
-# and might be omitted in unless the we are developing them. This only must be used for local development!
 .PHONY: unit_ingestion_dev_env
-unit_ingestion_dev_env:  ## Run Python unit tests except some specific ones. Only for local development!
-	# Ignores tests:
-	# test_azuresql_sampling.py: requires pymssql, which is not straightforward to install in some platforms
-	pytest -c $(INGESTION_DIR)/pyproject.toml $(INGESTION_DIR)/tests/unit \
-	 	--ignore=$(INGESTION_DIR)/tests/unit/profiler/sqlalchemy/azuresql/test_azuresql_sampling.py \
-	 	--ignore-glob="*airflow*"
+unit_ingestion_dev_env: python_tools  ## Run Python unit tests except some specific ones. Only for local development!
+	$(NOX) --no-venv -s unit-dev -- $(ARGS)
 
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
-run_ometa_integration_tests:  ## Run Python integration tests
-	cd $(INGESTION_DIR) && pytest -c pyproject.toml --cov=metadata --cov-branch --cov-append --cov-config=pyproject.toml --junitxml=junit/test-results-integration.xml tests/integration
+run_ometa_integration_tests: python_tools  ## Run Python integration tests
+	$(NOX) --no-venv -s integration-tests -- $(ARGS)
 
 .PHONY: run_python_tests
-run_python_tests:  ## Run all Python tests with coverage
-	cd $(INGESTION_DIR) && coverage erase --rcfile pyproject.toml
+run_python_tests: python_tools  ## Run all Python tests with coverage
+	$(NOX) -s coverage -- erase
 	$(MAKE) unit_ingestion
 	$(MAKE) run_ometa_integration_tests
-	cd $(INGESTION_DIR) && coverage report --rcfile pyproject.toml
+	$(NOX) -s coverage -- report
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
@@ -117,11 +118,11 @@ coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g" $(ROOT_DIR)/openmetadata-airflow-apis/coverage.xml >> $(ROOT_DIR)/openmetadata-airflow-apis/ci-coverage.xml
 
 .PHONY: coverage
-coverage:  ## Run all Python tests and generate the coverage XML report
+coverage: python_tools  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
-	cd $(INGESTION_DIR) && coverage xml --rcfile pyproject.toml -o coverage.xml
+	$(NOX) -s coverage -- xml
 	sed 's|filename="[^"]*/site-packages/metadata/|filename="src/metadata/|g' $(INGESTION_DIR)/coverage.xml > $(INGESTION_DIR)/ci-coverage.xml
 
 .PHONY: clean-nox
 clean-nox:
-	rm -rf .nox
+	rm -rf "$(INGESTION_ABS)/.nox"

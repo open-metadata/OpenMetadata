@@ -73,16 +73,13 @@ js_antlr:  ## Generate the Python code for parsing FQNs
 	antlr4 -Dlanguage=JavaScript -o openmetadata-ui/src/main/resources/ui/src/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
 
 ## Ingestion models generation
+.PHONY: check-generated
+check-generated:  ## Check whether ingestion generated files are current
+	@python scripts/check_generated_models.py --check
+
 .PHONY: generate
-generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
-	@echo "Running Datamodel Code Generator"
-	@echo "Make sure to first run the install_dev recipe"
-	rm -rf ingestion/src/metadata/generated
-	mkdir -p ingestion/src/metadata/generated
-	python scripts/datamodel_generation.py
-	$(MAKE) py_antlr js_antlr
-	ruff check --isolated --no-respect-gitignore --fix --select F401,UP006,UP007,UP035,UP045 --target-version py310 ingestion/src/metadata/generated
-	$(MAKE) install
+generate: python_tools  ## Generate the pydantic models from the JSON Schemas to the ingestion module
+	$(NOX) -s generate -- $(ARGS)
 
 ## Reference docs generation (deterministic; CI fails if the committed output drifts)
 .PHONY: generate-entity-index
