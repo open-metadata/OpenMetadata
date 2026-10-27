@@ -265,17 +265,21 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
     }
 
-    // Execute delete by query using the new client
+    // Execute delete by query using the new client. Proceed on version conflicts: documents that
+    // were concurrently removed/rewritten (e.g. by a reindex into a rebuild index) must not abort
+    // the whole cleanup with a 409 and leave the remaining child documents orphaned.
     DeleteByQueryResponse response =
         client.deleteByQuery(
             d ->
                 d.index(indexNames)
                     .query(q -> q.bool(boolQueryBuilder.build()))
+                    .conflicts(Conflicts.Proceed)
                     .refresh(Refresh.True));
 
     LOG.info(
-        "DeleteByQuery response from OS - Deleted: {}, Failures: {}",
+        "DeleteByQuery response from OS - Deleted: {}, VersionConflicts: {}, Failures: {}",
         response.deleted(),
+        response.versionConflicts(),
         response.failures().size());
 
     if (!response.failures().isEmpty()) {

@@ -259,13 +259,21 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
           Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
     }
 
+    // Proceed on version conflicts: documents that were concurrently removed/rewritten (e.g. by a
+    // reindex into a rebuild index) must not abort the whole cleanup with a 409 and leave the
+    // remaining child documents orphaned.
     DeleteByQueryResponse response =
         client.deleteByQuery(
-            d -> d.index(indexNames).query(q -> q.bool(boolQueryBuilder.build())).refresh(true));
+            d ->
+                d.index(indexNames)
+                    .query(q -> q.bool(boolQueryBuilder.build()))
+                    .conflicts(Conflicts.Proceed)
+                    .refresh(true));
 
     LOG.info(
-        "DeleteByQuery response From ES - Deleted: {}, Failures: {}",
+        "DeleteByQuery response From ES - Deleted: {}, VersionConflicts: {}, Failures: {}",
         response.deleted(),
+        response.versionConflicts(),
         response.failures().size());
 
     if (!response.failures().isEmpty()) {
