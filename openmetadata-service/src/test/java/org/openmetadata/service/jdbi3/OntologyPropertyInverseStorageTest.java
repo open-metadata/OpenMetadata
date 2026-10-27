@@ -173,40 +173,14 @@ class OntologyPropertyInverseStorageTest {
           final var properties = new OntologyPropertyRepository();
           final Map<List<String>, Map<String, OntologyProperty>> cases = new LinkedHashMap<>();
           for (int i = 0; i < ID_ORDERS.size(); i++) {
-            final List<String> idOrder = ID_ORDERS.get(i);
-            final Map<String, UUID> idOf = idsByRank(idOrder);
-            final var hasPart =
-                properties.create(
-                    null, property(fixture, "hasPart" + i).withId(idOf.get("hasPart")));
-            final var partOf =
-                properties.create(
-                    null,
-                    property(fixture, "partOf" + i)
-                        .withId(idOf.get("partOf"))
-                        .withInverse(hasPart.getIri()));
-            properties.delete("admin", partOf.getId(), false, false);
-            final var wholeOf =
-                properties.create(
-                    null,
-                    property(fixture, "wholeOf" + i)
-                        .withId(idOf.get("wholeOf"))
-                        .withInverse(hasPart.getIri()));
-            assertEquals(hasPart.getIri(), inverseOf(properties, partOf));
-            cases.put(idOrder, Map.of("hasPart", hasPart, "partOf", partOf, "wholeOf", wholeOf));
+            cases.put(ID_ORDERS.get(i), triple(fixture, properties, i, false));
           }
 
           fixture.ontologies.delete("admin", fixture.ontology.getId(), true, false);
           fixture.ontologies.restoreEntity("admin", fixture.ontology.getId());
 
-          assertAll(
-              cases.entrySet().stream()
-                  .map(
-                      restored ->
-                          () ->
-                              assertEquals(
-                                  "hasPart -> wholeOf, partOf -> null, wholeOf -> hasPart",
-                                  partners(properties, restored.getValue()),
-                                  "ids ascending " + restored.getKey())));
+          assertPartnersInEveryOrder(
+              properties, cases, "hasPart -> wholeOf, partOf -> null, wholeOf -> hasPart");
         });
   }
 
@@ -221,28 +195,7 @@ class OntologyPropertyInverseStorageTest {
           final var properties = new OntologyPropertyRepository();
           final Map<List<String>, Map<String, OntologyProperty>> cases = new LinkedHashMap<>();
           for (int i = 0; i < ID_ORDERS.size(); i++) {
-            final List<String> idOrder = ID_ORDERS.get(i);
-            final Map<String, UUID> idOf = idsByRank(idOrder);
-            final var hasPart =
-                properties.create(
-                    null, property(fixture, "hasPart" + i).withId(idOf.get("hasPart")));
-            final var partOf =
-                properties.create(
-                    null,
-                    property(fixture, "partOf" + i)
-                        .withId(idOf.get("partOf"))
-                        .withInverse(hasPart.getIri()));
-            properties.delete("admin", partOf.getId(), false, false);
-            final var wholeOf =
-                properties.create(
-                    null,
-                    property(fixture, "wholeOf" + i)
-                        .withId(idOf.get("wholeOf"))
-                        .withInverse(hasPart.getIri()));
-            properties.delete("admin", wholeOf.getId(), false, false);
-            assertEquals(hasPart.getIri(), inverseOf(properties, partOf));
-            assertEquals(hasPart.getIri(), inverseOf(properties, wholeOf));
-            cases.put(idOrder, Map.of("hasPart", hasPart, "partOf", partOf, "wholeOf", wholeOf));
+            cases.put(ID_ORDERS.get(i), triple(fixture, properties, i, true));
           }
           fixture.ontologies.delete("admin", fixture.ontology.getId(), true, false);
           for (final var restored : cases.values()) {
@@ -255,15 +208,8 @@ class OntologyPropertyInverseStorageTest {
 
           fixture.ontologies.restoreEntity("admin", fixture.ontology.getId());
 
-          assertAll(
-              cases.entrySet().stream()
-                  .map(
-                      restored ->
-                          () ->
-                              assertEquals(
-                                  "hasPart -> null, partOf -> null, wholeOf -> null",
-                                  partners(properties, restored.getValue()),
-                                  "ids ascending " + restored.getKey())));
+          assertPartnersInEveryOrder(
+              properties, cases, "hasPart -> null, partOf -> null, wholeOf -> null");
         });
   }
 
@@ -335,6 +281,55 @@ class OntologyPropertyInverseStorageTest {
               iri, properties.restoreEntity("admin", adjacentTo.getId()).getEntity().getInverse());
           assertEquals(iri, inverseOf(properties, adjacentTo));
         });
+  }
+
+  /**
+   * One {@code hasPart}, {@code partOf} and {@code wholeOf} group whose ids sort as ID_ORDERS[i].
+   * {@code partOf} is deleted on its own while linked to {@code hasPart}, and so is {@code wholeOf}
+   * when asked; otherwise {@code wholeOf} is created live and takes {@code hasPart} from it.
+   */
+  private static Map<String, OntologyProperty> triple(
+      OntologyCaptureFixture.Fixture fixture,
+      OntologyPropertyRepository properties,
+      int i,
+      boolean wholeOfDeletedAlone) {
+    final Map<String, UUID> idOf = idsByRank(ID_ORDERS.get(i));
+    final var hasPart =
+        properties.create(null, property(fixture, "hasPart" + i).withId(idOf.get("hasPart")));
+    final var partOf = claimant(fixture, properties, "partOf" + i, idOf.get("partOf"), hasPart);
+    properties.delete("admin", partOf.getId(), false, false);
+    final var wholeOf = claimant(fixture, properties, "wholeOf" + i, idOf.get("wholeOf"), hasPart);
+    if (wholeOfDeletedAlone) {
+      properties.delete("admin", wholeOf.getId(), false, false);
+      assertEquals(hasPart.getIri(), inverseOf(properties, wholeOf));
+    }
+    assertEquals(hasPart.getIri(), inverseOf(properties, partOf));
+    return Map.of("hasPart", hasPart, "partOf", partOf, "wholeOf", wholeOf);
+  }
+
+  private static OntologyProperty claimant(
+      OntologyCaptureFixture.Fixture fixture,
+      OntologyPropertyRepository properties,
+      String name,
+      UUID id,
+      OntologyProperty partner) {
+    return properties.create(
+        null, property(fixture, name).withId(id).withInverse(partner.getIri()));
+  }
+
+  private static void assertPartnersInEveryOrder(
+      OntologyPropertyRepository properties,
+      Map<List<String>, Map<String, OntologyProperty>> cases,
+      String expected) {
+    assertAll(
+        cases.entrySet().stream()
+            .map(
+                restored ->
+                    () ->
+                        assertEquals(
+                            expected,
+                            partners(properties, restored.getValue()),
+                            "ids ascending " + restored.getKey())));
   }
 
   private static URI inverseOf(OntologyPropertyRepository properties, OntologyProperty property) {
