@@ -31,6 +31,10 @@ export interface CreatePage {
      */
     entityStatus?: EntityStatus;
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * Name of the Knowledge Page.
      */
     name: string;

@@ -138,18 +138,6 @@ const EntityLineageTab = withSuspenseFallback(
   TAB_CONTENT_FALLBACK
 );
 
-/**
- * The product tour highlights elements rendered inside these lazy tabs, and react-tour closes
- * itself when a step's selector is still missing once its fixed stepWaitTimer elapses. Loading
- * the chunks before the tour starts keeps a slow chunk download from ending the tour.
- */
-export const preloadTourTableTabs = () =>
-  Promise.allSettled([
-    importSampleDataTable(),
-    importDataObservabilityTab(),
-    importEntityLineageTab(),
-  ]);
-
 const TableConstraints = withSuspenseFallback(
   lazy(
     () =>
@@ -206,20 +194,15 @@ const isDbtTabHidden = (
   );
 
 const getSampleDataTabChildren = ({
-  isTourOpen,
   viewSampleDataPermission,
   deleted,
   tableDetails,
   tablePermissions,
 }: Pick<
   TableDetailPageTabProps,
-  | 'isTourOpen'
-  | 'viewSampleDataPermission'
-  | 'deleted'
-  | 'tableDetails'
-  | 'tablePermissions'
+  'viewSampleDataPermission' | 'deleted' | 'tableDetails' | 'tablePermissions'
 >) =>
-  !isTourOpen && !viewSampleDataPermission ? (
+  !viewSampleDataPermission ? (
     <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
       <PermissionPlaceholder
         data-testid="permission-error-placeholder"
@@ -261,7 +244,6 @@ const getTableQueriesTabChildren = ({
 export const getTableDetailPageBaseTabs = ({
   queryCount,
   isQueryCountLoading,
-  isTourOpen,
   tablePermissions,
   activeTab,
   deleted,
@@ -330,7 +312,6 @@ export const getTableDetailPageBaseTabs = ({
 
       key: EntityTabs.SAMPLE_DATA,
       children: getSampleDataTabChildren({
-        isTourOpen,
         viewSampleDataPermission,
         deleted,
         tableDetails,

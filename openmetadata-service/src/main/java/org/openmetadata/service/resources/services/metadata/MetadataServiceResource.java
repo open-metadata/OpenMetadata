@@ -34,7 +34,6 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -43,9 +42,6 @@ import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.services.connections.metadata.ComponentConfig;
-import org.openmetadata.schema.services.connections.metadata.ElasticsSearch;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -93,18 +89,15 @@ public class MetadataServiceResource
       openMetadataService.setId(UUID.randomUUID());
       openMetadataService.setUpdatedBy(ADMIN_USER_NAME);
       openMetadataService.setUpdatedAt(System.currentTimeMillis());
-      if (config.getElasticSearchConfiguration() != null) {
-        OpenMetadataConnection openMetadataServerConnection =
-            new OpenMetadataConnectionBuilder(config)
-                .build()
-                .withElasticsSearch(
-                    getElasticSearchConnectionSink(config.getElasticSearchConfiguration()));
-        MetadataConnection metadataConnection =
-            new MetadataConnection().withConfig(openMetadataServerConnection);
-        openMetadataService.setConnection(metadataConnection);
-      } else {
-        LOG.error("[MetadataService] Missing Elastic Search Config.");
-      }
+      // The built-in OpenMetadata service stores only non-sensitive server-connection metadata
+      // (host/port/auth provider). It carries no Elasticsearch sink and no ingestion-bot JWT:
+      // nothing reads either - ingestion pipelines build their own securityConfig on the fly via
+      // IngestionPipelineMapper/IngestionPipelineSecrets, and reindexing reads
+      // ElasticSearchConfiguration from the application config.
+      final OpenMetadataConnection openMetadataServerConnection =
+          new OpenMetadataConnectionBuilder(config).build().withSecurityConfig(null);
+      openMetadataService.setConnection(
+          new MetadataConnection().withConfig(openMetadataServerConnection));
       repository.setFullyQualifiedName(openMetadataService);
       repository.createOrUpdate(null, openMetadataService, ADMIN_USER_NAME);
     } else {
@@ -673,24 +666,5 @@ public class MetadataServiceResource
   @Override
   protected String extractServiceType(MetadataService service) {
     return service.getServiceType().value();
-  }
-
-  private ElasticsSearch getElasticSearchConnectionSink(ElasticSearchConfiguration esConfig)
-      throws IOException {
-    if (Objects.nonNull(esConfig)) {
-      ElasticsSearch sink = new ElasticsSearch();
-      ComponentConfig componentConfig = new ComponentConfig();
-      sink.withType("elasticsearch")
-          .withConfig(
-              componentConfig
-                  .withAdditionalProperty("es_host", esConfig.getHost())
-                  .withAdditionalProperty("es_port", esConfig.getPort().toString())
-                  .withAdditionalProperty("es_username", esConfig.getUsername())
-                  .withAdditionalProperty("es_password", esConfig.getPassword())
-                  .withAdditionalProperty("scheme", esConfig.getScheme()));
-      return sink;
-    } else {
-      throw new IOException("Elastic Search Configuration Missing");
-    }
   }
 }

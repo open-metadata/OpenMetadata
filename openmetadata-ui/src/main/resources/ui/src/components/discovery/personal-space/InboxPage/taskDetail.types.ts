@@ -46,6 +46,8 @@ export type TaskDetailRowValue =
   | { kind: 'date'; timestamp?: number }
   // `title` heads the "+N" overflow, plural where the row's label is not.
   | { kind: 'users'; refs: EntityReference[]; title?: string }
+  // The AI agent that proposed the task's subject, named instead of its bot.
+  | { kind: 'agent'; name: string }
   | { kind: 'tags'; tags: TagLabel[] }
   | { kind: 'link'; label: string; to: string }
   // A long list, e.g. requested columns: the first few inline, the rest in a
