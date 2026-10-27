@@ -110,7 +110,9 @@ const ProfilerSettings = (props: PlatformSettingsPageProps) => {
         </Typography>
       </Box>
 
-      {SparkAgentConfig && <SparkAgentConfig confirmation="popover" />}
+      {SparkAgentConfig && (
+        <SparkAgentConfig {...props} confirmation="popover" />
+      )}
     </Box>
   );
 };

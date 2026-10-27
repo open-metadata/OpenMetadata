@@ -46,11 +46,13 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 }));
 
 const mockSparkConfig = jest.fn();
+const mockItemForm = jest.fn();
 
 jest.mock(
   '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase',
   () => ({
     getSparkAgentConfigComponent: () => mockSparkConfig(),
+    getSettingsItemForm: () => mockItemForm(),
   })
 );
 
@@ -76,6 +78,7 @@ describe('Profiler configuration settings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSparkConfig.mockReturnValue(undefined);
+    mockItemForm.mockReturnValue(undefined);
     (updateSettingsConfig as jest.Mock).mockResolvedValue({ data: {} });
   });
 
@@ -104,11 +107,8 @@ describe('Profiler configuration settings', () => {
 
   it('view falls back to the defaults and renders the Collate Spark section when present', async () => {
     mockStored(undefined);
-    mockSparkConfig.mockReturnValue(
-      ({ confirmation }: { confirmation?: string }) => (
-        <div data-confirmation={confirmation} data-testid="spark-config" />
-      )
-    );
+    const Section = jest.fn(() => <div data-testid="spark-config" />);
+    mockSparkConfig.mockReturnValue(Section);
     render(
       <ProfilerSettings
         onNavigate={onNavigate}
@@ -122,11 +122,41 @@ describe('Profiler configuration settings', () => {
     expect(screen.getByTestId('store-sample-data-value')).toHaveTextContent(
       'label.enabled'
     );
-    // Inside the settings modal its deletes confirm in a popover.
-    expect(screen.getByTestId('spark-config')).toHaveAttribute(
-      'data-confirmation',
-      'popover'
+    expect(screen.getByTestId('spark-config')).toBeInTheDocument();
+    // The contributed section navigates to its own sub-pages with the page's
+    // props, and its deletes confirm in a popover inside the settings modal.
+    expect(Section).toHaveBeenCalledWith(
+      expect.objectContaining({ onNavigate, confirmation: 'popover' }),
+      expect.anything()
     );
+  });
+
+  it('form hands an item id to the contributed form, with the same props', async () => {
+    const ItemForm = jest.fn(() => <div data-testid="item-form" />);
+    mockItemForm.mockReturnValue(ItemForm);
+    render(
+      <ProfilerSettingsForm
+        itemId="new"
+        showHint={false}
+        onNavigate={onNavigate}
+      />
+    );
+
+    expect(screen.getByTestId('item-form')).toBeInTheDocument();
+    expect(ItemForm).toHaveBeenCalledWith(
+      { itemId: 'new', showHint: false, onNavigate },
+      expect.anything()
+    );
+    expect(getSettingsConfigFromConfigType).not.toHaveBeenCalled();
+  });
+
+  it('form without an item id stays the profiler form even with a form contributed', async () => {
+    mockStored(STORED);
+    mockItemForm.mockReturnValue(() => <div data-testid="item-form" />);
+    render(<ProfilerSettingsForm showHint={false} onNavigate={onNavigate} />);
+
+    expect(await screen.findByTestId('metric-row-1')).toBeInTheDocument();
+    expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
   });
 
   it('form saves rows, expanding "All" to every metric, and returns to the view', async () => {

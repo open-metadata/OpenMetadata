@@ -12,7 +12,12 @@
  */
 
 import { FieldProps } from '@rjsf/utils';
-import { ComponentType } from 'react';
+import type { TFunction } from 'i18next';
+import type { ComponentType } from 'react';
+import type {
+  PlatformSettingsFormProps,
+  PlatformSettingsPageProps,
+} from '../../components/discovery/personal-space/Profile/tabs/platform-settings/PlatformSettings.types';
 
 export interface SparkAgentConfigProps {
   /**
@@ -24,9 +29,28 @@ export interface SparkAgentConfigProps {
 }
 
 class ProfilerConfigurationClassBase {
+  /** Rendered with no props on the classic settings page. */
   public getSparkAgentConfigComponent():
-    | ComponentType<SparkAgentConfigProps>
+    | ComponentType<Partial<PlatformSettingsPageProps> & SparkAgentConfigProps>
     | undefined {
+    return undefined;
+  }
+
+  /**
+   * A downstream add/edit sub-page served at
+   * `profiler-configuration/edit/<itemId>`; the item id format is the
+   * implementer's.
+   */
+  public getSettingsItemForm():
+    | ComponentType<PlatformSettingsFormProps>
+    | undefined {
+    return undefined;
+  }
+
+  public getSettingsItemFormTitle(
+    _t: TFunction,
+    _itemId: string
+  ): string | undefined {
     return undefined;
   }
 

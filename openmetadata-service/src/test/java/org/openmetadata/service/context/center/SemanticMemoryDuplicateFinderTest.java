@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -29,9 +30,14 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.llm.CompletionOptions;
+import org.openmetadata.service.llm.CompletionResult;
 import org.openmetadata.service.llm.LLMCompletionClient;
+import org.openmetadata.service.llm.LLMCompletionException;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -72,6 +78,11 @@ class SemanticMemoryDuplicateFinderTest {
   }
 
   private SemanticMemoryDuplicateFinder finderWithCandidate(ContextMemory candidate) {
+    return finderWithCandidate(candidate, completionClient);
+  }
+
+  private SemanticMemoryDuplicateFinder finderWithCandidate(
+      ContextMemory candidate, LLMCompletionClient client) {
     when(vectorService.search(
             anyString(),
             any(),
@@ -89,7 +100,52 @@ class SemanticMemoryDuplicateFinderTest {
         .thenReturn(candidate);
     lenient().when(repository.hasOrgWideAnchor(candidate)).thenReturn(true);
     return new SemanticMemoryDuplicateFinder(
-        repository, () -> vectorService, () -> searchRepository, completionClient);
+        repository, () -> vectorService, () -> searchRepository, client);
+  }
+
+  @Test
+  void proseOnBothAttemptsFailsReconciliationWithoutLinkingEarlierMatches() {
+    AtomicInteger attempts = new AtomicInteger();
+    LLMCompletionClient client =
+        new LLMCompletionClient(1) {
+          @Override
+          protected CompletionResult doComplete(
+              String systemPrompt, String userPrompt, CompletionOptions options) {
+            attempts.incrementAndGet();
+            return new CompletionResult("I cannot identify an equivalent fact.", 0, 0);
+          }
+
+          @Override
+          public String getModelId() {
+            return "test";
+          }
+        };
+    ContextMemory candidate =
+        memory(UUID.randomUUID(), "What is GDPR?", "A data protection regulation.");
+    EntityReference file =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+    when(repository.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE)).thenReturn(List.of());
+    ContextMemoryReconciler reconciler =
+        new ContextMemoryReconciler(repository, finderWithCandidate(candidate, client));
+
+    LLMCompletionException failure =
+        assertThrows(
+            LLMCompletionException.class,
+            () ->
+                reconciler.reconcile(
+                    file,
+                    Entity.CONTEXT_FILE,
+                    List.of(
+                        memory(UUID.randomUUID(), candidate.getQuestion(), candidate.getAnswer()),
+                        memory(
+                            UUID.randomUUID(),
+                            "Define personal data",
+                            "An identifiable person."))));
+
+    assertEquals("Failed to parse LLM JSON array response", failure.getMessage());
+    assertEquals(2, attempts.get());
+    verify(repository, never()).linkExtractedMemory(any(), any());
+    verify(repository, never()).create(any(), any());
   }
 
   /** A linked fact stays anchored to its own file, hiding it from readers of a restricted one. */
