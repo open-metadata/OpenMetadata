@@ -1,0 +1,70 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyReleaseValidation.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyReleaseValidation",
+  "description": "Structure and native SHACL findings for a captured release, with current authorized bindings for newly deprecated definitions. Logical consistency is not checked.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyReleaseValidation",
+  "definitions": {
+    "logicalCheck": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.type.OntologyReleaseLogicalCheck",
+      "enum": ["NOT_RUN"]
+    },
+    "severity": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.type.NativeOntologyShaclSeverity",
+      "enum": ["VIOLATION", "WARNING"]
+    },
+    "finding": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.NativeOntologyShaclFinding",
+      "properties": {
+        "focusIri": {"$ref": "../../type/ontologyIri.json"},
+        "shapeIri": {"$ref": "../../type/ontologyIri.json"},
+        "severity": {"$ref": "#/definitions/severity"},
+        "message": {"type": "string"}
+      },
+      "required": ["focusIri", "shapeIri", "severity", "message"],
+      "additionalProperties": false
+    },
+    "shacl": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.NativeOntologyShaclReport",
+      "properties": {
+        "violationCount": {"type": "integer", "minimum": 0},
+        "warningCount": {"type": "integer", "minimum": 0},
+        "truncated": {"type": "boolean"},
+        "findings": {"type": "array", "items": {"$ref": "#/definitions/finding"}, "maxItems": 1000, "default": []}
+      },
+      "required": ["violationCount", "warningCount", "truncated", "findings"],
+      "additionalProperties": false
+    },
+    "impact": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.NativeOntologyDeprecationImpact",
+      "properties": {
+        "definition": {"$ref": "../../type/entityReference.json"},
+        "boundAssetCount": {"type": "integer", "minimum": 0},
+        "boundAssets": {"type": "array", "items": {"$ref": "../../type/entityReference.json"}, "default": []},
+        "subclasses": {"type": "array", "items": {"$ref": "../../type/entityReference.json"}, "default": []},
+        "domainProperties": {"type": "array", "items": {"$ref": "../../type/entityReference.json"}, "default": []},
+        "rangeProperties": {"type": "array", "items": {"$ref": "../../type/entityReference.json"}, "default": []}
+      },
+      "required": ["definition", "boundAssetCount", "boundAssets", "subclasses", "domainProperties", "rangeProperties"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "releaseId": {"$ref": "../../type/basic.json#/definitions/uuid"},
+    "contentDigest": {"$ref": "../../entity/data/ontologyRelease.json#/properties/contentDigest"},
+    "baseReleaseId": {"$ref": "../../type/basic.json#/definitions/uuid"},
+    "valid": {"type": "boolean"},
+    "logicalCheck": {"$ref": "#/definitions/logicalCheck"},
+    "structure": {"$ref": "ontologyReleaseStructureReport.json"},
+    "shacl": {"$ref": "#/definitions/shacl"},
+    "deprecationImpacts": {"type": "array", "items": {"$ref": "#/definitions/impact"}, "default": []}
+  },
+  "required": ["releaseId", "contentDigest", "valid", "logicalCheck", "structure", "shacl", "deprecationImpacts"],
+  "additionalProperties": false
+}

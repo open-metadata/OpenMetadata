@@ -226,6 +226,11 @@ export interface OntologyPublicationStatus {
     active?: ActiveRelease;
     latest?: LatestRelease;
     /**
+     * Server-derived lock on reviewer and approval-rule edits. Always present when a new server
+     * successfully resolves publicationStatus.
+     */
+    reviewLock?: ReviewLock;
+    /**
      * Number of rows that paging through GET /v1/ontologies/{id}/working/diff returns: added,
      * changed and removed members of the working ontology against the active release. Without
      * an active release, every working member counts as added.
@@ -270,4 +275,28 @@ export enum Stage {
     Draft = "Draft",
     InReview = "InReview",
     Published = "Published",
+}
+
+/**
+ * Server-derived lock on reviewer and approval-rule edits. Always present when a new server
+ * successfully resolves publicationStatus.
+ *
+ * A present empty object confirms no open review. A missing or null envelope means the lock
+ * state is unavailable, including responses from older servers.
+ */
+export interface ReviewLock {
+    inReview?: ReviewLockRelease;
+}
+
+/**
+ * The newest currently open review, as a representative when multiple releases are in
+ * review. This owner-scoped hint exposes only release identity and version metadata.
+ */
+export interface ReviewLockRelease {
+    releaseId:       string;
+    releaseRevision: number;
+    /**
+     * Absent on releases captured without a version bump.
+     */
+    semanticVersion?: string;
 }
