@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1984 endpoints** across 75 resource packages · 1974 carry a summary.
+**1987 endpoints** across 75 resource packages · 1977 carry a summary.
 
 ## (root)
 
@@ -1349,6 +1349,8 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologies` | List ontology definitions |
 | `POST` | `/v1/ontologies` | Create an ontology |
 | `PUT` | `/v1/ontologies` | Create or update an ontology |
+| `POST` | `/v1/ontologies/imports/detect` | Name the format of a local ontology file |
+| `POST` | `/v1/ontologies/imports/preview` | Count what a local RDF or native CSV file would import into a new ontology |
 | `DELETE` | `/v1/ontologies/name/{fqn}` | Delete an ontology definition by name |
 | `GET` | `/v1/ontologies/name/{fqn}` | Get an ontology by name |
 | `PUT` | `/v1/ontologies/restore` | Restore an ontology |
@@ -1357,7 +1359,8 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologies/{id}` | Get an ontology |
 | `PATCH` | `/v1/ontologies/{id}` | Patch an ontology |
 | `PUT` | `/v1/ontologies/{id}/activation` | Activate an approved ontology release or roll back to an older release |
-| `POST` | `/v1/ontologies/{id}/imports/preview` | Preview local RDF as native ontology draft operations |
+| `GET` | `/v1/ontologies/{id}/dataGraph` | Get one page of bound concepts ranked by binding count, each with the assets the caller may view |
+| `POST` | `/v1/ontologies/{id}/imports/preview` | Preview a local RDF or native CSV file as native ontology draft operations |
 | `POST` | `/v1/ontologies/{id}/library/{packId}/preview` | Preview verified library modules as native ontology draft operations |
 | `GET` | `/v1/ontologies/{id}/references` | Find working definitions that reference an exact IRI in this ontology |
 | `GET` | `/v1/ontologies/{id}/releases` | List this ontology's sealed releases, newest first |
@@ -1415,7 +1418,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/ontologyConcepts/{id}` | Delete an ontology concept |
 | `GET` | `/v1/ontologyConcepts/{id}` | Get an ontology concept |
 | `PATCH` | `/v1/ontologyConcepts/{id}` | Patch an ontology concept |
-| `GET` | `/v1/ontologyConcepts/{id}/bindings` | Get authorized catalog bindings for a concept |
+| `GET` | `/v1/ontologyConcepts/{id}/bindings` | Get one page of the catalog bindings of a concept the caller may view |
 | `PUT` | `/v1/ontologyConcepts/{id}/bindings` | Replace one concept catalog association |
 | `DELETE` | `/v1/ontologyConcepts/{id}/bindings/{assetType}/{assetId}` | Remove one concept catalog association |
 | `GET` | `/v1/ontologyConcepts/{id}/versions` | List ontology concept versions |

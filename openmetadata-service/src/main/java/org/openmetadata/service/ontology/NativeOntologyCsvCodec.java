@@ -5,6 +5,7 @@ import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -27,8 +28,17 @@ public final class NativeOntologyCsvCodec {
   private NativeOntologyCsvCodec() {}
 
   public static NativeOntologyDocument read(final String csv) {
-    return new NativeOntologyCsvReader().read(csv);
+    return readLocated(csv).document();
   }
+
+  /** The parsed definitions and the spreadsheet row each property was declared on, by IRI. */
+  public static Located readLocated(final String csv) {
+    final NativeOntologyCsvReader reader = new NativeOntologyCsvReader();
+    final NativeOntologyDocument document = reader.read(csv);
+    return new Located(document, reader.propertyRows());
+  }
+
+  public record Located(NativeOntologyDocument document, Map<String, Integer> propertyRows) {}
 
   public static String write(final NativeOntologyDocument document) {
     return NativeOntologyCsvWriter.write(document);
