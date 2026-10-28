@@ -3,8 +3,9 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-29 (initial)
 - **Deciders:** Vishnu Jain
-- **Guard:** `JwtFilterTest` (`mcpAccessTokenNoLongerStoredIsRejected`,
-  `mcpAccessTokenStillStoredIsAccepted`, `providerTokenWithAClientIdIsNotLookedUp`),
+- **Guard:** `JWTTokenGeneratorTest` (`mcpAccessTokenNamesItsClient`), `JwtFilterTest`
+  (`mcpAccessTokenNoLongerStoredIsRejected`, `mcpAccessTokenStillStoredIsAccepted`,
+  `providerTokenWithAClientIdIsNotLookedUp`),
   `OAuthTokenRepositoryTest` (`accessTokenIsRevokedOnlyForTheClientItWasIssuedTo`),
   `RevocationHandlerTest` (`accessTokenWithoutTypeHintIsRevokedWhenNoRefreshTokenMatches`)
 - **Related:** ADR:2026-10-26-an-mcp-oauth-grant-ends-30-days-after-sign-in
@@ -18,8 +19,10 @@ signature text is not a canonical encoding, so a string key does not identify a 
 
 ## Decision
 
-- Issuing an MCP access token adds a `client_id` claim (RFC 9068) and stores the token's SHA-256
-  hash in `oauth_access_tokens`, with its client and expiry.
+- Issuing an MCP access token adds a `client_id` claim and a random `jti` (RFC 9068) and stores
+  the token's SHA-256 hash in `oauth_access_tokens`, with its client and expiry. The `jti` is what
+  keeps two tokens minted in the same second for one user and client apart: without it they are
+  byte-identical and the store's unique hash refuses the second.
 - `JwtFilter` refuses an OpenMetadata-signed token that carries `client_id` and is not stored.
   Only a token signed with our key is looked up: an identity provider's token may carry its own
   `client_id`.
