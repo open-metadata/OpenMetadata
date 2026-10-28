@@ -1443,10 +1443,14 @@ export const Lineage = ({
         return true;
       });
 
+      const drawn = applyTempTableVisibility(
+        { ...entityLineage, nodes: allNodes, edges: updatedEdgeWithColumns },
+        showLineageTempTables
+      );
       const { columnsHavingLineage: updatedColumnsHavingLineage } =
         createEdgesAndEdgeMaps(
-          allNodes,
-          updatedEdgeWithColumns,
+          drawn.nodes,
+          drawn.edges,
           entityFqn,
           isColumnLevelLineage
         );
@@ -1464,6 +1468,7 @@ export const Lineage = ({
       isColumnLevelLineage,
       removeEdgeById,
       setColumnsHavingLineage,
+      showLineageTempTables,
     ]
   );
 
@@ -1809,10 +1814,14 @@ export const Lineage = ({
 
             setNodes((prev) => prev.map(applyNodeTypeUpdate));
 
+            const drawn = applyTempTableVisibility(
+              { ...entityLineage, nodes: allNodes, edges: allEdges },
+              showLineageTempTables
+            );
             const { edges: createdEdges, columnsHavingLineage } =
               createEdgesAndEdgeMaps(
-                allNodes,
-                allEdges,
+                drawn.nodes,
+                drawn.edges,
                 entityFqn,
                 isColumnLevelLineage
               );
@@ -1841,6 +1850,7 @@ export const Lineage = ({
       setEdges,
       setColumnsHavingLineage,
       setTracedNodes,
+      showLineageTempTables,
     ]
   );
 

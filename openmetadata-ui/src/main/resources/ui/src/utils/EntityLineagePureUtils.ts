@@ -588,10 +588,10 @@ export const parseLineageData = (
  * the direct edge between them. Returns the input unchanged when it has no
  * temp hops.
  */
-export const applyTempTableVisibility = (
-  lineage: EntityLineageResponse,
+export const applyTempTableVisibility = <T extends EntityLineageResponse>(
+  lineage: T,
   show: boolean
-): EntityLineageResponse => {
+): T => {
   const edges = lineage.edges ?? [];
   if (!edges.some((edge) => edge.tempHopOf)) {
     return lineage;

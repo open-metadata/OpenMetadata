@@ -44,6 +44,7 @@ jest.mock('../../../utils/Lineage/Layout/ElkLayoutUtils', () => ({
 
 jest.mock('../../../rest/miscAPI', () => ({
   ...jest.requireActual('../../../rest/miscAPI'),
+  addLineage: jest.fn().mockResolvedValue({}),
   deleteLineageEdge: jest.fn().mockResolvedValue({}),
 }));
 
@@ -261,6 +262,10 @@ describe('Lineage integration', () => {
     useLineageStore.getState().reset();
   });
 
+  afterEach(() => {
+    usePersistentStorage.getState().clearUserPreference('admin');
+  });
+
   it('fetches lineage data with the correct parameters on mount', async () => {
     (getLineageDataByFQN as jest.Mock).mockResolvedValue({
       nodes: {},
@@ -449,8 +454,6 @@ describe('Lineage integration', () => {
     await waitFor(() => expect(drawnNodeIds()).toContain('temp_tmp_staging'));
 
     expect(getLineageDataByFQN).toHaveBeenCalledTimes(1);
-
-    usePersistentStorage.getState().clearUserPreference('admin');
   });
 
   it('keeps a node removed with temp tables hidden gone once they are shown', async () => {
@@ -503,8 +506,8 @@ describe('Lineage integration', () => {
     expect(entityLineage.nodes?.some((node) => node.isTempTable)).toBe(false);
     expect(entityLineage.edges?.some((edge) => edge.tempHopOf)).toBe(false);
 
-    // Assert on the drawing the switch produces, not the one before it: wait
-    // for its layout call, then let that call's result be drawn.
+    // Assert on the layout the switch triggers: the drawing before it already
+    // lacks the temp table and tableB, so it would pass either way.
     const layoutCalls = (positionNodesUsingElk as jest.Mock).mock.calls.length;
     act(() => {
       usePersistentStorage
@@ -516,15 +519,71 @@ describe('Lineage integration', () => {
         (positionNodesUsingElk as jest.Mock).mock.calls.length
       ).toBeGreaterThan(layoutCalls)
     );
-    await act(async () => {
-      await Promise.resolve();
+    const laidOutIds = (
+      (positionNodesUsingElk as jest.Mock).mock.calls.at(-1)?.[0] as Node[]
+    ).map((node) => node.id);
+
+    expect(laidOutIds).toContain('id-a');
+    expect(laidOutIds).not.toContain('temp_tmp_staging');
+    expect(laidOutIds).not.toContain('id-b');
+  });
+
+  it('does not draw the stored edge beside its temp tables after a new connection', async () => {
+    useApplicationStore.setState({
+      currentUser: { id: 'u-admin', name: 'admin' } as User,
     });
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue(TEMP_LINEAGE_RESPONSE);
+    let connect: ReturnType<typeof useLineageHandlers>['onConnect'] = jest.fn();
+    const ConnectConsumer = () => {
+      connect = useLineageHandlers().onConnect;
 
-    expect(drawnNodeIds()).toContain('id-a');
-    expect(drawnNodeIds()).not.toContain('temp_tmp_staging');
-    expect(drawnNodeIds()).not.toContain('id-b');
+      return null;
+    };
+    const drawsDirectEdge = () =>
+      useLineageStore
+        .getState()
+        .edges.some((edge) => edge.source === 'id-a' && edge.target === 'id-b');
 
-    usePersistentStorage.getState().clearUserPreference('admin');
+    render(
+      <MemoryRouter>
+        <Lineage
+          entity={entityFixture}
+          entityFqn="svc.db.s.t1"
+          entityType={EntityType.TABLE}
+          isPlatformLineage={false}>
+          <ReactFlowInitConsumer />
+          <ConnectConsumer />
+        </Lineage>
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(useLineageStore.getState().nodes.map((node) => node.id)).toContain(
+        'temp_tmp_staging'
+      )
+    );
+
+    expect(drawsDirectEdge()).toBe(false);
+
+    await act(async () => {
+      connect({
+        source: 'id-b',
+        target: 'id-a',
+        sourceHandle: 'id-b',
+        targetHandle: 'id-a',
+      });
+    });
+    await waitFor(() =>
+      expect(
+        useLineageStore
+          .getState()
+          .edges.some(
+            (edge) => edge.source === 'id-b' && edge.target === 'id-a'
+          )
+      ).toBe(true)
+    );
+
+    expect(drawsDirectEdge()).toBe(false);
   });
 
   it('updateEntityData imperatively syncs the entity context to the store', async () => {
