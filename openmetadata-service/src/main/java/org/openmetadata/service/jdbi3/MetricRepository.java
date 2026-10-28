@@ -81,6 +81,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityFieldUtils;
@@ -309,9 +310,16 @@ public class MetricRepository extends EntityRepository<Metric> {
   private EntityReference getMetricGroup(Metric metric) {
     String groupId =
         daoCollection.metricDAO().findActiveGroupId(metric.getId(), Relationship.HAS.ordinal());
-    return groupId == null
-        ? null
-        : Entity.getEntityReferenceById(Entity.METRIC_GROUP, UUID.fromString(groupId), NON_DELETED);
+    return groupId == null ? null : resolveMetricGroupReference(UUID.fromString(groupId));
+  }
+
+  private EntityReference resolveMetricGroupReference(UUID groupId) {
+    try {
+      return Entity.getEntityReferenceById(Entity.METRIC_GROUP, groupId, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Skipping missing metric group {} while resolving membership", groupId);
+      return null;
+    }
   }
 
   @Override
@@ -407,8 +415,7 @@ public class MetricRepository extends EntityRepository<Metric> {
             .findActiveGroups(entityListToStrings(metrics), Relationship.HAS.ordinal())) {
       groups.put(
           UUID.fromString(record.getToId()),
-          Entity.getEntityReferenceById(
-              Entity.METRIC_GROUP, UUID.fromString(record.getFromId()), NON_DELETED));
+          resolveMetricGroupReference(UUID.fromString(record.getFromId())));
     }
     for (Metric metric : metrics) {
       metric.setMetricGroup(groups.get(metric.getId()));

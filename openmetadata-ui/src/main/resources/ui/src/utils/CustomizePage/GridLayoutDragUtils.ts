@@ -148,19 +148,11 @@ export const getLeftPanelFlowLayout = <T extends Layout>(
  * The panel is one static item in the tab grid, but its widgets live in a
  * nested grid that grows to fit them, so a stored height shorter than that grid
  * lets them spill over the widgets placed below the panel. The nested grid uses
- * the tab grid's row height and margin plus a vertical padding of one margin
- * top and bottom, which is the fraction added to its rows.
+ * the tab grid's row height and margin and has no container padding, so it is
+ * exactly as many rows tall as its widgets.
  */
-export const getLeftPanelHeight = (children: Layout[] = []) => {
-  const rows = Math.max(
-    0,
-    ...getLeftPanelFlowLayout(children).map(({ y, h }) => y + h)
-  );
-
-  return (
-    rows + (2 * GRID_VERTICAL_MARGIN) / (GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN)
-  );
-};
+export const getLeftPanelHeight = (children: Layout[] = []) =>
+  Math.max(0, ...getLeftPanelFlowLayout(children).map(({ y, h }) => y + h));
 
 /**
  * Scales a left panel widget to and from the panel's edit grid, which has as
