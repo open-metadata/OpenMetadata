@@ -276,7 +276,7 @@ public class McpServer implements McpServerProvider {
       // Register the SAML MCP bridge so the SAML ACS callback (service module) can hand the
       // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization
       // request id in RelayState ("mcp:{authRequestId}"); SamlAuthServletHandler detects it and
-      // invokes this handler, which mints the MCP authorization code and redirects to the client.
+      // invokes this handler, which asks the user to approve the client before a code is minted.
       org.openmetadata.service.security.auth.SamlAuthServletHandler.setMcpSamlCallbackHandler(
           (req, resp, username, email, relayState) ->
               authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState));

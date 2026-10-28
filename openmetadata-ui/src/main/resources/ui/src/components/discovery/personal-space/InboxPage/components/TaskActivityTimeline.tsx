@@ -97,6 +97,7 @@ const TimelineEventRow: React.FC<{ event: TaskTimelineEvent }> = ({
           size="text-xs">
           {t(event.textKey, {
             user: event.actor ? getEntityName(event.actor) : '',
+            count: event.count,
             ...mapValues(event.textParams, (value) =>
               typeof value === 'string' ? value : getEntityName(value)
             ),

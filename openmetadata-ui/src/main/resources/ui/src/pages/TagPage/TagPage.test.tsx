@@ -235,7 +235,7 @@ jest.mock(
       updateFeed: jest.fn(),
     }),
     __esModule: true,
-    default: ({ children }) => <>{children}</>,
+    default: ({ children }: React.PropsWithChildren) => <>{children}</>,
   })
 );
 

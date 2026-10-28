@@ -331,7 +331,7 @@ const LearningResourcesSettings = ({
 
   return (
     <Box data-testid="learning-resources-settings" direction="col">
-      <TableCard.Root className="tw:flex tw:flex-col" size="sm">
+      <TableCard.Root className="tw:flex tw:flex-col" size="sm" variant="muted">
         <Box className="tw:shrink-0 tw:p-3" direction="col" gap={2}>
           <Box align="center" gap={2} wrap="wrap">
             <Input
@@ -357,7 +357,7 @@ const LearningResourcesSettings = ({
         {view === PageViewMode.Card ? (
           <Box className="tw:p-3" direction="col">
             {isLoading ? (
-              <SettingsSkeleton rows={4} />
+              <SettingsSkeleton rows={4} variant="default" />
             ) : (
               <Grid gap="4" style={CARD_GRID_STYLE}>
                 {resources.map((resource) => (
@@ -391,7 +391,7 @@ const LearningResourcesSettings = ({
               renderEmptyState={() => (
                 <Box className="tw:justify-center tw:py-12">
                   {isLoading ? (
-                    <SettingsSkeleton rows={3} />
+                    <SettingsSkeleton rows={3} variant="default" />
                   ) : (
                     <Typography className="tw:text-tertiary" size="text-sm">
                       {t('server.no-records-found')}

@@ -90,7 +90,7 @@ const renderTestSuiteDetailsHook = () =>
   renderHook(() => useTestSuiteDetailsPage(), { wrapper: Wrapper });
 
 const runTimeoutsImmediately = () => {
-  const originalSetTimeout = window.setTimeout.bind(window);
+  const originalSetTimeout = global.setTimeout.bind(global);
 
   return jest
     .spyOn(global, 'setTimeout')
