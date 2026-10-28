@@ -38,15 +38,17 @@ import org.openmetadata.service.util.EntityUtil;
     packages = "org.openmetadata.service",
     importOptions = ImportOption.DoNotIncludeTests.class)
 class VersionHistoryArchitectureTest {
+  private static final String VERSION_WRITER = "storeVersions";
+  private static final String VERSION_KEY = "getVersionExtension";
   private static final Set<String> EXTENSION_WRITES =
       Set.of("insert", "insertMany", "bulkUpsertExtensions");
 
   private static final DescribedPredicate<JavaCodeUnit> THE_VERSION_WRITER =
       DescribedPredicate.describe(
-          "EntityRepository.storeVersions",
+          "EntityRepository." + VERSION_WRITER,
           unit ->
               unit.getOwner().isEquivalentTo(EntityRepository.class)
-                  && unit.getName().equals("storeVersions"));
+                  && VERSION_WRITER.equals(unit.getName()));
 
   private static final ArchCondition<JavaCodeUnit> WRITE_A_VERSION =
       new ArchCondition<>("build a version key and write an entity extension row") {
@@ -69,7 +71,7 @@ class VersionHistoryArchitectureTest {
 
   private static boolean buildsAVersionKey(final JavaMethodCall call) {
     return call.getTargetOwner().isEquivalentTo(EntityUtil.class)
-        && call.getName().equals("getVersionExtension");
+        && VERSION_KEY.equals(call.getName());
   }
 
   private static boolean writesAnExtensionRow(final JavaMethodCall call) {
