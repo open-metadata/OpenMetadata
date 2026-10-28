@@ -21,6 +21,7 @@ import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useInView } from 'react-intersection-observer';
 import { UPLOADED_ASSETS_URL } from '../../../../constants/BlockEditor.constants';
 import { useEntityAttachment } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../../common/Loader/Loader';
@@ -139,19 +140,28 @@ const PopoverContent: FC<ImagePopoverContentProps> = (props) => {
   );
 };
 
-const useAuthenticatedMediaUrls = (url: string) => {
+const useAuthenticatedMediaUrls = (url: string, fileType: FileType) => {
+  const { ref: inViewRef, inView } = useInView({
+    triggerOnce: true,
+    rootMargin: '200px',
+    fallbackInView: true,
+  });
   const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
+  // Downloads the whole blob, so only for rendered media that is near the viewport;
+  // plain files are fetched on click by the file hook below.
+  const shouldFetchMedia = fileType !== FileType.FILE && inView;
+  const mediaUrl = shouldFetchMedia ? url : '';
   const { imageSrc: mediaSrc, isLoading: isMediaLoading } =
     authenticatedImageUrl
-      ? authenticatedImageUrl(url)
-      : { imageSrc: url, isLoading: false };
+      ? authenticatedImageUrl(mediaUrl)
+      : { imageSrc: mediaUrl, isLoading: false };
 
   const authenticatedFileUrl = imageClassBase.getAuthenticatedFileUrl();
   const { downloadFile, isLoading: isFileLoading } = authenticatedFileUrl
     ? authenticatedFileUrl(url)
     : { downloadFile: noop, isLoading: false };
 
-  return { mediaSrc, isMediaLoading, downloadFile, isFileLoading };
+  return { inViewRef, mediaSrc, isMediaLoading, downloadFile, isFileLoading };
 };
 
 const useFileNodeViewState = ({
@@ -168,14 +178,15 @@ const useFileNodeViewState = ({
   const isEditableMedia = editor.isEditable && !isAssetsUrl;
   const fileType = getFileType(isVideo, isAudio, isImage);
 
-  const { mediaSrc, isMediaLoading, downloadFile, isFileLoading } =
-    useAuthenticatedMediaUrls(url);
+  const { inViewRef, mediaSrc, isMediaLoading, downloadFile, isFileLoading } =
+    useAuthenticatedMediaUrls(url, fileType);
   const isMediaSrcReady = !isMediaLoading && !isEmpty(mediaSrc);
 
   const isPlayableMedia =
     isMedia && isValidSource && !isUploading && isMediaSrcReady;
 
   return {
+    inViewRef,
     url,
     fileName: resolveAttr(fileName, tempFile?.name),
     fileSize: resolveAttr(fileSize, tempFile?.size)?.toString(),
@@ -207,6 +218,7 @@ const FileNodeView: FC<NodeViewProps> = ({
   const { diffState } = node.attrs;
   const [isPopupVisible, setIsPopupVisible] = useState<boolean>(false);
   const {
+    inViewRef,
     url,
     fileName,
     fileSize,
@@ -303,7 +315,9 @@ const FileNodeView: FC<NodeViewProps> = ({
       data-mimetype={mimeType}
       data-type="file-attachment"
       data-url={url}>
-      <div className={classNames(isMedia ? 'media-content' : 'file-content')}>
+      <div
+        className={classNames(isMedia ? 'media-content' : 'file-content')}
+        ref={inViewRef}>
         {isPlayableMedia ? (
           <MediaPlayer
             fileName={fileName}
