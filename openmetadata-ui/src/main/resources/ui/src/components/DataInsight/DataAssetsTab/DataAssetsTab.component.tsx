@@ -13,15 +13,60 @@
 import { Grid } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
+import { AxiosError } from 'axios';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
+import {
+  DataInsightCustomChartResult,
+  getChartPreviewByName,
+} from '../../../rest/DataInsightAPI';
+import { getQueryFilterForDataInsightChart } from '../../../utils/DataInsightPureUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import { DataInsightChartCard } from '../DataInsightChartCard';
 
 const DataAssetsTab = () => {
   const { t } = useTranslation();
-  const { kpi } = useDataInsightProvider();
+  const { kpi, chartFilter } = useDataInsightProvider();
+  // Every card needs the total-assets series (its own chart, or the base of a
+  // percentage change), so it is fetched once here instead of once per card.
+  const [totalAssets, setTotalAssets] =
+    useState<DataInsightCustomChartResult>();
+
+  useEffect(() => {
+    if (kpi.isLoading) {
+      return;
+    }
+    let isStale = false;
+    setTotalAssets(undefined);
+    getChartPreviewByName(SystemChartType.TotalDataAssets, {
+      start: chartFilter.startTs,
+      end: chartFilter.endTs,
+      filter: getQueryFilterForDataInsightChart(
+        chartFilter.team,
+        chartFilter.tier
+      ),
+    })
+      .then((response) => !isStale && setTotalAssets(response))
+      .catch((error) => {
+        if (!isStale) {
+          showErrorToast(error as AxiosError);
+          setTotalAssets({ results: [] });
+        }
+      });
+
+    return () => {
+      isStale = true;
+    };
+  }, [
+    chartFilter.startTs,
+    chartFilter.endTs,
+    chartFilter.team,
+    chartFilter.tier,
+    kpi.isLoading,
+  ]);
 
   if (kpi.isLoading) {
     return <Loader />;
@@ -33,6 +78,7 @@ const DataAssetsTab = () => {
         <DataInsightChartCard
           header={t('label.data-insight-total-entity-summary')}
           subHeader={t('message.total-entity-insight')}
+          totalAssets={totalAssets}
           type={SystemChartType.TotalDataAssets}
         />
       </Grid.Item>
@@ -45,6 +91,7 @@ const DataAssetsTab = () => {
           subHeader={t('message.field-insight', {
             field: t('label.description-lowercase'),
           })}
+          totalAssets={totalAssets}
           type={SystemChartType.PercentageOfDataAssetWithDescription}
         />
       </Grid.Item>
@@ -57,6 +104,7 @@ const DataAssetsTab = () => {
           subHeader={t('message.field-insight', {
             field: t('label.owner'),
           })}
+          totalAssets={totalAssets}
           type={SystemChartType.PercentageOfDataAssetWithOwner}
         />
       </Grid.Item>
@@ -68,6 +116,7 @@ const DataAssetsTab = () => {
           subHeader={t('message.field-insight', {
             field: t('label.description-lowercase'),
           })}
+          totalAssets={totalAssets}
           type={SystemChartType.PercentageOfServiceWithDescription}
         />
       </Grid.Item>
@@ -79,6 +128,7 @@ const DataAssetsTab = () => {
           subHeader={t('message.field-insight', {
             field: t('label.owner'),
           })}
+          totalAssets={totalAssets}
           type={SystemChartType.PercentageOfServiceWithOwner}
         />
       </Grid.Item>

@@ -83,7 +83,26 @@ interface DataInsightChartCardProps {
   header: ReactNode;
   subHeader: ReactNode;
   listAssets?: boolean;
+  /**
+   * The `total_data_assets` series, fetched once by the parent tab and shared
+   * by every card. `undefined` while it is loading.
+   */
+  totalAssets?: DataInsightCustomChartResult;
 }
+
+const EMPTY_CHART_RESULT: DataInsightCustomChartResult = { results: [] };
+
+const ABSOLUTE_VALUES_CHART: Partial<Record<SystemChartType, SystemChartType>> =
+  {
+    [SystemChartType.PercentageOfServiceWithDescription]:
+      SystemChartType.NumberOfDataAssetWithDescription,
+    [SystemChartType.PercentageOfDataAssetWithDescription]:
+      SystemChartType.NumberOfDataAssetWithDescription,
+    [SystemChartType.PercentageOfServiceWithOwner]:
+      SystemChartType.NumberOfDataAssetWithOwner,
+    [SystemChartType.PercentageOfDataAssetWithOwner]:
+      SystemChartType.NumberOfDataAssetWithOwner,
+  };
 
 interface AbsoluteValuesResult {
   results: Array<{ count: number; day: number }>;
@@ -304,18 +323,20 @@ export const DataInsightChartCard = ({
   header,
   subHeader,
   listAssets,
+  totalAssets,
 }: DataInsightChartCardProps) => {
   const tabsInfo = searchClassBase.getTabsInfo();
-  const [chartData, setChartData] = useState<DataInsightCustomChartResult>({
-    results: [],
-  });
-  const [totalAssets, setTotalAssets] = useState<DataInsightCustomChartResult>({
-    results: [],
-  });
+  const isTotalAssetsChart = type === SystemChartType.TotalDataAssets;
+  const [fetchedChartData, setFetchedChartData] =
+    useState<DataInsightCustomChartResult>(EMPTY_CHART_RESULT);
   const [absoluteValues, setAbsoluteValues] = useState<AbsoluteValuesResult>({
     results: [],
   });
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isFetching, setIsFetching] = useState<boolean>(!isTotalAssetsChart);
+  const chartData = isTotalAssetsChart
+    ? totalAssets ?? EMPTY_CHART_RESULT
+    : fetchedChartData;
+  const isLoading = isTotalAssetsChart ? !totalAssets : isFetching;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
   const [searchEntityKeyWord, setSearchEntityKeyWord] = useState('');
@@ -376,7 +397,7 @@ export const DataInsightChartCard = ({
     } else {
       // Process TotalAssets and Absolute Values
       changeInValue = computeDefaultChange(
-        totalAssets.results,
+        totalAssets?.results ?? [],
         absoluteValues.results
       );
     }
@@ -390,7 +411,13 @@ export const DataInsightChartCard = ({
       graphData: finalData,
       changeInValue,
     };
-  }, [chartData.results, searchEntityKeyWord]);
+  }, [
+    type,
+    chartData.results,
+    totalAssets?.results,
+    absoluteValues.results,
+    searchEntityKeyWord,
+  ]);
 
   const targetValue = useMemo(() => {
     if (
@@ -447,71 +474,30 @@ export const DataInsightChartCard = ({
   const { t } = useTranslation();
 
   const fetchData = async () => {
-    setIsLoading(true);
+    setIsFetching(true);
     try {
-      const filter = getQueryFilterForDataInsightChart(
-        chartFilter.team,
-        chartFilter.tier
-      );
-      if (
-        ![
-          SystemChartType.TotalDataAssets,
-          SystemChartType.TotalDataAssetsByTier,
-        ].includes(type)
-      ) {
-        const totalAssetsResponse = await getChartPreviewByName(
-          SystemChartType.TotalDataAssets,
-          {
-            start: chartFilter.startTs,
-            end: chartFilter.endTs,
-            filter,
-          }
-        );
-        setTotalAssets(totalAssetsResponse);
-      }
-
-      if (
-        [
-          SystemChartType.PercentageOfServiceWithDescription,
-          SystemChartType.PercentageOfDataAssetWithDescription,
-        ].includes(type)
-      ) {
-        const absoluteValuesResponse = await getChartPreviewByName(
-          SystemChartType.NumberOfDataAssetWithDescription,
-          {
-            start: chartFilter.startTs,
-            end: chartFilter.endTs,
-            filter,
-          }
-        );
-        setAbsoluteValues(absoluteValuesResponse);
-      } else if (
-        [
-          SystemChartType.PercentageOfServiceWithOwner,
-          SystemChartType.PercentageOfDataAssetWithOwner,
-        ].includes(type)
-      ) {
-        const absoluteValuesResponse = await getChartPreviewByName(
-          SystemChartType.NumberOfDataAssetWithOwner,
-          {
-            start: chartFilter.startTs,
-            end: chartFilter.endTs,
-            filter,
-          }
-        );
-        setAbsoluteValues(absoluteValuesResponse);
-      }
-
-      const response = await getChartPreviewByName(type, {
+      const params = {
         start: chartFilter.startTs,
         end: chartFilter.endTs,
-        filter,
-      });
-      setChartData(response);
+        filter: getQueryFilterForDataInsightChart(
+          chartFilter.team,
+          chartFilter.tier
+        ),
+      };
+      const absoluteValuesChart = ABSOLUTE_VALUES_CHART[type];
+      const [response, absoluteValuesResponse] = await Promise.all([
+        getChartPreviewByName(type, params),
+        absoluteValuesChart &&
+          getChartPreviewByName(absoluteValuesChart, params),
+      ]);
+      if (absoluteValuesResponse) {
+        setAbsoluteValues(absoluteValuesResponse);
+      }
+      setFetchedChartData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsFetching(false);
     }
   };
 
@@ -529,7 +515,7 @@ export const DataInsightChartCard = ({
   };
 
   useEffect(() => {
-    !kpi.isLoading && fetchData();
+    !kpi.isLoading && !isTotalAssetsChart && fetchData();
   }, [
     chartFilter.startTs,
     chartFilter.endTs,

@@ -21,6 +21,10 @@ import {
   HOVER_CHART_OPACITY,
 } from '../../constants/constants';
 import { SystemChartType } from '../../enums/DataInsight.enum';
+import {
+  DataInsightCustomChartResult,
+  getChartPreviewByName,
+} from '../../rest/DataInsightAPI';
 import { DataInsightChartCard } from './DataInsightChartCard';
 
 jest.mock('../../pages/DataInsightPage/DataInsightProvider', () => ({
@@ -32,15 +36,19 @@ jest.mock('../../pages/DataInsightPage/DataInsightProvider', () => ({
   }),
 }));
 
+const mockChartResult: DataInsightCustomChartResult = {
+  results: [
+    { day: 1, group: 'table', count: 9, term: '' },
+    { day: 1, group: 'topic', count: 5, term: '' },
+    { day: 2, group: 'table', count: 10, term: '' },
+    { day: 2, group: 'topic', count: 6, term: '' },
+  ],
+};
+
 jest.mock('../../rest/DataInsightAPI', () => ({
-  getChartPreviewByName: jest.fn().mockResolvedValue({
-    results: [
-      { day: 1, group: 'table', count: 9 },
-      { day: 1, group: 'topic', count: 5 },
-      { day: 2, group: 'table', count: 10 },
-      { day: 2, group: 'topic', count: 6 },
-    ],
-  }),
+  getChartPreviewByName: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockChartResult)),
 }));
 
 jest.mock('../../utils/SearchClassBase', () => ({
@@ -82,6 +90,7 @@ const props = {
   type: SystemChartType.TotalDataAssets,
   header: 'Total Data Assets',
   subHeader: 'sub header',
+  totalAssets: mockChartResult,
 };
 
 const lastLineProps = () =>
@@ -95,6 +104,42 @@ const renderCard = (cardProps = props) =>
   });
 
 describe('DataInsightChartCard', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('draws the total-assets card from the shared series without a request', async () => {
+    await renderCard();
+
+    expect(getChartPreviewByName).not.toHaveBeenCalled();
+    expect(lastLineProps().series).toHaveLength(2);
+  });
+
+  it('fetches only its own chart and absolute values, in parallel', async () => {
+    let resolveOwn: (value: DataInsightCustomChartResult) => void = jest.fn();
+    (getChartPreviewByName as jest.Mock).mockImplementationOnce(
+      () => new Promise((resolve) => (resolveOwn = resolve))
+    );
+
+    render(
+      <DataInsightChartCard
+        {...props}
+        type={SystemChartType.PercentageOfDataAssetWithOwner}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    // Both requests are in flight before the first one settles.
+    expect(
+      (getChartPreviewByName as jest.Mock).mock.calls.map(([name]) => name)
+    ).toEqual([
+      SystemChartType.PercentageOfDataAssetWithOwner,
+      SystemChartType.NumberOfDataAssetWithOwner,
+    ]);
+
+    await act(async () => resolveOwn(mockChartResult));
+  });
+
   it('draws one line per entity, colours matching the side panel', async () => {
     await renderCard();
 
