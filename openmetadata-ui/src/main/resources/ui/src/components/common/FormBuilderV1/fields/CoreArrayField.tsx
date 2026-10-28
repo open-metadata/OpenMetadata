@@ -251,8 +251,7 @@ const CoreArrayField = (props: FieldProps) => {
           tooltip={
             hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
           }
-          onPress={async (e) => {
-            e.stopPropagation();
+          onPress={async () => {
             await onCopyToClipBoard();
           }}
         />

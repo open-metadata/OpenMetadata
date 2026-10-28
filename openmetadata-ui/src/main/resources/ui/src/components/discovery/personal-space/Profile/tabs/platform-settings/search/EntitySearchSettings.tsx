@@ -25,7 +25,6 @@ import { ENTITY_PATH } from '../../../../../../../constants/constants';
 import {
   AllowedFieldField,
   BoostMode,
-  FieldValueBoost,
   ScoreMode,
   SearchSettings,
   TermBoost,
@@ -52,7 +51,6 @@ import {
 import ConfirmDialog from '../ConfirmDialog';
 import type { PlatformSettingsPageProps } from '../PlatformSettings.types';
 import { SettingsSkeleton } from '../SettingsFormLayout';
-import FieldValueBoostDialog from './FieldValueBoostDialog';
 import FieldValueBoostTable from './FieldValueBoostTable';
 import MatchingFieldCard from './MatchingFieldCard';
 import RankingSection, {
@@ -63,11 +61,13 @@ import SearchPreviewPanel from './SearchPreviewPanel';
 import SearchSection, { SearchSectionTitle } from './SearchSection';
 import {
   EntitySearchDraft,
+  getReturningSearchState,
+  SearchSavedState,
   toEntityDraft,
+  toFieldValueBoostItemId,
   toggleHighlightField,
   toggleSearchField,
   updateSearchField,
-  upsertFieldValueBoost,
   upsertTermBoost,
   withEntityDraft,
 } from './SearchSettings.utils';
@@ -81,6 +81,8 @@ const EntitySearchSettings = ({
   itemId = '',
   onNavigate,
   onSetHeaderActions,
+  savedState,
+  onSaveState,
 }: PlatformSettingsPageProps) => {
   const { t } = useTranslation();
   const entityType: string | undefined =
@@ -97,9 +99,6 @@ const EntitySearchSettings = ({
   );
   const [lastAddedField, setLastAddedField] = useState<string>();
   const [showNewTermBoost, setShowNewTermBoost] = useState(false);
-  const [editingBoost, setEditingBoost] = useState<{
-    boost?: FieldValueBoost;
-  } | null>(null);
   const [isRestoreOpen, setIsRestoreOpen] = useState(false);
 
   const applyConfig = useCallback(
@@ -138,6 +137,16 @@ const EntitySearchSettings = ({
   // Once per mount (the page remounts per entity): under StrictMode a second
   // response would reset a draft the user has already started editing.
   const hasLoadedRef = useRef(false);
+  // A load that resolves after the page is left (e.g. back into the boost form)
+  // must not clear the draft the form is now using.
+  const isMountedRef = useRef(false);
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   useEffect(() => {
     if (!entityType) {
       // A stale or mistyped link: back to the entity list.
@@ -149,7 +158,24 @@ const EntitySearchSettings = ({
       return;
     }
     hasLoadedRef.current = true;
-    void fetchConfig();
+    // Back from the field value boost form: resume the draft it was opened
+    // with. Any other saved draft was abandoned, so it is dropped.
+    const resumed = getReturningSearchState(savedState, itemId);
+    if (!resumed) {
+      if (savedState) {
+        onSaveState?.(undefined);
+      }
+      void fetchConfig();
+    } else {
+      // Kept until restored, so a failed load does not lose the draft.
+      void fetchConfig().then((loaded) => {
+        if (loaded && isMountedRef.current && 'draft' in resumed) {
+          setDraft(resumed.draft);
+          setIsChanged(resumed.isChanged);
+          onSaveState?.(undefined);
+        }
+      });
+    }
     getCustomPropertiesByEntityType(entityType)
       .then((properties) =>
         setCustomProperties(
@@ -263,6 +289,17 @@ const EntitySearchSettings = ({
   if (!config || !entityType || !previewConfig) {
     return <SettingsSkeleton rows={6} />;
   }
+
+  const openFieldValueBoostForm = (field?: string) => {
+    const state: SearchSavedState = { entity: itemId, draft, isChanged };
+    onSaveState?.(state);
+    onNavigate({
+      type: 'page',
+      page: 'search',
+      isEditing: true,
+      itemId: toFieldValueBoostItemId(itemId, field),
+    });
+  };
 
   const handleTermBoostChange = (boost: TermBoost) => {
     if (!boost.value || !boost.boost) {
@@ -415,7 +452,7 @@ const EntitySearchSettings = ({
           count={draft.termBoosts.length}
           testId="term-boosts"
           title={t('label.term-boost')}>
-          <Box direction="row" gap={3} wrap="wrap">
+          <Box direction="row" gap={3} justify="between" wrap="wrap">
             {draft.termBoosts.map((boost) => (
               <TermBoostCard
                 key={boost.value}
@@ -443,7 +480,7 @@ const EntitySearchSettings = ({
                 data-testid="add-field-value-boost-btn"
                 iconLeading={Plus}
                 size="sm"
-                onPress={() => setEditingBoost({})}>
+                onPress={() => openFieldValueBoostForm()}>
                 {t('label.add')}
               </Button>
             }
@@ -455,7 +492,7 @@ const EntitySearchSettings = ({
                 ),
               })
             }
-            onEdit={(boost) => setEditingBoost({ boost })}
+            onEdit={(boost) => openFieldValueBoostForm(boost.field)}
           />
         </Box>
       </Box>
@@ -464,27 +501,6 @@ const EntitySearchSettings = ({
         entityType={entityType}
         searchConfig={previewConfig}
       />
-
-      {editingBoost && (
-        <FieldValueBoostDialog
-          boost={editingBoost.boost}
-          fieldOptions={
-            config.allowedFieldValueBoosts?.[0]?.fields?.map(
-              (field) => field.name
-            ) ?? []
-          }
-          onClose={() => setEditingBoost(null)}
-          onSave={(boost) => {
-            updateDraft({
-              fieldValueBoosts: upsertFieldValueBoost(
-                draft.fieldValueBoosts,
-                boost
-              ),
-            });
-            setEditingBoost(null);
-          }}
-        />
-      )}
 
       <ConfirmDialog
         confirmLabel={t('label.restore-default-plural')}

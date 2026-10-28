@@ -13,7 +13,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { LINEAGE_CHILD_ITEMS_PER_PAGE } from '../../../../constants/Lineage.constants';
-import { Column } from '../../../../generated/entity/data/table';
+import { Column, DataType } from '../../../../generated/entity/data/table';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import VirtualColumnList, {
   VirtualColumnListProps,
@@ -61,7 +61,7 @@ jest.mock('../CustomNode.utils', () => ({
 const createColumn = (name: string, fqn: string): Column => ({
   name,
   fullyQualifiedName: fqn,
-  dataType: 'VARCHAR',
+  dataType: DataType.Varchar,
   dataTypeDisplay: 'varchar',
 });
 

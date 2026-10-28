@@ -267,7 +267,16 @@ test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     try {
       await metric.create(apiContext);
+      const hierarchyResponse = page.waitForResponse(
+        '/api/v1/metrics/*/hierarchy?**'
+      );
       await metric.visitEntityPage(page);
+      await hierarchyResponse;
+      // The hierarchy skeleton is taller than the loaded card, so the Definition
+      // card shifts when it resolves and a click mid-shift drops the press.
+      await expect(
+        page.getByTestId('metric-hierarchy-card').getByRole('status')
+      ).toHaveCount(0);
       await page.getByTestId('metric-definition-edit').click();
       const dialog = page.getByTestId('metric-definition-edit-dialog');
       await expect(dialog).toBeVisible();

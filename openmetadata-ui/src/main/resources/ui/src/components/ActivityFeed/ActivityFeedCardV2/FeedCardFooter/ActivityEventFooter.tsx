@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Comment } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback } from 'react';
-import { PressEvent } from 'react-aria-components';
+import {
+  ButtonProps as AriaButtonProps,
+  PressEvent,
+} from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
 import { ReactionType } from '../../../../generated/type/reaction';
@@ -59,21 +62,25 @@ function ActivityEventFooter({
     },
     [isForFeedTab, onActivityClick, activity]
   );
+  // ButtonUtility forwards its props to a react-aria Button but does not declare
+  // onPress, and onClick would not let the click bubble, so the press handler is
+  // passed as typed react-aria props.
+  const commentPressProps: Pick<AriaButtonProps, 'onPress'> = {
+    onPress: handleCommentPress,
+  };
 
   return (
     <Box align="start" className={classNames({ 'm-y-md': isForFeedTab })}>
       <Box className="footer-container tw:w-full" direction="col">
         <div>
-          <Box align="center" className="w-full rounded-8" gap={2}>
-            <Button
+          <Box align="center" className="w-full rounded-8" gap={1}>
+            <ButtonUtility
               aria-label={t('label.comment')}
-              className="p-0 flex-center tw:h-10! tw:border tw:border-transparent"
               color="tertiary"
               data-testid="comment-button"
-              iconLeading={
-                <ThreadIcon data-testid="comment-icon" height={18} width={18} />
-              }
-              onPress={handleCommentPress}
+              icon={Comment}
+              size="sm"
+              {...commentPressProps}
             />
             <Reactions
               reactions={activity.reactions ?? []}

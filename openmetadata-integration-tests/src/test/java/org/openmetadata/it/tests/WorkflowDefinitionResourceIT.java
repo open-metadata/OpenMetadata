@@ -8621,6 +8621,16 @@ public class WorkflowDefinitionResourceIT {
     return openApprovalTaskAssignedTo(client, entityFqn, assigneeId);
   }
 
+  private Task openApprovalTaskOfWorkflow(
+      OpenMetadataClient client, String entityFqn, UUID assigneeId, UUID workflowDefinitionId)
+      throws Exception {
+    return listOpenApprovalTasks(client, entityFqn).getData().stream()
+        .filter(task -> workflowDefinitionId.equals(task.getWorkflowDefinitionId()))
+        .filter(task -> assigneeIds(task).contains(assigneeId))
+        .findFirst()
+        .orElse(null);
+  }
+
   private Task openApprovalTaskAssignedTo(
       OpenMetadataClient client, String entityFqn, UUID assigneeId) throws Exception {
     return listOpenApprovalTasks(client, entityFqn).getData().stream()
@@ -10519,7 +10529,9 @@ public class WorkflowDefinitionResourceIT {
             .executeForString(
                 HttpMethod.POST, BASE_PATH, unifiedWorkflow, RequestOptions.builder().build());
     assertNotNull(response);
-    trackWorkflowFromJson(MAPPER.readTree(response));
+    JsonNode unifiedWorkflowJson = MAPPER.readTree(response);
+    trackWorkflowFromJson(unifiedWorkflowJson);
+    UUID unifiedWorkflowId = UUID.fromString(unifiedWorkflowJson.get("id").asText());
     LOG.debug("Created unified approval workflow for dataContract, tag, and dataProduct entities");
     // Entities below are created after deployment, so their creation events start runs
     waitForWorkflowDeployment(client, "UnifiedApprovalWorkflow_" + suffix);
@@ -10683,9 +10695,12 @@ public class WorkflowDefinitionResourceIT {
                 .ignoreExceptions()
                 .untilAsserted(
                     () -> {
+                      // A seeded approval workflow on the same entity type (metrics) opens its
+                      // own task for the reviewer, so the unified workflow's task is the one
+                      // resolved here.
                       Task task =
-                          openApprovalTaskAssignedTo(
-                              reviewerClient, entityFqn, reviewerUser.getId());
+                          openApprovalTaskOfWorkflow(
+                              reviewerClient, entityFqn, reviewerUser.getId(), unifiedWorkflowId);
                       assertNotNull(task, "Expected an open approval task for " + entityType);
                       reviewerClient.tasks().resolve(task.getId().toString(), resolveTask);
                     });

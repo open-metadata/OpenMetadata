@@ -28,4 +28,6 @@ export interface FeedCardBodyV1Props {
   isFeedWidget?: boolean;
   /** The card is the selected one, drawn on the brand tint. */
   isActive?: boolean;
+  /** In the activity thread panel, a message is edited in the comment edit form. */
+  isThreadPanel?: boolean;
 }

@@ -284,12 +284,6 @@ test.describe('Task Navigation - Entity Page', () => {
 
         // Should have task ID
         await expect(drawer.getByText(/TASK-/)).toBeVisible();
-
-        // Should have comments section
-        const commentsSection = drawer.locator(
-          '[data-testid="comments-section"], [data-testid="task-comments"]'
-        );
-        // Comments section might exist
       }
     }
   });
@@ -301,14 +295,6 @@ test.describe('Task Navigation - Entity Page', () => {
     const activityFeedTab = page.getByRole('tab', {
       name: /activity feeds & tasks/i,
     });
-    const countBadge = activityFeedTab.getByTestId('count');
-
-    let displayedCount = 0;
-    if (await countBadge.isVisible()) {
-      const countText = await countBadge.textContent();
-      displayedCount = parseInt(countText || '0', 10);
-    }
-
     // Click on tab and go to tasks
     await activityFeedTab.click();
     await waitForPageLoaded(page);
@@ -514,7 +500,7 @@ test.describe('Task Navigation - URL Validation', () => {
           assignees: [adminUser.responseData.name],
         },
       });
-      const task = await taskResponse.json();
+      expect(taskResponse.ok()).toBeTruthy();
 
       const page = await browser.newPage();
       await adminUser.signIn(page);
