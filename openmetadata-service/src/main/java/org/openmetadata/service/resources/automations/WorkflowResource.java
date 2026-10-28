@@ -46,7 +46,6 @@ import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowStatus;
 import org.openmetadata.schema.entity.automations.WorkflowType;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline;
 import org.openmetadata.schema.type.EntityHistory;
@@ -386,6 +385,13 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     EntityUtil.Fields fields = getFields(FIELD_OWNERS);
     Workflow workflow = repository.get(uriInfo, id, fields);
     authorizeWorkflowTrigger(securityContext, workflow);
+    // The write paths validate what an update carries, but a row stored before those guards existed
+    // is only revisited when it is used: the pipeline service resolves the stored request's managed
+    // references there, so a legacy borrowed one must be turned away before a run borrows it.
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    if (secretsManager != null) {
+      secretsManager.rejectStoredForeignReferences(workflow);
+    }
     workflow.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     /*
@@ -664,31 +670,33 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
 
   private void authorizeTestConnection(
       SecurityContext securityContext, TestServiceConnectionRequest testRequest) {
-    String serviceName = testRequest.getServiceName();
-
-    if (serviceName != null && testRequest.getServiceType() != null) {
-      // The run connects with the request's host and account using the named service's stored
-      // credential, and for external vaults that credential is a predictable
-      // secret:/<cluster>/<service>/<field> reference. A caller able only to create pipelines
-      // could therefore run another service's credential on a host they control, so naming a
-      // service requires EditAll on it.
-      authorizeNamedServiceEdit(
-          securityContext, testRequest.getServiceType(), testRequest.getServiceName());
-    } else {
-      authorizeIngestionPipelineCreate(securityContext);
-    }
+    // The run connects with the request's host and account using the named service's stored
+    // credential, and for external vaults that credential is a predictable
+    // secret:/<cluster>/<service>/<field> reference. A caller able only to create pipelines
+    // could therefore run another service's credential on a host they control, so a stored
+    // service requires EditAll on it.
+    authorizeNamedServiceEdit(securityContext, testRequest);
   }
 
+  /**
+   * EditAll on the named service is what borrowing its stored credential costs - a run connects
+   * on the request's own host and account with that service's secret. A service that does not
+   * exist has no stored connection to echo and the masker accepts nothing encoded for it (the
+   * unmask rejects an encoded field with no stored value to compare against), and the add-service
+   * flow - which names the service it is still creating - keeps the pipeline-create rule.
+   */
   private void authorizeNamedServiceEdit(
-      SecurityContext securityContext, ServiceType serviceType, String serviceName) {
-    if (serviceName == null || serviceType == null) {
+      SecurityContext securityContext, TestServiceConnectionRequest testRequest) {
+    if (findStoredService(testRequest) == null) {
+      authorizeIngestionPipelineCreate(securityContext);
       return;
     }
-    String serviceEntityType = Entity.getServiceEntityRepository(serviceType).getEntityType();
+    String serviceEntityType =
+        Entity.getServiceEntityRepository(testRequest.getServiceType()).getEntityType();
     authorizer.authorize(
         securityContext,
         new OperationContext(serviceEntityType, MetadataOperation.EDIT_ALL),
-        new ResourceContext<>(serviceEntityType, null, serviceName));
+        new ResourceContext<>(serviceEntityType, null, testRequest.getServiceName()));
   }
 
   private void authorizeIngestionPipelineCreate(SecurityContext securityContext) {
@@ -709,8 +717,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       // Creating or updating a TEST_CONNECTION workflow reads the named service's stored
       // connection as the comparison base for the reference the request may echo, so it carries
       // the same service-permission requirement as triggering one.
-      authorizeNamedServiceEdit(
-          securityContext, testRequest.getServiceType(), testRequest.getServiceName());
+      authorizeNamedServiceEdit(securityContext, testRequest);
     }
     Workflow originalWorkflow;
     if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {

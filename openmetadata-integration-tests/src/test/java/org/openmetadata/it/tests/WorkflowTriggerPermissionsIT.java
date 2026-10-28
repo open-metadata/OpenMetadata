@@ -22,8 +22,10 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
@@ -33,15 +35,20 @@ import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowType;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for trigger-endpoint authorization on
@@ -50,8 +57,11 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  * <p>Covers the authorization branches added in {@code WorkflowResource#authorizeWorkflowTrigger}:
  *
  * <ul>
- *   <li>TEST_CONNECTION with {@code serviceName} set — the run uses the service's stored
- *       credential on the request's own connection values, so it requires EDIT_ALL on the service.
+ *   <li>TEST_CONNECTION with {@code serviceName} set of a stored service — the run uses the
+ *       service's stored credential on the request's own connection values, so it requires EDIT_ALL
+ *       on the service.
+ *   <li>TEST_CONNECTION naming a service that does not exist — nothing stored may be borrowed, so
+ *       it keeps the pipeline-create requirement instead of EditAll on services.
  *   <li>TEST_CONNECTION with no {@code serviceName} — authorized via CREATE on INGESTION_PIPELINE.
  *   <li>REVERSE_INGESTION — authorized via EDIT_ALL on the service it writes back to.
  *   <li>QUERY_RUNNER — only the requester the stored query runs as, or an admin or bot.
@@ -187,6 +197,89 @@ public class WorkflowTriggerPermissionsIT {
         response.statusCode(),
         "DataConsumer must be denied on TEST_CONNECTION without serviceName "
             + "(falls back to INGESTION_PIPELINE CREATE)");
+  }
+
+  /**
+   * A stored service costs EditAll to borrow its credential; a service that does not exist has no
+   * credential stored to echo and the masker accepts nothing encoded for it — the create-and-run
+   * flow the UI's add-service page drives stays open to a pipeline-create-only user.
+   */
+  @Test
+  void test_triggerTestConnection_pipelineCreateOnly_notYetStoredService_authPasses(
+      TestNamespace ns) throws Exception {
+    User pipelineCreateUser = pipelineCreateGrantUser(ns);
+    String token = tokenFor(pipelineCreateUser.getEmail(), new String[] {});
+
+    Workflow workflow =
+        SdkClients.createClient(
+                pipelineCreateUser.getEmail(), pipelineCreateUser.getEmail(), new String[] {})
+            .workflows()
+            .create(testConnectionRequest(ns.prefix("newsvc-trig"), ns.prefix("svc-not-created")));
+
+    HttpResponse<String> response = triggerWorkflow(workflow.getId(), token);
+
+    assertAuthPassed(
+        response,
+        "a pipeline-create-only user may create and trigger a TEST_CONNECTION for a service "
+            + "that does not exist (got "
+            + response.statusCode()
+            + ")");
+  }
+
+  /** Positive control for the pipeline-create fallback branch the denial tests share. */
+  @Test
+  void test_triggerTestConnection_pipelineCreateOnly_withoutServiceName_authPasses(TestNamespace ns)
+      throws Exception {
+    User pipelineCreateUser = pipelineCreateGrantUser(ns);
+    String token = tokenFor(pipelineCreateUser.getEmail(), new String[] {});
+
+    Workflow workflow =
+        SdkClients.createClient(
+                pipelineCreateUser.getEmail(), pipelineCreateUser.getEmail(), new String[] {})
+            .workflows()
+            .create(testConnectionRequest(ns.prefix("pipecreate-no-svc"), null));
+
+    HttpResponse<String> response = triggerWorkflow(workflow.getId(), token);
+
+    assertAuthPassed(
+        response,
+        "a pipeline-create-only user may create and trigger a TEST_CONNECTION with no service "
+            + "(got "
+            + response.statusCode()
+            + ")");
+  }
+
+  /** CREATE on workflows and pipelines is this user's only relevant grant. */
+  private User pipelineCreateGrantUser(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Rule createGrant =
+        new Rule()
+            .withName(ns.prefix("pipeline-create-grant"))
+            .withEffect(Rule.Effect.ALLOW)
+            .withOperations(List.of(MetadataOperation.CREATE))
+            .withResources(List.of(Entity.WORKFLOW, Entity.INGESTION_PIPELINE));
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(ns.prefix("pipeline-create-policy"))
+                    .withRules(List.of(createGrant)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.prefix("pipeline-create-role"))
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String name = "pipecreate_" + UUID.randomUUID().toString().substring(0, 8);
+    return admin
+        .users()
+        .create(
+            new CreateUser()
+                .withName(name)
+                .withEmail(name + "@test.openmetadata.org")
+                .withRoles(List.of(role.getId())));
   }
 
   @Test

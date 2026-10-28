@@ -400,6 +400,10 @@ public class UserRepository extends EntityRepository<User> {
   protected void storeEntityWithVersion(User user, boolean update, Double expectedVersion) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
+      // The re-encryption writes the bot's shared credential into the external secrets manager:
+      // on a losing pair of overlapping If-Match changes that write must never land, so the
+      // saved version is asserted under a row lock first.
+      lockAndAssertStoredVersion(user, expectedVersion);
       secretsManager.encryptAuthenticationMechanism(
           user.getName(),
           user.getAuthenticationMechanism(),

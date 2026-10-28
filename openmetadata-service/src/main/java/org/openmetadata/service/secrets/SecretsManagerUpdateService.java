@@ -80,6 +80,27 @@ public class SecretsManagerUpdateService {
     updateServices();
     updateBotUsers();
     updateIngestionPipelines();
+    updateWorkflows();
+  }
+
+  private void updateWorkflows() {
+    LOG.info(
+        "Updating workflows in case of an update on the JSON schema: [{}]",
+        secretManager.getSecretsManagerProvider().value());
+    retrieveWorkflows()
+        .forEach(
+            workflow -> {
+              try {
+                updateWorkflow(workflow);
+              } catch (Exception e) {
+                LOG.error(
+                    "Failed to update workflow [{}] with id [{}]: {}",
+                    workflow.getName(),
+                    workflow.getId(),
+                    e.getMessage());
+                // Continue processing other workflows instead of failing the entire migration
+              }
+            });
   }
 
   private void updateServices() {

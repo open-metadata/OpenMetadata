@@ -1,5 +1,6 @@
 package org.openmetadata.service.secrets;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -251,6 +252,36 @@ public abstract class ExternalSecretsManagerTest {
     assertTrue(rejected.getMessage().contains("Password"), rejected.getMessage());
     assertFalse(
         rejected.getMessage().contains(foreignReference), "the reference must not be echoed");
+  }
+
+  /**
+   * Rows stored before the write paths rejected a borrowed reference are only revisited when the
+   * workflow is triggered: the pipeline service resolves the stored request's managed references
+   * there, so the trigger rejects a reference borrowed from another service's connection before a
+   * run connects with the victim's credential on the attacker's host.
+   */
+  @Test
+  void testStoredWorkflowTriggerRejectsAnotherServicesReference() {
+    String foreignReference = servicePasswordReference("other-service");
+    Workflow storedWorkflow = testConnectionWorkflow("test-service", foreignReference);
+
+    SecretsManagerException rejected =
+        assertThrows(
+            SecretsManagerException.class,
+            () -> secretsManager.rejectStoredForeignReferences(storedWorkflow));
+
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertTrue(rejected.getMessage().contains("Password"), rejected.getMessage());
+    assertFalse(
+        rejected.getMessage().contains(foreignReference), "the reference must not be echoed");
+  }
+
+  /** A stored row is legitimate when its references are the walk's own or the service's echo. */
+  @Test
+  void testStoredWorkflowTriggerAcceptsOwnStoredReferencesAndTheServicesEcho() {
+    Workflow storedWorkflow = testConnectionWorkflow("test-service", "openmetadata-test");
+    Workflow encrypted = secretsManager.encryptWorkflow(storedWorkflow);
+    assertDoesNotThrow(() -> secretsManager.rejectStoredForeignReferences(encrypted));
   }
 
   private String servicePasswordReference(String serviceName) {

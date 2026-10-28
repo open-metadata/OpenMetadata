@@ -510,6 +510,85 @@ public abstract class SecretsManager {
     return CredentialPolicy.strictWithReferenceBases(referenceBases);
   }
 
+  /**
+   * Validates a workflow loaded from storage before the trigger sends it to the pipeline service
+   * as-is, for the pipeline service to resolve managed references there. Rows stored before the
+   * ownership guard existed carried whatever their submitter typed; the write paths validate a
+   * submission, but a stored row is only revisited when it is used. A stored Fernet token cannot
+   * be re-attributed - the server cannot establish whose plaintext it carried - so the check runs
+   * on the shape a stored row can be verified in: a reference this deployment's secrets manager
+   * manages must be one the storing walk could have accepted, under the workflow's own base or
+   * the tested service's, so a reference borrowed from another entity's connection is rejected
+   * before a run borrows its credential.
+   */
+  public Workflow rejectStoredForeignReferences(Workflow workflow) {
+    Workflow workflowConverted =
+        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    try {
+      validateStoredReferences(
+          workflowConverted,
+          buildSecretId(true, "workflow", workflowConverted.getName()),
+          workflowCredentialPolicy(workflowConverted));
+    } catch (SecretsManagerException e) {
+      // Already classified with its own status and user-facing message.
+      throw e;
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          Response.Status.BAD_REQUEST,
+          String.format("Failed to validate workflow instance [%s]", workflow.getName()));
+    }
+    return workflowConverted;
+  }
+
+  private void validateStoredReferences(Object node, String secretId, CredentialPolicy policy) {
+    if (DO_NOT_ENCRYPT_CLASSES.contains(node.getClass())) {
+      return;
+    }
+    Arrays.stream(node.getClass().getMethods())
+        .filter(ReflectionUtil::isGetMethodOfObject)
+        .forEach(
+            method -> {
+              Object obj = ReflectionUtil.getObjectFromMethod(method, node);
+              String fieldName = method.getName().replaceFirst("get", "");
+              if (CommonUtil.isOpenMetadataObject(obj)) {
+                validateStoredReferences(
+                    obj,
+                    buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)),
+                    policy);
+                // check if it has annotation
+              } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
+                requireStoredManagedReference(fieldName, (String) obj, secretId, policy);
+              } else {
+                forEachTraversableElement(
+                    obj,
+                    (element, elementKey) ->
+                        validateStoredReferences(
+                            element,
+                            buildSecretId(
+                                false, secretId, fieldName.toLowerCase(Locale.ROOT), elementKey),
+                            policy));
+              }
+            });
+  }
+
+  private void requireStoredManagedReference(
+      String fieldName, String fieldValue, String secretId, CredentialPolicy policy) {
+    if (fieldValue == null
+        || !Boolean.TRUE.equals(isSecret(fieldValue))
+        || !isManagedSecretReference(fieldValue)) {
+      return;
+    }
+    if (isAcceptedReference(fieldValue, secretId, fieldName, policy)) {
+      return;
+    }
+    throw new SecretsManagerException(
+        Response.Status.BAD_REQUEST,
+        String.format(
+            "Field [%s] holds the credential reference of another entity and the workflow cannot "
+                + "be run. Re-save the workflow with its own credential.",
+            fieldName));
+  }
+
   public Workflow decryptWorkflow(Workflow workflow) {
     OpenMetadataConnection openMetadataConnection =
         decryptOpenMetadataConnection(workflow.getOpenMetadataServerConnection());

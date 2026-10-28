@@ -210,8 +210,10 @@ public class PasswordEntityMasker extends EntityMasker {
     } catch (SecretsManagerException e) {
       // A rejection of a foreign credential is already classified with its own status.
       throw e;
-    } catch (Exception e) {
-      throw new EntityMaskException(failureMessage.get());
+    } catch (RuntimeException e) {
+      // The walk's own failures (a corrupt stored token, a reflection miss) keep their cause,
+      // which is otherwise the only record of what surfaced the 500.
+      throw new EntityMaskException(failureMessage.get(), e);
     }
   }
 

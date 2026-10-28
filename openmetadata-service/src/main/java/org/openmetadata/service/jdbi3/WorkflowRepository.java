@@ -92,6 +92,10 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   protected void storeEntityWithVersion(Workflow entity, boolean update, Double expectedVersion) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null) {
+      // The re-encryption stores secrets outside the database; on a losing pair of overlapping
+      // If-Match changes that write must never land, so the saved version is asserted under a
+      // row lock first.
+      lockAndAssertStoredVersion(entity, expectedVersion);
       entity =
           secretsManager.encryptWorkflow(
               entity, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);

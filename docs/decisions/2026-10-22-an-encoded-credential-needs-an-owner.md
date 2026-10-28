@@ -7,7 +7,9 @@
   identifier forms are canonicalized before classification); v4 2026-10-28 (padded provider names
   are canonicalized, an own ARN's AWS-generated suffix is accepted, a TEST_CONNECTION run of a
   named service requires EditAll on it at create and trigger alike, and the version-checked store
-  encrypts)
+  encrypts); v5 2026-10-28 (the pipeline's version-checked store encrypts too, the row version is
+  locked before an external vault write, the trigger re-validates a stored row, EditAll on the
+  named service applies while it exists, and the workflow secrets migration runs)
 - **Deciders:** reviewers of the foreign-credential-rejection PR
 - **Guard:** `DBSecretsManagerTest#testEncryptRejectsAForeignFernetToken`,
   `ExternalSecretsManagerTest#testEncryptRejectsAReferenceToAnotherEntitysSecret` and
@@ -15,6 +17,9 @@
   `AWSSSMSecretsManagerTest#testEncryptRejectsAnArnReferenceToAnotherEntitysSecret`,
   `AWSSecretsManagerTest#testEncryptRejectsAnArnReferenceToAnotherEntitysSecret`,
   `PasswordEntityMaskerForeignCredentialTest` (all fail if the guards are removed);
+  `ExternalSecretsManagerTest#testStoredWorkflowTriggerRejectsAnotherServicesReference`,
+  `EntityRepositoryStoredVersionLockTest` and `IngestionPipelineStoredCredentialStoreTest`
+  (the version-checked store and its stale-version lock);
   `SecretsManagerCredentialValidationIT` and `SecretsManagerNullSecretIT` (end-to-end over the
   service API — the latter also pins the rename PATCH and the TEST_CONNECTION echo over HTTP)
 - **Related:** `SecretsManager#requireOwnCredential`, `PasswordEntityMasker#requireOwnStoredValue`
@@ -155,3 +160,36 @@ on the request's own host and account with that service's credential. Both the c
 name-changing PUT, which reads the same stored connection as the echo's comparison base) and the
 trigger now require EditAll on the named service; requests that name no service keep the
 pipeline-create requirement on the trigger.
+
+## Amendment — 2026-10-28 (v5): the pipeline's version-checked store, locking a shared secret, and the stored row that predates the guards
+
+First, the pipeline's version-checked store encrypts under internal re-storage like the workflow's
+and the bot user's. The v4 fix covered the repositories that encrypt in `storeEntity` (workflow,
+bot user) but not `IngestionPipelineRepository`, whose If-Match PATCH restores a stored token or
+mask into plaintext and would have serialized that unencrypted; the pipeline's whole
+`sourceConfig` is walked.
+
+Second, those overrides write shared secrets outside the database - the bot's vault entry is one,
+not per-entity JSON - and the compare-and-swap that rejects a stale caller runs after them: two
+overlapping If-Match PATCHes of the same version both pass the initial read, and the loser could
+leave the vault holding its own (rejected) credential. A row lock is taken and the stored version
+asserted before the external write (`EntityRepository#lockAndAssertStoredVersion`), so only the
+caller whose version check passes writes the vault. The lock is the row the store's
+compare-and-swap touches, so it serializes the two without a second lock protocol.
+
+Third, the trigger validates a stored row the guards never saw. A workflow stored before this
+decision existed carries whatever its submitter typed; a stored Fernet token cannot be
+re-attributed, but a managed `secret:` reference can: the trigger rejects one that is not the
+exact id the storing walk would have derived for the field and does not fall under the tested
+service's base (`SecretsManager#rejectStoredForeignReferences`). That closes the cheap
+predictable-reference borrow; the residual Fernet-token borrow on a pre-guard row is unprovable
+from storage alone, and the EditAll-on-service requirement at trigger bounds who can run such a
+workflow.
+
+Fourth, EditAll on the named service is required while the service exists; a service that does
+not exist yet has no stored connection to echo - the masker accepts nothing encoded for it - so
+the add-service flow keeps the pipeline-create rule instead of demanding EditAll on a service
+that is not there.
+
+Fifth, the workflow secrets migration now runs: `updateEntities` re-stores workflows on a
+provider switch through the fixed workflow DAO (previously unreachable).

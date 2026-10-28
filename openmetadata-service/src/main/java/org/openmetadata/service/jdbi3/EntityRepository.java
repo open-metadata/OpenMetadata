@@ -945,6 +945,35 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     storeEntityWithVersion(entity, update, expectedVersion);
   }
 
+  /**
+   * Locks the entity's row and asserts the stored version is still the expected one, for a
+   * version-checked store that applies side effects beyond the database before it runs. The
+   * compare-and-swap in {@link #store(T, boolean, Double)} is the only place a concurrent update
+   * is detected, and it runs after those side effects landed: two overlapping If-Match PATCHes of
+   * one bot user, say, both pass the initial read and write the shared vault secret, and only the
+   * winner's own version check rejects the loser - too late for the credential the winner keeps.
+   * Serialized here on the row lock, a stale caller is rejected before writing anything external.
+   */
+  protected void lockAndAssertStoredVersion(T entity, Double expectedVersion) {
+    if (expectedVersion != null) {
+      assertLockedStoredVersion(entityDAOForWrite(), entity.getId(), expectedVersion);
+    }
+  }
+
+  /** Visible for the stored-version assertion's own test; callers hold the transaction open. */
+  static void assertLockedStoredVersion(EntityDAO<?> dao, UUID entityId, Double expectedVersion) {
+    String savedJson = dao.findByIdForUpdate(dao.getTableName(), entityId, "");
+    if (savedJson == null) {
+      // A missing row is rejected by the version-checked store that follows.
+      return;
+    }
+    JsonNode savedVersion = JsonUtils.readTree(savedJson).path("version");
+    if (!expectedVersion.equals(savedVersion.asDouble())) {
+      throw new PreconditionFailedException(
+          "The entity has been modified by another user. Please refresh and retry.");
+    }
+  }
+
   protected void storeEntities(List<T> entities) {
     // Default: store entities directly. Override if fields need nullification before storage.
     storeMany(entities);

@@ -722,6 +722,27 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     store(ingestionPipeline, update);
   }
 
+  /**
+   * A version-checked store (an If-Match PATCH) never runs {@link #storeEntity}: it calls {@link
+   * EntityRepository#store} directly to compare versions. Without this override the encryption
+   * that pass relies on never runs, and the plaintext the patch's unmask restored from a stored
+   * echo or mask is serialized into the pipeline's sourceConfig JSON as-is.
+   */
+  @Override
+  protected void storeEntityWithVersion(
+      IngestionPipeline ingestionPipeline, boolean update, Double expectedVersion) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    if (secretsManager != null) {
+      // The re-encryption stores secrets outside the database; on a losing pair of overlapping
+      // If-Match changes that write must never land, so the saved version is asserted under a
+      // row lock first.
+      lockAndAssertStoredVersion(ingestionPipeline, expectedVersion);
+      secretsManager.encryptIngestionPipeline(
+          ingestionPipeline, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
+    }
+    super.storeEntityWithVersion(ingestionPipeline, update, expectedVersion);
+  }
+
   @Override
   public void storeEntities(List<IngestionPipeline> entities) {
     List<String> fqns = new ArrayList<>(entities.size());

@@ -2,6 +2,7 @@ package org.openmetadata.service.secrets.masker;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,6 +21,7 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.service.exception.EntityMaskException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.DBSecretsManager;
@@ -129,6 +131,23 @@ class PasswordEntityMaskerForeignCredentialTest {
 
     assertEquals(400, rejected.getResponse().getStatus());
     assertTrue(rejected.getMessage().contains("Password"), rejected.getMessage());
+  }
+
+  /**
+   * A failure the walk itself cannot classify - a stored token whose bytes no longer decrypt,
+   * say - surfaces as a 500, and the cause is the only diagnostic the response never carries.
+   */
+  @Test
+  void unmaskKeepsTheCauseOfAFailureItCannotClassify() {
+    Workflow original = testConnectionWorkflow("fernet:not-a-valid-token");
+    Workflow updated = testConnectionWorkflow("fernet:not-a-valid-token");
+
+    EntityMaskException wrapped =
+        assertThrows(
+            EntityMaskException.class,
+            () -> EntityMaskerFactory.createEntityMasker().unmaskWorkflow(updated, original));
+
+    assertNotNull(wrapped.getCause(), "the 500 must keep the walk's own failure as its cause");
   }
 
   /**
