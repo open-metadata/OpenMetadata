@@ -43,8 +43,6 @@ test.describe('Task Comments - Add Comment', () => {
   const commentingUser = new UserClass();
   const table = new TableClass();
 
-  let taskId: string;
-
   test.beforeAll('Setup test data', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -71,8 +69,6 @@ test.describe('Task Comments - Add Comment', () => {
         },
       });
       createdTask = (await taskResponse.json()) as CreatedTask;
-      const task = createdTask;
-      taskId = task.id;
     } finally {
       await afterAction();
     }

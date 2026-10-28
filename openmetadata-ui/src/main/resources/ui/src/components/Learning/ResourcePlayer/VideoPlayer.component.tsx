@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LearningResource } from '../../../rest/learningResourceAPI';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import Loader from '../../common/Loader/Loader';
 import './video-player.less';
 
@@ -67,15 +70,9 @@ const getVimeoEmbedUrl = (parsedUrl: URL, originalUrl: string): string => {
   return videoId ? `https://player.vimeo.com/video/${videoId}` : originalUrl;
 };
 
+// Takes a URL getSafeHttpUrl has already accepted, so it always parses.
 const getEmbedUrl = (url: string): string => {
-  let parsedUrl: URL | undefined;
-  try {
-    parsedUrl = new URL(url);
-  } catch {
-    // If URL parsing fails, fall back to the original URL.
-    return url;
-  }
-
+  const parsedUrl = new URL(url);
   const hostname = parsedUrl.hostname.toLowerCase();
 
   if (YOUTUBE_HOSTNAMES.includes(hostname)) {
@@ -91,16 +88,30 @@ const getEmbedUrl = (url: string): string => {
 };
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ resource }) => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
 
-  const embedUrl = useMemo(
-    () => getEmbedUrl(resource.source.url),
-    [resource.source.url]
-  );
+  // Only an http(s) URL may become the frame's src: with allow-scripts and
+  // allow-same-origin, a javascript: or data: src would run as this page.
+  const embedUrl = useMemo(() => {
+    const safeUrl = getSafeHttpUrl(resource.source.url);
+
+    return safeUrl && getEmbedUrl(safeUrl);
+  }, [resource.source.url]);
 
   const handleLoad = useCallback(() => {
     setIsLoading(false);
   }, []);
+
+  if (!embedUrl) {
+    return (
+      <div className="tw:p-4">
+        <Typography as="span" size="text-sm">
+          {t('label.invalid-url')}
+        </Typography>
+      </div>
+    );
+  }
 
   return (
     <div className="video-player-wrapper">

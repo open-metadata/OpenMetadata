@@ -51,7 +51,6 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import { ColumnsType } from '../../common/Table/Table.interface';
 import TableV2 from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
 
@@ -366,9 +365,9 @@ export const ContractSchemaFormTab: React.FC<{
       handleColumnsPageChange,
     ]
   );
-  const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
-    dataTypeDisplay,
-    record
+  const renderDataTypeDisplay = (
+    dataTypeDisplay: Column['dataTypeDisplay'],
+    record: Column | Field
   ) => {
     const displayValue = isEmpty(dataTypeDisplay)
       ? record.dataType
@@ -391,9 +390,7 @@ export const ContractSchemaFormTab: React.FC<{
     );
   };
 
-  const renderConstraint: TableCellRendered<Column, 'constraint'> = (
-    constraint
-  ) => {
+  const renderConstraint = (constraint: Column['constraint']) => {
     if (isEmpty(constraint)) {
       return NO_DATA_PLACEHOLDER;
     }
@@ -411,13 +408,13 @@ export const ContractSchemaFormTab: React.FC<{
     );
   };
 
-  const columns: ColumnsType<Column> = useMemo(
+  const columns = useMemo<ColumnsType<Column | Field>>(
     () => [
       {
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
-        render: (_, record: Column) => (
+        render: (_: unknown, record: Column | Field) => (
           <Typography className="schema-table-name tw:text-primary">
             {getEntityName(record)}
           </Typography>
@@ -480,7 +477,7 @@ export const ContractSchemaFormTab: React.FC<{
   }, [entityType]);
 
   const tableCheckBoxProps = useCallback(
-    (record: Column) => ({
+    (record: Column | Field) => ({
       disabled:
         Fqn.split(record.fullyQualifiedName ?? '').length !==
         schemaRecordDisabledEntity,
@@ -512,7 +509,7 @@ export const ContractSchemaFormTab: React.FC<{
         customPaginationProps={paginationProps}
         dataSource={columnsData}
         expandable={{
-          ...getTableExpandableConfig<Field>(),
+          ...getTableExpandableConfig<Column | Field>(),
           rowExpandable: (record) => !isEmpty(record.children),
           onExpandedRowsChange: handleExpandedRowsChange,
           expandedRowKeys: expandedRowKeys,

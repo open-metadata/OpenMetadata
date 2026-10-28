@@ -1,8 +1,10 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,6 +37,7 @@ import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.service.Entity;
 
@@ -61,6 +64,70 @@ public class LineageBrokenReferenceIT {
   @BeforeAll
   static void setup() {
     SdkClients.adminClient();
+  }
+
+  @Test
+  void testMissingNonRootDoesNotReportTheRootAsMissing(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table root = createTable(client, ns, "indexed_root");
+    Table upstream = createTable(client, ns, "stale_upstream");
+    try {
+      addLineage(client, upstream, root);
+      Awaitility.await("Upstream lineage document is indexed")
+          .atMost(Duration.ofSeconds(30))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  OBJECT_MAPPER
+                      .readTree(
+                          client
+                              .lineage()
+                              .getLineageByEntityCount(
+                                  root.getFullyQualifiedName(),
+                                  "Upstream",
+                                  0,
+                                  10,
+                                  1,
+                                  false,
+                                  null,
+                                  null))
+                      .path("nodes")
+                      .has(upstream.getFullyQualifiedName()));
+
+      Entity.getSearchRepository().deleteEntityIndex(upstream);
+      Awaitility.await("Missing non-root remains a search failure")
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () -> {
+                ApiException error =
+                    assertThrows(
+                        ApiException.class,
+                        () ->
+                            client
+                                .lineage()
+                                .getLineageByEntityCount(
+                                    root.getFullyQualifiedName(),
+                                    "Upstream",
+                                    0,
+                                    11,
+                                    1,
+                                    false,
+                                    null,
+                                    null));
+                assertEquals(500, error.getStatusCode());
+              });
+
+      JsonNode rootOnly =
+          OBJECT_MAPPER.readTree(
+              client
+                  .lineage()
+                  .getLineageByEntityCount(
+                      root.getFullyQualifiedName(), "Upstream", 0, 1, 0, false, null, null));
+      assertTrue(rootOnly.path("nodes").has(root.getFullyQualifiedName()));
+    } finally {
+      hardDeleteQuietly(client, root);
+      hardDeleteQuietly(client, upstream);
+    }
   }
 
   /**
