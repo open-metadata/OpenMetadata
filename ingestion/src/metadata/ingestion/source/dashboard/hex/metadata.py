@@ -206,6 +206,7 @@ class HexSource(DashboardServiceSource):
     def yield_dashboard(self, dashboard_details: Project) -> Iterable[Either[CreateDashboardRequest]]:
         """Method to Get Dashboard Entity"""
         try:
+            source_url = self.client.get_project_url(dashboard_details)
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.title,
@@ -222,7 +223,7 @@ class HexSource(DashboardServiceSource):
                     for chart in self.context.get().charts or []
                 ],
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-                sourceUrl=SourceUrl(self.client.get_project_url(dashboard_details)),
+                sourceUrl=SourceUrl(source_url) if source_url else None,
                 tags=self._get_dashboard_tags(dashboard_details),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
