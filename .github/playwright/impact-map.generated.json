@@ -232,6 +232,7 @@
         "playwright/e2e/Pages/Lineage/LineageLargeResponse.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
@@ -885,6 +886,7 @@
         "playwright/e2e/Pages/Lineage/LineageLargeResponse.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
@@ -1876,6 +1878,7 @@
         "playwright/e2e/Pages/Lineage/LineageLargeResponse.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
@@ -3844,6 +3847,7 @@
         "playwright/e2e/Pages/Lineage/LineageLargeResponse.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LiveIndexingTab.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
@@ -4667,6 +4671,7 @@
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
@@ -7200,8 +7205,17 @@
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityLineage/LineageConfigModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts"
       ]
     },
     {
@@ -12185,6 +12199,7 @@
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
@@ -12261,6 +12276,7 @@
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
@@ -12332,6 +12348,7 @@
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
@@ -12573,6 +12590,7 @@
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
@@ -12987,6 +13005,7 @@
         "playwright/e2e/Pages/Lineage/LineageLargeResponse.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LiveIndexingTab.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
@@ -13188,6 +13207,7 @@
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
@@ -13256,6 +13276,7 @@
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
@@ -13848,6 +13869,7 @@
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
       ]
