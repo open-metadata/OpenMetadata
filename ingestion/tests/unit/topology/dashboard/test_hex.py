@@ -200,6 +200,7 @@ class TestHexSource(TestCase):
         self.hex_source.query_fetcher = MagicMock()
         self.hex_source.client.get_project_cells = MagicMock(return_value=None)
         self.hex_source._cell_lineage = None
+        self.hex_source._kept_data_model = None
         self.hex_source._data_connections = None
         self.hex_source._data_connections_denied = False
 
