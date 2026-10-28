@@ -440,7 +440,9 @@ public class TestCaseResolutionStatusResource
   @Operation(
       operationId = "getTestCaseResolutionStatusesForAStateId",
       summary = "Get test case failure statuses for a sequence id",
-      description = "Get a test case failure statuses for a sequence id",
+      description =
+          "Get test case failure statuses, newest first. With a limit, paging.total counts "
+              + "stored events, including orphaned events skipped from data; paging.after continues to older events.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -453,14 +455,20 @@ public class TestCaseResolutionStatusResource
   public ResultList<TestCaseResolutionStatus> listForStateId(
       @Context SecurityContext securityContext,
       @Parameter(description = "Sequence ID", schema = @Schema(type = "UUID")) @PathParam("stateId")
-          UUID stateId) {
+          UUID stateId,
+      @Parameter(description = "Maximum events to return; omitted returns the complete history")
+          @QueryParam("limit")
+          @Min(1)
+          @Max(1000000)
+          Integer limit,
+      @Parameter(description = "Cursor for older events") @QueryParam("after") String after) {
     ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
     ResourceContextInterface entityResourceContext = TestCaseResourceContext.builder().build();
     List<AuthRequest> requests =
         buildViewAuthRequests(testCaseResourceContext, entityResourceContext);
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
-    return repository.listTestCaseResolutionStatusesForStateId(stateId);
+    return repository.listTestCaseResolutionStatusesForStateId(stateId, limit, after);
   }
 
   @GET

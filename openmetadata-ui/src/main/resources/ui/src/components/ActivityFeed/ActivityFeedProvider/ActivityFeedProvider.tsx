@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isEqual, orderBy } from 'lodash';
+import { isEqual, orderBy, uniqBy } from 'lodash';
 import { PagingResponse } from 'Models';
 import {
   createContext,
@@ -237,22 +237,59 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const { currentUser } = useApplicationStore();
   const activeDomain = useDomainStore((state) => state.activeDomain);
 
-  const fetchTestCaseResolution = useCallback(async (id: string) => {
-    setIsTestCaseResolutionLoading(true);
-    try {
-      const { data } = await getListTestCaseIncidentByStateId(id, {
-        limit: PAGE_SIZE_LARGE,
-      });
+  const incidentRequestSeq = useRef(0);
+  const incidentScope = useRef<string>();
+  const incidentLoading = useRef(false);
+  const [incidentAfter, setIncidentAfter] = useState<string>();
 
-      setTestCaseResolutionStatus(
-        orderBy(data, (item) => item.timestamp, ['asc'])
-      );
-    } catch {
-      setTestCaseResolutionStatus([]);
-    } finally {
-      setIsTestCaseResolutionLoading(false);
+  const fetchTestCaseResolution = useCallback(
+    async (id: string, after?: string) => {
+      if (after && (incidentScope.current !== id || incidentLoading.current)) {
+        return;
+      }
+      const requestId = ++incidentRequestSeq.current;
+      incidentScope.current = id;
+      incidentLoading.current = true;
+      setIsTestCaseResolutionLoading(true);
+      if (!after) {
+        setTestCaseResolutionStatus([]);
+        setIncidentAfter(undefined);
+      }
+      try {
+        const { data, paging } = await getListTestCaseIncidentByStateId(id, {
+          limit: PAGE_SIZE_LARGE,
+          after,
+        });
+        if (requestId !== incidentRequestSeq.current) {
+          return;
+        }
+        setTestCaseResolutionStatus((previous) =>
+          orderBy(
+            uniqBy([...(after ? previous : []), ...data], 'id'),
+            ['timestamp', 'id'],
+            ['asc', 'asc']
+          )
+        );
+        setIncidentAfter(paging.after);
+      } catch (error) {
+        if (requestId === incidentRequestSeq.current) {
+          showErrorToast(error as AxiosError);
+        }
+      } finally {
+        if (requestId === incidentRequestSeq.current) {
+          incidentLoading.current = false;
+          setIsTestCaseResolutionLoading(false);
+        }
+      }
+    },
+    []
+  );
+
+  const loadMoreIncidentHistory = useCallback(async () => {
+    if (incidentScope.current && incidentAfter) {
+      await fetchTestCaseResolution(incidentScope.current, incidentAfter);
     }
-  }, []);
+  }, [fetchTestCaseResolution, incidentAfter]);
 
   const fetchPostsFeed = useCallback(async (active: Conversation) => {
     if (
@@ -284,6 +321,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const setActiveTask = useCallback(
     (active?: Task) => {
       setSelectedTask(active);
+      ++incidentRequestSeq.current;
+      incidentScope.current = undefined;
+      incidentLoading.current = false;
+      setIncidentAfter(undefined);
+      setTestCaseResolutionStatus([]);
+      setIsTestCaseResolutionLoading(false);
 
       // Fetch TCRS records for this incident task to populate the timeline.
       // In task-first mode the task UUID equals the TCRS stateId (see
@@ -805,7 +848,13 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   const updateTestCaseIncidentStatus = useCallback(
     (status: TestCaseResolutionStatus[]) => {
-      setTestCaseResolutionStatus(status);
+      setTestCaseResolutionStatus((current) =>
+        orderBy(
+          uniqBy([...status].reverse().concat(current), 'id'),
+          ['timestamp', 'id'],
+          ['asc', 'asc']
+        )
+      );
 
       // After a header-driven transition the selected task's status/stage is
       // stale. Re-fetch it so the left-panel task card reflects the new state
@@ -951,6 +1000,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       entityPaging,
       userId: user ?? currentUser?.id ?? '',
       testCaseResolutionStatus,
+      incidentAfter,
+      loadMoreIncidentHistory,
       fetchUpdatedThread,
       updateTestCaseIncidentStatus,
       activityEvents,
@@ -997,6 +1048,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     user,
     currentUser,
     testCaseResolutionStatus,
+    incidentAfter,
+    loadMoreIncidentHistory,
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     activityEvents,

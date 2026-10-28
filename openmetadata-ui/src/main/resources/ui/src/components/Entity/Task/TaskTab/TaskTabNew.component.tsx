@@ -745,7 +745,9 @@ export const TaskTabNew = ({
   );
 
   const refreshIncidentStatus = async (taskId: string) => {
-    const refreshed = await getListTestCaseIncidentByStateId(taskId);
+    const refreshed = await getListTestCaseIncidentByStateId(taskId, {
+      limit: 1,
+    });
     const latest = refreshed?.data?.[0];
     if (latest) {
       updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
