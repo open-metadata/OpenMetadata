@@ -23,6 +23,7 @@ import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addReviewers;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.USER;
@@ -371,9 +372,11 @@ public class MetricRepository extends EntityRepository<Metric> {
                 entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, NON_DELETED);
     Map<UUID, EntityReference> parents = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
+      // ALL, like the single-entity getParent: a cascade restore re-reads each child while its
+      // parent is still deleted, and a NON_DELETED lookup failed the whole restore.
       parents.put(
           UUID.fromString(record.getToId()),
-          Entity.getEntityReferenceById(METRIC, UUID.fromString(record.getFromId()), NON_DELETED));
+          Entity.getEntityReferenceById(METRIC, UUID.fromString(record.getFromId()), ALL));
     }
     for (Metric metric : metrics) {
       metric.setParent(parents.get(metric.getId()));
