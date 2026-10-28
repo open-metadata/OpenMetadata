@@ -17,6 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.mcp.AuthEnrichedMcpContextExtractor;
 import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
@@ -31,6 +32,7 @@ import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
+import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor;
@@ -630,6 +632,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       handleRevocationRequest(request, response);
     } else if (path.equals("/mcp/login") && basicAuthLoginServlet != null) {
       basicAuthLoginServlet.doPost(request, response);
+    } else if (path.equals(UserSSOOAuthProvider.CONSENT_PATH)
+        && authProvider instanceof UserSSOOAuthProvider ssoProvider) {
+      handleConsentRequest(ssoProvider, request, response);
     } else {
       // The MCP message endpoint. Everything below this line is written by the base transport,
       // which knows nothing about CORS: the 401 challenge, the JSON-RPC response, the SSE stream.
@@ -1156,6 +1161,37 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       LOG.error("Unexpected error during token revocation", ex);
       sendOAuthError(
           request, response, 500, "server_error", "Unexpected error during token revocation");
+    }
+  }
+
+  /**
+   * Browser-facing like /mcp/login: the consent page served after an SSO sign-in posts the user's
+   * decision here. The provider answers the browser itself; this turns the two failures it can
+   * raise into a plain error page instead of a raw container one.
+   */
+  private void handleConsentRequest(
+      UserSSOOAuthProvider ssoProvider, HttpServletRequest request, HttpServletResponse response)
+      throws IOException {
+    try {
+      ssoProvider.handleConsentDecision(request, response);
+    } catch (IllegalStateException ex) {
+      // The client was removed or its redirect URI changed after the consent page was served.
+      LOG.warn("MCP consent no longer matches a registered client: {}", ex.getMessage());
+      sendConsentError(
+          response,
+          HttpServletResponse.SC_BAD_REQUEST,
+          "This application is no longer registered. Please restart the authorization flow.");
+    } catch (JdbiException ex) {
+      LOG.error("MCP consent processing failed", ex);
+      sendConsentError(
+          response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Consent processing failed");
+    }
+  }
+
+  private static void sendConsentError(HttpServletResponse response, int status, String message)
+      throws IOException {
+    if (!response.isCommitted()) {
+      response.sendError(status, message);
     }
   }
 
