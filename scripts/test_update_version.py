@@ -153,3 +153,30 @@ def test_an_image_line_in_another_shape_fails_the_bump(tmp_path):
 
     assert result.returncode == 1
     assert "matched nothing" in result.stderr
+
+
+def test_a_skipped_snapshot_line_fails_the_bump_to_its_release(tmp_path):
+    # The usual cut: X.Y.Z-SNAPSHOT becomes X.Y.Z, whose tag is a prefix of the skipped line's.
+    compose = tmp_path / "docker-compose.yml"
+    compose.write_text(
+        "    image: docker.getcollate.io/openmetadata/server:2.1.0-SNAPSHOT\n"
+        '    image: "docker.getcollate.io/openmetadata/ingestion:2.1.0-SNAPSHOT"\n'
+    )
+
+    result = run_script("update_docker_tag", "-f", str(compose), "-t", "2.1.0", cwd=tmp_path)
+
+    assert result.returncode == 1
+    assert "matched nothing" in result.stderr
+
+
+def test_regex_sub_tolerates_no_match_by_default(tmp_path):
+    # Collate's release bump calls regex_sub with patterns that match nothing on a release branch
+    # (ADR:2026-10-28-regex-sub-stays-lenient-by-default).
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from update_version import regex_sub
+
+    target = tmp_path / "Dockerfile"
+    target.write_text("ARG OPENMETADATA_REF=2.1\n")
+
+    assert regex_sub(file_path=str(target), pattern=r"(ARG OPENMETADATA_REF=)main\b", substitution=r"\g<1>2.1") == 0
+    assert target.read_text() == "ARG OPENMETADATA_REF=2.1\n"
