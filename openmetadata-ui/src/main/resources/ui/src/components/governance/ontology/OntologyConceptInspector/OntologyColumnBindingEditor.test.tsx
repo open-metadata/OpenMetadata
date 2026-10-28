@@ -17,6 +17,7 @@ import {
   OntologyConceptBindingsResponse,
   State,
 } from '../../../../generated/type/ontologyConceptBindingsResponse';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   getOntologyConceptBindings,
   putOntologyConceptBinding,
@@ -27,6 +28,10 @@ import OntologyColumnBindingEditor from './OntologyColumnBindingEditor';
 
 jest.mock('../../../../rest/ontologyAPI');
 jest.mock('../../../../rest/tableAPI');
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -129,4 +134,77 @@ it('recovers from a stale revision and preserves concurrently added assignments 
       ],
     },
   });
+});
+
+it('binds a column and cancels from the AI-mode card', async () => {
+  (useIsAiMode as jest.Mock).mockReturnValue(true);
+  const bindings: OntologyConceptBindingsResponse = {
+    revision: 3,
+    assets: [
+      {
+        assetId: 'table',
+        assetType: AssetType.Table,
+        asset: {
+          id: 'table',
+          type: 'table',
+          name: 'customers',
+          fullyQualifiedName: 'service.db.schema.customers',
+        },
+        columns: [],
+      },
+    ],
+  };
+  const update = putOntologyConceptBinding as jest.MockedFunction<
+    typeof putOntologyConceptBinding
+  >;
+  update.mockReset();
+  update.mockResolvedValue(bindings);
+  (
+    searchTableColumnsById as jest.MockedFunction<typeof searchTableColumnsById>
+  ).mockResolvedValue({
+    data: [
+      {
+        name: 'email',
+        dataType: DataType.String,
+        fullyQualifiedName: 'service.db.schema.customers.email',
+      },
+    ],
+    paging: { total: 1 },
+  });
+  const onClose = jest.fn();
+  const { queryClient, rerender } = renderWithQueryClient(<div />);
+  queryClient.setQueryData(['ontology-concept-bindings', 'concept'], bindings);
+  rerender(
+    <OntologyColumnBindingEditor
+      conceptId="concept"
+      propertyId="email-property"
+      onClose={onClose}
+    />
+  );
+
+  expect(screen.getByTestId('ontology-binding-column-search')).toBeVisible();
+  expect(screen.getByTestId('ontology-binding-save')).toBeDisabled();
+
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: /label.column/ })).toBeEnabled()
+  );
+  fireEvent.click(screen.getByRole('button', { name: /label.column/ }));
+  fireEvent.click(await screen.findByRole('option', { name: /email/ }));
+  fireEvent.click(screen.getByTestId('ontology-binding-save'));
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+
+  expect(update).toHaveBeenCalledWith('concept', {
+    expectedRevision: 3,
+    asset: {
+      assetId: 'table',
+      assetType: 'table',
+      columns: [{ propertyId: 'email-property', columnPath: ['email'] }],
+    },
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
+
+  expect(onClose).toHaveBeenCalledTimes(2);
+
+  (useIsAiMode as jest.Mock).mockReturnValue(false);
 });

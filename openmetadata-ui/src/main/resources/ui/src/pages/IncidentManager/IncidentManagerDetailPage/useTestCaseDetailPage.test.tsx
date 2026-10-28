@@ -40,6 +40,8 @@ const mockTestCaseFqn =
   'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals';
 
 const mockUseTestCase: UseTestCaseStoreInterface = {
+  selectedRunTimestamp: undefined,
+  setSelectedRunTimestamp: jest.fn(),
   testCase: MOCK_TEST_CASE_DATA,
   setTestCase: jest.fn(),
   isLoading: false,

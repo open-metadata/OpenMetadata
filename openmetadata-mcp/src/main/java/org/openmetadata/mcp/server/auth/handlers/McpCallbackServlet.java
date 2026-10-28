@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.server.auth.handlers;
 
 import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE;
+import static org.openmetadata.service.security.SecurityUtil.buildPrincipalClaimsMapping;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 
@@ -155,14 +156,7 @@ public class McpCallbackServlet extends HttpServlet {
     try {
       var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
       if (authConfig != null && authConfig.getJwtPrincipalClaimsMapping() != null) {
-        Map<String, String> mapping = new TreeMap<>();
-        for (String claimPair : authConfig.getJwtPrincipalClaimsMapping()) {
-          String[] parts = claimPair.split(":");
-          if (parts.length == 2) {
-            mapping.put(parts[0], parts[1]);
-          }
-        }
-        return mapping;
+        return buildPrincipalClaimsMapping(authConfig.getJwtPrincipalClaimsMapping());
       }
     } catch (Exception e) {
       LOG.warn("Failed to get claims mapping from config: {}", e.getMessage());

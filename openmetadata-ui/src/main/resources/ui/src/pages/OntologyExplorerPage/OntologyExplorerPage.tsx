@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   BadgeWithDot,
   Box,
   Button,
@@ -20,8 +21,11 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   ArrowRight,
+  Cube02,
+  CubeOutline,
   GitBranch01,
   Grid01,
+  LayoutGrid01,
   Plus,
   Share07,
 } from '@openmetadata/ui-core-components/icons';
@@ -37,10 +41,12 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import AllOntologiesGraphView from '../../components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView';
+import { OntologyGraphSearchSlotContext } from '../../components/governance/ontology/OntologyGraphView/OntologyGraphSearchSlot.context';
 import { OntologyModelStats } from '../../components/governance/ontology/OntologyGraphView/OntologyGraphView';
 import OntologyPublicationModal from '../../components/governance/ontology/OntologyPublicationModal/OntologyPublicationModal';
 import OntologyStudioHeader from '../../components/governance/ontology/OntologyStudioHeader/OntologyStudioHeader';
@@ -564,6 +570,8 @@ function aggregateEnabled(
     !scopes.isOntologyError
   );
 }
+
+const getHeaderActionSize = (isAiMode: boolean) => (isAiMode ? 'sm' : 'xs');
 
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
@@ -1189,6 +1197,8 @@ const OntologyExplorerPage: React.FC = () => {
     ? canCreateNativeConcept && editSurface === 'graph'
     : canCreateConcept;
 
+  const headerActionSize = getHeaderActionSize(isAiMode);
+
   function renderPrimaryAction() {
     if (mode === 'view' && canEditCurrentScope && !isAllOntologies) {
       return (
@@ -1196,7 +1206,7 @@ const OntologyExplorerPage: React.FC = () => {
           color="primary"
           data-testid="ontology-edit-ontology"
           iconTrailing={ArrowRight}
-          size="xs"
+          size={headerActionSize}
           onPress={() => handleModeChange('edit')}>
           {t('label.edit-entity', { entity: t('label.ontology') })}
         </Button>
@@ -1210,7 +1220,7 @@ const OntologyExplorerPage: React.FC = () => {
           data-testid="ontology-add-concept"
           iconLeading={Plus}
           isDisabled={!isNativeOntology && Boolean(conceptDraft)}
-          size="xs"
+          size={headerActionSize}
           onPress={handleAddConcept}>
           {t('label.add-entity', { entity: t('label.concept') })}
         </Button>
@@ -1223,7 +1233,7 @@ const OntologyExplorerPage: React.FC = () => {
           color="primary"
           data-testid="ontology-new-query"
           iconLeading={Plus}
-          size="xs"
+          size={headerActionSize}
           onPress={() => {
             setGeneratedQuery(undefined);
             setIsNewQueryRequested(true);
@@ -1238,6 +1248,47 @@ const OntologyExplorerPage: React.FC = () => {
     return null;
   }
 
+  function renderPublicationCount() {
+    if (!selectedOntology || !workingDiff.data) {
+      return null;
+    }
+    if (!isAiMode) {
+      return ` (${workingDiff.data.paging.total})`;
+    }
+
+    return (
+      <Badge
+        className="tw:ml-1.5"
+        color="brand"
+        data-testid="ontology-publication-count"
+        size="sm"
+        type="pill-color">
+        {workingDiff.data.paging.total}
+      </Badge>
+    );
+  }
+
+  function renderPublicationLabel() {
+    const label = t(
+      selectedOntology ? 'label.publish' : 'label.review-publish'
+    );
+    if (!isAiMode) {
+      return (
+        <>
+          {label}
+          {renderPublicationCount()}
+        </>
+      );
+    }
+
+    return (
+      <span className="tw:flex tw:items-center tw:whitespace-nowrap">
+        {label}
+        {renderPublicationCount()}
+      </span>
+    );
+  }
+
   function renderPublicationActions() {
     if ((!selectedOntology && !isAllOntologies) || isCreatingOntology) {
       return null;
@@ -1247,19 +1298,16 @@ const OntologyExplorerPage: React.FC = () => {
     return (
       <>
         <Button
-          color="primary"
+          color={isAiMode ? 'secondary-brand' : 'primary'}
           data-testid="ontology-publication-trigger"
           iconLeading={GitBranch01}
           isDisabled={
             isAllOntologies &&
             (studioScopes.isOntologyLoading || studioScopes.isOntologyError)
           }
-          size="xs"
+          size={headerActionSize}
           onPress={() => setIsPublicationOpen(true)}>
-          {t(selectedOntology ? 'label.publish' : 'label.review-publish')}
-          {selectedOntology && workingDiff.data
-            ? ` (${workingDiff.data.paging.total})`
-            : ''}
+          {renderPublicationLabel()}
         </Button>
         {isolatedCount > 0 && (
           <BadgeWithDot color="warning" size="sm">
@@ -1270,24 +1318,34 @@ const OntologyExplorerPage: React.FC = () => {
     );
   }
 
+  function renderLibraryTrigger() {
+    if (isCreatingOntology) {
+      return null;
+    }
+
+    return (
+      <Button
+        aria-haspopup="dialog"
+        aria-label={t('label.library')}
+        color="secondary"
+        data-testid="ontology-library-trigger"
+        iconLeading={
+          isAiMode ? Grid01 : <Grid01 className="tw:text-fg-brand-primary" />
+        }
+        size="sm"
+        tooltip={t('label.library')}
+        tooltipPlacement="bottom"
+        onPress={() => setIsLibraryOpen(true)}
+      />
+    );
+  }
+
   function renderHeader() {
     return (
       <OntologyStudioHeader
         actions={
           <Box align="center" gap={2} wrap="wrap">
-            {!isCreatingOntology && (
-              <Button
-                aria-haspopup="dialog"
-                aria-label={t('label.library')}
-                color="secondary"
-                data-testid="ontology-library-trigger"
-                iconLeading={<Grid01 className="tw:text-fg-brand-primary" />}
-                size="sm"
-                tooltip={t('label.library')}
-                tooltipPlacement="bottom"
-                onPress={() => setIsLibraryOpen(true)}
-              />
-            )}
+            {isAiMode ? null : renderLibraryTrigger()}
             {!isCreatingOntology && isNativeOntology && selectedOntology ? (
               <OntologyImportExportMenu
                 canImport={canEditNativeOntology}
@@ -1311,6 +1369,7 @@ const OntologyExplorerPage: React.FC = () => {
                 termCount={termCount}
               />
             ) : null}
+            {isAiMode ? renderLibraryTrigger() : null}
             {!isCreatingOntology ? renderPrimaryAction() : null}
             {renderPublicationActions()}
           </Box>
@@ -1331,6 +1390,25 @@ const OntologyExplorerPage: React.FC = () => {
         modes={modeTabs}
         scopeMenu={renderScopeMenu()}
         onModeChange={handleModeChange}
+      />
+    );
+  }
+
+  function renderSearchSlot() {
+    const hasNativeSlot =
+      isAiMode && !isGlossaryScope && (mode === 'view' || mode === 'edit');
+    if (!(isGlossaryScope && showDefaultSurface) && !hasNativeSlot) {
+      return null;
+    }
+
+    return (
+      <div
+        className={
+          isAiMode
+            ? 'tw:w-81 tw:shrink-0 tw:border-l tw:border-secondary tw:pl-3.5 tw:empty:hidden'
+            : 'tw:min-w-35 tw:max-w-70 tw:flex-1 tw:border-l tw:border-secondary tw:pl-3 tw:empty:hidden'
+        }
+        ref={setSearchSlot}
       />
     );
   }
@@ -1367,12 +1445,7 @@ const OntologyExplorerPage: React.FC = () => {
           </Box>
         }
         onSurfaceChange={handleSubModeChange}>
-        {isGlossaryScope && showDefaultSurface ? (
-          <div
-            className="tw:min-w-35 tw:max-w-70 tw:flex-1 tw:border-l tw:border-secondary tw:pl-3 tw:empty:hidden"
-            ref={setSearchSlot}
-          />
-        ) : null}
+        {renderSearchSlot()}
       </OntologyStudioSubBar>
     );
   }
@@ -1547,6 +1620,83 @@ const OntologyExplorerPage: React.FC = () => {
     );
   }
 
+  function renderNoOntologies() {
+    const newOntologyLabel = t('label.new-entity', {
+      entity: t('label.ontology'),
+    });
+    const startCreating = () => setIsCreatingOntology(true);
+
+    if (isAiMode) {
+      return (
+        <div
+          className="tw:relative tw:h-full tw:min-h-70 tw:overflow-hidden tw:rounded-lg tw:bg-primary"
+          data-testid="all-ontologies-empty">
+          <FeaturesPlaceholder
+            description={t('message.ontology-empty-description')}
+            features={[
+              {
+                key: 'relationships',
+                icon: <LayoutGrid01 className="tw:text-fg-brand-primary" />,
+                title: t('label.relationship-plural'),
+                description: t(
+                  'message.ontology-relationships-feature-description'
+                ),
+              },
+              {
+                key: 'the-graph',
+                icon: <Cube02 className="tw:text-fg-warning-primary" />,
+                title: t('label.the-graph'),
+                description: t('message.ontology-graph-feature-description'),
+              },
+              {
+                key: 'what-it-unlocks',
+                icon: <CubeOutline className="tw:text-fg-success-primary" />,
+                title: t('label.what-it-unlocks'),
+                description: t('message.ontology-unlocks-feature-description'),
+              },
+            ]}
+            footer={
+              canCreateOntology ? (
+                <Button
+                  color="primary"
+                  data-testid="all-ontologies-new-ontology"
+                  iconLeading={Plus}
+                  size="sm"
+                  onPress={startCreating}>
+                  {newOntologyLabel}
+                </Button>
+              ) : undefined
+            }
+            title={t('message.ontology-empty-title')}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className="tw:relative tw:h-full tw:min-h-70"
+        data-testid="all-ontologies-empty">
+        <NoDataPlaceholder
+          actions={
+            canCreateOntology
+              ? [
+                  {
+                    key: 'new-ontology',
+                    label: newOntologyLabel,
+                    iconLeading: Plus,
+                    onPress: startCreating,
+                  },
+                ]
+              : undefined
+          }
+          icon={<Share07 className="tw:text-fg-brand-primary" />}
+          title={t('label.no-entity', { entity: t('label.ontology-plural') })}
+        />
+      </div>
+    );
+  }
+
   function renderAllOntologies() {
     if (studioScopes.isOntologyLoading || allModels.isLoading) {
       return <Typography role="status">{t('label.loading')}</Typography>;
@@ -1556,30 +1706,7 @@ const OntologyExplorerPage: React.FC = () => {
     }
 
     if (availableOntologies.length === 0) {
-      return (
-        <div
-          className="tw:relative tw:h-full tw:min-h-70"
-          data-testid="all-ontologies-empty">
-          <NoDataPlaceholder
-            actions={
-              canCreateOntology
-                ? [
-                    {
-                      key: 'new-ontology',
-                      label: t('label.new-entity', {
-                        entity: t('label.ontology'),
-                      }),
-                      iconLeading: Plus,
-                      onPress: () => setIsCreatingOntology(true),
-                    },
-                  ]
-                : undefined
-            }
-            icon={<Share07 className="tw:text-fg-brand-primary" />}
-            title={t('label.no-entity', { entity: t('label.ontology-plural') })}
-          />
-        </div>
-      );
+      return renderNoOntologies();
     }
     if (!allModels.graph) {
       return null;
@@ -1803,7 +1930,9 @@ const OntologyExplorerPage: React.FC = () => {
         style={ONTOLOGY_STUDIO_STYLE}>
         {renderHeader()}
 
-        {renderWorkspace()}
+        <OntologyGraphSearchSlotContext.Provider value={searchSlot}>
+          {renderWorkspace()}
+        </OntologyGraphSearchSlotContext.Provider>
 
         {renderOverlays()}
       </main>
