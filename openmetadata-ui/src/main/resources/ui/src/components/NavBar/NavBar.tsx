@@ -51,7 +51,6 @@ import {
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
@@ -63,7 +62,6 @@ import { useDomainStore } from '../../hooks/useDomainStore';
 import { useSwitchActiveDomain } from '../../hooks/useSwitchActiveDomain';
 import { AsyncDeleteWebsocketResponse } from '../../interface/entity/asyncDelete.interface';
 import { getVersion } from '../../rest/miscAPI';
-import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import {
   hasNotificationPermission,
@@ -100,7 +98,6 @@ const DomainSelect = withSuspenseFallback(
 const cookieStorage = new CookieStorage();
 
 const NavBar = () => {
-  const { isTourOpen: isTourRoute } = useTourProvider();
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
   // handleDeleteEntityWebsocketResponse is recreated every render (it closes
@@ -135,12 +132,6 @@ const NavBar = () => {
     preferences: { isSidebarCollapsed },
     setPreference,
   } = useCurrentUserPreferences();
-
-  const isTourPage = useMemo(() => {
-    const pathname = location.pathname;
-
-    return pathname.includes(ROUTES.TOUR);
-  }, [location.pathname]);
 
   const isDataMarketplacePage = useMemo(() => {
     return location.pathname === ROUTES.DATA_MARKETPLACE;
@@ -321,13 +312,6 @@ const NavBar = () => {
     }
 
     const handleDocumentVisibilityChange = async () => {
-      if (
-        applicationRoutesClass.isProtectedRoute(location.pathname) &&
-        isTourRoute
-      ) {
-        return;
-      }
-
       // Check if we need to fetch based on cache timing
       // This is to block the API call for 1 hour
       const lastFetchTime = cookieStorage.getItem(LAST_VERSION_FETCH_TIME_KEY);
@@ -365,7 +349,7 @@ const NavBar = () => {
     return () => {
       removeEventListener('focus', handleDocumentVisibilityChange);
     };
-  }, [isTourRoute, version]);
+  }, [version]);
 
   useEffect(() => {
     const handleTaskNotification = (newActivity: string) => {
@@ -605,10 +589,8 @@ const NavBar = () => {
             {/* The home page used to own a search bar and a domain scope
               control of its own, so the navbar suppressed its own pair there.
               HomeLandingPage renders neither, so suppressing them now leaves
-              the home page with no way to search or to scope a domain at all.
-              The tour page keeps the suppression: it still mocks the old
-              landing page, and that whole page is being revamped. */}
-            {!isTourPage && !isDataMarketplacePage && (
+              the home page with no way to search or to scope a domain at all. */}
+            {!isDataMarketplacePage && (
               <>
                 <GlobalSearchBar />
                 {domainScopeSelector}

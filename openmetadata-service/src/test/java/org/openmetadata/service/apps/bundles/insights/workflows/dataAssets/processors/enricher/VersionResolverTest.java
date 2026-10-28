@@ -15,125 +15,189 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.jdbi3.EntityRepository;
 
-/**
- * Unit tests for the {@link VersionResolver}. The N+1 short-circuit path is exercised here
- * directly because it requires no I/O — the resolver inspects only the entity's {@code
- * updatedAt} relative to the window's start.
- *
- * <p>The version-walk path reaches into {@link
- * org.openmetadata.service.Entity#getEntityRepository(String)} and JDBI via {@code
- * listVersionsWithOffset}. That path is covered end-to-end by {@code
- * EnricherBulkVsHistoryPathEquivalenceIT} in the integration-tests module, which seeds real
- * entities with non-trivial version histories across 13 entity types and asserts the resolver's
- * output is consistent with the keyset-batch path. Re-creating that coverage here would require
- * threading a mock {@code EntityRepository} through several static factories — the integration
- * harness already gives stronger evidence, so the unit tests stay focused.
- */
 class VersionResolverTest {
-
   private static final long ONE_DAY = 86_400_000L;
-  private final VersionResolver resolver = new VersionResolver();
+  private static final long TODAY = Instant.parse("2026-01-15T00:00:00Z").toEpochMilli();
+  private static final long END = TODAY + ONE_DAY - 1;
+  private static final UUID ID = UUID.randomUUID();
+  private final EntityRepository<?> repository = mock(EntityRepository.class);
+  private final VersionResolver resolver = new VersionResolver(entityType -> repository);
+
+  @BeforeAll
+  static void registerEntityType() {
+    EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.putIfAbsent("table", Table.class);
+  }
 
   @Test
   void entityUnchangedBeforeWindow_returnsOneWindowCoveringFullRange() {
-    long today = TimestampUtils.getStartOfDayTimestamp(System.currentTimeMillis());
-    long windowEnd = TimestampUtils.getEndOfDayTimestamp(today);
-    long windowStart = TimestampUtils.subtractDays(today, 29);
+    Table entity = table(0.1, TODAY - 5 * ONE_DAY, TODAY - 5 * ONE_DAY);
+    List<VersionedWindow> windows = resolver.resolve(entity, context(TODAY - ONE_DAY));
 
-    EntityInterface<?> entity =
-        stubEntity(windowStart - 5 * ONE_DAY); // updated 5 days BEFORE window
-    EnrichmentContext context =
-        new EnrichmentContext(
-            "table", List.of("id", "name", "fullyQualifiedName"), windowStart, windowEnd);
+    assertEquals(1, windows.size());
+    assertSame(entity, windows.getFirst().entity());
+    assertEquals(VersionShape.LATEST_HYDRATED, windows.getFirst().shape());
+    assertEquals(List.of(TODAY, TODAY - ONE_DAY), days(windows));
+  }
 
-    List<VersionedWindow> windows = resolver.resolve(entity, context);
+  @Test
+  void lifecycleOnlyUpdate_preservesYesterdayForAnExistingInitialVersion() {
+    Table entity = table(0.1, TODAY + 3_600_000, TODAY - 10 * ONE_DAY);
+    history(entity);
 
-    assertEquals(1, windows.size(), "N+1 short-circuit emits a single window for the whole range");
-    VersionedWindow only = windows.get(0);
-    assertSame(entity, only.entity());
-    assertEquals(windowStart, only.windowStartTimestamp());
-    assertEquals(windowEnd, only.windowEndTimestamp());
+    assertEquals(List.of(TODAY, TODAY - ONE_DAY), days(resolve(entity, TODAY - ONE_DAY)));
+  }
+
+  @Test
+  void entityCreatedToday_doesNotGainYesterdaySnapshot() {
+    Table entity = table(0.1, TODAY + 3_600_000, TODAY + 3_600_000);
+    history(entity);
+
+    assertEquals(List.of(TODAY), days(resolve(entity, TODAY - ONE_DAY)));
+  }
+
+  @Test
+  void entityCreatedWithinBackfill_stopsAtCreationDay() {
+    Table entity = table(0.1, TODAY + 3_600_000, TODAY - 2 * ONE_DAY + 3_600_000);
+    history(entity);
+
     assertEquals(
-        VersionShape.LATEST_HYDRATED,
-        only.shape(),
-        "the N+1 short-circuit always carries the hydrated latest entity");
+        List.of(TODAY, TODAY - ONE_DAY, TODAY - 2 * ONE_DAY),
+        days(resolve(entity, TODAY - 7 * ONE_DAY)));
+  }
+
+  @Test
+  void entityCreatedBeforeBackfill_stopsAtWindowStart() {
+    Table entity = table(0.1, TODAY + 3_600_000, TODAY - 10 * ONE_DAY);
+    history(entity);
+
+    assertEquals(
+        List.of(TODAY, TODAY - ONE_DAY, TODAY - 2 * ONE_DAY),
+        days(resolve(entity, TODAY - 2 * ONE_DAY)));
+  }
+
+  @Test
+  void sameDayVersionTransitions_useOldestVersionForUncoveredDays() {
+    Table latest = table(0.2, TODAY + 7_200_000, TODAY - 10 * ONE_DAY);
+    Table oldest = table(0.1, TODAY + 3_600_000, null);
+    history(latest, oldest);
+
+    List<VersionedWindow> windows = resolve(latest, TODAY - ONE_DAY);
+
+    assertEquals(List.of(TODAY, TODAY - ONE_DAY), days(windows));
+    assertEquals(0.2, windows.getFirst().entity().getVersion());
+    assertEquals(VersionShape.LATEST_HYDRATED, windows.getFirst().shape());
+    assertEquals(0.1, windows.getLast().entity().getVersion());
+    assertEquals(VersionShape.HISTORICAL_RAW, windows.getLast().shape());
+  }
+
+  @Test
+  void historyBridgingWindow_hasNoDuplicateDays() {
+    Table latest = table(0.2, TODAY + 3_600_000, TODAY - 10 * ONE_DAY);
+    Table oldest = table(0.1, TODAY - 5 * ONE_DAY, null);
+    history(latest, oldest);
+
+    assertEquals(List.of(TODAY, TODAY - ONE_DAY), days(resolve(latest, TODAY - ONE_DAY)));
   }
 
   @Test
   void entityUpdatedExactlyOnWindowStart_doesNotShortCircuit() {
-    // updatedAt on the same day as the window start ⇒ N+1 must NOT fire (the entity was touched
-    // inside the window, so the version walk is the correct path). This test only checks that the
-    // resolver does not take the short-circuit; it does not exercise the walk itself (which
-    // requires real EntityRepository state — covered by EnricherBulkVsHistoryPathEquivalenceIT).
-    long today = TimestampUtils.getStartOfDayTimestamp(System.currentTimeMillis());
-    long windowEnd = TimestampUtils.getEndOfDayTimestamp(today);
-    long windowStart = TimestampUtils.subtractDays(today, 29);
+    Table latest = table(0.2, TODAY - ONE_DAY + 1, TODAY - 10 * ONE_DAY);
+    Table oldest = table(0.1, TODAY - 5 * ONE_DAY, null);
+    history(latest, oldest);
 
-    EntityInterface<?> entity = stubEntity(windowStart + 1); // 1ms after window start
+    List<VersionedWindow> windows = resolve(latest, TODAY - ONE_DAY);
 
-    EnrichmentContext context =
-        new EnrichmentContext("table", List.of("id"), windowStart, windowEnd);
-
-    // We expect the resolver to attempt the version walk and either succeed (if a real repo is
-    // wired up) or fail in a recognizable way. In this isolated unit context there's no repo, so
-    // we tolerate either outcome — what we assert is that we did NOT take the N+1 fast-path,
-    // which would have returned exactly one LATEST_HYDRATED window spanning the entire range.
-    try {
-      List<VersionedWindow> windows = resolver.resolve(entity, context);
-      // If the version walk somehow returned empty (no repository state), that's evidence the
-      // short-circuit was bypassed — fine.
-      if (windows.size() == 1) {
-        VersionedWindow only = windows.get(0);
-        // The short-circuit emits the full range; if we got one window with a tighter range,
-        // we're on the walk path. Tolerate both since this test isn't asserting the walk's
-        // output shape.
-        boolean fullRange =
-            only.windowStartTimestamp() == windowStart
-                && only.windowEndTimestamp() == windowEnd
-                && only.shape() == VersionShape.LATEST_HYDRATED;
-        if (fullRange) {
-          throw new AssertionError(
-              "Resolver short-circuited on an entity updated WITHIN the window — N+1 guard is "
-                  + "miswired (entityUpdatedDay < startTimestamp check should have failed).");
-        }
-      }
-    } catch (RuntimeException expectedAbsentRepo) {
-      // Acceptable: the walk path needs Entity.getEntityRepository(...) which is not wired up in
-      // this unit test. The fact that we entered the walk path is itself the assertion — we did
-      // not take the N+1 short-circuit.
-    }
+    assertEquals(List.of(TODAY, TODAY - ONE_DAY), days(windows));
+    assertEquals(TODAY - 1, windows.getFirst().windowStartTimestamp());
+    assertEquals(0.2, windows.getFirst().entity().getVersion());
   }
 
   @Test
-  void entityWithNullUpdatedAt_skipsShortCircuit() {
-    // Defensive: an entity without updatedAt has no day to compare to the window start. The
-    // resolver must skip the N+1 path rather than NPE on the unboxed null.
-    long now = System.currentTimeMillis();
-    long windowEnd = TimestampUtils.getEndOfDayTimestamp(now);
-    long windowStart = TimestampUtils.subtractDays(now, 7);
+  void entityWithNullUpdatedAt_readsTimestampedHistory() {
+    Table entity = table(0.1, null, TODAY - 10 * ONE_DAY);
+    Table stored = table(0.1, TODAY + 3_600_000, TODAY - 10 * ONE_DAY);
+    history(stored);
 
-    EntityInterface<?> entity = mock(EntityInterface.class);
-    when(entity.getUpdatedAt()).thenReturn(null);
-
-    EnrichmentContext context =
-        new EnrichmentContext("table", List.of("id"), windowStart, windowEnd);
-
-    try {
-      resolver.resolve(entity, context);
-    } catch (RuntimeException expected) {
-      // Falls through to the walk path which needs a real repository — irrelevant for this
-      // assertion. The point is: no NPE on null updatedAt.
-    }
+    assertEquals(List.of(TODAY, TODAY - ONE_DAY), days(resolve(entity, TODAY - ONE_DAY)));
   }
 
-  private static EntityInterface<?> stubEntity(long updatedAt) {
-    EntityInterface<?> entity = mock(EntityInterface.class);
-    when(entity.getUpdatedAt()).thenReturn(updatedAt);
-    return entity;
+  @Test
+  void legacyEntityWithoutCreationAudit_isNotBackdatedWithoutEvidence() {
+    Table entity = table(0.1, TODAY + 3_600_000, null);
+    history(entity);
+
+    assertEquals(List.of(TODAY), days(resolve(entity, TODAY - ONE_DAY)));
+  }
+
+  @Test
+  void emptyHistory_doesNotInventSnapshots() {
+    Table entity = table(0.1, TODAY + 3_600_000, TODAY - 10 * ONE_DAY);
+    history();
+
+    assertEquals(List.of(), days(resolve(entity, TODAY - ONE_DAY)));
+  }
+
+  @Test
+  void paginatedHistory_extendsTheOldestVersionAfterTheLastPage() {
+    Table latest = table(0.2, TODAY + 7_200_000, TODAY - 10 * ONE_DAY);
+    Table oldest = table(0.1, TODAY + 3_600_000, null);
+    when(repository.listVersionsWithOffset(ID, 100, 0)).thenReturn(page(100, latest));
+    when(repository.listVersionsWithOffset(ID, 100, 100)).thenReturn(page(200, oldest));
+    when(repository.listVersionsWithOffset(ID, 100, 200)).thenReturn(page(300));
+
+    List<VersionedWindow> windows = resolve(latest, TODAY - ONE_DAY);
+
+    assertEquals(List.of(TODAY, TODAY - ONE_DAY), days(windows));
+    assertEquals(0.1, windows.getLast().entity().getVersion());
+    assertEquals(VersionShape.HISTORICAL_RAW, windows.getLast().shape());
+  }
+
+  private List<VersionedWindow> resolve(Table entity, long start) {
+    return resolver.resolve(entity, context(start));
+  }
+
+  private EnrichmentContext context(long start) {
+    return new EnrichmentContext("table", List.of("id", "version"), start, END);
+  }
+
+  private List<Long> days(List<VersionedWindow> windows) {
+    return windows.stream()
+        .flatMap(window -> new SnapshotMaterializer().materialize(window, Map.of()).stream())
+        .map(snapshot -> (Long) snapshot.get("@timestamp"))
+        .toList();
+  }
+
+  private void history(Table... versions) {
+    when(repository.listVersionsWithOffset(ID, 100, 0)).thenReturn(page(100, versions));
+    when(repository.listVersionsWithOffset(ID, 100, 100)).thenReturn(page(200));
+  }
+
+  private EntityRepository.EntityHistoryWithOffset page(int nextOffset, Table... versions) {
+    List<Object> json =
+        Arrays.stream(versions).map(JsonUtils::pojoToJson).map(value -> (Object) value).toList();
+    return new EntityRepository.EntityHistoryWithOffset(
+        new EntityHistory().withEntityType("table").withVersions(json), nextOffset);
+  }
+
+  private Table table(double version, Long updatedAt, Long createdAt) {
+    return new Table()
+        .withId(ID)
+        .withName("my_table")
+        .withVersion(version)
+        .withUpdatedAt(updatedAt)
+        .withCreatedAt(createdAt);
   }
 }

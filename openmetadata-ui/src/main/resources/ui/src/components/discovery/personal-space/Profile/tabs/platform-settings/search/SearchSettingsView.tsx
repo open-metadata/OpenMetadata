@@ -14,10 +14,9 @@
 import { Box, Button } from '@openmetadata/ui-core-components';
 import { Plus, RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  FieldValueBoost,
   GlobalSettings,
   SearchSettings,
   TermBoost,
@@ -41,7 +40,6 @@ import {
 import ConfirmDialog from '../ConfirmDialog';
 import type { PlatformSettingsPageProps } from '../PlatformSettings.types';
 import { SettingsSkeleton } from '../SettingsFormLayout';
-import FieldValueBoostDialog from './FieldValueBoostDialog';
 import FieldValueBoostTable from './FieldValueBoostTable';
 import GlobalSearchSettings from './GlobalSearchSettings';
 import HybridWeightsSection from './HybridWeightsSection';
@@ -49,7 +47,9 @@ import SearchEntityCards from './SearchEntityCards';
 import SearchSection from './SearchSection';
 import {
   complementWeight,
-  upsertFieldValueBoost,
+  getReturningSearchState,
+  SearchSavedState,
+  toFieldValueBoostItemId,
   upsertTermBoost,
 } from './SearchSettings.utils';
 import TermBoostCard from './TermBoostCard';
@@ -58,6 +58,8 @@ import TermBoostCard from './TermBoostCard';
 const SearchSettingsView = ({
   onNavigate,
   onSetHeaderActions,
+  savedState,
+  onSaveState,
 }: PlatformSettingsPageProps) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
@@ -70,9 +72,6 @@ const SearchSettingsView = ({
   const [termBoosts, setTermBoosts] = useState<TermBoost[]>([]);
   const [termBoostsChanged, setTermBoostsChanged] = useState(false);
   const [showNewTermBoost, setShowNewTermBoost] = useState(false);
-  const [editingBoost, setEditingBoost] = useState<{
-    boost?: FieldValueBoost;
-  } | null>(null);
   const [confirm, setConfirm] = useState<'reset' | 'disable-columns' | null>(
     null
   );
@@ -109,11 +108,41 @@ const SearchSettingsView = ({
 
   // Once per mount: under StrictMode a second response would wipe unsaved term boosts.
   const hasLoadedRef = useRef(false);
+  // A load that resolves after the page is left (e.g. back into the boost form)
+  // must not clear the draft the form is now using.
+  const isMountedRef = useRef(false);
   useEffect(() => {
-    if (!hasLoadedRef.current) {
-      hasLoadedRef.current = true;
-      void fetchConfig();
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (hasLoadedRef.current) {
+      return;
     }
+    hasLoadedRef.current = true;
+    // Back from the field value boost form: resume the unsaved term boosts.
+    // Any other saved draft (e.g. an entity's, left by a breadcrumb) is dropped.
+    const resumed = getReturningSearchState(savedState);
+    if (!resumed) {
+      if (savedState) {
+        onSaveState?.(undefined);
+      }
+      void fetchConfig();
+    } else {
+      // Kept until restored, so a failed load does not lose the draft.
+      void fetchConfig().then((loaded) => {
+        if (loaded && isMountedRef.current && 'termBoosts' in resumed) {
+          setTermBoosts(resumed.termBoosts);
+          setTermBoostsChanged(true);
+          onSaveState?.(undefined);
+        }
+      });
+    }
+    // Load once per mount; the saved state is read on arrival only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchConfig]);
 
   /** Resolves to whether the save succeeded, so editors close only on success. */
@@ -216,25 +245,18 @@ const SearchSettingsView = ({
     });
   };
 
-  const handleSaveFieldValueBoost = async (boost: FieldValueBoost) => {
-    const saved = await updateGlobalSettings({
-      fieldValueBoosts: upsertFieldValueBoost(
-        config?.globalSettings?.fieldValueBoosts,
-        boost
-      ),
+  const openFieldValueBoostForm = (field?: string) => {
+    const state: SearchSavedState | undefined = termBoostsChanged
+      ? { termBoosts }
+      : undefined;
+    onSaveState?.(state);
+    onNavigate({
+      type: 'page',
+      page: 'search',
+      isEditing: true,
+      itemId: toFieldValueBoostItemId(undefined, field),
     });
-    if (saved) {
-      setEditingBoost(null);
-    }
   };
-
-  const fieldValueBoostOptions = useMemo(
-    () =>
-      config?.allowedFieldValueBoosts?.[0]?.fields?.map(
-        (field) => field.name
-      ) ?? [],
-    [config]
-  );
 
   if (isLoading || !config) {
     return <SettingsSkeleton rows={6} />;
@@ -290,7 +312,7 @@ const SearchSettingsView = ({
         count={termBoosts.length}
         testId="term-boosts"
         title={t('label.term-boost')}>
-        <Box direction="row" gap={3} wrap="wrap">
+        <Box direction="row" gap={3} justify="between" wrap="wrap">
           {termBoosts.map((boost) => (
             <TermBoostCard
               key={boost.value}
@@ -318,7 +340,7 @@ const SearchSettingsView = ({
               iconLeading={Plus}
               isDisabled={isUpdating}
               size="sm"
-              onPress={() => setEditingBoost({})}>
+              onPress={() => openFieldValueBoostForm()}>
               {t('label.add')}
             </Button>
           }
@@ -330,20 +352,11 @@ const SearchSettingsView = ({
               ),
             })
           }
-          onEdit={(boost) => setEditingBoost({ boost })}
+          onEdit={(boost) => openFieldValueBoostForm(boost.field)}
         />
       </Box>
 
       <SearchEntityCards onNavigate={onNavigate} />
-
-      {editingBoost && (
-        <FieldValueBoostDialog
-          boost={editingBoost.boost}
-          fieldOptions={fieldValueBoostOptions}
-          onClose={() => setEditingBoost(null)}
-          onSave={handleSaveFieldValueBoost}
-        />
-      )}
 
       <ConfirmDialog
         confirmLabel={t('label.reset')}

@@ -124,10 +124,12 @@ describe('ApplicationsClassBase', () => {
       const schema = await applicationsClassBase.importSchema('RdfIndexApp');
 
       expect(schema).toEqual(rdfIndexAppSchema);
-      expect(schema.properties.entities.default).toEqual([]);
-      expect(schema.properties.producerThreads.maximum).toBe(10);
-      expect(schema.properties.partitionSize).toBeUndefined();
-      expect(schema.properties.useDistributedIndexing).toBeUndefined();
+      expect(schema.properties).toMatchObject({
+        entities: { default: [] },
+        producerThreads: { maximum: 10 },
+      });
+      expect(schema.properties).not.toHaveProperty('partitionSize');
+      expect(schema.properties).not.toHaveProperty('useDistributedIndexing');
     });
   });
 

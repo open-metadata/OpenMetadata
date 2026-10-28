@@ -132,7 +132,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         key: 'taskType',
         render: (taskType) => <RichTextEditorPreviewerV1 markdown={taskType} />,
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<Task>(),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
