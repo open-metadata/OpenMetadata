@@ -1278,6 +1278,31 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
+  void list_includeAllResolvesASoftDeletedParent(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("soft_del_parent"), ns));
+    Metric child = createChild(ns, "soft_del_child", parent);
+    Map<String, String> params = new HashMap<>();
+    params.put("recursive", "true");
+    params.put("hardDelete", "false");
+    SdkClients.adminClient().metrics().delete(parent.getId().toString(), params);
+
+    Metric fetched =
+        assertDoesNotThrow(
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.GET,
+                        "/v1/metrics/" + child.getId() + "?fields=parent&include=all",
+                        null,
+                        Metric.class),
+            "A child whose parent was soft-deleted must still load with include=all");
+
+    assertEquals(parent.getId(), fetched.getParent().getId());
+    assertTrue(fetched.getParent().getDeleted());
+  }
+
+  @Test
   void get_softDeletedChildExcludedFromChildrenCount(TestNamespace ns) {
     Metric parent = createEntity(createRequest(ns.prefix("soft_parent"), ns));
     Metric child = createChild(ns, "soft_child", parent);
