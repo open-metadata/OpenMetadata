@@ -18,11 +18,15 @@ import {
   clickOnForeignKeySelector,
   clickOnSortKeySelector,
   clickOnUniqueKeySelector,
-  pickSelectOption,
   removeKeyColumns,
 } from '../../constant/tableConstraint';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  pickSelectOption,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login

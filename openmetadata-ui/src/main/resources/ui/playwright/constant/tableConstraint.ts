@@ -10,32 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
+import { pickSelectOption } from '../utils/common';
 
 // The constraint modal's option lists can open at a provisional position and jump into place a few
 // frames later, so a pointer pick can press one option and release on the page or on another option.
-// These helpers pick with the keyboard, which does not depend on where the list is drawn.
-
-/**
- * Picks a Select option by focusing it and pressing Enter, retrying until `selected` shows. A
- * repeat after the pick took is a no-op, so the retry cannot change a correct selection.
- */
-export const pickSelectOption = async (
-  trigger: Locator,
-  option: Locator,
-  selected: Locator
-) => {
-  await expect(async () => {
-    if (await selected.isVisible()) {
-      return;
-    }
-    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
-      await trigger.press('Enter', { timeout: 2_000 });
-    }
-    await option.press('Enter', { timeout: 2_000 });
-    await expect(selected).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 15_000 });
-};
+// These helpers pick with the keyboard (`pickSelectOption`), which does not depend on where the list is drawn.
 
 const selectConstraintType = async (page: Page, type: RegExp) => {
   const trigger = page
@@ -72,6 +52,7 @@ export const addKeyColumns = async (
 ) => {
   const field = page.getByTestId(testId);
   const input = field.getByRole('combobox');
+  // react-aria's en-US label for a ComboBox's listbox.
   const suggestions = page.getByRole('listbox', { name: 'Suggestions' });
   for (const column of columns) {
     const chip = field
