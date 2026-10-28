@@ -2,7 +2,8 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-21 (initial); v2 2026-10-25 (placeholder sources and Javadoc jars,
-  single root `release` profile)
+  single root `release` profile); v3 2026-10-28 (real sources and Javadoc jars again, after
+  Sonatype raised the organization's monthly limits)
 - **Deciders:** sonika-shah
 - **Guard:** `reviewer` — the module list in `.github/workflows/publish-maven-package.yml`
 - **Related:** `.github/workflows/publish-maven-package.yml`, `.github/workflows/docker-k8s-operator.yml`
@@ -35,13 +36,10 @@ distributions all build these modules from source; they do not resolve them from
   client, the root for everything), or the jar cannot be resolved.
 - Extra artifacts inside a published module are not controlled by the list: the Java client's
   `jar-with-dependencies` is built but not attached.
-- The `-sources.jar` and `-javadoc.jar` that Maven Central requires are placeholders holding only
-  `docs/maven-central-placeholder/README.md`. Central accepts placeholders, and the real ones were
-  most of the remaining release size. Source is on GitHub at the version tag, and the REST API
-  reference is each server's `/docs` page.
-- The `release` profile lives only in the root pom; modules must not declare their own. It binds
-  the placeholder jars through `pluginManagement`, so only jar-packaged modules get them (pom-only
-  parents publish just the `.pom`, as Central requires).
+- Each published jar module ships real `-sources.jar` and `-javadoc.jar`, which Maven Central
+  requires. With only the listed modules they fit the organization's monthly limits.
+- The `release` profile lives only in the root pom; modules must not declare their own. The source
+  and Javadoc plugins skip pom-only parents, which publish just the `.pom`.
 - `maven.deploy.skip` does not stop this plugin and must not be relied on.
 
 ## Consequences
