@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TFunction } from 'i18next';
-
 /**
  * A severity enum value (`Severity2`) as the translated word with its level,
  * e.g. "Sévérité 2", rather than the English enum name.
  */
-export const getSeverityLabel = (severity: string, t: TFunction) =>
-  `${t('label.severity')} ${severity.replace(/\D/g, '')}`;
+export const getSeverityLabel = (
+  severity: string,
+  t: (key: string) => string
+) => `${t('label.severity')} ${severity.replace(/\D/g, '')}`;

@@ -305,8 +305,8 @@ export const getPageAfterEmptyRead = (
     : undefined;
 
 /**
- * Sort params for the groups request. The endpoint's own default field is
- * left out, so the usual request stays bare.
+ * The groups' order out of the query string. An unknown field or direction
+ * falls back to the default order.
  */
 export const parseIncidentGroupSort = (
   field: unknown,
@@ -319,6 +319,10 @@ export const parseIncidentGroupSort = (
     type === 'asc' || type === 'desc' ? type : DEFAULT_INCIDENT_GROUP_SORT.type,
 });
 
+/**
+ * Sort params for the groups request. The endpoint's own default field is
+ * left out, so the usual request stays bare.
+ */
 export const getIncidentGroupSortQuery = ({
   field,
   type,
