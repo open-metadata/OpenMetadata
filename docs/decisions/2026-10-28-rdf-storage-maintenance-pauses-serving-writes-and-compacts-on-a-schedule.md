@@ -1,7 +1,7 @@
 # RDF storage maintenance pauses serving writes and compacts the serving dataset on a schedule
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-28 (initial)
+- **Revisions:** v1 2026-10-28 (initial) · v2 2026-10-28 (checks every 5 minutes; urgent compaction)
 - **Deciders:** Platform
 - **Guard:** `RdfStorageMaintenanceIT`, `RdfStorageMaintenanceServiceTest`, `FusekiCompactionTest`,
   `RdfIndexAppTest`
@@ -48,3 +48,9 @@ dead-lettered, marking the projection degraded until a full rebuild.
 - Any new code path that writes the serving dataset must go through `writeActive`, or it bypasses
   the pause and may block on Fuseki during a compaction.
 - Revisit the interval if a deployment grows faster than its volume allows within one interval.
+
+## Amendment
+
+v2: the maintenance check runs every 5 minutes, not 15, and also compacts before the interval when
+the store reports it is running out of space. Both are recorded in
+ADR:2026-10-28-the-fuseki-image-refuses-writes-below-a-free-space-reserve-and-reports-its-volume.
