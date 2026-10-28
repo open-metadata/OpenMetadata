@@ -284,9 +284,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   private Response withVisibleEvidence(SecurityContext securityContext, Response response) {
     Response visible = response;
     if (response.getEntity() instanceof ContextMemory memory) {
-      ContextMemory copy = JsonUtils.deepCopy(memory, ContextMemory.class);
-      ContextMemoryEvidenceAccess.redactUnviewableQueries(
-          List.of(copy), authorizer, securityContext);
+      ContextMemory copy =
+          ContextMemoryEvidenceAccess.redactedCopy(memory, authorizer, securityContext);
       visible = Response.fromResponse(response).entity(copy).build();
     }
     return visible;

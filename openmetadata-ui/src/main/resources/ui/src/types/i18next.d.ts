@@ -19,25 +19,6 @@ declare module 'i18next' {
     returnEmptyString: false;
     returnObjects: false;
     defaultNS: 'translation';
-    resources: {
-      translation: {
-        [key: string]: string;
-      };
-    };
-  }
-}
-
-declare module 'react-i18next' {
-  interface CustomTypeOptions {
-    returnNull: false;
-    returnEmptyString: false;
-    returnObjects: false;
-    defaultNS: 'translation';
-    resources: {
-      translation: {
-        [key: string]: string;
-      };
-    };
   }
 }
 

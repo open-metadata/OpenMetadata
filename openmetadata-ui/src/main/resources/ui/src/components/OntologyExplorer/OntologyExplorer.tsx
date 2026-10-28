@@ -57,6 +57,7 @@ import FeaturesPlaceholder from '../common/EmptyPlaceholder/FeaturesPlaceholder'
 import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import SomethingWentWrongPlaceholder from '../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import { useGenericContext } from '../Customization/GenericProvider/GenericContext';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
 import ExportGraphPanel from './ExportGraphPanel';
@@ -111,11 +112,6 @@ const STUDIO_GRAPH_BACKDROP_CLASS =
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
   'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
 
-interface GraphEmptyStateProps {
-  readonly message: string;
-  readonly testId: string;
-}
-
 type GraphEmptyStateKind =
   | 'fetch-error'
   | 'loading'
@@ -128,18 +124,6 @@ type GraphEmptyStateKind =
   | 'null-state'
   | 'no-matching-relation'
   | 'content';
-
-function GraphEmptyState({ message, testId }: GraphEmptyStateProps) {
-  return (
-    <div
-      className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
-      data-testid={testId}>
-      <Typography as="p" className="tw:text-center tw:text-tertiary">
-        {message}
-      </Typography>
-    </div>
-  );
-}
 
 function OntologyOnboardingEmptyState() {
   const { t } = useTranslation();
@@ -233,9 +217,10 @@ function FetchErrorGraphEmptyState() {
   const { t } = useTranslation();
 
   return (
-    <GraphEmptyState
-      message={t('server.entity-fetch-error', { entity: t('label.graph') })}
-      testId="ontology-graph-error"
+    <SomethingWentWrongPlaceholder
+      className="tw:z-3"
+      data-testid="ontology-graph-error"
+      description={t('server.entity-fetch-error', { entity: t('label.graph') })}
     />
   );
 }
@@ -1079,11 +1064,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0 tw:select-none">
           <ErrorBoundary
             fallback={
-              <GraphEmptyState
-                message={t('server.entity-fetch-error', {
+              <SomethingWentWrongPlaceholder
+                className="tw:z-3"
+                data-testid="ontology-graph-render-error"
+                description={t('server.entity-fetch-error', {
                   entity: t('label.graph'),
                 })}
-                testId="ontology-graph-render-error"
               />
             }>
             {scope === 'global' && explorationMode === 'data' ? (

@@ -790,6 +790,19 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateReferenceCopies(
+      List<String> indexNames,
+      List<String> nestedPaths,
+      List<String> objectPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateReferenceCopies(
+        indexNames, nestedPaths, objectPaths, field, values, updates);
+  }
+
+  @Override
   public void updateByFqnPrefix(
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
     entityManager.updateByFqnPrefix(indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
