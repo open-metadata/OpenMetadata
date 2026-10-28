@@ -19,6 +19,10 @@ import org.openmetadata.schema.configuration.LLMConfiguration;
 public abstract class LLMCompletionClient {
   static final int DEFAULT_MAX_CONCURRENT_REQUESTS = 5;
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String JSON_RETRY_INSTRUCTION =
+      "\n\nThe previous response was not valid for the requested JSON format. "
+          + "Repeat the task and return ONLY the requested JSON array, with no prose or markdown. "
+          + "Keep the fields and decision rules specified above; do not substitute an explanation.";
 
   // Mirrors CAIP's BaseBuilder.SAMPLING_PARAM_REJECTORS: these models fail the whole call when a
   // request carries `temperature` (Bedrock: "`temperature` is deprecated for this model.").
@@ -79,7 +83,11 @@ public abstract class LLMCompletionClient {
       parsed = parseArray(complete(systemPrompt, userPrompt).text(), elementType);
     } catch (LLMCompletionException firstFailure) {
       LOG.warn("LLM returned unparseable JSON; retrying once", firstFailure);
-      parsed = parseArray(complete(systemPrompt, userPrompt).text(), elementType);
+      String retryPrompt =
+          firstFailure.getCause() instanceof JsonProcessingException
+              ? systemPrompt + JSON_RETRY_INSTRUCTION
+              : systemPrompt;
+      parsed = parseArray(complete(retryPrompt, userPrompt).text(), elementType);
     }
     return parsed;
   }
