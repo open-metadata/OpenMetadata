@@ -65,6 +65,8 @@ export interface EdgeDetails {
   docId?: string;
   extraInfo?: EdgeDetails;
   tempLineageTables?: TempLineageTable[];
+  /** Synthesised from one `tempLineageTables` hop; not a stored lineage edge. */
+  isTempLineageHop?: boolean;
   createdAt?: number;
   createdBy?: string;
   updatedAt?: number;

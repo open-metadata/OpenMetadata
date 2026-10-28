@@ -17,11 +17,14 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Node } from 'reactflow';
+import { Node, ReactFlowInstance } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
+import { User } from '../../../generated/entity/teams/user';
+import { usePersistentStorage } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { LineageNodeType } from '../../../interface/lineage.interface';
 import {
@@ -32,6 +35,11 @@ import tableClassBase from '../../../utils/TableClassBase';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { Lineage } from './Lineage';
 import { useLineageHandlers } from './LineageHandlersContext';
+
+// ELK is a third-party layout engine; position is not what these tests check.
+jest.mock('../../../utils/Lineage/Layout/ElkLayoutUtils', () => ({
+  positionNodesUsingElk: jest.fn(async (nodes, edges) => ({ nodes, edges })),
+}));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -168,6 +176,21 @@ const UpdateEntityDataConsumer = () => {
       Update Entity
     </button>
   );
+};
+
+const ReactFlowInitConsumer = () => {
+  const { onInitReactFlow } = useLineageHandlers();
+
+  useEffect(() => {
+    onInitReactFlow({
+      viewportInitialized: true,
+      setCenter: jest.fn(),
+      fitView: jest.fn(),
+      getZoom: jest.fn(() => 1),
+    } as unknown as ReactFlowInstance);
+  }, [onInitReactFlow]);
+
+  return null;
 };
 
 const seenHandlers: ReturnType<typeof useLineageHandlers>[] = [];
@@ -328,6 +351,97 @@ describe('Lineage integration', () => {
     });
 
     expect(seenHandlers[seenHandlers.length - 1]).toBe(initial);
+  });
+
+  it('hides and shows temp tables from the user preference without refetching', async () => {
+    useApplicationStore.setState({
+      currentUser: { id: 'u-admin', name: 'admin' } as User,
+    });
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue({
+      nodes: {
+        a: {
+          entity: {
+            id: 'id-a',
+            type: 'table',
+            entityType: 'table',
+            name: 'tableA',
+            fullyQualifiedName: 'svc.db.s.t1',
+            columns: [],
+          },
+          paging: {},
+        },
+        b: {
+          entity: {
+            id: 'id-b',
+            type: 'table',
+            entityType: 'table',
+            name: 'tableB',
+            fullyQualifiedName: 'svc.db.s.tableB',
+            columns: [],
+          },
+          paging: {},
+        },
+      },
+      downstreamEdges: {
+        ab: {
+          fromEntity: {
+            id: 'id-a',
+            type: 'table',
+            fullyQualifiedName: 'svc.db.s.t1',
+          },
+          toEntity: {
+            id: 'id-b',
+            type: 'table',
+            fullyQualifiedName: 'svc.db.s.tableB',
+          },
+          tempLineageTables: [
+            { fromEntity: 'svc.db.s.t1', toEntity: 'tmp_staging' },
+            { fromEntity: 'tmp_staging', toEntity: 'svc.db.s.tableB' },
+          ],
+        },
+      },
+      upstreamEdges: {},
+    });
+    const drawnNodeIds = () =>
+      useLineageStore.getState().nodes.map((node) => node.id);
+
+    render(
+      <MemoryRouter>
+        <Lineage
+          entity={entityFixture}
+          entityFqn="svc.db.s.t1"
+          entityType={EntityType.TABLE}
+          isPlatformLineage={false}>
+          <ReactFlowInitConsumer />
+        </Lineage>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(drawnNodeIds()).toContain('temp_tmp_staging'));
+
+    act(() => {
+      usePersistentStorage
+        .getState()
+        .setUserPreference('admin', { showLineageTempTables: false });
+    });
+
+    await waitFor(() =>
+      expect(drawnNodeIds()).not.toContain('temp_tmp_staging')
+    );
+
+    expect(drawnNodeIds()).toEqual(expect.arrayContaining(['id-a', 'id-b']));
+
+    act(() => {
+      usePersistentStorage
+        .getState()
+        .setUserPreference('admin', { showLineageTempTables: true });
+    });
+
+    await waitFor(() => expect(drawnNodeIds()).toContain('temp_tmp_staging'));
+
+    expect(getLineageDataByFQN).toHaveBeenCalledTimes(1);
+
+    usePersistentStorage.getState().clearUserPreference('admin');
   });
 
   it('updateEntityData imperatively syncs the entity context to the store', async () => {

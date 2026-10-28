@@ -44,6 +44,7 @@ import {
 } from './EntityLineageNodeUtils';
 import {
   addLineageHandler,
+  applyTempTableVisibility,
   getColumnFunctionValue,
   parseLineageData,
 } from './EntityLineagePureUtils';
@@ -2098,15 +2099,16 @@ describe('extractTempLineageNodes (via parseLineageData)', () => {
     });
 
     const { edges } = parseLineageData(data, 'db.tableA', 'db.tableA');
+    const hops = edges.filter((e) => e.isTempLineageHop);
 
-    expect(edges).toHaveLength(2);
-    expect(edges[0].fromEntity.fullyQualifiedName).toBe('db.tableA');
-    expect(edges[0].toEntity.fullyQualifiedName).toBe('tmp_staging');
-    expect(edges[1].fromEntity.fullyQualifiedName).toBe('tmp_staging');
-    expect(edges[1].toEntity.fullyQualifiedName).toBe('db.tableB');
+    expect(hops).toHaveLength(2);
+    expect(hops[0].fromEntity.fullyQualifiedName).toBe('db.tableA');
+    expect(hops[0].toEntity.fullyQualifiedName).toBe('tmp_staging');
+    expect(hops[1].fromEntity.fullyQualifiedName).toBe('tmp_staging');
+    expect(hops[1].toEntity.fullyQualifiedName).toBe('db.tableB');
   });
 
-  it('removes the original edge when it is expanded into temp hop edges', () => {
+  it('keeps the original edge so the temp hops can be hidden again', () => {
     const data = makeLineageData({
       e1: {
         fromEntity: {
@@ -2124,8 +2126,102 @@ describe('extractTempLineageNodes (via parseLineageData)', () => {
     });
 
     const { edges } = parseLineageData(data, 'db.tableA', 'db.tableA');
+    const original = edges.filter((e) => e.tempLineageTables?.length);
 
-    expect(edges.some((e) => e.tempLineageTables?.length)).toBe(false);
+    expect(original).toHaveLength(1);
+    expect(original[0].isTempLineageHop).toBeUndefined();
+  });
+
+  describe('applyTempTableVisibility', () => {
+    const throughTemp = () =>
+      parseLineageData(
+        makeLineageData({
+          e1: {
+            fromEntity: {
+              id: 'id-a',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableA',
+            },
+            toEntity: {
+              id: 'id-b',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableB',
+            },
+            tempLineageTables: [
+              { fromEntity: 'db.tableA', toEntity: 'tmp_staging' },
+              { fromEntity: 'tmp_staging', toEntity: 'db.tableB' },
+            ],
+          },
+        }),
+        'db.tableA',
+        'db.tableA'
+      );
+    const edgeKeys = (edges: EdgeDetails[]) =>
+      edges.map(
+        (e) =>
+          `${e.fromEntity.fullyQualifiedName}->${e.toEntity.fullyQualifiedName}`
+      );
+
+    it('draws the temp tables between the two tables when shown', () => {
+      const shown = applyTempTableVisibility(throughTemp(), true);
+
+      expect(edgeKeys(shown.edges ?? [])).toEqual([
+        'db.tableA->tmp_staging',
+        'tmp_staging->db.tableB',
+      ]);
+      expect(
+        (shown.nodes ?? []).filter((n) => n.isTempTable).map((n) => n.id)
+      ).toEqual(['temp_tmp_staging']);
+    });
+
+    it('draws the direct edge and no temp tables when hidden', () => {
+      const hidden = applyTempTableVisibility(throughTemp(), false);
+
+      expect(edgeKeys(hidden.edges ?? [])).toEqual(['db.tableA->db.tableB']);
+      expect((hidden.nodes ?? []).some((n) => n.isTempTable)).toBe(false);
+    });
+
+    it('does not duplicate the direct edge when a hop joins two real tables', () => {
+      const lineage = parseLineageData(
+        makeLineageData({
+          e1: {
+            fromEntity: {
+              id: 'id-a',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableA',
+            },
+            toEntity: {
+              id: 'id-b',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableB',
+            },
+            tempLineageTables: [
+              { fromEntity: 'db.tableA', toEntity: 'db.tableB' },
+            ],
+          },
+        }),
+        'db.tableA',
+        'db.tableA'
+      );
+
+      expect(
+        edgeKeys(applyTempTableVisibility(lineage, false).edges ?? [])
+      ).toEqual(['db.tableA->db.tableB']);
+      expect(
+        edgeKeys(applyTempTableVisibility(lineage, true).edges ?? [])
+      ).toEqual(['db.tableA->db.tableB']);
+    });
+
+    it('returns the same object when there is nothing to project', () => {
+      const lineage = parseLineageData(
+        makeLineageData({}),
+        'db.tableA',
+        'db.tableA'
+      );
+
+      expect(applyTempTableVisibility(lineage, true)).toBe(lineage);
+      expect(applyTempTableVisibility(lineage, false)).toBe(lineage);
+    });
   });
 
   it('preserves regular edges that have no tempLineageTables', () => {

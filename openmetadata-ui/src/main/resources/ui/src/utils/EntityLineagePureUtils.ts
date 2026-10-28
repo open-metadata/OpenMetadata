@@ -39,6 +39,7 @@ import type { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
 import type {
   EdgeDetails,
+  EntityLineageResponse,
   LineageData,
   LineageNodeType,
 } from '../interface/lineage.interface';
@@ -500,6 +501,7 @@ const extractTempLineageNodes = (
         newTempNodes
       );
       newEdges.push({
+        isTempLineageHop: true,
         fromEntity: {
           id: fromNode.id,
           type: fromNode.type ?? EntityType.TABLE,
@@ -567,20 +569,44 @@ export const parseLineageData = (
     (node) => node.fullyQualifiedName === entityFqn
   ) as LineageNodeType;
 
-  const baseEdges = tempEdges.length
-    ? finalEdges.filter((e) => !e.tempLineageTables?.length)
-    : finalEdges;
-
+  // The edges that were expanded stay alongside their hops, so the temp tables
+  // can be hidden without refetching; applyTempTableVisibility picks one view.
   return {
     nodes: [...finalNodes, ...tempNodes],
-    edges: [...baseEdges, ...tempEdges],
+    edges: [...finalEdges, ...tempEdges],
     entity,
   };
 };
 
+/**
+ * The lineage to draw: temp tables between two tables when `show`, otherwise
+ * the direct edge between them. Returns the input unchanged when it has no
+ * temp hops.
+ */
+export const applyTempTableVisibility = (
+  lineage: EntityLineageResponse,
+  show: boolean
+): EntityLineageResponse => {
+  const edges = lineage.edges ?? [];
+  if (!edges.some((edge) => edge.isTempLineageHop)) {
+    return lineage;
+  }
+
+  return show
+    ? {
+        ...lineage,
+        edges: edges.filter((edge) => !edge.tempLineageTables?.length),
+      }
+    : {
+        ...lineage,
+        nodes: (lineage.nodes ?? []).filter((node) => !node.isTempTable),
+        edges: edges.filter((edge) => !edge.isTempLineageHop),
+      };
+};
+
 export const getLineageConfigFormValues = (
   config: LineageConfig
-): LineageConfigFormValues => ({
+): Omit<LineageConfigFormValues, 'showTempTables'> => ({
   upstreamDepth: String(config.upstreamDepth ?? ''),
   downstreamDepth: String(config.downstreamDepth ?? ''),
   nodesPerLayer: String(config.nodesPerLayer ?? ''),

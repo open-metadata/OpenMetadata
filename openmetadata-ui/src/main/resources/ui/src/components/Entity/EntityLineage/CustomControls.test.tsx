@@ -425,6 +425,26 @@ describe('CustomControls', () => {
     });
   });
 
+  it('does not update the lineage config when the dialog saves it unchanged', async () => {
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      mockStoreImplementation({ lineageConfig: { ...mockLineageConfig } })
+    );
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    fireEvent.click(screen.getByTestId('lineage-config'));
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('lineage-config-modal')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(mockOnLineageConfigUpdate).not.toHaveBeenCalled();
+  });
+
   it('toggles fullscreen mode when fullscreen button is clicked', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,

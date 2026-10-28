@@ -55,7 +55,12 @@ export type LineageConfigDepthField =
   | 'downstreamDepth'
   | 'nodesPerLayer';
 
-export type LineageConfigFormValues = Record<LineageConfigDepthField, string>;
+export type LineageConfigFormValues = Record<
+  LineageConfigDepthField,
+  string
+> & {
+  showTempTables: boolean;
+};
 
 export interface LineageConfigField {
   name: LineageConfigDepthField;

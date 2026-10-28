@@ -61,6 +61,7 @@ import {
   EntityReference,
   LineageDetails,
 } from '../../../generated/type/entityLineage';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
   LineagePlatformView,
   LineageTimeRange,
@@ -117,6 +118,7 @@ import {
 } from '../../../utils/EntityLineageNodeUtils';
 import {
   addLineageHandler,
+  applyTempTableVisibility,
   parseLineageData,
   removeLineageHandler,
   withoutLineageEdges,
@@ -677,11 +679,21 @@ export const Lineage = ({
     };
   }, [location.search]);
 
+  const {
+    preferences: { showLineageTempTables = true },
+  } = useCurrentUserPreferences();
+  // What the canvas draws; edits keep reading `entityLineage`, which holds both
+  // the stored edges and the temp-table hops expanded from them.
+  const visibleLineage = useMemo(
+    () => applyTempTableVisibility(entityLineage, showLineageTempTables),
+    [entityLineage, showLineageTempTables]
+  );
+
   const cachedEntityEdgesAndMaps = useMemo(() => {
     const seen = new Set<string>();
     const allNodes = [
-      ...(entityLineage.nodes ?? []),
-      ...(entityLineage.entity ? [entityLineage.entity] : []),
+      ...(visibleLineage.nodes ?? []),
+      ...(visibleLineage.entity ? [visibleLineage.entity] : []),
     ].filter((n) => {
       if (seen.has(n.id)) {
         return false;
@@ -695,11 +707,11 @@ export const Lineage = ({
       allNodes,
       ...createEntityEdgesAndMaps(
         allNodes,
-        entityLineage.edges ?? [],
+        visibleLineage.edges ?? [],
         entityFqn
       ),
     };
-  }, [entityLineage, entityFqn]);
+  }, [visibleLineage, entityFqn]);
 
   const cachedColumnEdges = useMemo(() => {
     if (!isColumnLevelLineage) {
@@ -711,11 +723,11 @@ export const Lineage = ({
 
     return createColumnEdges(
       cachedEntityEdgesAndMaps.allNodes,
-      entityLineage.edges ?? []
+      visibleLineage.edges ?? []
     );
   }, [
     cachedEntityEdgesAndMaps.allNodes,
-    entityLineage.edges,
+    visibleLineage.edges,
     isColumnLevelLineage,
   ]);
 
@@ -737,7 +749,7 @@ export const Lineage = ({
 
     return createNodes(
       allNodes,
-      entityLineage.edges ?? [],
+      visibleLineage.edges ?? [],
       entityFqn,
       incomingMap,
       outgoingMap,
@@ -745,7 +757,7 @@ export const Lineage = ({
     );
   }, [
     cachedEdgesAndMaps,
-    entityLineage.edges,
+    visibleLineage.edges,
     entityFqn,
     isColumnLevelLineage,
   ]);
@@ -780,10 +792,14 @@ export const Lineage = ({
         return;
       }
 
+      const lineageToDraw = applyTempTableVisibility(
+        lineageData,
+        showLineageTempTables
+      );
       const seen = new Set<string>();
       const allNodes = [
-        ...(lineageData.nodes ?? []),
-        ...(lineageData.entity ? [lineageData.entity] : []),
+        ...(lineageToDraw.nodes ?? []),
+        ...(lineageToDraw.entity ? [lineageToDraw.entity] : []),
       ].filter((n) => {
         if (seen.has(n.id)) {
           return false;
@@ -806,7 +822,7 @@ export const Lineage = ({
           cachedEdgesAndMaps,
           cachedNodes,
           allNodes,
-          lineageData.edges,
+          lineageToDraw.edges,
           entityFqn,
           isColumnLevelLineage
         );
@@ -863,9 +879,21 @@ export const Lineage = ({
       setNodes,
       setEdges,
       setColumnsHavingLineage,
+      showLineageTempTables,
       zoomValue,
     ]
   );
+
+  // Showing or hiding temp tables redraws what is loaded: no refetch, so
+  // expanded nodes and loaded pages stay.
+  const drawnTempTablesRef = useRef(showLineageTempTables);
+  useEffect(() => {
+    if (drawnTempTablesRef.current === showLineageTempTables) {
+      return;
+    }
+    drawnTempTablesRef.current = showLineageTempTables;
+    redrawLineage(entityLineage);
+  }, [entityLineage, redrawLineage, showLineageTempTables]);
 
   const updateLineageData = useCallback(
     (

@@ -17,11 +17,13 @@ import {
   Input,
   Modal,
   ModalOverlay,
+  Toggle,
 } from '@openmetadata/ui-core-components';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { LINEAGE_CONFIG_FIELDS } from '../../../constants/Lineage.constants';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { getLineageConfigFormValues } from '../../../utils/EntityLineagePureUtils';
 import {
   LineageConfigFormValues,
@@ -35,25 +37,39 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation();
+  const {
+    preferences: { showLineageTempTables = true },
+    setPreference,
+  } = useCurrentUserPreferences();
+  const formValues = useMemo(
+    () => ({
+      ...getLineageConfigFormValues(config),
+      showTempTables: showLineageTempTables,
+    }),
+    [config, showLineageTempTables]
+  );
   const form = useForm<LineageConfigFormValues>({
-    defaultValues: getLineageConfigFormValues(config),
+    defaultValues: formValues,
   });
 
   useEffect(() => {
     if (visible) {
-      form.reset(getLineageConfigFormValues(config));
+      form.reset(formValues);
     }
-  }, [visible, config, form.reset, form]);
+  }, [visible, formValues, form.reset, form]);
 
-  // Keep the rest of the config (e.g. pipelineViewMode): callers store the
-  // saved object as a whole.
-  const onSubmit = (values: LineageConfigFormValues) =>
+  // Temp tables are a per-user preference rather than lineage config, so
+  // changing only them redraws without refetching. Keep the rest of the
+  // config (e.g. pipelineViewMode): callers store the saved object whole.
+  const onSubmit = (values: LineageConfigFormValues) => {
+    setPreference({ showLineageTempTables: values.showTempTables });
     onSave({
       ...config,
       upstreamDepth: Number(values.upstreamDepth),
       downstreamDepth: Number(values.downstreamDepth),
       nodesPerLayer: Number(values.nodesPerLayer),
     });
+  };
 
   return (
     <ModalOverlay
@@ -108,6 +124,20 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
                   />
                 )
               )}
+              <Controller
+                control={form.control}
+                name="showTempTables"
+                render={({ field }) => (
+                  <Toggle
+                    data-testid="lineage-config-show-temp-tables"
+                    hint={t('message.lineage-show-temporary-table-plural-hint')}
+                    isSelected={field.value}
+                    label={t('label.show-temporary-table-plural')}
+                    size="sm"
+                    onChange={field.onChange}
+                  />
+                )}
+              />
             </HookForm>
           </Dialog.Content>
           <Dialog.Footer>
