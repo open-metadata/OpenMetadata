@@ -188,6 +188,8 @@ export interface ActivityTabProps {
   // Show this user's feeds instead of the viewer's. Likes and replies still
   // act as the viewer.
   user?: User;
+  /** The sub-tab the feed opens on; defaults to All. */
+  initialFilter?: ActivityFilter;
 }
 
 const getDefaultDateRange = (): InboxDateRange => ({
@@ -306,9 +308,13 @@ const ActivityGroupList = ({
   );
 };
 
-const ActivityTab: React.FC<ActivityTabProps> = ({ user, ...windowProps }) => {
+const ActivityTab: React.FC<ActivityTabProps> = ({
+  user,
+  initialFilter = ActivityFilter.All,
+  ...windowProps
+}) => {
   const { t } = useTranslation();
-  const [filter, setFilter] = useState(ActivityFilter.All);
+  const [filter, setFilter] = useState(initialFilter);
   const [grouping, setGrouping] = useState(ActivityGrouping.Day);
   const [typeKeys, setTypeKeys] = useState<string[]>([]);
   // The Inbox centres a reading column; a user's profile tab spans its panel.

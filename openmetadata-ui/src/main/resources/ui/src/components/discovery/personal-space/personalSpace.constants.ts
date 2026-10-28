@@ -33,3 +33,17 @@ export const PERSONAL_SPACE_ROUTES = {
  * My Tasks card) use it, since the inbox has no per-task route.
  */
 export const INBOX_TASK_ID_PARAM = 'taskId';
+
+/**
+ * Query parameter that opens the inbox's Activity tab on one of its sub-tabs:
+ * `/inbox/activity?filter=my-assets`. The landing page's Team Activity card
+ * uses it, since that card shows the My Assets feed.
+ */
+export const INBOX_ACTIVITY_FILTER_PARAM = 'filter';
+
+/**
+ * The inbox's Activity tab on My Assets (`ActivityFilter.MyAssets`). Spelled
+ * here rather than built from the enum so landing-page links don't pull the
+ * inbox utilities into their chunk.
+ */
+export const INBOX_MY_ASSETS_ACTIVITY_PATH = `${PERSONAL_SPACE_ROUTES.INBOX_ACTIVITY}?${INBOX_ACTIVITY_FILTER_PARAM}=my-assets`;

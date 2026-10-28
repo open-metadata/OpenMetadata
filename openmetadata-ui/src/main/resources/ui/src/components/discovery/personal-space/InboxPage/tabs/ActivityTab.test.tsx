@@ -177,7 +177,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 import { User } from '../../../../../generated/entity/teams/user';
-import { getInboxDateRange } from '../inbox.utils';
+import { ActivityFilter, getInboxDateRange } from '../inbox.utils';
 import ActivityTab from './ActivityTab';
 
 const alice = {
@@ -309,6 +309,16 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'following',
       defaultWindow,
+      undefined
+    );
+  });
+
+  it('opens on the sub-tab a link asks for', () => {
+    render(<ActivityTab initialFilter={ActivityFilter.MyAssets} />);
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'my-assets',
+      expect.objectContaining({ key: 'last30days' }),
       undefined
     );
   });
