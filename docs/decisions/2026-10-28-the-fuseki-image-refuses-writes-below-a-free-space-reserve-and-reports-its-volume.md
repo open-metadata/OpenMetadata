@@ -3,8 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-28 (initial)
 - **Deciders:** Platform
-- **Guard:** `StorageGuardTest`, `CompactionGuardTest` (docker/rdf-store), `StorageGuardRefusalTest`,
-  `StorageFactsTest`, `RdfStorageMaintenanceServiceTest`
+- **Guard:** `StorageGuardTest` (docker/rdf-store), `StorageGuardRefusalTest`, `StorageFactsTest`,
+  `RdfStorageMaintenanceServiceTest`
 - **Related:** #36437, ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule
 
 ## Context
@@ -32,11 +32,6 @@ mid-commit; only OpenMetadata knows when compacting is safe.
   `RdfStorageMaintenanceException`, so a refused write is deferred like a write held back by the
   maintenance pause: it uses no delivery attempt and trips no circuit breaker. Unlike the pause, the
   queue's lag still marks the projection degraded, because a full volume needs attention.
-- **The compaction guard.** `POST /$/compact/<dataset>` gets 507 unless the volume has at least as
-  much free space as the dataset's generation in service. TDB2 copies the live data into a new
-  generation, and a volume that fills during the copy crashes the JVM with SIGBUS; the copy is never
-  larger than the generation, so the check is conservative. Every caller is protected, including an
-  operator compacting by hand.
 - **Urgent compaction.** When a maintenance check finds the store reporting `lowOnSpace`, or free
   space below `storageMaintenance.urgentFreeSpacePercent` (50), it compacts without waiting for the
   interval, under the same locks and write pause. An urgent compaction that brings the store back
