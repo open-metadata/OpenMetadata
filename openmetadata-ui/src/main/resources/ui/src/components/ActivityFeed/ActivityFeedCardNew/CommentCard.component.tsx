@@ -272,15 +272,13 @@ const CommentCard = ({
         {feedBodyRender}
 
         {onReaction && (
-          <div className={layout.reactions}>
-            <div className="w-full" data-testid="feed-card-footer">
-              <div className="d-flex items-center gap-2 w-full">
-                <Reactions
-                  reactions={reactions ?? []}
-                  variant={ReactionsVariant.Pill}
-                  onReactionSelect={onReaction}
-                />
-              </div>
+          <div className="w-full" data-testid="feed-card-footer">
+            <div className="d-flex items-center gap-2 w-full">
+              <Reactions
+                reactions={reactions ?? []}
+                variant={ReactionsVariant.Pill}
+                onReactionSelect={onReaction}
+              />
             </div>
           </div>
         )}

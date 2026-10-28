@@ -18,7 +18,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { noop } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { MouseEvent, useCallback, useMemo } from 'react';
 import {
   ButtonProps as AriaButtonProps,
   PressEvent,
@@ -106,6 +106,15 @@ function FeedCardFooterNew({
     },
     [onReplyPress, showReplies]
   );
+  // The +N chip is a native button, so its click would also reach the card
+  // and select the conversation, fetching its replies a second time.
+  const handleOverflowClick = useCallback(
+    (event?: MouseEvent<HTMLButtonElement>) => {
+      event?.stopPropagation();
+      showReplies();
+    },
+    [showReplies]
+  );
   // ButtonUtility forwards its props to a react-aria Button but does not declare
   // onPress, and onClick would not let the click bubble, so the press handler is
   // passed as typed react-aria props.
@@ -140,7 +149,7 @@ function FeedCardFooterNew({
                   />
                 ))}
                 maxCount={MAX_VISIBLE_AVATARS}
-                onOverflowClick={showReplies}
+                onOverflowClick={handleOverflowClick}
               />
             )}
 

@@ -116,6 +116,29 @@ describe('FeedCardFooterNew', () => {
     expect(onCardClick).not.toHaveBeenCalled();
   });
 
+  it('opens the replies from the overflow chip without the click reaching the card', async () => {
+    const onCardClick = jest.fn();
+    await renderFooter(
+      {
+        conversation: {
+          ...conversation,
+          replyCount: 4,
+          replies: ['alice', 'bob', 'carol', 'dave'].map((name) => ({
+            author: { name },
+          })),
+        } as unknown as Conversation,
+      },
+      onCardClick
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '+1 more' }));
+
+    expect(await screen.findByTestId('replies-drawer')).toHaveTextContent(
+      'Footer conversation'
+    );
+    expect(onCardClick).not.toHaveBeenCalled();
+  });
+
   // Regression: on the entity Activity tab this press opened nothing.
   it('opens the replies from the reply button', async () => {
     await renderFooter();

@@ -14,8 +14,9 @@ import classNames from 'classnames';
 
 const REPLY_TEXT_LAYOUT = {
   // Held to the row's width: an editor holding a long unbroken word would
-  // otherwise widen the reply past the card.
-  body: 'w-full tw:min-w-0',
+  // otherwise widen the reply past the card. The same small gap sits under
+  // the name and under the message.
+  body: 'tw:flex tw:w-full tw:min-w-0 tw:flex-col tw:gap-2',
   // A long name wraps, breaking inside an unbroken one, so the menu beside it
   // stays in the card.
   header: 'd-flex items-center gap-2 flex-wrap tw:min-w-0',
@@ -34,11 +35,8 @@ export const getReplyLayout = (
         root: 'd-flex items-start justify-start relative gap-3',
         avatar: 'tw:shrink-0 tw:pt-0.5',
         ...REPLY_TEXT_LAYOUT,
-        // The same small gap under the name and under the message.
-        body: `${REPLY_TEXT_LAYOUT.body} tw:flex tw:flex-col tw:gap-2`,
         avatarSize: 'sm' as const,
         showSeparator: false,
-        reactions: undefined,
       }
     : {
         root: classNames(
@@ -49,5 +47,4 @@ export const getReplyLayout = (
         ...REPLY_TEXT_LAYOUT,
         avatarSize: 'sm' as const,
         showSeparator: true,
-        reactions: 'm-y-md',
       };
