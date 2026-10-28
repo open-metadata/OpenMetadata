@@ -316,7 +316,7 @@ public class APIServiceResource
                     ApiService apiService = JsonUtils.readValue((String) json, ApiService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, apiService));
                   } catch (Exception e) {
-                    return json;
+                    return withoutConnection(json);
                   }
                 })
             .collect(Collectors.toList());

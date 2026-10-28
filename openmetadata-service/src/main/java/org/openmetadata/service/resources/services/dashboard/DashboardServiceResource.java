@@ -356,7 +356,7 @@ public class DashboardServiceResource
                     return JsonUtils.pojoToJson(
                         decryptOrNullify(securityContext, dashboardService));
                   } catch (Exception e) {
-                    return json;
+                    return withoutConnection(json);
                   }
                 })
             .collect(Collectors.toList());

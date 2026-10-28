@@ -299,7 +299,7 @@ public class LLMServiceResource
                     LLMService llmService = JsonUtils.readValue((String) json, LLMService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, llmService));
                   } catch (Exception e) {
-                    return json;
+                    return withoutConnection(json);
                   }
                 })
             .collect(Collectors.toList());

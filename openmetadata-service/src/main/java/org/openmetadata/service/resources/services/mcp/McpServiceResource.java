@@ -292,7 +292,7 @@ public class McpServiceResource
                     McpService mcpService = JsonUtils.readValue((String) json, McpService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, mcpService));
                   } catch (Exception e) {
-                    return json;
+                    return withoutConnection(json);
                   }
                 })
             .collect(Collectors.toList());

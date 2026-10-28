@@ -306,7 +306,7 @@ public class SecurityServiceResource
                         JsonUtils.readValue((String) json, SecurityService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, securityService));
                   } catch (Exception e) {
-                    return json;
+                    return withoutConnection(json);
                   }
                 })
             .collect(Collectors.toList());

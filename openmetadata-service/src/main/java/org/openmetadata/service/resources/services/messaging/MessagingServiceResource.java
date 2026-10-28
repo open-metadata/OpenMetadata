@@ -358,7 +358,7 @@ public class MessagingServiceResource
                     return JsonUtils.pojoToJson(
                         decryptOrNullify(securityContext, messagingService));
                   } catch (Exception e) {
-                    return json;
+                    return withoutConnection(json);
                   }
                 })
             .collect(Collectors.toList());
