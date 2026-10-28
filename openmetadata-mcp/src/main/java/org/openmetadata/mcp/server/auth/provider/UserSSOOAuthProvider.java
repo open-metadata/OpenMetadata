@@ -24,6 +24,7 @@ import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.AuthorizationParams;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
+import org.openmetadata.mcp.auth.OAuthClientMetadata;
 import org.openmetadata.mcp.auth.OAuthToken;
 import org.openmetadata.mcp.auth.RefreshToken;
 import org.openmetadata.mcp.auth.exception.AuthorizeException;
@@ -1094,9 +1095,11 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       }
 
       // Validate scope downgrading (cannot request more scopes than originally granted)
-      List<String> originalScopes = tokenRecord.getScopes();
-      List<String> requestedScopes =
-          (scopes != null && !scopes.isEmpty()) ? scopes : originalScopes;
+      // Known scopes only: a token granted a long list earlier refreshes with a short one
+      List<String> originalScopes = OAuthClientMetadata.keepKnownScopes(tokenRecord.getScopes());
+      List<String> knownRequested =
+          scopes != null ? OAuthClientMetadata.keepKnownScopes(scopes) : List.of();
+      List<String> requestedScopes = !knownRequested.isEmpty() ? knownRequested : originalScopes;
 
       if (!originalScopes.containsAll(requestedScopes)) {
         LOG.warn(
@@ -1126,7 +1129,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       // Generate cryptographically secure new refresh token (32 bytes = 256 bits)
       String newRefreshTokenValue = generateSecureToken(32);
-      long newRefreshExpiresAt = System.currentTimeMillis() + (REFRESH_TOKEN_EXPIRY_SECONDS * 1000);
+      // Rotation keeps the grant's end.
+      // ADR:2026-10-26-an-mcp-oauth-grant-ends-30-days-after-sign-in
+      long newRefreshExpiresAt = tokenRecord.getExpiresAt();
 
       RefreshToken newRefreshToken =
           new RefreshToken(
@@ -1142,11 +1147,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         throw new TokenException("invalid_grant", "Refresh token has already been used");
       }
       LOG.debug("Refresh token rotated for user: {}", userName);
-
-      LOG.debug(
-          "New refresh token generated for user: {} (expires in {} days)",
-          userName,
-          REFRESH_TOKEN_EXPIRY_DAYS);
 
       JWTAuthMechanism jwtAuth =
           jwtGenerator.generateJWTToken(

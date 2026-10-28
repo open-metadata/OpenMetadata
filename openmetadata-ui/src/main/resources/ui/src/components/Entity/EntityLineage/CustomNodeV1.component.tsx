@@ -382,7 +382,6 @@ const CustomNodeV1 = (props: NodeProps) => {
         isChildrenListExpanded={columnsExpanded}
         isOnlyShowColumnsWithLineageFilterActive={showColumnsWithLineageOnly}
         node={node}
-        titleColor={isRootNode ? 'link-primary' : undefined}
         toggleColumnsList={toggleColumnsExpanded}
         toggleOnlyShowColumnsWithLineageFilterActive={
           toggleShowColumnsWithLineageOnly
