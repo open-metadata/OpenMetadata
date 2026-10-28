@@ -20,6 +20,9 @@ import subprocess
 import tarfile
 from pathlib import Path
 
+import pytest
+import yaml
+
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / ".github" / "scripts"
 
@@ -577,3 +580,157 @@ def test_prune_workflow_only_cancels_runs_on_dead_queue_refs() -> None:
     assert "set -euo pipefail" in listing
     # Refs listed after runs, or a just-created entry's runs read as dead.
     assert "actions/runs?event=merge_group" in listing
+
+
+FIXTURE_DATABASES = ("postgresql", "mysql")
+
+
+def fixture_profile(database: str) -> dict[str, str]:
+    output = subprocess.check_output(
+        [
+            "bash",
+            "-c",
+            'set -a && source "$1" && load_playwright_fixture_profile "$2" && env | grep "^PW_"',
+            "profile",
+            str(SCRIPTS / "playwright_fixture_profile.sh"),
+            database,
+        ],
+        env={"PATH": os.environ["PATH"]},
+        text=True,
+    )
+    return dict(line.split("=", 1) for line in output.splitlines())
+
+
+def compose_service(compose_file: str, service: str) -> dict:
+    return yaml.safe_load((ROOT / compose_file).read_text())["services"][service]
+
+
+def volume_targets(service: dict) -> set[str]:
+    return {
+        volume["target"] if isinstance(volume, dict) else volume.split(":")[1]
+        for volume in service.get("volumes", [])
+    }
+
+
+@pytest.mark.parametrize("database", FIXTURE_DATABASES)
+def test_fixture_profile_matches_the_seeded_and_fast_compose_stacks(database: str) -> None:
+    """The builder snapshots the seeded stack's mounts and the launcher restores
+    them into the fast stack, so both must agree with the profile. A container
+    name that does not exist made every MySQL fixture build fail."""
+    profile = fixture_profile(database)
+    for kind in ("DATABASE", "SEARCH"):
+        seeded = compose_service(profile["PW_COMPOSE_FILE"], profile[f"PW_{kind}_SERVICE"])
+        fast = compose_service(profile["PW_FAST_COMPOSE_FILE"], profile[f"PW_{kind}_SERVICE"])
+        assert seeded["container_name"] == profile[f"PW_{kind}_CONTAINER"]
+        assert profile[f"PW_{kind}_DATA_PATH"] in volume_targets(seeded)
+        assert profile[f"PW_{kind}_DATA_PATH"] in volume_targets(fast)
+
+    base_image = (ROOT / profile["PW_DATABASE_DOCKERFILE"]).read_text().split()[1]
+    fast_database = compose_service(profile["PW_FAST_COMPOSE_FILE"], profile["PW_DATABASE_SERVICE"])
+    assert fast_database["image"].endswith(f":-{base_image}}}")
+    seeded_search = compose_service(profile["PW_COMPOSE_FILE"], profile["PW_SEARCH_SERVICE"])
+    fast_search = compose_service(profile["PW_FAST_COMPOSE_FILE"], profile["PW_SEARCH_SERVICE"])
+    assert fast_search["image"].endswith(f":-{seeded_search['image']}}}")
+
+
+def build_seeded_fixture(tmp_path: Path, database: str, layout: tuple[str, ...]) -> Path:
+    stage = tmp_path / "stage"
+    for relative in layout:
+        write(stage, relative, "data")
+    for relative in (
+        "auth/admin.json",
+        "auth/admin-api-token.json",
+        "entity-response-data.json",
+        "lineage-data.json",
+        "shared-infra.json",
+    ):
+        write(stage, f"playwright-state/{relative}", "{}")
+
+    def fingerprint(kind: str) -> str:
+        return subprocess.check_output(
+            ["python3", str(SCRIPTS / "playwright_cache_fingerprint.py"), "--kind", kind],
+            cwd=ROOT,
+            text=True,
+        ).strip()
+
+    state_hash = subprocess.check_output(
+        "find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d ' ' -f1",
+        shell=True,
+        cwd=stage / "playwright-state",
+        text=True,
+    ).strip()
+    seed_version = subprocess.check_output(
+        "sed -n 's:.*<version>\\([^<]*\\)</version>.*:\\1:p' pom.xml | head -1",
+        shell=True,
+        cwd=ROOT,
+        text=True,
+    ).strip()
+    manifest = {
+        "version": 3,
+        "sourceSha": "a" * 40,
+        "createdAt": "2026-10-28T00:00:00Z",
+        "compatibilityHash": fingerprint("fixture"),
+        "database": database,
+        "databaseImage": f"{database}@sha256:{'1' * 64}",
+        "searchImage": f"search@sha256:{'2' * 64}",
+        "searchClusterAlias": "openmetadata",
+        "schemaHash": fingerprint("schema"),
+        "seedHash": fingerprint("seed"),
+        "seedVersion": seed_version,
+        "playwrightStateHash": state_hash,
+    }
+    (stage / "fixture-manifest.json").write_text(json.dumps(manifest))
+    fixture = tmp_path / "playwright-fixture.tar.zst"
+    subprocess.run(["tar", "--zstd", "-C", stage, "-cf", fixture, "."], check=True)
+    return fixture
+
+
+MYSQL_LAYOUT = ("database/mysql.ibd", "search/indices/abc/0/index/segments_1")
+POSTGRES_LAYOUT = ("database/PG_VERSION", "search/nodes/0/indices/abc/0/index/segments_1")
+
+
+def validate_fixture(fixture: Path, expected_database: str) -> subprocess.CompletedProcess:
+    compatibility = json.loads(
+        subprocess.check_output(["tar", "--zstd", "-xOf", fixture, "./fixture-manifest.json"])
+    )["compatibilityHash"]
+    return subprocess.run(
+        [SCRIPTS / "validate_playwright_fixture.sh", fixture, compatibility],
+        cwd=ROOT,
+        env={**os.environ, "GITHUB_WORKSPACE": str(ROOT), "PLAYWRIGHT_DATABASE": expected_database},
+        capture_output=True,
+        text=True,
+    )
+
+
+@pytest.mark.parametrize(
+    ("database", "layout"), [("mysql", MYSQL_LAYOUT), ("postgresql", POSTGRES_LAYOUT)]
+)
+def test_fixture_validator_accepts_a_fixture_seeded_on_the_requested_database(
+    tmp_path: Path, database: str, layout: tuple[str, ...]
+) -> None:
+    result = validate_fixture(build_seeded_fixture(tmp_path, database, layout), database)
+    assert result.returncode == 0, result.stderr
+
+
+def test_fixture_validator_rejects_a_fixture_seeded_on_another_database(tmp_path: Path) -> None:
+    fixture = build_seeded_fixture(tmp_path, "postgresql", POSTGRES_LAYOUT)
+    result = validate_fixture(fixture, "mysql")
+    assert result.returncode != 0
+    assert "seeded on 'postgresql', not 'mysql'" in result.stderr
+
+
+def test_fixture_validator_requires_the_search_layout_of_the_fixture_database(
+    tmp_path: Path,
+) -> None:
+    fixture = build_seeded_fixture(tmp_path, "mysql", ("database/mysql.ibd", "search/nodes/0/x"))
+    result = validate_fixture(fixture, "mysql")
+    assert result.returncode != 0
+    assert "missing ./search/indices/" in result.stderr
+
+
+def test_golden_fixture_cache_is_scoped_by_database() -> None:
+    workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+    keys = [line.strip() for line in workflow.splitlines() if "key: playwright-golden-fixture-" in line]
+    assert len(keys) == 2
+    assert all("playwright-golden-fixture-v2-${{ inputs.database }}-" in key for key in keys)
+    assert "PLAYWRIGHT_DATABASE: ${{ inputs.database }}" in workflow
