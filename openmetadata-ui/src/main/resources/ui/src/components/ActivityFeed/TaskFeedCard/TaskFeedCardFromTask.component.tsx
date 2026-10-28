@@ -380,7 +380,7 @@ const TaskFeedCardFromTask = ({
             aria-label={t('label.reply')}
             data-testid="task-reply-button"
             icon={Comment}
-            size="lg"
+            size="sm"
             {...replyPressProps}
           />
           {commentsCount > 0 ? (

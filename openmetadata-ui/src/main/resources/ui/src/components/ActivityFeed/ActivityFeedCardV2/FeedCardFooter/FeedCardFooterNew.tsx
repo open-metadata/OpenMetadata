@@ -75,7 +75,7 @@ const ReplyButton = ({ count, showCount, pressProps }: ReplyButtonProps) => {
       aria-label={t('label.reply')}
       data-testid="reply-button"
       icon={Comment}
-      size="lg"
+      size="sm"
       {...pressProps}
     />
   );

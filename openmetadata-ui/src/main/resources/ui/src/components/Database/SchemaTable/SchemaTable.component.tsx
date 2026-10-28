@@ -722,7 +722,7 @@ const SchemaTable = () => {
                   className="hover-cell-icon"
                   data-testid="edit-displayName-button"
                   icon={Edit01}
-                  size="sm"
+                  size="xs"
                   tooltip={t('label.edit')}
                   onClick={() => handleEditDisplayNameClick(record)}
                 />

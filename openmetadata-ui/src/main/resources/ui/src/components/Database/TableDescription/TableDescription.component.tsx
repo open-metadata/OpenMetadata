@@ -117,7 +117,7 @@ const TableDescription = ({
               className="hover-cell-icon"
               data-testid="edit-button"
               icon={Edit01}
-              size="sm"
+              size="xs"
               tooltip={t('label.edit-entity', {
                 entity: t('label.description'),
               })}

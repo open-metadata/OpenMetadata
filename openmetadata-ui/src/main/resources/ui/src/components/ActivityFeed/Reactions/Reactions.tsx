@@ -144,7 +144,7 @@ const Reactions: FC<ReactionsProps> = ({
             className={classNames({ 'tw:rounded-full': isPill(variant) })}
             data-testid="add-reactions"
             icon={isPill(variant) ? FaceSmile : AddReactionIcon}
-            size="lg"
+            size="sm"
             tooltip={addReactionLabel}
             onClick={(e: MouseEvent) => e.stopPropagation()}
           />

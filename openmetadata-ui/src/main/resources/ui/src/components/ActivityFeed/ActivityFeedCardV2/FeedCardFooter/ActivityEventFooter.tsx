@@ -78,7 +78,7 @@ function ActivityEventFooter({
               aria-label={t('label.comment')}
               data-testid="comment-button"
               icon={Comment}
-              size="lg"
+              size="sm"
               {...commentPressProps}
             />
             <Reactions

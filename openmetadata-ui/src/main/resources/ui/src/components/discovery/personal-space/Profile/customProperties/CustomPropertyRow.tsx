@@ -118,6 +118,7 @@ const CustomPropertyRow = ({
               <ButtonUtility
                 data-testid={`edit-${property.name}`}
                 icon={Edit01}
+                size="xs"
                 tooltip={t('label.edit-entity', { entity: label })}
                 onClick={() => onEdit(property)}
               />

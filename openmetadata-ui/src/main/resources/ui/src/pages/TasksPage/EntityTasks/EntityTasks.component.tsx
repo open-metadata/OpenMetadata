@@ -86,7 +86,7 @@ const EntityTasks = ({
         className="hover-cell-icon"
         data-testid="task-element"
         icon={RequestUpdateIcon}
-        size="sm"
+        size="xs"
         tooltip={
           hasData
             ? t(ENTITY_TASKS_TOOLTIP[entityTaskType].update)
