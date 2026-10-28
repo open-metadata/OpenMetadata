@@ -26,6 +26,7 @@ def prepare_locked_tooling(root, monkeypatch):
     """Copy the command implementation and lock only the fixture's tools."""
     for name in [
         "OM_PYTHON_ENVIRONMENT",
+        "OM_VENV_DIR",
         "UV_PROJECT_ENVIRONMENT",
         "ARGS",
         "MAKEFLAGS",
