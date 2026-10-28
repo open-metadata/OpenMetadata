@@ -62,7 +62,11 @@ describe('WelcomeScreenGate', () => {
   beforeEach(() => {
     localStorage.clear();
     jest.clearAllMocks();
-    mockStore.currentUser = { id: 'alex-id', name: 'alex', isFirstTimeUser: true };
+    mockStore.currentUser = {
+      id: 'alex-id',
+      name: 'alex',
+      isFirstTimeUser: true,
+    };
     mockTour.isActive = false;
     mockWelcome.isWelcomeVisible = true;
   });
