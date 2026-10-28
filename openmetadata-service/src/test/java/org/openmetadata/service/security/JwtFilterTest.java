@@ -248,7 +248,7 @@ class JwtFilterTest {
     subjectCache
         .when(() -> SubjectCache.getUserContext("sam"))
         .thenReturn(new User().withName("sam"));
-    try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       jwtFilter.filter(context);
       entity.verifyNoInteractions();
     }
@@ -306,8 +306,7 @@ class JwtFilterTest {
                 .withName("sam")
                 .withDefaultDomain(
                     new EntityReference().withId(UUID.randomUUID()).withType("domain")));
-    try (MockedStatic<UserTokenCache> userTokenCache =
-        org.mockito.Mockito.mockStatic(UserTokenCache.class)) {
+    try (MockedStatic<UserTokenCache> userTokenCache = mockStatic(UserTokenCache.class)) {
       userTokenCache.when(() -> UserTokenCache.isTokenValid("sam", jwt)).thenReturn(true);
       jwtFilter.filter(context);
     }

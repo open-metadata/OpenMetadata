@@ -21,6 +21,7 @@ import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.util.Constants;
 import com.onelogin.saml2.util.Util;
 import java.util.List;
+import javax.servlet.http.HttpServletRequest;
 import org.joda.time.DateTime;
 import org.joda.time.Instant;
 import org.openmetadata.service.exception.AuthenticationException;
@@ -40,8 +41,7 @@ public final class SamlResponseValidator {
 
   private SamlResponseValidator() {}
 
-  public static void validate(
-      Saml2Settings settings, javax.servlet.http.HttpServletRequest request) {
+  public static void validate(Saml2Settings settings, HttpServletRequest request) {
     validate(settings, ServletUtils.makeHttpRequest(request));
   }
 
