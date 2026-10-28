@@ -1,10 +1,14 @@
 # Pagination.spec.ts migration
 
-`playwright/e2e/Features/Pagination.spec.ts` had 37 tests (8.2 worker-minutes per full
-run, plus seeding 20+ entities per describe). It now keeps 2 real-server smoke tests
-(~41 s). Everything else moved to UI integration tests built on
-`paginationContract.ts`, which reproduces `testPaginationNavigation` and
-`testCompletePaginationWithSearch` step by step.
+`playwright/e2e/Features/Pagination.spec.ts` has 37 tests (8.2 worker-minutes per full
+run, plus seeding 20+ entities per describe). 35 of them are now covered by UI
+integration tests built on `paginationContract.ts`, which reproduces
+`testPaginationNavigation` and `testCompletePaginationWithSearch` step by step.
+
+Those 35 are tagged `@migrated-browser` (`migratedTo.browser(...)` names the
+replacement) and keep running. They are deleted once the browser tests are
+validated **and** the `PaginationIT` gap below is closed, so real-server cursor
+paging stays covered. The other 2 stay as real-server smoke tests.
 
 ## Where each Playwright test went
 
@@ -37,7 +41,7 @@ run, plus seeding 20+ entities per describe). It now keeps 2 real-server smoke t
 \* **Gap:** `PaginationIT.testPaginationForEntityType` walks cursors forward and back
 with several page sizes, but only `testTablePagination` calls it.
 `BaseEntityIT.get_entityListWithPagination_200` only checks that a list is non-empty.
-Before deleting more E2E coverage, call the cursor walk from `BaseEntityIT` (or add one
+Before deleting the marked E2E tests, call the cursor walk from `BaseEntityIT` (or add one
 `@ParameterizedTest` over these entity types) so every list endpoint above is checked
 against the real database.
 
