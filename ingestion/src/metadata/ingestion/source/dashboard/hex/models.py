@@ -94,11 +94,14 @@ class Pagination(BaseModel):
     before: Optional[str] = None  # noqa: UP045
 
 
-class ProjectListResponse(BaseModel):
+class PagedResponse(BaseModel):
+    pagination: Pagination | None = None
+
+
+class ProjectListResponse(PagedResponse):
     """List Projects API Response"""
 
-    values: List[Project] = Field(default_factory=list)  # noqa: UP006
-    pagination: Optional[Pagination] = None  # noqa: UP045
+    values: list[Project] = Field(default_factory=list)
 
 
 class ProjectRunInput(BaseModel):
@@ -131,12 +134,63 @@ class DataConnection(BaseModel):
 
     id: str
     name: str
-    type: Optional[str] = None  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
+    type: str | None = None
+    description: str | None = None
+    # Keyed by type, e.g. {"snowflake": {"database": "analytics", ...}}
+    connectionDetails: dict | None = None  # noqa: N815
+
+    @property
+    def default_database(self) -> str | None:
+        return self._details.get("database")
+
+    @property
+    def default_schema(self) -> str | None:
+        return self._details.get("schema")
+
+    @property
+    def _details(self) -> dict:
+        details = (self.connectionDetails or {}).get(self.type or "")
+        return details if isinstance(details, dict) else {}
 
 
-class DataConnectionsResponse(BaseModel):
-    """Data Connections API Response"""
+class DataConnectionsResponse(PagedResponse):
+    """List Data Connections API Response"""
 
-    connections: List[DataConnection] = Field(default_factory=list)  # noqa: UP006
-    nextPage: Optional[str] = Field(None, alias="next_page")  # noqa: N815, UP045
+    values: list[DataConnection] = Field(default_factory=list)
+
+
+class SqlCellContents(BaseModel):
+    source: str | None = None
+
+
+class CellContents(BaseModel):
+    sqlCell: SqlCellContents | None = None  # noqa: N815
+
+
+class Cell(BaseModel):
+    """Hex notebook cell"""
+
+    id: str
+    staticId: str | None = None  # noqa: N815
+    cellType: str | None = None  # noqa: N815
+    label: str | None = None
+    dataConnectionId: str | None = None  # noqa: N815
+    # Name later SQL cells use to query this cell's result; only the export API returns it
+    resultVariableName: str | None = None  # noqa: N815
+    contents: CellContents | None = None
+
+    @property
+    def sql(self) -> str | None:
+        return self.contents.sqlCell.source if self.contents and self.contents.sqlCell else None
+
+
+class ProjectExport(BaseModel):
+    """Export Project API Response: the project as YAML"""
+
+    content: str
+
+
+class CellListResponse(PagedResponse):
+    """List Cells API Response"""
+
+    values: list[Cell] = Field(default_factory=list)
