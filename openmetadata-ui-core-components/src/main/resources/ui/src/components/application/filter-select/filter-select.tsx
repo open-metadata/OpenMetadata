@@ -297,6 +297,7 @@ const OptionRow = ({
   const iconNode = iconComponent ? undefined : (option.icon as ReactNode);
   const hasIndicator = showCheckbox || Boolean(showRadio);
   const hasDetails = option.details !== undefined;
+  const isMultiLine = hasDetails || option.description !== undefined;
 
   // Pressing the chevron or the details must not select the row underneath.
   const stopRowPress = {
@@ -324,8 +325,9 @@ const OptionRow = ({
           !hasIndicator &&
             state.isSelected &&
             'tw:[&_svg]:text-fg-brand-secondary_alt!',
-          // A multi-line row keeps its indicator on the first line.
-          hasDetails && 'tw:[&>div]:items-start'
+          // A multi-line row keeps its indicator on the first line; mt-0.5
+          // centres the 16px radio/checkbox/icon on the 20px label line.
+          isMultiLine && 'tw:[&>div]:items-start tw:[&>div>:not(span)]:mt-0.5'
         )
       }
       data-testid={option.value}
@@ -338,7 +340,8 @@ const OptionRow = ({
         const row = (
           <span
             className={cx(
-              'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-sm tw:font-normal',
+              'tw:relative tw:flex tw:w-full tw:min-w-0 tw:justify-between tw:gap-2 tw:text-sm tw:font-normal',
+              isMultiLine ? 'tw:items-start' : 'tw:items-center',
               // Real options read at full strength whether or not they are
               // selected; only the pinned null row is muted. Plain single select
               // has no indicator, so its selected row goes brand instead.
@@ -349,15 +352,35 @@ const OptionRow = ({
                 : 'tw:text-primary'
             )}>
             {iconNode !== undefined && (
-              <span aria-hidden="true" className="tw:flex tw:shrink-0">
+              <span
+                aria-hidden="true"
+                className={cx(
+                  'tw:flex tw:shrink-0',
+                  isMultiLine && 'tw:h-5 tw:items-center'
+                )}>
                 {iconNode}
               </span>
             )}
-            <Typography
-              className="not-prose tw:grow tw:truncate"
-              title={optionText(option)}>
-              {option.label}
-            </Typography>
+            {option.description === undefined ? (
+              <Typography
+                className="not-prose tw:grow tw:truncate"
+                title={optionText(option)}>
+                {option.label}
+              </Typography>
+            ) : (
+              <span className="tw:flex tw:min-w-0 tw:grow tw:flex-col">
+                <Typography
+                  className="not-prose tw:truncate"
+                  title={optionText(option)}>
+                  {option.label}
+                </Typography>
+                <Typography
+                  className="not-prose tw:wrap-break-word tw:whitespace-normal tw:text-tertiary"
+                  size="text-xs">
+                  {option.description}
+                </Typography>
+              </span>
+            )}
             {!hideCounts && option.count !== undefined && (
               <Typography
                 className={cx(
@@ -440,6 +463,7 @@ const FilterSelect = ({
   isDisabled,
   isLoading,
   isOpen: controlledIsOpen,
+  menuClassName,
   nullOption,
   placeholder,
   popoverClassName,
@@ -991,7 +1015,7 @@ const FilterSelect = ({
               // whenever results land, and MenuTrigger's autofocus would pull
               // the caret out of the box mid-query.
               autoFocus={searchable ? false : undefined}
-              className="tw:max-h-64 tw:overflow-y-auto"
+              className={cx('tw:max-h-64 tw:overflow-y-auto', menuClassName)}
               // A radio row cannot be unpicked by clicking it again.
               disallowEmptySelection={isRadio}
               selectedKeys={selectedKeySet}
