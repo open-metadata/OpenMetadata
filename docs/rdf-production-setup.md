@@ -491,7 +491,9 @@ refusal like the maintenance pause.
 
 Each compaction is logged, and timed by result in `ontology.rdf.compaction`; alert on
 `ontology.rdf.compaction.last.success` falling behind the interval. A compaction that does not
-succeed is logged as an error and retried at the next check. To compact by hand:
+succeed is logged as an error and retried at the next check, unless Fuseki restarted during it:
+that one waits for the next interval, because a copy the volume cannot hold would only crash
+Fuseki again. To compact by hand:
 
 ```bash
 curl -u admin:<password> -X POST \

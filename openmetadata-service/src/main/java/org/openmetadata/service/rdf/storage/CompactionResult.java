@@ -49,4 +49,9 @@ public record CompactionResult(Outcome outcome, String taskId, String detail, Du
   public boolean succeeded() {
     return outcome == Outcome.SUCCEEDED;
   }
+
+  /** The store started the compaction and then stopped reporting it: it restarted meanwhile. */
+  public boolean lostByTheStore() {
+    return outcome == Outcome.UNKNOWN && taskId != null;
+  }
 }
