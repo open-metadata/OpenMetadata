@@ -2940,11 +2940,10 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
 
   /** The job hard-deletes the entity: it is gone even with include=all. */
   @Test
-  void delete_async_with_recursive_hardDelete(TestNamespace ns) {
+  void delete_async_with_recursive_hardDelete(TestNamespace ns) throws Exception {
     if (!supportsAsyncDelete) return;
     T entity = createEntity(createMinimalRequest(ns));
-    JsonNode accepted = deleteAsync(SdkClients.adminClient(), entity.getId().toString(), true);
-    assertAsyncDeleteAccepted(accepted, entity, true);
+    assertAsyncDeleteAccepted(entity, true);
     Awaitility.await("async hard delete of " + entity.getName())
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofMillis(500))
@@ -2960,12 +2959,11 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
 
   /** The job soft-deletes the entity, and the soft-deleted entity can then be restored. */
   @Test
-  void delete_async_soft_delete(TestNamespace ns) {
+  void delete_async_soft_delete(TestNamespace ns) throws Exception {
     if (!supportsAsyncDelete || !supportsSoftDelete || !supportsRestore) return;
     T entity = createEntity(createMinimalRequest(ns));
     String entityId = entity.getId().toString();
-    JsonNode accepted = deleteAsync(SdkClients.adminClient(), entityId, false);
-    assertAsyncDeleteAccepted(accepted, entity, false);
+    assertAsyncDeleteAccepted(entity, false);
     Awaitility.await("async soft delete of " + entity.getName())
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofMillis(500))
@@ -2975,13 +2973,30 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
     assertFalse(Boolean.TRUE.equals(getEntity(entityId).getDeleted()), "Restored entity is live");
   }
 
-  private JsonNode deleteAsync(OpenMetadataClient client, String id, boolean hardDelete) {
-    String path = getResourcePath() + "async/" + id + "?recursive=true&hardDelete=" + hardDelete;
-    return JsonUtils.readTree(
-        client.getHttpClient().executeForString(HttpMethod.DELETE, path, null));
+  private void deleteAsync(OpenMetadataClient client, String id, boolean hardDelete) {
+    client
+        .getHttpClient()
+        .executeForString(HttpMethod.DELETE, asyncDeletePath(id, hardDelete), null);
   }
 
-  private void assertAsyncDeleteAccepted(JsonNode accepted, T entity, boolean hardDelete) {
+  private String asyncDeletePath(String id, boolean hardDelete) {
+    return getResourcePath() + "async/" + id + "?recursive=true&hardDelete=" + hardDelete;
+  }
+
+  /** Raw HTTP as admin: the SDK client discards the status, and the contract is a 202. */
+  private void assertAsyncDeleteAccepted(T entity, boolean hardDelete) throws Exception {
+    String url = SdkClients.getServerUrl() + asyncDeletePath(entity.getId().toString(), hardDelete);
+    HttpResponse<String> response =
+        HttpClient.newHttpClient()
+            .send(
+                HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+                    .DELETE()
+                    .build(),
+                HttpResponse.BodyHandlers.ofString());
+    assertEquals(202, response.statusCode(), response.body());
+    JsonNode accepted = JsonUtils.readTree(response.body());
     assertFalse(accepted.path("jobId").asText().isBlank(), "202 body names the delete job");
     assertEquals(entity.getName(), accepted.path("entityName").asText());
     assertEquals(hardDelete, accepted.path("hardDelete").asBoolean());

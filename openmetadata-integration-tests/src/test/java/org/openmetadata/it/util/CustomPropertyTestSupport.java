@@ -23,6 +23,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 @Slf4j
 public final class CustomPropertyTestSupport {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final int MAX_DELETE_ATTEMPTS = 5;
 
   private CustomPropertyTestSupport() {}
 
@@ -61,30 +62,42 @@ public final class CustomPropertyTestSupport {
 
   /**
    * Removes the property definition by JSON Patch on the type's {@code customProperties}, as the
-   * UI does; the {@code test} op makes a concurrent change to the list fail instead of removing
-   * the wrong property. No-op when the property is already gone.
+   * UI does. Concurrent tests add and remove properties on the same type, so the index is guarded
+   * by a {@code test} op and re-read on a miss. No-op when the property is already gone.
    */
   public static void deleteProperty(
       OpenMetadataClient client, String entityType, String propertyName)
       throws JsonProcessingException {
-    Type owningType = getTypeByName(client, entityType + "?fields=customProperties");
-    List<CustomProperty> properties = listOrEmpty(owningType.getCustomProperties());
-    int index =
-        IntStream.range(0, properties.size())
-            .filter(position -> properties.get(position).getName().equals(propertyName))
-            .findFirst()
-            .orElse(-1);
-    if (index >= 0) {
+    for (int attempt = 1; ; attempt++) {
+      Type owningType = getTypeByName(client, entityType + "?fields=customProperties");
+      List<CustomProperty> properties = listOrEmpty(owningType.getCustomProperties());
+      int index =
+          IntStream.range(0, properties.size())
+              .filter(position -> properties.get(position).getName().equals(propertyName))
+              .findFirst()
+              .orElse(-1);
+      if (index < 0) {
+        return;
+      }
       String path = "/customProperties/" + index;
-      client
-          .getHttpClient()
-          .executeForString(
-              HttpMethod.PATCH,
-              "/v1/metadata/types/" + owningType.getId(),
-              OBJECT_MAPPER.valueToTree(
-                  List.of(
-                      Map.of("op", "test", "path", path + "/name", "value", propertyName),
-                      Map.of("op", "remove", "path", path))));
+      try {
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PATCH,
+                "/v1/metadata/types/" + owningType.getId(),
+                OBJECT_MAPPER.valueToTree(
+                    List.of(
+                        Map.of("op", "test", "path", path + "/name", "value", propertyName),
+                        Map.of("op", "remove", "path", path))));
+        return;
+      } catch (OpenMetadataException indexMoved) {
+        if (attempt == MAX_DELETE_ATTEMPTS) {
+          throw indexMoved;
+        }
+        log.debug(
+            "Custom property index moved under the patch, retrying: {}", indexMoved.getMessage());
+      }
     }
   }
 
