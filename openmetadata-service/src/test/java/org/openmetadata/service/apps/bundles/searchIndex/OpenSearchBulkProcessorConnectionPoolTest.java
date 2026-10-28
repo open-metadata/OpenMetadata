@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
@@ -61,12 +63,15 @@ class OpenSearchBulkProcessorConnectionPoolTest {
   }
 
   @Test
-  void circuitThatStaysOpenFailsItsBulksOnceThePauseLimitPasses() throws Exception {
-    BulkCircuitBreaker breaker = new BulkCircuitBreaker(2, 30_000, 100, 500);
+  void circuitThatStaysOpenFailsItsBulksOnceTheirDeadlinePasses() throws Exception {
+    BulkCircuitBreaker breaker = new BulkCircuitBreaker(2, 30_000, 100);
     try (FakeSearchCluster cluster = FakeSearchCluster.start(20);
         ProcessorRun run =
             ProcessorRun.start(
-                cluster.configuration(searchType(), 20, 5), 3, breaker, retries(1, 50))) {
+                cluster.configuration(searchType(), 20, 5),
+                3,
+                breaker,
+                new BulkRetryPolicy(1, 50, 1_000, 500))) {
       cluster.rejectNextBulks(Integer.MAX_VALUE);
       run.index(3);
 
@@ -118,6 +123,74 @@ class OpenSearchBulkProcessorConnectionPoolTest {
     }
   }
 
+  @Test
+  void aBackoffLongerThanTheBulksDeadlineFailsTheBulkInsteadOfParkingIt() throws Exception {
+    BulkCircuitBreaker breaker = new BulkCircuitBreaker(100, 30_000, 100);
+    try (FakeSearchCluster cluster = FakeSearchCluster.start(20);
+        ProcessorRun run =
+            ProcessorRun.start(
+                cluster.configuration(searchType(), 20, 5),
+                2,
+                breaker,
+                new BulkRetryPolicy(5, 10_000, 10_000, 500))) {
+      cluster.rejectNextBulks(Integer.MAX_VALUE);
+      run.index(2);
+
+      assertTrue(
+          run.processor().flushAndWait(5, TimeUnit.SECONDS),
+          "a retry that would end after the bulk's deadline must not be scheduled");
+      assertEquals(2, run.failed().get());
+    }
+  }
+
+  @Test
+  void aFailedProbeDoesNotGiveItsBulkAFreshPause() throws Exception {
+    BulkCircuitBreaker breaker = new BulkCircuitBreaker(1, 30_000, 100);
+    try (FakeSearchCluster cluster = FakeSearchCluster.start(20);
+        ProcessorRun run =
+            ProcessorRun.start(
+                cluster.configuration(searchType(), 20, 5),
+                1,
+                breaker,
+                new BulkRetryPolicy(1_000, 10, 10, 500))) {
+      cluster.rejectNextBulks(Integer.MAX_VALUE);
+      run.index(1);
+
+      assertTrue(
+          run.processor().flushAndWait(4, TimeUnit.SECONDS),
+          "probes that keep failing must not keep the bulk alive past its deadline");
+      assertEquals(1, run.failed().get());
+    }
+  }
+
+  @Test
+  void anInterruptedCloseStillShutsTheSchedulerDown() throws Exception {
+    BulkCircuitBreaker breaker = new BulkCircuitBreaker(5, 30_000, 10_000);
+    try (FakeSearchCluster cluster = FakeSearchCluster.start(2_000);
+        ProcessorRun run =
+            ProcessorRun.start(
+                cluster.configuration(searchType(), 20, 5), 2, breaker, retries(5, 50))) {
+      run.index(1);
+      Thread closer = Thread.ofPlatform().start(() -> closeQuietly(run));
+      await()
+          .atMost(Duration.ofSeconds(5))
+          .until(() -> closer.getState() == Thread.State.TIMED_WAITING);
+
+      closer.interrupt();
+      closer.join(5_000);
+
+      assertTrue(run.scheduler().isShutdown(), "an interrupted close must not leak the scheduler");
+    }
+  }
+
+  private static void closeQuietly(ProcessorRun run) {
+    try {
+      run.processor().awaitClose(30, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
   private static BulkRetryPolicy retries(int maxRetries, long initialBackoffMillis) {
     return new BulkRetryPolicy(maxRetries, initialBackoffMillis, 1_000L);
   }
@@ -127,7 +200,10 @@ class OpenSearchBulkProcessorConnectionPoolTest {
   }
 
   private record ProcessorRun(
-      OpenSearchBulkSink.CustomBulkProcessor processor, AtomicLong succeeded, AtomicLong failed)
+      OpenSearchBulkSink.CustomBulkProcessor processor,
+      AtomicLong succeeded,
+      AtomicLong failed,
+      OpenSearchClient client)
       implements AutoCloseable {
 
     static ProcessorRun start(
@@ -147,14 +223,21 @@ class OpenSearchBulkProcessorConnectionPoolTest {
         BulkCircuitBreaker breaker) {
       AtomicLong succeeded = new AtomicLong();
       AtomicLong failed = new AtomicLong();
+      OpenSearchClient client = new OpenSearchClient(configuration);
       OpenSearchBulkSink.CustomBulkProcessor processor =
           new OpenSearchBulkSink.CustomBulkProcessor(
-              new OpenSearchClient(configuration),
+              client,
               settings,
               new BulkProcessorCounters(
                   new AtomicLong(), succeeded, failed, new AtomicLong(), () -> {}),
               breaker);
-      return new ProcessorRun(processor, succeeded, failed);
+      return new ProcessorRun(processor, succeeded, failed, client);
+    }
+
+    ScheduledExecutorService scheduler() throws ReflectiveOperationException {
+      Field field = processor.getClass().getDeclaredField("scheduler");
+      field.setAccessible(true);
+      return (ScheduledExecutorService) field.get(processor);
     }
 
     void index(int documents) {
@@ -168,7 +251,11 @@ class OpenSearchBulkProcessorConnectionPoolTest {
 
     @Override
     public void close() throws InterruptedException {
-      processor.awaitClose(10, TimeUnit.SECONDS);
+      try {
+        processor.awaitClose(10, TimeUnit.SECONDS);
+      } finally {
+        client.close();
+      }
     }
   }
 }

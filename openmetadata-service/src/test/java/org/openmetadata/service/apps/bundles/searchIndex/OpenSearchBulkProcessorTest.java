@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -139,8 +138,9 @@ class OpenSearchBulkProcessorTest {
   }
 
   @Test
-  void addRecordsBulksAsFailedOnceAnOpenCircuitOutlastsThePauseLimit() throws Exception {
-    try (ProcessorHarness harness = newHarness(2, 1)) {
+  void addRecordsBulksAsFailedWhenTheCircuitStaysOpenPastTheirDeadline() throws Exception {
+    // A zero lifetime puts the deadline in the past, so the first pause already gives up.
+    try (ProcessorHarness harness = newHarness(2, 1, new BulkRetryPolicy(1, 5L, 5L, 0))) {
       StageStatsTracker tableTracker = mock(StageStatsTracker.class);
       StageStatsTracker mlModelTracker = mock(StageStatsTracker.class);
       BulkSink.FailureCallback failureCallback = mock(BulkSink.FailureCallback.class);
@@ -149,7 +149,6 @@ class OpenSearchBulkProcessorTest {
 
       when(harness.circuitBreaker.allowRequest()).thenReturn(false);
       when(harness.circuitBreaker.getState()).thenReturn(BulkCircuitBreaker.State.OPEN);
-      when(harness.circuitBreaker.hasPausedTooLong(anyLong())).thenReturn(true);
       harness.processor.setFailureCallback(failureCallback);
       harness.processor.setStatsCallback(statsCallback);
 
@@ -253,7 +252,7 @@ class OpenSearchBulkProcessorTest {
 
       Method method =
           OpenSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod(
-              "handleBulkFailure", List.class, long.class, int.class, int.class, Throwable.class);
+              "handleBulkFailure", BulkAttempt.class, Throwable.class);
       method.setAccessible(true);
 
       BulkOperation operation =
@@ -262,10 +261,7 @@ class OpenSearchBulkProcessorTest {
           (boolean)
               method.invoke(
                   harness.processor,
-                  List.of(operation),
-                  99L,
-                  1,
-                  Integer.MAX_VALUE,
+                  new BulkAttempt<>(List.of(operation), 99L, Integer.MAX_VALUE, Long.MAX_VALUE),
                   new IllegalStateException("boom"));
 
       assertFalse(retry);
@@ -276,6 +272,11 @@ class OpenSearchBulkProcessorTest {
   }
 
   private ProcessorHarness newHarness(int bulkActions, int concurrentRequests) {
+    return newHarness(bulkActions, concurrentRequests, new BulkRetryPolicy(1, 5L, 5L));
+  }
+
+  private ProcessorHarness newHarness(
+      int bulkActions, int concurrentRequests, BulkRetryPolicy retryPolicy) {
     OpenSearchClient searchClient = mock(OpenSearchClient.class);
     os.org.opensearch.client.opensearch.OpenSearchClient restClient =
         mock(os.org.opensearch.client.opensearch.OpenSearchClient.class, RETURNS_DEEP_STUBS);
@@ -299,8 +300,7 @@ class OpenSearchBulkProcessorTest {
     OpenSearchBulkSink.CustomBulkProcessor processor =
         new OpenSearchBulkSink.CustomBulkProcessor(
             searchClient,
-            new BulkProcessorSettings(
-                bulkActions, 4096L, concurrentRequests, 60_000L, new BulkRetryPolicy(1, 5L, 5L)),
+            new BulkProcessorSettings(bulkActions, 4096L, concurrentRequests, 60_000L, retryPolicy),
             new BulkProcessorCounters(
                 totalSubmitted,
                 totalSuccess,

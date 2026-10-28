@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -128,15 +127,15 @@ class ElasticSearchBulkProcessorTest {
   }
 
   @Test
-  void addRecordsBulksAsFailedOnceAnOpenCircuitOutlastsThePauseLimit() throws Exception {
-    try (ProcessorHarness harness = newHarness(2, 1)) {
+  void addRecordsBulksAsFailedWhenTheCircuitStaysOpenPastTheirDeadline() throws Exception {
+    // A zero lifetime puts the deadline in the past, so the first pause already gives up.
+    try (ProcessorHarness harness = newHarness(2, 1, new BulkRetryPolicy(1, 5L, 5L, 0))) {
       StageStatsTracker tableTracker = mock(StageStatsTracker.class);
       StageStatsTracker mlModelTracker = mock(StageStatsTracker.class);
       BulkSink.FailureCallback failureCallback = mock(BulkSink.FailureCallback.class);
 
       when(harness.circuitBreaker.allowRequest()).thenReturn(false);
       when(harness.circuitBreaker.getState()).thenReturn(BulkCircuitBreaker.State.OPEN);
-      when(harness.circuitBreaker.hasPausedTooLong(anyLong())).thenReturn(true);
       harness.processor.setFailureCallback(failureCallback);
 
       harness.processor.add(
@@ -230,7 +229,7 @@ class ElasticSearchBulkProcessorTest {
 
       Method method =
           ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod(
-              "handleBulkFailure", List.class, long.class, int.class, int.class, Throwable.class);
+              "handleBulkFailure", BulkAttempt.class, Throwable.class);
       method.setAccessible(true);
 
       BulkOperation operation =
@@ -239,10 +238,7 @@ class ElasticSearchBulkProcessorTest {
           (boolean)
               method.invoke(
                   harness.processor,
-                  List.of(operation),
-                  99L,
-                  1,
-                  Integer.MAX_VALUE,
+                  new BulkAttempt<>(List.of(operation), 99L, Integer.MAX_VALUE, Long.MAX_VALUE),
                   new IllegalStateException("boom"));
 
       assertFalse(retry);
@@ -253,6 +249,11 @@ class ElasticSearchBulkProcessorTest {
   }
 
   private ProcessorHarness newHarness(int bulkActions, int concurrentRequests) {
+    return newHarness(bulkActions, concurrentRequests, new BulkRetryPolicy(1, 5L, 5L));
+  }
+
+  private ProcessorHarness newHarness(
+      int bulkActions, int concurrentRequests, BulkRetryPolicy retryPolicy) {
     ElasticSearchClient searchClient = mock(ElasticSearchClient.class);
     es.co.elastic.clients.elasticsearch.ElasticsearchClient restClient =
         mock(es.co.elastic.clients.elasticsearch.ElasticsearchClient.class, RETURNS_DEEP_STUBS);
@@ -276,8 +277,7 @@ class ElasticSearchBulkProcessorTest {
     ElasticSearchBulkSink.CustomBulkProcessor processor =
         new ElasticSearchBulkSink.CustomBulkProcessor(
             searchClient,
-            new BulkProcessorSettings(
-                bulkActions, 4096L, concurrentRequests, 60_000L, new BulkRetryPolicy(1, 5L, 5L)),
+            new BulkProcessorSettings(bulkActions, 4096L, concurrentRequests, 60_000L, retryPolicy),
             new BulkProcessorCounters(
                 totalSubmitted,
                 totalSuccess,

@@ -31,17 +31,22 @@ pool size added failures, not throughput.
 - A flush waiting for permits fails its batch only after a 60 s stall window in which no bulk
   attempt completed (the leaked-future case), never merely because bulks are slow.
 - The bulk circuit breaker ignores pool-wait timeouts and counts each bulk once: its first attempt,
-  or its probe. When half-open it admits one probe at a time, and a probe silent for three probe
-  intervals is replaced. Bulks the open circuit rejects are paused instead of failed. A paused bulk
-  fails after 120 s, which is below the roughly 3 minutes after which a PartitionWorker reconciles
-  sink operations that are still pending.
-- Reindex sinks retry with the app's Max Retries / Initial Backoff / Max Backoff. Other sinks keep 3
-  retries starting at 100 ms.
+  or its probe. When half-open it admits one probe at a time, claimed with a single compare-and-set,
+  and a probe silent for three probe intervals is replaced. Bulks the open circuit rejects are
+  paused instead of failed.
+- Each bulk gets a deadline 120 s after its first send, and its retries and pauses carry it. A retry
+  whose backoff would end after the deadline is not scheduled, and a paused bulk fails when the
+  deadline passes. A bulk is therefore written or recorded as failed within 120 s, plus at most
+  one in-flight attempt. That is below the roughly 3 minutes after which a PartitionWorker
+  reconciles sink operations that are still pending, whatever backoff is configured.
+- Reindex sinks retry with the app's Max Retries / Initial Backoff / Max Backoff, within the
+  deadline. Other sinks keep 3 retries starting at 100 ms.
 
 ## Consequences
 A slow cluster slows the reindex instead of failing it: producers block on permits. User searches
 keep at least the reserve while a reindex runs. Reindex throughput is bounded by the pool, so raise
 `maxConnPerRoute`/`maxConnTotal` (`ELASTICSEARCH_MAX_CONN_PER_ROUTE`/`ELASTICSEARCH_MAX_CONN_TOTAL`)
 to go faster. Raising `connectionRequestTimeoutSecs` is not a fix, because it lets user searches hang.
-A cluster that stays unreachable for more than the pause limit still fails the run. Revisit if bulk
+A cluster that stays unreachable for more than a bulk's 120 s deadline still fails the run, and
+backoff settings longer than the deadline are cut short by it. Revisit if bulk
 writes move to a dedicated client or pool; the budget should then be sized from that pool.

@@ -3,13 +3,15 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.hc.core5.util.Deadline;
@@ -257,24 +259,48 @@ class BulkCircuitBreakerTest {
   }
 
   @Test
-  @DisplayName("callers learn how long an open circuit stays shut and how long they may pause")
-  void reportsProbeDelayAndPauseLimit() {
-    BulkCircuitBreaker pausing = new BulkCircuitBreaker(1, 5000, 1000, 200);
+  @DisplayName("callers learn how long an open circuit stays shut")
+  void reportsHowLongAnOpenCircuitStaysShut() {
+    BulkCircuitBreaker pausing = new BulkCircuitBreaker(1, 5000, 1000);
     assertEquals(0, pausing.millisUntilProbe());
 
     pausing.recordFailure();
     long untilProbe = pausing.millisUntilProbe();
     assertTrue(untilProbe > 0 && untilProbe <= 1000, "remaining open time, got " + untilProbe);
-
-    long now = System.currentTimeMillis();
-    assertFalse(pausing.hasPausedTooLong(now));
-    assertTrue(pausing.hasPausedTooLong(now - 200));
   }
 
   @Test
-  @DisplayName("rejects a non-positive pause limit")
-  void rejectsNonPositivePauseLimit() {
-    assertThrows(IllegalArgumentException.class, () -> new BulkCircuitBreaker(1, 5000, 50, 0));
+  @DisplayName("callers racing for a half-open circuit get exactly one probe")
+  void racingCallersShareASingleProbe() throws Exception {
+    int callers = 32;
+    ExecutorService pool = Executors.newFixedThreadPool(callers);
+    try {
+      for (int round = 0; round < 3; round++) {
+        BulkCircuitBreaker racing = new BulkCircuitBreaker(1, 5000, 500);
+        racing.recordFailure();
+        await().atMost(Duration.ofSeconds(3)).until(() -> racing.millisUntilProbe() == 0);
+
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Boolean>> admissions = new ArrayList<>();
+        for (int caller = 0; caller < callers; caller++) {
+          admissions.add(
+              pool.submit(
+                  () -> {
+                    start.await();
+                    return racing.allowRequest();
+                  }));
+        }
+        start.countDown();
+
+        int probes = 0;
+        for (Future<Boolean> admission : admissions) {
+          probes += admission.get(5, TimeUnit.SECONDS) ? 1 : 0;
+        }
+        assertEquals(1, probes, "round " + round + " let several probes through");
+      }
+    } finally {
+      pool.shutdownNow();
+    }
   }
 
   private static DeadlineTimeoutException poolWaitTimeout() {

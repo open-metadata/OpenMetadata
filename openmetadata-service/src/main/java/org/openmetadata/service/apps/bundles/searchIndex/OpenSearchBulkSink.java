@@ -1287,7 +1287,6 @@ public class OpenSearchBulkSink implements BulkSink {
   }
 
   public static class CustomBulkProcessor {
-    private static final long NOT_PAUSED = 0L;
     private static final long PAUSE_RECHECK_MILLIS = 100L;
     private static final String CIRCUIT_OPEN_FAILURE = "Circuit breaker OPEN";
 
@@ -1525,20 +1524,18 @@ public class OpenSearchBulkSink implements BulkSink {
       }
 
       activeBulkRequests.incrementAndGet();
-      executeBulkWithRetry(toFlush, executionId, numberOfActions, 0, NOT_PAUSED);
+      executeBulkWithRetry(BulkAttempt.first(toFlush, executionId, retryPolicy));
     }
 
-    private void executeBulkWithRetry(
-        List<BulkOperation> operations,
-        long executionId,
-        int numberOfActions,
-        int attemptNumber,
-        long pausedSinceMillis) {
+    private void executeBulkWithRetry(BulkAttempt<BulkOperation> attempt) {
       if (!circuitBreaker.allowRequest()) {
-        pauseWhileCircuitOpen(
-            operations, executionId, numberOfActions, attemptNumber, pausedSinceMillis);
+        pauseWhileCircuitOpen(attempt);
         return;
       }
+      List<BulkOperation> operations = attempt.operations();
+      long executionId = attempt.executionId();
+      int numberOfActions = attempt.size();
+      int attemptNumber = attempt.attemptNumber();
 
       ReindexingMetrics metrics = ReindexingMetrics.getInstance();
       io.micrometer.core.instrument.Timer.Sample bulkTimerSample =
@@ -1562,8 +1559,7 @@ public class OpenSearchBulkSink implements BulkSink {
         }
         sendPermits.recordAttemptCompleted();
         circuitBreaker.recordBulkFailure(e, attemptNumber);
-        boolean retryScheduled =
-            handleBulkFailure(operations, executionId, numberOfActions, attemptNumber, e);
+        boolean retryScheduled = handleBulkFailure(attempt, e);
         if (!retryScheduled) {
           finishBulk();
         }
@@ -1584,9 +1580,7 @@ public class OpenSearchBulkSink implements BulkSink {
                   metrics.recordBulkRequestCompleted(bulkTimerSample, false);
                 }
                 circuitBreaker.recordBulkFailure(error, attemptNumber);
-                retryScheduled =
-                    handleBulkFailure(
-                        operations, executionId, numberOfActions, attemptNumber, error);
+                retryScheduled = handleBulkFailure(attempt, error);
               } else if (response.errors()) {
                 if (metrics != null && bulkTimerSample != null) {
                   metrics.recordBulkRequestCompleted(bulkTimerSample, false);
@@ -1617,49 +1611,34 @@ public class OpenSearchBulkSink implements BulkSink {
     /**
      * Holds a bulk the open circuit turned away and offers it again when a probe may run. The bulk
      * keeps its send permits, so producers back off instead of queueing more work; it is recorded
-     * as failed only once the circuit has stayed open past the breaker's pause limit.
+     * as failed once its deadline passes.
      */
-    private void pauseWhileCircuitOpen(
-        List<BulkOperation> operations,
-        long executionId,
-        int numberOfActions,
-        int attemptNumber,
-        long pausedSinceMillis) {
-      long pausedSince =
-          pausedSinceMillis == NOT_PAUSED ? pauseStarted(executionId) : pausedSinceMillis;
-      if (circuitBreaker.hasPausedTooLong(pausedSince)) {
+    private void pauseWhileCircuitOpen(BulkAttempt<BulkOperation> attempt) {
+      if (attempt.hasExpired()) {
         LOG.warn(
-            "Circuit breaker stayed open - failing bulk request {} with {} actions",
-            executionId,
-            numberOfActions);
-        recordPermanentFailure(operations, numberOfActions, CIRCUIT_OPEN_FAILURE);
+            "Circuit breaker stayed open past the deadline of bulk request {} - failing {} actions",
+            attempt.executionId(),
+            attempt.size());
+        recordPermanentFailure(attempt.operations(), attempt.size(), CIRCUIT_OPEN_FAILURE);
         finishBulk();
       } else {
+        long recheckMillis = Math.max(PAUSE_RECHECK_MILLIS, circuitBreaker.millisUntilProbe());
         scheduleAttempt(
-            () ->
-                executeBulkWithRetry(
-                    operations, executionId, numberOfActions, attemptNumber, pausedSince),
-            Math.max(PAUSE_RECHECK_MILLIS, circuitBreaker.millisUntilProbe()),
-            operations);
+            () -> executeBulkWithRetry(attempt),
+            Math.min(recheckMillis, attempt.remainingMillis()),
+            attempt);
       }
-    }
-
-    private long pauseStarted(long executionId) {
-      LOG.warn(
-          "Circuit breaker {} - pausing bulk request {} until the cluster recovers",
-          circuitBreaker.getState(),
-          executionId);
-      return System.currentTimeMillis();
     }
 
     /** Runs a retry or a paused bulk later; once the processor has shut down, fails the bulk. */
     private void scheduleAttempt(
-        Runnable attempt, long delayMillis, List<BulkOperation> operations) {
+        Runnable send, long delayMillis, BulkAttempt<BulkOperation> attempt) {
       try {
-        scheduler.schedule(attempt, delayMillis, TimeUnit.MILLISECONDS);
+        scheduler.schedule(send, delayMillis, TimeUnit.MILLISECONDS);
       } catch (RejectedExecutionException e) {
-        LOG.warn("Bulk processor shut down before {} actions could be re-sent", operations.size());
-        recordPermanentFailure(operations, operations.size(), "Bulk processor closed before retry");
+        LOG.warn("Bulk processor shut down before {} actions could be re-sent", attempt.size());
+        recordPermanentFailure(
+            attempt.operations(), attempt.size(), "Bulk processor closed before retry");
         finishBulk();
       }
     }
@@ -1695,36 +1674,28 @@ public class OpenSearchBulkSink implements BulkSink {
       return trackers;
     }
 
-    private boolean handleBulkFailure(
-        List<BulkOperation> operations,
-        long executionId,
-        int numberOfActions,
-        int attemptNumber,
-        Throwable error) {
-      // An open circuit no longer cancels the retry: the retry pauses until a probe succeeds.
-      boolean retrying = retryPolicy.shouldRetry(attemptNumber, error);
+    private boolean handleBulkFailure(BulkAttempt<BulkOperation> attempt, Throwable error) {
+      // A retry goes ahead through an open circuit (it pauses until a probe succeeds), but never
+      // when its backoff would end after the bulk's deadline.
+      long backoffTime = retryPolicy.backoffMillis(attempt.attemptNumber());
+      boolean retrying =
+          retryPolicy.shouldRetry(attempt.attemptNumber(), error) && attempt.outlasts(backoffTime);
       if (retrying) {
-        long backoffTime = retryPolicy.backoffMillis(attemptNumber);
         LOG.warn(
             "Bulk request {} failed (attempt {}), retrying in {}ms: {}",
-            executionId,
-            attemptNumber + 1,
+            attempt.executionId(),
+            attempt.attemptNumber() + 1,
             backoffTime,
             error.getMessage());
-        scheduleAttempt(
-            () ->
-                executeBulkWithRetry(
-                    operations, executionId, numberOfActions, attemptNumber + 1, NOT_PAUSED),
-            backoffTime,
-            operations);
+        scheduleAttempt(() -> executeBulkWithRetry(attempt.next()), backoffTime, attempt);
       } else {
         LOG.error(
             "Bulk request {} failed completely after {} attempts with {} actions",
-            executionId,
-            attemptNumber + 1,
-            numberOfActions,
+            attempt.executionId(),
+            attempt.attemptNumber() + 1,
+            attempt.size(),
             error);
-        recordPermanentFailure(operations, numberOfActions, error.getMessage());
+        recordPermanentFailure(attempt.operations(), attempt.size(), error.getMessage());
       }
       return retrying;
     }
@@ -1907,11 +1878,15 @@ public class OpenSearchBulkSink implements BulkSink {
 
     boolean awaitClose(long timeout, TimeUnit unit) throws InterruptedException {
       closed = true;
-      flush();
       long deadlineMillis = System.currentTimeMillis() + unit.toMillis(timeout);
-      // Retries and paused bulks run on the scheduler, so it stays up until they have finished.
-      boolean drained = awaitActiveBulks(deadlineMillis);
-      scheduler.shutdown();
+      boolean drained;
+      try {
+        flush();
+        // Retries and paused bulks run on the scheduler, so it stays up until they have finished.
+        drained = awaitActiveBulks(deadlineMillis);
+      } finally {
+        scheduler.shutdown();
+      }
       long remainingMillis = Math.max(0, deadlineMillis - System.currentTimeMillis());
       return drained && scheduler.awaitTermination(remainingMillis, TimeUnit.MILLISECONDS);
     }

@@ -65,6 +65,13 @@ class BulkRetryPolicyTest {
   }
 
   @Test
+  void aBulkGivesUpTwoMinutesAfterItsFirstSendUnlessToldOtherwise() {
+    assertEquals(120_000, new BulkRetryPolicy(3, 1_000, 10_000).maxLifetimeMillis());
+    assertEquals(500, new BulkRetryPolicy(3, 1_000, 10_000, 500).maxLifetimeMillis());
+    assertEquals(0, new BulkRetryPolicy(3, 1_000, 10_000, -5).maxLifetimeMillis());
+  }
+
+  @Test
   void nonsensicalSettingsAreNormalisedInsteadOfBreakingTheSink() {
     BulkRetryPolicy negative = new BulkRetryPolicy(-1, -5, -10);
     assertEquals(new BulkRetryPolicy(0, 0, 0), negative);

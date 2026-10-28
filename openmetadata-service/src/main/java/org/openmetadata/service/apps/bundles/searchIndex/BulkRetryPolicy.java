@@ -5,10 +5,20 @@ import java.util.Locale;
 
 /**
  * How a failed bulk request is re-sent: how many times, the exponential backoff between attempts,
- * and which failures are worth re-sending at all. Reindex sinks build it from the app's Max
- * Retries / Initial Backoff / Max Backoff settings; live-indexing sinks keep {@link #DEFAULT}.
+ * which failures are worth re-sending at all, and how long a bulk may keep trying. Reindex sinks
+ * build it from the app's Max Retries / Initial Backoff / Max Backoff settings; live-indexing sinks
+ * keep {@link #DEFAULT}.
  */
-public record BulkRetryPolicy(int maxRetries, long initialBackoffMillis, long maxBackoffMillis) {
+public record BulkRetryPolicy(
+    int maxRetries, long initialBackoffMillis, long maxBackoffMillis, long maxLifetimeMillis) {
+
+  /**
+   * How long after its first send a bulk may keep retrying or waiting out an open circuit. A
+   * PartitionWorker reconciles sink operations still pending after roughly three minutes, so a
+   * bulk must be written or recorded as failed well before that, whatever backoff is configured.
+   */
+  static final long DEFAULT_MAX_LIFETIME_MILLIS = 120_000;
+
   public static final BulkRetryPolicy DEFAULT = new BulkRetryPolicy(3, 100, 10_000);
 
   private static final int MAX_BACKOFF_DOUBLINGS = 20;
@@ -29,6 +39,11 @@ public record BulkRetryPolicy(int maxRetries, long initialBackoffMillis, long ma
     maxRetries = Math.max(0, maxRetries);
     initialBackoffMillis = Math.max(0, initialBackoffMillis);
     maxBackoffMillis = Math.max(initialBackoffMillis, maxBackoffMillis);
+    maxLifetimeMillis = Math.max(0, maxLifetimeMillis);
+  }
+
+  public BulkRetryPolicy(int maxRetries, long initialBackoffMillis, long maxBackoffMillis) {
+    this(maxRetries, initialBackoffMillis, maxBackoffMillis, DEFAULT_MAX_LIFETIME_MILLIS);
   }
 
   boolean shouldRetry(int attemptNumber, Throwable error) {
