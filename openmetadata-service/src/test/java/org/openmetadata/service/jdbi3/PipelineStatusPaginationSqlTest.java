@@ -25,8 +25,6 @@ import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.TimeSeriesDAOs.EntityExtensionTimeSeriesDAO;
-import org.openmetadata.service.jdbi3.TimeSeriesDAOs.EntityExtensionTimeSeriesDAO.PipelineStatusFilter;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -192,37 +190,17 @@ class PipelineStatusPaginationSqlTest {
           .add();
     }
     batch.execute();
-    long started = System.nanoTime();
     ResultList<PipelineStatus> full =
         repository.getPipelineStatuses(
             FQN, 2000L, 6999L, null, null, null, null, "target", 40L, 40L);
-    long fullNanos = System.nanoTime() - started;
-    started = System.nanoTime();
     ResultList<PipelineStatus> page =
         repository.getPipelineStatuses(FQN, 2000L, 6999L, 20, null, null, null, "target", 40L, 40L);
-    long pageNanos = System.nanoTime() - started;
     assertEquals(5000, full.getData().size());
     assertEquals(5000, page.getPaging().getTotal());
     assertEquals(20, page.getData().size());
     assertEquals(6999L, page.getData().getFirst().getTimestamp());
     assertEquals(6980L, page.getData().getLast().getTimestamp());
     assertEquals(full.getData().subList(0, 20), page.getData());
-    System.out.printf(
-        "Pipeline history %s: 5000 runs x 12 tasks; full %.1f ms, SQL page %.1f ms; materialized 5000 -> 20%n",
-        mysql ? "mysql" : "postgres", fullNanos / 1_000_000.0, pageNanos / 1_000_000.0);
-    String filtered =
-        mysql
-            ? EntityExtensionTimeSeriesDAO.MYSQL_FILTERED_PIPELINE_STATUSES
-            : EntityExtensionTimeSeriesDAO.POSTGRES_FILTERED_PIPELINE_STATUSES;
-    var filter = new PipelineStatusFilter(2000L, 6999L, null, "%target%", 40L, 40L, null, null);
-    System.out.println(
-        "Pipeline count plan: "
-            + handle
-                .createQuery("EXPLAIN SELECT COUNT(*) " + filtered)
-                .bind("entityFQNHash", FullyQualifiedName.buildHash(FQN))
-                .bindMethods(filter)
-                .mapToMap()
-                .list());
   }
 
   private void seed(Handle handle, boolean mysql) {

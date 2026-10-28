@@ -43,7 +43,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -630,22 +629,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Long maxDuration) {
     if (limit != null && limit > 0) {
       var filter =
-          new PipelineStatusFilter(
+          PipelineStatusFilter.fromRequest(
               starTs,
               endTs,
-              nullOrEmpty(status)
-                  ? null
-                  : JsonUtils.pojoToJson(
-                      Arrays.stream(status.split(",")).map(String::trim).toList()),
-              nullOrEmpty(search)
-                  ? null
-                  : "%"
-                      + search
-                          .toLowerCase(Locale.ROOT)
-                          .replace("!", "!!")
-                          .replace("%", "!%")
-                          .replace("_", "!_")
-                      + "%",
+              status,
+              search,
               minDuration,
               maxDuration,
               before == null ? null : Long.valueOf(RestUtil.decodeCursor(before)),

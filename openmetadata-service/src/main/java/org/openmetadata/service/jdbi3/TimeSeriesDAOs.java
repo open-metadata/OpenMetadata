@@ -912,59 +912,128 @@ public interface TimeSeriesDAOs {
     record PipelineStatusFilter(
         Long startTs,
         Long endTs,
-        String statuses,
-        String search,
+        String statusesJson,
+        String taskNamePattern,
         Long minDuration,
         Long maxDuration,
         Long beforeTs,
-        Long afterTs) {}
+        Long afterTs) {
+      static PipelineStatusFilter fromRequest(
+          Long startTs,
+          Long endTs,
+          String statuses,
+          String search,
+          Long minDuration,
+          Long maxDuration,
+          Long beforeTs,
+          Long afterTs) {
+        return new PipelineStatusFilter(
+            startTs,
+            endTs,
+            buildStatusesJson(statuses),
+            buildTaskNamePattern(search),
+            minDuration,
+            maxDuration,
+            beforeTs,
+            afterTs);
+      }
 
-    String MYSQL_PIPELINE_TASKS =
-        "JSON_TABLE(s.json, '$.taskStatus[*]' COLUMNS (taskIndex FOR ORDINALITY, "
-            + "name TEXT PATH '$.name', startTime BIGINT PATH '$.startTime', "
-            + "endTime BIGINT PATH '$.endTime')) task";
-    String POSTGRES_PIPELINE_TASKS =
-        "jsonb_array_elements(COALESCE(NULLIF(s.json->'taskStatus', 'null'::jsonb), "
-            + "'[]'::jsonb)) WITH ORDINALITY task(value, taskIndex)";
-    String MYSQL_PIPELINE_TASK_MATCH =
-        "(:search IS NULL OR LOWER(task.name) COLLATE utf8mb4_bin LIKE :search ESCAPE '!')";
-    String POSTGRES_PIPELINE_TASK_MATCH =
-        "(:search IS NULL OR LOWER(task.value->>'name') COLLATE \"C\" LIKE :search ESCAPE '!')";
-    String PIPELINE_STATUS_SCOPE =
-        "s.entityFQNHash = :entityFQNHash AND s.extension = 'pipeline.pipelineStatus' "
-            + "AND s.timestamp >= :startTs AND s.timestamp <= :endTs ";
+      private static String buildStatusesJson(String statuses) {
+        return nullOrEmpty(statuses)
+            ? null
+            : JsonUtils.pojoToJson(Arrays.stream(statuses.split(",")).map(String::trim).toList());
+      }
+
+      private static String buildTaskNamePattern(String search) {
+        return nullOrEmpty(search)
+            ? null
+            : "%"
+                + search
+                    .toLowerCase(Locale.ROOT)
+                    .replace("!", "!!")
+                    .replace("%", "!%")
+                    .replace("_", "!_")
+                + "%";
+      }
+    }
+
     String PIPELINE_DURATION_FILTER =
-        "AND (:search IS NULL OR t.matched > 0) "
-            + "AND ((:minDuration IS NULL AND :maxDuration IS NULL) OR "
-            + "(t.maxEnd >= t.minStart "
-            + "AND (:minDuration IS NULL OR t.maxEnd - t.minStart >= :minDuration) "
-            + "AND (:maxDuration IS NULL OR t.maxEnd - t.minStart <= :maxDuration))) ";
+        """
+        AND (:taskNamePattern IS NULL OR task_timings.matched > 0)
+        AND ((:minDuration IS NULL AND :maxDuration IS NULL) OR (
+          task_timings.maxEnd >= task_timings.minStart
+          AND (:minDuration IS NULL OR task_timings.maxEnd - task_timings.minStart >= :minDuration)
+          AND (:maxDuration IS NULL OR task_timings.maxEnd - task_timings.minStart <= :maxDuration)
+        ))
+        """;
     String MYSQL_FILTERED_PIPELINE_STATUSES =
-        "FROM entity_extension_time_series s LEFT JOIN LATERAL "
-            + "(SELECT COUNT(*) matched, MIN(task.startTime) minStart, MAX(task.endTime) maxEnd FROM "
-            + MYSQL_PIPELINE_TASKS
-            + " WHERE (:search IS NOT NULL OR :minDuration IS NOT NULL OR :maxDuration IS NOT NULL) AND "
-            + MYSQL_PIPELINE_TASK_MATCH
-            + ") t ON TRUE WHERE "
-            + PIPELINE_STATUS_SCOPE
-            + "AND (:statuses IS NULL OR "
-            + "JSON_CONTAINS(CAST(:statuses AS JSON), JSON_EXTRACT(s.json, '$.executionStatus'))) "
+        """
+        FROM entity_extension_time_series history
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) matched, MIN(task.startTime) minStart, MAX(task.endTime) maxEnd
+          FROM JSON_TABLE(history.json, '$.taskStatus[*]' COLUMNS (
+            name TEXT PATH '$.name',
+            startTime BIGINT PATH '$.startTime',
+            endTime BIGINT PATH '$.endTime'
+          )) task
+          WHERE (:taskNamePattern IS NOT NULL OR :minDuration IS NOT NULL OR :maxDuration IS NOT NULL)
+            AND (:taskNamePattern IS NULL
+              OR LOWER(task.name) COLLATE utf8mb4_bin LIKE :taskNamePattern ESCAPE '!')
+        ) task_timings ON TRUE
+        WHERE history.entityFQNHash = :entityFQNHash
+          AND history.extension = 'pipeline.pipelineStatus'
+          AND history.timestamp >= :startTs AND history.timestamp <= :endTs
+          AND (:statusesJson IS NULL
+            OR JSON_CONTAINS(CAST(:statusesJson AS JSON), JSON_EXTRACT(history.json, '$.executionStatus')))
+        """
             + PIPELINE_DURATION_FILTER;
     String POSTGRES_FILTERED_PIPELINE_STATUSES =
-        "FROM entity_extension_time_series s LEFT JOIN LATERAL "
-            + "(SELECT COUNT(*) matched, MIN((task.value->>'startTime')::bigint) minStart, "
-            + "MAX((task.value->>'endTime')::bigint) maxEnd FROM "
-            + POSTGRES_PIPELINE_TASKS
-            + " WHERE (:search IS NOT NULL OR :minDuration IS NOT NULL OR :maxDuration IS NOT NULL) AND "
-            + POSTGRES_PIPELINE_TASK_MATCH
-            + ") t ON TRUE WHERE "
-            + PIPELINE_STATUS_SCOPE
-            + "AND (:statuses IS NULL OR "
-            + "CAST(:statuses AS jsonb) @> jsonb_build_array(s.json->>'executionStatus')) "
+        """
+        FROM entity_extension_time_series history
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) matched,
+            MIN((task.value->>'startTime')::bigint) minStart,
+            MAX((task.value->>'endTime')::bigint) maxEnd
+          FROM jsonb_array_elements(
+            COALESCE(NULLIF(history.json->'taskStatus', 'null'::jsonb), '[]'::jsonb)
+          ) task(value)
+          WHERE (:taskNamePattern IS NOT NULL OR :minDuration IS NOT NULL OR :maxDuration IS NOT NULL)
+            AND (:taskNamePattern IS NULL
+              OR LOWER(task.value->>'name') COLLATE "C" LIKE :taskNamePattern ESCAPE '!')
+        ) task_timings ON TRUE
+        WHERE history.entityFQNHash = :entityFQNHash
+          AND history.extension = 'pipeline.pipelineStatus'
+          AND history.timestamp >= :startTs AND history.timestamp <= :endTs
+          AND (:statusesJson IS NULL
+            OR CAST(:statusesJson AS jsonb) @> jsonb_build_array(history.json->>'executionStatus'))
+        """
             + PIPELINE_DURATION_FILTER;
+    String MYSQL_PIPELINE_STATUS_SELECT =
+        """
+        SELECT history.json, CASE WHEN :taskNamePattern IS NULL THEN NULL ELSE (
+          SELECT JSON_ARRAYAGG(task.taskIndex)
+          FROM JSON_TABLE(history.json, '$.taskStatus[*]' COLUMNS (
+            taskIndex FOR ORDINALITY, name TEXT PATH '$.name'
+          )) task
+          WHERE LOWER(task.name) COLLATE utf8mb4_bin LIKE :taskNamePattern ESCAPE '!'
+        ) END taskIndexes
+        """;
+    String POSTGRES_PIPELINE_STATUS_SELECT =
+        """
+        SELECT history.json, CASE WHEN :taskNamePattern IS NULL THEN NULL ELSE (
+          SELECT jsonb_agg(task.taskIndex)
+          FROM jsonb_array_elements(
+            COALESCE(NULLIF(history.json->'taskStatus', 'null'::jsonb), '[]'::jsonb)
+          ) WITH ORDINALITY task(value, taskIndex)
+          WHERE LOWER(task.value->>'name') COLLATE "C" LIKE :taskNamePattern ESCAPE '!'
+        ) END taskIndexes
+        """;
     String PIPELINE_STATUS_PAGE =
-        "AND (:beforeTs IS NULL OR s.timestamp > :beforeTs) "
-            + "AND (:afterTs IS NULL OR s.timestamp < :afterTs) ORDER BY s.timestamp DESC LIMIT :limit";
+        """
+        AND (:beforeTs IS NULL OR history.timestamp > :beforeTs)
+        AND (:afterTs IS NULL OR history.timestamp < :afterTs)
+        ORDER BY history.timestamp DESC LIMIT :limit
+        """;
 
     @ConnectionAwareSqlQuery(
         value = "SELECT COUNT(*) " + MYSQL_FILTERED_PIPELINE_STATUSES,
@@ -977,23 +1046,11 @@ public interface TimeSeriesDAOs {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT s.json, CASE WHEN :search IS NULL THEN NULL ELSE "
-                + "(SELECT JSON_ARRAYAGG(task.taskIndex) FROM "
-                + MYSQL_PIPELINE_TASKS
-                + " WHERE "
-                + MYSQL_PIPELINE_TASK_MATCH
-                + ") END taskIndexes "
-                + MYSQL_FILTERED_PIPELINE_STATUSES
-                + PIPELINE_STATUS_PAGE,
+            MYSQL_PIPELINE_STATUS_SELECT + MYSQL_FILTERED_PIPELINE_STATUSES + PIPELINE_STATUS_PAGE,
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT s.json, CASE WHEN :search IS NULL THEN NULL ELSE "
-                + "(SELECT jsonb_agg(task.taskIndex) FROM "
-                + POSTGRES_PIPELINE_TASKS
-                + " WHERE "
-                + POSTGRES_PIPELINE_TASK_MATCH
-                + ") END taskIndexes "
+            POSTGRES_PIPELINE_STATUS_SELECT
                 + POSTGRES_FILTERED_PIPELINE_STATUSES
                 + PIPELINE_STATUS_PAGE,
         connectionType = POSTGRES)
