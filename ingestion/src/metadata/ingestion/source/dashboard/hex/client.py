@@ -41,6 +41,11 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
+
+class HexAccessDeniedError(Exception):
+    """The token isn't allowed to read this; asking again won't change that"""
+
+
 PageT = TypeVar("PageT", bound=PagedResponse)
 
 # The token isn't allowed to read it, so it won't be readable on a retry either;
@@ -139,7 +144,8 @@ class HexApiClient:
     def get_data_connections(self) -> dict[str, DataConnection] | None:
         """
         Data connections by id, for their warehouse type and default database and
-        schema. None when they can't be read.
+        schema. None when they can't be read this time; HexAccessDeniedError when the
+        token isn't allowed to read them, which a retry won't change.
         """
         try:
             return {
@@ -150,9 +156,7 @@ class HexApiClient:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             if _status_code(exc) in UNAVAILABLE_STATUSES:
-                # Not allowed for this token: carry on without them, every run would fail the same
-                logger.warning("Hex data connections can't be read, parsing SQL without their dialect: %s", exc)
-                return {}
+                raise HexAccessDeniedError(f"Hex data connections can't be read with this token: {exc}") from exc
             logger.warning("Error fetching data connections: %s", exc)
             return None
 
