@@ -30,6 +30,7 @@ import static org.openmetadata.service.util.EntityUtil.taskMatch;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Suppliers;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -42,10 +43,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.core.statement.PreparedBatch;
@@ -79,6 +82,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.EntityExtensionTimeSeriesDAO.PipelineStatusFilter;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -624,6 +628,30 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String search,
       Long minDuration,
       Long maxDuration) {
+    if (limit != null && limit > 0) {
+      var filter =
+          new PipelineStatusFilter(
+              starTs,
+              endTs,
+              nullOrEmpty(status)
+                  ? null
+                  : JsonUtils.pojoToJson(
+                      Arrays.stream(status.split(",")).map(String::trim).toList()),
+              nullOrEmpty(search)
+                  ? null
+                  : "%"
+                      + search
+                          .toLowerCase(Locale.ROOT)
+                          .replace("!", "!!")
+                          .replace("%", "!%")
+                          .replace("_", "!_")
+                      + "%",
+              minDuration,
+              maxDuration,
+              before == null ? null : Long.valueOf(RestUtil.decodeCursor(before)),
+              before == null && after != null ? Long.valueOf(RestUtil.decodeCursor(after)) : null);
+      return getPipelineStatusPage(fqn, filter, limit);
+    }
     List<PipelineStatus> pipelineStatuses;
     pipelineStatuses =
         JsonUtils.readObjects(
@@ -735,6 +763,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     return new ResultList<>(paginatedResults, beforeCursor, afterCursor, total);
+  }
+
+  private ResultList<PipelineStatus> getPipelineStatusPage(
+      String fqn, PipelineStatusFilter filter, int limit) {
+    var timeSeriesDAO = daoCollection.entityExtensionTimeSeriesDao();
+    int total = timeSeriesDAO.countPipelineStatuses(fqn, filter);
+    List<PipelineStatus> page = timeSeriesDAO.listPipelineStatuses(fqn, filter, limit);
+    return new ResultList<>(
+        page,
+        page.isEmpty() ? null : page.getFirst().getTimestamp().toString(),
+        page.isEmpty() ? null : page.getLast().getTimestamp().toString(),
+        total);
   }
 
   // Validate if a given task exists in the pipeline
@@ -1422,6 +1462,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Query entity_extension table for pipeline observability data
     // The extension key pattern is: table.pipelineObservability.{pipelineFqn}
     String extensionKey = "table.pipelineObservability." + pipelineFqn;
+    Supplier<Double> averageRuntime = Suppliers.memoize(() -> calculateAverageRuntime(pipelineFqn));
 
     List<TableObservabilityData> tableObservabilityList = new ArrayList<>();
 
@@ -1463,9 +1504,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
               // Calculate and set average runtime
               if (observability.getPipeline() != null) {
-                Double avgRuntime =
-                    calculateAverageRuntime(observability.getPipeline().getFullyQualifiedName());
-                observability.setAverageRunTime(avgRuntime);
+                observability.setAverageRunTime(averageRuntime.get());
               }
 
               // Apply filters
