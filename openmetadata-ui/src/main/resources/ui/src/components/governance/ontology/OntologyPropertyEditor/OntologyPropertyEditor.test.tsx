@@ -14,13 +14,19 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { applyPatch, Operation } from 'fast-json-patch';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
+  Characteristic,
   Kind,
   OntologyProperty,
 } from '../../../../generated/entity/data/ontologyProperty';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import OntologyPropertyEditor from './OntologyPropertyEditor';
 
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 jest.mock('../../../../rest/axiosClient', () => ({
   post: jest.fn(),
   patch: jest.fn(),
@@ -264,5 +270,84 @@ describe('OntologyPropertyEditor', () => {
       screen.getByRole('button', { name: 'label.add-entity' })
     ).toBeDisabled();
     expect(screen.getByRole('button', { name: 'label.remove' })).toBeDisabled();
+  });
+
+  describe('AI mode', () => {
+    beforeEach(() => (useIsAiMode as jest.Mock).mockReturnValue(true));
+
+    afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
+
+    it('creates an object property with characteristics, inverse and chain from the advanced section', async () => {
+      post.mockResolvedValue({ data: { ...property, kind: Kind.Object } });
+      const saved = jest.fn();
+      render(
+        <OntologyPropertyEditor canEdit ontology={ontology} onSaved={saved} />
+      );
+
+      expect(screen.getByText('label.new-entity')).toBeInTheDocument();
+      expect(
+        screen.getByRole('textbox', { name: 'label.display-name' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('textbox', { name: 'label.property-domain' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('textbox', { name: 'label.range' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('textbox', { name: 'label.property-iri' })
+      ).toBeEnabled();
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
+        target: { value: 'manages' },
+      });
+      fireEvent.click(
+        screen.getByRole('checkbox', { name: Characteristic.Transitive })
+      );
+      fireEvent.change(screen.getByRole('textbox', { name: 'label.inverse' }), {
+        target: { value: 'urn:sales:managedBy' },
+      });
+      fireEvent.change(
+        screen.getByRole('textbox', { name: 'label.property-chain' }),
+        { target: { value: 'urn:sales:a\nurn:sales:b' } }
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
+      await waitFor(() => expect(saved).toHaveBeenCalled());
+
+      expect(post).toHaveBeenCalledWith(
+        '/ontologyProperties',
+        expect.objectContaining({
+          name: 'manages',
+          kind: Kind.Object,
+          characteristics: [Characteristic.Transitive],
+          inverse: 'urn:sales:managedBy',
+          propertyChain: ['urn:sales:a', 'urn:sales:b'],
+        })
+      );
+    });
+
+    it('keeps data-property values, unit and identifier editable and gated', () => {
+      render(
+        <OntologyPropertyEditor
+          canEdit={false}
+          ontology={ontology}
+          property={property}
+          onSaved={jest.fn()}
+        />
+      );
+
+      expect(screen.getByText('status')).toBeInTheDocument();
+      expect(
+        screen.getByRole('textbox', { name: /^label\.value/ })
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('textbox', { name: 'label.unit' })
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('checkbox', { name: Characteristic.Functional })
+      ).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
+    });
   });
 });

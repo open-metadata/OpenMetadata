@@ -23,6 +23,7 @@ import {
   OntologyPackManifest,
 } from '../../generated/api/data/ontologyPackManifest';
 import { OntologyChangeSetState } from '../../generated/entity/data/ontologyChangeSet';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import APIClient from '../../rest/axiosClient';
 import {
@@ -38,6 +39,10 @@ jest.mock('../../rest/axiosClient', () => ({
   post: jest.fn(),
   put: jest.fn(),
   delete: jest.fn(),
+}));
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
 }));
 jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
   useEntityPermissions: jest.fn(),
@@ -217,6 +222,7 @@ afterAll(() => jest.useFakeTimers());
 describe('OntologyLibrary native installation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
     permit(true);
     created = { ...target, id: 'created-id' };
     get.mockImplementation(async (url) => {
@@ -273,6 +279,27 @@ describe('OntologyLibrary native installation', () => {
         url.startsWith('/ontologies/')
       )
     ).toBe(false);
+  });
+
+  it('installs and opens the graph from the AI-mode pack detail', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const native = nativeProps();
+    renderWithQueryClient(<OntologyLibrary native={native} />);
+    await openPack();
+
+    expect(screen.getByTestId('ontology-pack-concept-count')).toHaveTextContent(
+      '2'
+    );
+    expect(screen.getByTestId('ontology-library-cancel')).toBeEnabled();
+
+    await install();
+
+    expect(await openInstalledPack()).toBeVisible();
+    expect(native.onApplied).toHaveBeenCalledWith(created);
+
+    fireEvent.click(screen.getByTestId('ontology-library-open-graph'));
+
+    expect(native.onOpenOntology).toHaveBeenCalledWith(created);
   });
 
   it('keeps dependency selection and manifest counts in the single installation action', async () => {
