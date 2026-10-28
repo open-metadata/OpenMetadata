@@ -12,7 +12,6 @@
  */
 
 import { isUndefined } from 'lodash';
-import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import {
   IN_PAGE_SEARCH_ROUTES,
@@ -38,17 +37,13 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
-import { arrServiceTypes } from '../constants/Services.constant';
 import { AlertDetailTabs } from '../enums/Alerts.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { ServiceAgentSubTabs } from '../enums/service.enum';
-import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { useMarketplaceStore } from '../hooks/useMarketplaceStore';
 import type { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getPartialNameFromFQN } from './FqnUtils';
 import { getSettingPath } from './RouterPaths';
-import { getServiceRouteFromServiceType } from './ServicePureUtils';
 import { getEncodedFqn } from './StringUtils';
 
 // Moved to RouterPaths so callers needing only a profile URL (the app
@@ -278,7 +273,16 @@ export const getSettingCategoryPath = (category: string) => {
   return path.replace(ROUTES.SETTINGS, '');
 };
 
-export const getTeamsWithFqnPath = (fqn: string) => {
+/**
+ * A team's page, optionally opened on one of its tabs (built-in or contributed,
+ * e.g. Collate's `sql-studio`): `/settings/members/teams/<fqn>?activeTab=<key>`.
+ * A classic path, like every route builder here; wrap it in `getSettingsLink`
+ * (or `useSettingsLink`) where a link must also work in AI mode.
+ */
+export const getTeamsWithFqnPath = (
+  fqn: string,
+  options?: { activeTab?: string }
+) => {
   let path = ROUTES.SETTINGS_WITH_TAB_FQN;
 
   path = path
@@ -286,7 +290,11 @@ export const getTeamsWithFqnPath = (fqn: string) => {
     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.TEAMS)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return path;
+  const query = options?.activeTab
+    ? `?activeTab=${encodeURIComponent(options.activeTab)}`
+    : '';
+
+  return `${path}${query}`;
 };
 
 export const getRoleWithFqnPath = (fqn: string) => {
@@ -837,42 +845,6 @@ export const getKpiPath = (kpiName: string) => {
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(kpiName));
 
   return path;
-};
-
-/**
- * It returns a path
- * @param {string} path - The path of the current page.
- * @param {string | undefined} logEntityType - The type of the log entity.
- * @returns a string.
- */
-export const getLogEntityPath = (
-  path: string,
-  logEntityType: string | undefined
-): string => {
-  if (isUndefined(logEntityType)) {
-    return '';
-  }
-
-  if (logEntityType === PipelineType.TestSuite) {
-    return getTestSuitePath(path);
-  }
-
-  if (
-    !arrServiceTypes.includes(path as ServiceTypes) &&
-    path !== PipelineType.TestSuite
-  ) {
-    return getServiceDetailsPath(
-      path,
-      logEntityType,
-      EntityTabs.AGENTS,
-      ServiceAgentSubTabs.METADATA
-    );
-  }
-
-  return getSettingPath(
-    GlobalSettingsMenuCategory.SERVICES,
-    getServiceRouteFromServiceType(logEntityType as ServiceTypes)
-  );
 };
 
 export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {

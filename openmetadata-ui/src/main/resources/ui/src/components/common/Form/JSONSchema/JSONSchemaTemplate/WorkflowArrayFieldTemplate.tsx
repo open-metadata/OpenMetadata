@@ -162,7 +162,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
           tooltip={
             hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
           }
-          onClick={(e: React.MouseEvent) => {
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
             handleCopy(e);
           }}

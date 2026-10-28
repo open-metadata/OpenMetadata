@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, ButtonUtility, Card } from '@openmetadata/ui-core-components';
-import { ChevronUp } from '@openmetadata/ui-core-components/icons';
+import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,30 +58,27 @@ const ExpandableCard = ({
         className
       )}
       data-testid={dataTestId}>
-      <div
+      <Box
+        align="center"
         className={classNames(
-          'expandable-card-header tw:flex tw:min-h-12 tw:items-center tw:px-6 tw:text-sm tw:font-medium tw:text-primary',
+          'expandable-card-header tw:min-h-12 tw:px-6 tw:text-sm tw:font-medium tw:text-primary',
           { 'tw:-mb-px tw:border-b tw:border-secondary': !isExpanded }
         )}>
         <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:py-4">
           {title}
         </div>
-        <Box
-          align="center"
-          className="expandable-card-extra tw:ml-3 tw:font-normal tw:text-primary">
+        <Box className="tw:ml-3 tw:font-normal tw:text-primary">
           <ButtonUtility
-            className={classNames('expand-collapse-icon', {
-              'tw:rotate-180': !isExpanded,
-            })}
+            className="expand-collapse-icon"
             data-testid="expand-collapse-icon"
-            icon={ChevronUp}
+            icon={isExpanded ? ChevronUp : ChevronDown}
             isDisabled={isExpandDisabled}
             size="lg"
             tooltip={isExpanded ? t('label.collapse') : t('label.expand')}
             onClick={handleExpandClick}
           />
         </Box>
-      </div>
+      </Box>
       {/* `hidden` (not unmount) keeps collapsed form fields registered. */}
       <div
         className={classNames('expandable-card-body', { 'tw:p-5': children })}

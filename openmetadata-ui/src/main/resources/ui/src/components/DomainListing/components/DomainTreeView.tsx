@@ -16,7 +16,6 @@ import {
   Avatar,
   Badge,
   Box,
-  EmptyPlaceholder,
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -56,6 +55,8 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import ResizableLeftPanels from '../../common/ResizablePanels/ResizableLeftPanels';
 import DomainDetails from '../../Domain/DomainDetails/DomainDetails.component';
@@ -933,7 +934,7 @@ const DomainTreeView = ({
     }
 
     return (
-      <Typography className="tw:text-secondary tw:mt-2" size="text-sm">
+      <Typography className="tw:block tw:text-secondary tw:mt-2" size="text-sm">
         {t('label.no-entity-selected', {
           entity: t('label.domain'),
         })}
@@ -960,7 +961,9 @@ const DomainTreeView = ({
 
     if (hierarchy.length === 0) {
       return (
-        <Typography className="tw:text-secondary tw:mt-2" size="text-sm">
+        <Typography
+          className="tw:block tw:text-secondary tw:mt-2"
+          size="text-sm">
           {t('label.no-entity-available', {
             entity: t('label.domain-plural'),
           })}
@@ -1005,7 +1008,7 @@ const DomainTreeView = ({
     if (searchQuery?.trim() || hasActiveFilters) {
       return (
         <div className="tw:relative tw:flex-1 tw:h-full">
-          <EmptyPlaceholder
+          <NoSearchResultsPlaceholder
             actions={[
               {
                 color: 'primary',
@@ -1015,7 +1018,7 @@ const DomainTreeView = ({
               },
             ]}
             description={t('message.check-spelling-or-try-different-term')}
-            icon={<NoSearch className="tw:text-quaternary" />}
+            icon={<NoSearch />}
             title={t('label.no-matching-results')}
           />
         </div>
@@ -1024,7 +1027,7 @@ const DomainTreeView = ({
 
     return (
       <div className="tw:relative tw:flex-1 tw:h-full">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           actions={
             permissions.domain?.Create
               ? [

@@ -403,7 +403,7 @@ function WorksheetDetails({
   }
 
   return (
-    <PageLayoutV1 pageTitle={entityName}>
+    <PageLayoutV1 fillEntityTabs pageTitle={entityName}>
       <Box direction="col" gap={3}>
         <div>
           <DataAssetsHeader

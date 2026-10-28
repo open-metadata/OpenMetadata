@@ -33,7 +33,7 @@ import { cloneDeep, isEqual } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -60,6 +60,7 @@ import {
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { getPersonaDetailsPath } from '../../utils/RouterUtils';
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
   getSidebarHiddenKeys,
@@ -178,7 +179,7 @@ const CustomizeAppModeSidebarPage = () => {
     }
 
     const timer = setTimeout(
-      () => navigate(getPersonaDetailsPath(personaFqn)),
+      () => navigate(getSettingsLink(getPersonaDetailsPath(personaFqn))),
       100
     );
 
@@ -247,7 +248,7 @@ const CustomizeAppModeSidebarPage = () => {
   }, [items]);
 
   const handleCancel = useCallback(() => {
-    navigate(getPersonaDetailsPath(personaFqn));
+    navigate(getSettingsLink(getPersonaDetailsPath(personaFqn)));
   }, [navigate, personaFqn]);
 
   const handleVisibilityToggle = useCallback(
@@ -329,7 +330,11 @@ const CustomizeAppModeSidebarPage = () => {
   }
 
   if (!hasPersona) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (

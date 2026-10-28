@@ -40,6 +40,7 @@ import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
@@ -279,9 +280,15 @@ public class RollbackEntityImpl implements JavaDelegate {
         JsonUtils.getJsonPatch(
             JsonUtils.pojoToJson(currentEntity), JsonUtils.pojoToJson(targetEntity));
     // Impersonating the governance bot marks this as the workflow's own write, which may move a
-    // lifecycle stage the workflow owns.
+    // lifecycle stage the workflow owns. It restores what was approved, so it is a system write
+    // and not a move the user it records chose.
     repository.patch(
-        null, currentEntity.getFullyQualifiedName(), updatedBy, patch, null, null, GOVERNANCE_BOT);
+        null,
+        currentEntity.getFullyQualifiedName(),
+        ChangeActor.system(updatedBy, GOVERNANCE_BOT),
+        patch,
+        null,
+        null);
   }
 
   private void setOutcomeVariables(

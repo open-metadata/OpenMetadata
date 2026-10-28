@@ -18,12 +18,14 @@ import {
   Owner,
   Skeleton,
   Tabs,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   Edit01,
   RefreshCw01,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
+import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
@@ -72,6 +74,35 @@ function AlertDetailsContent({
   );
   // Keeps the recent events filter and page when switching tabs.
   const visitedTabs = useVisitedTabs(activeTab);
+  const owners = alertDetails?.owners;
+  const hasOwners = !isEmpty(owners);
+
+  const renderOwners = () => {
+    if (!hasOwners && !editOwnersPermission) {
+      return null;
+    }
+
+    return (
+      <Box
+        align="center"
+        className="tw:min-w-0 tw:shrink-0"
+        data-testid="alert-owners"
+        gap={2}>
+        <Typography as="span" color="secondary" size="text-sm" weight="medium">
+          {t('label.owner-plural')}
+        </Typography>
+        {hasOwners && <Owner owners={owners} />}
+        {editOwnersPermission && (
+          <UserTeamSelectableList
+            hasPermission
+            multiple={{ user: true, team: false }}
+            owner={owners}
+            onUpdate={onOwnerUpdate}
+          />
+        )}
+      </Box>
+    );
+  };
 
   const handleAlertHardDelete = useCallback(async () => {
     setIsDeleting(true);
@@ -114,19 +145,7 @@ function AlertDetailsContent({
                       {ownerLoading ? (
                         <Skeleton height={40} variant="rounded" width={80} />
                       ) : (
-                        <Owner
-                          hasPermission={editOwnersPermission}
-                          isCompactView={false}
-                          owners={alertDetails?.owners ?? []}
-                          selectorContent={
-                            <UserTeamSelectableList
-                              hasPermission={Boolean(editOwnersPermission)}
-                              multiple={{ user: true, team: false }}
-                              owner={alertDetails?.owners}
-                              onUpdate={onOwnerUpdate}
-                            />
-                          }
-                        />
+                        renderOwners()
                       )}
                       {extraInfo}
                     </div>
@@ -134,16 +153,11 @@ function AlertDetailsContent({
                 </Box>
               </div>
               <div>
-                <Box
-                  inline
-                  align="center"
-                  className="layout-space layout-space-horizontal"
-                  gap={2}
-                  itemClassName="layout-space-item">
+                <Box inline align="center" gap={1}>
                   <ButtonUtility
                     data-testid="sync-button"
                     icon={RefreshCw01}
-                    isLoading={isSyncing}
+                    isDisabled={isSyncing}
                     size="lg"
                     tooltip={t('label.sync-alert-offset', {
                       entity: t('label.alert'),

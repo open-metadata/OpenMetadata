@@ -175,6 +175,10 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
           ))}
 
           <QueryBuilderControl
+            className={classNames({
+              // Narrowest the Operator control may get before a label such as "Is Not Set" reads as ellipses.
+              'tw:min-w-[140px]': fieldControls.length === 1,
+            })}
             items={operatorItems}
             label={t('label.operator')}
             placeholder={t('label.operator')}

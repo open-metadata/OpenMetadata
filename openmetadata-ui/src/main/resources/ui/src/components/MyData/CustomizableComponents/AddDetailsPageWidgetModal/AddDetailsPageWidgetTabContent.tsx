@@ -94,7 +94,7 @@ export const AddDetailsPageWidgetTabContent = ({
           {widgetImage && (
             <img
               alt={widget.name}
-              className="tw:max-w-full"
+              className="tw:max-w-full tw:filter-(--widget-preview-filter)"
               data-testid="widget-image"
               src={widgetImage}
             />

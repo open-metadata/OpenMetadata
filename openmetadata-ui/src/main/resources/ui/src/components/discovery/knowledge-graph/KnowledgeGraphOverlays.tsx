@@ -16,6 +16,7 @@ import {
   Button,
   ButtonUtility,
   SlideoutMenu,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -32,6 +33,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useKeyboard } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import {
   ENTITY_UUID_REGEX,
@@ -459,13 +461,16 @@ const InspectorHeader = ({
   const { t } = useTranslation();
 
   return (
-    <Box align="start" className="kg-inspector-header" gap={2}>
+    <Box
+      align="start"
+      className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-3.5 tw:pt-3.5 tw:pb-3"
+      gap={2}>
       {onBack && (
         <ButtonUtility
+          aria-label={t('label.back')}
           data-testid="inspector-back"
           icon={ChevronLeft}
           size="lg"
-          tooltip={t('label.back')}
           onClick={onBack}
         />
       )}
@@ -484,10 +489,12 @@ const InspectorHeader = ({
           {subtitle}
         </Typography>
       </Box>
+      {/* Named, not tooltipped: an open tooltip would take the Escape that
+          closes the inspector. */}
       <ButtonUtility
+        aria-label={t('label.close')}
         icon={XClose}
         size="lg"
-        tooltip={t('label.close')}
         onClick={onClose}
       />
     </Box>
@@ -523,6 +530,7 @@ const KnowledgeGraphOverlays = ({
       }
     });
   };
+
   const nodeMap = useMemo(
     () => new Map(nodes.map((node) => [node.id, node])),
     [nodes]
@@ -559,6 +567,24 @@ const KnowledgeGraphOverlays = ({
       returnFocusRef.current = document.activeElement as HTMLElement | null;
     }
   }, [inspectorOpen]);
+  // Escape inside the panel closes only the panel; the fullscreen overlay above
+  // it must not also see the key. Not useOverlay: that would make the panel the
+  // topmost overlay, and fullscreen would ignore Escape pressed elsewhere.
+  // react-aria shares one stop-propagation flag across this handler's events,
+  // so Escape restores it explicitly rather than relying on the default.
+  const { keyboardProps: inspectorKeyboardProps } = useKeyboard({
+    onKeyDown: (event) => {
+      if (event.key !== 'Escape') {
+        event.continuePropagation();
+
+        return;
+      }
+      if (!event.isPropagationStopped()) {
+        event.stopPropagation();
+      }
+      closeInspector();
+    },
+  });
   // Leaving the drilled-into relationship (canvas click, close, another row)
   // ends the trip, so a later direct selection of that edge offers no "back".
   useEffect(() => {
@@ -624,41 +650,47 @@ const KnowledgeGraphOverlays = ({
           ))}
       </div>
       {tooltip && (
-        <div
-          aria-hidden="true"
-          className="kg-edge-tooltip"
-          data-testid="edge-tooltip"
-          style={{
-            position: 'fixed',
-            left: Math.min(tooltip.x + 12, window.innerWidth - 300),
-            top: Math.min(tooltip.y + 12, window.innerHeight - 100),
-          }}>
-          <div className="kg-edge-tooltip__direction">
-            {tooltip.sourceLabel +
+        // The canvas has no DOM node per edge, so a zero-size anchor at the
+        // hover point stands in as the tooltip trigger.
+        <span
+          className="tw:pointer-events-none tw:fixed tw:size-0"
+          style={{ left: tooltip.x, top: tooltip.y }}>
+          <Tooltip
+            excludeTriggerFromTabOrder
+            isOpen
+            crossOffset={12}
+            data-testid="edge-tooltip"
+            description={
+              tooltip.sourceLabel +
               (tooltip.derived ? ' — ' : ' → ') +
-              tooltip.targetLabel}
-          </div>
-          {tooltip.labels.map((label) => (
-            <div className="kg-edge-tooltip__label" key={label}>
-              {label}
-            </div>
-          ))}
-        </div>
+              tooltip.targetLabel
+            }
+            key={tooltip.edgeId}
+            offset={12}
+            placement="bottom start"
+            // The core tooltip takes the pointer once it settles; here that would
+            // fire G6's edge:pointerleave and re-anchor the tooltip under the cursor.
+            style={{ pointerEvents: 'none' }}
+            title={tooltip.labels.map((label) => (
+              <span
+                className="tw:block"
+                data-testid="edge-tooltip-label"
+                key={label}>
+                {label}
+              </span>
+            ))}>
+            <span />
+          </Tooltip>
+        </span>
       )}
       {inspectorOpen && (
-        <Box
+        <div
           aria-label={t('label.kg-inspector')}
           aria-modal={false}
-          className="kg-inspector"
+          className="kg-inspector tw:relative tw:z-10 tw:flex tw:h-full tw:min-h-0 tw:min-w-0 tw:flex-col tw:overflow-hidden tw:bg-surface"
           data-testid="graph-inspector"
-          direction="col"
           role="dialog"
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.stopPropagation();
-              closeInspector();
-            }
-          }}>
+          {...inspectorKeyboardProps}>
           <InspectorHeader
             headingRef={headingRef}
             subtitle={getInspectorSubtitle(
@@ -719,7 +751,7 @@ const KnowledgeGraphOverlays = ({
               />
             )
           )}
-        </Box>
+        </div>
       )}
       {detailsNode?.fullyQualifiedName && (
         <SlideoutMenu

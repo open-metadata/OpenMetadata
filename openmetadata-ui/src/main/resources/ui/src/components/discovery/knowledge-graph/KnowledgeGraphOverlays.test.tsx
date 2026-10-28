@@ -12,7 +12,8 @@
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useOverlay } from 'react-aria';
 import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { GraphSelection } from '../../../hooks/discovery/knowledge-graph/useKnowledgeGraphCanvas';
 import { transformToG6Format } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
@@ -113,6 +114,50 @@ it('offers a way back to the group after drilling into one of its relationships'
   );
 
   expect(screen.queryByTestId('inspector-back')).not.toBeInTheDocument();
+});
+
+// Stands in for KnowledgeGraph's fullscreen wrapper, which dismisses on Escape
+// through react-aria's useOverlay.
+const InFullscreen = ({ onExit }: { onExit: () => void }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const { overlayProps } = useOverlay({ isOpen: true, onClose: onExit }, ref);
+
+  return (
+    <div {...overlayProps} ref={ref}>
+      <Harness initial={() => null} />
+    </div>
+  );
+};
+
+it('closes only the inspector on Escape inside it, even after other keys', async () => {
+  const onExit = jest.fn();
+  render(<InFullscreen onExit={onExit} />);
+  // Fullscreen is already open when the user selects a node, as in the app.
+  await userEvent.click(
+    screen.getByRole('button', { name: 'select root on canvas' })
+  );
+
+  await userEvent.click(screen.getByRole('heading', { level: 3 }));
+  await userEvent.keyboard('{Tab}');
+  await userEvent.keyboard('{Escape}');
+
+  expect(screen.queryByTestId('graph-inspector')).not.toBeInTheDocument();
+  expect(onExit).not.toHaveBeenCalled();
+});
+
+it('still exits fullscreen on Escape when focus is outside the open inspector', async () => {
+  const onExit = jest.fn();
+  render(<InFullscreen onExit={onExit} />);
+  await userEvent.click(
+    screen.getByRole('button', { name: 'select root on canvas' })
+  );
+
+  expect(screen.getByTestId('graph-inspector')).toBeInTheDocument();
+
+  screen.getByRole('button', { name: 'select root on canvas' }).focus();
+  await userEvent.keyboard('{Escape}');
+
+  expect(onExit).toHaveBeenCalledTimes(1);
 });
 
 it('lists every relationship in the drawer when "view all" is pressed', async () => {

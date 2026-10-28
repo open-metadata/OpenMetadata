@@ -28,7 +28,6 @@ import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
@@ -55,8 +54,8 @@ import {
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { getSkeletonMockData } from '../../../../../utils/Skeleton.utils';
 import { pruneEmptyChildren } from '../../../../../utils/TablePureUtils';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NoSearchResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import PermissionPlaceholder from '../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
@@ -411,10 +410,12 @@ const ColumnProfileTable = () => {
 
   if (permissions && !permissions?.ViewDataProfile) {
     return (
-      <ErrorPlaceHolder
-        permissionValue={Operation.ViewDataProfile}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={Operation.ViewDataProfile}
+        />
+      </div>
     );
   }
 
@@ -485,7 +486,9 @@ const ColumnProfileTable = () => {
                       ))}
                     </div>
                   ) : (
-                    <FilterTablePlaceHolder />
+                    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                      <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+                    </div>
                   )
                 }>
                 {({ id, record, depth, hasChildren }) =>

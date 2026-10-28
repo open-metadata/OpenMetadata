@@ -35,6 +35,7 @@ import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import { okJson } from './apiResponse';
 import {
+  clickIgnoringToasts,
   clickOutside,
   closeFirstPopupAlert,
   descriptionBox,
@@ -1456,7 +1457,7 @@ export const approveTagsTask = async (
   await taskFeeds;
 
   const taskResolve = waitForTaskResolveResponse(page);
-  await page.getByTestId('approve-button').first().click();
+  await clickIgnoringToasts(page.getByTestId('approve-button').first());
   await taskResolve;
 
   await redirectToHomePage(page);
@@ -2178,3 +2179,15 @@ export const includeGlossaryInApprovalWorkflow = (
   apiContext: APIRequestContext,
   glossary: Glossary
 ) => updateApprovalWorkflowExclusion(apiContext, glossary, false);
+
+// The glossary page also fires its own /glossaryTerms/search proposal-count
+// queries (no q), so match the user's search by its query text.
+export const waitForTermSearch = (page: Page, query: string) =>
+  page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname.endsWith('/api/v1/glossaryTerms/search') &&
+      url.searchParams.get('q') === query
+    );
+  });

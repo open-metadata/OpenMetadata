@@ -20,10 +20,10 @@ import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TASK_ENTITY_TYPES } from '../../../constants/Task.constant';
 import { Task, TaskEntityStatus } from '../../../rest/tasksAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTaskDisplayId } from '../../../utils/TaskNavigationUtils';
+import { getTaskTypeMessageKey } from '../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import './feed-panel-header.less';
 
 interface TaskPanelHeaderProps {
@@ -39,7 +39,7 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const taskTypeLabel = TASK_ENTITY_TYPES[task.type] ?? 'label.task';
+  const taskTypeLabel = getTaskTypeMessageKey(task) ?? 'label.task';
   const isOpen = task.status === TaskEntityStatus.Open;
   const isGranted = task.status === TaskEntityStatus.Granted;
 

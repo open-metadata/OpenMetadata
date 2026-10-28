@@ -20,6 +20,7 @@ import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { useEntityRules } from '../../../hooks/useEntityRules';
@@ -173,11 +174,11 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
 
     if (!glossaryTerms.length) {
       return (
-        <span className="no-data-placeholder">
+        <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
           {t('label.no-entity-assigned', {
             entity: t('label.glossary-term-plural'),
           })}
-        </span>
+        </Typography>
       );
     }
 

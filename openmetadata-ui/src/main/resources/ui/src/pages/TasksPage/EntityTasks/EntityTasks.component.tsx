@@ -16,7 +16,7 @@ import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
+import { ReactComponent as RequestUpdateIcon } from '../../../assets/svg/action-icons/request-update.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ENTITY_TASKS_TOOLTIP } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -85,7 +85,7 @@ const EntityTasks = ({
       <ButtonUtility
         className="hover-cell-icon"
         data-testid="task-element"
-        icon={IconRequest}
+        icon={RequestUpdateIcon}
         size="sm"
         tooltip={
           hasData
@@ -98,13 +98,7 @@ const EntityTasks = ({
   }, [data.field]);
 
   return (
-    <Box
-      inline
-      align="center"
-      className="layout-space layout-space-horizontal"
-      data-testid="entity-task"
-      gap={4}
-      itemClassName="layout-space-item">
+    <Box inline align="center" data-testid="entity-task" gap={2}>
       {/*  Request and Update Tasks */}
       {tagSource !== TagSource.Glossary && taskElement}
 

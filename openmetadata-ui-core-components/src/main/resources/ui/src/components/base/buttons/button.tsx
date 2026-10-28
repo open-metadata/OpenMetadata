@@ -156,6 +156,17 @@ export const styles = sortCx({
         'tw:*:data-icon:text-utility-gray-500 tw:hover:*:data-icon:text-utility-gray-600',
       ].join(' '),
     },
+    // Primary text for a link that is the heading of a card (e.g. lineage node
+    // titles), where link-gray's tertiary text washes out.
+    'link-primary': {
+      root: [
+        'tw:text-primary tw:hover:text-secondary_hover',
+        // Inner text underline
+        'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
+        // Icon styles
+        'tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover',
+      ].join(' '),
+    },
     'link-color': {
       root: [
         // Dark keeps light frozen (brand-secondary) but flips to the blue link
@@ -267,6 +278,11 @@ export interface CommonProps {
   boxed?: boolean;
   /** Truncates the button text with an ellipsis when it overflows */
   ellipsis?: boolean;
+  /**
+   * Lets the text wrap onto more lines instead of staying on one, for link buttons whose label
+   * is a sentence (a task title, an entity reference) that can be wider than its container.
+   */
+  wrap?: boolean;
   /** Omits the default focus outline when the surrounding UI intentionally does not use one */
   hideFocusOutline?: boolean;
   /** Tooltip text shown on hover/focus */
@@ -327,6 +343,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       noTextPadding,
       boxed,
       ellipsis,
+      wrap,
       iconLeading: IconLeading,
       iconTrailing: IconTrailing,
       isDisabled: disabled,
@@ -348,9 +365,12 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       children !== false &&
       children !== '';
     const isIcon = (IconLeading || IconTrailing) && !hasText;
-    const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
-      color
-    );
+    const isLinkType = [
+      'link-gray',
+      'link-primary',
+      'link-color',
+      'link-destructive',
+    ].includes(color);
     const isUnboxedLink = isLinkType && !boxed;
     noTextPadding = isUnboxedLink || noTextPadding;
 
@@ -393,6 +413,8 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           isUnboxedLink && styles.common.linkUnboxed,
           isUnboxedLink && styles.sizes[size].linkRoot,
           ellipsis && 'tw:min-w-0',
+          wrap &&
+            'tw:min-w-0 tw:justify-start tw:text-start tw:whitespace-normal',
           (loading || (href && (disabled || loading))) &&
             'tw:pointer-events-none',
           // If in `loading` state, hide everything except the loading icon
@@ -426,7 +448,8 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
             className={cx(
               'tw:transition-inherit-all',
               !noTextPadding && 'tw:px-0.5',
-              ellipsis && 'tw:truncate tw:min-w-0'
+              ellipsis && 'tw:truncate tw:min-w-0',
+              wrap && 'tw:min-w-0 tw:wrap-break-word'
             )}>
             {children}
           </span>

@@ -198,6 +198,34 @@ describe('useAssetSelectionState', () => {
     });
   });
 
+  it.each([
+    AssetsOfEntity.DATA_PRODUCT_INPUT_PORT,
+    AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT,
+  ])('leaves columns out of the %s picker', async (type) => {
+    renderAssetSelectionState({ type });
+
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenCalled();
+    });
+    const { queryFilter } = (searchQuery as jest.Mock).mock.calls[0][0];
+
+    expect(queryFilter.query.bool.must_not).toEqual(
+      expect.arrayContaining([{ term: { entityType: 'tableColumn' } }])
+    );
+  });
+
+  it('keeps columns in the glossary picker', async () => {
+    renderAssetSelectionState({ type: AssetsOfEntity.GLOSSARY });
+
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenCalled();
+    });
+
+    expect(
+      JSON.stringify((searchQuery as jest.Mock).mock.calls[0][0])
+    ).not.toContain('tableColumn');
+  });
+
   it('should use ALL search index for domain type', async () => {
     renderAssetSelectionState({ type: AssetsOfEntity.DOMAIN });
 

@@ -99,15 +99,6 @@ jest.mock('components/common/Loader/Loader', () => ({
   default: () => <div data-testid="loader">Loader</div>,
 }));
 
-jest.mock('components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: ({ type }: { type?: string }) => (
-    <div data-testid="error-placeholder" data-type={type ?? 'default'}>
-      error-placeholder
-    </div>
-  ),
-}));
-
 jest.mock(
   'components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
   () => ({
@@ -762,10 +753,9 @@ describe('TestCaseDetail', () => {
 
     render(<TestCaseDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'PERMISSION'
-    );
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
   });
 
   it('should render the no-data placeholder without a test case', () => {
@@ -776,10 +766,7 @@ describe('TestCaseDetail', () => {
 
     render(<TestCaseDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'default'
-    );
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
   });
 
   it('should render the version button and manage button on detail pages', () => {
@@ -881,6 +868,7 @@ describe('TestCaseDetail', () => {
           onRestoreEntity: handleRestore,
         })
       );
+      expect(screen.getByTestId('deleted-badge')).toBeInTheDocument();
     });
   });
 });

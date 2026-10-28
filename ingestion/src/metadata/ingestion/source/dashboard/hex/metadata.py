@@ -35,8 +35,6 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -208,6 +206,7 @@ class HexSource(DashboardServiceSource):
     def yield_dashboard(self, dashboard_details: Project) -> Iterable[Either[CreateDashboardRequest]]:
         """Method to Get Dashboard Entity"""
         try:
+            source_url = self.client.get_project_url(dashboard_details)
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.title,
@@ -224,7 +223,7 @@ class HexSource(DashboardServiceSource):
                     for chart in self.context.get().charts or []
                 ],
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-                sourceUrl=SourceUrl(self.client.get_project_url(dashboard_details)),
+                sourceUrl=SourceUrl(source_url) if source_url else None,
                 tags=self._get_dashboard_tags(dashboard_details),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
@@ -281,15 +280,9 @@ class HexSource(DashboardServiceSource):
                         logger.debug("Table entity is None or has no ID")
                         continue
 
-                    # Create lineage from table to dashboard
-                    lineage_request = AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(id=table_entity.id, type="table"),
-                            toEntity=EntityReference(id=dashboard.id, type="dashboard"),
-                        )
-                    )
-
-                    yield Either(right=lineage_request)
+                    lineage = self._get_add_lineage_request(to_entity=dashboard, from_entity=table_entity)
+                    if lineage is not None:
+                        yield lineage
                     logger.debug(f"Added lineage: {table_entity.fullyQualifiedName.root} -> {dashboard_fqn}")
 
                 except Exception as e:

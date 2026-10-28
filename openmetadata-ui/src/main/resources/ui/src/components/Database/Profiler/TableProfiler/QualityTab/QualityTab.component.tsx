@@ -16,15 +16,17 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  AbortedTests,
+  FailedTests,
+  SuccessfulTests,
+  TotalTests,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as AbortedTestIcon } from '../../../../../assets/svg/data-observability/aborted-test.svg';
-import { ReactComponent as FailedTestIcon } from '../../../../../assets/svg/data-observability/failed-test.svg';
-import { ReactComponent as SuccessTestIcon } from '../../../../../assets/svg/data-observability/success-test.svg';
-import { ReactComponent as TotalTestIcon } from '../../../../../assets/svg/data-observability/total-test.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import {
   DEFAULT_SORT_ORDER,
@@ -34,7 +36,6 @@ import {
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { TestCaseType } from '../../../../../enums/TestSuite.enum';
@@ -51,8 +52,8 @@ import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDeriva
 import { checkPermission } from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../../../../utils/TestCaseUtils';
+import PermissionPlaceholder from '../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
@@ -165,25 +166,25 @@ export const QualityTab = () => {
         title: t('label.test-plural-type', { type: t('label.total') }),
         key: 'total-tests',
         value: tests.total,
-        icon: TotalTestIcon,
+        icon: TotalTests,
       },
       {
         title: t('label.test-plural-type', { type: t('label.successful') }),
         key: 'successful-tests',
         value: tests.success,
-        icon: SuccessTestIcon,
+        icon: SuccessfulTests,
       },
       {
         title: t('label.test-plural-type', { type: t('label.failed') }),
         key: 'failed-tests',
         value: tests.failed,
-        icon: FailedTestIcon,
+        icon: FailedTests,
       },
       {
         title: t('label.test-plural-type', { type: t('label.aborted') }),
         key: 'aborted-tests',
         value: tests.aborted,
-        icon: AbortedTestIcon,
+        icon: AbortedTests,
       },
     ];
   }, [testCaseSummary]);
@@ -378,12 +379,14 @@ export const QualityTab = () => {
 
   if (permissions && !permissions?.ViewTests) {
     return (
-      <ErrorPlaceHolder
-        permissionValue={t('label.view-entity', {
-          entity: t('label.data-observability'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.data-observability'),
+          })}
+        />
+      </div>
     );
   }
 

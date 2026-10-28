@@ -18,7 +18,6 @@ import {
   Grid,
   Label,
   Select,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
@@ -98,8 +97,8 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import {
   ColumnsType,
@@ -717,17 +716,16 @@ const SchemaTable = () => {
                 {renderHighlightedText(highlightSearchText(name, searchText))}
               </Typography>
             </div>
-            <div className="d-flex items-center">
+            <div className="d-flex items-center gap-2">
               {editDisplayNamePermission && (
-                <Tooltip arrow placement="top" title={t('label.edit')}>
-                  <ButtonUtility
-                    className="hover-cell-icon"
-                    data-testid="edit-displayName-button"
-                    icon={Edit01}
-                    size="sm"
-                    onClick={() => handleEditDisplayNameClick(record)}
-                  />
-                </Tooltip>
+                <ButtonUtility
+                  className="hover-cell-icon"
+                  data-testid="edit-displayName-button"
+                  icon={Edit01}
+                  size="sm"
+                  tooltip={t('label.edit')}
+                  onClick={() => handleEditDisplayNameClick(record)}
+                />
               )}
               {record.fullyQualifiedName && (
                 <CopyLinkButton
@@ -1048,7 +1046,11 @@ const SchemaTable = () => {
           }
           loading={columnsLoading}
           locale={{
-            emptyText: <FilterTablePlaceHolder />,
+            emptyText: (
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+              </div>
+            ),
           }}
           pagination={false}
           rowClassName={getRowClassName}

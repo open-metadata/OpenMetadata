@@ -15,7 +15,6 @@ import {
   Badge,
   Box,
   Button,
-  EmptyPlaceholder,
   NavList,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -35,7 +34,8 @@ import { useNavigate } from 'react-router-dom';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
@@ -791,7 +791,7 @@ const TagsPage = () => {
 
   const classificationEmptyState = (
     <Box className="content-height-with-resizable-panel tw:relative tw:rounded-[10px]">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         actions={
           createClassificationPermission
             ? [
@@ -827,7 +827,6 @@ const TagsPage = () => {
           },
         ]}
         title={t('message.classification-empty-state-title')}
-        variant="features"
       />
     </Box>
   );
@@ -837,11 +836,9 @@ const TagsPage = () => {
   }
   if (error) {
     return (
-      <ErrorPlaceHolder>
-        <Typography as="p" className="tw:text-center tw:m-auto">
-          {error}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" title={error} />
+      </div>
     );
   }
 

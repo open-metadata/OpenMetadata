@@ -17,12 +17,14 @@ import {
   Popover,
   PopoverTrigger,
 } from '@openmetadata/ui-core-components';
-import { FaceSmile } from '@openmetadata/ui-core-components/icons';
+import {
+  FaceSmile,
+  Reactions as AddReactionIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { groupBy } from 'lodash';
 import { FC, MouseEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-add-emoji.svg';
 import {
   REACTION_LIST,
   REACTION_TYPE_LIST,
@@ -123,11 +125,16 @@ const Reactions: FC<ReactionsProps> = ({
     );
   });
 
+  const addReactionLabel = t('label.add-entity', {
+    entity: t('label.reaction-lowercase-plural'),
+  });
+
   return (
     <div
       className={classNames(
         'tw:inline-flex tw:items-center',
-        isPill(variant) ? 'tw:gap-1.5' : 'tw:gap-2'
+        // Many reactions wrap onto a second row rather than past the card.
+        isPill(variant) ? 'tw:flex-wrap tw:gap-1.5' : 'tw:gap-2'
       )}
       data-testid="feed-reaction-container">
       {emojis}
@@ -138,9 +145,7 @@ const Reactions: FC<ReactionsProps> = ({
             data-testid="add-reactions"
             icon={isPill(variant) ? FaceSmile : AddReactionIcon}
             size="lg"
-            tooltip={t('label.add-entity', {
-              entity: t('label.reaction-lowercase-plural'),
-            })}
+            tooltip={addReactionLabel}
             onClick={(e: MouseEvent) => e.stopPropagation()}
           />
           <Popover

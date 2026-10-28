@@ -15,7 +15,6 @@ import {
   Box,
   ButtonUtility,
   Skeleton,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
@@ -53,7 +52,6 @@ function ObservabilityAlertActions({
 
   const editButton = (
     <ButtonUtility
-      aria-label={t('label.edit')}
       data-testid={`alert-edit-${record.name}`}
       href={
         onEditAlert
@@ -64,6 +62,8 @@ function ObservabilityAlertActions({
       }
       icon={Edit01}
       size="lg"
+      tooltip={t('label.edit')}
+      tooltipPlacement="bottom"
       onClick={
         onEditAlert
           ? (event: MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => {
@@ -78,22 +78,17 @@ function ObservabilityAlertActions({
 
   return (
     <Box align="center">
-      {alertPermission.edit && (
-        <Tooltip arrow placement="bottom" title={t('label.edit')}>
-          {editButton}
-        </Tooltip>
-      )}
+      {alertPermission.edit && editButton}
       {alertPermission.delete && (
-        <Tooltip arrow placement="bottom" title={t('label.delete')}>
-          <ButtonUtility
-            aria-label={t('label.delete')}
-            data-testid={`alert-delete-${record.name}`}
-            icon={Trash01}
-            isDisabled={record.provider === ProviderType.System}
-            size="lg"
-            onPress={() => onSelectAlert(record)}
-          />
-        </Tooltip>
+        <ButtonUtility
+          data-testid={`alert-delete-${record.name}`}
+          icon={Trash01}
+          isDisabled={record.provider === ProviderType.System}
+          size="lg"
+          tooltip={t('label.delete')}
+          tooltipPlacement="bottom"
+          onClick={() => onSelectAlert(record)}
+        />
       )}
     </Box>
   );

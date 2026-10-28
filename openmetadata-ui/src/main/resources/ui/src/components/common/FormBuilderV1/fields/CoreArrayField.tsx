@@ -20,7 +20,7 @@ import { Copy01, XClose } from '@openmetadata/ui-core-components/icons';
 import { FieldProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { MouseEvent, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Input as AriaInput } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../../../hooks/useClipBoard';
@@ -254,8 +254,7 @@ const CoreArrayField = (props: FieldProps) => {
           tooltip={
             hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
           }
-          onClick={async (e: MouseEvent) => {
-            e.stopPropagation();
+          onPress={async () => {
             await onCopyToClipBoard();
           }}
         />

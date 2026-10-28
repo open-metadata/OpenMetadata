@@ -69,7 +69,7 @@ const PoliciesDetailsList = ({
           );
         },
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<EntityReference>(),
       {
         title: t('label.action-plural'),
         dataIndex: 'actions',

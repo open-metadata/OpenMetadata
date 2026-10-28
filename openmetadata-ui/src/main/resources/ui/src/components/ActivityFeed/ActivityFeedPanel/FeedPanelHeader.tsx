@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
 import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
@@ -37,8 +37,14 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   hideCloseIcon = false,
 }) => {
   const { t } = useTranslation();
-  const entityType = getEntityType(entityLink);
-  const entityFQN = getEntityFQN(entityLink);
+  // Prefer the entity reference over parsing `entityLink`: a thread created
+  // from an activity event links the changed field (`::entityStatus`), which
+  // the EntityLink grammar does not list, so ANTLR logs a syntax error.
+  const entityRef = feed?.entityRef;
+  const entityType = entityRef?.fullyQualifiedName
+    ? entityRef.type
+    : getEntityType(entityLink);
+  const entityFQN = entityRef?.fullyQualifiedName ?? getEntityFQN(entityLink);
   const entityField = getEntityField(entityLink);
 
   return (
@@ -47,7 +53,8 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
         'd-flex justify-between items-center p-y-md',
         className
       )}>
-      <p data-testid="header-title">
+      {/* A long field or column name breaks rather than widening the drawer. */}
+      <p className="tw:min-w-0 tw:wrap-anywhere" data-testid="header-title">
         <span data-testid="header-noun">
           {noun ?? t('label.conversation')} {t('label.on-lowercase')}{' '}
         </span>
@@ -60,8 +67,8 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
               data-testid="entitylink"
               to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
               <span>
-                {feed?.entityRef
-                  ? getEntityName(feed.entityRef)
+                {entityRef
+                  ? getEntityName(entityRef)
                   : entityDisplayName(entityType, entityFQN)}
               </span>
             </Link>
@@ -70,19 +77,18 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
       </p>
       <div className="d-flex items-center">
         {onShowNewConversation ? (
-          <ButtonUtility
-            color="primary"
+          <Button
+            color="secondary"
             data-testid="add-new-conversation"
-            icon={Plus}
-            size="lg"
-            tooltip={t('label.start-entity', {
+            iconLeading={Plus}
+            size="sm"
+            onPress={() => {
+              onShowNewConversation(true);
+            }}>
+            {t('label.new-entity', {
               entity: t('label.conversation-lowercase'),
             })}
-            tooltipPlacement="bottom"
-            onClick={() => {
-              onShowNewConversation(true);
-            }}
-          />
+          </Button>
         ) : null}
         {hideCloseIcon ? null : (
           <ButtonUtility

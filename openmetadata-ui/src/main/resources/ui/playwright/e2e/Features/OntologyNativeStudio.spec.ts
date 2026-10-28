@@ -77,6 +77,17 @@ test.describe(
           await expect(
             page.getByTestId('ontology-library-trigger')
           ).toBeVisible();
+          await page.getByTestId('ontology-scope-menu-trigger').click();
+          for (const ontology of ontologies) {
+            await expect(
+              page.getByTestId(`ontology-scope-${ontology.id}`)
+            ).toBeVisible();
+          }
+          await expect(
+            page.getByTestId('ontology-scope-all-glossaries')
+          ).toHaveCount(0);
+          await expect(page.getByTestId('ontology-create')).toBeVisible();
+          await page.keyboard.press('Escape');
           await page.getByTestId('submode-tab-tree').click();
           const owner = ontologies[1];
           await page

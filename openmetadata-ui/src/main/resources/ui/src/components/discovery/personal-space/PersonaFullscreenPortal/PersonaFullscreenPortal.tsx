@@ -29,6 +29,7 @@ import {
 import {
   hashSubPathToView,
   isFullscreenPersonaHash,
+  viewToSubPath,
 } from '../Profile/tabs/personas/Personas.utils';
 
 const PersonaCustomizeView = withSuspenseFallback(
@@ -40,7 +41,7 @@ const HASH_TAB = 'personas';
 // The wrapper owns the scroll and paints the customize canvas edge to edge, so
 // the legacy page frames inside drop their own background, border and spacing.
 const FULLSCREEN_VIEW_CLASS = [
-  'tw:h-dvh tw:overflow-y-auto tw:bg-utility-blue-light-50',
+  'tw:h-dvh tw:overflow-y-auto tw:bg-primary_alt',
   'tw:[&_.page-layout-v1]:m-0! tw:[&_.page-layout-v1]:min-h-full',
   'tw:[&_.page-layout-v1]:bg-transparent! tw:[&_.page-layout-v1]:p-5!',
   'tw:[&_.page-layout-v1-vertical-scroll]:h-auto',
@@ -80,7 +81,14 @@ const PersonaFullscreenPortal: React.FC = () => {
   );
 
   const handleBack = useCallback(
-    () => goToModal(entityKey ? `${fqn}/customize/${baseCategory}` : fqn),
+    () =>
+      goToModal(
+        viewToSubPath(
+          entityKey
+            ? { type: 'customize', fqn, name: fqn, category: baseCategory }
+            : { type: 'detail', fqn, name: fqn }
+        )
+      ),
     [goToModal, fqn, baseCategory, entityKey]
   );
 
@@ -110,7 +118,7 @@ const PersonaFullscreenPortal: React.FC = () => {
 
           break;
         case 'persona':
-          goToModal(fqn);
+          goToModal(viewToSubPath({ type: 'detail', fqn, name: fqn }));
 
           break;
         case 'parent':

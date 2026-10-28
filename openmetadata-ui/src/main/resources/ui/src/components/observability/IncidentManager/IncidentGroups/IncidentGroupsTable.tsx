@@ -268,7 +268,9 @@ const IncidentGroupsTable = ({
         </Table.Cell>
         <Table.Cell>
           <StackedCell
-            caption={t('label.open-lowercase')}
+            caption={t('label.incident-open-lowercase', {
+              count: group.incidentCount,
+            })}
             value={group.incidentCount}
             valueTestId="group-incident-count"
           />

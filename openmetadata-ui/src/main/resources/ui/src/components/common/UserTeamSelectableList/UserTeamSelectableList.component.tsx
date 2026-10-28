@@ -73,6 +73,7 @@ export const UserTeamSelectableList = ({
   tooltipText,
   overlayClassName,
   triggerDataTestId = 'edit-owner',
+  triggerClassName,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -405,7 +406,7 @@ export const UserTeamSelectableList = ({
   // swallow the event, so the popover reliably opens for add-owner/edit-owner.
   const triggerElement = children ? (
     <span
-      className="tw:inline-flex"
+      className={triggerClassName}
       ref={triggerRef}
       onClickCapture={handleTriggerClick}
       onKeyDownCapture={handleTriggerKeyDown}>

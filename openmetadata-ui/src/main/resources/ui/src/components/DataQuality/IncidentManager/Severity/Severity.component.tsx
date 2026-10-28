@@ -14,7 +14,7 @@
 import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { startCase, toLower } from 'lodash';
+import { toLower } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
@@ -27,6 +27,7 @@ import AppBadge from '../../../common/Badge/Badge.component';
 import '../incident-manager.style.less';
 import InlineSeverity from './InlineSeverity.component';
 import { SeverityProps } from './Severity.interface';
+import { getSeverityLabel } from './Severity.utils';
 import SeverityModal from './SeverityModal.component';
 
 const Severity = ({
@@ -102,7 +103,7 @@ const Severity = ({
           {severity ? (
             <AppBadge
               className={classNames('severity', toLower(severity))}
-              label={startCase(severity)}
+              label={getSeverityLabel(severity, t)}
             />
           ) : (
             NO_DATA_PLACEHOLDER
@@ -120,7 +121,7 @@ const Severity = ({
         {severity ? (
           <AppBadge
             className={classNames('severity', toLower(severity))}
-            label={startCase(severity)}
+            label={getSeverityLabel(severity, t)}
           />
         ) : (
           NO_DATA_PLACEHOLDER

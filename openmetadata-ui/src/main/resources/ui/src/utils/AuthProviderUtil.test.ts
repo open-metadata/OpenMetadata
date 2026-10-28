@@ -109,6 +109,7 @@ describe('extractNameFromUserProfile', () => {
   describe('with preferred_username', () => {
     it('should extract username from preferred_username email format', () => {
       const userProfile: UserProfile = {
+        sub: 'user-123',
         preferred_username: 'john.doe@company.com',
         email: 'john@example.com',
         name: '',
@@ -122,6 +123,7 @@ describe('extractNameFromUserProfile', () => {
 
     it('should return preferred_username as-is if not email format', () => {
       const userProfile: UserProfile = {
+        sub: 'user-123',
         preferred_username: 'johndoe123',
         email: 'john@example.com',
         name: '',
@@ -137,6 +139,7 @@ describe('extractNameFromUserProfile', () => {
   describe('with email', () => {
     it('should extract username from email when no other name fields exist', () => {
       const userProfile: UserProfile = {
+        sub: '',
         email: 'alice.wonderland@example.com',
         name: '',
         picture: '',
@@ -149,6 +152,7 @@ describe('extractNameFromUserProfile', () => {
 
     it('should return email as-is if not valid email format', () => {
       const userProfile: UserProfile = {
+        sub: '',
         email: 'notanemail',
         name: '',
         picture: '',
@@ -192,6 +196,7 @@ describe('extractNameFromUserProfile', () => {
 
     it('should return empty string when all name fields are empty', () => {
       const userProfile: UserProfile = {
+        sub: '',
         name: '',
         email: '',
         picture: '',
@@ -204,6 +209,7 @@ describe('extractNameFromUserProfile', () => {
 
     it('should handle user profile with only picture field', () => {
       const userProfile: UserProfile = {
+        sub: '',
         picture: 'https://example.com/avatar.jpg',
         name: '',
         email: '',
@@ -277,6 +283,7 @@ describe('extractNameFromUserProfile', () => {
 
     it('should handle SAML user profile with minimal fields', () => {
       const samlProfile: UserProfile = {
+        sub: '',
         name: 'Charlie Brown',
         email: 'charlie.brown@company.com',
         picture: '',
@@ -316,6 +323,7 @@ describe('extractNameFromUserProfile', () => {
 
     it('should handle provider with only email (fallback scenario)', () => {
       const minimalProfile: UserProfile = {
+        sub: '',
         email: 'user@minimal-provider.com',
         name: '',
         picture: '',
@@ -359,6 +367,7 @@ describe('extractNameFromUserProfile', () => {
 
     it('should prioritize preferred_username over email', () => {
       const userProfile: UserProfile = {
+        sub: 'user-123',
         preferred_username: 'preferred.user@company.com',
         email: 'different.email@example.com',
         name: '',

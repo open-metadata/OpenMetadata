@@ -27,11 +27,12 @@
     },
     "problemCode": {
       "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningProblemCode",
-      "description": "INVALID_REQUEST: the request failed validation. NOT_READY: reasoning is disabled or cannot run safely. GENERATION_MISMATCH: the requested dataset generation no longer serves. SUPERSEDED: a refresh with a later source revision has already published. MISSING_IMPORT, PROFILE_VIOLATION and INCONSISTENT_ONTOLOGY: an import closure is missing an import, is not OWL 2 DL, or has no model. LIMIT_EXCEEDED: a configured limit was reached. MEMORY_BUDGET_EXHAUSTED: the worker ran out of heap. WORKER_LOST: the worker exited without a result. RULE_FAILED: a governance rule failed to evaluate. INTERNAL: any other error.",
+      "description": "INVALID_REQUEST: the request failed validation. NOT_READY: reasoning is disabled or cannot run safely now; retry once capabilities report READY. NOT_IMPLEMENTED: this build of the store cannot perform the operation or one of its steps, which capabilities report as NOT_IMPLEMENTED; retrying cannot succeed until the store is upgraded. GENERATION_MISMATCH: the requested dataset generation no longer serves. SUPERSEDED: a refresh with a later source revision has already published. MISSING_IMPORT, PROFILE_VIOLATION and INCONSISTENT_ONTOLOGY: an import closure is missing an import, is not OWL 2 DL, or has no model. LIMIT_EXCEEDED: a configured limit was reached. MEMORY_BUDGET_EXHAUSTED: the worker ran out of heap. WORKER_LOST: the worker exited without a result. RULE_FAILED: a governance rule failed to evaluate. INTERNAL: any other error.",
       "type": "string",
       "enum": [
         "INVALID_REQUEST",
         "NOT_READY",
+        "NOT_IMPLEMENTED",
         "GENERATION_MISMATCH",
         "SUPERSEDED",
         "MISSING_IMPORT",

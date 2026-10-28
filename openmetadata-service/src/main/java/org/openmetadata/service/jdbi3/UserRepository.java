@@ -60,7 +60,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -72,7 +71,7 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
@@ -1684,8 +1683,11 @@ public class UserRepository extends EntityRepository<User> {
     if (hardDelete) {
       // Lightweight app-managed table, no FK - clean up explicitly rather than via cascade.
       userPreferencesRepository.delete(entity.getId());
+      // A soft delete can be restored, so the user's tasks must survive it. A permanent delete
+      // removes only the suggestions they created; their other tasks stay.
+      // ADR:2026-10-22-deleting-a-user-removes-only-their-suggestions-on-hard-delete
+      deleteSuggestionTasksForUser(entity);
     }
-    deleteSuggestionTasksForUser(entity);
 
     AsyncService.getInstance()
         .executeDatabaseTask(
@@ -1750,21 +1752,18 @@ public class UserRepository extends EntityRepository<User> {
                     event.getNumberOfRetryAttempts() + 1,
                     MAX_TASK_CLEANUP_RETRIES));
     String creatorId = entity.getId().toString();
-    String category = TaskCategory.MetadataUpdate.value();
+    String type = TaskEntityType.Suggestion.value();
     // Capture the (id, fqn) pairs *before* the bulk DELETE so we know which L1 Guava cache
     // entries to drop. The DELETE is a direct SQL update that bypasses EntityRepository.delete
     // and its cache-invalidate hook — without explicit eviction the next GET on a
     // previously-read task returns the stale cached row even though the DB row is gone.
     // FQN is required because tasks expose both GET /v1/tasks/{id}
-    // (EntityRepository.CACHE_WITH_ID-keyed) and
-    // GET /v1/tasks/name/{taskId} (EntityRepository.CACHE_WITH_NAME-keyed); dropping only by id
-    // would
-    // leave a
-    // by-name reader pinned to a stale entry.
+    // (EntityRepository.CACHE_WITH_ID-keyed) and GET /v1/tasks/name/{taskId}
+    // (EntityRepository.CACHE_WITH_NAME-keyed); dropping only by id would leave a by-name reader
+    // pinned to a stale entry.
     List<EntityDAO.EntityIdFqnPair> tasksToInvalidate =
-        daoCollection.taskDAO().listIdAndFqnByCreatorAndCategory(creatorId, category);
-    retry.executeRunnable(
-        () -> daoCollection.taskDAO().deleteByCreatorAndCategory(creatorId, category));
+        daoCollection.taskDAO().listIdAndFqnByCreatorAndType(creatorId, type);
+    retry.executeRunnable(() -> daoCollection.taskDAO().deleteByCreatorAndType(creatorId, type));
     if (!tasksToInvalidate.isEmpty()) {
       invalidateTaskCacheForIds(tasksToInvalidate);
     }
@@ -1822,39 +1821,55 @@ public class UserRepository extends EntityRepository<User> {
     PostCommitActionQueue.runOrDefer(evict);
   }
 
+  /**
+   * A user is assigned the domains an update sends, deleted ones dropped; the domains its teams
+   * give it are inherited and never written. Only a bot's PUT keeps a non-empty assignment.
+   */
+  @Override
+  protected List<EntityReference> writtenDomains(
+      final User original, final User updated, final Operation operation, final boolean byBot) {
+    final boolean botKeepsStored =
+        operation.isPut() && byBot && !nullOrEmpty(original.getDomains());
+    return botKeepsStored
+        ? null
+        : filterValidDomains(listOrEmptyMutable(updated.getDomains())).stream()
+            .filter(domain -> domain.getInherited() == null || !domain.getInherited())
+            .collect(Collectors.toList());
+  }
+
+  /**
+   * Filter domain references to remove deleted domains, then populate valid ones.
+   * This prevents EntityNotFoundException when domains are deleted between updates.
+   */
+  private static List<EntityReference> filterValidDomains(List<EntityReference> domains) {
+    if (domains == null || domains.isEmpty()) {
+      return domains;
+    }
+
+    // First filter out deleted domains, then populate valid references
+    List<EntityReference> validDomains =
+        domains.stream()
+            .filter(
+                domain -> {
+                  try {
+                    Entity.getEntityReference(domain, ALL);
+                    return true;
+                  } catch (EntityNotFoundException e) {
+                    LOG.warn(
+                        "Removing deleted domain {} from user update",
+                        domain.getFullyQualifiedName());
+                    return false;
+                  }
+                })
+            .collect(Collectors.toList());
+
+    return EntityUtil.populateEntityReferences(validDomains);
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class UserUpdater extends EntityUpdater {
     public UserUpdater(User original, User updated, Operation operation) {
       super(original, updated, operation);
-    }
-
-    /**
-     * Filter domain references to remove deleted domains, then populate valid ones.
-     * This prevents EntityNotFoundException when domains are deleted between updates.
-     */
-    private List<EntityReference> filterValidDomains(List<EntityReference> domains) {
-      if (domains == null || domains.isEmpty()) {
-        return domains;
-      }
-
-      // First filter out deleted domains, then populate valid references
-      List<EntityReference> validDomains =
-          domains.stream()
-              .filter(
-                  domain -> {
-                    try {
-                      Entity.getEntityReference(domain, ALL);
-                      return true;
-                    } catch (EntityNotFoundException e) {
-                      LOG.warn(
-                          "Removing deleted domain {} from user update",
-                          domain.getFullyQualifiedName());
-                      return false;
-                    }
-                  })
-              .collect(Collectors.toList());
-
-      return EntityUtil.populateEntityReferences(validDomains);
     }
 
     /**
@@ -1972,21 +1987,15 @@ public class UserRepository extends EntityRepository<User> {
 
     @Override
     protected void updateDomains() {
-      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
-        // Revert change to non-empty domain if it is being updated by a bot
-        // This is to prevent bots from overwriting the domain. Domain need to be
-        // updated with a PATCH request
+      List<EntityReference> updatedDomains =
+          writtenDomains(original, updated, operation, updatedByBot());
+      if (updatedDomains == null) {
         updated.setDomains(original.getDomains());
         return;
       }
 
       List<EntityReference> origDomains =
           filterValidDomains(listOrEmptyMutable(original.getDomains()));
-      // Skip domains inherited from teams,they are handled in setInheritedFields().
-      List<EntityReference> updatedDomains =
-          filterValidDomains(listOrEmptyMutable(updated.getDomains())).stream()
-              .filter(domain -> domain.getInherited() == null || !domain.getInherited())
-              .collect(Collectors.toList());
       updated.setDomains(updatedDomains);
 
       // Remove Domains for the user
@@ -2028,13 +2037,16 @@ public class UserRepository extends EntityRepository<User> {
       recordListChange(
           TEAMS_FIELD, origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
 
-      // Update users and userCount in team search index
-      Stream.concat(added.stream(), deleted.stream())
-          .forEach(
-              teamRef -> {
-                EntityInterface<?> team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
-                searchRepository.updateEntityIndex(team);
-              });
+      // The teams' user counts changed. Rebuild their documents from full reads: a team read with
+      // only its id and user count would blank the owners and domains in its document. There is
+      // no retry locator, because the rebuild files a retry for each document it fails to write.
+      List<EntityReference> changedTeams = Stream.concat(added.stream(), deleted.stream()).toList();
+      searchRepository.deferIfFlushScopeActive(
+          () -> searchRepository.updateEntitiesByReference(changedTeams),
+          "reindexChangedTeams",
+          null,
+          null,
+          Entity.TEAM);
     }
 
     private List<EntityReference> findAddedTeams(

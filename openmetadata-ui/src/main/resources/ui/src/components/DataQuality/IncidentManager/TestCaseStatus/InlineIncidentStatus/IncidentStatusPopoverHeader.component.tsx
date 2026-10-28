@@ -52,6 +52,7 @@ export const IncidentStatusPopoverHeader = ({
       gap={2}
       justify="start">
       <ButtonUtility
+        data-testid="incident-status-popover-back"
         icon={ArrowLeft}
         size="xs"
         tooltip={t('label.back')}

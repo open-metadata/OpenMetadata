@@ -18,7 +18,7 @@ import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { usePageHeader } from '../../components/common/atoms/navigation/usePageHeader';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -276,7 +276,11 @@ const CustomEntityDetailV1 = () => {
   ]);
 
   if (isError) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (

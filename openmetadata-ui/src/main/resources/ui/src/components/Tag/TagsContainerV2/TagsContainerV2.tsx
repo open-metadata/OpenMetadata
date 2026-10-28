@@ -265,6 +265,7 @@ const TagsContainerV2 = ({
         <ButtonUtility
           data-testid="add-tag"
           icon={Plus}
+          size={showBottomEditButton ? 'xs' : 'sm'}
           tooltip={t('label.add-entity', {
             entity: isGlossaryType
               ? t('label.glossary-term')
@@ -273,7 +274,7 @@ const TagsContainerV2 = ({
           onClick={handleAddClick}
         />
       ) : null,
-    [showAddTagButton, handleAddClick, t, isGlossaryType]
+    [showAddTagButton, handleAddClick, t, isGlossaryType, showBottomEditButton]
   );
 
   const renderTags = useMemo(
@@ -390,7 +391,7 @@ const TagsContainerV2 = ({
           className="hover-cell-icon"
           data-testid="edit-button"
           icon={Edit01}
-          size="sm"
+          size={showBottomEditButton ? 'xs' : 'sm'}
           tooltip={t('label.edit-entity', {
             entity:
               tagType === TagSource.Classification
@@ -400,7 +401,7 @@ const TagsContainerV2 = ({
           onClick={handleAddClick}
         />
       ) : null,
-    [permission, tags, tagType, handleAddClick]
+    [permission, tags, tagType, handleAddClick, showBottomEditButton]
   );
 
   const horizontalLayout = useMemo(() => {
@@ -530,11 +531,11 @@ const TagsContainerV2 = ({
         <>
           {tagBody}
           {(children || showBottomEditButton) && (
-            <div className="m-t-xs w-full d-flex items-baseline">
+            <div className="m-t-xs w-full d-flex items-center">
               {showBottomEditButton && !showInlineEditButton && (
-                <p className="d-flex m-r-md">
+                <div className="d-flex m-r-xs">
                   {withSelectorPopover(editTagButton, 'body')}
-                </p>
+                </div>
               )}
               {children}
             </div>

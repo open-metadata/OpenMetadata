@@ -13,7 +13,7 @@
 import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
 
-import { FC, useCallback } from 'react';
+import { FC, MouseEvent, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -54,7 +54,7 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
           ? t('message.link-copy-to-clipboard')
           : t('label.copy-item', { item: t('label.url-uppercase') })
       }
-      onClick={(e) => {
+      onClick={(e: MouseEvent<HTMLButtonElement>) => {
         // Rendered inside clickable rows/cells; copying must not trigger their click handlers.
         e.stopPropagation();
         if (fieldFqn) {

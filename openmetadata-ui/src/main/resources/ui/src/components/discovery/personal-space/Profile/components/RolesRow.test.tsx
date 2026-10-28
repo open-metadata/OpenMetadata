@@ -64,17 +64,23 @@ jest.mock('./InlineEditCard', () => ({
     renderEdit,
     canEdit,
     onSave,
+    isSaveDisabled,
   }: {
     view?: ReactNode;
     renderEdit?: () => ReactNode;
     canEdit?: boolean;
     onSave?: () => void;
+    isSaveDisabled?: boolean;
   }) => (
     <div>
       <span data-testid="can-edit">{String(canEdit)}</span>
       {view}
       {renderEdit?.()}
-      <button data-testid="save" type="button" onClick={onSave}>
+      <button
+        data-testid="save"
+        disabled={isSaveDisabled}
+        type="button"
+        onClick={onSave}>
         save
       </button>
     </div>
@@ -163,9 +169,14 @@ describe('RolesRow', () => {
       );
     });
 
+    expect(screen.getByTestId('save')).toBeDisabled();
+
     await act(async () => {
       fireEvent.click(screen.getByTestId('add-role'));
     });
+
+    expect(screen.getByTestId('save')).toBeEnabled();
+
     await act(async () => {
       fireEvent.click(screen.getByTestId('save'));
     });
@@ -211,6 +222,49 @@ describe('RolesRow', () => {
 
     await waitFor(() =>
       expect(mockSearchRoles).toHaveBeenCalledWith('kjqhs', 50)
+    );
+  });
+
+  it('leaves admin status alone when the Admin pseudo-role is hidden', async () => {
+    const updateUserDetails = jest.fn().mockResolvedValue(undefined);
+
+    await act(async () => {
+      render(
+        <RolesRow
+          showAdminRole={false}
+          updateUserDetails={updateUserDetails}
+          userData={
+            {
+              name: 'harsh',
+              roles: [{ id: 'r', name: 'DataSteward' }],
+              isAdmin: true,
+            } as unknown as User
+          }
+        />
+      );
+    });
+
+    // The Admin chip still shows in the view (role + Admin).
+    expect(screen.getByTestId('chip-list')).toHaveTextContent('2');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('add-role'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save'));
+    });
+
+    await waitFor(() =>
+      expect(updateUserDetails).toHaveBeenCalledWith(
+        {
+          roles: [
+            { id: 'r', name: 'DataSteward' },
+            { id: 'r2', type: 'role' },
+          ],
+          isAdmin: true,
+        },
+        'roles'
+      )
     );
   });
 });

@@ -39,7 +39,7 @@ const lastProps = () =>
 describe('FilterButton', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('renders the small core Select with the options in their own order', () => {
+  it('renders the xs core Select with the options in their own order', () => {
     render(
       <FilterButton
         label="Range"
@@ -50,7 +50,7 @@ describe('FilterButton', () => {
       />
     );
 
-    expect(lastProps().size).toBe('sm');
+    expect(lastProps().size).toBe('xs');
     expect(lastProps().selectedKey).toBe('b');
     expect(lastProps()['aria-label']).toBe('Range');
     expect(lastProps().items).toEqual([

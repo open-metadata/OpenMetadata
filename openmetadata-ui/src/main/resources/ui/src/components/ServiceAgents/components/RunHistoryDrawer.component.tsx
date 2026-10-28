@@ -16,7 +16,6 @@ import {
   Box,
   Button,
   Card,
-  EmptyPlaceholder,
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -29,6 +28,7 @@ import { FC, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { getUtcOffsetLabel } from '../../../utils/date-time/DateTimeUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   Agent,
   AgentActionPermissions,
@@ -265,10 +265,7 @@ const SelectedRunPanel: FC<SelectedRunPanelProps> = ({
           <div
             className="tw:relative tw:min-h-[120px]"
             data-testid="run-steps-empty">
-            <EmptyPlaceholder
-              title={t('message.no-steps-available')}
-              variant="blank"
-            />
+            <NoDataPlaceholder title={t('message.no-steps-available')} />
           </div>
         ) : (
           run.steps.map((s, idx) => (

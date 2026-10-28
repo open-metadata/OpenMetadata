@@ -34,9 +34,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as PolicyIcon } from '../../../assets/svg/policies-colored.svg';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -329,7 +329,9 @@ const PoliciesDetailPage = () => {
       <Card>
         <Card.Content>
           {isEmpty(policy.rules) ? (
-            <ErrorPlaceHolder className="border-none" />
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <NoDataPlaceholder data-testid="no-data-placeholder" />
+            </div>
           ) : (
             <>
               <div className="flex justify-end m-b-md">
@@ -524,22 +526,23 @@ const PoliciesDetailPage = () => {
 
         <>
           {isEmpty(policy) ? (
-            <ErrorPlaceHolder className="border-none h-min-80">
-              <div className="text-center">
-                <p className="m-y-sm">
-                  {t('message.no-entity-found-for-name', {
-                    entity: t('label.policy-lowercase'),
-                    name: fqn,
-                  })}
-                </p>
-                <Button
-                  color="primary"
-                  size="xs"
-                  onClick={() => navigate(policiesPath)}>
-                  {t('label.go-back')}
-                </Button>
-              </div>
-            </ErrorPlaceHolder>
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <NoDataPlaceholder
+                data-testid="no-data-placeholder"
+                footer={
+                  <Button
+                    color="primary"
+                    size="xs"
+                    onClick={() => navigate(policiesPath)}>
+                    {t('label.go-back')}
+                  </Button>
+                }
+                title={t('message.no-entity-found-for-name', {
+                  entity: t('label.policy-lowercase'),
+                  name: fqn,
+                })}
+              />
+            </div>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
               <Box justify="between">

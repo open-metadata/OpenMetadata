@@ -101,8 +101,9 @@ const TaskActionButton = ({
         onUpdate={onAssigneeUpdate(action)}>
         <button
           className={
+            // Matches the core Button's xs size used by the other actions.
             'tw:cursor-pointer tw:rounded-md tw:border tw:border-secondary ' +
-            'tw:bg-primary tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold ' +
+            'tw:bg-primary tw:px-2 tw:py-1.25 tw:text-xs tw:font-medium ' +
             'tw:text-secondary tw:shadow-xs tw:hover:bg-secondary ' +
             'tw:disabled:cursor-not-allowed tw:disabled:opacity-50'
           }
@@ -121,7 +122,7 @@ const TaskActionButton = ({
       data-testid={getTaskActionTestId(action)}
       isDisabled={isDisabled}
       isLoading={isBusy}
-      size="sm"
+      size="xs"
       onClick={onTransition(action)}>
       {action.label}
     </Button>

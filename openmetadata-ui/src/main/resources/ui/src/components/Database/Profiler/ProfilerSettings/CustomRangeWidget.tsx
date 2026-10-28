@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid, NumberInput, Slider } from '@openmetadata/ui-core-components';
+import { Box, NumberInput, Slider } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { isNumber } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -21,10 +21,10 @@ export const CustomRangeWidget = (props: WidgetProps) => {
   const label = props.label || t('label.profile-sample');
 
   return (
-    <Grid
-      className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5"
-      data-testid="percentage-input">
-      <Grid.Item className="layout-column" span={18}>
+    // Two items and one gap: a 24-column Grid with colGap puts the gap between every column,
+    // which needs 460px before any content and pushes the number input out of narrow dialogs.
+    <Box data-testid="percentage-input" gap={5}>
+      <div className="tw:min-w-0 tw:flex-3">
         <Slider
           showRange
           aria-label={label}
@@ -36,8 +36,8 @@ export const CustomRangeWidget = (props: WidgetProps) => {
           value={isNumber(props.value) ? props.value : min}
           onChange={props.onChange}
         />
-      </Grid.Item>
-      <Grid.Item className="layout-column" span={6}>
+      </div>
+      <div className="tw:min-w-0 tw:flex-1">
         <NumberInput
           aria-label={label}
           formatOptions={{ style: 'unit', unit: 'percent' }}
@@ -53,7 +53,7 @@ export const CustomRangeWidget = (props: WidgetProps) => {
             props.onChange(Number.isNaN(value) ? null : value)
           }
         />
-      </Grid.Item>
-    </Grid>
+      </div>
+    </Box>
   );
 };

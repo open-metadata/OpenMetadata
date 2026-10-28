@@ -21,6 +21,7 @@ import {
 import { forwardRef, ReactNode } from 'react';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import {
+  HTTPMethod,
   Status,
   SubscriptionCategory,
   SubscriptionType,
@@ -387,7 +388,13 @@ function renderDestinationRows(
 const offering = (recipientCategories: string[]): AlertSelection => ({
   sources: ['table'],
   support: { recipientCategories },
-  capabilities: { loading: false },
+  capabilities: {
+    knownSources: [],
+    loading: false,
+    settled: true,
+    retry: jest.fn(),
+  },
+  ready: true,
   loading: false,
   search: {
     indexes: [],
@@ -712,7 +719,7 @@ describe('DestinationSelectItem', () => {
         category: SubscriptionCategory.External,
         config: {
           endpoint: 'https://chat.googleapis.com',
-          httpMethod: 'POST',
+          httpMethod: HTTPMethod.Post,
         },
         statusDetails: {
           status: Status.Failed,
@@ -735,7 +742,7 @@ describe('DestinationSelectItem', () => {
             config: {
               endpoint: 'https://chat.googleapis.com',
               headers: [],
-              httpMethod: 'POST',
+              httpMethod: HTTPMethod.Post,
               queryParams: [],
             },
           },

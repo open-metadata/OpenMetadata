@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { renderVersionButton } from '../../../utils/EntityVersionUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import './entity-version-timeline.less';
 import { EntityVersionTimelineProps } from './EntityVersionTimeline.interface';
 
@@ -92,7 +93,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
               <Button
                 className="m-t-lg tw:w-full"
                 color="primary"
-                href="/settings/billing/plans">
+                href={getSettingsLink('/settings/billing/plans')}>
                 {t('label.see-upgrade-option-plural')}
               </Button>
             </div>

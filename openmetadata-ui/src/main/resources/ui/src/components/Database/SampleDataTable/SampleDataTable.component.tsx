@@ -14,13 +14,11 @@
 import { Box, Select, Typography } from '@openmetadata/ui-core-components';
 import { Download01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 
 import { isEmpty, lowerCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
@@ -35,16 +33,16 @@ import {
   getSampleDataByTableId,
 } from '../../../rest/tableAPI';
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   ManageMenu,
   ManageMenuItem,
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TableComponent from '../../common/Table/TableV2';
@@ -79,7 +77,6 @@ const SampleDataTable: FC<SampleDataProps> = ({
   permissions,
   entityType = EntityType.TABLE,
 }) => {
-  const { isTourPage, tourMockDatasetData } = useTourProvider();
   const { currentUser, theme } = useApplicationStore();
   const { t } = useTranslation();
   const [sampleData, setSampleData] = useState<SampleData>();
@@ -130,11 +127,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       rowLimit
     );
 
-    downloadFile(
-      csvContent,
-      `sample_data_${rowLimit}_rows.csv`,
-      'text/csv;charset=utf-8;'
-    );
+    downloadCsv(csvContent, `sample_data_${rowLimit}_rows.csv`);
   }, [sampleData, rowLimit]);
 
   const getSampleDataWithType = (entity: Table | Container) => {
@@ -149,7 +142,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       return {
         name: column,
         title: (
-          <div className="d-flex flex-column">
+          <Box className="tw:text-start tw:wrap-anywhere" direction="col">
             <Typography> {column}</Typography>
             {matchedColumn?.dataType && (
               <Typography
@@ -158,7 +151,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
                 matchedColumn?.dataType ?? ''
               )})`}</Typography>
             )}
-          </div>
+          </Box>
         ),
         dataIndex: columnKey,
         key: columnKey,
@@ -266,25 +259,12 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   useEffect(() => {
     setIsLoading(true);
-    if (!isTableDeleted && tableId && !isTourPage) {
+    if (!isTableDeleted && tableId) {
       fetchSampleData();
     } else {
       setIsLoading(false);
     }
-    if (isTourPage) {
-      const mock = tourMockDatasetData as
-        | { tableDetails: { columns: unknown }; sampleData: unknown }
-        | undefined;
-      if (mock) {
-        setSampleData(
-          getSampleDataWithType({
-            columns: mock.tableDetails.columns,
-            sampleData: mock.sampleData,
-          } as unknown as Table)
-        );
-      }
-    }
-  }, [tableId, tourMockDatasetData]);
+  }, [tableId]);
 
   if (isLoading) {
     return <Loader />;
@@ -292,33 +272,34 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
-      <ErrorPlaceHolder className="error-placeholder">
-        <Typography as="p" className="tw:mb-3.5!">
-          <Transi18next
-            i18nKey="message.view-sample-data-entity"
-            renderElement={
-              <a
-                aria-label={t('label.auto-classification')}
-                href={AUTO_CLASSIFICATION_DOCS}
-                rel="noreferrer"
-                style={{ color: theme.primaryColor }}
-                target="_blank"
-              />
-            }
-            values={{
-              entity: t('label.auto-classification'),
-            }}
-          />
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-[calc(100vh-255px)] tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:in-[.assistant-content]:min-h-60">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={
+            <Transi18next
+              i18nKey="message.view-sample-data-entity"
+              renderElement={
+                <a
+                  aria-label={t('label.auto-classification')}
+                  href={AUTO_CLASSIFICATION_DOCS}
+                  rel="noreferrer"
+                  style={{ color: theme.primaryColor }}
+                  target="_blank"
+                />
+              }
+              values={{
+                entity: t('label.auto-classification'),
+              }}
+            />
+          }
+        />
+      </div>
     );
   }
 
   return (
     <div
-      className={classNames('p-md border-default border-radius-sm bg-white', {
-        'h-70vh overflow-hidden': isTourPage,
-      })}
+      className="p-md border-default border-radius-sm bg-white"
       data-testid="sample-data"
       id="sampleDataDetails">
       <Box

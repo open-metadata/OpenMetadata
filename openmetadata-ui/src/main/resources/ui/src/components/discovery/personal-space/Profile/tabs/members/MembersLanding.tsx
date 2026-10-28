@@ -16,16 +16,21 @@ import { Users01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { getLandingIconColor } from '../../components/LandingIcon.constants';
 import { LANDING_CARDS } from './Members.constants';
 import type { MembersLandingCard, MembersSubPanelProps } from './Members.types';
+import { getMembersAccess, isMembersCardAllowed } from './Members.utils';
 
 const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
   const { t } = useTranslation();
   const { getContributions } = useApplicationsProvider();
+  const { permissions } = usePermissionProvider();
+  const { isAdminUser } = useAuth();
 
   // Downstream builds (e.g. Collate) contribute extra Members sections; each
   // gets a card after the built-in four, routing to `#members/section/<key>`.
@@ -40,8 +45,13 @@ const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
       view: { type: 'section', key: contribution.key },
     }));
 
-    return [...LANDING_CARDS, ...contributed];
-  }, [getContributions]);
+    const access = getMembersAccess(permissions, Boolean(isAdminUser));
+
+    return [
+      ...LANDING_CARDS.filter((card) => isMembersCardAllowed(card.id, access)),
+      ...contributed,
+    ];
+  }, [getContributions, permissions, isAdminUser]);
 
   return (
     <Box

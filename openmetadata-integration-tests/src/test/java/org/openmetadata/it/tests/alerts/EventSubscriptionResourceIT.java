@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -367,17 +368,9 @@ public class EventSubscriptionResourceIT
 
   @Test
   void test_notificationResourcesServeSupportedEventTypes() throws Exception {
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(
-                URI.create(
-                    SdkClients.getServerUrl() + "/v1/events/subscriptions/notification/resources"))
-            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-            .GET()
-            .build();
-    HttpResponse<String> response =
-        HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = getPerSourceList("notification");
     assertEquals(200, response.statusCode());
+    assertDeprecatedInFavourOfCapabilities(response);
 
     JsonNode glossaryTerm =
         StreamSupport.stream(
@@ -395,6 +388,43 @@ public class EventSubscriptionResourceIT
     assertFalse(eventTypes.contains("entityFieldsChanged"));
     // reachable only through the "all" resource
     assertFalse(eventTypes.contains("entityLineageAdded"));
+  }
+
+  @Test
+  void test_observabilityResourcesAreDeprecatedInFavourOfCapabilities() throws Exception {
+    HttpResponse<String> response = getPerSourceList("observability");
+    assertEquals(200, response.statusCode());
+    assertDeprecatedInFavourOfCapabilities(response);
+
+    List<String> sources =
+        StreamSupport.stream(
+                new ObjectMapper().readTree(response.body()).get("data").spliterator(), false)
+            .map(descriptor -> descriptor.get("name").asText())
+            .toList();
+    assertTrue(sources.containsAll(List.of("pipeline", "ingestionPipeline", "testCase")));
+  }
+
+  private static HttpResponse<String> getPerSourceList(String alertType) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    SdkClients.getServerUrl()
+                        + "/v1/events/subscriptions/"
+                        + alertType
+                        + "/resources"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .GET()
+            .build();
+    return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  // ADR:2026-10-20-alert-forms-read-only-the-capabilities-answer
+  private static void assertDeprecatedInFavourOfCapabilities(HttpResponse<String> response) {
+    assertEquals(Optional.of("@1792454400"), response.headers().firstValue("Deprecation"));
+    assertEquals(
+        Optional.of("</api/v1/events/subscriptions/capabilities>; rel=\"alternate\""),
+        response.headers().firstValue("Link"));
   }
 
   @Test

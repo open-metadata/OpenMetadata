@@ -42,7 +42,10 @@ import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
 import TopicRowOwners from '../Common/TopicWidget/TopicRowOwners';
 import {
   TOPIC_BLUE_TILE_CLASSES,
+  TOPIC_FILTERED_BODY_CLASSES,
+  TOPIC_FILTERED_LIST_CLASSES,
   TOPIC_ROW_CLASSES,
+  TOPIC_ROW_DIVIDER_CLASSES,
   TOPIC_ROW_STRETCHED_LINK_CLASSES,
   TOPIC_ROW_TILE_CLASSES,
 } from '../Common/TopicWidget/topicRowStyles';
@@ -178,6 +181,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
         label: t('label.view-all-entity', { entity: t(PRODUCTS_LABEL_KEY) }),
         onPress: () => navigate(ROUTES.DATA_PRODUCT),
       }}
+      bodyClassName={TOPIC_FILTERED_BODY_CLASSES}
       emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
@@ -245,13 +249,17 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
           </div>
 
           <ul
-            className="tw:mt-3 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+            className={classNames(
+              'tw:flex tw:flex-col',
+              TOPIC_FILTERED_LIST_CLASSES
+            )}
             data-testid="data-product-rows">
             {visibleProducts.map((product) => (
               <li
                 className={classNames(
-                  'tw:relative tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3',
-                  TOPIC_ROW_CLASSES
+                  'tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3',
+                  TOPIC_ROW_CLASSES,
+                  TOPIC_ROW_DIVIDER_CLASSES
                 )}
                 data-testid={`data-product-card-${product.id}`}
                 key={product.id}>
@@ -272,7 +280,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
                       className="tw:min-w-0 tw:text-text-primary!"
                       data-testid="data-product-name"
                       ellipsis={{ rows: 1 }}
-                      size="text-xs"
+                      size="text-sm"
                       weight="medium">
                       {product.name}
                     </Typography>

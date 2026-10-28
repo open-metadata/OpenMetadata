@@ -21,6 +21,16 @@ import LogoSrc, { ReactComponent as Logo } from '../../assets/svg/logo.svg';
 import { Theme } from '../../context/UntitledUIThemeProvider/theme-provider.interface';
 import { t } from '../i18next/LocalUtil';
 
+/**
+ * Core palette shades (`--tw-color-<shade>`) for the welcome screen's glow and
+ * primary button.
+ */
+export interface WelcomeTheme {
+  glow: string;
+  button: string;
+  buttonHover: string;
+}
+
 class BrandClassBase {
   public getMonogram() {
     return { src: MonogramSrc, svg: Monogram };
@@ -66,6 +76,18 @@ class BrandClassBase {
 
   public getUpgradeScreenImg(theme: Theme) {
     return theme === 'dark' ? UpgradeScreenDarkSrc : UpgradeScreenLightSrc;
+  }
+
+  /**
+   * The welcome screen's fixed colours from its Figma mock. It shows the
+   * product's own style and deliberately ignores a custom theme.
+   */
+  public getWelcomeTheme(): WelcomeTheme {
+    return {
+      glow: 'purple-500',
+      button: 'purple-600',
+      buttonHover: 'purple-700',
+    };
   }
 
   /** Product name in the welcome screen's "Your {{platform}} is ready". */

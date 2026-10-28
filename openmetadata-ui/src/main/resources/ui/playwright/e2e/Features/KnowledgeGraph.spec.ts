@@ -728,7 +728,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await page.mouse.move(point.x, point.y);
     const tooltip = page.getByTestId('edge-tooltip');
     await expect(tooltip).toBeVisible();
-    const label = await tooltip.locator('.kg-edge-tooltip__label').innerText();
+    const label = await tooltip.getByTestId('edge-tooltip-label').innerText();
     expect(fixture().edges.map((edge) => edge.label)).toContain(label);
     await page.mouse.click(point.x, point.y);
     await expect(page.getByTestId('graph-inspector')).toContainText(label);

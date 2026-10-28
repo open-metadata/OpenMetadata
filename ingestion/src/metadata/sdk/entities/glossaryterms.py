@@ -13,6 +13,7 @@ from metadata.generated.schema.api.data.createGlossaryTerm import (
     CreateGlossaryTermRequest,
 )
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.type.bulkCreateResult import BulkCreateResult, ConflictPolicy
 from metadata.sdk.entities.base import BaseEntity
 from metadata.sdk.types import UuidLike
 
@@ -29,6 +30,13 @@ class GlossaryTerms(BaseEntity[GlossaryTerm, CreateGlossaryTermRequest]):
     def entity_type(cls) -> type[GlossaryTerm]:
         """Return the GlossaryTerm entity type"""
         return GlossaryTerm
+
+    @classmethod
+    def create_many(
+        cls, requests: Sequence[CreateGlossaryTermRequest], *, on_conflict: ConflictPolicy = ConflictPolicy.skip
+    ) -> BulkCreateResult:
+        """Create terms with per-input outcomes; fail marks conflicts failed while other inputs continue."""
+        return cls._create_many(requests, on_conflict)
 
     # ------------------------------------------------------------------
     # Typed relations

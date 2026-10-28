@@ -314,7 +314,13 @@ describe('GlossaryTermsSection', () => {
     });
 
     it('keeps showing no glossary terms placeholder while the popup is open', async () => {
-      render(<GlossaryTermsSection hasPermission showEditButton />);
+      render(
+        <GlossaryTermsSection
+          hasPermission
+          showEditButton
+          entityType={EntityType.TABLE}
+        />
+      );
 
       clickHeaderEdit();
 

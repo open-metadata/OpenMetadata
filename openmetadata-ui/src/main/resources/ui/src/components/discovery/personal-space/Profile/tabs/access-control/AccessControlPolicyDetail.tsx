@@ -15,7 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
+  ConfirmPopover,
   Input,
   Table,
   TableCard,
@@ -58,15 +58,16 @@ import {
   getTeamByName,
   patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { t as translate } from '../../../../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
@@ -219,20 +220,19 @@ const RenameHeaderInput: FC<RenameHeaderInputProps> = ({
 // ─── Role/team cell ───────────────────────────────────────────────────────────
 
 interface RenderRoleOrTeamCellContext {
-  t: ReturnType<typeof useTranslation>['t'];
+  parentName: string;
   onNavigateToDetail?: (item: EntityReference) => void;
 }
 
 const renderRoleOrTeamCell = (
   item: EntityReference,
   colId: DetailColumnId,
-  kind: 'role' | 'team',
   canEditAll: boolean,
   isLoadingOnSave: boolean,
-  onRemove: (item: EntityReference, kind: 'role' | 'team') => void,
+  onRemove: (item: EntityReference) => Promise<boolean>,
   ctx: RenderRoleOrTeamCellContext
 ) => {
-  const { t, onNavigateToDetail } = ctx;
+  const { parentName, onNavigateToDetail } = ctx;
   if (colId === 'name') {
     const name = getEntityName(item);
     if (onNavigateToDetail) {
@@ -261,15 +261,26 @@ const renderRoleOrTeamCell = (
 
   if (colId === 'actions' && canEditAll) {
     return (
-      <ButtonUtility
-        data-testid={`remove-${getEntityName(item)}`}
-        icon={Delete}
-        isDisabled={isLoadingOnSave}
-        size="lg"
-        tooltip={t('label.remove')}
-        tooltipPlacement="left"
-        onPress={() => onRemove(item, kind)}
-      />
+      <ConfirmPopover
+        confirmText={translate('label.remove')}
+        data-testid="remove-entity-popover"
+        description={translate(
+          'message.are-you-sure-you-want-to-remove-child-from-parent',
+          { child: getEntityName(item), parent: parentName }
+        )}
+        title={translate('label.remove-entity', {
+          entity: getEntityName(item),
+        })}
+        onConfirm={() => onRemove(item)}>
+        <ButtonUtility
+          data-testid={`remove-${getEntityName(item)}`}
+          icon={Delete}
+          isDisabled={isLoadingOnSave}
+          size="lg"
+          tooltip={translate('label.remove')}
+          tooltipPlacement="left"
+        />
+      </ConfirmPopover>
     );
   }
 
@@ -284,11 +295,10 @@ interface RoleOrTeamTableProps {
   emptyTitle: string;
   isLoadingOnSave: boolean;
   items: EntityReference[];
-  kind: 'role' | 'team';
   label: string;
+  parentName: string;
   onNavigateToDetail?: (item: EntityReference) => void;
-  t: ReturnType<typeof useTranslation>['t'];
-  onRemove: (item: EntityReference, kind: 'role' | 'team') => void;
+  onRemove: (item: EntityReference) => Promise<boolean>;
 }
 
 const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
@@ -297,10 +307,9 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
   emptyTitle,
   isLoadingOnSave,
   items,
-  kind,
   label,
+  parentName,
   onNavigateToDetail,
-  t,
   onRemove,
 }) => (
   <Box className="tw:w-full tw:overflow-x-auto" direction="col">
@@ -317,19 +326,21 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
         )}
       </Table.Header>
       <Table.Body
+        dependencies={[canEditAll, isLoadingOnSave, onRemove, parentName]}
         items={items}
         renderEmptyState={() => (
           <Box
             align="center"
             className="tw:min-h-32 tw:relative"
             justify="center">
-            <EmptyPlaceholder title={emptyTitle} />
+            <NoDataPlaceholder title={emptyTitle} />
           </Box>
         )}>
         {(item) => (
           <Table.Row
             columns={columns}
             data-testid={getEntityName(item)}
+            dependencies={[canEditAll, isLoadingOnSave, onRemove, parentName]}
             id={item.fullyQualifiedName ?? item.name ?? item.id}
             key={item.fullyQualifiedName ?? item.name ?? item.id}>
             {(col) => (
@@ -337,11 +348,10 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
                 {renderRoleOrTeamCell(
                   item,
                   col.id as DetailColumnId,
-                  kind,
                   canEditAll,
                   isLoadingOnSave,
                   onRemove,
-                  { t, onNavigateToDetail }
+                  { parentName, onNavigateToDetail }
                 )}
               </Table.Cell>
             )}
@@ -363,8 +373,6 @@ const usePolicyDetail = (fqn: string) => {
   const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
   const [policyPermission, setPolicyPermission] =
     useState<OperationPermission | null>(null);
-  const [selectedEntity, setSelectedEntity] = useState<EntityReference>();
-  const [removeKind, setRemoveKind] = useState<'role' | 'team'>('role');
 
   const fetchPolicy = useCallback(async () => {
     setIsLoading(true);
@@ -418,7 +426,7 @@ const usePolicyDetail = (fqn: string) => {
   const handleRemoveRole = useCallback(
     async (roleRef: EntityReference) => {
       if (!policy) {
-        return;
+        return false;
       }
 
       setIsLoadingOnSave(true);
@@ -444,11 +452,14 @@ const usePolicyDetail = (fqn: string) => {
         showSuccessToast(
           t('server.entity-updated-success', { entity: t('label.policy') })
         );
+
+        return true;
       } catch (err) {
         showErrorToast(err as AxiosError);
+
+        return false;
       } finally {
         setIsLoadingOnSave(false);
-        setSelectedEntity(undefined);
       }
     },
     [policy, t]
@@ -457,7 +468,7 @@ const usePolicyDetail = (fqn: string) => {
   const handleRemoveTeam = useCallback(
     async (teamRef: EntityReference) => {
       if (!policy) {
-        return;
+        return false;
       }
 
       setIsLoadingOnSave(true);
@@ -483,22 +494,17 @@ const usePolicyDetail = (fqn: string) => {
         showSuccessToast(
           t('server.entity-updated-success', { entity: t('label.policy') })
         );
+
+        return true;
       } catch (err) {
         showErrorToast(err as AxiosError);
+
+        return false;
       } finally {
         setIsLoadingOnSave(false);
-        setSelectedEntity(undefined);
       }
     },
     [policy, t]
-  );
-
-  const handleEntityRemove = useCallback(
-    (item: EntityReference, kind: 'role' | 'team') => {
-      setSelectedEntity(item);
-      setRemoveKind(kind);
-    },
-    []
   );
 
   const { canDelete, canEditAll } = getDerivedPermissionFlags(
@@ -510,15 +516,11 @@ const usePolicyDetail = (fqn: string) => {
     canEditAll,
     fetchPolicy,
     handleDeleteRule,
-    handleEntityRemove,
     handleRemoveRole,
     handleRemoveTeam,
     isLoading,
     isLoadingOnSave,
     policy,
-    removeKind,
-    selectedEntity,
-    setSelectedEntity,
   };
 };
 
@@ -549,15 +551,11 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
     canEditAll,
     fetchPolicy,
     handleDeleteRule,
-    handleEntityRemove,
     handleRemoveRole,
     handleRemoveTeam,
     isLoading,
     isLoadingOnSave,
     policy,
-    removeKind,
-    selectedEntity,
-    setSelectedEntity,
   } = usePolicyDetail(fqn);
 
   const [activeTab, setActiveTab] = useState<PolicyTab>('rules');
@@ -576,9 +574,6 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [isSavingRename, setIsSavingRename] = useState(false);
-
-  const [isDeletePolicyOpen, setIsDeletePolicyOpen] = useState(false);
-  const [isDeletingPolicy, setIsDeletingPolicy] = useState(false);
 
   const detailColumns = useMemo<DetailColumn[]>(
     () => [
@@ -611,6 +606,11 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       setIsSavingRename(false);
     }
   }, [policy, renameValue, fetchPolicy, t, onRename]);
+
+  const handleAfterDeletePolicy = useCallback(
+    () => onNavigate({ type: 'policies' }),
+    [onNavigate]
+  );
 
   useEffect(() => {
     if (!policy) {
@@ -662,17 +662,24 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
     );
 
     const deleteButtonNode: React.ReactNode = isRenameOpen ? undefined : (
-      <ButtonUtility
-        data-testid="delete-policy-btn"
-        icon={Delete}
-        isDisabled={!canDelete}
-        size="lg"
-        tooltip={String(
-          canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
-        )}
-        tooltipPlacement="left"
-        onPress={() => setIsDeletePolicyOpen(true)}
-      />
+      <DeleteEntityPopover
+        afterDeleteAction={handleAfterDeletePolicy}
+        allowSoftDelete={false}
+        data-testid="delete-policy-popover"
+        entityId={policy.id}
+        entityName={getEntityName(policy)}
+        entityType={EntityType.POLICY}>
+        <ButtonUtility
+          data-testid="delete-policy-btn"
+          icon={Delete}
+          isDisabled={!canDelete}
+          size="lg"
+          tooltip={String(
+            canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
+          )}
+          tooltipPlacement="left"
+        />
+      </DeleteEntityPopover>
     );
 
     onSetHeaderTitleSuffix?.(titleSuffixNode);
@@ -686,6 +693,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
     renameValue,
     isSavingRename,
     handleSaveRename,
+    handleAfterDeletePolicy,
     t,
     hasCopied,
     onCopyToClipBoard,
@@ -716,25 +724,6 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       setIsSavingDesc(false);
     }
   }, [policy, fetchPolicy, t]);
-
-  const handleDeletePolicy = useCallback(async () => {
-    if (!policy) {
-      return;
-    }
-
-    setIsDeletingPolicy(true);
-    const isSuccess = await hardDeleteEntity(
-      getEntityName(policy),
-      policy.id ?? '',
-      EntityType.POLICY
-    );
-    setIsDeletingPolicy(false);
-    setIsDeletePolicyOpen(false);
-
-    if (isSuccess) {
-      onNavigate({ type: 'policies' });
-    }
-  }, [policy, onNavigate]);
 
   const openRuleForm = useCallback(
     (ruleName?: string) =>
@@ -770,9 +759,8 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         })}
         isLoadingOnSave={isLoadingOnSave}
         items={policy?.roles ?? []}
-        kind="role"
         label={t('label.role-plural')}
-        t={t}
+        parentName={getEntityName(policy)}
         onNavigateToDetail={(item) =>
           onNavigate({
             type: 'roles-detail',
@@ -780,12 +768,12 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
             name: getEntityName(item),
           })
         }
-        onRemove={handleEntityRemove}
+        onRemove={handleRemoveRole}
       />
     ),
     [
       detailColumns,
-      handleEntityRemove,
+      handleRemoveRole,
       isAdminUser,
       isLoadingOnSave,
       onNavigate,
@@ -804,19 +792,18 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         })}
         isLoadingOnSave={isLoadingOnSave}
         items={policy?.teams ?? []}
-        kind="team"
         label={t('label.team-plural')}
-        t={t}
+        parentName={getEntityName(policy)}
         onNavigateToDetail={(item) =>
           goTo(profileHash.team(item.fullyQualifiedName ?? item.name ?? ''))
         }
-        onRemove={handleEntityRemove}
+        onRemove={handleRemoveTeam}
       />
     ),
     [
       detailColumns,
       goTo,
-      handleEntityRemove,
+      handleRemoveTeam,
       isAdminUser,
       isLoadingOnSave,
       policy,
@@ -831,8 +818,6 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   if (!policy) {
     return null;
   }
-
-  const policyName = getEntityName(policy);
 
   const tabRenderers: Record<PolicyTab, () => React.ReactNode> = {
     rules: renderRulesTab,
@@ -859,8 +844,9 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       />
 
       <TableCard.Root
-        className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
-        size="compact">
+        className="tw:rounded-xl tw:shadow-none"
+        size="compact"
+        variant="muted">
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(k) => setActiveTab(k as PolicyTab)}>
@@ -894,42 +880,6 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         </Tabs>
         {tabRenderers[activeTab]()}
       </TableCard.Root>
-
-      {selectedEntity && (
-        <DeleteModal
-          entityTitle={t('label.remove-entity', {
-            entity: getEntityName(selectedEntity),
-          })}
-          isDeleting={isLoadingOnSave}
-          message={t(
-            'message.are-you-sure-you-want-to-remove-child-from-parent',
-            {
-              child: getEntityName(selectedEntity),
-              parent: policyName,
-            }
-          )}
-          open={Boolean(selectedEntity)}
-          onCancel={() => setSelectedEntity(undefined)}
-          onDelete={async () => {
-            if (removeKind === 'role') {
-              await handleRemoveRole(selectedEntity);
-            } else {
-              await handleRemoveTeam(selectedEntity);
-            }
-          }}
-        />
-      )}
-
-      <DeleteModal
-        entityTitle={policyName}
-        isDeleting={isDeletingPolicy}
-        message={t('message.permanently-delete-common-message', {
-          entity: policyName.toLowerCase(),
-        })}
-        open={isDeletePolicyOpen}
-        onCancel={() => setIsDeletePolicyOpen(false)}
-        onDelete={handleDeletePolicy}
-      />
     </Box>
   );
 };

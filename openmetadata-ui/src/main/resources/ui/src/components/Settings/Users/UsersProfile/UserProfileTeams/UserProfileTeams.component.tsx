@@ -67,7 +67,7 @@ const UserProfileTeams = ({
         noDataPlaceholder={t('message.no-team-found')}
       />
     ),
-    [teams, getNonDeletedTeams]
+    [teams, t]
   );
 
   const setUserTeams = useCallback(() => {
@@ -93,15 +93,15 @@ const UserProfileTeams = ({
 
   return (
     <div
-      className="d-flex flex-col w-full  p-[20px] user-profile-card"
+      className="tw:flex tw:w-full tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:pt-5 tw:pb-2.5 tw:mb-5"
       data-testid="user-profile-teams">
-      <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
-        <div>
-          <IconTeamsGrey height={16} />
+      <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
+        <div className="tw:m-0.5 tw:flex tw:size-4 tw:items-center tw:justify-center">
+          <IconTeamsGrey height={18} width={18} />
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography className="text-sm font-medium p-l-xss">
+          <Typography className="text-sm font-medium">
             {t('label.team-plural')}
           </Typography>
 
@@ -172,8 +172,8 @@ const UserProfileTeams = ({
           )}
         </div>
       </div>
-      <div className="user-profile-card-body d-flex justify-start gap-2">
-        <div className="user-page-icon d-flex-center">
+      <div className="tw:mb-2.5 tw:flex tw:justify-start tw:gap-2">
+        <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center">
           <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
         </div>
         {teamsRenderElement}

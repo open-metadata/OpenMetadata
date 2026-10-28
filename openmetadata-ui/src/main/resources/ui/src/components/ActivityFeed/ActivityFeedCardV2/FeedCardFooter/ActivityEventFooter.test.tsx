@@ -72,7 +72,9 @@ describe('ActivityEventFooter', () => {
 
       render(<ActivityEventFooter activity={activity} />);
 
-      expect(screen.getByTestId('comment-button')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'label.comment' })
+      ).toHaveAttribute('data-testid', 'comment-button');
     });
 
     it('should render reactions component', () => {

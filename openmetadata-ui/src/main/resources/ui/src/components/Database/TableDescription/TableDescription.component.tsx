@@ -111,7 +111,7 @@ const TableDescription = ({
       />
 
       {!suggestionData && !isReadOnly ? (
-        <div className="d-flex items-baseline gap-4">
+        <div className="d-flex items-center gap-2">
           {hasEditPermission && (
             <ButtonUtility
               className="hover-cell-icon"

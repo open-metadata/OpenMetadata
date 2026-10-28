@@ -230,7 +230,9 @@ const BotDetails: FC<BotsDetailProps> = ({
         <Grid.Item className="layout-column" span={24}>
           <RolesCard
             roles={roles}
-            searchRolesOptions={debouncedFetchRoles}
+            searchRolesOptions={async (query) => {
+              await debouncedFetchRoles(query);
+            }}
             selectedRoles={selectedRoles}
             setSelectedRoles={(selectedRoles) =>
               setSelectedRoles(selectedRoles)

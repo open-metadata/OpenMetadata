@@ -30,10 +30,12 @@ import {
   Expand01,
   Link01,
   Minus,
+  Plus,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { OntologyNode } from './OntologyExplorer.interface';
 import { OntologyHealthSummary } from './OntologyStudio.utils';
 
@@ -94,6 +96,7 @@ const OntologyHealthPanel = ({
   onConnect,
 }: OntologyHealthPanelProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [view, setView] = useState<HealthPanelView>('summary');
   const { cardClass, isMinimized, isOpen, isSidebar, positionClass } =
     getHealthPanelLayout(placement, isRaised, view);
@@ -181,6 +184,12 @@ const OntologyHealthPanel = ({
 
   const renderIsolatedSummary = () => (
     <div className="tw:flex tw:items-center tw:gap-2">
+      {isAiMode && hasIsolated ? (
+        <span
+          aria-hidden="true"
+          className="tw:size-2 tw:shrink-0 tw:rounded-xs tw:bg-utility-warning-300"
+        />
+      ) : null}
       <Typography className="tw:flex-1" size="text-xs">
         <span
           className="tw:font-semibold tw:text-primary"
@@ -225,7 +234,7 @@ const OntologyHealthPanel = ({
         aria-label={`${t('label.connect')} ${term.label}`}
         color="secondary"
         data-testid={`ontology-connect-${term.id}`}
-        iconLeading={Link01}
+        iconLeading={isAiMode ? Plus : Link01}
         size="xs"
         onPress={() => onConnect(term)}>
         {t('label.connect')}
@@ -274,7 +283,7 @@ const OntologyHealthPanel = ({
       <div className="tw:flex tw:shrink-0 tw:flex-col tw:gap-3 tw:p-4">
         {renderTitleRow()}
         <div className="tw:flex tw:items-baseline tw:gap-2">
-          <Typography size="text-md" weight="semibold">
+          <Typography size={isAiMode ? 'text-lg' : 'text-md'} weight="semibold">
             {health.connectedPercent}%
           </Typography>
           <Typography color="secondary" size="text-xs">

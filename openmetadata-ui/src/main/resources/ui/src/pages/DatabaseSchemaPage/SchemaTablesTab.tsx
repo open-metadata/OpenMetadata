@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  EmptyPlaceholder,
-  Toggle,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -25,6 +21,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
 import TableAntd from '../../components/common/Table/TableV2';
@@ -401,19 +399,17 @@ function SchemaTablesTab({
         emptyText: (
           <div className="tw:relative tw:min-h-70">
             {searchValue ? (
-              <EmptyPlaceholder
+              <NoSearchResultsPlaceholder
                 description={t('message.check-spelling-or-try-shorter-term')}
-                icon={<NoSearch className="tw:text-secondary" />}
+                icon={<NoSearch />}
                 title={t('label.no-matching-result-plural')}
-                variant="blank"
               />
             ) : (
-              <EmptyPlaceholder
-                icon={<Assets className="tw:text-utility-gray-600" />}
+              <NoDataPlaceholder
+                icon={<Assets />}
                 title={t('message.no-entity-data-available', {
                   entity: t('label.table-plural'),
                 })}
-                variant="blank"
               />
             )}
           </div>

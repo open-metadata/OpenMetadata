@@ -210,7 +210,9 @@ export interface TreeItemContentProps {
    * Optional icon component rendered between the chevron and the label.
    * Accepts any icon component from `@openmetadata/ui-core-components/icons`.
    */
-  icon?: ComponentType<HTMLAttributes<HTMLOrSVGElement>>;
+  icon?: ComponentType<
+    Pick<HTMLAttributes<HTMLOrSVGElement>, 'className' | 'aria-hidden'>
+  >;
   /** Additional CSS class name applied to the icon. */
   iconClassName?: string;
   /**

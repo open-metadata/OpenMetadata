@@ -32,13 +32,6 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
 );
 
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
-  }
-);
-
-jest.mock(
   '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData',
   () => {
     return jest.fn().mockImplementation(({ onSaveLayout }) => (
@@ -154,7 +147,11 @@ describe('CustomizablePage component', () => {
       renderCustomizablePage();
     });
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('customize-my-data')).toBeNull();
   });
 
@@ -162,7 +159,11 @@ describe('CustomizablePage component', () => {
     renderCustomizablePage();
 
     expect(await screen.findByText('Loader')).toBeInTheDocument();
-    expect(screen.queryByText('ErrorPlaceHolder')).toBeNull();
+    expect(
+      screen.queryByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeNull();
     expect(screen.queryByTestId('CustomizeMyData')).toBeNull();
   });
 
@@ -172,7 +173,11 @@ describe('CustomizablePage component', () => {
     });
 
     expect(screen.getByText('CustomizeMyData')).toBeInTheDocument();
-    expect(screen.queryByText('ErrorPlaceHolder')).toBeNull();
+    expect(
+      screen.queryByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeNull();
   });
 
   it('CustomizablePage should pass the default layout data when no layout is present for the persona', async () => {
@@ -188,7 +193,11 @@ describe('CustomizablePage component', () => {
     });
 
     expect(screen.queryByText('CustomizeMyData')).toBeInTheDocument();
-    expect(screen.queryByText('ErrorPlaceHolder')).toBeNull();
+    expect(
+      screen.queryByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeNull();
   });
 
   it('does not persist an undefined page when resetting an unsaved layout', async () => {
@@ -213,7 +222,11 @@ describe('CustomizablePage component', () => {
       renderCustomizablePage();
     });
 
-    expect(screen.queryByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
     expect(screen.queryByText('Loader')).toBeNull();
     expect(screen.queryByTestId('customize-my-data')).toBeNull();
   });

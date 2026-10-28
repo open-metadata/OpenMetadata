@@ -44,6 +44,15 @@ public interface Authorizer {
   void authorizeRequests(
       SecurityContext securityContext, List<AuthRequest> requests, AuthorizationLogic logic);
 
+  /**
+   * Authorizes the author a write records, and the bot it was impersonated by, for checks that run
+   * where the write is stored rather than at the request.
+   */
+  void authorizeActor(
+      ChangeActor actor,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext);
+
   void authorizeAdmin(SecurityContext securityContext);
 
   void authorizeAdmin(String adminName);

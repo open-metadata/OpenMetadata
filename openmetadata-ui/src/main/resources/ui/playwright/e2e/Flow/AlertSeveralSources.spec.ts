@@ -23,7 +23,12 @@ import {
   generateAlertName,
   inputBasicAlertInformation,
   saveAlertAndVerifyResponse,
+  watchPerSourceListRequests,
 } from '../../utils/alert';
+import {
+  scrollIntoViewAndSettle,
+  selectOptionWithRetry,
+} from '../../utils/common';
 import {
   addInternalDestination,
   visitNotificationAlertPage,
@@ -46,6 +51,14 @@ test.afterAll(async ({ browser }) => {
   await owner.delete(apiContext);
   await afterAction();
 });
+
+let expectNoPerSourceList: () => void;
+
+test.beforeEach(({ page }) => {
+  expectNoPerSourceList = watchPerSourceListRequests(page);
+});
+
+test.afterEach(() => expectNoPerSourceList());
 
 test.describe('Alerts with several sources', () => {
   test('Notification alert on table and dashboard with an owner filter', async ({
@@ -171,12 +184,22 @@ test.describe('Alerts with several sources', () => {
       });
       await addAlertSource(page, 'dataContract', ['table']);
 
+      // Tables and data contracts name this filter after their own assets, so together it has
+      // its general name.
       await page.getByTestId('add-filters').click();
-      await page.getByTestId('filter-select-0').click();
-      await page
+      const filterSelect = page
+        .getByTestId('filter-select-0')
+        .getByRole('button');
+      const generalName = page
         .getByRole('listbox')
-        .getByTestId('Table Name-filter-option')
-        .click();
+        .getByTestId('Entity FQN-filter-option');
+      await scrollIntoViewAndSettle(filterSelect);
+      await filterSelect.click();
+      await expect(generalName).toBeVisible();
+      await expect(
+        page.getByRole('listbox').getByTestId('Table Name-filter-option')
+      ).toHaveCount(0);
+      await selectOptionWithRetry(filterSelect, generalName);
 
       const names = page.getByTestId('fqn-list-select').getByRole('combobox');
       const found = page.getByRole('listbox');
@@ -223,14 +246,17 @@ test.describe('Alerts with several sources', () => {
         })
         .toBe(true);
       await expect(
-        field.getByTitle(table.entityResponseData.fullyQualifiedName)
+        field
+          .getByTestId('autocomplete-selected-item')
+          .filter({ hasText: table.entityResponseData.fullyQualifiedName })
       ).toBeVisible();
       await page.setViewportSize({ width: 1024, height: 768 });
       await expect
         .poll(async () => {
           const fieldBounds = await field.boundingBox();
           const chipBounds = await field
-            .getByTitle(table.entityResponseData.fullyQualifiedName)
+            .getByTestId('autocomplete-selected-item')
+            .filter({ hasText: table.entityResponseData.fullyQualifiedName })
             .boundingBox();
 
           return Boolean(

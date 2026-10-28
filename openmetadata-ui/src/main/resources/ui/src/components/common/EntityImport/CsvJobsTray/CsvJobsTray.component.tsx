@@ -46,6 +46,7 @@ import {
   getCsvAsyncJobResult,
   getCsvAsyncJobs,
 } from '../../../../rest/csvAPI';
+import { downloadCsv } from '../../../../utils/Export/ExportUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import './csv-jobs-tray.less';
 import {
@@ -233,15 +234,7 @@ export const CsvJobsTray = () => {
       try {
         setDownloadingJobId(job.jobId);
         const csvData = await getCsvAsyncJobResult(job.jobId);
-        const blob = new Blob([csvData], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${job.entityType}-${job.jobId}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        downloadCsv(csvData, `${job.entityType}-${job.jobId}.csv`);
         setDownloadedJobIds((current) => {
           const next = new Set(current);
           next.add(job.jobId);

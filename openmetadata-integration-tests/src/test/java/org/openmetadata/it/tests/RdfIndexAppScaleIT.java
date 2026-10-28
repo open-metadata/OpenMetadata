@@ -52,6 +52,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -190,8 +191,7 @@ public class RdfIndexAppScaleIT {
     Awaitility.await("Trigger " + APP_NAME)
         .atMost(Duration.ofMinutes(3))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptionsMatching(
-            error -> error.getMessage() != null && error.getMessage().contains("already running"))
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               httpClient.execute(

@@ -30,8 +30,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { useAddServiceAction } from '../../integration/ConnectionsPage/useAddServiceAction';
 import {
-  WELCOME_GLOW_DARK,
-  WELCOME_GLOW_LIGHT,
+  getWelcomeGlow,
+  getWelcomeThemeStyle,
 } from './WelcomeScreen.constants';
 
 interface WelcomeScreenProps {
@@ -42,6 +42,9 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { theme } = useTheme();
+  // Optional call: a downstream brand class may not define it yet, and then
+  // the theme colours apply.
+  const welcomeTheme = brandClassBase.getWelcomeTheme?.();
   const { currentUser } = useApplicationStore();
   // AI mode's Connections opens on every connector; classic keeps its
   // database-services entry point. The hook also owns the create-permission
@@ -68,13 +71,16 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   return (
     <div
       className="tw:relative tw:h-full tw:overflow-hidden tw:rounded-2xl tw:bg-primary tw:dark:bg-canvas"
-      data-testid="welcome-screen">
+      data-testid="welcome-screen"
+      style={getWelcomeThemeStyle(welcomeTheme)}>
       <div
         aria-hidden
         className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-0 tw:h-2/3"
         style={{
-          backgroundImage:
-            theme === 'dark' ? WELCOME_GLOW_DARK : WELCOME_GLOW_LIGHT,
+          backgroundImage: getWelcomeGlow(
+            welcomeTheme?.glow ?? 'brand-500',
+            theme === 'dark'
+          ),
         }}
       />
       <ButtonUtility
@@ -87,28 +93,40 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
       />
       <Box
         align="center"
-        className="tw:relative tw:h-full tw:gap-22.5 tw:overflow-y-auto tw:px-6 tw:py-12 tw:text-center"
+        className="tw:relative tw:h-full tw:gap-15 tw:overflow-y-auto tw:px-6 tw:py-12 tw:text-center"
         direction="col"
         justify="center">
         <img
           alt={greeting}
-          className="tw:w-full tw:max-w-130"
+          className="tw:w-full tw:max-w-142.5"
           data-testid="welcome-screen-img"
           src={brandClassBase.getWelcomeScreenImg(theme)}
         />
-        <Box align="center" direction="col" gap={12}>
-          <Box align="center" direction="col" gap={6}>
-            <div className="tw:text-display-md tw:text-primary">
-              <p className="tw:m-0">{`${greeting} 👋`}</p>
-              <h1 className="tw:m-0 tw:mt-2.5 tw:text-display-md tw:font-bold tw:text-primary">
+        <Box align="center" direction="col" gap={10}>
+          <Box align="center" direction="col" gap={3}>
+            {/* not-prose: Typography wraps p/h1 in .prose, whose heading rules
+                override the weight and margins set here. */}
+            <div className="tw:text-primary">
+              <Typography
+                as="p"
+                className="not-prose tw:m-0 tw:leading-12.5"
+                size="display-xs"
+                weight="medium">
+                {`${greeting} 👋`}
+              </Typography>
+              <Typography
+                as="h1"
+                className="not-prose tw:m-0 tw:mt-5 tw:text-primary"
+                size="display-sm"
+                weight="regular">
                 <Transi18next
                   i18nKey="message.your-platform-is-ready"
-                  renderElement={<span className="tw:text-utility-brand-600" />}
+                  renderElement={<span />}
                   values={{ platform: brandClassBase.getPlatformName() }}
                 />
-              </h1>
+              </Typography>
             </div>
-            <Typography as="p" className="tw:text-tertiary" size="text-xl">
+            <Typography as="p" className="tw:text-tertiary" size="text-md">
               {t('message.welcome-screen-message')}
             </Typography>
           </Box>

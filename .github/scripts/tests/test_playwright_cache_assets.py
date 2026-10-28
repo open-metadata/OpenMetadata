@@ -471,11 +471,20 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert "restore_playwright_fixture_result:" in workflow
 
     restore_job = workflow.split("  restore-playwright-fixture:", 1)[1].split("  prepare-playwright-fixture:", 1)[0]
-    prepare_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split("  playwright-ci:", 1)[0]
+    prepare_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split("  prepare-ingestion-image:", 1)[0]
+    ingestion_job = workflow.split("  prepare-ingestion-image:", 1)[1].split("  playwright-ci:", 1)[0]
     assert "if: ${{ steps.validate-fixture.outputs.usable == 'true' }}" in restore_job
-    assert "if: ${{ steps.validate-ingestion.outputs.usable == 'true' }}" in restore_job
     assert "if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}" in prepare_job
-    assert "needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true'" in prepare_job
+    # The ingestion image is restored or built once, alongside `build`, and the
+    # fixture rebuild loads it instead of building it again.
+    assert "ingestion" not in restore_job.lower()
+    assert "  prepare-ingestion-image:\n    needs: [cache-keys]\n" in workflow
+    assert "if: ${{ steps.validate-ingestion.outputs.usable != 'true' }}" in ingestion_job
+    assert "pack_playwright_ingestion_image.sh" in ingestion_job
+    assert 'echo "OM_INGESTION_IMAGE_PRELOADED=true" >> "$GITHUB_ENV"' in prepare_job
+    assert prepare_job.index("name: Load ingestion image") < prepare_job.index("name: Prepare seeded environment")
+    planner = workflow.split("  plan-playwright:", 1)[1].split("  restore-playwright-fixture:", 1)[0]
+    assert "    needs: [check-changes, detect-changes]\n" in planner
     assert "${{ env.DISTRIBUTION_CACHE_DIR }}/openmetadata-*.tar.gz" in workflow
     assert workflow.count("npx playwright test --project=bundle-smoke --reporter=line") == 2
 
@@ -568,3 +577,38 @@ def test_prune_workflow_only_cancels_runs_on_dead_queue_refs() -> None:
     assert "set -euo pipefail" in listing
     # Refs listed after runs, or a just-created entry's runs read as dead.
     assert "actions/runs?event=merge_group" in listing
+
+
+def test_visual_renders_the_regular_bundle_in_front_of_the_shared_server() -> None:
+    # ADR:2026-10-23-playwright-visual-and-rdf-are-blocking-lanes-on-the-regular-bundle
+    workflows = ROOT / ".github/workflows"
+    reusable = (workflows / "playwright-e2e-reusable.yml").read_text()
+    outputs = reusable.split("  check-changes:", 1)[1].split("    steps:", 1)[0]
+    visual = next(line for line in outputs.splitlines() if line.startswith("      visual:"))
+    rdf = next(line for line in outputs.splitlines() if line.startswith("      rdf:"))
+    assert "coarse_bundle" not in visual
+    assert "inputs.protocol != 'h2'" in visual
+    assert "inputs.protocol != 'h2'" in rdf
+    assert visual.endswith("|| 'false' }}") and rdf.endswith("|| 'false' }}")
+
+    for workflow in ("playwright-e2e-reusable.yml", "playwright-postgresql-e2e.yml",
+                     "postgresql-nightly-e2e.yml", "mysql-nightly-e2e.yml"):
+        block = (workflows / workflow).read_text().split("      coarse_bundle:\n", 1)[1]
+        assert block.split("default:", 1)[1].split("\n", 1)[0].strip() == "true", workflow
+
+    ui_job = reusable.split("\n  build-visual-ui:\n", 1)[1].split("\n  detect-changes:\n", 1)[0]
+    assert "needs.check-changes.outputs.visual == 'true'" in ui_job
+    assert "variant: pw-e2e-build" in ui_job
+    assert 'PW_E2E_BUILD: "true"' in ui_job and "PW_E2E_BUNDLE" not in ui_job
+    assert "name: playwright-visual-ui" in ui_job
+
+    shard = reusable.split("\n  playwright-ci:\n", 1)[1].split("\n  slack-notify:\n", 1)[0]
+    for step in ("Restore Playwright browser cache", "Cache Playwright system deps", "Install Playwright Browsers"):
+        body = shard.split(f"      - name: {step}\n", 1)[1].split("      - name:", 1)[0]
+        assert body.count("if: ${{ matrix.lane != 'visual' }}") == 1, step
+    assert "        build-visual-ui,\n" in shard
+    serve = shard.split("      - name: Serve the regular UI in front of the visual server\n", 1)[1].split("      - name:", 1)[0]
+    assert "if: ${{ matrix.lane == 'visual' }}" in serve
+    assert "serve_playwright_ui.cjs" in serve
+    assert 'PLAYWRIGHT_TEST_BASE_URL=http://127.0.0.1:3300' in serve
+    assert shard.index("Serve the regular UI in front of the visual server") < shard.index("      - name: Run Playwright tests")

@@ -54,6 +54,7 @@ export const AssetSelectionModal = ({
             <AssetSelectionContentBody
               aggregations={state.aggregations}
               assetJobResponse={state.assetJobResponse}
+              assetsFilter={state.assetsFilter}
               cancelDomainAssetMove={state.cancelDomainAssetMove}
               clearFilters={state.clearFilters}
               confirmDomainAssetMove={state.confirmDomainAssetMove}

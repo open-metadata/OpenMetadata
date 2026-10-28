@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Card,
-  EmptyPlaceholder,
-  Input,
-} from '@openmetadata/ui-core-components';
+import { Box, Card, Input } from '@openmetadata/ui-core-components';
 import {
   Globe01,
   NoSearch,
@@ -43,6 +38,8 @@ import { useListSearchInput } from '../common/atoms/navigation/useListSearchInpu
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -208,7 +205,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
       if (isSearchOrFilterActive()) {
         return (
           <div className="tw:relative tw:min-h-70 tw:h-full">
-            <EmptyPlaceholder
+            <NoSearchResultsPlaceholder
               actions={[
                 {
                   color: 'primary',
@@ -218,7 +215,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
                 },
               ]}
               description={t('message.check-spelling-or-try-different-term')}
-              icon={<NoSearch className="tw:text-quaternary" />}
+              icon={<NoSearch />}
               title={t('label.no-matching-results')}
             />
           </div>
@@ -227,7 +224,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
       return (
         <div className="tw:relative tw:min-h-70">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             actions={
               permissions.domain?.Create
                 ? [
@@ -246,7 +243,6 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             description={t('label.no-domains-yet-description')}
             icon={<Globe01 className="tw:text-fg-brand-primary" />}
             title={t('label.no-domains-yet')}
-            variant="blank"
           />
         </div>
       );

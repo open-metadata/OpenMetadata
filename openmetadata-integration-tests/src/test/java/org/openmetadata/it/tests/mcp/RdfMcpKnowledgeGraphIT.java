@@ -68,6 +68,7 @@ import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpClient;
@@ -696,8 +697,7 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
     Awaitility.await("Trigger " + APP_NAME)
         .atMost(Duration.ofMinutes(2))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptionsMatching(
-            error -> error.getMessage() != null && error.getMessage().contains("already running"))
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               httpClient.execute(

@@ -111,6 +111,31 @@ Tables.delete(str(updated.id.root), recursive=True, hard_delete=True)
 entity by `entity.id` and patches the changed fields through the underlying
 OpenMetadata client.
 
+## Bulk Creation with Conflict Outcomes
+
+`TestCases.create_many()` and `GlossaryTerms.create_many()` return a typed
+`BulkCreateResult`. Pass generated create requests as a list:
+
+```python
+from metadata.generated.schema.api.data.createGlossaryTerm import CreateGlossaryTermRequest
+from metadata.generated.schema.type.bulkCreateResult import ConflictPolicy
+from metadata.sdk import GlossaryTerms
+
+result = GlossaryTerms.create_many(
+    [CreateGlossaryTermRequest(name="Revenue", glossary="Finance", description="Recognized revenue")],
+    on_conflict=ConflictPolicy.skip,
+)
+print(result.createdCount, result.skippedCount, result.failedCount)
+for item in result.results:
+    print(item.index, item.status.value, item.reason, item.message)
+```
+
+The default policy is `skip`. `ConflictPolicy.fail` marks conflicts as failed
+while valid inputs continue. Both methods explicitly request detailed outcomes;
+each input has an index, status, and a reason/message when skipped or failed.
+Created inputs also have an ID. Request-level errors still raise `APIError`.
+These methods require a server that supports the `onConflict` parameter.
+
 ## Listing and Pagination
 
 `list()` returns one page as an `EntityList` with `entities`, `after`, and

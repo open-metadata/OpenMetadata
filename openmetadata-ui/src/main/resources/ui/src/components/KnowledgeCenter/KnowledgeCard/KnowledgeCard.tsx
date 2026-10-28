@@ -97,7 +97,7 @@ const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
           displayName={getEntityName(owners?.[0])}
           profileWidth={20}
           type={owners?.[0]?.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
-          userName={owners?.[0].name || owners?.[0].displayName}
+          userName={owners[0].name ?? owners[0].displayName ?? ''}
         />
       ) : (
         <Typography

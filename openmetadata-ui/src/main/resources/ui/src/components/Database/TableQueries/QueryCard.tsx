@@ -273,7 +273,7 @@ const QueryCard: FC<QueryCardProp> = ({
                 icon={Copy01}
                 size="lg"
                 tooltip={t('message.copy-to-clipboard')}
-                onClick={onCopyToClipBoard}
+                onClick={() => onCopyToClipBoard()}
               />
             </Box>
 
