@@ -23,12 +23,14 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Search, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/entity/type';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { addAssetsToGlossaryTerm } from '../../rest/glossaryAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
@@ -91,6 +93,7 @@ const OntologyDataAssetPicker = ({
   onPartialSave,
 }: OntologyDataAssetPickerProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<AssetScope>('all');
   const [results, setResults] = useState<EntityReference[]>([]);
@@ -346,7 +349,13 @@ const OntologyDataAssetPicker = ({
             <Tabs.Panel className="tw:hidden" id="columns" />
           </Tabs>
         </Box>
-        <Box className="tw:border-b tw:border-secondary tw:bg-secondary tw:px-3 tw:py-2.5">
+        <Box
+          className={classNames(
+            'tw:border-b tw:border-secondary',
+            isAiMode
+              ? 'tw:bg-secondary_alt tw:px-3.5 tw:py-3'
+              : 'tw:bg-secondary tw:px-3 tw:py-2.5'
+          )}>
           <Checkbox
             data-testid="ontology-data-asset-select-all"
             isDisabled={results.length === 0}
@@ -357,7 +366,9 @@ const OntologyDataAssetPicker = ({
         </Box>
         <ul className="tw:m-0 tw:flex tw:max-h-80 tw:list-none tw:flex-col tw:divide-y tw:divide-secondary tw:overflow-y-auto tw:p-0">
           {results.map((asset) => (
-            <li className="tw:px-3 tw:py-2.5" key={asset.id}>
+            <li
+              className={isAiMode ? 'tw:px-3.5 tw:py-3' : 'tw:px-3 tw:py-2.5'}
+              key={asset.id}>
               <Checkbox
                 aria-label={asset.displayName ?? asset.name}
                 data-testid={`ontology-data-asset-option-${asset.id}`}

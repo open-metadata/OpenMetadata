@@ -22,6 +22,7 @@ import {
   OperationStatus,
 } from '../../../../generated/entity/data/ontologyChangeSet';
 import { useOntologyEditLease } from '../../../../hooks/governance/ontology/useOntologyEditLease';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   applyOntologyChangeSet,
   createOntologyChangeSet,
@@ -40,6 +41,10 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
+}));
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
 }));
 jest.mock('../../../../hooks/governance/ontology/useOntologyEditLease', () => ({
   useOntologyEditLease: jest.fn(),
@@ -92,6 +97,7 @@ const upload = async () => {
 describe('OntologyNativeImportPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
     (useOntologyEditLease as jest.Mock).mockImplementation(
       ({ resourceId }) => ({
         isOwned: Boolean(resourceId),
@@ -285,5 +291,31 @@ describe('OntologyNativeImportPanel', () => {
       'operations,applicationResult'
     );
     expect(applyOntologyChangeSet).toHaveBeenCalledTimes(2);
+  });
+
+  it('previews with change badges and applies the import in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const onApplied = jest.fn();
+    render(
+      <OntologyNativeImportPanel
+        canImport
+        ontology={ontology}
+        onApplied={onApplied}
+      />
+    );
+
+    expect(screen.getByTestId('ontology-native-import-file')).toBeEnabled();
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+
+    await upload();
+
+    expect(screen.getByText('sales.nt')).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-native-import-preview')
+    ).toHaveTextContent('operation-idlabel.added');
+
+    fireEvent.click(screen.getByTestId('ontology-native-import-apply'));
+
+    await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
   });
 });
