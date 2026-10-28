@@ -18,6 +18,7 @@ import { AuthProvider as AuthProviderProps } from '../../../generated/configurat
 import axiosClient from '../../../rest';
 import { getLoggedInUser } from '../../../rest/userAPI';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import AuthProvider, { useAuthProvider } from './AuthProvider';
 import { OidcUser } from './AuthProvider.interface';
 
@@ -83,6 +84,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
 // this mock) working — they call startTokenExpiryTimer during mount, which
 // destructures isExpired/timeoutExpiry from the return value.
 const mockGetOidcToken = jest.fn().mockResolvedValue('');
+const mockSetApiOnlyTokenListener = jest.fn();
 const mockExtractDetailsFromToken = jest.fn().mockReturnValue({
   exp: 0,
   isExpired: true,
@@ -95,6 +97,8 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => {
   return {
     ...actual,
     getOidcToken: (...args: unknown[]) => mockGetOidcToken(...args),
+    setApiOnlyTokenListener: (...args: unknown[]) =>
+      mockSetApiOnlyTokenListener(...args),
   };
 });
 
@@ -237,6 +241,28 @@ describe('Test auth provider', () => {
     const loginButton = getByTestId('login-button');
 
     expect(loginButton).toBeInTheDocument();
+  });
+
+  it('signs out with a toast when a stored bot or personal access token is rejected', async () => {
+    const ConsumerComponent = () => <div>ConsumerComponent</div>;
+
+    await act(async () => {
+      render(
+        <AuthProvider childComponentType={ConsumerComponent}>
+          <ConsumerComponent />
+        </AuthProvider>
+      );
+    });
+    const onRejected = mockSetApiOnlyTokenListener.mock.calls.at(-1)?.[0];
+    await act(async () => {
+      onRejected?.();
+    });
+
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'server.api-only-token-ui-access-denied'
+    );
+
+    await waitFor(() => expect(useNavigate()).toHaveBeenCalledWith('/signin'));
   });
 });
 
