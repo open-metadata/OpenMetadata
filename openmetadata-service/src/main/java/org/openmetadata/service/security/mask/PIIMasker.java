@@ -10,7 +10,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -220,9 +219,43 @@ public class PIIMasker {
     return columnProfile;
   }
 
-  private static TestCase getTestCase(Column column, TestCase testCase) {
-    if (!hasPiiSensitiveTag(column)) return testCase;
-    return maskTestCase(testCase);
+  /**
+   * Masks a column test case when the column it references is PII-tagged and the caller lacks PII
+   * authorization. The reference is resolved through nested children, and tags on any column along
+   * the path count: a PII-tagged parent struct covers the nested fields beneath it.
+   */
+  private static TestCase maskNestedTestCase(
+      Table table,
+      MessageParser.EntityLink testCaseLink,
+      TestCase testCase,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    List<Column> columnPath =
+        ColumnUtil.resolveColumnChainByPath(table.getColumns(), testCaseLink.getArrayFieldName());
+    if (columnPath.isEmpty()) {
+      return testCase;
+    }
+    // We need the table owner to know if we can authorize the access
+    boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwners());
+    if (!authorizePII && hasPiiSensitiveTagInPath(columnPath)) {
+      return maskTestCase(testCase);
+    }
+    return testCase;
+  }
+
+  private static boolean hasPiiSensitiveTagInPath(List<Column> columnPath) {
+    // The leaf's tag set covers itself and its descendants (getAllTags); ancestors only their own.
+    if (hasPiiSensitiveTag(columnPath.getLast())) {
+      return true;
+    }
+    return columnPath.subList(0, columnPath.size() - 1).stream()
+        .anyMatch(PIIMasker::hasDirectPiiSensitiveTag);
+  }
+
+  private static boolean hasDirectPiiSensitiveTag(Column column) {
+    return listOrEmpty(column.getTags()).stream()
+        .map(TagLabel::getTagFQN)
+        .anyMatch(SENSITIVE_PII_TAG::equals);
   }
 
   private static TestCase maskTestCase(TestCase testCase) {
@@ -279,24 +312,8 @@ public class PIIMasker {
                   // Ignore table tests
                   if (testCaseLink.getFieldName() == null) return testCase;
 
-                  Optional<Column> referencedColumn =
-                      table.getColumns().stream()
-                          .filter(
-                              col ->
-                                  testCaseLink
-                                      .getFullyQualifiedFieldValue()
-                                      .equals(col.getFullyQualifiedName()))
-                          .findFirst();
-
-                  if (referencedColumn.isPresent()) {
-                    Column col = referencedColumn.get();
-                    // We need the table owner to know if we can authorize the access
-                    boolean authorizePII =
-                        authorizer.authorizePII(securityContext, table.getOwners());
-                    if (!authorizePII) return PIIMasker.getTestCase(col, testCase);
-                    return testCase;
-                  }
-                  return testCase;
+                  return maskNestedTestCase(
+                      table, testCaseLink, testCase, authorizer, securityContext);
                 })
             .collect(Collectors.toList());
 

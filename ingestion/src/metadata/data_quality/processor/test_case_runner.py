@@ -391,12 +391,13 @@ class TestCaseRunner(Processor):
             column, nested_depth = resolve_column_path(table, column_path)
 
             if column is None:
+                table_fqn = model_str(table.fullyQualifiedName) if table.fullyQualifiedName else "unknown"
                 self.status.failed(
                     StackTraceError(
                         name="Incompatible Column for Test Case",
                         error=f"Test case {tc.name.root} of type {test_definition.name.root}"
                         f" references column {column_path}, which does not exist in table"
-                        f" {table.fullyQualifiedName.root}",
+                        f" {table_fqn}",
                     )
                 )
                 continue

@@ -28,21 +28,45 @@ public final class ColumnUtil {
    * entityLink) and matched case-exactly first, then case-insensitively.
    */
   public static Column resolveColumnByPath(List<Column> columns, String columnPath) {
+    List<Column> chain = resolveColumnChainByPath(columns, columnPath);
+    return chain.isEmpty() ? null : chain.getLast();
+  }
+
+  /**
+   * The chain of columns a dotted path walks through — each ancestor first, the resolved column
+   * last — or empty when the path matches no column. Same quoted/case rules as {@link
+   * #resolveColumnByPath}.
+   */
+  public static List<Column> resolveColumnChainByPath(List<Column> columns, String columnPath) {
     if (nullOrEmpty(columnPath)) {
-      return null;
+      return List.of();
     }
-    Column resolved = null;
+    List<Column> chain = new ArrayList<>();
     // Only paths the Fqn grammar accepts split into segments; anything else (raw names carrying a
     // quote at an edge, empty segments) must fall through to the whole-name match, not 500.
-    if (FullyQualifiedName.isValid(columnPath)) {
-      resolved = matchPathSegments(columns, List.of(FullyQualifiedName.split(columnPath)));
+    if (FullyQualifiedName.isValid(columnPath)
+        && matchPathChain(columns, List.of(FullyQualifiedName.split(columnPath)), chain)) {
+      return chain;
     }
-    if (resolved == null) {
-      // Legacy entityLinks carry a dotted column name unquoted; when the walk fails, the whole
-      // path may be one literal column name.
-      resolved = findColumnByName(columns, FullyQualifiedName.unquoteName(columnPath));
+    // Legacy entityLinks carry a dotted column name unquoted; when the walk fails, the whole
+    // path may be one literal column name.
+    Column wholeName = findColumnByName(columns, FullyQualifiedName.unquoteName(columnPath));
+    return wholeName == null ? List.of() : List.of(wholeName);
+  }
+
+  private static boolean matchPathChain(
+      List<Column> columns, List<String> segments, List<Column> chain) {
+    String head = segments.getFirst();
+    Column matchedColumn = findColumnByName(columns, FullyQualifiedName.unquoteName(head));
+    if (matchedColumn == null) {
+      return false;
     }
-    return resolved;
+    chain.add(matchedColumn);
+    if (segments.size() == 1) {
+      return true;
+    }
+    return matchPathChain(
+        listOrEmpty(matchedColumn.getChildren()), segments.subList(1, segments.size()), chain);
   }
 
   /**
@@ -80,16 +104,6 @@ public final class ColumnUtil {
       fqn = FullyQualifiedName.add(fqn, segment);
     }
     return fqn;
-  }
-
-  private static Column matchPathSegments(List<Column> columns, List<String> segments) {
-    String head = segments.getFirst();
-    Column matchedColumn = findColumnByName(columns, FullyQualifiedName.unquoteName(head));
-    if (matchedColumn == null || segments.size() == 1) {
-      return matchedColumn;
-    }
-    return matchPathSegments(
-        listOrEmpty(matchedColumn.getChildren()), segments.subList(1, segments.size()));
   }
 
   private static Column findColumnByName(List<Column> columns, String name) {

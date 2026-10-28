@@ -309,6 +309,70 @@ class PIIMaskerTest {
   }
 
   @Test
+  void getTestCasesMasksNestedColumnCasesThroughTagsOnThePath() {
+    String tableFqn = "service.db.schema.orders";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // city carries the PII tag itself, contact carries it above the linked field
+    Column address =
+        column(tableFqn, "address", false)
+            .withChildren(List.of(column(tableFqn + ".address", "city", true)));
+    Column contact =
+        column(tableFqn, "contact", true)
+            .withChildren(List.of(column(tableFqn + ".contact", "email", false)));
+    Table table = table(tableFqn, List.of(address, contact), false, List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    // authorizePII is consulted per test case: the unauthorized page asks twice, the authorized page twice
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, false, true, true);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+
+      ResultList<TestCase> unauthorized =
+          PIIMasker.getTestCases(
+              new ResultList<>(nestedCasesOn(tableFqn)), authorizer, securityContext);
+
+      assertEquals("city_not_null [MASKED]", unauthorized.getData().get(0).getName());
+      assertNull(unauthorized.getData().get(0).getParameterValues());
+      assertNull(unauthorized.getData().get(0).getTestCaseResult());
+      assertEquals("email_not_null [MASKED]", unauthorized.getData().get(1).getName());
+
+      ResultList<TestCase> authorized =
+          PIIMasker.getTestCases(
+              new ResultList<>(nestedCasesOn(tableFqn)), authorizer, securityContext);
+
+      assertEquals("city_not_null", authorized.getData().get(0).getName());
+      assertEquals("email_not_null", authorized.getData().get(1).getName());
+    }
+  }
+
+  private static List<TestCase> nestedCasesOn(String tableFqn) {
+    TestCase cityCase =
+        new TestCase()
+            .withName("city_not_null")
+            .withEntityLink(
+                new MessageParser.EntityLink(
+                        Entity.TABLE, tableFqn, "columns", "address.city", null)
+                    .getLinkString())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withName("min").withValue("1")))
+            .withTestCaseResult(new TestCaseResult());
+    TestCase emailCase =
+        new TestCase()
+            .withName("email_not_null")
+            .withEntityLink(
+                new MessageParser.EntityLink(
+                        Entity.TABLE, tableFqn, "columns", "contact.email", null)
+                    .getLinkString());
+    return new ArrayList<>(List.of(cityCase, emailCase));
+  }
+
+  @Test
   void getTestCasesTolerateTestCasesWhoseTableWasHardDeleted() {
     String liveFqn = "service.db.schema.orders";
     String orphanFqn = "service.db.schema.deleted_orders";

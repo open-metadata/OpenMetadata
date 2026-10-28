@@ -31,6 +31,7 @@ def _make_table() -> Table:
     return Table(
         id=uuid.uuid4(),
         name="users",
+        fullyQualifiedName=TABLE_FQN,
         columns=[Column(name="age", dataType=DataType.INT)],
     )
 

@@ -1123,7 +1123,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private void validateDimensionColumns(TestCase test, Table table) {
     if (test.getDimensionColumns() != null && !test.getDimensionColumns().isEmpty()) {
       for (String dimensionColumn : test.getDimensionColumns()) {
-        ColumnUtil.validateColumnPath(table.getColumns(), dimensionColumn);
+        // Top-level only: the ingestion runner resolves dimensions against the top-level SQL
+        // columns (SQAValidatorMixin.get_column_from_list), so a nested path accepted here would
+        // be silently dropped at run time as an Aborted dimension.
+        validateColumn(table, dimensionColumn, Boolean.FALSE);
       }
     }
   }
