@@ -38,16 +38,26 @@ export const addKeyColumns = async (
   testId: string,
   columns: string[]
 ) => {
-  const input = page.getByTestId(testId).getByRole('combobox');
+  const field = page.getByTestId(testId);
+  const input = field.getByRole('combobox');
   for (const column of columns) {
-    await input.fill(column);
-    await page.getByRole('option', { name: column, exact: true }).click();
+    const chip = field
+      .getByTestId('autocomplete-selected-item')
+      .filter({ hasText: column });
+    // A field's first option list can open at a provisional position and jump under the input a
+    // few frames later, so the click presses the option and releases on the page. Pick again until
+    // the chip shows; a picked column leaves the list, so a repeat can never unselect it.
+    await expect(async () => {
+      if ((await chip.count()) === 0) {
+        await input.fill(column, { timeout: 5_000 });
+        await page
+          .getByRole('option', { name: column, exact: true })
+          .click({ timeout: 5_000 });
+      }
+      await expect(chip).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
   }
   await page.keyboard.press('Escape');
-
-  for (const column of columns) {
-    await expect(page.getByTestId(testId)).toContainText(column);
-  }
 };
 
 /** Removes each column's chip from a key-constraint multi-select. */

@@ -94,14 +94,23 @@ test.describe('Table Constraints', {}, () => {
 
       await clickOnForeignKeySelector(page);
 
+      const columnTrigger = page
+        .getByTestId('0-column-type-select')
+        .getByRole('button');
       await selectOptionWithRetry(
-        page.getByTestId('0-column-type-select').getByRole('button'),
+        columnTrigger,
         page.getByRole('option', { name: columnName, exact: true })
       );
+      await expect(columnTrigger).toContainText(columnName);
+
+      const relationshipTrigger = page
+        .getByTestId('0-relationship-type-select')
+        .getByRole('button');
       await selectOptionWithRetry(
-        page.getByTestId('0-relationship-type-select').getByRole('button'),
+        relationshipTrigger,
         page.getByRole('option', { name: 'One to One', exact: true })
       );
+      await expect(relationshipTrigger).toContainText('One to One');
 
       // select 2nd Table column as related column
       const querySearchResponse = page.waitForResponse((response) => {
