@@ -180,6 +180,7 @@ const mockGetOidcToken = jest.fn().mockResolvedValue('');
 // tests override with `mockRejectedValueOnce` to exercise the
 // `onLogoutHandler` try/finally.
 const mockClearOidcToken = jest.fn().mockResolvedValue(undefined);
+const mockSetApiOnlyTokenListener = jest.fn();
 const mockExtractDetailsFromToken = jest.fn().mockReturnValue({
   exp: 0,
   isExpired: true,
@@ -193,6 +194,8 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => {
     ...actual,
     getOidcToken: (...args: unknown[]) => mockGetOidcToken(...args),
     clearOidcToken: (...args: unknown[]) => mockClearOidcToken(...args),
+    setApiOnlyTokenListener: (...args: unknown[]) =>
+      mockSetApiOnlyTokenListener(...args),
   };
 });
 
@@ -1102,6 +1105,20 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     });
 
     expect(mockPause).toHaveBeenCalled();
+  });
+
+  it('signs out with a toast when a stored bot or personal access token is rejected', async () => {
+    await renderForLogout();
+    const onRejected = mockSetApiOnlyTokenListener.mock.calls.at(-1)?.[0];
+    await act(async () => {
+      onRejected?.();
+    });
+
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'server.api-only-token-ui-access-denied'
+    );
+    expect(mockPause).toHaveBeenCalled();
+    expect(markSignedOut).toHaveBeenCalled();
   });
 
   it('arms the proactive renewal timer after a successful login', async () => {
