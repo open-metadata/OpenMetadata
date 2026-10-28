@@ -1,0 +1,59 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Release Version Bump Tests
+
+# `make update_all` finds each version by a pattern. When a file changes shape the pattern stops
+# matching, and that only shows up at the next release cut, so the bump is tested on every change
+# to the script or to a file it rewrites.
+
+on:
+  pull_request:
+    paths:
+      - 'Makefile'
+      - 'scripts/update_version.py'
+      - 'scripts/test_update_version.py'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/OpenMetadataApplication.java'
+      - 'ingestion/pyproject.toml'
+      - 'openmetadata-airflow-apis/pyproject.toml'
+      - 'ingestion/Dockerfile'
+      - 'ingestion/operators/docker/Dockerfile'
+      - 'docker/docker-compose-ingestion/docker-compose-ingestion.yml'
+      - 'docker/docker-compose-openmetadata/docker-compose-openmetadata.yml'
+      - 'docker/docker-compose-quickstart/**'
+      - '.github/workflows/release-version-bump-tests.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-version-bump-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-version-bump-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          show-progress: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      - name: Test the release version bump
+        run: |
+          python3 -m pip install --quiet 'pytest==7.0.1'
+          python3 -m pytest -q scripts/test_update_version.py
