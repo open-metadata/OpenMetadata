@@ -16,7 +16,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext, uuid } from '../../../utils/common';
+import { chooseSelectOption, getApiContext, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForSearchIndexed } from '../../../utils/polling';
 import {
@@ -264,10 +264,10 @@ test.describe('AI mode — observability alert form keeps every classic option',
     await dismissPopover(dialog);
 
     await dialog.getByTestId('add-actions').click();
-    await dialog.getByTestId('actions-select-0').click();
-    await page
-      .getByRole('option', { name: 'Get Schema Changes', exact: true })
-      .click();
+    await chooseSelectOption(
+      dialog.getByTestId('actions-select-0'),
+      page.getByRole('option', { name: 'Get Schema Changes', exact: true })
+    );
 
     await addDestination(page, dialog, 'Slack', 0);
     await fillEndpoint(dialog, 0, 'http://localhost:1/slack');

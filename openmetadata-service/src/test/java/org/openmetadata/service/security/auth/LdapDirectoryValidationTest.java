@@ -113,7 +113,6 @@ class LdapDirectoryValidationTest {
         LdapDirectoryValidation.validate(ldap(LOOKUP_PASSWORD, USERS_DN).withPort(closedPort));
 
     assertFalse(result.getPassed());
-    // The JDK words the refusal: Temurin 21.0.13 appends " (connect failed)" to it.
     assertTrue(
         result
             .getMessage()
