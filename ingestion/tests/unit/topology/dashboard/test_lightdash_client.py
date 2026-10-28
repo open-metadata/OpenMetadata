@@ -630,3 +630,51 @@ class TestLightdashApiClient(TestCase):
         dashboards = client.get_dashboards_list()
 
         self.assertEqual(len(dashboards), 0)
+
+    def test_add_dashboard_lineage_skips_sql_chart_tiles(self):
+        """A sql_chart tile has no belongsToDashboard/savedChartUuid and must not fail the dashboard"""
+        dashboard = LightdashDashboard(
+            organizationUuid="org-1",
+            name="Dashboard 1",
+            uuid="dash-1",
+            projectUuid="test-project-uuid",
+            updatedAt="2024-01-01T00:00:00Z",
+            spaceUuid="test-space-uuid",
+            spaceName="Test Space",
+            views=1.0,
+            firstViewedAt="2024-01-01T00:00:00Z",
+        )
+        mock_response = {
+            "results": {
+                "tiles": [
+                    {
+                        "type": "sql_chart",
+                        "properties": {
+                            "chartName": "SQL chart",
+                            "chartSlug": "sql-chart",
+                            "hideTitle": False,
+                            "savedSqlUuid": "sql-1",
+                            "title": "SQL chart",
+                        },
+                    },
+                    {
+                        "type": "saved_chart",
+                        "properties": {
+                            "belongsToDashboard": True,
+                            "savedChartUuid": "chart-1",
+                            "chartName": "Saved chart",
+                            "lastVersionChartKind": "vertical_bar",
+                        },
+                    },
+                ]
+            }
+        }
+
+        client = LightdashApiClient(self.client.config)
+        client.client = Mock()
+        client.client.get = MagicMock(return_value=mock_response)
+        client.get_charts_list = MagicMock(return_value=[])
+
+        client.add_dashboard_lineage([dashboard])
+
+        self.assertEqual([chart.uuid for chart in dashboard.charts], ["chart-1"])
