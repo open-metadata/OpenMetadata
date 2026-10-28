@@ -51,16 +51,16 @@ import org.openmetadata.service.rdf.storage.StorageFacts;
  * waiting for the interval once its free space falls below {@code urgentFreeSpacePercent} or its
  * write guard is refusing writes: a burst of writes can fill the volume well within one interval.
  * An urgent compaction that brings the store back above the threshold frees the urgent slot at
- * once, so the next burst is compacted as soon as it needs to be. One that does not shows that the
- * live graph itself fills the volume; compacting again cannot help, so urgent compactions then wait
- * {@link #URGENT_MIN_GAP} and the service logs that the volume needs expanding. See
+ * once, so the next burst is compacted as soon as it needs to be. One that does not shows that data
+ * compaction cannot remove fills the volume, such as the live graph or other datasets on it;
+ * compacting again cannot help, so urgent compactions wait for the next scheduled one and the
+ * service logs that the volume needs expanding. See
  * ADR:2026-10-28-the-fuseki-image-refuses-writes-below-a-free-space-reserve-and-reports-its-volume.
  */
 @Slf4j
 public final class RdfStorageMaintenanceService implements AutoCloseable {
   static final String NEXT_COMPACTION_KEY = "RDF_STORAGE_NEXT_COMPACTION";
   static final String URGENT_COMPACTION_KEY = "RDF_STORAGE_URGENT_COMPACTION";
-  static final Duration URGENT_MIN_GAP = Duration.ofHours(1);
   static final Duration CHECK_INTERVAL = Duration.ofMinutes(15);
   private static final Duration FIRST_CHECK_DELAY = Duration.ofMinutes(5);
   private static final long LOCK_HEARTBEAT_SECONDS = 60;
@@ -141,7 +141,7 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
   private String urgentSlot(final String jobId) {
     final Optional<StorageFacts> urgent = repository.get().storageFacts().filter(this::needsSpace);
     final boolean reserved =
-        urgent.isPresent() && reserve(URGENT_COMPACTION_KEY, jobId, URGENT_MIN_GAP);
+        urgent.isPresent() && reserve(URGENT_COMPACTION_KEY, jobId, compactionInterval());
     urgent.filter(facts -> reserved).ifPresent(this::logUrgency);
     return reserved ? URGENT_COMPACTION_KEY : null;
   }
@@ -186,9 +186,9 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
         urgent && repository.get().storageFacts().map(facts -> !needsSpace(facts)).orElse(true);
     if (urgent && !freed) {
       LOG.error(
-          "Compacting the RDF store did not free enough space: its live data fills the volume."
-              + " Expand the volume. Urgent compactions pause for {}.",
-          URGENT_MIN_GAP);
+          "Compacting the RDF store did not free enough space: data compaction cannot remove, such"
+              + " as the live graph or other datasets on the volume, fills it. Expand the volume or"
+              + " remove unused datasets. Urgent compactions wait for the next scheduled one.");
     }
     return freed;
   }

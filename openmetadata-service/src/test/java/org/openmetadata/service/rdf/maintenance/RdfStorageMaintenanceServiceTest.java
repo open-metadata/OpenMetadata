@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -146,14 +147,18 @@ class RdfStorageMaintenanceServiceTest {
   }
 
   @Test
-  void aCompactionThatCannotFreeSpaceBacksOffForAnHour() {
+  void aCompactionThatCannotFreeSpaceWaitsForTheNextScheduledOne() {
     serverA.compactIfDue();
     when(repository.storageFacts())
         .thenReturn(Optional.of(new StorageFacts(100 * GIB, 30 * GIB, false)));
+    final long before = System.currentTimeMillis();
 
     assertEquals(SUCCEEDED, serverB.compactIfDue());
-    assertNull(serverA.compactIfDue(), "the live graph fills the volume; compacting cannot help");
+    assertNull(serverA.compactIfDue(), "data compaction cannot remove fills the volume");
     verify(repository, times(2)).compact(any());
+    final long heldFor =
+        locks.findByKey(RdfStorageMaintenanceService.URGENT_COMPACTION_KEY).expiresAt() - before;
+    assertTrue(heldFor >= Duration.ofHours(23).toMillis(), "held until the next scheduled run");
   }
 
   @Test

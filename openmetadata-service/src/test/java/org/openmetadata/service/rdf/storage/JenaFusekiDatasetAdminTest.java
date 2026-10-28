@@ -245,6 +245,16 @@ class JenaFusekiDatasetAdminTest {
   }
 
   @Test
+  @DisplayName("a dataset whose disk guard refuses writes is reachable, so readiness does not fail")
+  void aDatasetBelowItsFreeSpaceReserveIsStillReady() {
+    try (JenaFusekiStorage storage = storage()) {
+      statusByPath.put("POST /build_a", 507);
+
+      assertDoesNotThrow(() -> storage.createDatasetIfMissing("build_a"));
+    }
+  }
+
+  @Test
   @DisplayName("a probe write with an unknown outcome is still removed, since it may land later")
   void probeWriteWithAnUnknownOutcomeIsStillRemoved() {
     try (JenaFusekiStorage storage = storage()) {
