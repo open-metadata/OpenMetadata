@@ -117,6 +117,7 @@ public final class RdfDatasetManager implements AutoCloseable {
         () ->
             store.withActiveLock(
                 session -> {
+                  session.requireLiveWritesAllowed();
                   final RdfRebuildStore.State state = session.state();
                   if (state != null && state.failure() == null) {
                     capture(session, state, captured);
@@ -124,6 +125,23 @@ public final class RdfDatasetManager implements AutoCloseable {
                   mutation.accept(storage(session.activeDataset()));
                   return null;
                 }));
+  }
+
+  /**
+   * Returns once every serving write that started before now, on any server, has finished: they
+   * all hold the serving-dataset row lock until Fuseki answers.
+   */
+  void awaitServingWrites() {
+    withPermit(activePermit, () -> store.withActiveLock(session -> null));
+  }
+
+  /** Runs maintenance on the serving dataset; only the holder of the write pause may. */
+  void maintainServing(final Consumer<RdfStorageInterface> maintenance) {
+    if (!RdfLiveWritePause.isHeldByCurrentThread()) {
+      throw new IllegalStateException(
+          "Maintenance of the RDF serving dataset requires the live write pause");
+    }
+    maintenance.accept(servingStorage());
   }
 
   private void capture(

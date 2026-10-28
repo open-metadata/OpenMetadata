@@ -1,6 +1,7 @@
 package org.openmetadata.service.rdf.storage;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.List;
 import java.util.OptionalLong;
 import java.util.Set;
@@ -238,10 +239,32 @@ public interface RdfStorageInterface extends AutoCloseable {
    * compaction degrades disk usage, not correctness, so it must not fail the
    * caller's higher-level operation (e.g. the re-index run).
    *
-   * <p>Default implementation is a no-op for storage backends that auto-compact
-   * or don't expose a compaction API.
+   * <p>Best-effort: the outcome is logged and measured by {@link #compact(Duration)}, never thrown,
+   * because a missing compaction costs disk, not correctness.
    */
-  default void compactStorage() {}
+  default void compactStorage() {
+    compact(DEFAULT_COMPACTION_WAIT);
+  }
+
+  /** Longest a caller waits for a compaction by default; TDB2 copies only the live data. */
+  Duration DEFAULT_COMPACTION_WAIT = Duration.ofHours(4);
+
+  /**
+   * Compacts this handle's dataset and reports the outcome. Backends without compaction report
+   * {@link CompactionResult.Outcome#UNSUPPORTED}.
+   */
+  default CompactionResult compact(Duration maxWait) {
+    return CompactionResult.unsupported();
+  }
+
+  /**
+   * Runs a SPARQL update as storage maintenance: within {@code timeout} rather than the
+   * per-request budget, and without counting towards request-path failure handling. A timeout
+   * throws {@link RdfWriteOutcomeUnknownException}, because the store may still apply it.
+   */
+  default void executeMaintenanceUpdate(String sparqlUpdate, Duration timeout) {
+    executeSparqlUpdate(sparqlUpdate);
+  }
 
   /**
    * Test connection to the remote store

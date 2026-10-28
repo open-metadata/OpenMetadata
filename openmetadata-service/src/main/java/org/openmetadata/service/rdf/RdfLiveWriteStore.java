@@ -14,12 +14,15 @@ package org.openmetadata.service.rdf;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.service.monitoring.OntologyMetrics;
+import org.openmetadata.service.rdf.rebuild.RdfLiveWritePause;
+import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 
 /** Shared, ordered delivery and health state, with exhausted writes retained for reconciliation. */
 @Slf4j
@@ -32,6 +35,7 @@ public final class RdfLiveWriteStore {
   private static final String RECORD_ENQUEUED =
       "UPDATE rdf_projection_health SET enqueuedWatermark = GREATEST(enqueuedWatermark, ?) "
           + "WHERE id = 'active'";
+
   private final Jdbi jdbi;
   private final Clock clock;
 
@@ -173,6 +177,12 @@ public final class RdfLiveWriteStore {
 
   private boolean recordFailure(
       final Handle handle, final Entry entry, final RuntimeException failure) {
+    final Optional<RdfStorageMaintenanceException> maintenance =
+        RdfStorageMaintenanceException.find(failure);
+    if (maintenance.isPresent()) {
+      deferForMaintenance(handle, entry, maintenance.get());
+      return false;
+    }
     final int attempts = Math.min(entry.attempts(), Integer.MAX_VALUE - 1) + 1;
     if (attempts >= MAX_DELIVERY_ATTEMPTS) {
       deadLetter(handle, entry, attempts, failure);
@@ -187,6 +197,16 @@ public final class RdfLiveWriteStore {
     LOG.warn(
         "Live RDF write {} failed (attempt {}); retained for retry", entry.id(), attempts, failure);
     return false;
+  }
+
+  /** Nothing reached the store, so the write waits for maintenance without using an attempt. */
+  private void deferForMaintenance(
+      final Handle handle, final Entry entry, final RdfStorageMaintenanceException maintenance) {
+    handle.execute(
+        "UPDATE rdf_live_write_queue SET nextAttemptAt = ? WHERE id = ?",
+        clock.millis() + maintenance.getRetryAfter().toMillis(),
+        entry.id());
+    LOG.debug("Live RDF write {} waits for storage maintenance", entry.id());
   }
 
   private void deadLetter(
@@ -272,10 +292,13 @@ public final class RdfLiveWriteStore {
                           new QueueHead(result.getLong("createdAt"), result.getInt("attempts")))
                   .findOne()
                   .orElse(null);
-          return unrepaired
-              || (head != null
+          // Writes held back by maintenance are late by design, not failing.
+          final boolean lagging =
+              head != null
                   && (head.attempts() > 0
-                      || clock.millis() - head.createdAt() >= MAX_HEALTHY_LAG_MILLIS));
+                      || clock.millis() - head.createdAt() >= MAX_HEALTHY_LAG_MILLIS)
+                  && !RdfLiveWritePause.isPaused(handle, clock.millis());
+          return unrepaired || lagging;
         });
   }
 

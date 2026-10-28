@@ -18,6 +18,10 @@ import java.time.Duration;
 import java.util.List;
 import org.awaitility.Awaitility;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
+import org.jdbi.v3.sqlobject.SqlObjects;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.testcontainers.containers.GenericContainer;
@@ -72,10 +76,23 @@ final class RdfTestDatabase implements AutoCloseable {
     return jdbi;
   }
 
+  /** The production lock DAO, with each dialect's statements, over this database. */
+  RdfReindexLockDAO lockDao() {
+    return jdbi.onDemand(RdfReindexLockDAO.class);
+  }
+
   private void initializeSchema() {
+    jdbi.installPlugin(new SqlObjectPlugin());
+    jdbi.getConfig(SqlObjects.class)
+        .setSqlLocator(
+            new ConnectionAwareAnnotationSqlLocator(
+                backend == Backend.POSTGRES
+                    ? "org.postgresql.Driver"
+                    : "com.mysql.cj.jdbc.Driver"));
     createTable("1.3.0", "change_event_consumers");
     createTable("1.13.0", "rdf_index_job");
     createTable("1.13.0", "rdf_index_partition");
+    createTable("1.13.0", "rdf_reindex_lock");
     applyTableChanges("2.1.0", "rdf_inference_rule");
     applyReleaseMigration();
     applyReleaseMigration();
