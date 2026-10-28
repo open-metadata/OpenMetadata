@@ -19,6 +19,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** Bounded-cardinality release metrics for Ontology and its RDF projection. */
 public final class OntologyMetrics {
@@ -41,6 +42,7 @@ public final class OntologyMetrics {
   private final Counter lockContentions;
   private final OutcomeCounters packImports;
   private final AiCounters aiRequests;
+  private final CompactionMeters compactions;
 
   private OntologyMetrics(final MeterRegistry registry) {
     registerQueueDepthGauge(registry);
@@ -53,6 +55,7 @@ public final class OntologyMetrics {
     lockContentions = counter(registry, "ontology.lock.contention", null);
     packImports = outcomeCounters(registry, "ontology.pack.import");
     aiRequests = aiCounters(registry);
+    compactions = compactionMeters(registry);
   }
 
   public static synchronized void initialize(final MeterRegistry registry) {
@@ -76,6 +79,14 @@ public final class OntologyMetrics {
     final OntologyMetrics metrics = instance;
     if (metrics != null) {
       metrics.rdfQueueLag.record(lag);
+    }
+  }
+
+  /** Times an RDF store compaction; alert on the last-success gauge falling behind. */
+  public static void recordCompaction(final boolean successful, final Duration elapsed) {
+    final OntologyMetrics metrics = instance;
+    if (metrics != null) {
+      metrics.compactions.record(successful, elapsed);
     }
   }
 
@@ -173,6 +184,19 @@ public final class OntologyMetrics {
     return new AiCounters(outcomes, disabled);
   }
 
+  private static CompactionMeters compactionMeters(final MeterRegistry registry) {
+    final AtomicLong lastSuccess = new AtomicLong();
+    Gauge.builder("ontology.rdf.compaction.last.success", lastSuccess, AtomicLong::get)
+        .description("Epoch millis of the last successful RDF store compaction")
+        .register(registry);
+    return new CompactionMeters(
+        compactionTimer(registry, COMPLETED), compactionTimer(registry, FAILED), lastSuccess);
+  }
+
+  private static Timer compactionTimer(final MeterRegistry registry, final String result) {
+    return Timer.builder("ontology.rdf.compaction").tag(RESULT, result).register(registry);
+  }
+
   private static void increment(final Counter counter) {
     if (counter != null) {
       counter.increment();
@@ -194,4 +218,13 @@ public final class OntologyMetrics {
   }
 
   private record AiCounters(OutcomeCounters outcomes, Counter disabled) {}
+
+  private record CompactionMeters(Timer completed, Timer failed, AtomicLong lastSuccess) {
+    private void record(final boolean successful, final Duration elapsed) {
+      (successful ? completed : failed).record(elapsed);
+      if (successful) {
+        lastSuccess.set(System.currentTimeMillis());
+      }
+    }
+  }
 }

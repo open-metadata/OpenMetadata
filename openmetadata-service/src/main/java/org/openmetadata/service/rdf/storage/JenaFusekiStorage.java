@@ -67,6 +67,7 @@ import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.RdfOwnedResources;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfWriteMode;
@@ -1803,8 +1804,26 @@ public class JenaFusekiStorage implements RdfStorageInterface {
             info.datasetName(),
             maxWait,
             builder -> authenticated(builder, info.userInfo()));
-    RdfStorageMaintenanceMetrics.recordCompaction(info.datasetName(), result);
+    if (result.outcome() != CompactionResult.Outcome.UNSUPPORTED) {
+      OntologyMetrics.recordCompaction(result.succeeded(), result.elapsed());
+      logCompaction(info.datasetName(), result);
+    }
     return result;
+  }
+
+  /** A compaction that does not succeed leaves the store growing until its disk fills. */
+  private static void logCompaction(final String dataset, final CompactionResult result) {
+    if (result.succeeded()) {
+      LOG.info("Compacted RDF dataset '{}' in {} ms", dataset, result.elapsed().toMillis());
+    } else {
+      LOG.error(
+          "Compaction of RDF dataset '{}' did not succeed ({}, task {}, after {} ms): {}",
+          dataset,
+          result.outcome(),
+          result.taskId(),
+          result.elapsed().toMillis(),
+          result.detail());
+    }
   }
 
   private HttpRequest.Builder authenticated(
