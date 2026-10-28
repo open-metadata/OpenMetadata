@@ -98,8 +98,8 @@ def _delete_dag_records(dag_id: str, session) -> int:
         if not _has_running_task_instances(dag_id, session):
             raise
         logger.info("Stopping the active run of DAG %s before deleting it", dag_id)
-        fail_unfinished_runs(dag_id, session)
-        fail_unfinished_task_instances(dag_id, session)
+        if not fail_unfinished_runs(dag_id, session):
+            fail_unfinished_task_instances(dag_id, session)
         return airflow_delete_dag(dag_id, session=session)
 
 

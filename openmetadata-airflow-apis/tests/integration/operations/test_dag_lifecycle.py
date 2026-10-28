@@ -121,24 +121,25 @@ def test_delete_stops_a_running_dag_and_removes_it(stored_dag, run_state):
             assert session.query(model).filter_by(dag_id=name).count() == 0
 
 
-def test_other_airflow_errors_do_not_stop_active_runs(stored_dag, monkeypatch):
+@pytest.mark.parametrize("ti_state", [TaskInstanceState.QUEUED, TaskInstanceState.RUNNING])
+def test_failed_delete_leaves_active_runs_untouched(stored_dag, monkeypatch, ti_state):
     name, dag_file, _, _ = stored_dag
     with settings.Session() as session:
         session.query(DagRun).filter_by(dag_id=name).update({"state": DagRunState.RUNNING})
-        session.query(TaskInstance).filter_by(dag_id=name).update({"state": TaskInstanceState.QUEUED})
+        session.query(TaskInstance).filter_by(dag_id=name).update({"state": ti_state})
         session.commit()
 
     def refuse(dag_id, session=None):
-        raise AirflowException("unrelated failure")
+        raise AirflowException("refused")
 
     monkeypatch.setattr(delete, "airflow_delete_dag", refuse)
-    with Flask(__name__).app_context(), pytest.raises(AirflowException, match="unrelated failure"):
+    with Flask(__name__).app_context(), pytest.raises(AirflowException, match="refused"):
         delete.delete_dag_id(name)
 
     assert dag_file.exists()
     with settings.Session() as session:
         assert session.query(DagRun).filter_by(dag_id=name).one().state == DagRunState.RUNNING
-        assert session.query(TaskInstance).filter_by(dag_id=name).one().state == TaskInstanceState.QUEUED
+        assert session.query(TaskInstance).filter_by(dag_id=name).one().state == ti_state
 
 
 def test_invalid_dag_does_not_report_success(tmp_path, monkeypatch):

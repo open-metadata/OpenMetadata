@@ -85,4 +85,4 @@ def fail_unfinished_task_instances(dag_id: str, session) -> None:
     )
 
     for instance in instances:
-        instance.set_state(TaskInstanceState.FAILED)
+        instance.set_state(TaskInstanceState.FAILED, session=session)
