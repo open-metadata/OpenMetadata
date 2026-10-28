@@ -260,6 +260,8 @@ def list_tables(client: Any, filters: GlueFilters | None = None, limit: int = DE
                         "tableFilterPattern keeps the tables",
                     ),
                 )
+            # Resuming the loop may request the next GetDatabases page; a failure there must not name this probe.
+            command = "glue:GetDatabases"
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
     if databases.cut_short:

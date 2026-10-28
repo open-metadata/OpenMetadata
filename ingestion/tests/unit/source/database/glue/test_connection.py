@@ -506,6 +506,29 @@ def test_get_tables_stops_paging_databases_once_a_table_is_found():
     assert evidence.summary == "1 table in database 'sales'"
 
 
+def test_get_tables_failure_on_a_later_database_page_names_get_databases():
+    # The first page's kept database is empty, so paging resumes and the next page fails.
+    cause = _client_error("ThrottlingException", "GetDatabases")
+
+    def pages(**_kwargs):
+        yield {"DatabaseList": [{"Name": "sales"}]}
+        raise cause
+
+    client = MagicMock()
+    databases_paginator = MagicMock()
+    databases_paginator.paginate.side_effect = pages
+    tables_paginator = _paginator([{"TableList": []}])
+    client.get_paginator.side_effect = lambda operation: (
+        tables_paginator if operation == "get_tables" else databases_paginator
+    )
+
+    with pytest.raises(CheckError) as failure:
+        _checks(client).get_tables()
+
+    assert failure.value.cause is cause
+    assert failure.value.evidence.command == "glue:GetDatabases"
+
+
 def test_get_tables_matches_the_table_filter_on_the_name_ingestion_keeps():
     # Ingestion truncates a long Glue table name before filtering; an anchored pattern must agree.
     long_name = "t" * TABLE_NAME_MAX_LENGTH + "_suffix"

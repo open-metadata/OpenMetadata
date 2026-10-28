@@ -42,7 +42,10 @@ nothing can read an entire large catalog and outrun the step timeout.
 
 ## Consequences
 A filter excluding an unreadable database is enough to pass the check; no grant on that database is
-needed. The probe proves only that some targeted table is listable, not that every targeted
-database is readable — ingestion still reports a denied database as a per-schema failure. The
-two budgets keep the check to about ten `GetDatabases` and ten `GetTables` pages; revisit it if the step timeout
-changes or a catalog's kept tables routinely sort behind more than 1000 excluded ones.
+needed. A database the filters keep is still probed, so an unreadable kept database the probe
+reaches before one that exposes a table fails the check, and the run stops before ingestion starts,
+as it did before this change. Once a kept database has proved access, the probe stops: it does not
+show that every kept database is readable, and ingestion reports any later denied one as a
+per-schema failure. The two budgets keep the check to about ten `GetDatabases` and ten `GetTables`
+pages; revisit it if the step timeout changes or a catalog's kept tables routinely sort behind more
+than 1000 excluded ones.
