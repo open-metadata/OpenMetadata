@@ -2471,6 +2471,54 @@ public class EventSubscriptionResourceIT
         "a refused request changes nothing");
   }
 
+  /**
+   * A patch that changes a destination's id and channel leaves its configuration where it was.
+   * The channel it names no longer declares those fields secrets, so they would be stored and
+   * served as written: the stored endpoint and header of a row saved before this change, and the
+   * ciphertext of a row saved by it.
+   */
+  @Test
+  void test_patchCannotCarryAStoredSecretIntoAChannelThatDoesNotMaskIt(TestNamespace ns)
+      throws Exception {
+    String header = ns.prefix("carried-header");
+    for (boolean legacy : List.of(false, true)) {
+      String endpoint = "http://localhost:8585/" + ns.prefix("rechannel_hook_" + legacy);
+      CreateEventSubscription request =
+          secretRequest(ns, "rechannel_" + legacy, endpoint, header, null);
+      EventSubscription created = createEntity(request);
+      if (legacy) {
+        EventSubscription row = AlertFixtures.stored(created.getId());
+        row.getDestinations()
+            .getFirst()
+            .withConfig(request.getDestinations().getFirst().getConfig());
+        AlertFixtures.writeBehindTheServer(row);
+      }
+
+      assertRefused(() -> patchDestinationIdentity(created.getId()));
+
+      Object storedEndpoint = storedConfig(created.getId()).get("endpoint");
+      assertEquals(
+          endpoint,
+          legacy ? storedEndpoint : decrypted(storedEndpoint),
+          "a refused request changes nothing");
+      assertSecretsMasked(getEntity(created.getId().toString()).getDestinations().getFirst());
+    }
+  }
+
+  /** Gives the first destination a fresh id and a channel whose rules do not name its secrets. */
+  private static void patchDestinationIdentity(UUID alertId) {
+    JsonNode patch =
+        JsonUtils.readTree(
+            """
+            [{"op":"add","path":"/destinations/0/id","value":"%s"},
+             {"op":"add","path":"/destinations/0/channel","value":"ActivityFeed"}]
+            """
+                .formatted(UUID.randomUUID()));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/events/subscriptions/" + alertId, patch);
+  }
+
   /** The write path refuses a moved token URL with the stored credentials, as the test does. */
   @Test
   void test_patchMovedTokenUrlWithMaskedCredentials_400(TestNamespace ns) throws Exception {

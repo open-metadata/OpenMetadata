@@ -47,6 +47,8 @@ public final class DestinationSecretGuards {
       "Destination %s changes its served channel from '%s' to '%s'; a destination keeps its channel, so delete it and add a destination for the new channel instead";
   private static final String COPIED_MESSAGE =
       "A destination secret cannot be copied or moved out of its field; it was found at '%s'";
+  private static final String CARRIED_MESSAGE =
+      "Destination %s still carries the stored value at '%s', which channel '%s' does not treat as a secret; to change a destination's channel, delete it and add a destination for the new channel instead";
   private static final JsonPointer TOKEN_URL = JsonPointer.compile("/authType/tokenUrl");
   private static final List<String> SERVER_SET_FIELDS =
       List.of("changeDescription", "incrementalChangeDescription", "updatedBy");
@@ -148,13 +150,16 @@ public final class DestinationSecretGuards {
   }
 
   /**
-   * The PATCH form. A patch is applied to the alert as stored, so a secret field it does not write
-   * keeps the stored value: in a row stored before secrets were encrypted, the plaintext, which the
-   * caller never read either, and which reads as entered to the form above. The same patch replayed
-   * on the stored alert with a marker at every secret leaves the marker wherever it wrote nothing,
-   * and that tells a secret the patch entered again from one it carried to the moved target.
+   * The PATCH form of both guards above. A patch is applied to the alert as stored, so a secret
+   * field it does not write keeps the stored value: in a row stored before secrets were encrypted,
+   * the plaintext, which the caller never read either, and which reads as entered to the form
+   * above. The same patch replayed on the stored alert with a marker at every secret leaves the
+   * marker wherever it wrote nothing. That tells a secret the patch entered again from one it
+   * carried, and a carried one must stay protected by the destination that keeps it: it may not
+   * follow a moved target, and its channel must still name its field a secret, or the value would
+   * be stored and served in the clear.
    */
-  public static void requireFreshSecretsOnAMovedTarget(
+  public static void requireUnwrittenSecretsStayProtected(
       EventSubscription original, EventSubscription updated, JsonPatch patch) {
     List<SubscriptionDestination> stored = listOrEmpty(original.getDestinations());
     List<SubscriptionDestination> incoming = listOrEmpty(updated.getDestinations());
@@ -165,15 +170,18 @@ public final class DestinationSecretGuards {
           DestinationSecrets.counterpart(stored, sent, position)
               .filter(it -> DestinationSecrets.targetMoved(it, sent))
               .isPresent();
-      if (!moved) {
-        continue;
-      }
       if (replayed == null) {
         replayed = replayedOnMarkedSecrets(original, patch);
       }
       JsonNode config = replayed.at(DESTINATION_CONFIG.formatted(position));
-      firstSecret(sent, (field, value) -> LEFT_IN_PLACE.equals(config.at(field).asText(null)))
-          .ifPresent(field -> refuse(MOVED_TARGET_MESSAGE, sent, field));
+      firstMarkerOutsideTheSecretFields(sent, config)
+          .ifPresent(
+              field ->
+                  refuse(CARRIED_MESSAGE, sent, field, ChannelResolution.of(sent).channelId()));
+      if (moved) {
+        firstSecret(sent, (field, value) -> LEFT_IN_PLACE.equals(config.at(field).asText(null)))
+            .ifPresent(field -> refuse(MOVED_TARGET_MESSAGE, sent, field));
+      }
     }
   }
 
@@ -249,6 +257,11 @@ public final class DestinationSecretGuards {
     throw new BadRequestException(message.formatted(destination.getId(), at));
   }
 
+  private static void refuse(
+      String message, SubscriptionDestination destination, JsonPointer at, String channel) {
+    throw new BadRequestException(message.formatted(destination.getId(), at, channel));
+  }
+
   private static Set<String> storedSecrets(EventSubscription original) {
     Set<String> secrets = new HashSet<>();
     for (SubscriptionDestination destination : listOrEmpty(original.getDestinations())) {
@@ -266,6 +279,42 @@ public final class DestinationSecretGuards {
     ObjectNode json = (ObjectNode) JsonUtils.valueToTree(blanked);
     json.remove(SERVER_SET_FIELDS);
     return json;
+  }
+
+  /**
+   * A marker the request left in a field its destination no longer names a secret: the stored value
+   * would be encrypted and read back by nobody's rules, so it would be stored and served as written.
+   */
+  private static Optional<JsonPointer> firstMarkerOutsideTheSecretFields(
+      SubscriptionDestination sent, JsonNode config) {
+    return findMarker(config, JsonPointer.empty(), DestinationSecrets.secretFieldsOf(sent, config));
+  }
+
+  private static Optional<JsonPointer> findMarker(
+      JsonNode node, JsonPointer pointer, List<JsonPointer> secretFields) {
+    if (node.isTextual()) {
+      boolean carried = LEFT_IN_PLACE.equals(node.textValue());
+      return carried && !secretFields.contains(pointer) ? Optional.of(pointer) : Optional.empty();
+    }
+    if (node.isArray()) {
+      for (int i = 0; i < node.size(); i++) {
+        Optional<JsonPointer> found = findMarker(node.get(i), pointer.appendIndex(i), secretFields);
+        if (found.isPresent()) {
+          return found;
+        }
+      }
+    } else if (node.isObject()) {
+      var fields = node.properties().iterator();
+      while (fields.hasNext()) {
+        var field = fields.next();
+        Optional<JsonPointer> found =
+            findMarker(field.getValue(), pointer.appendProperty(field.getKey()), secretFields);
+        if (found.isPresent()) {
+          return found;
+        }
+      }
+    }
+    return Optional.empty();
   }
 
   private static Optional<JsonPointer> findText(

@@ -1,9 +1,9 @@
 # An alert destination's endpoint, header values and credentials are encrypted at rest, masked in every response, and restored from the stored alert when the mask is sent back
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial); v2 2026-10-26 (bind stored OAuth2 test credentials to their token URL); v3 2026-10-27 (a stored secret does not follow a moved target; a destination keeps its served channel); v4 2026-10-27 (a PATCH that moves a target must itself write every secret, since a row stored in plaintext reads as entered)
+- **Revisions:** v1 2026-10-23 (initial); v2 2026-10-26 (bind stored OAuth2 test credentials to their token URL); v3 2026-10-27 (a stored secret does not follow a moved target; a destination keeps its served channel); v4 2026-10-27 (a PATCH that moves a target must itself write every secret, since a row stored in plaintext reads as entered); v5 2026-10-28 (a PATCH may not carry a stored value into a channel that does not name it a secret)
 - **Deciders:** Teddy Crepineau
-- **Guard:** `DestinationSecretsTest`, `DestinationSecretGuardsTest`, `EventSubscriptionResourceIT#test_destinationSecretsAreMaskedEncryptedAndRestored`
+- **Guard:** `DestinationSecretsTest`, `DestinationSecretGuardsTest`, `EventSubscriptionResourceIT#test_destinationSecretsAreMaskedEncryptedAndRestored`, `EventSubscriptionResourceIT#test_patchCannotCarryAStoredSecretIntoAChannelThatDoesNotMaskIt`
 - **Related:** ADR:2026-10-20-mcp-responses-mask-stored-credentials
 
 ## Context
@@ -49,7 +49,11 @@ mask back, decrypt only at the point of use.
 - A destination an update keeps by its id serves through the channel it is stored under; the
   update that names another channel is refused, since the channel's rules would no longer name
   the secrets its configuration carries. A replacement destination carries a new id and chooses
-  its channel when it is added.
+  its channel when it is added. A PATCH is applied to the alert as stored, so replacing a
+  destination's id or type keeps its configuration while changing the channel that judges it;
+  (v5:2026-10-28) the patch must then write every value the stored channel named a secret, or the
+  value would be stored and read back as written. A whole-list replacement writes every field and
+  is judged by value.
 - Changed destinations are compared with their secrets decrypted, so a stored destination an
   earlier release accepted is still not re-validated when the alert is otherwise edited; a
   destination the users do not configure (`Owners`, `Teams`, …) is judged from its configuration

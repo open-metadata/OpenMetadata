@@ -233,7 +233,7 @@ class DestinationSecretGuardsTest {
     assertThrows(
         BadRequestException.class,
         () ->
-            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(
+            DestinationSecretGuards.requireUnwrittenSecretsStayProtected(
                 original, carried, endpointOnly),
         "the header value was never entered by this patch");
 
@@ -245,7 +245,7 @@ class DestinationSecretGuardsTest {
     EventSubscription reentered = patched(original, everySecret);
     assertDoesNotThrow(
         () ->
-            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(
+            DestinationSecretGuards.requireUnwrittenSecretsStayProtected(
                 original, reentered, everySecret),
         "the same value entered again moves the destination");
 
@@ -255,7 +255,8 @@ class DestinationSecretGuardsTest {
             .build();
     assertDoesNotThrow(
         () ->
-            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, carried, wholeList),
+            DestinationSecretGuards.requireUnwrittenSecretsStayProtected(
+                original, carried, wholeList),
         "a whole-list replace writes every field; what it wrote is judged by value");
   }
 
@@ -265,7 +266,7 @@ class DestinationSecretGuardsTest {
     JsonPatch description = Json.createPatchBuilder().replace("/description", "typed").build();
     assertDoesNotThrow(
         () ->
-            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(
+            DestinationSecretGuards.requireUnwrittenSecretsStayProtected(
                 original, patched(original, description), description));
   }
 
@@ -289,9 +290,57 @@ class DestinationSecretGuardsTest {
     assertThrows(
         BadRequestException.class,
         () ->
-            DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(
+            DestinationSecretGuards.requireUnwrittenSecretsStayProtected(
                 original, patched, headerOfTheRemovedOne),
         "the surviving destination moved with the header value it was stored with");
+  }
+
+  // A destination a patch renames or re-channels keeps the configuration stored under its old
+  // position. Changing the served channel blinds every rule that names this destination's secrets,
+  // so the stored values would be stored and read back as written.
+  @Test
+  void aPatchMayNotCarryAStoredSecretIntoAChannelThatDoesNotProtectIt() {
+    EventSubscription original = alertWith(incomingWebhook(SubscriptionType.SLACK));
+    JsonPatch reidentity =
+        Json.createPatchBuilder()
+            .add("/destinations/0/id", UUID.randomUUID().toString())
+            .add("/destinations/0/channel", "ActivityFeed")
+            .build();
+    EventSubscription carried = patched(original, reidentity);
+    BadRequestException refused =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                DestinationSecretGuards.requireUnwrittenSecretsStayProtected(
+                    original, carried, reidentity),
+            "the stored endpoint and header would be served in the clear");
+    assertTrue(refused.getMessage().contains("'/endpoint'"), refused.getMessage());
+
+    JsonPatch retyped =
+        Json.createPatchBuilder()
+            .add("/destinations/0/id", UUID.randomUUID().toString())
+            .add("/destinations/0/type", "ActivityFeed")
+            .build();
+    EventSubscription retypedCarried = patched(original, retyped);
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            DestinationSecretGuards.requireUnwrittenSecretsStayProtected(
+                original, retypedCarried, retyped),
+        "the channel a destination is served by is its type when it names none");
+
+    JsonPatch everySecret =
+        Json.createPatchBuilder()
+            .add("/destinations/0/id", UUID.randomUUID().toString())
+            .add("/destinations/0/channel", "ActivityFeed")
+            .replace(ENDPOINT_PATH, "https://activity.example.com")
+            .remove("/destinations/0/config/headers")
+            .build();
+    assertDoesNotThrow(
+        () ->
+            DestinationSecretGuards.requireUnwrittenSecretsStayProtected(
+                original, patched(original, everySecret), everySecret),
+        "a destination that leaves no stored value behind is a new one");
   }
 
   @Test

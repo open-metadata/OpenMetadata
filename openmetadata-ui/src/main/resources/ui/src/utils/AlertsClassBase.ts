@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import type { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import type { Operation } from 'fast-json-patch';
+import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, trim } from 'lodash';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
