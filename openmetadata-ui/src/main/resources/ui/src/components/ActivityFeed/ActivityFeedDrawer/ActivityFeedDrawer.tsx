@@ -81,7 +81,10 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
     }
 
     const header = (
-      <FeedPanelHeader className={PANEL_HEADER_CLASS_NAME} onCancel={hideDrawer} />
+      <FeedPanelHeader
+        className={PANEL_HEADER_CLASS_NAME}
+        onCancel={hideDrawer}
+      />
     );
 
     if (selectedActivity) {

@@ -12,6 +12,7 @@
  */
 
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -198,14 +199,16 @@ describe('ActivityFeedCardNew', () => {
 
   // FeedEditor no longer focuses itself on mount, so an editor revealed by a
   // click must ask for focus, or the user clicks twice before typing.
-  it('focuses the comment editor its placeholder reveals', async () => {
+  it('focuses the comment editor the read-only input reveals', async () => {
     render(
       <MemoryRouter>
         <ActivityFeedCardNew isOpenInDrawer showThread feed={conversation} />
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByTestId('comments-input-field'));
+    act(() => {
+      screen.getByTestId('comments-input-field').focus();
+    });
 
     expect(await screen.findByTestId('reply-editor')).toHaveAttribute(
       'data-focused',
@@ -555,7 +558,10 @@ describe('ActivityFeedCardNew', () => {
     const replies = screen.getAllByTestId('reply-message');
 
     expect(screen.getByText('label.comment-plural')).toBeInTheDocument();
-    expect(commentInput).toHaveTextContent('message.input-placeholder');
+    expect(commentInput).toHaveAttribute(
+      'placeholder',
+      'message.input-placeholder'
+    );
     expect(replies.map((reply) => reply.textContent)).toEqual([
       'Newer',
       'Older',
@@ -564,7 +570,9 @@ describe('ActivityFeedCardNew', () => {
       Node.DOCUMENT_POSITION_FOLLOWING
     );
 
-    fireEvent.click(commentInput);
+    act(() => {
+      commentInput.focus();
+    });
     const editor = await screen.findByTestId('reply-editor');
 
     expect(editor).toHaveAttribute('data-focused', 'true');

@@ -18,6 +18,7 @@ import {
   FormItemLabel,
   Grid,
   HintText,
+  Input,
   Modal,
   ModalOverlay,
   Owner,
@@ -1977,20 +1978,14 @@ export const TaskTabNew = ({
                   </UserPopOverCard>
                 </div>
 
-                {/* Only opens the editor, so it is a button rather than an input. */}
-                <Button
-                  ellipsis
-                  className="comments-input-field tw:w-full tw:justify-start"
-                  color="secondary"
-                  data-testid="comments-input-field"
+                {/* Read-only: focusing it reveals the editor, which takes the focus. */}
+                <Input
+                  isReadOnly
+                  inputDataTestId="comments-input-field"
+                  placeholder={t('message.input-placeholder')}
                   size="sm"
-                  onPress={() => setShowFeedEditor(true)}>
-                  {/* Placeholder copy, in the tertiary colour: core Button has no
-                      placeholder variant (ADR:2026-10-11-migrated-antd-components-adopt-core-styling v4). */}
-                  <span className="tw:text-tertiary">
-                    {t('message.input-placeholder')}
-                  </span>
-                </Button>
+                  onFocus={() => setShowFeedEditor(true)}
+                />
               </div>
             )
           )}
