@@ -191,7 +191,7 @@ public class PIIMasker {
             Entity.TABLE, FullyQualifiedName.getTableFQN(fqn), "columns,tags,owners", Include.ALL);
     boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwners());
 
-    if (isPiiSensitiveColumn(table, fqn) && !authorizePII) {
+    if (!authorizePII && isPiiSensitiveOrUnresolvedColumn(table, fqn)) {
       return Collections.nCopies(columnProfiles.size(), new ColumnProfile());
     }
     return columnProfiles;
@@ -199,11 +199,11 @@ public class PIIMasker {
 
   public static ColumnProfile maskColumnProfile(String fqn, ColumnProfile columnProfile) {
     Table table = Entity.getEntityByName(Entity.TABLE, fqn, "columns,tags", Include.ALL);
-    List<Column> columnPath =
-        ColumnUtil.resolveColumnChainByPath(table.getColumns(), columnProfile.getName());
+    String profileName = columnProfile.getName();
+    List<Column> columnPath = ColumnUtil.resolveColumnChainByPath(table.getColumns(), profileName);
 
-    if (!columnPath.isEmpty() && hasPiiSensitiveTagInPath(columnPath)) {
-      return new ColumnProfile().withName(columnProfile.getName());
+    if (isPiiSensitiveOrUnresolvedProfile(table, profileName, columnPath)) {
+      return new ColumnProfile().withName(profileName);
     }
     return columnProfile;
   }
@@ -211,11 +211,38 @@ public class PIIMasker {
   /**
    * Whether a column FQN resolves to a PII.Sensitive column: the path is walked through nested
    * children (a top-level-only match would leave nested profiles unmasked), and a tag on any
-   * column along the path covers the leaf.
+   * column along the path covers the leaf. An unresolved FQN counts as sensitive — profile rows
+   * outlive the columns they describe, so unknown names must fail closed.
    */
-  private static boolean isPiiSensitiveColumn(Table table, String columnFqn) {
+  private static boolean isPiiSensitiveOrUnresolvedColumn(Table table, String columnFqn) {
     List<Column> columnPath = resolveColumnPath(table, columnFqn);
-    return !columnPath.isEmpty() && hasPiiSensitiveTagInPath(columnPath);
+    return columnPath.isEmpty() || hasPiiSensitiveTagInPath(columnPath);
+  }
+
+  /**
+   * Whether a stored column profile must be masked: an unresolved column name fails closed (the
+   * row outlives its column), and a dotted name a nested path shadows also covers the literal
+   * top-level column it could name — when both resolve, masking follows the one that is
+   * sensitive.
+   */
+  private static boolean isPiiSensitiveOrUnresolvedProfile(
+      Table table, String profileName, List<Column> columnPath) {
+    if (columnPath.isEmpty() || hasPiiSensitiveTagInPath(columnPath)) {
+      return true;
+    }
+    if (columnPath.size() < 2) {
+      return false;
+    }
+    Column shadowed =
+        findTopLevelColumn(table.getColumns(), FullyQualifiedName.unquoteName(profileName));
+    return shadowed != null && hasPiiSensitiveTag(shadowed);
+  }
+
+  private static Column findTopLevelColumn(List<Column> columns, String name) {
+    return listOrEmpty(columns).stream()
+        .filter(column -> column.getName().equals(name) || column.getName().equalsIgnoreCase(name))
+        .findFirst()
+        .orElse(null);
   }
 
   /** The chain of columns a column FQN resolves to, from the path relative to its table. */

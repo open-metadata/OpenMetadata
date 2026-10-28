@@ -315,6 +315,111 @@ class PIIMaskerTest {
   }
 
   @Test
+  void maskColumnProfileFailsClosedForProfileRowsWhoseColumnNoLongerResolves() {
+    String tableFqn = "service.db.schema.orders";
+    Table table =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "email", true), column(tableFqn, "city", false)),
+            false,
+            List.of());
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.TABLE, tableFqn, "columns,tags", Include.ALL))
+          .thenReturn(table);
+
+      // A profile row outliving its column must not come back with its statistics attached
+      ColumnProfile dropped = new ColumnProfile().withName("phone").withNullCount(1.0);
+      ColumnProfile masked = PIIMasker.maskColumnProfile(tableFqn, dropped);
+      assertEquals("phone", masked.getName());
+      assertNull(masked.getNullCount());
+
+      ColumnProfile staleNested = new ColumnProfile().withName("address.zip").withNullCount(2.0);
+      ColumnProfile maskedNested = PIIMasker.maskColumnProfile(tableFqn, staleNested);
+      assertEquals("address.zip", maskedNested.getName());
+      assertNull(maskedNested.getNullCount());
+    }
+  }
+
+  @Test
+  void maskColumnProfileCoversSensitiveLiteralColumnsShadowedByNestedPaths() {
+    String tableFqn = "service.db.schema.orders";
+    // A top-level column literally named address.city, and an untagged address struct with a city
+    // field: the nested path walk would otherwise hide the sensitive literal column
+    Column literal =
+        new Column()
+            .withName("address.city")
+            .withFullyQualifiedName(tableFqn + ".\"address.city\"")
+            .withTags(List.of(piiTag()));
+    Column address =
+        column(tableFqn, "address", false)
+            .withChildren(List.of(column(tableFqn + ".address", "city", false)));
+    Table table = table(tableFqn, List.of(literal, address), false, List.of());
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.TABLE, tableFqn, "columns,tags", Include.ALL))
+          .thenReturn(table);
+
+      ColumnProfile profile = new ColumnProfile().withName("address.city").withNullCount(1.0);
+      ColumnProfile masked = PIIMasker.maskColumnProfile(tableFqn, profile);
+      assertEquals("address.city", masked.getName());
+      assertNull(masked.getNullCount());
+
+      // The same name on a table whose literal column is not sensitive stays untouched
+      Column untaggedLiteral =
+          new Column()
+              .withName("address.city")
+              .withFullyQualifiedName(tableFqn + ".\"address.city\"")
+              .withTags(List.of());
+      Table untaggedTable = table(tableFqn, List.of(untaggedLiteral, address), false, List.of());
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.TABLE, tableFqn, "columns,tags", Include.ALL))
+          .thenReturn(untaggedTable);
+      ColumnProfile plainProfile = new ColumnProfile().withName("address.city").withNullCount(1.0);
+      assertSame(plainProfile, PIIMasker.maskColumnProfile(tableFqn, plainProfile));
+    }
+  }
+
+  @Test
+  void getColumnProfileFailsClosedForStaleColumnFqns() {
+    String tableFqn = "service.db.schema.orders";
+    String staleFqn = tableFqn + ".phone";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    Table table =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "email", true), column(tableFqn, "city", false)),
+            false,
+            List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, true);
+
+    List<ColumnProfile> profiles =
+        List.of(new ColumnProfile().withName("phone").withNullCount(1.0));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "columns,tags,owners", Include.ALL))
+          .thenReturn(table);
+
+      List<ColumnProfile> masked =
+          PIIMasker.getColumnProfile(staleFqn, profiles, authorizer, securityContext);
+      assertEquals(1, masked.size());
+      assertNull(masked.getFirst().getName());
+      assertNull(masked.getFirst().getNullCount());
+
+      assertSame(
+          profiles, PIIMasker.getColumnProfile(staleFqn, profiles, authorizer, securityContext));
+    }
+  }
+
+  @Test
   void getTestCasesMasksSensitiveColumnCasesAndCachesTableLookups() {
     String tableFqn = "service.db.schema.orders";
     EntityReference owner = entityReference(Entity.USER, "owner");
