@@ -123,7 +123,7 @@ def test_delete_stops_a_running_dag_and_removes_it(stored_dag, run_state):
 
 @pytest.mark.parametrize("ti_state", [TaskInstanceState.QUEUED, TaskInstanceState.RUNNING])
 def test_failed_delete_leaves_active_runs_untouched(stored_dag, monkeypatch, ti_state):
-    name, dag_file, _, _ = stored_dag
+    name, dag_file, config_file, _ = stored_dag
     with settings.Session() as session:
         session.query(DagRun).filter_by(dag_id=name).update({"state": DagRunState.RUNNING})
         session.query(TaskInstance).filter_by(dag_id=name).update({"state": ti_state})
@@ -137,6 +137,7 @@ def test_failed_delete_leaves_active_runs_untouched(stored_dag, monkeypatch, ti_
         delete.delete_dag_id(name)
 
     assert dag_file.exists()
+    assert config_file.exists()
     with settings.Session() as session:
         assert session.query(DagRun).filter_by(dag_id=name).one().state == DagRunState.RUNNING
         assert session.query(TaskInstance).filter_by(dag_id=name).one().state == ti_state
