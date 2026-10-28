@@ -68,6 +68,7 @@ from metadata.ingestion.source.dashboard.hex.cell_lineage import (
     parse_cell_sql,
     table_key,
 )
+from metadata.ingestion.source.dashboard.hex.client import HexAccessDeniedError
 from metadata.ingestion.source.dashboard.hex.models import Cell, DataConnection, Project
 from metadata.ingestion.source.dashboard.hex.query_fetcher import (
     HexProjectLineage,
@@ -116,6 +117,7 @@ class HexSource(DashboardServiceSource):
         # Single slot: the data model and lineage stages of the same project share it
         self._cell_lineage: tuple[str, list[HexCellLineage] | None] | None = None
         self._data_connections: dict[str, DataConnection] | None = None
+        self._data_connections_denied = False
 
     @classmethod
     def create(
@@ -393,9 +395,17 @@ class HexSource(DashboardServiceSource):
             # from deleting it and its lineage. Marking one that doesn't exist is harmless.
             self.datamodel_source_state.add(self._build_fqn(DashboardDataModel, dashboard_details))
             return
-        cells = [cell for cell in cell_lineage if cell.columns]
-        if not cells:
+        try:
+            columns = self._data_model_columns(dashboard_details, cell_lineage)
+        except Exception as exc:
+            # Without the earlier data model, the groups of the cells that failed would be lost
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not read the data model of Hex project %s: %s", dashboard_details.id, exc)
+            self.datamodel_source_state.add(self._build_fqn(DashboardDataModel, dashboard_details))
             return
+        if not columns:
+            return
+        cells = [cell for cell in cell_lineage if not cell.failed]
         try:
             data_model_request = CreateDashboardDataModelRequest(
                 name=EntityName(dashboard_details.id),
@@ -405,17 +415,7 @@ class HexSource(DashboardServiceSource):
                 serviceType=self.service_connection.type.value,
                 sourceUrl=SourceUrl(self.client.get_project_url(dashboard_details)),
                 sql=SqlQuery("\n\n".join(f"-- {cell.label}\n{cell.sql}" for cell in cells)),
-                columns=[
-                    Column(
-                        name=ColumnName(cell.name),
-                        displayName=cell.label,
-                        dataType=DataType.STRUCT,
-                        children=[
-                            Column(name=ColumnName(column.name), dataType=column.data_type) for column in cell.columns
-                        ],
-                    )
-                    for cell in cells
-                ],
+                columns=columns,
             )
             yield Either(right=data_model_request)  # pyright: ignore[reportCallIssue]
             self.register_record_datamodel(datamodel_request=data_model_request)
@@ -427,6 +427,46 @@ class HexSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def _data_model_columns(self, project: Project, cells: list[HexCellLineage]) -> list[Column]:
+        """
+        One struct per cell, in notebook order. A cell whose SQL failed to parse this
+        time (a draft being edited) keeps its group from the existing data model, with
+        what users curated on it, rather than dropping it.
+        """
+        existing: dict[str, Column] = {}
+        if any(cell.failed for cell in cells):
+            data_model = self.metadata.get_by_name(
+                entity=DashboardDataModel, fqn=self._build_fqn(DashboardDataModel, project), fields=["columns"]
+            )
+            existing = {model_str(column.name): column for column in (data_model.columns if data_model else [])}
+        columns = []
+        for cell in cells:
+            if cell.failed:
+                if cell.name in existing:
+                    columns.append(_without_fqns(existing[cell.name]))
+            elif cell.columns:
+                columns.append(
+                    Column(
+                        name=ColumnName(cell.name),
+                        displayName=cell.label,
+                        dataType=DataType.STRUCT,
+                        children=[_output_column(column) for column in cell.columns],
+                    )
+                )
+        return columns
+
+    def _data_model_exists(self, project: Project) -> bool:
+        """True when it can't be told: a data model that exists must not be rebuilt from less"""
+        try:
+            return (
+                self.metadata.get_by_name(entity=DashboardDataModel, fqn=self._build_fqn(DashboardDataModel, project))
+                is not None
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not look up the data model of Hex project %s: %s", project.id, exc)
+            return True
 
     def _yield_cell_lineage(
         self,
@@ -535,11 +575,14 @@ class HexSource(DashboardServiceSource):
         cells = self.client.get_project_cells(project.id)
         if cells is None:
             return None
-        # Without its connection's dialect a cell may not parse (BigQuery backticks),
-        # which would drop its columns instead of leaving them as they are
+        # Without its connection's dialect and default database and schema a cell can
+        # lose columns (BigQuery backticks, a bare table name): an existing data model
+        # is left as it is, only a project without one gets one from what can be read
         data_connections = self._get_data_connections()
         if data_connections is None:
-            return None
+            if not self.source_config.includeDataModels or self._data_model_exists(project):
+                return None
+            data_connections = {}
         # Cells of a project tend to read the same tables, so look each one up once
         resolved_tables: LRUCache[tuple[Table, str | None] | None] = LRUCache(MAX_RESOLVED_TABLES)
         upstream = ChainedCells()
@@ -556,7 +599,8 @@ class HexSource(DashboardServiceSource):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning("Could not parse SQL cell %s of Hex project %s: %s", cell.id, project.id, exc)
-                continue
+                cell_id = cell.staticId or cell.id
+                lineage = HexCellLineage(name=cell_id, label=cell.label or cell_id, sql=cell.sql or "", failed=True)
             if lineage:
                 lineage.name = self._unique_column_name(lineage.name, taken_names)
                 cell_lineage.append(lineage)
@@ -575,8 +619,7 @@ class HexSource(DashboardServiceSource):
         dialect = connection.type if connection else None if cell.dataConnectionId else DATAFRAME_SQL_DIALECT
         expression = parse_cell_sql(cell.sql, dialect)
         if expression is None:
-            logger.debug("Skipping Hex cell %s: its SQL could not be parsed", cell.id)
-            return None
+            raise ValueError("its SQL could not be parsed")
         if not cell.dataConnectionId:
             # SQL without a data connection runs on dataframes: the names it reads are
             # dataframes, not warehouse tables, and it reaches the warehouse only through
@@ -645,7 +688,7 @@ class HexSource(DashboardServiceSource):
             lineage.columns.append(
                 HexCellColumn(
                     name=self._unique_column_name(name, taken_names),
-                    data_type=passthrough.dataType if passthrough else DataType.UNKNOWN,
+                    passthrough=passthrough,
                     source_columns=[
                         (model_str(table.id), model_str(column.fullyQualifiedName)) for table, column in sources
                     ],
@@ -704,9 +747,16 @@ class HexSource(DashboardServiceSource):
         return unique
 
     def _get_data_connections(self) -> dict[str, DataConnection] | None:
-        """Fetched once per run; a failed fetch is retried for the next project"""
-        if self._data_connections is None:
-            self._data_connections = self.client.get_data_connections()
+        """
+        Fetched once per run: the workspace's connections, a short list. A failed fetch
+        is retried for the next project; one the token isn't allowed isn't.
+        """
+        if self._data_connections is None and not self._data_connections_denied:
+            try:
+                self._data_connections = self.client.get_data_connections()
+            except HexAccessDeniedError as exc:
+                logger.warning("%s; Hex data models are only created, not updated, until it can", exc)
+                self._data_connections_denied = True
         return self._data_connections
 
     def _build_fqn(self, entity_type: type[Dashboard] | type[DashboardDataModel], project: Project) -> str:
@@ -724,3 +774,27 @@ class HexSource(DashboardServiceSource):
             service_name=self.config.serviceName,
             dashboard_name=project.id,
         )
+
+
+def _output_column(column: HexCellColumn) -> Column:
+    """A column passed straight through keeps its table column's type, with its element type and fields"""
+    source = column.passthrough
+    if source is None:
+        return Column(name=ColumnName(column.name), dataType=DataType.UNKNOWN)
+    return Column(
+        name=ColumnName(column.name),
+        dataType=source.dataType,
+        dataTypeDisplay=source.dataTypeDisplay,
+        arrayDataType=source.arrayDataType,
+        children=[_without_fqns(child) for child in source.children] if source.children else None,
+    )
+
+
+def _without_fqns(column: Column) -> Column:
+    """A column to send again: the server names it where it lands"""
+    return column.model_copy(
+        update={
+            "fullyQualifiedName": None,
+            "children": [_without_fqns(child) for child in column.children] if column.children else column.children,
+        }
+    )

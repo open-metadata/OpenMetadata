@@ -10,7 +10,8 @@
   `test_a_column_passed_through_keeps_its_tables_casing`, `test_quoted_identifiers_resolve_whatever_their_case`,
   `test_a_cell_too_large_to_inline_leaves_its_chained_cells_untraced`,
   `test_cells_past_the_projects_budget_leave_their_chained_cells_untraced`,
-  `test_rate_limited_requests_are_retried`)
+  `test_rate_limited_requests_are_retried`, `test_without_data_connections_an_existing_data_model_is_kept`,
+  `test_a_cell_that_stops_parsing_keeps_its_group`)
 - **Related:** #36357
 
 ## Context
@@ -35,7 +36,10 @@ delete the data model from incomplete input.
   schema, or a db service prefix) and only when exactly one table matches across all
   `dbServicePrefixes`. Otherwise it gets no lineage.
 - When the project's cells, the data connections, or the table search can't be read, the existing
-  data model is kept as it is (marked as seen, still linked to its dashboard) and not rebuilt.
+  data model is kept as it is (marked as seen, still linked to its dashboard) and not rebuilt. A
+  project without a data model still gets one when only the data connections are missing.
+- A cell whose SQL fails to parse (a draft being edited) keeps its column group from the existing
+  data model, with what users curated on it.
 - A chained cell is traced through the cells it reads only while they stay small: a cell over
   `MAX_INLINED_NODES` (10,000 sqlglot nodes), or past `MAX_STORED_NODES` (100,000) for the project,
   is not inlined, and the cells reading it list their columns without lineage. Each cell inlines

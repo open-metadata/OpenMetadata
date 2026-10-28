@@ -201,6 +201,7 @@ class TestHexSource(TestCase):
         self.hex_source.client.get_project_cells = MagicMock(return_value=None)
         self.hex_source._cell_lineage = None
         self.hex_source._data_connections = None
+        self.hex_source._data_connections_denied = False
 
         # Mock register_record
         self.hex_source.register_record = MagicMock()

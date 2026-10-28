@@ -26,7 +26,7 @@ from sqlglot.lineage import lineage
 from sqlglot.optimizer.qualify import qualify
 from sqlglot.optimizer.scope import build_scope
 
-from metadata.generated.schema.entity.data.table import DataType, Table
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 
 TableKey = tuple[str, str, str]
 
@@ -54,9 +54,14 @@ MAX_STORED_NODES = 100_000
 @dataclass
 class HexCellColumn:
     name: str
-    data_type: DataType
+    # The table column it passes straight through, whose type it keeps
+    passthrough: Column | None = None
     # (table id, column FQN) of every table column this output column reads
     source_columns: list[tuple[str, str]] = field(default_factory=list)
+
+    @property
+    def data_type(self) -> DataType:
+        return self.passthrough.dataType if self.passthrough else DataType.UNKNOWN
 
 
 @dataclass
@@ -67,6 +72,8 @@ class HexCellLineage:
     name: str
     label: str
     sql: str
+    # Its SQL could not be read this time: the data model keeps what it had for it
+    failed: bool = False
     # table id -> (table, the db service prefix it was found under)
     tables: dict[str, tuple[Table, str | None]] = field(default_factory=dict)
     columns: list[HexCellColumn] = field(default_factory=list)
@@ -253,7 +260,8 @@ def get_output_columns(
             node = lineage(name, qualified, scope=scope, dialect=CASE_INSENSITIVE, trim_selects=False, copy=False)
             nodes = list(node.walk())
             column.sources = {
-                (table_key(leaf.source), leaf.name.split(".")[-1].strip('"`').lower())
+                # Parsed, not split on dots: a quoted name such as "customer.id" has its own
+                (table_key(leaf.source), exp.to_column(leaf.name, dialect=CASE_INSENSITIVE).name.lower())
                 for leaf in nodes
                 if isinstance(leaf.source, exp.Table)
             }
