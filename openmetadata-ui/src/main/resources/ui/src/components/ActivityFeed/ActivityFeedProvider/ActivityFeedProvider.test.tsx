@@ -861,9 +861,6 @@ describe('ActivityFeedProvider', () => {
       expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1')
     );
 
-    // Reopening the selected activity keeps its replies instead of refetching.
-    fireEvent.click(screen.getByTestId('hide-drawer'));
-    fireEvent.click(screen.getByTestId('open-activity-drawer'));
     fireEvent.click(screen.getByTestId('hide-drawer'));
 
     expect(screen.getByTestId('drawer-open')).toHaveTextContent('false');
@@ -871,7 +868,36 @@ describe('ActivityFeedProvider', () => {
       activity.id
     );
     expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1');
-    expect(listActivityReplies).toHaveBeenCalledTimes(1);
+  });
+
+  // Closing keeps the activity selected, so reopening must still fetch: a
+  // failed first fetch, or replies posted meanwhile, would otherwise stay hidden.
+  it('refetches the replies when the selected activity drawer reopens', async () => {
+    (listActivityReplies as jest.Mock)
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce({ data: [activityReply], paging: { total: 1 } });
+
+    render(
+      <ActivityFeedProvider>
+        <DummyActivityDrawerComponent
+          activity={activity}
+          thread={{ id: 'thread-1' } as Conversation}
+        />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('open-activity-drawer'));
+    await waitFor(() => expect(listActivityReplies).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('0');
+
+    fireEvent.click(screen.getByTestId('hide-drawer'));
+    fireEvent.click(screen.getByTestId('open-activity-drawer'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1')
+    );
+
+    expect(listActivityReplies).toHaveBeenCalledTimes(2);
   });
 
   // The drawer shows an activity ahead of a thread.

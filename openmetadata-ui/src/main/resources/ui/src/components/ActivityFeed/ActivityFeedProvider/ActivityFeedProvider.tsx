@@ -782,13 +782,9 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       setIsDrawerOpen(true);
       setSelectedThread(undefined);
       setSelectedTask(undefined);
-      // Already selected (the Activity tab's side panel shows it): keep its
-      // replies rather than clearing and fetching them again.
-      if (selectedActivity?.id !== activity.id) {
-        setActiveActivity(activity);
-      }
+      setActiveActivity(activity);
     },
-    [setActiveActivity, selectedActivity?.id]
+    [setActiveActivity]
   );
 
   const postActivityComment = useCallback(
