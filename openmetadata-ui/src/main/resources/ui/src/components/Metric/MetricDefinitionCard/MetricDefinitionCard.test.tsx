@@ -193,16 +193,13 @@ describe('MetricDefinitionCard', () => {
     );
   });
 
-  it('requires an expression before saving', async () => {
-    const onUpdate = jest.fn();
+  it('saves definition changes on a metric without an expression', async () => {
+    const onUpdate = jest.fn().mockResolvedValue(undefined);
     render(
       <MemoryRouter>
         <MetricDefinitionCard
           canEdit
-          metric={{
-            ...metric,
-            metricExpression: { language: Language.SQL, code: '' },
-          }}
+          metric={{ ...metric, metricExpression: undefined }}
           onUpdate={onUpdate}
         />
       </MemoryRouter>
@@ -211,12 +208,16 @@ describe('MetricDefinitionCard', () => {
     fireEvent.click(screen.getByTestId('metric-definition-edit'));
     fireEvent.click(screen.getByTestId('metric-definition-save'));
 
-    expect(await screen.findByText('label.field-required')).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /label.code/ })).toHaveAttribute(
-      'aria-invalid',
-      'true'
+    await waitFor(() =>
+      expect(onUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          granularity: MetricGranularity.Day,
+          metricExpression: undefined,
+        })
+      )
     );
-    expect(onUpdate).not.toHaveBeenCalled();
+
+    expect(screen.queryByText('label.field-required')).not.toBeInTheDocument();
   });
 
   it('requires a custom unit when Unit is Other', async () => {

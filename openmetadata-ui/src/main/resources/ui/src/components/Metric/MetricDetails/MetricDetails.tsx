@@ -222,9 +222,12 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     }
   }, [decodedMetricFqn]);
 
+  // A soft-deleted metric stays on this page, so flip it to deleted right away; otherwise the
+  // header, edit controls and Add Child Metric stay live until a reload.
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate(ROUTES.METRICS),
-    []
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? onToggleDelete(version) : navigate(ROUTES.METRICS),
+    [onToggleDelete]
   );
 
   // Named-flag derivation (Task 8 Batch 9), collapsing the 6-field block below into one
@@ -365,7 +368,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                   data-testid="metric-add-assets-button"
                   size="sm"
                   onPress={openAssetModal}>
-                  {t('label.add-entity', { entity: t('label.asset-plural') })}
+                  {t('label.add-entity', { entity: t('label.asset') })}
                 </Button>
               )
             }

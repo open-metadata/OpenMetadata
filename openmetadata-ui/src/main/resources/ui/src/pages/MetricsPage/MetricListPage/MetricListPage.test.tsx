@@ -614,7 +614,10 @@ describe('MetricListPage', () => {
         name: 'label.glossary-term-plural',
       })
     ).toBeInTheDocument();
-    expect(screen.getByText('AL')).toHaveAttribute('data-avatar-size', 'xs');
+    // Owners render through ProfilePicture, so initials match the rest of the app (first letter).
+    expect(document.querySelector('[data-avatar-size="xs"]')).toHaveTextContent(
+      /^A$/
+    );
     expect(screen.getByTestId('metric-icon-metric-1')).toBeInTheDocument();
     expect(screen.queryByText(/preview/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/value trend/i)).not.toBeInTheDocument();
@@ -835,6 +838,35 @@ describe('MetricListPage', () => {
       'aria-checked',
       'true'
     );
+  });
+
+  it('marks an expanded empty group as empty so the next metric is not read as a member', async () => {
+    const emptyGroupRow = {
+      id: 'group:group-empty',
+      isGroupRow: true,
+      group: { id: 'group-empty', name: 'empty_group' },
+      memberCount: 0,
+    };
+    mockUseMetricHierarchy.mockReturnValue({
+      topLevelNodes: [
+        { row: emptyGroupRow, groupId: 'group-empty', members: [] },
+        { row: rootMetric },
+      ],
+      buildRows: () => [emptyGroupRow, rootMetric],
+      paging: { total: 1, offset: 0, limit: 20 },
+      isPending: false,
+      isFetching: false,
+      expandedRowKeys: [],
+      collapsedGroupIds: [],
+      loadingParentIds: [],
+      loadingGroupIds: [],
+      ...hierarchyActions,
+    });
+    renderPage();
+
+    expect(
+      await screen.findByTestId('metric-group-empty-empty_group')
+    ).toHaveTextContent('label.no-entity-found');
   });
 
   it('keeps group context when hierarchy search matches a group or descendant', async () => {
@@ -1236,7 +1268,7 @@ describe('MetricListPage', () => {
     fireEvent.click(screen.getByTestId('confirm-button'));
 
     expect(screen.getByTestId('confirm-button')).toBeDisabled();
-    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1');
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1', true);
 
     resolveDelete();
     await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());

@@ -12,7 +12,6 @@
  */
 import type { BoxProps } from '@openmetadata/ui-core-components';
 import {
-  Avatar,
   Badge,
   Box,
   Button,
@@ -57,7 +56,7 @@ import {
 } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { debounce, startCase } from 'lodash';
+import { debounce } from 'lodash';
 import type { ChangeEvent, Key } from 'react';
 import {
   ReactNode,
@@ -78,12 +77,15 @@ import {
   CSV_JOBS_REFRESH_EVENT,
   markCsvJobOwned,
 } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
+import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import type { ColumnsType } from '../../../components/common/Table/Table.interface';
 import TableV2 from '../../../components/common/Table/TableV2';
 import { useMetricCreateDrawer } from '../../../components/Metric/AddMetric/useMetricCreateDrawer';
 import MetricListHealth from '../../../components/Metric/MetricListHealth/MetricListHealth';
 import MetricStatusPill from '../../../components/Metric/MetricStatusPill/MetricStatusPill';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
+import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
@@ -154,6 +156,7 @@ const METRIC_STATIC_COLUMNS = ['name'];
 const METRIC_VIEW_STORAGE_KEY = 'metricsList.viewMode.v1';
 const METRIC_SEARCH_DEBOUNCE_MS = 500;
 const METRIC_PAGE_SIZE = 20;
+const METRIC_LISTING_QUERY_KEY = 'metric-listing';
 
 const DEFAULT_VISIBLE_METRIC_COLUMNS: MetricColumnId[] = [
   'description',
@@ -302,7 +305,7 @@ const MetricListPage = () => {
     refetch: refetchSearch,
   } = useQuery({
     queryKey: [
-      'metric-listing',
+      METRIC_LISTING_QUERY_KEY,
       {
         search: debouncedSearch,
         status: statusFilter,
@@ -488,14 +491,6 @@ const MetricListPage = () => {
     [t]
   );
 
-  const getOwnerInitials = useCallback(
-    (owner: NonNullable<Metric['owners']>[number]) =>
-      startCase(owner.displayName ?? owner.name)
-        .slice(0, 2)
-        .toUpperCase(),
-    []
-  );
-
   const getGlossaryTerms = useCallback(
     (tags?: TagLabel[]) =>
       tags?.filter(({ source }) => source === TagSource.Glossary) ?? [],
@@ -579,7 +574,11 @@ const MetricListPage = () => {
   const handleBulkDelete = useCallback(async () => {
     try {
       setIsDeletingMetrics(true);
-      await Promise.all(selectedMetrics.map(({ id }) => deleteMetricAsync(id)));
+      // Recursive so a parent's variants go with it; without it the async job fails with
+      // "metric is not empty" after the success toast has already shown.
+      await Promise.all(
+        selectedMetrics.map(({ id }) => deleteMetricAsync(id, true))
+      );
       showSuccessToast(
         t('message.metrics-delete-success', {
           count: selectedMetrics.length,
@@ -588,7 +587,7 @@ const MetricListPage = () => {
       setSelectedMetricIds([]);
       setIsDeleteDialogOpen(false);
       setPage(1);
-      queryClient.invalidateQueries({ queryKey: ['metric-listing'] });
+      queryClient.invalidateQueries({ queryKey: [METRIC_LISTING_QUERY_KEY] });
       resetHierarchy();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -596,6 +595,16 @@ const MetricListPage = () => {
       setIsDeletingMetrics(false);
     }
   }, [queryClient, resetHierarchy, selectedMetrics, t]);
+
+  // Deletes run as async jobs, so the refetch in handleBulkDelete can land before the job
+  // finishes and leave the deleted rows on screen. Refresh again once a job completes.
+  const { asyncDeleteJob } = useAsyncDeleteProvider();
+  useEffect(() => {
+    if (asyncDeleteJob?.status === 'COMPLETED') {
+      queryClient.invalidateQueries({ queryKey: [METRIC_LISTING_QUERY_KEY] });
+      resetHierarchy();
+    }
+  }, [asyncDeleteJob, queryClient, resetHierarchy]);
 
   const handleRetry = useCallback(() => {
     if (permissionError) {
@@ -665,7 +674,13 @@ const MetricListPage = () => {
     owners?.length ? (
       <Box align="center" gap={1}>
         {owners.slice(0, 3).map((owner) => (
-          <Avatar initials={getOwnerInitials(owner)} key={owner.id} size="xs" />
+          <ProfilePicture
+            displayName={owner.displayName}
+            isTeam={owner.type === EntityType.TEAM}
+            key={owner.id}
+            name={owner.name ?? ''}
+            size="xs"
+          />
         ))}
         {owners.length > 3 && (
           <Typography as="span" className="tw:text-tertiary" size="text-xs">
@@ -724,10 +739,16 @@ const MetricListPage = () => {
         size="sm"
         theme="light"
       />
-      <Box className="tw:min-w-0" direction="col" gap={1}>
+      <Box
+        className={classNames('tw:min-w-0', {
+          'tw:max-w-64': wrap === 'nowrap',
+        })}
+        direction="col"
+        gap={1}>
         <Link
           className="tw:truncate tw:text-sm tw:font-semibold tw:text-brand-secondary hover:tw:text-brand-secondary_hover"
           data-testid="metric-name"
+          title={getEntityName(metric)}
           to={getEntityDetailsPath(
             EntityType.METRIC,
             metric.fullyQualifiedName ?? ''
@@ -818,8 +839,11 @@ const MetricListPage = () => {
             </Typography>
           )}
         </Box>
-        <Badge className="tw:ml-auto tw:shrink-0" color="gray" size="sm">
-          {row.memberCount}{' '}
+        <Badge
+          className="tw:ml-auto tw:shrink-0 tw:gap-1"
+          color="gray"
+          size="sm">
+          {row.memberCount}
           <span className="tw:lowercase">
             {row.memberCount === 1
               ? t('label.metric')
@@ -827,6 +851,32 @@ const MetricListPage = () => {
           </span>
         </Badge>
       </Button>
+    );
+  };
+
+  // Without this an expanded empty group shows nothing, so the next standalone metric reads as
+  // one of its members.
+  const renderGroupRow = (
+    row: Extract<MetricTableRow, { isGroupRow: true }>
+  ) => {
+    const isEmptyExpandedGroup =
+      row.memberCount === 0 &&
+      !collapsedGroupIds.includes(row.id) &&
+      !loadingGroupIds.includes(row.group.id);
+
+    return (
+      <>
+        {renderGroupName(row)}
+        {isEmptyExpandedGroup && (
+          <Typography
+            as="p"
+            className="tw:py-3 tw:pl-14 tw:text-tertiary"
+            data-testid={`metric-group-empty-${row.group.name}`}
+            size="text-sm">
+            {t('label.no-entity-found', { entity: t('label.metric-plural') })}
+          </Typography>
+        )}
+      </>
     );
   };
 
@@ -866,10 +916,17 @@ const MetricListPage = () => {
       render: (_, { row }) => {
         const { description } = row as MetricTreeNode;
 
-        return (
-          <Typography ellipsis as="div" className="tw:max-w-80">
-            {description ?? t('label.empty-dash')}
-          </Typography>
+        return description ? (
+          <Box className="tw:max-w-80 tw:whitespace-normal">
+            <RichTextEditorPreviewerNew
+              clampByLines
+              enableSeeMoreVariant={false}
+              markdown={description}
+              maxLineLength="1"
+            />
+          </Box>
+        ) : (
+          <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
         );
       },
     },
@@ -937,7 +994,7 @@ const MetricListPage = () => {
 
   const renderFullWidthRow = ({ row, depth }: VisibleMetricTableRow) => {
     if (isGroupRow(row)) {
-      return renderGroupName(row);
+      return renderGroupRow(row);
     }
     if (isLoadMoreRow(row)) {
       return (
@@ -960,11 +1017,17 @@ const MetricListPage = () => {
 
   const renderMetricCardMetadata = (metric: MetricTreeNode) => (
     <>
-      {visibleColumns.includes('description') && (
-        <Typography className="tw:text-secondary" size="text-sm">
-          {metric.description ?? t('label.empty-dash')}
-        </Typography>
-      )}
+      {visibleColumns.includes('description') &&
+        (metric.description ? (
+          <RichTextEditorPreviewerNew
+            clampByLines
+            enableSeeMoreVariant={false}
+            markdown={metric.description}
+            maxLineLength="3"
+          />
+        ) : (
+          <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
+        ))}
       <Box className="tw:flex-wrap" gap={3}>
         {visibleColumns.includes('entityStatus') && (
           <MetricStatusPill status={metric.entityStatus} />
@@ -1030,7 +1093,7 @@ const MetricListPage = () => {
           data-testid={`metric-group-card-${row.group.name}`}
           key={row.id}
           size="sm">
-          <Card.Content>{renderGroupName(row)}</Card.Content>
+          <Card.Content>{renderGroupRow(row)}</Card.Content>
         </Card>
       );
     }

@@ -160,7 +160,6 @@ const MetricDefinitionEditDialog = ({
     metric.metricExpression?.language ?? Language.SQL
   );
   const [code, setCode] = useState(metric.metricExpression?.code ?? '');
-  const [codeError, setCodeError] = useState<string>();
   const [customUnitError, setCustomUnitError] = useState<string>();
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -175,24 +174,19 @@ const MetricDefinitionEditDialog = ({
     setCustomUnit(metric.customUnitOfMeasurement ?? '');
     setLanguage(metric.metricExpression?.language ?? Language.SQL);
     setCode(metric.metricExpression?.code ?? '');
-    setCodeError(undefined);
     setCustomUnitError(undefined);
     setSaveError(false);
   }, [metric, open]);
 
   const handleSave = async () => {
-    const requiredCodeError = code.trim()
-      ? undefined
-      : t('label.field-required', { field: t('label.code') });
     const requiredCustomUnitError =
       unit === UnitOfMeasurement.Other && !customUnit.trim()
         ? t('label.field-required', {
             field: t('label.unit-of-measurement'),
           })
         : undefined;
-    setCodeError(requiredCodeError);
     setCustomUnitError(requiredCustomUnitError);
-    if (requiredCodeError || requiredCustomUnitError) {
+    if (requiredCustomUnitError) {
       return;
     }
 
@@ -206,11 +200,11 @@ const MetricDefinitionEditDialog = ({
         unitOfMeasurement: unit,
         customUnitOfMeasurement:
           unit === UnitOfMeasurement.Other ? customUnit.trim() : undefined,
-        metricExpression: {
-          ...metric.metricExpression,
-          code: code.trim(),
-          language,
-        },
+        // The expression is optional (API, import and ingestion can omit it), so an empty code
+        // must not block editing the type, granularity or unit.
+        metricExpression: code.trim()
+          ? { ...metric.metricExpression, code: code.trim(), language }
+          : undefined,
       });
       onClose();
     } catch {
@@ -354,18 +348,12 @@ const MetricDefinitionEditDialog = ({
                 ))}
               </Select>
               <TextArea
-                isRequired
                 data-testid="metric-definition-code"
-                hint={codeError}
                 isDisabled={isSaving}
-                isInvalid={Boolean(codeError)}
                 label={t('label.code')}
                 rows={8}
                 value={code}
-                onChange={(value) => {
-                  setCode(value);
-                  setCodeError(undefined);
-                }}
+                onChange={setCode}
               />
             </Box>
           </Dialog.Content>

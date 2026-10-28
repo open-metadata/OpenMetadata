@@ -203,8 +203,10 @@ export const exportMetricDetailsInCSVSync = async (fqn: string) => {
   return response.data;
 };
 
-export const deleteMetricAsync = async (id: string) => {
-  const response = await APIClient.delete(`/metrics/async/${id}`);
+export const deleteMetricAsync = async (id: string, recursive = false) => {
+  const response = await APIClient.delete(`/metrics/async/${id}`, {
+    params: { recursive },
+  });
 
   return response.data;
 };
