@@ -38,7 +38,6 @@ jest.mock('../Common/TopicWidget/TopicCard', () => ({
     children,
     emptyState,
     isError,
-    meta,
     status,
     summary,
   }: {
@@ -46,14 +45,12 @@ jest.mock('../Common/TopicWidget/TopicCard', () => ({
     children?: React.ReactNode;
     emptyState?: { title: string; action?: { label: string } };
     isError?: boolean;
-    meta?: React.ReactNode;
     status?: { label: string };
     summary: React.ReactNode;
   }) => (
     <section>
       <p data-testid="summary">{summary}</p>
       {status && <span data-testid="status">{status.label}</span>}
-      {meta && <span data-testid="meta">{meta}</span>}
       {action && (
         <button data-testid="action" onClick={action.onPress}>
           {action.label}
@@ -68,8 +65,18 @@ jest.mock('../Common/TopicWidget/TopicCard', () => ({
 
 jest.mock('../Common/TopicWidget/TrackedAssetList', () => ({
   __esModule: true,
-  default: ({ dataTestId }: { dataTestId: string }) => (
-    <div data-testid={dataTestId} />
+  default: ({
+    assets,
+    dataTestId,
+  }: {
+    assets: TrackedAsset[];
+    dataTestId: string;
+  }) => (
+    <ul data-testid={dataTestId}>
+      {assets.map((asset) => (
+        <li key={asset.id}>{asset.name}</li>
+      ))}
+    </ul>
   ),
 }));
 
@@ -121,9 +128,12 @@ describe('YoursAndFollowedWidget', () => {
   it('reports the real totals, not the rows on screen', () => {
     renderWidget();
 
-    expect(screen.getByTestId('meta')).toHaveTextContent(
-      'message.count-owned-and-followed {"followed":48,"owned":31}'
-    );
+    expect(
+      screen.getByTestId('yours-and-followed-filter-owned-count')
+    ).toHaveTextContent('31');
+    expect(
+      screen.getByTestId('yours-and-followed-filter-following-count')
+    ).toHaveTextContent('48');
     expect(screen.getByTestId('summary')).toHaveTextContent(
       'message.count-followed-assets-changed {"count":12}'
     );
@@ -132,20 +142,36 @@ describe('YoursAndFollowedWidget', () => {
     );
   });
 
-  // The footer used to navigate to the landing page it is already on.
-  it('opens the followed assets on the user profile', () => {
+  it('lists the owned assets and opens them on the user profile', () => {
     renderWidget();
+
+    expect(screen.getByTestId('owned-assets')).toHaveTextContent('o1');
+    expect(screen.queryByTestId('followed-assets')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('action'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/users/ada/mydata');
+  });
+
+  // The footer used to navigate to the landing page it is already on.
+  it('switches to the followed assets and opens them on the user profile', () => {
+    renderWidget();
+
+    fireEvent.click(screen.getByTestId('yours-and-followed-filter-following'));
+
+    expect(screen.getByTestId('followed-assets')).toHaveTextContent('f1f2');
+    expect(screen.queryByTestId('owned-assets')).toBeNull();
 
     fireEvent.click(screen.getByTestId('action'));
 
     expect(mockNavigate).toHaveBeenCalledWith('/users/ada/following');
   });
 
-  it('renders both lists', () => {
-    renderWidget();
+  it('opens on the followed assets when the user owns nothing', () => {
+    renderWidget({ owned: [], ownedTotal: 0 });
 
-    expect(screen.getByTestId('owned-assets')).toBeInTheDocument();
     expect(screen.getByTestId('followed-assets')).toBeInTheDocument();
+    expect(screen.queryByTestId('owned-assets')).toBeNull();
   });
 
   it('shows the empty state when the user owns and follows nothing', () => {
@@ -161,15 +187,15 @@ describe('YoursAndFollowedWidget', () => {
       'message.nothing-owned-or-followed-yet'
     );
     expect(screen.queryByTestId('status')).toBeNull();
-    expect(screen.queryByTestId('owned-assets')).toBeNull();
+    expect(screen.queryByTestId('yours-and-followed-filter-chips')).toBeNull();
   });
 
   it('hands the card its error and withholds the counts', () => {
     renderWidget({ isError: true });
 
     expect(screen.getByTestId('card-error')).toBeInTheDocument();
-    expect(screen.queryByTestId('meta')).toBeNull();
     expect(screen.queryByTestId('status')).toBeNull();
+    expect(screen.queryByTestId('yours-and-followed-filter-chips')).toBeNull();
     expect(screen.queryByTestId('owned-assets')).toBeNull();
   });
 });

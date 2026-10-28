@@ -15,20 +15,29 @@ import {
   HeartRounded,
   Star01 as Follow,
 } from '@openmetadata/ui-core-components/icons';
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useOwnedAndFollowed } from '../../../../hooks/useOwnedAndFollowed';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import { getUserPath } from '../../../../utils/RouterUtils';
-import { UserPageTabs } from '../../../Settings/Users/Users.interface';
 import TopicCard from '../Common/TopicWidget/TopicCard';
+import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
+import {
+  TOPIC_FILTERED_BODY_CLASSES,
+  TOPIC_FILTERED_LIST_CLASSES,
+} from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
 } from '../Common/TopicWidget/topics.types';
 import TrackedAssetList from '../Common/TopicWidget/TrackedAssetList';
+import {
+  TrackedFilter,
+  TRACKED_LISTS,
+} from './YoursAndFollowedWidget.constants';
+import { getDefaultTrackedFilter } from './YoursAndFollowedWidget.utils';
 
 const TONE = {
   icon: Follow,
@@ -46,6 +55,7 @@ const YoursAndFollowedWidget: React.FC<YoursAndFollowedWidgetProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const currentUser = useApplicationStore((state) => state.currentUser);
+  const [pickedFilter, setPickedFilter] = useState<TrackedFilter>();
   const {
     owned,
     followed,
@@ -73,32 +83,27 @@ const YoursAndFollowedWidget: React.FC<YoursAndFollowedWidgetProps> = ({
         }
       : undefined;
 
+  const filter =
+    pickedFilter ?? getDefaultTrackedFilter(ownedTotal, followedTotal);
+  const list = TRACKED_LISTS[filter];
+
   return (
     <TopicCard
       action={{
-        label: t('label.view-entity', {
-          entity: t('label.followed-asset-plural'),
+        label: t('label.view-all-entity', {
+          entity: t(list.viewAllEntityKey),
         }),
-        // The full list lives on the user's own profile; the landing page is
+        // The full lists live on the user's own profile; the landing page is
         // where this card already is.
         onPress: () =>
-          navigate(
-            getUserPath(currentUser?.name ?? '', UserPageTabs.FOLLOWING)
-          ),
+          navigate(getUserPath(currentUser?.name ?? '', list.profileTab)),
       }}
+      bodyClassName={TOPIC_FILTERED_BODY_CLASSES}
       emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
       isError={isError}
       isLoading={isLoading}
-      meta={
-        isError
-          ? undefined
-          : t('message.count-owned-and-followed', {
-              followed: followedTotal,
-              owned: ownedTotal,
-            })
-      }
       status={
         !isError && changedCount > 0
           ? {
@@ -114,20 +119,35 @@ const YoursAndFollowedWidget: React.FC<YoursAndFollowedWidgetProps> = ({
       widgetKey={widgetKey}
       onRetry={refetch}>
       {!isError && !emptyState && (
-        <div className="tw:@container">
-          <div className="tw:grid tw:grid-cols-1 tw:gap-5 tw:@md:grid-cols-2">
+        <>
+          <TopicFilterChips
+            chips={[
+              {
+                count: ownedTotal,
+                id: TrackedFilter.OWNED,
+                label: t(TRACKED_LISTS[TrackedFilter.OWNED].pillLabelKey),
+                tone: 'brand',
+              },
+              {
+                count: followedTotal,
+                id: TrackedFilter.FOLLOWING,
+                label: t(TRACKED_LISTS[TrackedFilter.FOLLOWING].pillLabelKey),
+                tone: 'brand',
+              },
+            ]}
+            label={t('label.yours-and-followed')}
+            testIdPrefix="yours-and-followed"
+            value={filter}
+            onChange={(next) => setPickedFilter(next as TrackedFilter)}
+          />
+          <div className={TOPIC_FILTERED_LIST_CLASSES}>
             <TrackedAssetList
-              assets={owned}
-              dataTestId="owned-assets"
-              title={t('label.my-data')}
-            />
-            <TrackedAssetList
-              assets={followed}
-              dataTestId="followed-assets"
-              title={t('label.following')}
+              assets={filter === TrackedFilter.OWNED ? owned : followed}
+              dataTestId={list.listTestId}
+              title={t('label.recently-updated')}
             />
           </div>
-        </div>
+        </>
       )}
     </TopicCard>
   );
