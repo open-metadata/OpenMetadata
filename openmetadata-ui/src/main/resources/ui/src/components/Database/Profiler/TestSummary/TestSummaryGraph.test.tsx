@@ -724,22 +724,21 @@ describe('TestSummaryGraph', () => {
     });
   });
 
-  // Focusing a hovered series fades every other one, the allowed-range band
-  // and the expectation label included; with one series that only hides them.
-  it('should not fade the band and expectation line when a single series is hovered', () => {
-    render(
+  it('should give every series no hover state, however many there are', () => {
+    const { unmount } = render(
       <TestSummaryGraph {...mockProps} testCaseResults={singleSeriesResults} />
     );
 
-    expect(getSeries('value').seriesOption).not.toHaveProperty('emphasis');
-  });
+    expect(getSeries('value').seriesOption).toEqual(
+      expect.objectContaining({ emphasis: { disabled: true } })
+    );
 
-  it('should bring the hovered series forward when there are several', () => {
+    unmount();
     render(<TestSummaryGraph {...mockProps} />);
 
     ['min', 'max'].forEach((key) => {
       expect(getSeries(key).seriesOption).toEqual(
-        expect.objectContaining({ emphasis: { focus: 'series' } })
+        expect.objectContaining({ emphasis: { disabled: true } })
       );
     });
   });
