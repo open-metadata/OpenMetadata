@@ -10,17 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { EntityReference } from '../../../generated/entity/type';
-import { queryClient } from '../../../queryClient';
-import { searchQuery } from '../../../rest/searchAPI';
 import DomainTags from './DomainTags';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   DomainTag: ({
     label,
-    color,
-    icon,
     href,
     inherited,
     inheritedLabel,
@@ -29,8 +25,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     closeButtonTestId,
   }: {
     label: string;
-    color?: string;
-    icon?: string;
     href?: string;
     inherited?: boolean;
     inheritedLabel?: string;
@@ -39,9 +33,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     closeButtonTestId?: string;
   }) => (
     <div
-      data-color={color ?? ''}
       data-href={href ?? ''}
-      data-icon={icon ?? ''}
       data-inherited={String(Boolean(inherited))}
       data-inherited-label={inheritedLabel ?? ''}
       data-testid={dataTestId}>
@@ -77,10 +69,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../../rest/searchAPI', () => ({
-  searchQuery: jest.fn(),
-}));
-
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: (fqn?: string) => `/domain/${fqn}`,
 }));
@@ -97,97 +85,7 @@ const makeDomain = (
   ...extra,
 });
 
-const mockSearchQuery = searchQuery as jest.MockedFunction<typeof searchQuery>;
-
-const domainStyles = (
-  styles: Record<string, { color?: string; iconURL?: string }>
-) =>
-  ({
-    hits: {
-      hits: Object.entries(styles).map(([fullyQualifiedName, style]) => ({
-        _source: { fullyQualifiedName, style },
-      })),
-    },
-  } as never);
-
 describe('DomainTags', () => {
-  beforeEach(() => {
-    queryClient.clear();
-    mockSearchQuery.mockReset();
-    mockSearchQuery.mockResolvedValue(domainStyles({}));
-  });
-
-  // Asset domain references carry no style, so the chip used to fall back to
-  // the default colour and globe whatever the domain was set to.
-  it("should paint each chip in its domain's custom colour and icon", async () => {
-    mockSearchQuery.mockResolvedValue(
-      domainStyles({ Sales: { color: '#F14C75', iconURL: 'Database01' } })
-    );
-
-    render(<DomainTags domains={[makeDomain('Sales'), makeDomain('Plain')]} />);
-
-    await waitFor(() =>
-      expect(screen.getByTestId('domain-tag-Sales')).toHaveAttribute(
-        'data-color',
-        '#F14C75'
-      )
-    );
-
-    expect(screen.getByTestId('domain-tag-Sales')).toHaveAttribute(
-      'data-icon',
-      'Database01'
-    );
-    expect(screen.getByTestId('domain-tag-Plain')).toHaveAttribute(
-      'data-color',
-      ''
-    );
-  });
-
-  // One lookup per domain made a request per distinct domain on the page.
-  it('should read every domain style in one request, however many chips', async () => {
-    mockSearchQuery.mockResolvedValue(
-      domainStyles({
-        Finance: { color: '#1470EF' },
-        Sales: { color: '#F14C75' },
-      })
-    );
-
-    render(
-      <>
-        <DomainTags domains={[makeDomain('Sales'), makeDomain('Finance')]} />
-        <DomainTags domains={[makeDomain('Sales')]} />
-      </>
-    );
-
-    await waitFor(() =>
-      expect(screen.getByTestId('domain-tag-Finance')).toHaveAttribute(
-        'data-color',
-        '#1470EF'
-      )
-    );
-
-    expect(mockSearchQuery).toHaveBeenCalledTimes(1);
-    expect(mockSearchQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        includeFields: ['fullyQualifiedName', 'style'],
-        skipDomainFilter: true,
-      })
-    );
-  });
-
-  it('should keep the default chip when the styles cannot be read', async () => {
-    mockSearchQuery.mockRejectedValue(new Error('403'));
-
-    render(<DomainTags domains={[makeDomain('Secret')]} />);
-
-    await waitFor(() => expect(mockSearchQuery).toHaveBeenCalled());
-
-    expect(screen.getByTestId('domain-tag-Secret')).toHaveAttribute(
-      'data-color',
-      ''
-    );
-  });
-
   it('should render the empty placeholder when there are no domains', () => {
     render(<DomainTags domains={[]} />);
 

@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, DomainTag } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import { DomainTagsProps } from './DomainTags.types';
-import StyledDomainTag from './StyledDomainTag';
 
 const DomainTags: FC<DomainTagsProps> = ({
   domains,
@@ -60,10 +59,9 @@ const DomainTags: FC<DomainTagsProps> = ({
       data-testid={dataTestId ?? 'domain-tags-container'}>
       <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5">
         {visibleDomains.map((domain, index) => (
-          <StyledDomainTag
+          <DomainTag
             closeButtonTestId={`remove-domain-${domain.fullyQualifiedName}`}
             data-testid={`domain-tag-${domain.fullyQualifiedName}`}
-            fqn={domain.fullyQualifiedName}
             href={
               onRemove || !domain.fullyQualifiedName
                 ? undefined
