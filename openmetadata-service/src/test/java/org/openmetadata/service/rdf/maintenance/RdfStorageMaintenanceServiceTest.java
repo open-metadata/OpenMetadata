@@ -42,8 +42,8 @@ import org.openmetadata.service.rdf.storage.StorageFacts;
 
 /**
  * The cluster compacts once per interval, never while a reindex holds the RDF lock, and keeps
- * retrying until a compaction succeeds. Two service instances sharing one lock table stand in for
- * two servers.
+ * retrying until a compaction succeeds, unless Fuseki restarted during it. Two service instances
+ * sharing one lock table stand in for two servers.
  */
 class RdfStorageMaintenanceServiceTest {
   private static final long GIB = 1L << 30;
@@ -112,6 +112,32 @@ class RdfStorageMaintenanceServiceTest {
     assertEquals(FAILED, serverA.compactIfDue());
     assertEquals(SUCCEEDED, serverB.compactIfDue());
     assertNull(serverA.compactIfDue());
+  }
+
+  @Test
+  void aCompactionThatCouldNotBeStartedIsRetriedOnTheNextCheck() {
+    final CompactionResult unreachable =
+        new CompactionResult(
+            CompactionResult.Outcome.UNKNOWN, null, "Connection refused", Duration.ZERO);
+    when(repository.compact(any())).thenReturn(unreachable, SUCCEEDED);
+
+    assertEquals(unreachable, serverA.compactIfDue());
+    assertEquals(SUCCEEDED, serverB.compactIfDue());
+  }
+
+  @Test
+  void aCompactionFusekiLostWaitsForTheNextInterval() {
+    final CompactionResult lost =
+        new CompactionResult(
+            CompactionResult.Outcome.UNKNOWN,
+            "3",
+            "Fuseki no longer reports task 3",
+            Duration.ofMinutes(4));
+    when(repository.compact(any())).thenReturn(lost);
+
+    assertEquals(lost, serverA.compactIfDue());
+    assertNull(serverB.compactIfDue(), "Fuseki restarted during the copy; retrying restarts it");
+    verify(repository, times(1)).compact(any());
   }
 
   @Test

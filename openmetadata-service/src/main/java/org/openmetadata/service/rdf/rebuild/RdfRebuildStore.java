@@ -14,6 +14,7 @@ package org.openmetadata.service.rdf.rebuild;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 import java.util.function.Function;
 import org.jdbi.v3.core.Handle;
@@ -31,6 +32,7 @@ public final class RdfRebuildStore {
       "SELECT datasetName FROM rdf_active_dataset WHERE id = 'active'";
   private static final String STATE =
       "SELECT rebuildId, buildDataset, expiresAt, failure FROM rdf_rebuild_state WHERE id = 'active'";
+  private static final Duration PAUSE_POLL = Duration.ofSeconds(1);
 
   private final Jdbi jdbi;
   private final Clock clock;
@@ -82,6 +84,28 @@ public final class RdfRebuildStore {
                     result.getString("failure")))
         .findOne()
         .orElse(null);
+  }
+
+  /**
+   * Waits, holding no lock, while storage maintenance holds serving writes back, for at most {@code
+   * maxWait}. The write still re-checks under the serving-dataset row lock.
+   */
+  void awaitLiveWritesAllowed(final Duration maxWait) {
+    final long deadline = System.nanoTime() + maxWait.toNanos();
+    boolean waiting = isPaused();
+    while (waiting && System.nanoTime() < deadline) {
+      try {
+        Thread.sleep(PAUSE_POLL.toMillis());
+        waiting = isPaused();
+      } catch (InterruptedException exception) {
+        Thread.currentThread().interrupt();
+        waiting = false;
+      }
+    }
+  }
+
+  private boolean isPaused() {
+    return jdbi.withHandle(handle -> RdfLiveWritePause.isPaused(handle, clock.millis()));
   }
 
   public <T> T withActiveLock(final Function<Session, T> action) {
