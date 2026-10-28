@@ -12,17 +12,25 @@
  */
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
+import { groupBy } from 'lodash';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
+import {
+  ChangeType,
+  MemberChange,
+} from '../../../../generated/api/data/ontologyWorkingDiff';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useOntologyPublication } from '../../../../hooks/governance/ontology/useOntologyPublication';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import OntologyReleaseDetails from './OntologyReleaseDetails';
@@ -33,6 +41,64 @@ import {
 } from './OntologyReleasePanel.utils';
 import OntologyReleaseValidation from './OntologyReleaseValidation';
 import OntologyVersionEditor from './OntologyVersionEditor';
+
+const CHANGE_BADGE_COLOR = {
+  [ChangeType.Added]: 'success',
+  [ChangeType.Changed]: 'warning',
+  [ChangeType.Removed]: 'error',
+} as const;
+
+const AiChangeGroups = ({ changes }: { changes: MemberChange[] }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box data-testid="ontology-change-groups" direction="col" gap={3}>
+      {Object.entries(groupBy(changes, 'memberKind')).map(([kind, rows]) => (
+        <details
+          open
+          className="tw:group tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
+          key={kind}>
+          <summary className="tw:flex tw:cursor-pointer tw:list-none tw:items-center tw:gap-2 tw:bg-secondary_alt tw:px-4 tw:py-3">
+            <ChevronDown
+              aria-hidden="true"
+              className="tw:size-4 tw:shrink-0 tw:-rotate-90 tw:group-open:rotate-0"
+            />
+            <Typography
+              as="span"
+              className="tw:flex-1"
+              size="text-sm"
+              weight="semibold">
+              {t('label.ontology-member-' + kind.toLowerCase())}
+            </Typography>
+            <Badge color="gray" size="sm" type="pill-color">
+              {rows.length}
+            </Badge>
+          </summary>
+          <ul className="tw:m-0 tw:list-none tw:p-0">
+            {rows.map((change) => (
+              <li
+                className="tw:flex tw:items-center tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-3"
+                key={change.entity.id + ':' + change.memberKind}>
+                <Typography
+                  as="span"
+                  className="tw:min-w-0 tw:flex-1 tw:truncate"
+                  size="text-sm">
+                  {getEntityName(change.entity)}
+                </Typography>
+                <Badge
+                  color={CHANGE_BADGE_COLOR[change.changeType]}
+                  size="sm"
+                  type="pill-color">
+                  {t('label.' + change.changeType.toLowerCase())}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ))}
+    </Box>
+  );
+};
 
 interface OntologyReleasePanelProps {
   ontology: Ontology;
@@ -46,6 +112,7 @@ const OntologyReleasePanel = ({
   view,
 }: OntologyReleasePanelProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [versionBump, setVersionBump] = useState<VersionBump>();
   const [releaseNotes, setReleaseNotes] = useState('');
   const [reviewBaseVersion, setReviewBaseVersion] = useState<string>();
@@ -176,6 +243,46 @@ const OntologyReleasePanel = ({
     );
   };
 
+  const getVersionPreview = () =>
+    latestVersioned.isSuccess
+      ? (previewBaseVersion ?? '0.0.0') +
+        ' → ' +
+        (pendingReview?.semanticVersion ??
+          nextSemanticVersion(previewBaseVersion, bump))
+      : t('label.loading');
+
+  const renderPublishButtons = () => (
+    <Box gap={2} wrap="wrap">
+      <Button
+        color="secondary"
+        data-testid="ontology-capture-release"
+        isDisabled={!canCapture}
+        onPress={() => {
+          if (canCapture && changes.data) {
+            void capture(changes.data.state, metadata);
+          }
+        }}>
+        {t('label.capture-release')}
+      </Button>
+      <Button
+        color="primary"
+        data-testid="ontology-request-review"
+        isDisabled={pendingReview ? !canRetryReview : !canCapture}
+        isLoading={isBusy}
+        onPress={() => {
+          if ((canCapture || canRetryReview) && working.data) {
+            if (!pendingReview) {
+              setReviewBaseVersion(baseVersion);
+              setVersionBump(bump);
+            }
+            void captureAndRequestApproval(working.data.state, metadata);
+          }
+        }}>
+        {t(pendingReview ? 'label.retry-review' : 'label.request-review')}
+      </Button>
+    </Box>
+  );
+
   const renderFooter = () => (
     <Box
       align="center"
@@ -184,59 +291,106 @@ const OntologyReleasePanel = ({
       justify="between"
       wrap="wrap">
       <Typography data-testid="ontology-version-preview" size="text-sm">
-        {latestVersioned.isSuccess
-          ? (previewBaseVersion ?? '0.0.0') +
-            ' → ' +
-            (pendingReview?.semanticVersion ??
-              nextSemanticVersion(previewBaseVersion, bump))
-          : t('label.loading')}
+        {getVersionPreview()}
       </Typography>
-      <Box gap={2} wrap="wrap">
-        <Button
-          color="secondary"
-          data-testid="ontology-capture-release"
-          isDisabled={!canCapture}
-          onPress={() => {
-            if (canCapture && changes.data) {
-              void capture(changes.data.state, metadata);
-            }
-          }}>
-          {t('label.capture-release')}
-        </Button>
-        <Button
-          color="primary"
-          data-testid="ontology-request-review"
-          isDisabled={pendingReview ? !canRetryReview : !canCapture}
-          isLoading={isBusy}
-          onPress={() => {
-            if ((canCapture || canRetryReview) && working.data) {
-              if (!pendingReview) {
-                setReviewBaseVersion(baseVersion);
-                setVersionBump(bump);
-              }
-              void captureAndRequestApproval(working.data.state, metadata);
-            }
-          }}>
-          {t(pendingReview ? 'label.retry-review' : 'label.request-review')}
-        </Button>
-      </Box>
+      {renderPublishButtons()}
     </Box>
   );
+
+  const renderAiFooter = () => (
+    <div className="tw:sticky tw:bottom-0 tw:z-10 tw:-mx-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4">
+      <Typography color="secondary" size="text-sm">
+        <span data-testid="ontology-version-preview">
+          {getVersionPreview()}
+        </span>
+        {working.data
+          ? ` · ${working.data.paging.total} ${t('label.pending-changes')}`
+          : null}
+      </Typography>
+      {renderPublishButtons()}
+    </div>
+  );
+
+  const renderChangesHeading = () => (
+    <Box direction="col" gap={1}>
+      <Typography as="h3" size="text-md" weight="semibold">
+        {t('label.unpublished-changes')}
+      </Typography>
+      {working.data && (
+        <Typography color="secondary" size="text-sm">
+          {working.data.paging.total} {t('label.pending-changes')}
+        </Typography>
+      )}
+    </Box>
+  );
+
+  const renderChangesPagination = () => (
+    <Box gap={2}>
+      <Button
+        color="secondary"
+        data-testid="ontology-working-previous"
+        isDisabled={cursors.length === 1 || !hasCoherentPreview}
+        size="sm"
+        onPress={() => setCursors((current) => current.slice(0, -1))}>
+        {t('label.previous')}
+      </Button>
+      <Button
+        color="secondary"
+        data-testid="ontology-working-next"
+        isDisabled={!changes.data?.paging.after || !hasCoherentPreview}
+        size="sm"
+        onPress={() =>
+          setCursors((current) => [...current, changes.data?.paging.after])
+        }>
+        {t('label.next')}
+      </Button>
+    </Box>
+  );
+
+  const renderVersionError = () =>
+    latestVersioned.isError && (
+      <Alert variant="error">
+        {t('message.ontology-version-unavailable')}
+        <Button
+          color="secondary"
+          size="sm"
+          onPress={() => void latestVersioned.refetch()}>
+          {t('label.retry')}
+        </Button>
+      </Alert>
+    );
+
+  const renderVersionEditor = () =>
+    latestVersioned.isSuccess && (
+      <OntologyVersionEditor
+        baseVersion={previewBaseVersion}
+        bump={bump}
+        isDisabled={editorIsDisabled}
+        notes={releaseNotes}
+        onBumpChange={setVersionBump}
+        onNotesChange={setReleaseNotes}
+      />
+    );
+
+  const renderValidation = () => (
+    <OntologyReleaseValidation
+      ontology={ontology}
+      release={selectedId ? release : undefined}
+    />
+  );
+
+  const renderPendingReviewAlert = () =>
+    pendingReview && (
+      <Alert variant="warning">
+        {t('message.ontology-review-candidate-retained')}
+      </Alert>
+    );
 
   const renderChanges = () => (
     <Box direction="col" gap={5}>
       <div className="tw:grid tw:grid-cols-1 tw:gap-5 tw:md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Box direction="col" gap={4}>
-          <Box direction="col" gap={1}>
-            <Typography as="h3" size="text-md" weight="semibold">
-              {t('label.unpublished-changes')}
-            </Typography>
-            {working.data && (
-              <Typography color="secondary" size="text-sm">
-                {working.data.paging.total} {t('label.pending-changes')}
-              </Typography>
-            )}
-          </Box>
+          {renderChangesHeading()}
           {renderChangeStatus()}
           {hasCoherentPreview && changes.data && (
             <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-3 tw:p-0">
@@ -259,62 +413,35 @@ const OntologyReleasePanel = ({
               ))}
             </ul>
           )}
-          <Box gap={2}>
-            <Button
-              color="secondary"
-              data-testid="ontology-working-previous"
-              isDisabled={cursors.length === 1 || !hasCoherentPreview}
-              size="sm"
-              onPress={() => setCursors((current) => current.slice(0, -1))}>
-              {t('label.previous')}
-            </Button>
-            <Button
-              color="secondary"
-              data-testid="ontology-working-next"
-              isDisabled={!changes.data?.paging.after || !hasCoherentPreview}
-              size="sm"
-              onPress={() =>
-                setCursors((current) => [
-                  ...current,
-                  changes.data?.paging.after,
-                ])
-              }>
-              {t('label.next')}
-            </Button>
-          </Box>
-          {latestVersioned.isError && (
-            <Alert variant="error">
-              {t('message.ontology-version-unavailable')}
-              <Button
-                color="secondary"
-                size="sm"
-                onPress={() => void latestVersioned.refetch()}>
-                {t('label.retry')}
-              </Button>
-            </Alert>
-          )}
-          {latestVersioned.isSuccess && (
-            <OntologyVersionEditor
-              baseVersion={previewBaseVersion}
-              bump={bump}
-              isDisabled={editorIsDisabled}
-              notes={releaseNotes}
-              onBumpChange={setVersionBump}
-              onNotesChange={setReleaseNotes}
-            />
-          )}
+          {renderChangesPagination()}
+          {renderVersionError()}
+          {renderVersionEditor()}
         </Box>
-        <OntologyReleaseValidation
-          ontology={ontology}
-          release={selectedId ? release : undefined}
-        />
+        {renderValidation()}
       </div>
-      {pendingReview && (
-        <Alert variant="warning">
-          {t('message.ontology-review-candidate-retained')}
-        </Alert>
-      )}
+      {renderPendingReviewAlert()}
       {renderFooter()}
+    </Box>
+  );
+
+  const renderAiChanges = () => (
+    <Box direction="col" gap={5}>
+      <div className="tw:grid tw:grid-cols-1 tw:gap-6 tw:lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+        <Box className="tw:min-w-0" direction="col" gap={4}>
+          {renderChangesHeading()}
+          {renderChangeStatus()}
+          {hasCoherentPreview && changes.data && (
+            <AiChangeGroups changes={changes.data.data} />
+          )}
+          {renderChangesPagination()}
+          {renderVersionError()}
+        </Box>
+        <Box className="tw:min-w-0" direction="col" gap={4}>
+          {renderValidation()}
+          {renderVersionEditor()}
+        </Box>
+      </div>
+      {renderPendingReviewAlert()}
     </Box>
   );
 
@@ -327,19 +454,42 @@ const OntologyReleasePanel = ({
     />
   );
 
+  const renderStateError = () =>
+    state.isError && (
+      <Alert variant="error">
+        {t('message.ontology-review-unavailable')}
+        <Button
+          color="secondary"
+          size="sm"
+          onPress={() => void state.refetch()}>
+          {t('label.retry')}
+        </Button>
+      </Alert>
+    );
+
+  const renderAiPanel = () => {
+    const isChanges = view === 'changes';
+
+    return (
+      <Box
+        className={isChanges ? undefined : 'tw:pb-5'}
+        direction="col"
+        gap={4}>
+        {renderStateError()}
+        {isChanges ? renderAiChanges() : renderReleases()}
+        {renderRelease()}
+        {isChanges ? renderAiFooter() : null}
+      </Box>
+    );
+  };
+
+  if (isAiMode) {
+    return renderAiPanel();
+  }
+
   return (
     <Box direction="col" gap={4}>
-      {state.isError && (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-          <Button
-            color="secondary"
-            size="sm"
-            onPress={() => void state.refetch()}>
-            {t('label.retry')}
-          </Button>
-        </Alert>
-      )}
+      {renderStateError()}
       {view === 'changes' ? renderChanges() : renderReleases()}
       {renderRelease()}
     </Box>

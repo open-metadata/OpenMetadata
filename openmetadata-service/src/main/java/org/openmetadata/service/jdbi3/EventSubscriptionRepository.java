@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.alerting.AlertLimits;
 import org.openmetadata.service.alerting.channel.DestinationSecretGuards;
 import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.alerting.channel.DestinationValidation;
@@ -186,6 +187,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     // An update is validated by the updater, which knows what the alert looked like before.
     if (!update) {
       requireRegistered(entity);
+      AlertLimits.requireWithin(null, entity);
       DestinationValidation.ofANewAlert(entity);
       AlertDefinitionPolicy.ofNew(entity).prepareNew(entity);
     }
@@ -341,6 +343,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       // may be judged.
       AlertDefinitionPolicy.ofUpdate(original, updated)
           .settle(original, updated, operation.isPut());
+      AlertLimits.requireWithin(original, updated);
       DestinationValidation.ofWhatChanged(original, updated);
     }
 
