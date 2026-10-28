@@ -107,11 +107,6 @@ public abstract class ForwardingRdfStorage implements RdfStorageInterface {
   }
 
   @Override
-  public void compactStorage() {
-    delegate().compactStorage();
-  }
-
-  @Override
   public CompactionResult compact(Duration maxWait) {
     return delegate().compact(maxWait);
   }

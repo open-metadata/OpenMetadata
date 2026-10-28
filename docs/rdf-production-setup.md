@@ -442,8 +442,8 @@ Size the volume for the growth between compactions on top of the live data. TDB2
 its files, so a write on a full volume does not fail cleanly: the JVM gets SIGBUS and exits on
 every restart.
 
-Each compaction is logged, and timed by outcome in `rdf.storage.maintenance`; alert on
-`rdf.storage.maintenance.last.success` falling behind the interval. A compaction that does not
+Each compaction is logged, and timed by result in `ontology.rdf.compaction`; alert on
+`ontology.rdf.compaction.last.success` falling behind the interval. A compaction that does not
 succeed is logged as an error and retried at the next check. To compact by hand:
 
 ```bash

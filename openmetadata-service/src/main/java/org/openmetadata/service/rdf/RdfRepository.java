@@ -4711,23 +4711,6 @@ public class RdfRepository {
     }
   }
 
-  /**
-   * Trigger a backend storage compaction to physically reclaim disk space after
-   * large deletes. See {@link
-   * org.openmetadata.service.rdf.storage.RdfStorageInterface#compactStorage()}
-   * for why this is necessary on TDB2: {@code CLEAR ALL} only marks triples as
-   * deleted in TDB2's free-list — the on-disk dataset never shrinks until the
-   * compaction admin endpoint is called explicitly. Failures are swallowed at
-   * the storage layer; this is a best-effort housekeeping call.
-   */
-  public void compactStorage() {
-    if (!isEnabled()) {
-      return;
-    }
-    LOG.info("Compacting RDF storage to reclaim disk space");
-    storageService.compactStorage();
-  }
-
   /** Compacts the dataset this repository writes to and reports the outcome. */
   public CompactionResult compact(final Duration maxWait) {
     return isEnabled() ? storageService.compact(maxWait) : CompactionResult.unsupported();
@@ -4757,10 +4740,6 @@ public class RdfRepository {
       storageService.executeMaintenanceUpdate("CLEAR ALL", timeout);
       LOG.info("Successfully cleared all data from RDF store");
     }
-  }
-
-  public boolean isStoreEmpty() {
-    return !isEnabled() || storageService.getTripleCount() == 0;
   }
 
   /** Longest a compaction or a maintenance clear may run; writes stay paused meanwhile. */
