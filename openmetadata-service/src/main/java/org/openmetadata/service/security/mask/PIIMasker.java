@@ -5,6 +5,7 @@ import static org.openmetadata.service.jdbi3.TopicRepository.getAllFieldTags;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -302,12 +303,25 @@ public class PIIMasker {
 
   /** The chain of columns a column FQN resolves to, from the path relative to its table. */
   private static List<Column> resolveColumnPath(Table table, String columnFqn) {
-    String tableFqn = FullyQualifiedName.getTableFQN(columnFqn);
-    if (tableFqn.equals(columnFqn)) {
+    String[] parts = FullyQualifiedName.split(columnFqn);
+    if (parts.length < 5) {
       return List.of();
     }
-    return ColumnUtil.resolveColumnChainByPath(
-        table.getColumns(), columnFqn.substring(tableFqn.length() + 1));
+    return ColumnUtil.resolveColumnChainByPath(table.getColumns(), columnPathOf(parts));
+  }
+
+  /**
+   * The dotted path of a column within its table, per FQN segment (re-quoted so a segment's own
+   * dots stay inside quotes). Splitting rather than slicing the raw string keeps the path aligned
+   * with how the profile rows are looked up: {@code getTableFQN} normalizes redundant quotes in
+   * the table prefix, so a character offset against it can split the path mid-segment while the
+   * hashed DB lookup still resolves the real column.
+   */
+  private static String columnPathOf(String[] parts) {
+    return Arrays.stream(parts)
+        .skip(4)
+        .map(FullyQualifiedName::quoteName)
+        .collect(Collectors.joining(Entity.SEPARATOR));
   }
 
   /**

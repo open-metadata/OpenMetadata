@@ -714,6 +714,57 @@ class PIIMaskerTest {
   }
 
   @Test
+  void getColumnProfileResolvesNonNormalizedColumnFqnsAgainstTheRealColumn() {
+    String tableFqn = "service.db.schema.orders";
+    // Redundant quotes on the service segment: the table and the profile rows are looked up with
+    // the normalized hash, so masking must resolve the path through the same normalization — a
+    // character offset taken against the normalized table FQN would slice the raw string mid-word
+    String quotedServiceFqn = "\"service\".db.schema.orders.city";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    Table table =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "email", true), column(tableFqn, "city", false)),
+            false,
+            List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, true);
+
+    List<ColumnProfile> plainProfiles =
+        List.of(new ColumnProfile().withName("city").withNullCount(1.0));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "columns,tags,owners", Include.ALL))
+          .thenReturn(table);
+
+      // An untagged column arriving under a redundantly quoted FQN keeps its statistics
+      List<ColumnProfile> unmasked =
+          PIIMasker.getColumnProfile(quotedServiceFqn, plainProfiles, authorizer, securityContext);
+      assertEquals(1, unmasked.size());
+      assertEquals("city", unmasked.getFirst().getName());
+      assertEquals(1.0, unmasked.getFirst().getNullCount());
+
+      // The PII-tagged column next to it is still masked under the same quoted FQN
+      List<ColumnProfile> piiProfiles =
+          List.of(new ColumnProfile().withName("email").withNullCount(2.0));
+      List<ColumnProfile> masked =
+          PIIMasker.getColumnProfile(quotedServiceFqn, piiProfiles, authorizer, securityContext);
+      assertEquals(1, masked.size());
+      assertNull(masked.getFirst().getName());
+      assertNull(masked.getFirst().getNullCount());
+
+      assertSame(
+          plainProfiles,
+          PIIMasker.getColumnProfile(quotedServiceFqn, plainProfiles, authorizer, securityContext));
+    }
+  }
+
+  @Test
   void getTestCasesMasksSensitiveColumnCasesAndCachesTableLookups() {
     String tableFqn = "service.db.schema.orders";
     EntityReference owner = entityReference(Entity.USER, "owner");
