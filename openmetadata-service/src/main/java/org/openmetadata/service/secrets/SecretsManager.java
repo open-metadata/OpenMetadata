@@ -631,7 +631,7 @@ public abstract class SecretsManager {
                     // check if it has annotation
                   } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
                     // reject a credential the entity does not own before it can be decrypted
-                    requireOwnCredential(fieldName, obj, policy);
+                    requireOwnCredential(fieldName, obj, secretId, policy);
                     // store value if proceed
                     String newFieldValue =
                         storeValue(
@@ -769,7 +769,8 @@ public abstract class SecretsManager {
    * submitter manages themselves is left alone (see {@link #isManagedSecretReference}). The
    * submitted value is deliberately not echoed: it may itself be a stolen token.
    */
-  private void requireOwnCredential(String fieldName, Object value, CredentialPolicy policy) {
+  private void requireOwnCredential(
+      String fieldName, Object value, String secretId, CredentialPolicy policy) {
     if (policy.internalReStorage()) {
       return;
     }
@@ -777,7 +778,8 @@ public abstract class SecretsManager {
     if (!Fernet.isTokenized(fieldValue) && !Boolean.TRUE.equals(isSecret(fieldValue))) {
       return; // a plain value the caller is entitled to store
     }
-    if (Boolean.TRUE.equals(isSecret(fieldValue)) && isAcceptedReference(fieldValue, policy)) {
+    if (Boolean.TRUE.equals(isSecret(fieldValue))
+        && isAcceptedReference(fieldValue, secretId, fieldName, policy)) {
       return;
     }
     throw new SecretsManagerException(
@@ -788,12 +790,47 @@ public abstract class SecretsManager {
             fieldName));
   }
 
-  private boolean isAcceptedReference(String reference, CredentialPolicy policy) {
-    String secretName = reference.substring(SECRET_FIELD_PREFIX.length()).toLowerCase(Locale.ROOT);
-    boolean ownBase =
-        policy.acceptedReferenceBases().stream()
-            .anyMatch(base -> secretName.startsWith(base + secretsIdConfig.separator()));
-    return ownBase || !isManagedSecretName(secretName);
+  private boolean isAcceptedReference(
+      String reference, String secretId, String fieldName, CredentialPolicy policy) {
+    String secretName =
+        toNativeSecretName(reference.substring(SECRET_FIELD_PREFIX.length()))
+            .toLowerCase(Locale.ROOT);
+    if (isEntitysOwnFieldReference(secretName, secretId, fieldName, policy)) {
+      return true;
+    }
+    return acceptsSubtreeReference(secretName, secretId, policy)
+        || !isManagedSecretName(secretName);
+  }
+
+  /**
+   * Whether the reference is exactly the id the walk itself derives for this field, in a node built
+   * from one of the accepted bases. A prefix comparison (an id merely starting with the entity's
+   * base plus a separator) would also let a different entity's id through whenever the separator is
+   * a character entity names may contain - "test" claiming "test-more"'s reference where the
+   * separator is "-" - so the accepted reference must be the whole id, not a prefix of it.
+   */
+  private boolean isEntitysOwnFieldReference(
+      String secretName, String secretId, String fieldName, CredentialPolicy policy) {
+    return policy.acceptedReferenceBases().stream().anyMatch(secretId::startsWith)
+        && secretName.equals(buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+  }
+
+  /**
+   * Accepts a managed reference under the subtree of an accepted base that this walk's node was
+   * <em>not</em> built from. Those references come from another entity's stored connection - a
+   * TEST_CONNECTION request echoing the tested service's stored credential - and the workflow walk
+   * cannot reconstruct the id that walk derives (its own chain of containers differs), so the
+   * subtree is matched wholesale. The HTTP paths that produce such a reference have already
+   * required byte-for-byte equality with a stored value (see
+   * {@code PasswordEntityMasker#requireOwnStoredValue}); this pass is the backstop.
+   */
+  private boolean acceptsSubtreeReference(
+      String secretName, String secretId, CredentialPolicy policy) {
+    return policy.acceptedReferenceBases().stream()
+        .anyMatch(
+            base ->
+                !secretId.startsWith(base)
+                    && secretName.startsWith(base + secretsIdConfig.separator()));
   }
 
   /**
@@ -813,9 +850,21 @@ public abstract class SecretsManager {
 
   private boolean isManagedSecretName(String secretName) {
     String namespaceRoot = buildSecretId(true);
-    return secretName
+    return toNativeSecretName(secretName)
         .toLowerCase(Locale.ROOT)
         .startsWith(namespaceRoot + secretsIdConfig.separator());
+  }
+
+  /**
+   * Maps a provider's alternative identifier for the same secret - an ARN, say - to the native
+   * secret name, so ownership is classified on the canonical form. Providers whose backends accept
+   * an identifier other than the name in their read call (GetSecretValue's {@code secretId} also
+   * takes an ARN, GetParameter's {@code name} too) resolve a reference written in that form and
+   * would otherwise have it accepted here as an external reference to a vault the submitter
+   * manages themselves, when it points into this deployment's managed namespace.
+   */
+  protected String toNativeSecretName(String secretName) {
+    return secretName;
   }
 
   protected abstract String storeValue(

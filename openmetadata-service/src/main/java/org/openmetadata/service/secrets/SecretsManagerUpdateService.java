@@ -402,7 +402,10 @@ public class SecretsManagerUpdateService {
       workflowObject =
           secretManager.encryptWorkflow(
               workflowObject, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
-      ingestionPipelineRepository.getDao().update(workflowObject);
+      // EntityDAO.update writes to the DAO's own table, keyed on the entity's id and FQN: writing
+      // the workflow through the ingestion-pipeline DAO would run the UPDATE against
+      // ingestion_pipeline_entity and silently drop it.
+      workflowRepository.getDao().update(workflowObject);
     } catch (EntityNotFoundException e) {
       LOG.warn("Workflow {} not found during secrets migration. Skipping.", workflow.getId());
     } catch (Exception e) {

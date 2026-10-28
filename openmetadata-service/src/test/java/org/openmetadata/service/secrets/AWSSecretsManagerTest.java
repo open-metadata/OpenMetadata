@@ -170,6 +170,57 @@ public class AWSSecretsManagerTest extends AWSBasedSecretsManagerTest {
             + "not fetched from the server's secrets manager");
   }
 
+  /**
+   * Secrets Manager's GetSecretValue resolves a secret's ARN wherever it resolves the name, so a
+   * reference written in ARN form points at the same secret as the name form: one whose canonical
+   * name falls inside the deployment's managed namespace under another entity's base must be
+   * rejected, not waved through as a self-managed external reference.
+   */
+  @Test
+  void testEncryptRejectsAnArnReferenceToAnotherEntitysSecret() {
+    String victimArnReference =
+        SecretsManager.SECRET_FIELD_PREFIX
+            + "arn:aws:secretsmanager:us-east-1:123456789012:secret:/prefix/openmetadata/database/"
+            + "other-service/authtype/password";
+    Map<String, Map<String, String>> mysqlConnection =
+        Map.of("authType", Map.of("password", victimArnReference));
+
+    SecretsManagerException rejected =
+        assertThrows(
+            SecretsManagerException.class,
+            () ->
+                secretsManager.encryptServiceConnectionConfig(
+                    mysqlConnection, Mysql.value(), "test", ServiceType.DATABASE));
+
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertFalse(
+        rejected.getMessage().contains(victimArnReference), "the reference must not be echoed");
+  }
+
+  @Test
+  void testEncryptAcceptsAnArnReferenceIntoASubmitterManagedVault() {
+    String ownVaultArnReference =
+        SecretsManager.SECRET_FIELD_PREFIX
+            + "arn:aws:secretsmanager:us-east-1:123456789012:secret:own-vault/database/password";
+    Map<String, Map<String, String>> mysqlConnection =
+        Map.of("authType", Map.of("password", ownVaultArnReference));
+
+    MysqlConnection actualConnection =
+        (MysqlConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                mysqlConnection, Mysql.value(), "test", ServiceType.DATABASE);
+
+    MysqlConnection decryptedConnection =
+        (MysqlConnection)
+            secretsManager.decryptServiceConnectionConfig(
+                actualConnection, Mysql.value(), ServiceType.DATABASE);
+    assertEquals(
+        ownVaultArnReference,
+        JsonUtils.convertValue(decryptedConnection.getAuthType(), basicAuth.class).getPassword(),
+        "an ARN reference into a vault the submitter manages themselves must be kept, "
+            + "not re-stored as this deployment's own");
+  }
+
   @Test
   void existSecretReturnsFalseWhenSecretIsGenuinelyNotFound() {
     reset(secretsManagerClient);

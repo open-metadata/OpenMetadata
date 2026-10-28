@@ -89,7 +89,7 @@ public abstract class ExternalSecretsManagerTest {
   @Test
   void testEncryptDecryptWorkflow() {
     String password =
-        "secret:/openmetadata/workflow/my-workflow/request/connection/config/password";
+        "secret:/openmetadata/workflow/my-workflow/request/connection/config/authtype/password";
     String secretKey = "secret:/openmetadata/serverconnection/securityconfig/secretkey";
     OpenMetadataConnection connection =
         new OpenMetadataConnection()
@@ -172,6 +172,31 @@ public abstract class ExternalSecretsManagerTest {
     assertTrue(rejected.getMessage().contains("Password"), rejected.getMessage());
     assertFalse(
         rejected.getMessage().contains(foreignReference), "the reference must not be echoed");
+  }
+
+  /**
+   * The entity's name is not the end of the comparison: the separator is a character entity names
+   * may contain, so a reference merely starting with the entity's base plus a separator can name a
+   * different entity's secret ("test" borrowing "test-more"'s reference where the separator is "-",
+   * say). A stored reference must be the whole id the walk derives for this field.
+   */
+  @Test
+  void testEncryptRejectsAReferenceWhoseServiceNameExtendsTheEntitysName() {
+    String separator = secretsManager.getSecretsIdConfig().separator();
+    String extendedReference = servicePasswordReference("test" + separator + "more");
+    MysqlConnection connection =
+        new MysqlConnection().withAuthType(new basicAuth().withPassword(extendedReference));
+
+    SecretsManagerException rejected =
+        assertThrows(
+            SecretsManagerException.class,
+            () ->
+                secretsManager.encryptServiceConnectionConfig(
+                    connection, Mysql.value(), "test", ServiceType.DATABASE));
+
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertFalse(
+        rejected.getMessage().contains(extendedReference), "the reference must not be echoed");
   }
 
   @Test

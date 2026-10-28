@@ -31,6 +31,7 @@ import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 @Slf4j
 public class AWSSecretsManager extends AWSBasedSecretsManager {
   private static AWSSecretsManager instance = null;
+  private static final String SECRET_MANAGER_ARN_RESOURCE_SEGMENT = ":secret:";
   private SecretsManagerClient secretsClient;
 
   private AWSSecretsManager(SecretsConfig secretsConfig) {
@@ -82,6 +83,19 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
     GetSecretValueRequest getSecretValueRequest =
         GetSecretValueRequest.builder().secretId(secretName).build();
     return this.secretsClient.getSecretValue(getSecretValueRequest).secretString();
+  }
+
+  /**
+   * Secrets Manager's ARN carries the secret name after a {@code secret:} segment (the resource
+   * separator is a colon, unlike SSM's slash), and {@link #getSecret} resolves it as-is. The ARN
+   * cannot contain a colon inside the name, so finding the segment recovers the name exactly.
+   */
+  @Override
+  protected String toNativeSecretName(String secretName) {
+    int resourceSegment = secretName.indexOf(SECRET_MANAGER_ARN_RESOURCE_SEGMENT);
+    return resourceSegment >= 0
+        ? secretName.substring(resourceSegment + SECRET_MANAGER_ARN_RESOURCE_SEGMENT.length())
+        : secretName;
   }
 
   @Override

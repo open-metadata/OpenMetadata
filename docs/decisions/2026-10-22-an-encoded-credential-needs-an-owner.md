@@ -3,10 +3,14 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-22 (initial); v2 2026-10-23 (the PATCH pipeline's prepare pass is a
   re-storage after the masker pass, and an HTTP request body is typed before its provenance is
-  checked)
+  checked); v3 2026-10-27 (an own-base reference must be the exact per-field id, and provider
+  identifier forms are canonicalized before classification)
 - **Deciders:** reviewers of the foreign-credential-rejection PR
 - **Guard:** `DBSecretsManagerTest#testEncryptRejectsAForeignFernetToken`,
-  `ExternalSecretsManagerTest#testEncryptRejectsAReferenceToAnotherEntitysSecret`,
+  `ExternalSecretsManagerTest#testEncryptRejectsAReferenceToAnotherEntitysSecret` and
+  `#testEncryptRejectsAReferenceWhoseServiceNameExtendsTheEntitysName`,
+  `AWSSSMSecretsManagerTest#testEncryptRejectsAnArnReferenceToAnotherEntitysSecret`,
+  `AWSSecretsManagerTest#testEncryptRejectsAnArnReferenceToAnotherEntitysSecret`,
   `PasswordEntityMaskerForeignCredentialTest` (all fail if the guards are removed);
   `SecretsManagerCredentialValidationIT` and `SecretsManagerNullSecretIT` (end-to-end over the
   service API — the latter also pins the rename PATCH and the TEST_CONNECTION echo over HTTP)
@@ -87,3 +91,29 @@ no stored service behind it) accepts plaintext and external references and rejec
 since there is nothing to compare against. Collate-side re-storage call sites (query runner config,
 context plugin connections) must use the new internal re-storage overloads or strict defaults will
 reject their stored copies.
+
+## Amendment — 2026-10-27: the accepted reference is an exact id, and provider identifier forms are canonicalized
+
+Layer 1's reference check compared against the entity's accepted bases as a prefix (base plus a
+separator). Two shapes slip past a prefix match. First, the separator is a character entity names
+may contain (Azure Key Vault and Kubernetes separate ids with "-", GCP with "_"), so "test" could
+borrow "test-more"'s reference: it starts with "test"'s base and separator and is not a boundary of
+its own. The encrypt pass now accepts a reference under an accepted base the walk itself built
+(which is every pass's root) only when it equals the whole id the walk derives for the field;
+references under an accepted base the walk did not build from — the TEST_CONNECTION echo of the
+tested service's stored credential, whose container chain the workflow walk cannot reconstruct —
+remain subtree-matched, backed by the masker's byte-equality on every HTTP path that produces them.
+A reference whose stored chain no longer matches the walk (a schema change that re-nested a field)
+is now rejected on a user save; resending the plain value recovers.
+
+Second, AWS Secrets Manager and AWS SSM resolve a secret's ARN wherever they resolve its name
+(`GetSecretValue.secretId`, `GetParameter.name`), so a reference written in ARN form resolves as
+the same secret while looking, to the check, like a pointer into a vault the submitter manages
+themselves. Both managers now canonicalize an ARN to the native secret name before classification
+(`SecretsManager#toNativeSecretName`), for the encrypt pass and the masker alike; other providers'
+read calls only accept names, so their canonical form is the identity.
+
+The secrets-manager migration that re-stores workflow values writes them back through the workflow
+DAO: EntityDAO.update binds the table of the DAO it is called on, and the migration previously
+called the ingestion-pipeline DAO's update with a workflow, updating zero rows and silently
+dropping the re-encrypted workflow.
