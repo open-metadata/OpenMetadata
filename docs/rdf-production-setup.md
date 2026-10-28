@@ -416,26 +416,45 @@ idle dataset's disk entirely, stop Fuseki and remove the unused
 
 ## Compaction and disk growth
 
-OpenMetadata requests Fuseki compaction after clearing a recreate run and after indexing its
-records. Blue/green runs compact the target before promotion so live writers can continue using
-the serving dataset. In-place runs compact after reporting completion. TDB2 copies index pages
-even during insert-only writes; clearing and compacting an
-empty target does not reclaim the obsolete pages created during its subsequent rebuild. Larger
-bounded batches reduce transaction churn, but the volume must still accommodate peak usage before
-compaction. See the [scale validation](rdf-scale-validation.md) for measurements and workload settings.
-Compaction is best-effort: an indexing run can succeed even if disk reclamation fails.
+TDB2 never reuses space on its own. Every write transaction copies the index pages it touches,
+and the old pages stay on disk until the dataset is compacted. A store that only receives live
+writes therefore grows with every entity change: a full rewrite of one entity costs several
+hundred kilobytes, so a nightly ingestion that changes tens of thousands of entities adds tens of
+gigabytes. Only compaction returns that space, and it needs free space about the size of the live
+data to copy it into.
 
-To compact manually:
+OpenMetadata compacts the serving dataset itself:
+
+- **On a schedule.** One server compacts every `RDF_COMPACTION_INTERVAL_HOURS`, while the RDF
+  reindex lock keeps it from overlapping an indexing run.
+- **During indexing.** A recreate run clears the dataset, compacts it while it is empty, and
+  compacts again after loading. Blue/green runs compact the target before promotion.
+
+Fuseki blocks every writer to a dataset for the whole compaction, so OpenMetadata pauses its own
+writes to the serving dataset first, on every server. Queued live writes wait in SQL and are
+applied once the pause ends; waiting does not count as a failed delivery attempt and does not mark
+the projection degraded. Synchronous writes are refused with a retry-later error meanwhile.
+`RDF_MAINTENANCE_MAX_DURATION_MINUTES` bounds how long a compaction, or the clear that starts a
+recreate run, may hold that pause. Both run under this budget rather than the per-request timeout:
+Fuseki cannot cancel a `CLEAR`, so a shorter budget would only abandon a clear that still completes.
+
+Size the volume for the growth between compactions on top of the live data. TDB2 memory-maps
+its files, so a write on a full volume does not fail cleanly: the JVM gets SIGBUS and exits on
+every restart.
+
+Each compaction is logged, and timed by outcome in `rdf.storage.maintenance`; alert on
+`rdf.storage.maintenance.last.success` falling behind the interval. A compaction that does not
+succeed is logged as an error and retried at the next check. To compact by hand:
 
 ```bash
 curl -u admin:<password> -X POST \
   'http://localhost:3030/$/compact/openmetadata?deleteOld=true'
 ```
 
-Fuseki returns an asynchronous task identifier. Inspect active and completed tasks at `/$/tasks`
-and confirm the data volume has enough space for both the old and replacement datasets. TDB2 index
-growth can reflect small transactions, failed or skipped compaction, or a volume that filled before
-compaction completed. [Jena storage FAQ](https://jena.apache.org/documentation/tdb/faqs.html).
+Fuseki returns an asynchronous task identifier; `/$/tasks/<id>` reports `success` once it has
+finished. Writes to the dataset wait until it does. See the
+[Jena storage FAQ](https://jena.apache.org/documentation/tdb/faqs.html) and the
+[scale validation](rdf-scale-validation.md) for measurements.
 
 ## Configuration reference
 
@@ -466,6 +485,9 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_REMOTE_PASSWORD` | `admin` |
 | `RDF_DATASET` | `openmetadata` |
 | `RDF_INFERENCE_ENABLED` | `false` |
+| `RDF_STORAGE_MAINTENANCE_ENABLED` | `true` |
+| `RDF_COMPACTION_INTERVAL_HOURS` | `24` |
+| `RDF_MAINTENANCE_MAX_DURATION_MINUTES` | `240` |
 
 Use `RDF_ENDPOINT` for new deployments. `RDF_REMOTE_ENDPOINT` remains a deprecated fallback for
 backward compatibility, and `RDF_ENDPOINT` takes precedence when both are set. Override the

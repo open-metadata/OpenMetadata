@@ -45,6 +45,7 @@ import org.openmetadata.service.rdf.RdfExcludedEntities;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
+import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.quartz.JobExecutionContext;
@@ -251,7 +252,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
         updateJobStatus(EventPublisherJob.Status.COMPLETED);
         if (!promoted) {
           // In-place indexing reports completion before potentially lengthy disk maintenance.
-          compactStorageBestEffort(indexingRepository);
+          compactServingBestEffort();
         }
       }
 
@@ -385,6 +386,23 @@ public class RdfIndexApp extends AbstractNativeApplication {
     jobData.setFailure(
         new IndexingError().withErrorSource(IndexingError.ErrorSource.JOB).withMessage(message));
     sendUpdates(jobExecutionContext, true);
+  }
+
+  /**
+   * Live writes keep reaching the serving dataset while it is compacted, and Fuseki blocks them for
+   * the whole copy, so they are paused meanwhile instead of timing out.
+   */
+  private void compactServingBestEffort() {
+    try {
+      rdf()
+          .withServingWritesPaused(
+              runId.toString(), () -> rdf().compact(rdf().maintenanceBudget()));
+    } catch (RuntimeException compactFailure) {
+      LOG.warn(
+          "RDF index compaction failed; disk reclamation skipped. Reason: {}",
+          compactFailure.getMessage(),
+          compactFailure);
+    }
   }
 
   private void compactStorageBestEffort(final RdfRepository repository) {
@@ -652,25 +670,56 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
   }
 
+  /**
+   * Empties the serving dataset with every other writer paused. Live writes queue meanwhile and
+   * are applied once the pause ends, so the clear never competes with them for Fuseki's writer.
+   */
   private void clearRdfData() {
     try {
-      rdf().clearAll();
-      LOG.info("Cleared all RDF data");
-      // CLEAR ALL is a logical delete on TDB2: triples are marked free but the
-      // on-disk dataset and journal keep growing across runs. Compact NOW while
-      // the dataset is essentially empty so the next re-ingest writes into a
-      // fresh, small dataset directory. Without this, every recreateIndex run
-      // accumulates ~1x the dataset size on disk and the PVC eventually fills.
-      // Must run BEFORE reloadOntologies(), otherwise the ontology graph gets
-      // copied through compaction unnecessarily.
-      rdf().compactStorage();
-      // CLEAR ALL wipes the ontology and shapes graphs as well; reload them
-      // before indexing starts so SPARQL queries that depend on the ontology
-      // (inference, federated, etc.) work after the wipe.
-      rdf().reloadOntologies();
-    } catch (Exception e) {
+      rdf()
+          .withServingWritesPaused(
+              runId.toString(),
+              () -> {
+                resetServingDataset();
+                return null;
+              });
+    } catch (RuntimeException e) {
       LOG.error("Failed to clear RDF data", e);
-      throw new RuntimeException("Failed to clear RDF data", e);
+      throw new IllegalStateException("Failed to clear RDF data", e);
+    }
+  }
+
+  /**
+   * CLEAR ALL is a logical delete on TDB2: it writes new pages and frees nothing, so the dataset is
+   * compacted while it is empty, before the reload, whether or not the clear reported success. A
+   * clear that timed out keeps running in Fuseki and the compaction waits for it, so only the
+   * store's own answer afterwards says whether the clear happened. CLEAR ALL also wipes the ontology
+   * and shapes graphs, which are reloaded before indexing starts.
+   */
+  private void resetServingDataset() {
+    RuntimeException clearFailure = null;
+    try {
+      rdf().clearAllAsMaintenance(rdf().maintenanceBudget());
+    } catch (RuntimeException exception) {
+      clearFailure = exception;
+    }
+    rdf().compact(rdf().maintenanceBudget());
+    requireCleared(clearFailure);
+    LOG.info("Cleared all RDF data");
+    rdf().reloadOntologies();
+  }
+
+  private void requireCleared(final RuntimeException clearFailure) {
+    final boolean cleared =
+        clearFailure == null
+            || (RdfWriteOutcomeUnknownException.isPresent(clearFailure) && rdf().isStoreEmpty());
+    if (!cleared) {
+      throw clearFailure != null
+          ? clearFailure
+          : new IllegalStateException("The RDF store still holds data after CLEAR ALL");
+    }
+    if (clearFailure != null) {
+      LOG.warn("The RDF clear outlived its budget but completed in Fuseki", clearFailure);
     }
   }
 

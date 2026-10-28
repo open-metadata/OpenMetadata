@@ -13,16 +13,20 @@
 package org.openmetadata.service.rdf;
 
 import java.time.Clock;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.api.configuration.rdf.RdfStorageMaintenanceConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.config.AsyncOperationsConfiguration;
+import org.openmetadata.service.rdf.maintenance.RdfStorageMaintenanceService;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
@@ -30,6 +34,7 @@ import org.openmetadata.service.util.PostCommitActionQueue;
 public final class RdfUpdater {
   private static volatile Consumer<RdfLiveWrite> writeQueue;
   private static RdfLiveWriter writer;
+  private static RdfStorageMaintenanceService maintenance;
 
   private RdfUpdater() {}
 
@@ -57,7 +62,28 @@ public final class RdfUpdater {
               AsyncService.getInstance().getExecutorService());
       writeQueue = writer::enqueue;
       writer.start();
+      startStorageMaintenance(config);
       LOG.info("RDF updater initialized with durable, ordered live writes");
+    }
+  }
+
+  private static void startStorageMaintenance(final RdfConfiguration config) {
+    final RdfStorageMaintenanceConfig maintenanceConfig =
+        Optional.ofNullable(config.getStorageMaintenance())
+            .orElseGet(RdfStorageMaintenanceConfig::new);
+    if (Boolean.TRUE.equals(maintenanceConfig.getEnabled())) {
+      maintenance =
+          new RdfStorageMaintenanceService(
+              maintenanceConfig,
+              Entity.getCollectionDAO().rdfReindexLockDAO(),
+              RdfRepository::getInstance,
+              Clock.systemUTC(),
+              ServerIdentityResolver.getInstance().getServerId());
+      maintenance.start();
+    } else {
+      LOG.warn(
+          "RDF storage maintenance is disabled: Fuseki's disk use grows until the RDF reindex"
+              + " app compacts it");
     }
   }
 
@@ -72,6 +98,10 @@ public final class RdfUpdater {
 
   public static synchronized void stop() {
     writeQueue = null;
+    if (maintenance != null) {
+      maintenance.close();
+      maintenance = null;
+    }
     if (writer != null) {
       writer.close();
       writer = null;

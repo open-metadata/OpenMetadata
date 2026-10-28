@@ -199,6 +199,11 @@ public final class RdfRebuildStore {
       return activeDataset;
     }
 
+    /** Refuses the write when storage maintenance has paused writes to the serving dataset. */
+    void requireLiveWritesAllowed() {
+      RdfLiveWritePause.requireWritable(handle, clock.millis());
+    }
+
     public State state() {
       return RdfRebuildStore.state(handle);
     }

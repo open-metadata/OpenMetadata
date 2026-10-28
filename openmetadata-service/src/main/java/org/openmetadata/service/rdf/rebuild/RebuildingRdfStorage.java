@@ -16,6 +16,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -114,6 +115,20 @@ final class RebuildingRdfStorage extends ForwardingRdfStorage {
   public void executeSparqlUpdate(final String statement) {
     mutate(
         storage -> storage.executeSparqlUpdate(statement), () -> new RdfMutation.Sparql(statement));
+  }
+
+  /**
+   * Maintenance of the serving dataset runs under the write pause instead of the serving row
+   * lock, so a long clear never holds a database transaction open; a build dataset has no other
+   * writers and is fenced as usual.
+   */
+  @Override
+  public void executeMaintenanceUpdate(final String statement, final Duration timeout) {
+    if (target == null) {
+      manager.maintainServing(storage -> storage.executeMaintenanceUpdate(statement, timeout));
+    } else {
+      manager.writeBuild(target, storage -> storage.executeMaintenanceUpdate(statement, timeout));
+    }
   }
 
   @Override
