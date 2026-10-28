@@ -478,7 +478,10 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
       data-testid="alerts-list-container"
       direction="col"
       gap={4}>
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col"
+        size="compact"
+        variant="muted">
         <Box className="tw:overflow-y-auto">
           <Table
             aria-label={t('label.alert-plural')}
