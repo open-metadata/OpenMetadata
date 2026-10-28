@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
+import { migratedTo } from '../../../constant/migration';
 import { Domain } from '../../../support/domain/Domain';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
+
+const RESOLUTION_IT = migratedTo.javaIT(
+  'TaskEntityTypeResolutionIT#approvedMetadataTaskAppliesToEntity'
+);
 
 /**
  * Task Tests for Container Entities
@@ -77,270 +82,288 @@ test.describe('Task Creation and Resolution - Container Entity', () => {
     }
   });
 
-  test('should create and approve entity-level description task for Container', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create and approve entity-level description task for Container',
+    migratedTo.javaIT(
+      'TaskResourceIT#testResolveContainerDescriptionUpdateTask'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    const newDescription = 'Updated Container description from task';
+      const newDescription = 'Updated Container description from task';
 
-    try {
-      // Create DescriptionUpdate task for entity level
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            fieldPath: 'description',
-            newDescription: newDescription,
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
+      try {
+        // Create DescriptionUpdate task for entity level
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
-            resolutionType: 'Approved',
-            newValue: newDescription,
+            about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DescriptionUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              fieldPath: 'description',
+              newDescription: newDescription,
+            },
           },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
 
-      // Verify description was updated
-      const containerResponse = await apiContext.get(
-        `/api/v1/containers/${container.entityResponseData?.id}`
-      );
-      const updatedContainer = await containerResponse.json();
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+              newValue: newDescription,
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      expect(updatedContainer.description).toBe(newDescription);
-    } finally {
-      await afterAction();
-    }
-  });
+        // Verify description was updated
+        const containerResponse = await apiContext.get(
+          `/api/v1/containers/${container.entityResponseData?.id}`
+        );
+        const updatedContainer = await containerResponse.json();
 
-  test('should create and approve dataModel column description task for Container', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      // Get container to find dataModel column name
-      const containerResponse = await apiContext.get(
-        `/api/v1/containers/${container.entityResponseData?.id}?fields=dataModel`
-      );
-      const containerData = await containerResponse.json();
-
-      const columns = containerData.dataModel?.columns;
-      if (!columns || columns.length === 0) {
-        console.log('No dataModel columns in container, skipping test');
-        return;
+        expect(updatedContainer.description).toBe(newDescription);
+      } finally {
+        await afterAction();
       }
-
-      const columnName = columns[0].name;
-      const newColumnDescription =
-        'Updated dataModel column description from task';
-
-      // Create DescriptionUpdate task for dataModel column
-      // Format: dataModel::columnName::description
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            fieldPath: `dataModel::${columnName}::description`,
-            newDescription: newColumnDescription,
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-            newValue: newColumnDescription,
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
-
-      // Verify dataModel column description was updated
-      const updatedContainerResponse = await apiContext.get(
-        `/api/v1/containers/${container.entityResponseData?.id}?fields=dataModel`
-      );
-      const updatedContainer = await updatedContainerResponse.json();
-
-      const updatedColumn = updatedContainer.dataModel?.columns?.find(
-        (col: { name: string }) => col.name === columnName
-      );
-      expect(updatedColumn?.description).toBe(newColumnDescription);
-    } finally {
-      await afterAction();
     }
-  });
+  );
 
-  test('should create OwnershipUpdate task for Container', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create and approve dataModel column description task for Container',
+    migratedTo.javaIT(
+      'TaskResourceIT#testResolveContainerDataModelColumnDescriptionUpdate'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create a new user to be the new owner
-      const newOwner = new UserClass();
-      await newOwner.create(apiContext);
+      try {
+        // Get container to find dataModel column name
+        const containerResponse = await apiContext.get(
+          `/api/v1/containers/${container.entityResponseData?.id}?fields=dataModel`
+        );
+        const containerData = await containerResponse.json();
 
-      // Create OwnershipUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
-          type: 'OwnershipUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            currentOwners: [{ id: ownerUser.responseData.id, type: 'user' }],
-            newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('OwnershipUpdate');
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-          },
+        const columns = containerData.dataModel?.columns;
+        if (!columns || columns.length === 0) {
+          console.log('No dataModel columns in container, skipping test');
+          return;
         }
-      );
-      expect(resolveResponse.ok()).toBe(true);
 
-      // Verify ownership changed
-      const containerResponse = await apiContext.get(
-        `/api/v1/containers/${container.entityResponseData?.id}?fields=owners`
-      );
-      const updatedContainer = await containerResponse.json();
+        const columnName = columns[0].name;
+        const newColumnDescription =
+          'Updated dataModel column description from task';
 
-      expect(updatedContainer.owners).toBeDefined();
-      expect(updatedContainer.owners[0].id).toBe(newOwner.responseData.id);
-
-      // Cleanup new owner
-      await newOwner.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('should create TierUpdate task for Container', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      // Create TierUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
-          type: 'TierUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            newTier: {
-              tagFQN: 'Tier.Tier4',
-              source: 'Classification',
-              labelType: 'Manual',
-              state: 'Confirmed',
+        // Create DescriptionUpdate task for dataModel column
+        // Format: dataModel::columnName::description
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DescriptionUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              fieldPath: `dataModel::${columnName}::description`,
+              newDescription: newColumnDescription,
             },
           },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('TierUpdate');
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
 
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+              newValue: newColumnDescription,
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      // Verify tier was applied
-      const containerResponse = await apiContext.get(
-        `/api/v1/containers/${container.entityResponseData?.id}?fields=tags`
-      );
-      const updatedContainer = await containerResponse.json();
+        // Verify dataModel column description was updated
+        const updatedContainerResponse = await apiContext.get(
+          `/api/v1/containers/${container.entityResponseData?.id}?fields=dataModel`
+        );
+        const updatedContainer = await updatedContainerResponse.json();
 
-      const hasTier = updatedContainer.tags?.some(
-        (tag: { tagFQN: string }) => tag.tagFQN === 'Tier.Tier4'
-      );
-      expect(hasTier).toBe(true);
-    } finally {
-      await afterAction();
+        const updatedColumn = updatedContainer.dataModel?.columns?.find(
+          (col: { name: string }) => col.name === columnName
+        );
+        expect(updatedColumn?.description).toBe(newColumnDescription);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 
-  test('should create DomainUpdate task for Container', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create OwnershipUpdate task for Container',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create DomainUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DomainUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            newDomain: {
-              id: domain.responseData.id,
-              type: 'domain',
-              fullyQualifiedName: domain.responseData.fullyQualifiedName,
+      try {
+        // Create a new user to be the new owner
+        const newOwner = new UserClass();
+        await newOwner.create(apiContext);
+
+        // Create OwnershipUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
+            type: 'OwnershipUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              currentOwners: [{ id: ownerUser.responseData.id, type: 'user' }],
+              newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
             },
           },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('DomainUpdate');
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('OwnershipUpdate');
 
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      // Verify domain was applied
-      const containerResponse = await apiContext.get(
-        `/api/v1/containers/${container.entityResponseData?.id}?fields=domains`
-      );
-      const updatedContainer = await containerResponse.json();
+        // Verify ownership changed
+        const containerResponse = await apiContext.get(
+          `/api/v1/containers/${container.entityResponseData?.id}?fields=owners`
+        );
+        const updatedContainer = await containerResponse.json();
 
-      expect(updatedContainer.domains?.length).toBeGreaterThan(0);
-      expect(updatedContainer.domains[0].id).toBe(domain.responseData.id);
-    } finally {
-      await afterAction();
+        expect(updatedContainer.owners).toBeDefined();
+        expect(updatedContainer.owners[0].id).toBe(newOwner.responseData.id);
+
+        // Cleanup new owner
+        await newOwner.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
+
+  test(
+    'should create TierUpdate task for Container',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      try {
+        // Create TierUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
+            type: 'TierUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              newTier: {
+                tagFQN: 'Tier.Tier4',
+                source: 'Classification',
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            },
+          },
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('TierUpdate');
+
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
+
+        // Verify tier was applied
+        const containerResponse = await apiContext.get(
+          `/api/v1/containers/${container.entityResponseData?.id}?fields=tags`
+        );
+        const updatedContainer = await containerResponse.json();
+
+        const hasTier = updatedContainer.tags?.some(
+          (tag: { tagFQN: string }) => tag.tagFQN === 'Tier.Tier4'
+        );
+        expect(hasTier).toBe(true);
+      } finally {
+        await afterAction();
+      }
+    }
+  );
+
+  test(
+    'should create DomainUpdate task for Container',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      try {
+        // Create DomainUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DomainUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              newDomain: {
+                id: domain.responseData.id,
+                type: 'domain',
+                fullyQualifiedName: domain.responseData.fullyQualifiedName,
+              },
+            },
+          },
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('DomainUpdate');
+
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
+
+        // Verify domain was applied
+        const containerResponse = await apiContext.get(
+          `/api/v1/containers/${container.entityResponseData?.id}?fields=domains`
+        );
+        const updatedContainer = await containerResponse.json();
+
+        expect(updatedContainer.domains?.length).toBeGreaterThan(0);
+        expect(updatedContainer.domains[0].id).toBe(domain.responseData.id);
+      } finally {
+        await afterAction();
+      }
+    }
+  );
 });

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { migratedTo } from '../../../constant/migration';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { expect, test as base } from '../../../support/fixtures/base';
@@ -132,33 +133,45 @@ test.describe('Domain isolation - domain listing page @domain-isolation', () => 
     }
   });
 
-  test('userA sees only tenantA on the domains listing page', async ({
-    userAPage,
-  }) => {
-    await openDomainListing(userAPage);
+  test(
+    'userA sees only tenantA on the domains listing page',
+    migratedTo.javaIT(
+      'DomainIsolationIT#test_domainSearch_restrictedUserSeesOnlyOwnDomains'
+    ),
+    async ({ userAPage }) => {
+      await openDomainListing(userAPage);
 
-    await expect(userAPage.getByTestId(tenantA.data.name)).toBeVisible();
-    await expect(userAPage.getByTestId(tenantB.data.name)).toHaveCount(0);
-  });
+      await expect(userAPage.getByTestId(tenantA.data.name)).toBeVisible();
+      await expect(userAPage.getByTestId(tenantB.data.name)).toHaveCount(0);
+    }
+  );
 
-  test('userB sees only tenantB on the domains listing page', async ({
-    userBPage,
-  }) => {
-    await openDomainListing(userBPage);
+  test(
+    'userB sees only tenantB on the domains listing page',
+    migratedTo.javaIT(
+      'DomainIsolationIT#test_domainSearch_restrictedUserSeesOnlyOwnDomains'
+    ),
+    async ({ userBPage }) => {
+      await openDomainListing(userBPage);
 
-    await expect(userBPage.getByTestId(tenantB.data.name)).toBeVisible();
-    await expect(userBPage.getByTestId(tenantA.data.name)).toHaveCount(0);
-  });
+      await expect(userBPage.getByTestId(tenantB.data.name)).toBeVisible();
+      await expect(userBPage.getByTestId(tenantA.data.name)).toHaveCount(0);
+    }
+  );
 
-  test('admin sees both tenants on the domains listing page', async ({
-    adminPage,
-  }) => {
-    await openDomainListing(adminPage);
+  test(
+    'admin sees both tenants on the domains listing page',
+    migratedTo.javaIT(
+      'DomainIsolationIT#test_entityTypeCounts_respectPermissionsAndCachePrincipal'
+    ),
+    async ({ adminPage }) => {
+      await openDomainListing(adminPage);
 
-    await searchDomainInListing(adminPage, tenantA);
-    await expect(adminPage.getByTestId(tenantA.data.name)).toBeVisible();
+      await searchDomainInListing(adminPage, tenantA);
+      await expect(adminPage.getByTestId(tenantA.data.name)).toBeVisible();
 
-    await searchDomainInListing(adminPage, tenantB);
-    await expect(adminPage.getByTestId(tenantB.data.name)).toBeVisible();
-  });
+      await searchDomainInListing(adminPage, tenantB);
+      await expect(adminPage.getByTestId(tenantB.data.name)).toBeVisible();
+    }
+  );
 });

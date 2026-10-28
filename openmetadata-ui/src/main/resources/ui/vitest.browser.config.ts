@@ -24,7 +24,9 @@
  *   yarn test:ui:coverage   # istanbul coverage, merged with Jest's in CI
  */
 import { playwright } from '@vitest/browser-playwright';
-import { readFileSync } from 'fs';
+import { appendFileSync, mkdirSync, readFileSync } from 'fs';
+import { join, relative } from 'path';
+import type { BrowserCommand } from 'vitest/node';
 import { defineConfig, mergeConfig, type Plugin } from 'vitest/config';
 import appViteConfig from './vite.config';
 
@@ -47,6 +49,24 @@ const mswServiceWorker = (): Plugin => {
 
 const headless = process.env.HEADED !== 'true';
 
+// Set on main's full run: each test file records the source files it executed
+// (src/test/browser/impact.ts). PRs select tests from the merged map
+// (scripts/select-browser-tests.mjs).
+const impactDir = process.env.BROWSER_IMPACT_DIR;
+
+const recordImpact: BrowserCommand<[used: string[]]> = (ctx, used) => {
+  if (!impactDir || !ctx.testPath) {
+    return;
+  }
+  mkdirSync(impactDir, { recursive: true });
+  const test = relative(__dirname, ctx.testPath);
+  const files = used.map((path) => relative(__dirname, path));
+  appendFileSync(
+    join(impactDir, `${process.pid}.jsonl`),
+    `${JSON.stringify({ test, used: files })}\n`
+  );
+};
+
 export default defineConfig(async (env) => {
   const base =
     typeof appViteConfig === 'function'
@@ -62,6 +82,14 @@ export default defineConfig(async (env) => {
     },
     {
       plugins: [mswServiceWorker()],
+      // Read by src/test/browser/timeouts.ts: a suite's own time limit
+      // doubles under --coverage, as the CLI --testTimeout does.
+      define: {
+        __BROWSER_TEST_TIME_SCALE__: JSON.stringify(
+          process.argv.includes('--coverage') ? 2 : 1
+        ),
+        __BROWSER_IMPACT__: JSON.stringify(Boolean(impactDir)),
+      },
       optimizeDeps: {
         include: [
           'msw/browser',
@@ -79,7 +107,20 @@ export default defineConfig(async (env) => {
         name: 'ui-integration',
         include: ['src/**/*.browser.test.{ts,tsx}'],
         setupFiles: ['src/test/browser/setup.ts'],
-        testTimeout: 15_000,
+        // With isolate:false the first test to open a page in a worker loads
+        // that page's module graph; on a busy CI runner that alone has taken
+        // >15 s. test:ui:coverage raises this to 45 s for istanbul's overhead.
+        testTimeout: 30_000,
+        // expect.poll / expect.element default to 1 s, which a page's write
+        // round trip can exceed on a busy runner; a condition that never comes
+        // true still fails, just not early.
+        expect: { poll: { timeout: 10_000 } },
+        // Reuse each worker's page across files: the app's module graph loads
+        // once per worker instead of once per file (~10 s each). Tests stay
+        // independent through setup.ts (unmount, handler reset, URL and
+        // localStorage reset); CI's shuffled stability runs guard against
+        // order-dependent leaks.
+        isolate: false,
         browser: {
           enabled: true,
           headless,
@@ -89,6 +130,7 @@ export default defineConfig(async (env) => {
               : {},
           }),
           instances: [{ browser: 'chromium' }],
+          commands: { recordImpact },
           viewport: { width: 1440, height: 900 },
           screenshotFailures: true,
           // Visual regression: baselines live next to the test file.

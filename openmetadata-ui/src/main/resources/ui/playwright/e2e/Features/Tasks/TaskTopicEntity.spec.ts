@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
+import { migratedTo } from '../../../constant/migration';
 import { Domain } from '../../../support/domain/Domain';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
+
+const RESOLUTION_IT = migratedTo.javaIT(
+  'TaskEntityTypeResolutionIT#approvedMetadataTaskAppliesToEntity'
+);
 
 /**
  * Task Tests for Topic Entities
@@ -74,324 +79,343 @@ test.describe('Task Creation and Resolution - Topic Entity', () => {
     }
   });
 
-  test('should create and approve entity-level description task for Topic', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create and approve entity-level description task for Topic',
+    migratedTo.javaIT('TaskResourceIT#testResolveTopicDescriptionUpdateTask'),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    const newDescription = 'Updated Topic description from task';
+      const newDescription = 'Updated Topic description from task';
 
-    try {
-      // Create DescriptionUpdate task for entity level
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            fieldPath: 'description',
-            newDescription: newDescription,
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
+      try {
+        // Create DescriptionUpdate task for entity level
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
-            resolutionType: 'Approved',
-            newValue: newDescription,
+            about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DescriptionUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              fieldPath: 'description',
+              newDescription: newDescription,
+            },
           },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
 
-      // Verify description was updated
-      const topicResponse = await apiContext.get(
-        `/api/v1/topics/${topic.entityResponseData?.id}`
-      );
-      const updatedTopic = await topicResponse.json();
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+              newValue: newDescription,
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      expect(updatedTopic.description).toBe(newDescription);
-    } finally {
-      await afterAction();
+        // Verify description was updated
+        const topicResponse = await apiContext.get(
+          `/api/v1/topics/${topic.entityResponseData?.id}`
+        );
+        const updatedTopic = await topicResponse.json();
+
+        expect(updatedTopic.description).toBe(newDescription);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 
-  test('should create and approve schema field description task for Topic', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create and approve schema field description task for Topic',
+    migratedTo.javaIT(
+      'TaskResourceIT#testResolveTopicSchemaFieldDescriptionUpdateTask'
+    ),
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Get topic to find schema field
-      const topicResponse = await apiContext.get(
-        `/api/v1/topics/${topic.entityResponseData?.id}?fields=messageSchema`
-      );
-      const topicData = await topicResponse.json();
+      try {
+        // Get topic to find schema field
+        const topicResponse = await apiContext.get(
+          `/api/v1/topics/${topic.entityResponseData?.id}?fields=messageSchema`
+        );
+        const topicData = await topicResponse.json();
 
-      const schemaFields = topicData.messageSchema?.schemaFields;
-      if (!schemaFields || schemaFields.length === 0) {
-        console.log('No schema fields in topic, skipping test');
-        return;
-      }
-
-      // Find a leaf field (not a parent with children)
-      const findLeafField = (
-        fields: Array<{ name: string; children?: unknown[] }>
-      ): string | null => {
-        for (const field of fields) {
-          if (!field.children || field.children.length === 0) {
-            return field.name;
-          }
-          // Check children
-          if (field.children) {
-            const childResult = findLeafField(
-              field.children as Array<{ name: string; children?: unknown[] }>
-            );
-            if (childResult) {
-              return `${field.name}.${childResult}`;
-            }
-          }
+        const schemaFields = topicData.messageSchema?.schemaFields;
+        if (!schemaFields || schemaFields.length === 0) {
+          console.log('No schema fields in topic, skipping test');
+          return;
         }
-        return null;
-      };
 
-      const fieldPath = findLeafField(schemaFields);
-      if (!fieldPath) {
-        console.log('No leaf schema fields found, skipping test');
-        return;
-      }
-
-      const newFieldDescription = 'Updated schema field description from task';
-
-      // Create DescriptionUpdate task for schema field
-      // Format: messageSchema::fieldName::description
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            fieldPath: `messageSchema::${fieldPath}::description`,
-            newDescription: newFieldDescription,
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-            newValue: newFieldDescription,
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
-
-      // Verify schema field description was updated
-      const updatedTopicResponse = await apiContext.get(
-        `/api/v1/topics/${topic.entityResponseData?.id}?fields=messageSchema`
-      );
-      const updatedTopic = await updatedTopicResponse.json();
-
-      // Find the field in the schema to verify
-      const findFieldDescription = (
-        fields: Array<{
-          name: string;
-          description?: string;
-          children?: unknown[];
-        }>,
-        path: string
-      ): string | undefined => {
-        const parts = path.split('.');
-        for (const field of fields) {
-          if (field.name === parts[0]) {
-            if (parts.length === 1) {
-              return field.description;
+        // Find a leaf field (not a parent with children)
+        const findLeafField = (
+          fields: Array<{ name: string; children?: unknown[] }>
+        ): string | null => {
+          for (const field of fields) {
+            if (!field.children || field.children.length === 0) {
+              return field.name;
             }
+            // Check children
             if (field.children) {
-              return findFieldDescription(
-                field.children as Array<{
-                  name: string;
-                  description?: string;
-                  children?: unknown[];
-                }>,
-                parts.slice(1).join('.')
+              const childResult = findLeafField(
+                field.children as Array<{ name: string; children?: unknown[] }>
               );
+              if (childResult) {
+                return `${field.name}.${childResult}`;
+              }
             }
           }
+          return null;
+        };
+
+        const fieldPath = findLeafField(schemaFields);
+        if (!fieldPath) {
+          console.log('No leaf schema fields found, skipping test');
+          return;
         }
-        return undefined;
-      };
 
-      const updatedDescription = findFieldDescription(
-        updatedTopic.messageSchema?.schemaFields || [],
-        fieldPath
-      );
-      expect(updatedDescription).toBe(newFieldDescription);
-    } finally {
-      await afterAction();
-    }
-  });
+        const newFieldDescription =
+          'Updated schema field description from task';
 
-  test('should create OwnershipUpdate task for Topic', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      // Create a new user to be the new owner
-      const newOwner = new UserClass();
-      await newOwner.create(apiContext);
-
-      // Create OwnershipUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
-          type: 'OwnershipUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            currentOwners: [{ id: ownerUser.responseData.id, type: 'user' }],
-            newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('OwnershipUpdate');
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
+        // Create DescriptionUpdate task for schema field
+        // Format: messageSchema::fieldName::description
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
-
-      // Verify ownership changed
-      const topicResponse = await apiContext.get(
-        `/api/v1/topics/${topic.entityResponseData?.id}?fields=owners`
-      );
-      const updatedTopic = await topicResponse.json();
-
-      expect(updatedTopic.owners).toBeDefined();
-      expect(updatedTopic.owners[0].id).toBe(newOwner.responseData.id);
-
-      // Cleanup new owner
-      await newOwner.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('should create TierUpdate task for Topic', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      // Create TierUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
-          type: 'TierUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            newTier: {
-              tagFQN: 'Tier.Tier2',
-              source: 'Classification',
-              labelType: 'Manual',
-              state: 'Confirmed',
+            about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DescriptionUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              fieldPath: `messageSchema::${fieldPath}::description`,
+              newDescription: newFieldDescription,
             },
           },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('TierUpdate');
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
 
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+              newValue: newFieldDescription,
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      // Verify tier was applied
-      const topicResponse = await apiContext.get(
-        `/api/v1/topics/${topic.entityResponseData?.id}?fields=tags`
-      );
-      const updatedTopic = await topicResponse.json();
+        // Verify schema field description was updated
+        const updatedTopicResponse = await apiContext.get(
+          `/api/v1/topics/${topic.entityResponseData?.id}?fields=messageSchema`
+        );
+        const updatedTopic = await updatedTopicResponse.json();
 
-      const hasTier = updatedTopic.tags?.some(
-        (tag: { tagFQN: string }) => tag.tagFQN === 'Tier.Tier2'
-      );
-      expect(hasTier).toBe(true);
-    } finally {
-      await afterAction();
+        // Find the field in the schema to verify
+        const findFieldDescription = (
+          fields: Array<{
+            name: string;
+            description?: string;
+            children?: unknown[];
+          }>,
+          path: string
+        ): string | undefined => {
+          const parts = path.split('.');
+          for (const field of fields) {
+            if (field.name === parts[0]) {
+              if (parts.length === 1) {
+                return field.description;
+              }
+              if (field.children) {
+                return findFieldDescription(
+                  field.children as Array<{
+                    name: string;
+                    description?: string;
+                    children?: unknown[];
+                  }>,
+                  parts.slice(1).join('.')
+                );
+              }
+            }
+          }
+          return undefined;
+        };
+
+        const updatedDescription = findFieldDescription(
+          updatedTopic.messageSchema?.schemaFields || [],
+          fieldPath
+        );
+        expect(updatedDescription).toBe(newFieldDescription);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 
-  test('should create DomainUpdate task for Topic', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create OwnershipUpdate task for Topic',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create DomainUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DomainUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            newDomain: {
-              id: domain.responseData.id,
-              type: 'domain',
-              fullyQualifiedName: domain.responseData.fullyQualifiedName,
+      try {
+        // Create a new user to be the new owner
+        const newOwner = new UserClass();
+        await newOwner.create(apiContext);
+
+        // Create OwnershipUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
+            type: 'OwnershipUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              currentOwners: [{ id: ownerUser.responseData.id, type: 'user' }],
+              newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
             },
           },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('DomainUpdate');
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('OwnershipUpdate');
 
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      // Verify domain was applied
-      const topicResponse = await apiContext.get(
-        `/api/v1/topics/${topic.entityResponseData?.id}?fields=domains`
-      );
-      const updatedTopic = await topicResponse.json();
+        // Verify ownership changed
+        const topicResponse = await apiContext.get(
+          `/api/v1/topics/${topic.entityResponseData?.id}?fields=owners`
+        );
+        const updatedTopic = await topicResponse.json();
 
-      expect(updatedTopic.domains?.length).toBeGreaterThan(0);
-      expect(updatedTopic.domains[0].id).toBe(domain.responseData.id);
-    } finally {
-      await afterAction();
+        expect(updatedTopic.owners).toBeDefined();
+        expect(updatedTopic.owners[0].id).toBe(newOwner.responseData.id);
+
+        // Cleanup new owner
+        await newOwner.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
+
+  test(
+    'should create TierUpdate task for Topic',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      try {
+        // Create TierUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
+            type: 'TierUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              newTier: {
+                tagFQN: 'Tier.Tier2',
+                source: 'Classification',
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            },
+          },
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('TierUpdate');
+
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
+
+        // Verify tier was applied
+        const topicResponse = await apiContext.get(
+          `/api/v1/topics/${topic.entityResponseData?.id}?fields=tags`
+        );
+        const updatedTopic = await topicResponse.json();
+
+        const hasTier = updatedTopic.tags?.some(
+          (tag: { tagFQN: string }) => tag.tagFQN === 'Tier.Tier2'
+        );
+        expect(hasTier).toBe(true);
+      } finally {
+        await afterAction();
+      }
+    }
+  );
+
+  test(
+    'should create DomainUpdate task for Topic',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      try {
+        // Create DomainUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DomainUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              newDomain: {
+                id: domain.responseData.id,
+                type: 'domain',
+                fullyQualifiedName: domain.responseData.fullyQualifiedName,
+              },
+            },
+          },
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('DomainUpdate');
+
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
+
+        // Verify domain was applied
+        const topicResponse = await apiContext.get(
+          `/api/v1/topics/${topic.entityResponseData?.id}?fields=domains`
+        );
+        const updatedTopic = await topicResponse.json();
+
+        expect(updatedTopic.domains?.length).toBeGreaterThan(0);
+        expect(updatedTopic.domains[0].id).toBe(domain.responseData.id);
+      } finally {
+        await afterAction();
+      }
+    }
+  );
 });

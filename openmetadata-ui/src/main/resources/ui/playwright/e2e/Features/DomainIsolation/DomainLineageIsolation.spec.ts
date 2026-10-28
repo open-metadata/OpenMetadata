@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { migratedTo } from '../../../constant/migration';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test as base } from '../../../support/fixtures/base';
@@ -142,43 +143,57 @@ test.describe('Domain isolation - lineage graph @domain-isolation', () => {
     }
   });
 
-  test('userA sees tableA but not the cross-tenant tableB node', async ({
-    userAPage,
-  }) => {
-    await tableA.visitEntityPage(userAPage);
-    await visitLineageTab(userAPage);
+  test(
+    'userA sees tableA but not the cross-tenant tableB node',
+    migratedTo.javaIT(
+      'DomainIsolationIT#test_lineage_restrictedUserSeesOnlyOwnDomainNodes'
+    ),
+    async ({ userAPage }) => {
+      await tableA.visitEntityPage(userAPage);
+      await visitLineageTab(userAPage);
 
-    await expect(
-      userAPage.getByTestId(`lineage-node-${fqnOf(tableA)}`)
-    ).toBeVisible();
-    await expect(
-      userAPage.getByTestId(`lineage-node-${fqnOf(tableB)}`)
-    ).toHaveCount(0);
-  });
+      await expect(
+        userAPage.getByTestId(`lineage-node-${fqnOf(tableA)}`)
+      ).toBeVisible();
+      await expect(
+        userAPage.getByTestId(`lineage-node-${fqnOf(tableB)}`)
+      ).toHaveCount(0);
+    }
+  );
 
-  test('userB sees tableB but not the cross-tenant tableA node', async ({
-    userBPage,
-  }) => {
-    await tableB.visitEntityPage(userBPage);
-    await visitLineageTab(userBPage);
+  test(
+    'userB sees tableB but not the cross-tenant tableA node',
+    migratedTo.javaIT(
+      'DomainIsolationIT#test_lineage_restrictedUserSeesOnlyOwnDomainNodes'
+    ),
+    async ({ userBPage }) => {
+      await tableB.visitEntityPage(userBPage);
+      await visitLineageTab(userBPage);
 
-    await expect(
-      userBPage.getByTestId(`lineage-node-${fqnOf(tableB)}`)
-    ).toBeVisible();
-    await expect(
-      userBPage.getByTestId(`lineage-node-${fqnOf(tableA)}`)
-    ).toHaveCount(0);
-  });
+      await expect(
+        userBPage.getByTestId(`lineage-node-${fqnOf(tableB)}`)
+      ).toBeVisible();
+      await expect(
+        userBPage.getByTestId(`lineage-node-${fqnOf(tableA)}`)
+      ).toHaveCount(0);
+    }
+  );
 
-  test('admin sees both nodes in the lineage graph', async ({ adminPage }) => {
-    await tableA.visitEntityPage(adminPage);
-    await visitLineageTab(adminPage);
+  test(
+    'admin sees both nodes in the lineage graph',
+    migratedTo.javaIT(
+      'DomainIsolationIT#test_lineage_restrictedUserSeesOnlyOwnDomainNodes'
+    ),
+    async ({ adminPage }) => {
+      await tableA.visitEntityPage(adminPage);
+      await visitLineageTab(adminPage);
 
-    await expect(
-      adminPage.getByTestId(`lineage-node-${fqnOf(tableA)}`)
-    ).toBeVisible();
-    await expect(
-      adminPage.getByTestId(`lineage-node-${fqnOf(tableB)}`)
-    ).toBeVisible();
-  });
+      await expect(
+        adminPage.getByTestId(`lineage-node-${fqnOf(tableA)}`)
+      ).toBeVisible();
+      await expect(
+        adminPage.getByTestId(`lineage-node-${fqnOf(tableB)}`)
+      ).toBeVisible();
+    }
+  );
 });
