@@ -208,6 +208,68 @@ describe('IngestionWorkflowForm ownerConfig map', () => {
       sales_db: 'sales-team',
     });
   });
+
+  it('blocks submit when a named ownerConfig.database row has no owner', async () => {
+    const onSubmit = jest.fn();
+    const { container } = renderMetadataForm(jest.fn(), onSubmit);
+
+    const addBtn = await screen.findByRole('button', {
+      name: 'label.add-entity',
+    });
+    await act(async () => {
+      fireEvent.click(addBtn);
+    });
+
+    // Name the added row but leave its owner untouched (RJSF keeps the {} default)
+    const keyInput = await screen.findByDisplayValue('newKey');
+    await act(async () => {
+      fireEvent.change(keyInput, { target: { value: 'sales_db' } });
+      fireEvent.blur(keyInput);
+    });
+
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    expect(
+      await screen.findAllByText('message.field-text-is-required')
+    ).not.toHaveLength(0);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('shows an error when a saved pipeline already holds a row with no owner', async () => {
+    const onSubmit = jest.fn();
+    const { container } = render(
+      <IngestionWorkflowForm
+        okText="Submit"
+        pipeLineType={PipelineType.Metadata}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        workflowData={
+          {
+            name: 'metadata-agent',
+            type: 'DatabaseMetadata',
+            ownerConfig: {
+              enableInheritance: true,
+              database: { existing_db: 'some-team', sales_db: {} },
+            },
+          } as unknown as IngestionWorkflowData
+        }
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await screen.findByTestId('submit-btn');
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    expect(
+      await screen.findAllByText('message.field-text-is-required')
+    ).not.toHaveLength(0);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });
 
 type ServiceData = IngestionWorkflowFormProps['serviceData'];
