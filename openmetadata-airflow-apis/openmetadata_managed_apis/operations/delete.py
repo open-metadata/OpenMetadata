@@ -94,6 +94,7 @@ def _delete_dag_records(dag_id: str, session) -> int:
     except AirflowException:
         # Airflow refuses while a task is running (e.g. a scheduled run); the caller is deleting
         # the pipeline for good, so stop the run the same way kill does and delete again
+        # (ADR:2026-10-29-deleting-a-pipeline-dag-stops-its-active-run)
         if not _has_running_task_instances(dag_id, session):
             raise
         logger.info("Stopping the active run of DAG %s before deleting it", dag_id)
