@@ -95,6 +95,7 @@ const AnnouncementsNotificationSection = ({
         data-testid="announcements-notification-section"
         direction="col">
         <SystemAnnouncementsTable
+          deleteConfirmation="popover"
           list={list}
           variant="muted"
           onAdd={openAdd}
