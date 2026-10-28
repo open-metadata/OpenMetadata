@@ -982,6 +982,11 @@ rdf:
   federation:
     enabled: ${RDF_FEDERATION_ENABLED:-false}
     allowedEndpoints: ${RDF_FEDERATION_ALLOWED_ENDPOINTS:-[]}
+  # TDB2 keeps every page a write replaces until compaction; compact on a schedule with writes paused.
+  storageMaintenance:
+    enabled: ${RDF_STORAGE_MAINTENANCE_ENABLED:-true}
+    compactionIntervalHours: ${RDF_COMPACTION_INTERVAL_HOURS:-24}
+    maxDurationMinutes: ${RDF_MAINTENANCE_MAX_DURATION_MINUTES:-240}
 
 # Cache Configuration
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load

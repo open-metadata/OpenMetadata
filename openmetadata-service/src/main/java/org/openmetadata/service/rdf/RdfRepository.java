@@ -35,6 +35,7 @@ import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.api.configuration.rdf.RdfStorageMaintenanceConfig;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
@@ -47,6 +48,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -55,10 +57,14 @@ import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.inference.InferenceRuleRepository;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
+import org.openmetadata.service.rdf.rebuild.RdfLiveWritePause;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
+import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.InferenceInvalidatingRdfStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageFactory;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
+import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
+import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 
 @Slf4j
@@ -554,6 +560,8 @@ public class RdfRepository {
       Model rdfModel = translator.toRdf(entity);
       storageService.storeEntity(entityType, entity.getId(), rdfModel);
       LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
+    } catch (RdfStorageMaintenanceException heldBack) {
+      throw heldBack;
     } catch (Exception e) {
       RdfProjectionHealth.markDegraded(e);
       LOG.error(
@@ -4155,6 +4163,49 @@ public class RdfRepository {
     }
     LOG.info("Compacting RDF storage to reclaim disk space");
     storageService.compactStorage();
+  }
+
+  /** Compacts the dataset this repository writes to and reports the outcome. */
+  public CompactionResult compact(final Duration maxWait) {
+    return isEnabled() ? storageService.compact(maxWait) : CompactionResult.unsupported();
+  }
+
+  /**
+   * Runs {@code work} while every other writer of the serving dataset, on every server, is held
+   * back. Use it around anything that blocks Fuseki's writer, such as a compaction or a clear.
+   */
+  public <T> T withServingWritesPaused(final String jobId, final Supplier<T> work) {
+    final RdfLiveWritePause pause =
+        new RdfLiveWritePause(
+            Entity.getCollectionDAO().rdfReindexLockDAO(),
+            requireDatasetManager(),
+            ServerIdentityResolver.getInstance().getServerId());
+    return pause.during(jobId, work);
+  }
+
+  /**
+   * Empties the store as maintenance, within {@code timeout} instead of the request budget. Call it
+   * inside {@link #withServingWritesPaused}. A timeout throws {@link
+   * RdfWriteOutcomeUnknownException}: Fuseki keeps clearing after the client gives up.
+   */
+  public void clearAllAsMaintenance(final Duration timeout) {
+    if (isEnabled()) {
+      LOG.info("Clearing all data from RDF store (maintenance budget {})", timeout);
+      storageService.executeMaintenanceUpdate("CLEAR ALL", timeout);
+      LOG.info("Successfully cleared all data from RDF store");
+    }
+  }
+
+  public boolean isStoreEmpty() {
+    return !isEnabled() || storageService.getTripleCount() == 0;
+  }
+
+  /** Longest a compaction or a maintenance clear may run; writes stay paused meanwhile. */
+  public Duration maintenanceBudget() {
+    final RdfStorageMaintenanceConfig maintenance =
+        Optional.ofNullable(config.getStorageMaintenance())
+            .orElseGet(RdfStorageMaintenanceConfig::new);
+    return Duration.ofMinutes(maintenance.getMaxDurationMinutes());
   }
 
   /**

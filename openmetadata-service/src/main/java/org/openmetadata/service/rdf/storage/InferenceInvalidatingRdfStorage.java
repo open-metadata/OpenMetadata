@@ -14,6 +14,7 @@
 package org.openmetadata.service.rdf.storage;
 
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -84,6 +85,11 @@ public final class InferenceInvalidatingRdfStorage extends ForwardingRdfStorage 
   @Override
   public void executeSparqlUpdate(final String sparqlUpdate) {
     mutate(() -> delegate.executeSparqlUpdate(sparqlUpdate));
+  }
+
+  @Override
+  public void executeMaintenanceUpdate(final String sparqlUpdate, final Duration timeout) {
+    mutate(() -> delegate.executeMaintenanceUpdate(sparqlUpdate, timeout));
   }
 
   @Override

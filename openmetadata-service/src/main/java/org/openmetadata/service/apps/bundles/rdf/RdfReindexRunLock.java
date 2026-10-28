@@ -47,6 +47,15 @@ public final class RdfReindexRunLock {
     return new RdfReindexRunLock(locks, LOCK_KEY, runId, serverId);
   }
 
+  /**
+   * Storage maintenance takes the reindex lock itself, so it never compacts a dataset a reindex is
+   * writing, and a reindex started meanwhile is skipped with the holder named.
+   */
+  public static RdfReindexRunLock forMaintenance(
+      final RdfReindexLockDAO locks, final String jobId, final String serverId) {
+    return new RdfReindexRunLock(locks, LOCK_KEY, jobId, serverId);
+  }
+
   /** Takes the lock, or throws {@link HeldByAnotherRun} naming the run that holds it. */
   public void acquire() {
     final long now = System.currentTimeMillis();

@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -38,6 +40,8 @@ import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO.RdfReindexL
 import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
+import org.openmetadata.service.rdf.storage.CompactionResult;
+import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -52,6 +56,9 @@ class RdfIndexAppTest {
   @Mock private SearchRepository searchRepository;
   @Mock private EntityRelationshipDAO relationshipDAO;
   @Mock private RdfReindexLockDAO reindexLockDAO;
+
+  private static final CompactionResult COMPACTED =
+      new CompactionResult(CompactionResult.Outcome.SUCCEEDED, "1", null, Duration.ZERO);
 
   private static MockedStatic<RdfRepository> rdfRepositoryMockedStatic;
   private static RdfRepository mockRdfRepository;
@@ -123,6 +130,14 @@ class RdfIndexAppTest {
     lenient().when(mockRdfRepository.isEnabled()).thenReturn(true);
     lenient().when(mockRdfRepository.forRun(null, null, 0)).thenReturn(mockRdfRepository);
     lenient().when(mockRdfRepository.configuredAppendPayloadBytes()).thenReturn(16L << 20);
+    // The repository mock is shared by every test, so stub without invoking earlier answers.
+    lenient()
+        .doAnswer(invocation -> invocation.<Supplier<?>>getArgument(1).get())
+        .when(mockRdfRepository)
+        .withServingWritesPaused(anyString(), any());
+    lenient().doReturn(Duration.ofMinutes(5)).when(mockRdfRepository).maintenanceBudget();
+    lenient().doReturn(COMPACTED).when(mockRdfRepository).compact(any());
+    lenient().doReturn(true).when(mockRdfRepository).isStoreEmpty();
     clearInvocations(mockRdfRepository);
     rdfIndexApp = new RdfIndexApp(collectionDAO, searchRepository);
   }
@@ -896,15 +911,72 @@ class RdfIndexAppTest {
       }
 
       // TDB2 copies index pages even for append-only transactions. Reclaim both the old
-      // generation before loading and the intermediate pages produced by the new load.
+      // generation before loading and the intermediate pages produced by the new load, each with
+      // live writes paused, because Fuseki blocks writers for the whole operation.
       InOrder recreateFlow = inOrder(mockRdfRepository);
-      recreateFlow.verify(mockRdfRepository).clearAll();
-      recreateFlow.verify(mockRdfRepository).compactStorage();
+      recreateFlow.verify(mockRdfRepository).withServingWritesPaused(anyString(), any());
+      recreateFlow.verify(mockRdfRepository).clearAllAsMaintenance(Duration.ofMinutes(5));
+      recreateFlow.verify(mockRdfRepository).compact(Duration.ofMinutes(5));
       recreateFlow.verify(mockRdfRepository).reloadOntologies();
-      recreateFlow.verify(mockRdfRepository).compactStorage();
-      verify(mockRdfRepository, times(2)).compactStorage();
+      recreateFlow.verify(mockRdfRepository).withServingWritesPaused(anyString(), any());
+      recreateFlow.verify(mockRdfRepository).compact(Duration.ofMinutes(5));
+      verify(mockRdfRepository, never()).clearAll();
       assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
       assertFalse(RdfProjectionHealth.isDegraded());
+    }
+
+    @Test
+    @DisplayName("A clear that outlives its budget but empties the store lets the rebuild go on")
+    void clearThatTimedOutButCompletedContinuesTheRebuild() throws Exception {
+      doThrow(new RdfWriteOutcomeUnknownException("maintenanceUpdate", new RuntimeException()))
+          .when(mockRdfRepository)
+          .clearAllAsMaintenance(any());
+      try {
+        final EventPublisherJob jobConfig = executeInPlaceRebuild();
+
+        // The compaction waits for Fuseki's still-running clear, so emptiness is read after it.
+        final InOrder order = inOrder(mockRdfRepository);
+        order.verify(mockRdfRepository).compact(any());
+        order.verify(mockRdfRepository).isStoreEmpty();
+        order.verify(mockRdfRepository).reloadOntologies();
+        assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
+      } finally {
+        doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
+      }
+    }
+
+    @Test
+    @DisplayName("A clear that fails still compacts, then fails the run without reloading")
+    void clearThatFailsStillCompactsAndFailsTheRun() throws Exception {
+      doThrow(new IllegalStateException("Fuseki refused the update"))
+          .when(mockRdfRepository)
+          .clearAllAsMaintenance(any());
+      try {
+        final EventPublisherJob jobConfig = executeInPlaceRebuild();
+
+        verify(mockRdfRepository).compact(any());
+        verify(mockRdfRepository, never()).reloadOntologies();
+        assertEquals(EventPublisherJob.Status.FAILED, jobConfig.getStatus());
+      } finally {
+        doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
+      }
+    }
+
+    @Test
+    @DisplayName("A clear whose outcome is unknown and left data behind fails the run")
+    void clearThatTimedOutAndLeftDataFailsTheRun() throws Exception {
+      doThrow(new RdfWriteOutcomeUnknownException("maintenanceUpdate", new RuntimeException()))
+          .when(mockRdfRepository)
+          .clearAllAsMaintenance(any());
+      doReturn(false).when(mockRdfRepository).isStoreEmpty();
+      try {
+        final EventPublisherJob jobConfig = executeInPlaceRebuild();
+
+        verify(mockRdfRepository, never()).reloadOntologies();
+        assertEquals(EventPublisherJob.Status.FAILED, jobConfig.getStatus());
+      } finally {
+        doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
+      }
     }
 
     @Test
@@ -918,7 +990,7 @@ class RdfIndexAppTest {
                 return null;
               })
           .when(mockRdfRepository)
-          .clearAll();
+          .clearAllAsMaintenance(any());
       try {
         final EventPublisherJob jobConfig = executeInPlaceRebuild();
 
@@ -926,7 +998,7 @@ class RdfIndexAppTest {
         assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
         assertFalse(RdfProjectionHealth.isDegraded());
       } finally {
-        doNothing().when(mockRdfRepository).clearAll();
+        doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
       }
     }
 
@@ -981,7 +1053,7 @@ class RdfIndexAppTest {
     }
 
     @Test
-    @DisplayName("Should still call compactStorage at end of incremental run (free-space hygiene)")
+    @DisplayName("Should still compact at the end of an incremental run (free-space hygiene)")
     void testCompactStorageStillFiresOnIncrementalIndex() throws Exception {
       TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
       testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
@@ -1015,9 +1087,10 @@ class RdfIndexAppTest {
         testApp.execute(context);
       }
 
-      verify(mockRdfRepository, never()).clearAll();
+      verify(mockRdfRepository, never()).clearAllAsMaintenance(any());
       verify(mockRdfRepository, never()).reloadOntologies();
-      verify(mockRdfRepository).compactStorage();
+      verify(mockRdfRepository).withServingWritesPaused(anyString(), any());
+      verify(mockRdfRepository).compact(Duration.ofMinutes(5));
     }
 
     @Test
