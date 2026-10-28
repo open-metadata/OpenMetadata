@@ -15,7 +15,19 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.Locale;
+import org.jdbi.v3.sqlobject.customizer.SqlStatementCustomizerFactory;
+import org.jdbi.v3.sqlobject.customizer.SqlStatementCustomizingAnnotation;
+import org.jdbi.v3.sqlobject.customizer.SqlStatementParameterCustomizer;
 import org.openmetadata.service.exception.BadRequestException;
 
 /**
@@ -28,31 +40,23 @@ import org.openmetadata.service.exception.BadRequestException;
  * ADR:2026-10-28-task-lists-page-newest-first-by-creation-time
  */
 public enum TaskListOrder {
-  NEWEST_FIRST("desc", "DESC", "ASC", "<", ">", Long.MAX_VALUE),
-  OLDEST_FIRST("asc", "ASC", "DESC", ">", "<", Long.MIN_VALUE);
+  NEWEST_FIRST(TaskListOrder.DESC, "<", Long.MAX_VALUE),
+  OLDEST_FIRST(TaskListOrder.ASC, ">", Long.MIN_VALUE);
 
   public static final String SORT_FIELD = "createdAt";
+  public static final String ASC = "asc";
+  public static final String DESC = "desc";
 
   private final String param;
   private final String direction;
-  private final String reverseDirection;
   private final String afterOperator;
-  private final String beforeOperator;
   // A first page has no cursor; this bound lets every row through the keyset comparison.
   private final long openBound;
 
-  TaskListOrder(
-      String param,
-      String direction,
-      String reverseDirection,
-      String afterOperator,
-      String beforeOperator,
-      long openBound) {
+  TaskListOrder(String param, String afterOperator, long openBound) {
     this.param = param;
-    this.direction = direction;
-    this.reverseDirection = reverseDirection;
+    this.direction = param.toUpperCase(Locale.ROOT);
     this.afterOperator = afterOperator;
-    this.beforeOperator = beforeOperator;
     this.openBound = openBound;
   }
 
@@ -66,7 +70,7 @@ public enum TaskListOrder {
               .orElseThrow(
                   () ->
                       BadRequestException.of(
-                          "sortOrder must be 'asc' or 'desc', got '%s'".formatted(value)));
+                          "sortOrder must be '%s' or '%s', got '%s'".formatted(ASC, DESC, value)));
     }
     return order;
   }
@@ -90,12 +94,17 @@ public enum TaskListOrder {
   }
 
   /**
-   * The page that precedes the cursor row: walked in the reverse order so LIMIT keeps the rows
-   * nearest the cursor, then handed back in this order.
+   * The page that precedes the cursor row. It is the next page of the opposite order — walked that
+   * way so LIMIT keeps the rows nearest the cursor — handed back in this order.
    */
   CreatedAtPage before(String cursorCreatedAt, String cursorId) {
+    final TaskListOrder opposite = this == NEWEST_FIRST ? OLDEST_FIRST : NEWEST_FIRST;
     return new CreatedAtPage(
-        parseCursor(cursorCreatedAt), cursorId, beforeOperator, reverseDirection, direction);
+        parseCursor(cursorCreatedAt),
+        cursorId,
+        opposite.afterOperator,
+        opposite.direction,
+        direction);
   }
 
   private long parseCursor(String cursorCreatedAt) {
@@ -122,6 +131,39 @@ public enum TaskListOrder {
       long createdAt, String id, String operator, String scanDirection, String pageDirection) {
     CreatedAtPage {
       id = id == null ? "" : id;
+    }
+  }
+
+  /**
+   * Supplies one {@link CreatedAtPage} to a createdAt keyset query: the comparison operator and the
+   * two sort directions as the {@code <op>}, {@code <scanDir>} and {@code <pageDir>} template
+   * attributes, and the cursor row as {@code :cursorCreatedAt} and {@code :cursorId}.
+   */
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target({ElementType.PARAMETER})
+  @SqlStatementCustomizingAnnotation(BindPage.Factory.class)
+  public @interface BindPage {
+
+    class Factory implements SqlStatementCustomizerFactory {
+      @Override
+      public SqlStatementParameterCustomizer createForParameter(
+          Annotation annotation,
+          Class<?> sqlObjectType,
+          Method method,
+          Parameter param,
+          int index,
+          Type type) {
+        return (stmt, arg) -> {
+          // Jdbi's customizer SPI passes the argument as Object; BindPage is only declared on
+          // CreatedAtPage parameters, so the cast is the shape check the SPI leaves us.
+          final CreatedAtPage page = (CreatedAtPage) arg;
+          stmt.define("op", page.operator())
+              .define("scanDir", page.scanDirection())
+              .define("pageDir", page.pageDirection())
+              .bind("cursorCreatedAt", page.createdAt())
+              .bind("cursorId", page.id());
+        };
+      }
     }
   }
 }

@@ -396,66 +396,44 @@ public interface FeedDAOs {
     // the matches (e.g. one entity's tasks); paging the name index would check every task.
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      List<String> jsons;
       if (TaskListOrder.isRequestedBy(filter)) {
-        jsons = listByCreatedAt(filter, limit, TaskListOrder.of(filter).after(afterName, afterId));
-      } else if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
-        jsons = EntityDAO.super.listAfter(filter, limit, afterName, afterId);
-      } else {
-        jsons =
-            listSearchAfter(
-                filter.getConditionForEntity(getTableName()),
-                filter.getQueryParams(),
-                limit,
-                afterName,
-                afterId);
+        return listByCreatedAt(filter, limit, TaskListOrder.of(filter).after(afterName, afterId));
       }
-      return jsons;
+      if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
+        return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
+      }
+      return listSearchAfter(
+          filter.getConditionForEntity(getTableName()),
+          filter.getQueryParams(),
+          limit,
+          afterName,
+          afterId);
     }
 
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
-      List<String> jsons;
       if (TaskListOrder.isRequestedBy(filter)) {
-        jsons =
-            listByCreatedAt(filter, limit, TaskListOrder.of(filter).before(beforeName, beforeId));
-      } else if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
-        jsons = EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
-      } else {
-        jsons =
-            listSearchBefore(
-                filter.getConditionForEntity(getTableName()),
-                filter.getQueryParams(),
-                limit,
-                beforeName,
-                beforeId);
+        return listByCreatedAt(
+            filter, limit, TaskListOrder.of(filter).before(beforeName, beforeId));
       }
-      return jsons;
+      if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
+        return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
+      }
+      return listSearchBefore(
+          filter.getConditionForEntity(getTableName()),
+          filter.getQueryParams(),
+          limit,
+          beforeName,
+          beforeId);
     }
 
     default List<String> listByCreatedAt(
         ListFilter filter, int limit, TaskListOrder.CreatedAtPage page) {
-      String condition = filter.getConditionForEntity(getTableName());
+      final String condition = filter.getConditionForEntity(getTableName());
       return filter.getQueryParam(TASK_SEARCH_PARAM) == null
-          ? listPageByCreatedAt(
-              condition,
-              filter.getQueryParams(),
-              page.operator(),
-              page.scanDirection(),
-              page.pageDirection(),
-              limit,
-              page.createdAt(),
-              page.id())
-          : listSearchPageByCreatedAt(
-              condition,
-              filter.getQueryParams(),
-              page.operator(),
-              page.scanDirection(),
-              page.pageDirection(),
-              limit,
-              page.createdAt(),
-              page.id());
+          ? listPageByCreatedAt(condition, filter.getQueryParams(), limit, page)
+          : listSearchPageByCreatedAt(condition, filter.getQueryParams(), limit, page);
     }
 
     // The createdAt bound is written twice so the outer `<op>=` stays a range the createdAt index
@@ -474,13 +452,11 @@ public interface FeedDAOs {
     List<String> listPageByCreatedAt(
         @Define("cond") String cond,
         @BindMap Map<String, ?> params,
-        @Define("op") String operator,
-        @Define("scanDir") String scanDirection,
-        @Define("pageDir") String pageDirection,
         @Bind("limit") int limit,
-        @Bind("cursorCreatedAt") long cursorCreatedAt,
-        @Bind("cursorId") String cursorId);
+        @TaskListOrder.BindPage TaskListOrder.CreatedAtPage page);
 
+    // A free-text search can't narrow the rows through an index, so filter first and sort only
+    // the matches (e.g. one entity's tasks); paging the createdAt index would check every task.
     @ConnectionAwareSqlQuery(
         value =
             "SELECT task_entity.json FROM task_entity INNER JOIN ("
@@ -504,12 +480,8 @@ public interface FeedDAOs {
     List<String> listSearchPageByCreatedAt(
         @Define("cond") String cond,
         @BindMap Map<String, ?> params,
-        @Define("op") String operator,
-        @Define("scanDir") String scanDirection,
-        @Define("pageDir") String pageDirection,
         @Bind("limit") int limit,
-        @Bind("cursorCreatedAt") long cursorCreatedAt,
-        @Bind("cursorId") String cursorId);
+        @TaskListOrder.BindPage TaskListOrder.CreatedAtPage page);
 
     @ConnectionAwareSqlQuery(
         value =

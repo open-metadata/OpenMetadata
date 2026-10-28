@@ -287,9 +287,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"asc", "desc"}))
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
           @QueryParam("sortOrder")
-          @DefaultValue("desc")
+          @DefaultValue(TaskListOrder.DESC)
           String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
@@ -654,9 +654,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"asc", "desc"}))
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
           @QueryParam("sortOrder")
-          @DefaultValue("desc")
+          @DefaultValue(TaskListOrder.DESC)
           String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
@@ -727,9 +727,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"asc", "desc"}))
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
           @QueryParam("sortOrder")
-          @DefaultValue("desc")
+          @DefaultValue(TaskListOrder.DESC)
           String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
@@ -799,9 +799,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"asc", "desc"}))
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
           @QueryParam("sortOrder")
-          @DefaultValue("desc")
+          @DefaultValue(TaskListOrder.DESC)
           String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
@@ -881,9 +881,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"asc", "desc"}))
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
           @QueryParam("sortOrder")
-          @DefaultValue("desc")
+          @DefaultValue(TaskListOrder.DESC)
           String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")

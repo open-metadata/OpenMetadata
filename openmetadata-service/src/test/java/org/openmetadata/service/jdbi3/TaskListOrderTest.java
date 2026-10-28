@@ -39,8 +39,8 @@ class TaskListOrderTest {
 
   @Test
   void onlyFiltersTheEndpointsMarkedPageByCreationTime() {
-    ListFilter plain = new ListFilter();
-    ListFilter sorted = TaskListOrder.OLDEST_FIRST.applyTo(new ListFilter());
+    final ListFilter plain = new ListFilter();
+    final ListFilter sorted = TaskListOrder.OLDEST_FIRST.applyTo(new ListFilter());
 
     assertFalse(TaskListOrder.isRequestedBy(plain), "Reindex listings keep the name keyset");
     assertTrue(TaskListOrder.isRequestedBy(sorted));
@@ -49,21 +49,21 @@ class TaskListOrderTest {
 
   @Test
   void firstNewestPageAdmitsEveryRow() {
-    CreatedAtPage page = TaskListOrder.NEWEST_FIRST.after("", "");
+    final CreatedAtPage page = TaskListOrder.NEWEST_FIRST.after("", "");
 
     assertEquals(new CreatedAtPage(Long.MAX_VALUE, "", "<", "DESC", "DESC"), page);
   }
 
   @Test
   void firstOldestPageAdmitsEveryRow() {
-    CreatedAtPage page = TaskListOrder.OLDEST_FIRST.after(null, null);
+    final CreatedAtPage page = TaskListOrder.OLDEST_FIRST.after(null, null);
 
     assertEquals(new CreatedAtPage(Long.MIN_VALUE, "", ">", "ASC", "ASC"), page);
   }
 
   @Test
   void previousNewestPageWalksBackTowardTheNewerRows() {
-    CreatedAtPage page = TaskListOrder.NEWEST_FIRST.before("1793107007319", "id-1");
+    final CreatedAtPage page = TaskListOrder.NEWEST_FIRST.before("1793107007319", "id-1");
 
     assertEquals(new CreatedAtPage(1793107007319L, "id-1", ">", "ASC", "DESC"), page);
   }
