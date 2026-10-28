@@ -233,8 +233,22 @@ public class TestCaseResolutionStatusRepository
     if (limit != null && (limit < 1 || limit > 1000000)) {
       throw new IllegalArgumentException("Incident history limit must be between 1 and 1000000");
     }
+    final ResultList<TestCaseResolutionStatus> result =
+        readStateHistory(stateId, limit, HistoryCursor.parse(after), true);
+    if (limit != null) {
+      result
+          .getPaging()
+          .setTotal(
+              ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
+                  .countTestCaseResolutionStatusesForStateId(stateId.toString()));
+    }
+    return result;
+  }
+
+  private ResultList<TestCaseResolutionStatus> readStateHistory(
+      UUID stateId, Integer limit, HistoryCursor cursor, boolean withLookahead) {
     final var dao = (CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao;
-    HistoryCursor cursor = HistoryCursor.parse(after);
+    final int lookahead = withLookahead ? 1 : 0;
     final List<TestCaseResolutionStatus> records = new ArrayList<>();
     String next = null;
     boolean hasMore;
@@ -247,7 +261,7 @@ public class TestCaseResolutionStatusRepository
           limit == null
               ? dao.listTestCaseResolutionStatusesForStateId(stateId.toString())
               : dao.listTestCaseResolutionStatusesForStateId(
-                  stateId.toString(), cursor.timestamp(), cursor.id(), batchSize + 1);
+                  stateId.toString(), cursor.timestamp(), cursor.id(), batchSize + lookahead);
       final int pageSize = Math.min(batchSize, jsons.size());
       int consumed = 0;
       TestCaseResolutionStatus last = null;
@@ -263,21 +277,15 @@ public class TestCaseResolutionStatusRepository
           skippedOrphans = true;
         }
       }
-      hasMore = jsons.size() > consumed;
+      hasMore = jsons.size() > consumed || (!withLookahead && consumed == batchSize);
       if (hasMore) {
         cursor = new HistoryCursor(last.getTimestamp(), last.getId().toString());
-        next = cursor.timestamp() + "|" + cursor.id();
+        next = withLookahead ? cursor.timestamp() + "|" + cursor.id() : null;
       } else {
         next = null;
       }
     } while (hasMore && records.size() < limit);
-    return getResultList(
-        records,
-        null,
-        next,
-        limit == null
-            ? records.size()
-            : dao.countTestCaseResolutionStatusesForStateId(stateId.toString()));
+    return getResultList(records, null, next, records.size());
   }
 
   private record HistoryCursor(Long timestamp, String id) {
@@ -1062,25 +1070,9 @@ public class TestCaseResolutionStatusRepository
     if (stateId == null) {
       return null;
     }
-    final var dao = (CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao;
-    HistoryCursor cursor = new HistoryCursor(null, null);
-    int readLimit = 1;
-    while (true) {
-      final List<String> jsons =
-          dao.listTestCaseResolutionStatusesForStateId(
-              stateId.toString(), cursor.timestamp(), cursor.id(), readLimit);
-      for (String json : jsons) {
-        final TestCaseResolutionStatus record = JsonUtils.readValue(json, entityClass);
-        if (resolveTestCaseReference(record)) {
-          return record;
-        }
-        cursor = new HistoryCursor(record.getTimestamp(), record.getId().toString());
-      }
-      if (jsons.size() < readLimit) {
-        return null;
-      }
-      readLimit = ORPHAN_HISTORY_BATCH_SIZE;
-    }
+    final List<TestCaseResolutionStatus> records =
+        readStateHistory(stateId, 1, new HistoryCursor(null, null), false).getData();
+    return records.isEmpty() ? null : records.getFirst();
   }
 
   /**

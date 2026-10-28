@@ -102,6 +102,35 @@ class TestCaseResolutionStatusRepositoryTest {
   }
 
   @Test
+  void latestReadFetchesOneRowWithoutCountingHistory() {
+    final UUID stateId = UUID.randomUUID();
+    final TestCaseResolutionStatus newest =
+        createIncident(TestCaseResolutionStatusTypes.Assigned).withStateId(stateId);
+    final CollectionDAO collection = mock(CollectionDAO.class);
+    final var dao = mock(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    when(collection.testCaseResolutionStatusTimeSeriesDao()).thenReturn(dao);
+    final AtomicInteger rowsRead = new AtomicInteger();
+    when(dao.listTestCaseResolutionStatusesForStateId(
+            eq(stateId.toString()), any(), any(), anyInt()))
+        .thenAnswer(
+            invocation -> {
+              final int limit = invocation.getArgument(3);
+              final List<String> rows =
+                  List.of(JsonUtils.pojoToJson(newest), "not JSON").subList(0, Math.min(limit, 2));
+              rowsRead.addAndGet(rows.size());
+              return rows;
+            });
+    when(dao.countTestCaseResolutionStatusesForStateId(anyString()))
+        .thenThrow(new AssertionError("Latest reads must not count the history"));
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collection);
+      final var repository = new HistoryTestRepository(Set.of());
+      assertEquals(newest.getId(), repository.getLatestRecordForStateId(stateId).getId());
+      assertEquals(1, rowsRead.get());
+    }
+  }
+
+  @Test
   void latestAndPagedHistorySkipAnOrphanAndRetainSeverity() {
     final UUID stateId = UUID.randomUUID();
     final TestCaseResolutionStatus orphan =
