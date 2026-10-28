@@ -485,8 +485,8 @@ full volume does not fail cleanly: the JVM gets SIGBUS and exits on every restar
 the volume from filling and leaves room to compact; OpenMetadata treats its refusal like the
 maintenance pause.
 
-Each compaction is logged, and timed by outcome in `rdf.storage.maintenance`; alert on
-`rdf.storage.maintenance.last.success` falling behind the interval. A compaction that does not
+Each compaction is logged, and timed by result in `ontology.rdf.compaction`; alert on
+`ontology.rdf.compaction.last.success` falling behind the interval. A compaction that does not
 succeed is logged as an error and retried at the next check. To compact by hand:
 
 ```bash

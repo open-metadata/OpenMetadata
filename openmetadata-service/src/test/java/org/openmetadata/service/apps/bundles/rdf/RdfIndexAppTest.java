@@ -41,7 +41,6 @@ import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.rdf.storage.CompactionResult;
-import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -137,7 +136,6 @@ class RdfIndexAppTest {
         .withServingWritesPaused(anyString(), any());
     lenient().doReturn(Duration.ofMinutes(5)).when(mockRdfRepository).maintenanceBudget();
     lenient().doReturn(COMPACTED).when(mockRdfRepository).compact(any());
-    lenient().doReturn(true).when(mockRdfRepository).isStoreEmpty();
     clearInvocations(mockRdfRepository);
     rdfIndexApp = new RdfIndexApp(collectionDAO, searchRepository);
   }
@@ -313,7 +311,7 @@ class RdfIndexAppTest {
       // Order matters: an un-cleared reuse would merge the previous rebuild's triples.
       InOrder order = inOrder(mockRdfRepository, buildRepository);
       order.verify(buildRepository).clearAll();
-      order.verify(buildRepository).compactStorage();
+      order.verify(buildRepository).compact(any());
       order.verify(buildRepository).reloadOntologies();
     }
 
@@ -404,7 +402,7 @@ class RdfIndexAppTest {
       promote(testApp);
 
       InOrder promotion = inOrder(mockRdfRepository);
-      promotion.verify(mockRdfRepository).compactStorage();
+      promotion.verify(mockRdfRepository).compact(any());
       promotion
           .verify(mockRdfRepository)
           .activateDataset(eq("openmetadata_a"), eq("run-1"), anyString());
@@ -421,7 +419,7 @@ class RdfIndexAppTest {
                 return null;
               })
           .when(mockRdfRepository)
-          .compactStorage();
+          .compact(any());
 
       assertThrows(java.util.concurrent.CancellationException.class, () -> promote(testApp));
 
@@ -926,26 +924,6 @@ class RdfIndexAppTest {
     }
 
     @Test
-    @DisplayName("A clear that outlives its budget but empties the store lets the rebuild go on")
-    void clearThatTimedOutButCompletedContinuesTheRebuild() throws Exception {
-      doThrow(new RdfWriteOutcomeUnknownException("maintenanceUpdate", new RuntimeException()))
-          .when(mockRdfRepository)
-          .clearAllAsMaintenance(any());
-      try {
-        final EventPublisherJob jobConfig = executeInPlaceRebuild();
-
-        // The compaction waits for Fuseki's still-running clear, so emptiness is read after it.
-        final InOrder order = inOrder(mockRdfRepository);
-        order.verify(mockRdfRepository).compact(any());
-        order.verify(mockRdfRepository).isStoreEmpty();
-        order.verify(mockRdfRepository).reloadOntologies();
-        assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
-      } finally {
-        doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
-      }
-    }
-
-    @Test
     @DisplayName("A clear that fails still compacts, then fails the run without reloading")
     void clearThatFailsStillCompactsAndFailsTheRun() throws Exception {
       doThrow(new IllegalStateException("Fuseki refused the update"))
@@ -955,23 +933,6 @@ class RdfIndexAppTest {
         final EventPublisherJob jobConfig = executeInPlaceRebuild();
 
         verify(mockRdfRepository).compact(any());
-        verify(mockRdfRepository, never()).reloadOntologies();
-        assertEquals(EventPublisherJob.Status.FAILED, jobConfig.getStatus());
-      } finally {
-        doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
-      }
-    }
-
-    @Test
-    @DisplayName("A clear whose outcome is unknown and left data behind fails the run")
-    void clearThatTimedOutAndLeftDataFailsTheRun() throws Exception {
-      doThrow(new RdfWriteOutcomeUnknownException("maintenanceUpdate", new RuntimeException()))
-          .when(mockRdfRepository)
-          .clearAllAsMaintenance(any());
-      doReturn(false).when(mockRdfRepository).isStoreEmpty();
-      try {
-        final EventPublisherJob jobConfig = executeInPlaceRebuild();
-
         verify(mockRdfRepository, never()).reloadOntologies();
         assertEquals(EventPublisherJob.Status.FAILED, jobConfig.getStatus());
       } finally {
