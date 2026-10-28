@@ -90,4 +90,6 @@ export const getSuggestionTypeBasedOnData = (data: Suggestion[]) => {
   if (isMultipleTagSuggestion) {
     return SuggestionType.SuggestTagLabel;
   }
+
+  return undefined;
 };

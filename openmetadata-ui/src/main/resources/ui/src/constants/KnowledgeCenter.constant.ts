@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TabSpecificField } from '../enums/entity.enum';
+import { EntityTabs, TabSpecificField } from '../enums/entity.enum';
 import { ContentChangeState } from '../interface/knowledge-center.interface';
 
 const CENTER_PANEL_DEFAULT_WIDTH = 750;
@@ -21,6 +21,15 @@ const CENTER_PANEL_PADDING_HORIZONTAL = '16px';
 export const KNOWLEDGE_CENTER_PAGINATION_LIMIT = 100;
 export const KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT = 100;
 export const KNOWLEDGE_CENTER_INSTANCE_NAME_LENGTH = 8;
+
+// Article tabs that render without the page tree and the properties panel.
+const KNOWLEDGE_PAGE_FULL_WIDTH_TABS: string[] = [
+  EntityTabs.ACTIVITY_FEED,
+  EntityTabs.CUSTOM_PROPERTIES,
+];
+
+export const isKnowledgePageFullWidthTab = (tab?: string) =>
+  KNOWLEDGE_PAGE_FULL_WIDTH_TABS.includes(tab ?? '');
 
 const KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE = [
   ContentChangeState.UN_SAVED,
@@ -39,6 +48,7 @@ const KNOWLEDGE_PAGE_FIELDS = {
   RELATED_ARTICLES: 'relatedArticles',
   EDITORS: 'editors',
   PARENT: 'parent',
+  EXTENSION: TabSpecificField.EXTENSION,
 };
 
 const getKnowledgePageFields = (additionalFields?: string[]): string => {

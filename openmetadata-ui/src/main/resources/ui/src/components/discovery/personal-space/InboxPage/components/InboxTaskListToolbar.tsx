@@ -133,7 +133,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
     <>
       <Input
         // Wrapping, a basis of 0 would let the search shrink away first.
-        className={inline ? 'tw:min-w-48 tw:flex-1' : 'tw:min-w-0 tw:flex-1'}
+        className={inline ? 'tw:min-w-48 tw:flex-1' : 'tw:min-w-40 tw:flex-1'}
         icon={SearchInputIcon}
         inputDataTestId="inbox-tasks-search"
         placeholder={t(
@@ -193,7 +193,8 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
         {statusTabs}
         {groupingMenu}
       </Box>
-      <Box align="center" className="tw:gap-2">
+      {/* Each row wraps rather than spill into the detail pane when the list column is narrow. */}
+      <Box align="center" className="tw:gap-2" wrap="wrap">
         {filters}
       </Box>
     </Box>

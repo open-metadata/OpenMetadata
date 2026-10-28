@@ -74,7 +74,8 @@ const DataQualityDashboard = () => {
           className={DQ_SECTION_CLASS_NAMES[section.key]}
           key={section.key}
           subtitle={t(section.header.subHeader)}
-          title={t(section.header.header)}>
+          title={t(section.header.header)}
+          tourStep={`data-quality-${section.key}`}>
           <DqDashboardSectionContent
             defaultFilters={defaultFilters}
             navigate={navigate}

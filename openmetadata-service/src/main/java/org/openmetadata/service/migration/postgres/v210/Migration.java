@@ -44,6 +44,7 @@ import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
@@ -132,5 +133,14 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ACTIVITY_FEED_ALERT_STEP,
         () -> addContractAndStatusToActivityFeedAlert(handle));
+    // `migrate` runs data migrations before it starts Flowable, and this step deploys a workflow.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        GlossaryAutomationReviewMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
+        });
   }
 }

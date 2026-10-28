@@ -12,10 +12,6 @@
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import {
-  TourContext,
-  TourProviderContextProps,
-} from '../../context/TourProvider/TourProvider';
 import { mockUserData } from '../../mocks/MyDataPage.mock';
 import MyDataPage from './MyDataPage.component';
 
@@ -87,6 +83,7 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 }));
 
 let mockIsWelcomeVisible = true;
+let mockIsTourActive = false;
 
 jest.mock('../../hooks/useWelcomeStore', () => ({
   useWelcomeStore: jest
@@ -94,10 +91,19 @@ jest.mock('../../hooks/useWelcomeStore', () => ({
     .mockImplementation(() => ({ isWelcomeVisible: mockIsWelcomeVisible })),
 }));
 
+jest.mock('../../hooks/product-tour/useProductTourStore', () => ({
+  useProductTourStore: jest
+    .fn()
+    .mockImplementation((selector: (state: { isActive: boolean }) => boolean) =>
+      selector({ isActive: mockIsTourActive })
+    ),
+}));
+
 describe('MyDataPage component', () => {
   beforeEach(() => {
     localStorage.clear();
     mockIsWelcomeVisible = true;
+    mockIsTourActive = false;
     jest.clearAllMocks();
   });
 
@@ -121,16 +127,9 @@ describe('MyDataPage component', () => {
   });
 
   it('should not show the WelcomeScreen on the tour, even to a first-time user', async () => {
-    render(
-      <TourContext.Provider
-        value={
-          {
-            isTourPage: true,
-          } as Partial<TourProviderContextProps> as TourProviderContextProps
-        }>
-        <MyDataPage />
-      </TourContext.Provider>
-    );
+    mockIsTourActive = true;
+
+    render(<MyDataPage />);
 
     // The welcome screen would take the place of the landing page the tour highlights.
     expect(await screen.findByTestId('home-landing-page')).toBeInTheDocument();
