@@ -141,7 +141,11 @@ const Reactions: FC<ReactionsProps> = ({
       {canAddReaction && (
         <PopoverTrigger isOpen={visible} onOpenChange={setVisible}>
           <ButtonUtility
-            className={classNames({ 'tw:rounded-full': isPill(variant) })}
+            // The pill matches the reaction chips beside it.
+            className={classNames({
+              'tw:h-6.5 tw:w-7 tw:rounded-full! tw:p-1! tw:*:data-icon:size-4 tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover':
+                isPill(variant),
+            })}
             data-testid="add-reactions"
             icon={isPill(variant) ? FaceSmile : AddReactionIcon}
             size="sm"

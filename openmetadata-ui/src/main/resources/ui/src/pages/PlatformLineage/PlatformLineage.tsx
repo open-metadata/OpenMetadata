@@ -229,13 +229,16 @@ const PlatformLineage = () => {
     [isAiMode, selectedEntity, handleSearchSelect, t]
   );
 
+  // Matches the height of the search box beside them in the AI header.
+  const buttonSize = isAiMode ? 'xl' : 'lg';
+
   const actionButtons = useMemo(
     () => (
       <div className="d-flex gap-2">
         <ButtonUtility
           data-testid="export-button"
           icon={Download01}
-          size="lg"
+          size={buttonSize}
           tooltip={t('label.export-as-type', {
             type: t('label.png-uppercase'),
           })}
@@ -245,13 +248,13 @@ const PlatformLineage = () => {
         <ButtonUtility
           data-testid="lineage-config"
           icon={Settings01}
-          size="lg"
+          size={buttonSize}
           tooltip={t('label.lineage-config')}
           onClick={handleSettingsClick}
         />
       </div>
     ),
-    [t, handleExport]
+    [t, handleExport, buttonSize]
   );
 
   const title = t('label.platform-type-lineage', {
