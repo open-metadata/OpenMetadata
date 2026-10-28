@@ -732,6 +732,32 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  /**
+   * EntityResource.createOrUpdate prepares an entity before it authorizes the PUT, and
+   * DataContractRepository.prepare creates, edits or deletes the contract's test suite, so a
+   * contract PUT is authorized first. The generic checks still run after prepare. A request whose
+   * entity reference is missing, incomplete or of an unsupported type is left to prepare, which
+   * refuses it before it writes anything.
+   */
+  @Override
+  public Response createOrUpdate(
+      UriInfo uriInfo, SecurityContext securityContext, DataContract dataContract) {
+    if (hasSupportedTarget(dataContract.getEntity())) {
+      repository.setFullyQualifiedName(dataContract);
+      ResourceContext<DataContract> stored =
+          getResourceContextByName(dataContract.getFullyQualifiedName());
+      authorizeContractWrite(securityContext, dataContract, (DataContract) stored.getEntity());
+    }
+    return super.createOrUpdate(uriInfo, securityContext, dataContract);
+  }
+
+  private boolean hasSupportedTarget(EntityReference target) {
+    return target != null
+        && target.getId() != null
+        && target.getType() != null
+        && repository.isEntityTypeSupported(target.getType());
+  }
+
   private DataContract getDataContract(CreateDataContract create, String user) {
     return DataContractMapper.createEntity(create, user);
   }

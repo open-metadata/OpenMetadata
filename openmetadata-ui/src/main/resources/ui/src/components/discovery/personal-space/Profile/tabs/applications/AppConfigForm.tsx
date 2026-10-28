@@ -103,7 +103,10 @@ export const AppToggleCardField = ({
   const label = schema.title ?? getFormDisplayLabel(name);
 
   return (
-    <Card data-testid={`toggle-card-${getFieldName(idSchema.$id)}`} size="sm">
+    <Card
+      data-testid={`toggle-card-${getFieldName(idSchema.$id)}`}
+      size="sm"
+      variant="muted">
       <Card.Content>
         <Box align="center" direction="row" gap={4} justify="between">
           <Box className="tw:min-w-0" direction="col">
@@ -215,7 +218,7 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
         </AppFooter>
       )}
       {/* Full-width fields leave no room beside them, so the hint opens above. */}
-      <FieldDocPopover placement="top end" />
+      <FieldDocPopover placement="top end" variant="muted" />
     </FieldDocProvider>
   );
 };

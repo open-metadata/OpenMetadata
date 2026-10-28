@@ -205,6 +205,9 @@
     <commonmark.version>0.26.0</commonmark.version>
     <flexmark.version>0.64.8</flexmark.version>
     <owasp-html-sanitizer.version>20260101.1</owasp-html-sanitizer.version>
+    <!-- Nothing is published to Maven Central by default; publish-maven-package.yml publishes an
+         explicit module list (ADR:2026-10-21-maven-central-publishing-is-opt-in-per-module). -->
+    <skipPublishing>true</skipPublishing>
   </properties>
 
   <dependencyManagement>
