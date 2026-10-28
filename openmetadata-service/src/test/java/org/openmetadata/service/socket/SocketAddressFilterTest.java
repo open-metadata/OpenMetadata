@@ -95,6 +95,68 @@ class SocketAddressFilterTest {
     verify(chain, never()).doFilter(any(), any());
   }
 
+  /**
+   * The WebSocket upgrade creator calls {@link SocketAddressFilter#authenticate} with the upgrade's
+   * servlet request: the servlet filter chain never sees an upgrade. The returned identity is what
+   * the handler stamps into the socket's connection headers, and a rejection must carry the status
+   * the upgrade is answered with.
+   */
+  @Test
+  void upgradeAuthenticationReturnsValidatedIdentity() throws Exception {
+    UUID tokenUserId = UUID.randomUUID();
+    when(request.getQueryString()).thenReturn("userId=" + tokenUserId);
+    when(request.getHeader("Authorization")).thenReturn("Bearer token");
+    mockTokenClaims("sam", "session-1");
+    when(sessionService.getFreshSessionById("session-1"))
+        .thenReturn(Optional.of(activeSession("session-1", "sam")));
+
+    HandshakeIdentity identity;
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      identity = filter.authenticate(request);
+    }
+
+    org.junit.jupiter.api.Assertions.assertEquals(tokenUserId.toString(), identity.userId());
+    org.junit.jupiter.api.Assertions.assertEquals("session-1", identity.sessionId());
+  }
+
+  @Test
+  void upgradeAuthenticationRejectsCredentiallessHandshakeWithUnauthorized() {
+    when(request.getQueryString()).thenReturn("userId=" + UUID.randomUUID());
+    when(request.getHeader("Authorization")).thenReturn(null);
+
+    HandshakeRejectedException rejected =
+        org.junit.jupiter.api.Assertions.assertThrows(
+            HandshakeRejectedException.class, () -> filter.authenticate(request));
+
+    org.junit.jupiter.api.Assertions.assertEquals(
+        HttpServletResponse.SC_UNAUTHORIZED, rejected.getStatus());
+  }
+
+  @Test
+  void upgradeAuthenticationRejectsUserIdMismatchWithForbidden() throws Exception {
+    when(request.getQueryString()).thenReturn("userId=" + UUID.randomUUID() + "&token=token");
+    when(request.getHeader("Authorization")).thenReturn(null);
+    mockTokenClaims("sam", "session-1");
+
+    HandshakeRejectedException rejected;
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(UUID.randomUUID()));
+
+      rejected =
+          org.junit.jupiter.api.Assertions.assertThrows(
+              HandshakeRejectedException.class, () -> filter.authenticate(request));
+    }
+
+    org.junit.jupiter.api.Assertions.assertEquals(
+        HttpServletResponse.SC_FORBIDDEN, rejected.getStatus());
+  }
+
   @Test
   void secureSocketUsesTokenPrincipalAsSocketUserId() throws Exception {
     UUID tokenUserId = UUID.randomUUID();

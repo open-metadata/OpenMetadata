@@ -2,6 +2,8 @@ package org.openmetadata.service.socket;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -12,6 +14,7 @@ import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 import org.eclipse.jetty.io.EofException;
@@ -50,6 +53,32 @@ class Jetty12WebSocketHandlerTest {
             "Connection Idle Timeout", new TimeoutException("Idle timeout expired: 9078/1000 ms")),
         new EofException(new IOException("Connection reset by peer")),
         new ClosedChannelException());
+  }
+
+  /**
+   * The servlet filter chain never sees the upgrade, so the identity the upgrade creator validated
+   * must be stamped into the engine.io handshake headers here — this is what WebSocketManager keys
+   * the socket under, and what collate's chat namespace reads back.
+   */
+  @Test
+  void validatedIdentityIsStampedIntoConnectionHeadersOnOpen() {
+    EngineIoServer server = mock(EngineIoServer.class);
+    Jetty12WebSocketHandler stamped =
+        new Jetty12WebSocketHandler(server, new HandshakeIdentity("user-uuid", "session-id"));
+    org.eclipse.jetty.websocket.api.Session session =
+        mock(org.eclipse.jetty.websocket.api.Session.class);
+    org.eclipse.jetty.websocket.api.UpgradeRequest upgradeRequest =
+        mock(org.eclipse.jetty.websocket.api.UpgradeRequest.class);
+    when(session.getUpgradeRequest()).thenReturn(upgradeRequest);
+    when(upgradeRequest.getParameterMap()).thenReturn(Map.of("userId", List.of("user-uuid")));
+    when(upgradeRequest.getHeaders()).thenReturn(Map.of("Cookie", List.of("OM_SESSION=abc")));
+
+    stamped.onOpen(session);
+
+    assertEquals("user-uuid", stamped.getConnectionHeaders().get("UserId").get(0));
+    assertEquals("session-id", stamped.getConnectionHeaders().get("SessionId").get(0));
+    assertEquals(Map.of("userId", "user-uuid"), stamped.getQuery());
+    verify(server).handleWebSocket(stamped);
   }
 
   @ParameterizedTest

@@ -6,8 +6,10 @@
 - **Guard:** `SocketAddressFilterTest` (unit) — the credential-less regression test fails any
   change that re-opens a token-less, cookie-less handshake under the default configuration, and the
   email-first test fails any handshake that resolves the principal differently from HTTP;
-  `WebSocketManagerTest` covers handler bookkeeping; `WebSocketProvider.test.tsx` (Jest) fails a
-  browser reconnect that re-sends a token captured before the drop.
+  `Jetty12WebSocketHandlerTest` fails an upgrade handler that serves raw handshake headers without
+  stamping the validated identity; `WebSocketManagerTest` covers handler bookkeeping;
+  `WebSocketProvider.test.tsx` (Jest) fails a browser reconnect that re-sends a token captured
+  before the drop.
 - **Related:** open-metadata/OpenMetadata#36143
 
 ## Context
@@ -36,6 +38,13 @@ Every push-feed handshake carries at least one validated credential, under every
   (`JwtFilter.resolveUserName`): the stored username resolved from the email when `emailClaim` is
   configured, the legacy principal claims otherwise. The handshake never resolves the principal on
   its own, or an email-first user authenticates over HTTP yet loses the push feed.
+- On a WebSocket upgrade, Jetty (ee10) negotiates the socket before the servlet filter chain runs,
+  so the chain — and its header stamping — only ever covers the polling transport. The upgrade
+  creator therefore performs the same validation (`SocketAddressFilter.authenticate` on the
+  upgrade's servlet request): a rejected upgrade is answered with the same HTTP status the filter
+  would send, and an accepted one's stamping happens in the websocket handler, which puts the
+  validated user id and session into the socket's connection headers — the same contract
+  `WebSocketManager` then keys sockets under for both transports.
 - The socket identity and session come only from the headers `SocketAddressFilter` stamps after
   validation; query parameters never key a socket, nor bind it to a session.
 - The authorizer setting `enableSecureSocketConnection` is a deprecated no-op, kept only so

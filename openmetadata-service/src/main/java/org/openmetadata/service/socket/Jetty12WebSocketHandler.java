@@ -40,12 +40,23 @@ import org.eclipse.jetty.websocket.api.exceptions.WebSocketTimeoutException;
 public class Jetty12WebSocketHandler extends EngineIoWebSocket {
 
   private final EngineIoServer server;
+  private final HandshakeIdentity handshakeIdentity;
   private Session session;
   private Map<String, String> query;
   private Map<String, List<String>> headers;
 
   public Jetty12WebSocketHandler(EngineIoServer server) {
+    this(server, null);
+  }
+
+  /**
+   * The identity the WebSocket upgrade creator validated. The upgrade runs before the servlet
+   * filter chain, which is why nothing else stamps the engine.io socket this handler serves — the
+   * servlet filter's header stamping only ever covers the polling transport.
+   */
+  public Jetty12WebSocketHandler(EngineIoServer server, HandshakeIdentity handshakeIdentity) {
     this.server = server;
+    this.handshakeIdentity = handshakeIdentity;
   }
 
   @Override
@@ -86,6 +97,7 @@ public class Jetty12WebSocketHandler extends EngineIoWebSocket {
 
     // Parse query parameters from upgrade request
     this.query = new HashMap<>();
+    this.headers = new HashMap<>();
     var upgradeRequest = session.getUpgradeRequest();
     if (upgradeRequest != null) {
       LOG.debug("UpgradeRequest URI: {}", upgradeRequest.getRequestURI());
@@ -98,14 +110,31 @@ public class Jetty12WebSocketHandler extends EngineIoWebSocket {
           }
         }
       }
-      this.headers = upgradeRequest.getHeaders();
+      Map<String, List<String>> upgradeHeaders = upgradeRequest.getHeaders();
+      if (upgradeHeaders != null) {
+        this.headers.putAll(upgradeHeaders);
+      }
     } else {
       LOG.warn("UpgradeRequest is null - query parameters will be empty");
-      this.headers = new HashMap<>();
     }
+
+    // The engine.io socket's identity comes from these headers (getInitialHeaders of the websocket
+    // transport); the raw upgrade headers are client-controlled, so the validated handshake
+    // identity is stamped exactly as the servlet filter stamps it for the polling transport.
+    stampValidatedIdentity(this.headers, this.handshakeIdentity);
 
     LOG.info("Parsed query params for Engine.IO: {}", query);
     server.handleWebSocket(this);
+  }
+
+  private static void stampValidatedIdentity(
+      Map<String, List<String>> headers, HandshakeIdentity handshakeIdentity) {
+    if (handshakeIdentity.userId() != null && !handshakeIdentity.userId().isBlank()) {
+      headers.put("UserId", List.of(handshakeIdentity.userId()));
+    }
+    if (handshakeIdentity.sessionId() != null && !handshakeIdentity.sessionId().isBlank()) {
+      headers.put("SessionId", List.of(handshakeIdentity.sessionId()));
+    }
   }
 
   @OnWebSocketMessage
