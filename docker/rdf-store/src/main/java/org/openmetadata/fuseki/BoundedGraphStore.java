@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 import org.apache.jena.fuseki.servlets.GSP_RW;
 import org.apache.jena.fuseki.servlets.GraphTarget;
@@ -49,11 +50,15 @@ public final class BoundedGraphStore extends GSP_RW {
   private final long timeoutMillis;
   private final long maxBytes;
   private final LongSupplier nanoTime;
+  private final Consumer<HttpAction> beforeWrite;
 
-  public BoundedGraphStore() {
+  /** {@code beforeWrite} may refuse a write by failing the action, before anything is staged. */
+  public BoundedGraphStore(final Consumer<HttpAction> beforeWrite) {
     this(
         Long.getLong("openmetadata.fuseki.writeTimeoutMs", DEFAULT_TIMEOUT_MS),
-        Long.getLong("openmetadata.fuseki.maxUploadBytes", DEFAULT_MAX_BYTES));
+        Long.getLong("openmetadata.fuseki.maxUploadBytes", DEFAULT_MAX_BYTES),
+        System::nanoTime,
+        beforeWrite);
   }
 
   BoundedGraphStore(final long timeoutMillis, final long maxBytes) {
@@ -61,12 +66,21 @@ public final class BoundedGraphStore extends GSP_RW {
   }
 
   BoundedGraphStore(final long timeoutMillis, final long maxBytes, final LongSupplier nanoTime) {
+    this(timeoutMillis, maxBytes, nanoTime, action -> {});
+  }
+
+  BoundedGraphStore(
+      final long timeoutMillis,
+      final long maxBytes,
+      final LongSupplier nanoTime,
+      final Consumer<HttpAction> beforeWrite) {
     if (timeoutMillis <= 0 || maxBytes <= 0) {
       throw new IllegalArgumentException("Graph Store timeout and upload limit must be positive");
     }
     this.timeoutMillis = timeoutMillis;
     this.maxBytes = maxBytes;
     this.nanoTime = nanoTime;
+    this.beforeWrite = beforeWrite;
   }
 
   @Override
@@ -92,7 +106,14 @@ public final class BoundedGraphStore extends GSP_RW {
     upload(action, overwrite, true);
   }
 
+  @Override
+  protected void doDelete(final HttpAction action) {
+    beforeWrite.accept(action);
+    super.doDelete(action);
+  }
+
   private void upload(final HttpAction action, final boolean overwrite, final boolean quads) {
+    beforeWrite.accept(action);
     final Lang language = requireLanguage(action);
     final WriteDeadline deadline = deadline(action);
     try (StagedUpload upload = StagedUpload.receive(action, deadline, maxBytes)) {

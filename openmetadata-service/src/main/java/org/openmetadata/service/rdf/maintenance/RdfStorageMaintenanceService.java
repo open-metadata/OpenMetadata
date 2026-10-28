@@ -14,6 +14,7 @@ package org.openmetadata.service.rdf.maintenance;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,6 +29,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.RdfReindexLockDAO;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.storage.CompactionResult;
+import org.openmetadata.service.rdf.storage.StorageFacts;
 
 /**
  * Compacts the RDF serving dataset on a schedule, so a store that only receives live writes does
@@ -44,11 +46,24 @@ import org.openmetadata.service.rdf.storage.CompactionResult;
  * the serving dataset, because Fuseki blocks them for the whole copy. A compaction that does not
  * succeed releases its lease, so the next check tries again. See
  * ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule.
+ *
+ * <p>A store that reports its volume, as OpenMetadata's Fuseki images do, is also compacted without
+ * waiting for the interval once its free space falls below {@code urgentFreeSpacePercent} or its
+ * write guard is refusing writes: a burst of writes can fill the volume well within one interval.
+ * An urgent compaction that brings the store back above the threshold frees the urgent slot at
+ * once, so the next burst is compacted as soon as it needs to be. One that does not shows that the
+ * live graph itself fills the volume; compacting again cannot help, so urgent compactions then wait
+ * {@link #URGENT_MIN_GAP} and the service logs that the volume needs expanding. See
+ * ADR:2026-10-28-the-fuseki-image-refuses-writes-below-a-free-space-reserve-and-reports-its-volume.
  */
 @Slf4j
 public final class RdfStorageMaintenanceService implements AutoCloseable {
   static final String NEXT_COMPACTION_KEY = "RDF_STORAGE_NEXT_COMPACTION";
-  static final Duration CHECK_INTERVAL = Duration.ofMinutes(15);
+  static final String URGENT_COMPACTION_KEY = "RDF_STORAGE_URGENT_COMPACTION";
+  static final Duration URGENT_MIN_GAP = Duration.ofHours(1);
+  // A check is one storage report read and one lease attempt. While the write guard refuses writes
+  // they wait for the next check, so it runs often enough to keep that wait short.
+  static final Duration CHECK_INTERVAL = Duration.ofMinutes(5);
   private static final Duration FIRST_CHECK_DELAY = Duration.ofMinutes(5);
   private static final long LOCK_HEARTBEAT_SECONDS = 60;
 
@@ -111,12 +126,40 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
     }
   }
 
-  /** Compacts the serving dataset when its interval has passed. Returns the outcome, if it ran. */
+  /**
+   * Compacts the serving dataset when its interval has passed or its store is running out of
+   * space. Returns the outcome, if it ran.
+   */
   CompactionResult compactIfDue() {
     // Lock rows hold a 36-character job id: a bare UUID.
     final String jobId = UUID.randomUUID().toString();
-    final boolean due = reserve(NEXT_COMPACTION_KEY, jobId, compactionInterval());
-    return due ? compactHoldingSlot(NEXT_COMPACTION_KEY, jobId) : null;
+    final String slot =
+        reserve(NEXT_COMPACTION_KEY, jobId, compactionInterval())
+            ? NEXT_COMPACTION_KEY
+            : urgentSlot(jobId);
+    return slot == null ? null : compactHoldingSlot(slot, jobId);
+  }
+
+  private String urgentSlot(final String jobId) {
+    final Optional<StorageFacts> urgent = repository.get().storageFacts().filter(this::needsSpace);
+    final boolean reserved =
+        urgent.isPresent() && reserve(URGENT_COMPACTION_KEY, jobId, URGENT_MIN_GAP);
+    urgent.filter(facts -> reserved).ifPresent(this::logUrgency);
+    return reserved ? URGENT_COMPACTION_KEY : null;
+  }
+
+  private boolean needsSpace(final StorageFacts facts) {
+    return facts.lowOnSpace() || facts.freePercent() < config.getUrgentFreeSpacePercent();
+  }
+
+  private void logUrgency(final StorageFacts facts) {
+    LOG.warn(
+        "RDF store volume has {}% free ({} of {} bytes, write guard {}); compacting before the"
+            + " interval",
+        facts.freePercent(),
+        facts.usableBytes(),
+        facts.totalBytes(),
+        facts.lowOnSpace() ? "refusing writes" : "open");
   }
 
   private boolean reserve(final String slot, final String jobId, final Duration spacing) {
@@ -131,11 +174,25 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
     } catch (RdfReindexRunLock.HeldByAnotherRun reindexRunning) {
       LOG.info("Skipping RDF compaction while a reindex runs; it compacts itself");
     } finally {
-      if (result == null || !result.succeeded()) {
+      if (result == null || !result.succeeded() || freedEnough(slot)) {
         locks.releaseLock(slot, jobId);
       }
     }
     return result;
+  }
+
+  /** Whether an urgent compaction left the store with room, so the next one may follow at once. */
+  private boolean freedEnough(final String slot) {
+    final boolean urgent = URGENT_COMPACTION_KEY.equals(slot);
+    final boolean freed =
+        urgent && repository.get().storageFacts().map(facts -> !needsSpace(facts)).orElse(true);
+    if (urgent && !freed) {
+      LOG.error(
+          "Compacting the RDF store did not free enough space: its live data fills the volume."
+              + " Expand the volume. Urgent compactions pause for {}.",
+          URGENT_MIN_GAP);
+    }
+    return freed;
   }
 
   private CompactionResult compactExclusively(final String jobId) {

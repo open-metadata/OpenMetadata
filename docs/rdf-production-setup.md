@@ -427,6 +427,12 @@ OpenMetadata compacts the serving dataset itself:
 
 - **On a schedule.** One server compacts every `RDF_COMPACTION_INTERVAL_HOURS`, while the RDF
   reindex lock keeps it from overlapping an indexing run.
+- **When the store runs low.** OpenMetadata's Fuseki images report their volume at
+  `GET /$/openmetadata/storage`. When free space falls below `RDF_URGENT_COMPACTION_FREE_PERCENT`,
+  or the image's write guard is refusing writes, the next check (every 5 minutes) compacts without
+  waiting for the interval. If a compaction cannot bring the store back above that threshold, the
+  live graph itself fills the volume: urgent compactions then pause for an hour, and the server
+  logs that the volume needs expanding.
 - **During indexing.** A recreate run clears the dataset, compacts it while it is empty, and
   compacts again after loading. Blue/green runs compact the target before promotion.
 
@@ -438,9 +444,11 @@ the projection degraded. Synchronous writes are refused with a retry-later error
 recreate run, may hold that pause. Both run under this budget rather than the per-request timeout:
 Fuseki cannot cancel a `CLEAR`, so a shorter budget would only abandon a clear that still completes.
 
-Size the volume for the growth between compactions on top of the live data. TDB2 memory-maps
-its files, so a write on a full volume does not fail cleanly: the JVM gets SIGBUS and exits on
-every restart.
+OpenMetadata's Fuseki images also refuse writes, with HTTP 503, once the volume has less free space
+than `OPENMETADATA_STORAGE_MIN_FREE` (10% by default). TDB2 memory-maps its files, so a write on a
+full volume does not fail cleanly: the JVM gets SIGBUS and exits on every restart. The guard keeps
+the volume from filling and leaves room to compact; OpenMetadata treats its refusal like the
+maintenance pause.
 
 Each compaction is logged, and timed by outcome in `rdf.storage.maintenance`; alert on
 `rdf.storage.maintenance.last.success` falling behind the interval. A compaction that does not
@@ -488,6 +496,7 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_STORAGE_MAINTENANCE_ENABLED` | `true` |
 | `RDF_COMPACTION_INTERVAL_HOURS` | `24` |
 | `RDF_MAINTENANCE_MAX_DURATION_MINUTES` | `240` |
+| `RDF_URGENT_COMPACTION_FREE_PERCENT` | `50` |
 
 Use `RDF_ENDPOINT` for new deployments. `RDF_REMOTE_ENDPOINT` remains a deprecated fallback for
 backward compatibility, and `RDF_ENDPOINT` takes precedence when both are set. Override the
