@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import {} from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -22,7 +21,6 @@ import { LastRunStatus } from '../../../../generated/type/pipelineSummary';
 import {
   ALL_PIPELINES,
   PipelineStatusBucket,
-  PIPELINE_RUN_HISTORY_SIZE,
   PIPELINE_STATUS_BUCKETS,
   usePipelineRunHistory,
   usePipelineStatus,
@@ -34,6 +32,10 @@ import { getExplorePath } from '../../../../utils/RouterUtils';
 import { useAddServiceAction } from '../../../integration/ConnectionsPage/useAddServiceAction';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
+import {
+  TOPIC_FILTERED_BODY_CLASSES,
+  TOPIC_FILTERED_LIST_CLASSES,
+} from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
@@ -137,6 +139,7 @@ const PipelineStatusWidget: React.FC<PipelineStatusWidgetProps> = ({
               getExplorePath({ tab: ExplorePageTabs.PIPELINES })
           ),
       }}
+      bodyClassName={TOPIC_FILTERED_BODY_CLASSES}
       emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
@@ -174,19 +177,11 @@ const PipelineStatusWidget: React.FC<PipelineStatusWidgetProps> = ({
             onChange={(next) => setBucket(next as PipelineStatusBucket)}
           />
 
-          <div className="tw:mt-3 tw:flex tw:items-center tw:justify-between tw:gap-3 tw:border-y tw:border-secondary tw:bg-secondary tw:px-2 tw:py-2">
-            <Typography className="tw:text-text-tertiary!" size="text-xs">
-              {t('label.pipeline')}
-            </Typography>
-            <Typography className="tw:text-text-tertiary!" size="text-xs">
-              {t('message.last-count-runs', {
-                count: PIPELINE_RUN_HISTORY_SIZE,
-              })}
-            </Typography>
-          </div>
-
           <ul
-            className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+            className={classNames(
+              'tw:flex tw:flex-col',
+              TOPIC_FILTERED_LIST_CLASSES
+            )}
             data-testid="pipeline-status-rows">
             {visibleRows.map((row) => (
               <PipelineStatusRow

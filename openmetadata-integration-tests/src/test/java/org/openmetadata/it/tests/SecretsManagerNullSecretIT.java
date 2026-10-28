@@ -217,6 +217,62 @@ public class SecretsManagerNullSecretIT {
     assertNotNull(workflow.getId(), "echoing the tested service's own reference must pass");
   }
 
+  @Test
+  void triggeringALegacyWorkflowRejectsAnEncryptedForeignReference(TestNamespace ns) {
+    String serviceName = ns.prefix("workflow_owner");
+    DatabaseService service =
+        ns.trackRoot(
+            Entity.DATABASE_SERVICE,
+            SdkClients.adminClient()
+                .databaseServices()
+                .create(snowflakeRequest(serviceName, PASSWORD)));
+    Workflow workflow =
+        ns.trackRoot(
+            Entity.WORKFLOW,
+            SdkClients.adminClient()
+                .workflows()
+                .create(
+                    new CreateWorkflow()
+                        .withName(ns.prefix("legacy_foreign_reference"))
+                        .withWorkflowType(WorkflowType.TEST_CONNECTION)
+                        .withRequest(
+                            new TestServiceConnectionRequest()
+                                .withServiceType(ServiceType.DATABASE)
+                                .withServiceName(service.getName())
+                                .withConnectionType("Snowflake")
+                                .withConnection(
+                                    new DatabaseConnection()
+                                        .withConfig(snowflakeConnection(PASSWORD))))));
+    String foreignReference =
+        SecretsManager.SECRET_FIELD_PREFIX + secretId(ns.prefix("other_service"), "password");
+    workflow.setRequest(
+        new TestServiceConnectionRequest()
+            .withServiceType(ServiceType.DATABASE)
+            .withServiceName(serviceName)
+            .withConnectionType("Snowflake")
+            .withConnection(
+                new DatabaseConnection().withConfig(snowflakeConnection(foreignReference))));
+    // Seed the legacy storage format, bypassing the validation now enforced on HTTP writes.
+    Entity.getCollectionDAO()
+        .workflowDAO()
+        .update(
+            vault.encryptWorkflow(workflow, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE));
+
+    InvalidRequestException rejected =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        "/v1/automations/workflows/trigger/" + workflow.getId(),
+                        null));
+    assertEquals(400, rejected.getStatusCode());
+    assertTrue(rejected.getResponseBody().contains("Password"));
+    assertFalse(rejected.getResponseBody().contains(foreignReference));
+  }
+
   private static SnowflakeConnection snowflakeConnection(String password) {
     return new SnowflakeConnection()
         .withAccount("test-account")

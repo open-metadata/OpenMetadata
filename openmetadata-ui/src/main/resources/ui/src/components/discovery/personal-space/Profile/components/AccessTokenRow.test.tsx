@@ -34,6 +34,12 @@ jest.mock('rest/axiosClient', () => ({
   default: { put: (...a: unknown[]) => mockPut(...a) },
 }));
 
+const mockGetResourceLimit = jest.fn();
+
+jest.mock('context/LimitsProvider/useLimitsStore', () => ({
+  useLimitStore: () => ({ getResourceLimit: mockGetResourceLimit }),
+}));
+
 jest.mock('utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -113,7 +119,43 @@ jest.mock('react-i18next', () => ({
 import AccessTokenRow from './AccessTokenRow';
 
 describe('AccessTokenRow', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourceLimit.mockResolvedValue({ configuredLimit: {} });
+  });
+
+  it('disables generation when the user limit turns off access tokens', async () => {
+    mockGetUserAccessToken.mockResolvedValue([]);
+    mockGetResourceLimit.mockResolvedValue({
+      configuredLimit: { disabledFields: ['personalAccessToken'] },
+    });
+
+    await act(async () => {
+      render(<AccessTokenRow />);
+    });
+
+    expect(mockGetResourceLimit).toHaveBeenCalledWith('user', false);
+    expect(screen.getByText('label.generate-token')).toBeDisabled();
+    expect(
+      screen.getByText('message.access-token-limit-reached')
+    ).toBeInTheDocument();
+  });
+
+  it('disables regenerating an existing token when limited', async () => {
+    mockGetUserAccessToken.mockResolvedValue([
+      { tokenName: 'ai-profile-token', token: 'tid', jwtToken: 'jwt' },
+    ]);
+    mockGetResourceLimit.mockResolvedValue({
+      configuredLimit: { disabledFields: ['personalAccessToken'] },
+    });
+
+    await act(async () => {
+      render(<AccessTokenRow />);
+    });
+
+    expect(screen.getByText('label.regenerate')).toBeDisabled();
+    expect(screen.getByText('label.revoke')).toBeEnabled();
+  });
 
   it('shows the empty state with expiry select and generates a token', async () => {
     mockGetUserAccessToken.mockResolvedValue([]);

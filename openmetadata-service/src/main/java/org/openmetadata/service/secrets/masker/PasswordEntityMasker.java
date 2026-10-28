@@ -28,7 +28,6 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
-import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.service.exception.EntityMaskException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
@@ -45,15 +44,8 @@ public class PasswordEntityMasker extends EntityMasker {
   private static final String NEW_KEY = "";
   private static final String OPENMETADATA_PACKAGE = "org.openmetadata";
 
-  /**
-   * What the unmask walk skips: exactly the classes the SecretsManager's encrypt walk skips (see
-   * {@code SecretsManager.DO_NOT_ENCRYPT_CLASSES}). Whatever is never encrypted holds no encoded
-   * credential that could be validated, so skipping the same set keeps the two walks in step.
-   * Everything the encrypter does encrypt - a bot's JWTAuthMechanism token, which the {@link
-   * #maskPasswordFields mask} deliberately leaves visible to its admin - is validated on unmask.
-   */
-  private static final Set<Class<?>> DO_NOT_UNMASK_CLASSES =
-      Set.of(OpenMetadataJWTClientConfig.class, BasicAuthMechanism.class);
+  // Restore every masked field and validate every encrypted field, including bot JWT tokens.
+  private static final Set<Class<?>> DO_NOT_UNMASK_CLASSES = Set.of(BasicAuthMechanism.class);
 
   protected PasswordEntityMasker() {}
 
@@ -287,8 +279,11 @@ public class PasswordEntityMasker extends EntityMasker {
   }
 
   private boolean isEncoded(String fieldValue) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     return Fernet.isTokenized(fieldValue)
-        || fieldValue.startsWith(SecretsManager.SECRET_FIELD_PREFIX);
+        || (secretsManager != null
+            ? Boolean.TRUE.equals(secretsManager.isSecret(fieldValue))
+            : fieldValue.startsWith(SecretsManager.SECRET_FIELD_PREFIX));
   }
 
   private boolean isEchoOfTheStoredValue(String fieldValue, StoredPassword storedPassword) {

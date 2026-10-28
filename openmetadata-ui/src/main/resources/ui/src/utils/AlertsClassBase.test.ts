@@ -18,7 +18,10 @@ import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import {
   AlertType,
+  Effect,
+  EventFilterRule,
   EventSubscription,
+  PrefixCondition,
   SubscriptionCategory,
   SubscriptionType,
 } from '../generated/events/eventSubscription';
@@ -405,6 +408,180 @@ describe('AlertsClassBase', () => {
 
       expect(result.input).toEqual({ actions: [], filters: [] });
     });
+
+    it('never submits input for a legacy alert so the backend keeps its filteringRules', () => {
+      // A legacy WrittenByHand alert: rules live only in filteringRules, no input.
+      // The form seeds input from the legacy shape for display, but the seeded rules
+      // carry argument names without values the backend can recompile. Even if the
+      // user adds a rule, getAlertUpdateData must not send any input — the backend's
+      // FromSelections would replace the hand-written filteringRules with rules it
+      // cannot rebuild, silently dropping the legacy rules. The WrittenByHand policy
+      // keeps the original filteringRules when no input is sent.
+      const legacy: EventSubscription = {
+        ...mockInitialData,
+        input: undefined,
+        filteringRules: {
+          actions: [
+            {
+              condition: 'matchTestResult(true)',
+              effect: Effect.Include,
+              name: 'testResultTrigger',
+            },
+          ],
+          resources: ['table'],
+          rules: [
+            {
+              arguments: ['domainList'],
+              condition: 'matchAnyDomain(true)',
+              effect: Effect.Include,
+              name: 'domainList',
+            },
+          ],
+        },
+      } as EventSubscription;
+      // The form seeds input from the legacy shape, then the user adds one filter.
+      const seeded = alertsClass.getModifiedAlertDataForForm(legacy);
+      const formData: ModifiedCreateEventSubscription = {
+        ...(seeded as unknown as ModifiedCreateEventSubscription),
+        resources: ['table'],
+        input: {
+          actions: seeded.input?.actions ?? [],
+          filters: [
+            ...(seeded.input?.filters ?? []),
+            { effect: Effect.Include, name: 'pipelineStateList' },
+          ],
+        },
+      };
+
+      const result = alertsClass.getAlertUpdateData(formData, legacy);
+
+      // A legacy alert never submits input — the user-added rule is not sent because
+      // sending it would make the backend replace the hand-written filteringRules.
+      // The backend's WrittenByHand policy keeps the original rules unchanged.
+      expect(result.input).toBeUndefined();
+      expect(result.filteringRules?.rules).toBe(legacy.filteringRules?.rules);
+      expect(result.filteringRules?.actions).toBe(
+        legacy.filteringRules?.actions
+      );
+    });
+
+    it('preserves input for a modern alert (non-legacy) on update', () => {
+      // A modern alert carries its own input; getAlertUpdateData should pass it
+      // through unchanged — no stripping of rules the user selected.
+      const modern: EventSubscription = {
+        ...mockInitialData,
+        input: {
+          actions: [],
+          filters: [
+            {
+              arguments: [{ input: ['value1'], name: 'domainList' }],
+              effect: Effect.Include,
+              name: 'domainList',
+            },
+          ],
+        },
+      } as EventSubscription;
+
+      const result = alertsClass.getAlertUpdateData(
+        { ...mockModifiedData, input: modern.input },
+        modern
+      );
+
+      expect(result.input).toEqual({
+        actions: [],
+        filters: [
+          {
+            arguments: [{ input: ['value1'], name: 'domainList' }],
+            effect: Effect.Include,
+            name: 'domainList',
+          },
+        ],
+      });
+    });
+
+    it('omits input for a legacy alert when the user changes only the name', () => {
+      // A legacy alert the user renames without touching its rules: the form seeds
+      // input from filteringRules for display, but getAlertUpdateData must not
+      // submit those seeded rules — the backend keeps the original filteringRules.
+      const legacy: EventSubscription = {
+        ...mockInitialData,
+        name: 'openMetadata_alert_old123',
+        input: undefined,
+        filteringRules: {
+          resources: ['table'],
+          rules: [
+            {
+              arguments: ['domainList'],
+              condition: 'matchAnyDomain(true)',
+              effect: Effect.Include,
+              name: 'domainList',
+            },
+          ],
+        },
+      } as EventSubscription;
+
+      const seeded = alertsClass.getModifiedAlertDataForForm(legacy);
+      const formData: ModifiedCreateEventSubscription = {
+        ...(seeded as unknown as ModifiedCreateEventSubscription),
+        displayName: 'Renamed Alert',
+        name: 'renamed-alert',
+        resources: ['table'],
+        input: seeded.input,
+      };
+
+      const result = alertsClass.getAlertUpdateData(formData, legacy);
+
+      // No user-added rules, so input is omitted entirely — the backend sees no
+      // selections and keeps the legacy filteringRules via WrittenByHand.
+      expect(result.input).toBeUndefined();
+      expect(result.filteringRules?.rules).toBe(legacy.filteringRules?.rules);
+    });
+
+    it('leaves the empty input an earlier save stored on a legacy alert untouched', () => {
+      const legacy: EventSubscription = {
+        ...mockInitialData,
+        input: { actions: [], filters: [] },
+        filteringRules: {
+          resources: ['table'],
+          rules: [
+            {
+              arguments: ['domainList'],
+              condition: 'matchAnyDomain(true)',
+              effect: Effect.Include,
+              name: 'domainList',
+            },
+          ],
+        },
+      } as EventSubscription;
+      const formData: ModifiedCreateEventSubscription = {
+        ...mockModifiedData,
+        resources: ['table'],
+        input: {
+          actions: [],
+          filters: [{ effect: Effect.Include, name: 'pipelineStateList' }],
+        },
+      };
+
+      const result = alertsClass.getAlertUpdateData(formData, legacy);
+
+      expect(result.input).toBe(legacy.input);
+    });
+
+    it('submits rules added to an alert that has neither input nor rules', () => {
+      const sourcesOnly: EventSubscription = {
+        ...mockInitialData,
+        filteringRules: { resources: ['table'] },
+      };
+      delete sourcesOnly.input;
+      const added = { effect: Effect.Include, name: 'pipelineStateList' };
+
+      const result = alertsClass.getAlertUpdateData(
+        { ...mockModifiedData, input: { actions: [], filters: [added] } },
+        sourcesOnly
+      );
+
+      expect(result.input).toEqual({ actions: [], filters: [added] });
+    });
   });
 
   describe('handleAlertSave', () => {
@@ -611,6 +788,171 @@ describe('AlertsClassBase', () => {
       expect(result.fullyQualifiedName).toBe(
         mockInitialData.fullyQualifiedName
       );
+    });
+
+    describe('seeds input from the legacy filteringRules shape', () => {
+      // A WrittenByHand alert: rules/actions live only in filteringRules, with no input.
+      const legacyRules: EventFilterRule[] = [
+        {
+          arguments: ['domainList'],
+          condition: 'matchAnyDomain(true)',
+          effect: Effect.Include,
+          name: 'domainList',
+          prefixCondition: PrefixCondition.And,
+        },
+        {
+          arguments: ['ownerNameList'],
+          condition: 'matchAnyOwner(true)',
+          effect: Effect.Exclude,
+          name: 'ownerNameList',
+        },
+      ];
+      const legacyActions: EventFilterRule[] = [
+        {
+          arguments: ['testSuiteList'],
+          condition: 'matchTestResult(true)',
+          effect: Effect.Include,
+          name: 'testResultTrigger',
+        },
+      ];
+      const legacyAlertData: EventSubscription = {
+        ...mockInitialData,
+        // No `input` selections: this is the legacy shape the backend still evaluates.
+        input: undefined,
+        filteringRules: {
+          actions: legacyActions,
+          resources: ['table'],
+          rules: legacyRules,
+        },
+      } as EventSubscription;
+
+      it('seeds input.filters and input.actions from legacy rules/actions', () => {
+        const result = alertsClass.getModifiedAlertDataForForm(legacyAlertData);
+
+        expect(result.input).toBeDefined();
+        // The alert's own documented intent: a saved alert never hides its rules.
+        expect(result.input?.filters).toEqual([
+          {
+            arguments: [{ name: 'domainList' }],
+            effect: Effect.Include,
+            name: 'domainList',
+            prefixCondition: PrefixCondition.And,
+          },
+          {
+            arguments: [{ name: 'ownerNameList' }],
+            effect: Effect.Exclude,
+            name: 'ownerNameList',
+          },
+        ]);
+        expect(result.input?.actions).toEqual([
+          {
+            arguments: [{ name: 'testSuiteList' }],
+            effect: Effect.Include,
+            name: 'testResultTrigger',
+          },
+        ]);
+      });
+
+      it('seeds an empty actions list when only legacy rules are present', () => {
+        const rulesOnly: EventSubscription = {
+          ...legacyAlertData,
+          filteringRules: {
+            resources: ['table'],
+            rules: legacyRules,
+          },
+        } as EventSubscription;
+
+        const result = alertsClass.getModifiedAlertDataForForm(rulesOnly);
+
+        expect(result.input?.filters).toHaveLength(legacyRules.length);
+        expect(result.input?.actions).toEqual([]);
+      });
+
+      it('seeds an empty filters list when only legacy actions are present', () => {
+        const actionsOnly: EventSubscription = {
+          ...legacyAlertData,
+          filteringRules: {
+            actions: legacyActions,
+            resources: ['table'],
+          },
+        } as EventSubscription;
+
+        const result = alertsClass.getModifiedAlertDataForForm(actionsOnly);
+
+        expect(result.input?.filters).toEqual([]);
+        expect(result.input?.actions).toHaveLength(legacyActions.length);
+      });
+
+      it('preserves an existing input instead of seeding from legacy rules', () => {
+        const modernAlertWithLegacyRules: EventSubscription = {
+          ...legacyAlertData,
+          input: {
+            actions: [],
+            filters: [{ effect: Effect.Include, name: 'modernFilter' }],
+          },
+        } as EventSubscription;
+
+        const result = alertsClass.getModifiedAlertDataForForm(
+          modernAlertWithLegacyRules
+        );
+
+        // The modern input wins; legacy rules do not leak into the form selections.
+        expect(result.input).toEqual({
+          actions: [],
+          filters: [{ effect: Effect.Include, name: 'modernFilter' }],
+        });
+        expect(result.input?.filters).toHaveLength(1);
+      });
+
+      it('does not seed an empty input when neither input nor legacy rules exist', () => {
+        const noRulesAlert: EventSubscription = {
+          ...mockInitialData,
+          filteringRules: { resources: ['table'] },
+        };
+        delete noRulesAlert.input;
+
+        const result = alertsClass.getModifiedAlertDataForForm(noRulesAlert);
+
+        // No spurious input: the form keeps hiding sections for a rule-less alert.
+        expect(result.input).toBeUndefined();
+      });
+
+      it('seeds from legacy rules when an earlier save stored an empty input', () => {
+        const result = alertsClass.getModifiedAlertDataForForm({
+          ...legacyAlertData,
+          input: { actions: [], filters: [] },
+        });
+
+        expect(result.input?.filters).toHaveLength(legacyRules.length);
+        expect(result.input?.actions).toHaveLength(legacyActions.length);
+        expect(result.hasRulesWithoutSelections).toBe(true);
+      });
+
+      it('marks only alerts whose rules have no selections as read-only', () => {
+        const modern = alertsClass.getModifiedAlertDataForForm({
+          ...legacyAlertData,
+          input: {
+            actions: [],
+            filters: [{ effect: Effect.Include, name: 'modernFilter' }],
+          },
+        });
+
+        expect(
+          alertsClass.getModifiedAlertDataForForm(legacyAlertData)
+            .hasRulesWithoutSelections
+        ).toBe(true);
+        expect(modern.hasRulesWithoutSelections).toBe(false);
+      });
+
+      it('keeps the legacy filteringRules intact so the save path can still spread them', () => {
+        const result = alertsClass.getModifiedAlertDataForForm(legacyAlertData);
+
+        // getAlertUpdateData spreads initialData.filteringRules into the PATCH
+        // body, so the legacy rules must survive the form transform by reference.
+        expect(result.filteringRules).toBe(legacyAlertData.filteringRules);
+        expect(result.filteringRules?.rules).toBe(legacyRules);
+        expect(result.filteringRules?.actions).toBe(legacyActions);
+      });
     });
   });
 

@@ -18,6 +18,7 @@ import {
   ENTITY_REFERENCE_OPTIONS,
   SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING,
 } from '../constants/CustomProperty.constants';
+import { PAGE_HEADERS } from '../constants/PageHeaders.constant';
 import { SearchIndex } from '../enums/search.enum';
 import {
   CustomProperty,
@@ -33,6 +34,7 @@ import {
   getCustomPropertyEntityPathname,
   getCustomPropertyLuxonFormat,
   getCustomPropertyMomentFormat,
+  getCustomPropertyPageHeaderFromEntity,
   getCustomPropertyReferenceSearchIndex,
   getCustomPropertyTypeDisplayName,
   getHyperlinkUrlValidationErrorKey,
@@ -61,6 +63,16 @@ describe('CustomProperty.utils', () => {
     const entityType = 'glossaryTerm';
 
     expect(getCustomPropertyEntityPathname(entityType)).toEqual(expectedPath);
+  });
+
+  it('getCustomPropertyEntityPathname should map the page type to the articles settings path', () => {
+    expect(getCustomPropertyEntityPathname('page')).toEqual('articles');
+  });
+
+  it('getCustomPropertyPageHeaderFromEntity should return the Articles header for the page type', () => {
+    expect(getCustomPropertyPageHeaderFromEntity('page')).toEqual(
+      PAGE_HEADERS.ARTICLE_CUSTOM_ATTRIBUTES
+    );
   });
 
   it('getCustomPropertyEntityPathname should return empty string if entityPath is not found', () => {

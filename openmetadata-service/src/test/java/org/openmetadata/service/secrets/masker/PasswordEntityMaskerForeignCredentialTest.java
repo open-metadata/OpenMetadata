@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,6 +74,37 @@ class PasswordEntityMaskerForeignCredentialTest {
   }
 
   @Test
+  void legacyCollateOverloadsCanRestoreStoredCredentials() {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    basicAuth stored = new basicAuth().withPassword(encrypted(STORED_PASSWORD));
+
+    basicAuth queryConfig =
+        (basicAuth) manager.encryptQueryRunnerConfig(stored, "test-service", "user");
+    assertEquals(STORED_PASSWORD, Fernet.getInstance().decrypt(queryConfig.getPassword()));
+    basicAuth pluginConfig =
+        (basicAuth)
+            manager.encryptContextPluginConnection(
+                new basicAuth().withPassword(encrypted(STORED_PASSWORD)), "test-plugin");
+    assertEquals(STORED_PASSWORD, Fernet.getInstance().decrypt(pluginConfig.getPassword()));
+  }
+
+  @Test
+  void explicitStrictCollateOverloadsRejectForeignTokens() {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    basicAuth foreign = new basicAuth().withPassword(encrypted(VICTIM_PASSWORD));
+    assertThrows(
+        SecretsManagerException.class,
+        () ->
+            manager.encryptQueryRunnerConfig(
+                foreign, "service", "user", SecretsManager.CredentialPolicy.STRICT));
+    assertThrows(
+        SecretsManagerException.class,
+        () ->
+            manager.encryptContextPluginConnection(
+                foreign, "plugin", SecretsManager.CredentialPolicy.STRICT));
+  }
+
+  @Test
   void unmaskRejectsAForeignFernetToken() {
     String foreignToken = encrypted(VICTIM_PASSWORD);
     MysqlConnection original = connection(encrypted(STORED_PASSWORD));
@@ -99,16 +129,12 @@ class PasswordEntityMaskerForeignCredentialTest {
   }
 
   @Test
-  void unmaskRejectsAReferenceToAnotherEntitysSecret() {
+  void unmaskAcceptsSecretPrefixedPlaintextWithTheDatabaseManager() {
     MysqlConnection original = connection(encrypted(STORED_PASSWORD));
-
-    SecretsManagerException rejected =
-        assertThrows(
-            SecretsManagerException.class, () -> unmask(connection(MANAGED_REFERENCE), original));
-
-    assertEquals(400, rejected.getResponse().getStatus());
-    assertFalse(
-        rejected.getMessage().contains(MANAGED_REFERENCE), "the reference must not be echoed");
+    MysqlConnection restored = (MysqlConnection) unmask(connection(MANAGED_REFERENCE), original);
+    assertEquals(MANAGED_REFERENCE, password(restored));
+    assertEquals(
+        MANAGED_REFERENCE, password((MysqlConnection) unmask(connection(MANAGED_REFERENCE), null)));
   }
 
   @Test
@@ -204,22 +230,6 @@ class PasswordEntityMaskerForeignCredentialTest {
   private Object unmask(Object updated, Object original) {
     return EntityMaskerFactory.createEntityMasker()
         .unmaskServiceConnectionConfig(updated, original, "Mysql", ServiceType.DATABASE);
-  }
-
-  @Test
-  void theMaskerSkipsExactlyTheClassesTheEncryptWalkSkips() throws Exception {
-    assertEquals(
-        staticClassSet(SecretsManager.class, "DO_NOT_ENCRYPT_CLASSES"),
-        staticClassSet(PasswordEntityMasker.class, "DO_NOT_UNMASK_CLASSES"),
-        "the masker must skip exactly the classes the encrypt walk never encodes: a class on"
-            + " only one side leaves a field the other pass cannot round-trip");
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Set<Class<?>> staticClassSet(Class<?> owner, String name) throws Exception {
-    Field field = owner.getDeclaredField(name);
-    field.setAccessible(true);
-    return (Set<Class<?>>) field.get(null);
   }
 
   private MysqlConnection connection(String password) {

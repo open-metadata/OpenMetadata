@@ -72,7 +72,9 @@ const DropdownItem = ({
       {...props}
       className={(state) =>
         cx(
-          'tw:group tw:block tw:cursor-pointer tw:px-1.5 tw:py-px tw:outline-hidden',
+          // `no-underline!`: an item with `href` renders an <a>, and host apps
+          // ship an unlayered `a:hover`/`a:focus` underline that beats layered utilities.
+          'tw:group tw:block tw:cursor-pointer tw:px-1.5 tw:py-px tw:outline-hidden tw:no-underline!',
           state.isDisabled && 'tw:cursor-not-allowed',
           typeof props.className === 'function'
             ? props.className(state)
@@ -235,9 +237,9 @@ const DropdownDotsButton = forwardRef<HTMLButtonElement, AriaButtonProps>(
         aria-label={props['aria-label'] ?? t('label.open-menu', 'Open menu')}
         className={(state) =>
           cx(
-            'tw:cursor-pointer tw:rounded-md tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
-            (state.isPressed || state.isHovered) &&
-              'tw:text-fg-quaternary_hover',
+            // Centres the glyph when a flex parent stretches the button.
+            'tw:inline-flex tw:items-center tw:justify-center tw:cursor-pointer tw:rounded-md tw:text-fg-tertiary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+            (state.isPressed || state.isHovered) && 'tw:text-fg-tertiary_hover',
             (state.isPressed || state.isFocusVisible) &&
               'tw:outline-2 tw:outline-offset-2',
             typeof props.className === 'function'

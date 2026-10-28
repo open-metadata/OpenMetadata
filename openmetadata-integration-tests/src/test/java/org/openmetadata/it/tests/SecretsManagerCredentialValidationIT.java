@@ -20,6 +20,7 @@ import org.openmetadata.schema.api.services.CreateMetadataService.MetadataServic
 import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.fernet.Fernet;
@@ -81,6 +82,21 @@ public class SecretsManagerCredentialValidationIT {
     amundsenConnection(request).setPassword("a-new-plain-password");
     MetadataService updated = putCreateOrUpdate(request);
     assertNotNull(updated, "changing the credential to a new plain value must succeed");
+  }
+
+  @Test
+  void putUpdateAcceptsSecretPrefixedPlaintextWithTheDatabaseManager(TestNamespace ns) {
+    CreateMetadataService request = createRequest(ns.prefix("secret_prefix_plaintext"));
+    putCreateOrUpdate(request);
+    String password = "secret:/openmetadata/database/another-service/password";
+    amundsenConnection(request).setPassword(password);
+    MetadataService updated = putCreateOrUpdate(request);
+    MetadataService stored =
+        SdkClients.ingestionBotClient().metadataServices().get(updated.getId().toString());
+    assertEquals(
+        password,
+        JsonUtils.convertValue(stored.getConnection().getConfig(), AmundsenConnection.class)
+            .getPassword());
   }
 
   private static void assertRejectedValue(InvalidRequestException rejected, String rejectedValue) {

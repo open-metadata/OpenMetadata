@@ -41,8 +41,8 @@ interface UseFilePreviewContentOptions {
 // Fetches a Context Center file's bytes for preview and applies the only guards
 // that bear on whether the bytes can be shown: the metadata + real-blob size
 // cap. NB `processingStatus` is deliberately NOT a guard — it reflects the
-// server-side text-extraction pipeline (e.g. Image → OCR → Unsupported when no
-// tesseract), not whether the uploaded content exists. The content is stored at
+// server-side text-extraction pipeline (e.g. Image → Unsupported), not whether
+// the uploaded content exists. The content is stored at
 // upload independently of extraction, so a Failed/Unsupported extraction is
 // still fully previewable; a genuinely missing asset surfaces as a download
 // error instead. Shared by the full-screen modal and the detail-panel

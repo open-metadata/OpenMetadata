@@ -1,7 +1,7 @@
 # Core icons and buttons follow the Figma icon sizing spec
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-23 (three landing-page glyphs at a 1.67 stroke)
 - **Deciders:** Rohit Jain
 - **Guard:** `openmetadata-ui-core-components/.../components/base/buttons/button.test.tsx`; `normalizeToGrid` in `scripts/generate-icons.mjs` throws on 24-grid sources it cannot rescale
 - **Related:** open-metadata/OpenMetadata#35348
@@ -39,3 +39,10 @@ that must keep a height move up one name.
 Icons rendered without a size are 20px instead of 24px. A new 24-grid icon is converted on
 `yarn icons:generate`; one that uses shapes other than `<path>` or transforms fails generation
 until it is converted to paths.
+
+## Amendment — v2: three landing-page glyphs at a 1.67 stroke
+
+`LayoutRows`, `LayoutColumns` and `ChevronSelectorVertical02` are the landing page's list, grid and
+collapse glyphs from design review Set 4, which draws them with a 2 stroke on a 24 grid. They are
+authored at 1.67 on the 20 grid, the same rendered weight, instead of the 1.3 every other outline
+icon uses.

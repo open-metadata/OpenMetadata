@@ -46,7 +46,10 @@ import {
 } from '../../../generated/entity/data/metric';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
-import { getMetricEnumLabel } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
+import {
+  getMetricEnumLabel,
+  getMetricLanguageLabel,
+} from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { stringToHTML } from '../../../utils/RichTextStringUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -346,7 +349,7 @@ const MetricDefinitionEditDialog = ({
                   <Select.Item
                     id={value}
                     key={value}
-                    label={getMetricEnumLabel(t, value)}
+                    label={getMetricLanguageLabel(t, value)}
                   />
                 ))}
               </Select>

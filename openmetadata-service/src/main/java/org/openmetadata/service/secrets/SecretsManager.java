@@ -248,9 +248,8 @@ public abstract class SecretsManager {
         authConfig,
         serviceName,
         configType,
-        CredentialPolicy.strictWithReferenceBases(
-            List.of(
-                buildSecretId(true, "DatabaseService", serviceName, "queryrunner", configType))));
+        // Collate callers re-save stored credentials; keep their existing contract until migrated.
+        CredentialPolicy.INTERNAL_RE_STORAGE);
   }
 
   public Object encryptQueryRunnerConfig(
@@ -327,8 +326,8 @@ public abstract class SecretsManager {
     return encryptContextPluginConnection(
         connectionConfig,
         pluginName,
-        CredentialPolicy.strictWithReferenceBases(
-            List.of(buildSecretId(true, "contextPlugin", pluginName))));
+        // Collate callers restore stored OAuth tokens before invoking this legacy overload.
+        CredentialPolicy.INTERNAL_RE_STORAGE);
   }
 
   public Object encryptContextPluginConnection(
@@ -573,6 +572,7 @@ public abstract class SecretsManager {
 
   private void requireStoredManagedReference(
       String fieldName, String fieldValue, String secretId, CredentialPolicy policy) {
+    fieldValue = fernet.decryptIfApplies(fieldValue);
     if (fieldValue == null
         || !Boolean.TRUE.equals(isSecret(fieldValue))
         || !isManagedSecretReference(fieldValue)) {

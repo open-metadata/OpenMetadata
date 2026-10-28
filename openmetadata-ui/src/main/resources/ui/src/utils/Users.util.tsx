@@ -31,6 +31,7 @@ import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 
 export const userCellRenderer = (user: EntityReference | User) => {
   return user.name ? (
@@ -111,7 +112,9 @@ export const commonUserDetailColumns = (
               <Link
                 className="cursor-pointer"
                 key={uniqueId()}
-                to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                to={getSettingsLink(
+                  getTeamsWithFqnPath(team.fullyQualifiedName ?? '')
+                )}>
                 {getEntityName(team)}
               </Link>
             ))}
@@ -141,7 +144,9 @@ export const commonUserDetailColumns = (
                       <Link
                         className="cursor-pointer"
                         key={uniqueId()}
-                        to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                        to={getSettingsLink(
+                          getTeamsWithFqnPath(team.fullyQualifiedName ?? '')
+                        )}>
                         {getEntityName(team)}
                       </Link>
                     ))}
@@ -182,7 +187,9 @@ export const commonUserDetailColumns = (
               <Link
                 className="cursor-pointer"
                 key={uniqueId()}
-                to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                to={getSettingsLink(
+                  getRoleWithFqnPath(role.fullyQualifiedName ?? '')
+                )}>
                 {getEntityName(role)}
               </Link>
             ))}
@@ -212,7 +219,9 @@ export const commonUserDetailColumns = (
                       <Link
                         className="cursor-pointer"
                         key={uniqueId()}
-                        to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                        to={getSettingsLink(
+                          getRoleWithFqnPath(role.fullyQualifiedName ?? '')
+                        )}>
                         {getEntityName(role)}
                       </Link>
                     ))}

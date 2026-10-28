@@ -19,6 +19,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { clickAndWaitFor } from '../../../utils/waitHelpers';
 import { withAppConfigLock } from '../../Utils/appConfigMutex';
+import { stubUserPreferencesAppMode } from '../../Utils/appMode';
 import { expect, test } from './fixtures';
 
 // Admin UI page under Settings → Preferences → App Mode (the OSS
@@ -246,6 +247,11 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
       page,
     }) => {
       const settings = await stubSettingsRoundTrip(page, null);
+      // Saving 'ai' makes it the tenant default, and with no preference of its
+      // own the reloaded session would boot into AI mode, which serves no
+      // `/settings/*` page. The user's own preference outranks the tenant
+      // default, so pinning it to classic keeps this page on reload.
+      await stubUserPreferencesAppMode(page, 'classic');
       await page.goto(APP_MODE_SETTINGS_URL, {
         waitUntil: 'domcontentloaded',
       });

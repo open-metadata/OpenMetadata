@@ -559,3 +559,142 @@ describe('ProfilerSettingsModal with an interval type the form does not offer', 
     }
   );
 });
+
+describe('ProfilerSettingsModal when the stored config fetch fails', () => {
+  beforeEach(() => {
+    cleanup();
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('blocks the save, hides the defaults-filled form, and offers a retry', async () => {
+    (getTableProfilerConfig as jest.Mock).mockRejectedValueOnce(
+      new Error('Network Error')
+    );
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    // The error placeholder replaces the defaults-filled form ...
+    const loadError = await screen.findByTestId('profiler-settings-load-error');
+
+    expect(loadError).toBeInTheDocument();
+    expect(loadError).toHaveTextContent(
+      'server.fetch-table-profiler-config-error'
+    );
+
+    // ... so the misleading, defaults-filled form is not rendered for the
+    // user to edit and save.
+    expect(screen.queryByTestId('interval-type')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('sample-data-count-input')
+    ).not.toBeInTheDocument();
+
+    // The save action is gated and a retry is offered.
+    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+
+    // The user is told why, and nothing is written to the backend -- the
+    // destructive defaults-only overwrite the bug would have produced does
+    // not happen.
+    expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
+    expect(putTableProfileConfig).not.toHaveBeenCalled();
+  });
+
+  it('does not write a defaults-only config even when save is attempted', async () => {
+    // Defence-in-depth for the disabled button: ensure no PUT is ever issued
+    // after a failed load, regardless of how the save is triggered.
+    (getTableProfilerConfig as jest.Mock).mockRejectedValueOnce(
+      new Error('Network Error')
+    );
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    await screen.findByTestId('profiler-settings-load-error');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    });
+
+    expect(putTableProfileConfig).not.toHaveBeenCalled();
+  });
+
+  it('reloads the stored config and re-enables save after a successful retry', async () => {
+    (getTableProfilerConfig as jest.Mock)
+      .mockRejectedValueOnce(new Error('Network Error'))
+      .mockResolvedValueOnce({
+        ...MOCK_TABLE,
+        tableProfilerConfig: mockTableProfilerConfig,
+      });
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    await screen.findByTestId('profiler-settings-load-error');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    });
+
+    // The real config loads, not the defaults (sampleDataCount 500 vs 50).
+    await waitFor(() => {
+      expect(screen.getByTestId('interval-type')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId('profiler-settings-load-error')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('sample-data-count-input')).toHaveAttribute(
+      'value',
+      '500'
+    );
+    expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    });
+
+    await waitFor(() => {
+      expect(putTableProfileConfig).toHaveBeenCalled();
+    });
+
+    // The stored config round-trips, not the defaults -- the destructive
+    // overwrite the bug would have produced does not happen.
+    const payload = (putTableProfileConfig as jest.Mock).mock.calls[0][1];
+
+    expect(payload.profileQuery).toBe(mockTableProfilerConfig.profileQuery);
+    expect(payload.excludeColumns).toEqual(
+      mockTableProfilerConfig.excludeColumns
+    );
+    expect(payload.partitioning).toEqual(
+      expect.objectContaining(mockTableProfilerConfig.partitioning)
+    );
+  });
+
+  it('keeps the save button enabled when the config loads successfully', async () => {
+    (getTableProfilerConfig as jest.Mock).mockResolvedValueOnce({
+      ...MOCK_TABLE,
+      tableProfilerConfig: mockTableProfilerConfig,
+    });
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('interval-type')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId('profiler-settings-load-error')
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+  });
+});

@@ -55,6 +55,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Card: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="workflow-header">{children}</div>
   ),
+  FeaturedIcon: jest.requireActual('@openmetadata/ui-core-components')
+    .FeaturedIcon,
   Dialog: ({
     children,
     title,
@@ -135,11 +137,22 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
   Typography: ({
     children,
+    ellipsis,
     ...rest
   }: {
     children: React.ReactNode;
+    ellipsis?: boolean | { tooltip?: boolean };
     [key: string]: unknown;
-  }) => <span {...rest}>{children}</span>,
+  }) => (
+    <span
+      data-ellipsis={ellipsis ? 'true' : undefined}
+      data-ellipsis-tooltip={
+        typeof ellipsis === 'object' && ellipsis.tooltip ? 'true' : undefined
+      }
+      {...rest}>
+      {children}
+    </span>
+  ),
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
@@ -224,6 +237,29 @@ describe('WorkflowHeader — System badge', () => {
       'GlossaryTermApprovalWorkflow'
     );
   });
+
+  it.each([false, true])(
+    'truncates a long title with a full-text tooltip and keeps the actions from shrinking (isAiMode=%s)',
+    (isAiMode) => {
+      mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+      render(<WorkflowHeader {...defaultProps} isAiMode={isAiMode} />);
+
+      const title = screen.getByTestId('workflow-title');
+
+      expect(title).toHaveAttribute('data-ellipsis', 'true');
+      expect(title).toHaveAttribute('data-ellipsis-tooltip', 'true');
+
+      if (!isAiMode) {
+        expect(screen.getByTestId('workflow-title-section')).toHaveClass(
+          'tw:min-w-0'
+        );
+        expect(
+          screen.getByTestId('edit-workflow-button').parentElement
+        ).toHaveClass('tw:shrink-0');
+      }
+    }
+  );
 
   it('shows the System badge when isNoOp is true', () => {
     mockUseWorkflowModeContext.mockReturnValue(

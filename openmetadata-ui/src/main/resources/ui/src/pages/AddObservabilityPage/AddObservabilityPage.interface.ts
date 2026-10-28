@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { AxiosError } from 'axios';
 import type { ComponentType } from 'react';
 import type { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
 import type { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -69,12 +70,15 @@ export interface UseObservabilityAlertTemplatesOptions {
 
 export interface UseAlertFormDataReturn {
   alert?: ModifiedEventSubscription;
+  /** Set when loading the alert to edit failed. */
+  alertError?: AxiosError;
   breadcrumb: {
     name: string;
     url: string;
   }[];
   extraFormButtons: Record<string, ComponentType<AddAlertFormWidgetProps>>;
   extraFormWidgets: Record<string, ComponentType<AddAlertFormWidgetProps>>;
+  fetchAlert: () => Promise<void>;
   handleCancel: () => void;
   handleSave: (data: ModifiedCreateEventSubscription) => Promise<void>;
   inlineAlertDetails?: InlineAlertProps;

@@ -127,6 +127,8 @@ ENTITY_TYPE
     | 'mcpServer'
     | 'mcpExecution'
     | 'intakeForm'
+    | 'announcement'
+    | 'governanceAutomation'
     ;
 
 ENTITY_FIELD
@@ -138,6 +140,7 @@ ENTITY_FIELD
     | 'mlFeatures'
     | 'schemaText'
     | 'owner'
+    | 'owners'
     | 'reviewers'
     | 'synonyms'
     | 'relatedTerms'

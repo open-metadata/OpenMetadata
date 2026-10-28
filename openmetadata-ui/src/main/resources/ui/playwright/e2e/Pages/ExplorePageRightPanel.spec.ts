@@ -2014,7 +2014,7 @@ test.describe('Right Panel Test Suite', () => {
           await expect(
             adminPage
               .getByTestId('glossary-container')
-              .locator('.no-data-placeholder')
+              .getByText('No Glossary Terms assigned')
           ).toBeVisible();
         } finally {
           await testEntity.delete(apiContext);

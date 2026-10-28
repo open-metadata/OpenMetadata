@@ -31,6 +31,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 
 public abstract class ExternalSecretsManagerTest {
   protected ExternalSecretsManager secretsManager;
@@ -274,6 +275,45 @@ public abstract class ExternalSecretsManagerTest {
     assertTrue(rejected.getMessage().contains("Password"), rejected.getMessage());
     assertFalse(
         rejected.getMessage().contains(foreignReference), "the reference must not be echoed");
+  }
+
+  @Test
+  void testUnmaskRejectsAnotherServicesReference() {
+    SecretsManager previous = SecretsManagerFactory.getSecretsManager();
+    try {
+      SecretsManagerFactory.setSecretsManager(secretsManager);
+      String foreignReference = servicePasswordReference("other-service");
+      SecretsManagerException rejected =
+          assertThrows(
+              SecretsManagerException.class,
+              () ->
+                  EntityMaskerFactory.createEntityMasker()
+                      .unmaskWorkflow(
+                          testConnectionWorkflow("test-service", foreignReference), null));
+      assertEquals(400, rejected.getResponse().getStatus());
+      assertFalse(rejected.getMessage().contains(foreignReference));
+    } finally {
+      SecretsManagerFactory.setSecretsManager(previous);
+    }
+  }
+
+  @Test
+  void testStoredWorkflowTriggerRejectsEncryptedForeignReference() {
+    String foreignReference = servicePasswordReference("other-service");
+    Workflow encrypted =
+        secretsManager.encryptWorkflow(
+            testConnectionWorkflow("test-service", foreignReference),
+            SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
+    Workflow stored = JsonUtils.readValue(JsonUtils.pojoToJson(encrypted), Workflow.class);
+
+    SecretsManagerException rejected =
+        assertThrows(
+            SecretsManagerException.class,
+            () -> secretsManager.rejectStoredForeignReferences(stored));
+
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertTrue(rejected.getMessage().contains("Password"));
+    assertFalse(rejected.getMessage().contains(foreignReference));
   }
 
   /** A stored row is legitimate when its references are the walk's own or the service's echo. */

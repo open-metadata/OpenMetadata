@@ -104,6 +104,25 @@ describe('useSystemAnnouncementsList', () => {
     expect(result.current.hasFilters).toBe(true);
   });
 
+  it('surfaces a server error at once instead of retrying behind the skeleton', async () => {
+    mockList.mockRejectedValue({ response: { status: 500 } });
+    const retryingWrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: 3 } } })}>
+        {children}
+      </QueryClientProvider>
+    );
+
+    const { result } = renderHook(() => useSystemAnnouncementsList(), {
+      wrapper: retryingWrapper,
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(result.current.isLoading).toBe(false);
+    expect(mockList).toHaveBeenCalledTimes(1);
+  });
+
   it('clears every filter, not only the search', async () => {
     const { result } = renderHook(() => useSystemAnnouncementsList(), {
       wrapper,

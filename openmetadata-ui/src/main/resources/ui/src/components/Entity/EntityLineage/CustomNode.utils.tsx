@@ -34,6 +34,7 @@ import { t } from '../../../utils/i18next/LocalUtil';
 import { onColumnMouseEnter } from '../../../utils/Lineage/handlers/columnInteractions';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import LineageColumnMenu from '../../Lineage/LineageColumnMenu/LineageColumnMenu';
+import { BASE_NODE_FILL_CLASS } from './CustomNode.constants';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 const DEPTH_INDENT_PX = 16;
@@ -277,10 +278,10 @@ const ColumnContentInner = ({
 
   return (
     <div
-      className={classNames(`custom-node-column-container ${className}`, {
-        'custom-node-header-column-tracing': isColumnTraced,
-        'tw:dark:text-primary': isColumnTraced,
-      })}
+      className={classNames(
+        `custom-node-column-container tw:text-primary ${className}`,
+        { 'custom-node-header-column-tracing': isColumnTraced }
+      )}
       data-testid={`column-${fullyQualifiedName}`}
       role="presentation"
       style={{
@@ -294,16 +295,6 @@ const ColumnContentInner = ({
         <div className="custom-node-name-container">
           {columnNameContentRender}
         </div>
-
-        {onColumnLineageEdit && fullyQualifiedName && (
-          <span className="lineage-column-menu tw:ml-auto tw:opacity-0 tw:group-hover:opacity-100 tw:focus-within:opacity-100">
-            <LineageColumnMenu
-              onEdit={(direction, triggerRef) =>
-                onColumnLineageEdit(fullyQualifiedName, direction, triggerRef)
-              }
-            />
-          </span>
-        )}
 
         {'constraint' in column && column.constraint && (
           <div
@@ -323,6 +314,15 @@ const ColumnContentInner = ({
               summary={summary}
             />
           </div>
+        )}
+        {onColumnLineageEdit && fullyQualifiedName && (
+          <span className="lineage-column-menu tw:flex tw:items-center tw:opacity-0 tw:group-hover:opacity-100 tw:focus-within:opacity-100">
+            <LineageColumnMenu
+              onEdit={(direction, triggerRef) =>
+                onColumnLineageEdit(fullyQualifiedName, direction, triggerRef)
+              }
+            />
+          </span>
         )}
       </div>
     </div>
@@ -354,6 +354,20 @@ export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
 export const LINEAGE_NODE_DARK_CLASS =
   'tw:dark:[--lineage-node-border:var(--tw-color-border-primary)]';
 
+/**
+ * The base node's own fill is a gradient layer, which would sit above the
+ * background-color that the selected states set (brand, or error when quality
+ * failed), so it yields while selected. An unselected failed-quality node only
+ * changes its border, so it keeps the fill.
+ */
+export const hasBaseNodeFill = ({
+  isBaseNode,
+  isSelected,
+}: {
+  isBaseNode: boolean;
+  isSelected: boolean;
+}) => isBaseNode && !isSelected;
+
 export function getNodeClassNames({
   isSelected,
   showDqTracing,
@@ -375,6 +389,7 @@ export function getNodeClassNames({
       'data-quality-failed-custom-node-header': showDqTracing,
       'custom-node-header-tracing': isTraced,
       'lineage-base-node': isBaseNode,
+      [BASE_NODE_FILL_CLASS]: hasBaseNodeFill({ isBaseNode, isSelected }),
       'columns-expanded': isChildrenListExpanded,
     }
   );

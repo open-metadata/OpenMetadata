@@ -29,6 +29,7 @@ import {
 import {
   hashSubPathToView,
   isFullscreenPersonaHash,
+  viewToSubPath,
 } from '../Profile/tabs/personas/Personas.utils';
 
 const PersonaCustomizeView = withSuspenseFallback(
@@ -80,7 +81,14 @@ const PersonaFullscreenPortal: React.FC = () => {
   );
 
   const handleBack = useCallback(
-    () => goToModal(entityKey ? `${fqn}/customize/${baseCategory}` : fqn),
+    () =>
+      goToModal(
+        viewToSubPath(
+          entityKey
+            ? { type: 'customize', fqn, name: fqn, category: baseCategory }
+            : { type: 'detail', fqn, name: fqn }
+        )
+      ),
     [goToModal, fqn, baseCategory, entityKey]
   );
 
@@ -110,7 +118,7 @@ const PersonaFullscreenPortal: React.FC = () => {
 
           break;
         case 'persona':
-          goToModal(fqn);
+          goToModal(viewToSubPath({ type: 'detail', fqn, name: fqn }));
 
           break;
         case 'parent':

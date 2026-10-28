@@ -46,7 +46,7 @@ import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterC
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DataQualitySection from '../../../common/DataQualitySection/DataQualitySection';
-import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PanelEmptyPlaceholder from '../../../common/EmptyPlaceholder/PanelEmptyPlaceholder';
 import PermissionPlaceholder from '../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import '../../../common/OverviewSection/OverviewSection.less';
@@ -599,17 +599,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       );
     }
 
+    // The entity has tests here, so an empty list means the search or the
+    // status filter matched none of them.
     return (
-      <div className="no-test-cases tw:px-4 tw:py-8 tw:text-center">
-        <Typography
-          className="no-data-placeholder"
-          color="secondary"
-          size="text-xs">
-          {t('label.no-entity', {
-            entity: t('label.test-case-plural'),
-          })}
-        </Typography>
-      </div>
+      <PanelEmptyPlaceholder
+        searchText={searchText}
+        title={t('label.no-entity', {
+          entity: t('label.test-case-plural'),
+        })}
+      />
     );
   };
 
@@ -637,16 +635,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
 
     return (
-      <div className="no-incidents tw:p-6 tw:text-center">
-        <Typography color="secondary" size="text-sm">
-          {t('message.no-entity-found-for-name', {
-            entity: t('label.incident-plural'),
-            name: `${t('label.type-filed-name', {
-              fieldName: startCase(activeIncidentFilter),
-            })}`,
-          })}
-        </Typography>
-      </div>
+      <PanelEmptyPlaceholder
+        searchText={searchText}
+        title={t('message.no-entity-found-for-name', {
+          entity: t('label.incident-plural'),
+          name: `${t('label.type-filed-name', {
+            fieldName: startCase(activeIncidentFilter),
+          })}`,
+        })}
+      />
     );
   };
 
@@ -661,12 +658,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     if (statusCounts.total === 0) {
       return (
-        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-          <NoDataPlaceholder
-            data-testid="no-data-placeholder"
-            description={t('message.no-data-quality-test-message')}
-          />
-        </div>
+        <PanelEmptyPlaceholder
+          description={t('message.no-data-quality-test-message')}
+        />
       );
     }
 
@@ -716,12 +710,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     if (incidentCounts.total === 0) {
       return (
         <div className="m-t-lg">
-          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-            <NoDataPlaceholder
-              data-testid="no-data-placeholder"
-              description={t('message.no-incident-found')}
-            />
-          </div>
+          <PanelEmptyPlaceholder description={t('message.no-incident-found')} />
         </div>
       );
     }

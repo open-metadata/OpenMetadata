@@ -164,29 +164,28 @@ export const DiffViewNew = ({
         data-testid="diff-container"
         style={showDescTitle ? { marginTop: '14px' } : {}}>
         {diffArr.length ? (
-          <>
-            <div
-              className={classNames('relative', contentClassName)}
-              ref={contentRef}>
-              {elements}
-            </div>
-            {shouldShowViewMore && (
-              <div className="mt-2">
-                <Button
-                  color="secondary"
-                  data-testid="view-more-button"
-                  onClick={() => setExpanded(!expanded)}>
-                  {expanded ? t('label.view-less') : t('label.view-more')}
-                </Button>
-              </div>
-            )}
-          </>
+          <div
+            className={classNames('relative', contentClassName)}
+            ref={contentRef}>
+            {elements}
+          </div>
         ) : (
           <Typography color="secondary" data-testid="noDiff-placeholder">
             {t('label.no-diff-available')}
           </Typography>
         )}
       </pre>
+      {/* Outside the <pre>, which made it monospace; a link like the
+          description preview's View more, not a bordered button. */}
+      {diffArr.length > 0 && shouldShowViewMore && (
+        <Button
+          color="link-color"
+          data-testid="view-more-button"
+          size="sm"
+          onClick={() => setExpanded(!expanded)}>
+          {expanded ? t('label.view-less') : t('label.view-more')}
+        </Button>
+      )}
     </div>
   );
 };

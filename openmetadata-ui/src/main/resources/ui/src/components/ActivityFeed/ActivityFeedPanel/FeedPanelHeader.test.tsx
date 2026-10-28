@@ -13,6 +13,8 @@
 
 import { findByTestId, queryByTestId, render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { Conversation } from '../../../generated/entity/feed/conversation';
+import EntityLink from '../../../utils/EntityLink';
 import FeedPanelHeader from './FeedPanelHeader';
 
 const mockFeedPanelHeaderProp = {
@@ -108,5 +110,68 @@ describe('Test FeedPanelHeader Component', () => {
     const noun = await findByTestId(container, 'header-noun');
 
     expect(noun).toHaveTextContent(/Conversation label.on-lowercase/i);
+  });
+
+  it('reads the entity from the thread reference, not its about link', async () => {
+    // A thread created from an activity event links the changed field
+    // (`::entityStatus`), which the EntityLink grammar does not list, so
+    // parsing it made ANTLR log a syntax error.
+    const splitSpy = jest.spyOn(EntityLink, 'split');
+    const feed = {
+      about: '<#E::table::service.db.schema.orders::entityStatus>',
+      entityRef: {
+        id: 'id-1',
+        type: 'table',
+        name: 'orders',
+        fullyQualifiedName: 'service.db.schema.orders',
+      },
+    } as Conversation;
+
+    const { container } = render(
+      <FeedPanelHeader
+        entityLink="<#E::table::service.db.schema.orders>"
+        feed={feed}
+        onCancel={jest.fn()}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(splitSpy).not.toHaveBeenCalled();
+    expect(await findByTestId(container, 'entitylink')).toHaveAttribute(
+      'href',
+      expect.stringContaining('service.db.schema.orders')
+    );
+
+    splitSpy.mockRestore();
+  });
+
+  it('does not parse an activity-sourced about link the drawer passes as entityLink', async () => {
+    const splitSpy = jest.spyOn(EntityLink, 'split');
+    const about = '<#E::table::service.db.schema.orders::entityStatus>';
+
+    const { container } = render(
+      <FeedPanelHeader
+        entityLink={about}
+        feed={
+          {
+            about,
+            entityRef: {
+              id: 'id-1',
+              type: 'table',
+              fullyQualifiedName: 'service.db.schema.orders',
+            },
+          } as Conversation
+        }
+        onCancel={jest.fn()}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(splitSpy).not.toHaveBeenCalled();
+    expect(await findByTestId(container, 'entity-attribute')).toHaveTextContent(
+      /entityStatus/i
+    );
+
+    splitSpy.mockRestore();
   });
 });
