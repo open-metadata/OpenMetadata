@@ -664,6 +664,27 @@ def test_case_column_to_match_set_ordered_false():
 
 
 @pytest.fixture
+def test_case_column_to_match_set_ordered_false_sqa():
+    """Same as test_case_column_to_match_set_ordered_false, for the SQLAlchemy runner.
+
+    The SQLAlchemy validator reads the ORM column keys, so the `first name` column is reported as `first_name`.
+    """
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="columnNames",
+                value="age,id,name,first_name,fullname,nickname,inserted_date,postal_code,lat,lon,is_active",
+            ),
+            TestCaseParameterValue(name="ordered", value="false"),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
 def test_case_table_custom_sql_query():
     """Test case for test column_value_median_to_be_between"""
     return TestCase(

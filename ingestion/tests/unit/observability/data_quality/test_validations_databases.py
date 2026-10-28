@@ -471,7 +471,7 @@ ABORTED_BEFORE_ROW_COUNT = {
             None,
         ),
         (
-            "test_case_column_to_match_set_ordered_false",
+            "test_case_column_to_match_set_ordered_false_sqa",
             "tableColumnToMatchSet",
             "TABLE",
             (TestCaseResult, "1", None, TestCaseStatus.Success, None, None, None, None),
