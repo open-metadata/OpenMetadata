@@ -4057,6 +4057,22 @@ wheels = [
 ]
 
 [[package]]
+name = "en-core-web-md"
+version = "3.8.0"
+source = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl" }
+wheels = [
+    { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl", hash = "sha256:5e6329fe3fecedb1d1a02c3ea2172ee0fede6cea6e4aefb6a02d832dba78a310" },
+]
+
+[[package]]
+name = "es-core-news-md"
+version = "3.8.0"
+source = { url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl" }
+wheels = [
+    { url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl", hash = "sha256:478b8bb3f3e8eb149192f7d80e7cd64f990b7e9bccbc5329df41a57e86326be2" },
+]
+
+[[package]]
 name = "et-xmlfile"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -6555,6 +6571,14 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ef/7c/ec4ab396d31b3b395e2e999c8f46dec78c5e29209fac49d1f4dace04041d/isort-8.0.1.tar.gz", hash = "sha256:171ac4ff559cdc060bcfff550bc8404a486fee0caab245679c2abe7cb253c78d", size = 769592, upload-time = "2026-02-28T10:08:20.685Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3e/95/c7c34aa53c16353c56d0b802fba48d5f5caa2cdee7958acbcb795c830416/isort-8.0.1-py3-none-any.whl", hash = "sha256:28b89bc70f751b559aeca209e6120393d43fbe2490de0559662be7a9787e3d75", size = 89733, upload-time = "2026-02-28T10:08:19.466Z" },
+]
+
+[[package]]
+name = "it-core-news-md"
+version = "3.8.0"
+source = { url = "https://github.com/explosion/spacy-models/releases/download/it_core_news_md-3.8.0/it_core_news_md-3.8.0-py3-none-any.whl" }
+wheels = [
+    { url = "https://github.com/explosion/spacy-models/releases/download/it_core_news_md-3.8.0/it_core_news_md-3.8.0-py3-none-any.whl", hash = "sha256:a731d2d8e7c5a7093ac42f88774ea2a2ad3d5809959eedee65632b3533f804ec" },
 ]
 
 [[package]]
@@ -10013,6 +10037,8 @@ test = [
     { name = "coverage", extra = ["toml"] },
     { name = "datamodel-code-generator" },
     { name = "dirty-equals" },
+    { name = "en-core-web-md" },
+    { name = "es-core-news-md" },
     { name = "exasol-integration-test-docker-environment" },
     { name = "factory-boy" },
     { name = "faker" },
@@ -10020,6 +10046,7 @@ test = [
     { name = "google-api-python-client-stubs" },
     { name = "google-auth-stubs" },
     { name = "import-linter" },
+    { name = "it-core-news-md" },
     { name = "kafka-python" },
     { name = "locust" },
     { name = "luigi" },
@@ -10028,6 +10055,7 @@ test = [
     { name = "nox" },
     { name = "pandas-stubs" },
     { name = "pip" },
+    { name = "pl-core-news-md" },
     { name = "pre-commit", version = "4.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "pre-commit", version = "4.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pytest" },
@@ -11079,6 +11107,8 @@ test = [
     { name = "coverage", extras = ["toml"] },
     { name = "datamodel-code-generator", specifier = "==0.83.0" },
     { name = "dirty-equals" },
+    { name = "en-core-web-md", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl" },
+    { name = "es-core-news-md", url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl" },
     { name = "exasol-integration-test-docker-environment", specifier = ">=6.0.0,<7" },
     { name = "factory-boy", specifier = "~=3.3.3" },
     { name = "faker", specifier = "==37.1.0" },
@@ -11086,6 +11116,7 @@ test = [
     { name = "google-api-python-client-stubs" },
     { name = "google-auth-stubs" },
     { name = "import-linter", specifier = "~=2.13" },
+    { name = "it-core-news-md", url = "https://github.com/explosion/spacy-models/releases/download/it_core_news_md-3.8.0/it_core_news_md-3.8.0-py3-none-any.whl" },
     { name = "kafka-python", specifier = "==2.3.2" },
     { name = "locust", specifier = "~=2.32.0" },
     { name = "luigi", specifier = ">=2.8.4,<=3.6.0" },
@@ -11094,6 +11125,7 @@ test = [
     { name = "nox" },
     { name = "pandas-stubs", specifier = "~=2.2" },
     { name = "pip" },
+    { name = "pl-core-news-md", url = "https://github.com/explosion/spacy-models/releases/download/pl_core_news_md-3.8.0/pl_core_news_md-3.8.0-py3-none-any.whl" },
     { name = "pre-commit" },
     { name = "pytest", specifier = "==7.0.1" },
     { name = "pytest-cov" },
@@ -11724,6 +11756,14 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/fa/e8/0842d757e483e895e670f655084cfe8b8c72580c6769a76b30b2789a0608/pip-26.2.2.tar.gz", hash = "sha256:3a8e5c800492787f33a4114ef54444546c340df428974ebba17e0fd47e11af2f", size = 1863336, upload-time = "2026-10-20T16:36:29.008Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl", hash = "sha256:fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70", size = 1819850, upload-time = "2026-10-20T16:36:27.046Z" },
+]
+
+[[package]]
+name = "pl-core-news-md"
+version = "3.8.0"
+source = { url = "https://github.com/explosion/spacy-models/releases/download/pl_core_news_md-3.8.0/pl_core_news_md-3.8.0-py3-none-any.whl" }
+wheels = [
+    { url = "https://github.com/explosion/spacy-models/releases/download/pl_core_news_md-3.8.0/pl_core_news_md-3.8.0-py3-none-any.whl", hash = "sha256:4f433a556880c0b7ef01970e7c612c0e30103b893e6d26ed54672d8e056ad9b1" },
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 # Local Python commands use locked profiles and serialize model preparation
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-27 (initial)
+- **Revisions:** v1 2026-10-27 (initial); v2 2026-10-28 (lock classification models)
 - **Deciders:** Pablo Takara
 - **Guard:** `ingestion/tests/unit/test_python_tooling.py`; DB2 connection tests
 - **Related:** https://github.com/open-metadata/OpenMetadata/pull/36338
@@ -18,6 +18,9 @@ Generated models must exist before installation and cannot be rewritten during t
 - Bootstrap the uv version declared by `tool.uv.required-version` (currently 0.13.4).
   Application profiles synchronize exactly into `env/` or an explicitly selected environment;
   tool profiles synchronize additively into separate `ingestion/.nox/` environments.
+- The test dependency group owns the four release-pinned classification model wheels, with
+  SHA256 hashes. Static checks retain the full test profile. The existing provisioner validates
+  installed versions, spaCy compatibility and model loading without fetching matching models.
 - Public Nox generation and application setup share a checkout-local lock. It spans the freshness
   check, generation and application installation, including model provisioning. The generator
   script is the worker invoked under that lock; use Make/Nox for concurrent commands.
