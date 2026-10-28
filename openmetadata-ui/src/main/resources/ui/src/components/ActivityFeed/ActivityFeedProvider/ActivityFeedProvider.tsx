@@ -770,7 +770,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const showDrawer = useCallback(
     (thread: Conversation) => {
       setIsDrawerOpen(true);
-      setActiveActivity(undefined);
+      void setActiveActivity();
       setActiveThread(thread);
       setSelectedTask(undefined);
     },
