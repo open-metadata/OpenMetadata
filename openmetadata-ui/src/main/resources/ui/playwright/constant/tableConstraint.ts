@@ -10,17 +10,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
-import { selectOptionWithRetry } from '../utils/common';
+import { expect, Locator, Page } from '@playwright/test';
+
+// The constraint modal's option lists can open at a provisional position and jump into place a few
+// frames later, so a pointer pick can press one option and release on the page or on another option.
+// These helpers pick with the keyboard, which does not depend on where the list is drawn.
+
+/**
+ * Picks a Select option by focusing it and pressing Enter, retrying until `selected` shows. A
+ * repeat after the pick took is a no-op, so the retry cannot change a correct selection.
+ */
+export const pickSelectOption = async (
+  trigger: Locator,
+  option: Locator,
+  selected: Locator
+) => {
+  await expect(async () => {
+    if (await selected.isVisible()) {
+      return;
+    }
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.press('Enter', { timeout: 2_000 });
+    }
+    await option.press('Enter', { timeout: 2_000 });
+    await expect(selected).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
+};
 
 const selectConstraintType = async (page: Page, type: RegExp) => {
   const trigger = page
     .getByTestId('constraint-type-select')
     .getByRole('button');
-  await selectOptionWithRetry(
+  await pickSelectOption(
     trigger,
     page.getByRole('option', { name: type }),
-    undefined,
     trigger.filter({ hasText: type })
   );
 };
@@ -37,7 +60,11 @@ export const clickOnDistKeySelector = (page: Page) =>
 export const clickOnSortKeySelector = (page: Page) =>
   selectConstraintType(page, /^sort key$/i);
 
-/** Adds each column as a chip to a key-constraint multi-select. */
+/**
+ * Adds each column as a chip to a key-constraint multi-select: types the column so it is the only
+ * suggestion, then picks it with ArrowDown + Enter. A picked column leaves the suggestions, so a
+ * repeat can never unselect it.
+ */
 export const addKeyColumns = async (
   page: Page,
   testId: string,
@@ -45,19 +72,22 @@ export const addKeyColumns = async (
 ) => {
   const field = page.getByTestId(testId);
   const input = field.getByRole('combobox');
+  const suggestions = page.getByRole('listbox', { name: 'Suggestions' });
   for (const column of columns) {
     const chip = field
       .getByTestId('autocomplete-selected-item')
       .filter({ hasText: column });
-    // A field's first option list can open at a provisional position and jump under the input a
-    // few frames later, so the click presses the option and releases on the page. Pick again until
-    // the chip shows; a picked column leaves the list, so a repeat can never unselect it.
     await expect(async () => {
       if ((await chip.count()) === 0) {
         await input.fill(column, { timeout: 5_000 });
-        await page
-          .getByRole('option', { name: column, exact: true })
-          .click({ timeout: 5_000 });
+        await expect(
+          suggestions.getByRole('option', { name: column, exact: true })
+        ).toBeVisible({ timeout: 5_000 });
+        await expect(suggestions.getByRole('option')).toHaveCount(1, {
+          timeout: 2_000,
+        });
+        await input.press('ArrowDown', { timeout: 2_000 });
+        await input.press('Enter', { timeout: 2_000 });
       }
       await expect(chip).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 20_000 });

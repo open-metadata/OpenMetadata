@@ -18,15 +18,11 @@ import {
   clickOnForeignKeySelector,
   clickOnSortKeySelector,
   clickOnUniqueKeySelector,
+  pickSelectOption,
   removeKeyColumns,
 } from '../../constant/tableConstraint';
 import { TableClass } from '../../support/entity/TableClass';
-import {
-  createNewPage,
-  redirectToHomePage,
-  selectOptionWithRetry,
-  uuid,
-} from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
@@ -97,20 +93,18 @@ test.describe('Table Constraints', {}, () => {
       const columnTrigger = page
         .getByTestId('0-column-type-select')
         .getByRole('button');
-      await selectOptionWithRetry(
+      await pickSelectOption(
         columnTrigger,
         page.getByRole('option', { name: columnName, exact: true }),
-        undefined,
         columnTrigger.filter({ hasText: columnName })
       );
 
       const relationshipTrigger = page
         .getByTestId('0-relationship-type-select')
         .getByRole('button');
-      await selectOptionWithRetry(
+      await pickSelectOption(
         relationshipTrigger,
         page.getByRole('option', { name: 'One to One', exact: true }),
-        undefined,
         relationshipTrigger.filter({ hasText: 'One to One' })
       );
 
