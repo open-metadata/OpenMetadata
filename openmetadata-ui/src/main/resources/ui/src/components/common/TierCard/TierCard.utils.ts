@@ -23,7 +23,10 @@ export const splitTierDescription = (description = '') => {
     getHtmlStringFromMarkdownString(description),
     'text/html'
   );
-  const [first, ...rest] = Array.from(doc.body.children);
+  // The editor saves stray empty paragraphs; they are neither summary nor details.
+  const [first, ...rest] = Array.from(doc.body.children).filter((element) =>
+    element.textContent?.trim()
+  );
 
   if (!first) {
     return { summary: doc.body.textContent?.trim() ?? '', details: '' };

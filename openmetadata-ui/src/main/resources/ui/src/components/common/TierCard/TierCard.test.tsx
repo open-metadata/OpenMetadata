@@ -135,6 +135,23 @@ describe('TierCard', () => {
     );
   });
 
+  it('ignores empty editor paragraphs around the summary', async () => {
+    mockGetTags.mockResolvedValueOnce({
+      data: [
+        {
+          ...mockTierData[1],
+          description: '<p></p><p>Critical data</p><p></p>',
+        },
+      ],
+    });
+    render(<TierCard {...mockProps} />);
+
+    const row = await screen.findByTestId('Tier.Tier2');
+
+    expect(within(row).getByText('Critical data')).toBeInTheDocument();
+    expect(screen.queryByTestId('Tier.Tier2-expand')).not.toBeInTheDocument();
+  });
+
   it('shows a current tier missing from the list by name, not FQN', async () => {
     render(<TierCard {...mockProps} currentTier="Tier.Tier9" />);
 
