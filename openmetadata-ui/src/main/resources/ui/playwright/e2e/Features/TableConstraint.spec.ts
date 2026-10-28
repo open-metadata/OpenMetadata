@@ -99,18 +99,20 @@ test.describe('Table Constraints', {}, () => {
         .getByRole('button');
       await selectOptionWithRetry(
         columnTrigger,
-        page.getByRole('option', { name: columnName, exact: true })
+        page.getByRole('option', { name: columnName, exact: true }),
+        undefined,
+        columnTrigger.filter({ hasText: columnName })
       );
-      await expect(columnTrigger).toContainText(columnName);
 
       const relationshipTrigger = page
         .getByTestId('0-relationship-type-select')
         .getByRole('button');
       await selectOptionWithRetry(
         relationshipTrigger,
-        page.getByRole('option', { name: 'One to One', exact: true })
+        page.getByRole('option', { name: 'One to One', exact: true }),
+        undefined,
+        relationshipTrigger.filter({ hasText: 'One to One' })
       );
-      await expect(relationshipTrigger).toContainText('One to One');
 
       // select 2nd Table column as related column
       const querySearchResponse = page.waitForResponse((response) => {
