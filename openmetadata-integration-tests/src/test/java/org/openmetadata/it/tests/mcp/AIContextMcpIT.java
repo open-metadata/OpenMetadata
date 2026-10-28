@@ -287,6 +287,15 @@ class AIContextMcpIT extends McpTestBase {
             .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN)))
             .withMetricExpression(new MetricExpression().withCode("SUM(salary) GROUP BY person")),
         Metric.class);
+    String openCode = "COUNT(*) GROUP BY team";
+    Metric open =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("aicontext_guarded_open_child_" + suffix)
+                .withParent(parent.getFullyQualifiedName())
+                .withMetricExpression(new MetricExpression().withCode(openCode)),
+            Metric.class);
 
     JsonNode response =
         executeMcpRequest(
@@ -299,8 +308,13 @@ class AIContextMcpIT extends McpTestBase {
         OBJECT_MAPPER
             .readTree(response.get("result").get("content").get(0).get("text").asText())
             .path("children");
-    assertThat(children.size()).isEqualTo(1);
-    assertThat(children.get(0).has("metricExpression")).isFalse();
+    assertThat(children.size()).isEqualTo(2);
+    for (JsonNode child : children) {
+      boolean isOpenChild =
+          open.getFullyQualifiedName().equals(child.path("fullyQualifiedName").asText());
+      assertThat(child.path("metricExpression").path("code").asText())
+          .isEqualTo(isOpenChild ? openCode : "");
+    }
   }
 
   private static String restrictedMetricViewerToken() throws Exception {

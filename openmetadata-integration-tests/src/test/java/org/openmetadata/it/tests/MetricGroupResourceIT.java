@@ -963,6 +963,10 @@ public class MetricGroupResourceIT {
     awaitMetricSearchDocument(
         rest, parent.getId(), document -> assertEquals(1, document.path("childrenCount").asInt()));
 
+    SdkClients.adminClient().metrics().restore(bulkChild.getId().toString());
+    awaitMetricSearchDocument(
+        rest, parent.getId(), document -> assertEquals(2, document.path("childrenCount").asInt()));
+
     String parentJson = JSON.writeValueAsString(parent);
     parent.setDescription("Edited parent description");
     rest.patch("/v1/metrics", parent.getId(), parentJson, parent, Metric.class);
@@ -971,7 +975,7 @@ public class MetricGroupResourceIT {
         parent.getId(),
         document -> {
           assertEquals("Edited parent description", document.path("description").asText());
-          assertEquals(1, document.path("childrenCount").asInt());
+          assertEquals(2, document.path("childrenCount").asInt());
         });
 
     String groupJson = JSON.writeValueAsString(group);
@@ -983,7 +987,7 @@ public class MetricGroupResourceIT {
         group.getId(),
         document -> {
           assertEquals("Edited group description", document.path("description").asText());
-          assertEquals(2, document.path("metricCount").asInt());
+          assertEquals(3, document.path("metricCount").asInt());
         });
   }
 

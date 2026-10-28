@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-29 (initial)
 - **Deciders:** Vishnu Jain
-- **Guard:** reviewer
+- **Guard:** `SearchMetadataCleanTest#aMetricHitShowsWhereItSitsInTheHierarchy`,
+  `SearchMetadataCleanTest#aRequestedMetricExpressionIsCappedLikeEveryMetricSummary`
 - **Related:** #33460, ADR:2026-10-29-parent-metric-reads-carry-up-to-25-variant-expressions
 
 ## Context
@@ -22,9 +23,13 @@ caller named them in `fields`, and no tool description said they existed.
   clause on `parent.name`. Metric FQNs are flat, so the name is the FQN, and `parent.name` is a
   keyword field. `parent.fullyQualifiedName` is a text field, so an exact `term` on it matches
   nothing.
+- A `metricExpression` requested through `fields` is capped by
+  `McpResponseTrim.cappedMetricExpression`, as every other metric summary is.
 
 ## Consequences
 - A hit grows by up to three short fields. Hits without them are unchanged.
+- A caller that already passed `fields=parent` now gets a string instead of a reference object.
+  Tools that reuse `SearchMetadataTool.cleanSearchResult` return the same fields.
 - A dotted metric name comes back unquoted, the same trade-off owners already make;
   `get_entity_details` on the child returns the parent's exact FQN.
 - Filtering on the parent's FQN would need `parent.fullyQualifiedName` mapped as a keyword and a
