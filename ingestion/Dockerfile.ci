@@ -1,4 +1,4 @@
-FROM mysql:8.3 AS mysql
+FROM mysql:8.4 AS mysql
 
 FROM apache/airflow:3.3.2-python3.12
 # gRPC ships a separate CA bundle that can lag behind OS distrust updates.

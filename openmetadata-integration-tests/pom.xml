@@ -476,7 +476,7 @@
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <databaseImage>mysql:8.4.0</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -546,7 +546,7 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <databaseImage>mysql:8.4.0</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -1079,7 +1079,7 @@
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <databaseImage>mysql:8.4.0</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
 
@@ -1149,7 +1149,7 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <databaseImage>mysql:8.4.0</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
 
@@ -1228,7 +1228,7 @@
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <databaseImage>mysql:8.4.0</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -1299,7 +1299,7 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <databaseImage>mysql:8.4.0</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     <cacheProvider>redis</cacheProvider>

@@ -155,7 +155,7 @@ export PW_OPENSEARCH_IMAGE
 PW_POSTGRES_IMAGE=$(jq -r .postgresImage "$manifest")
 PW_OPENSEARCH_IMAGE=$(jq -r .opensearchImage "$manifest")
 # Read by start_playwright_autopilot_mysql.sh.
-export PW_AUTOPILOT_MYSQL_IMAGE=mysql:8.0.42
+export PW_AUTOPILOT_MYSQL_IMAGE=mysql:8.4
 
 if [[ -n "$ingestion_image_path" ]]; then
   ingestion_manifest_path="${ingestion_image_path%.tar.zst}.manifest.json"

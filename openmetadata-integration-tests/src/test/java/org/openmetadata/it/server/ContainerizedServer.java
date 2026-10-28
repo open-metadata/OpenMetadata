@@ -212,7 +212,7 @@ public final class ContainerizedServer implements AutoCloseable {
   }
 
   private static MySQLContainer<?> newMysql(final Network network) {
-    return new MySQLContainer<>(DockerImageName.parse("mysql:8.3.0"))
+    return new MySQLContainer<>(DockerImageName.parse("mysql:8.4.0"))
         .withNetwork(network)
         .withNetworkAliases(DB_ALIAS)
         .withDatabaseName(DB_NAME)
