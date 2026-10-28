@@ -16,13 +16,18 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -2395,6 +2400,156 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         pageIds(second),
         pageIds(searchPage(about, text, "before", third.path("paging").path("before").asText())),
         "Paging back returns the previous page");
+  }
+
+  @Test
+  void testListPagesNewestFirstBothWays(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "list-order-domain");
+    Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    List<Task> created = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      created.add(createTaskWithDisplayName(ns, "list-order-" + i, table, "Order check " + i));
+    }
+
+    assertCreationOrderPaging(table.getFullyQualifiedName(), null, created);
+  }
+
+  @Test
+  void testListSearchPagesNewestFirstBothWays(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "list-search-order-domain");
+    Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    String text = "Rotate credentials " + ns.prefix("order");
+    List<Task> matching = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      matching.add(createTaskWithDisplayName(ns, "list-search-order-" + i, table, text));
+    }
+    createTaskWithDisplayName(ns, "list-search-order-other", table, "Unrelated work");
+
+    assertCreationOrderPaging(table.getFullyQualifiedName(), text, matching);
+  }
+
+  @Test
+  void testScopedListsReturnNewestFirst(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "scoped-order-domain");
+    Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    createTaskAboutTable(ns, "scoped-order-0", table);
+    createTaskAboutTable(ns, "scoped-order-1", table);
+
+    for (String path : List.of("/created", "/assigned", "/visible", "/owned")) {
+      List<Long> createdAts = new ArrayList<>();
+      taskListPage("/v1/tasks" + path, RequestOptions.builder().queryParam("limit", "50").build())
+          .path("data")
+          .forEach(node -> createdAts.add(node.path("createdAt").asLong()));
+      assertEquals(
+          createdAts.stream().sorted(Comparator.reverseOrder()).toList(),
+          createdAts,
+          "%s lists the newest task first".formatted(path));
+      if ("/created".equals(path)) {
+        assertTrue(createdAts.size() >= 2, "The admin's own tasks are listed");
+      }
+    }
+  }
+
+  @Test
+  void testListRejectsNameCursorAndUnknownSortOrder(TestNamespace ns) {
+    String nameCursor =
+        Base64.getUrlEncoder()
+            .encodeToString(
+                JsonUtils.pojoToJson(
+                        Map.of("name", "TASK-00001", "id", UUID.randomUUID().toString()))
+                    .getBytes(StandardCharsets.UTF_8));
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            taskListPage(
+                "/v1/tasks", RequestOptions.builder().queryParam("after", nameCursor).build()),
+        "A name cursor issued before creation-time paging is rejected, not a 500");
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            taskListPage(
+                "/v1/tasks", RequestOptions.builder().queryParam("sortOrder", "sideways").build()));
+  }
+
+  /**
+   * Walks the tasks about one entity a row at a time in both orders and checks each walk, and a
+   * step back from its last page, against the creation times of {@code expected}. Rows created in
+   * the same millisecond are ordered by id under the database's collation, so the walk is checked
+   * on createdAt and the two orders against each other rather than against a Java id sort.
+   */
+  private void assertCreationOrderPaging(String aboutEntity, String query, List<Task> expected)
+      throws Exception {
+    Map<UUID, Long> createdAtById =
+        expected.stream().collect(Collectors.toMap(Task::getId, Task::getCreatedAt));
+
+    List<JsonNode> descPages = walkTaskPages(aboutEntity, query, null);
+    List<JsonNode> ascPages = walkTaskPages(aboutEntity, query, "asc");
+    List<UUID> newestFirst = idsOf(descPages);
+    List<Long> newestFirstCreatedAts = newestFirst.stream().map(createdAtById::get).toList();
+
+    assertEquals(
+        createdAtById.keySet(), Set.copyOf(newestFirst), "Paging visits every task exactly once");
+    assertEquals(expected.size(), newestFirst.size(), "Paging visits every task exactly once");
+    assertEquals(
+        newestFirstCreatedAts.stream().sorted(Comparator.reverseOrder()).toList(),
+        newestFirstCreatedAts,
+        "Default order lists the newest task first");
+    assertEquals(newestFirst.reversed(), idsOf(ascPages), "sortOrder=asc lists the oldest first");
+    assertPagesBackTo(aboutEntity, query, null, descPages);
+    assertPagesBackTo(aboutEntity, query, "asc", ascPages);
+  }
+
+  private void assertPagesBackTo(
+      String aboutEntity, String query, String sortOrder, List<JsonNode> pages) throws Exception {
+    JsonNode last = pages.getLast();
+    RequestOptions.Builder options = orderedPageOptions(aboutEntity, query, sortOrder);
+    options.queryParam("before", last.path("paging").path("before").asText());
+    assertEquals(
+        pageIds(pages.get(pages.size() - 2)),
+        pageIds(taskListPage("/v1/tasks", options.build())),
+        "Paging back from the last page returns the one before it");
+  }
+
+  private List<JsonNode> walkTaskPages(String aboutEntity, String query, String sortOrder)
+      throws Exception {
+    List<JsonNode> pages = new ArrayList<>();
+    String after = null;
+    do {
+      RequestOptions.Builder options = orderedPageOptions(aboutEntity, query, sortOrder);
+      if (after != null) {
+        options.queryParam("after", after);
+      }
+      JsonNode page = taskListPage("/v1/tasks", options.build());
+      pages.add(page);
+      after = page.path("paging").path("after").asText(null);
+    } while (after != null && pages.size() < 10);
+    return pages;
+  }
+
+  private static RequestOptions.Builder orderedPageOptions(
+      String aboutEntity, String query, String sortOrder) {
+    RequestOptions.Builder options =
+        RequestOptions.builder().queryParam("aboutEntity", aboutEntity).queryParam("limit", "1");
+    if (query != null) {
+      options.queryParam("q", query);
+    }
+    if (sortOrder != null) {
+      options.queryParam("sortOrder", sortOrder);
+    }
+    return options;
+  }
+
+  private static List<UUID> idsOf(List<JsonNode> pages) {
+    return pages.stream().flatMap(page -> pageIds(page).stream()).toList();
+  }
+
+  private static JsonNode taskListPage(String path, RequestOptions options) throws Exception {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, path, null, options);
+    return JsonUtils.readTree(response);
   }
 
   private JsonNode searchPage(String aboutEntity, String query, String cursorParam, String cursor)
