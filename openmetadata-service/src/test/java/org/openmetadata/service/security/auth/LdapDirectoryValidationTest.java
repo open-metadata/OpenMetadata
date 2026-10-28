@@ -113,7 +113,6 @@ class LdapDirectoryValidationTest {
         LdapDirectoryValidation.validate(ldap(LOOKUP_PASSWORD, USERS_DN).withPort(closedPort));
 
     assertFalse(result.getPassed());
-    // The JDK owns any wording after the reason: 21.0.13 appends " (connect failed)".
     assertTrue(
         result
             .getMessage()
