@@ -60,7 +60,7 @@ env:
   SINCE_HOURS: ${{ inputs.since_hours || (github.event_name == 'pull_request' && 24) || 7 }}
   MAX_ALERTS: ${{ inputs.max_alerts || (github.event_name == 'pull_request' && 1) || 0 }}
   DRY_RUN: ${{ inputs.dry_run || false }}
-  OUT: ${{ github.workspace }}/../triage-out
+  OUT: ${{ github.workspace }}-triage-out
 
 jobs:
   collect:
