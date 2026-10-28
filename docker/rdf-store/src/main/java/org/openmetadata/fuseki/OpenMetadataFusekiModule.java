@@ -20,14 +20,13 @@ import org.apache.jena.fuseki.main.sys.FusekiAutoModule;
 import org.apache.jena.fuseki.server.Operation;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.riot.WebContent;
-import org.openmetadata.fuseki.storage.CompactionGuard;
 import org.openmetadata.fuseki.storage.GuardedUpdate;
 import org.openmetadata.fuseki.storage.StorageGuard;
 import org.openmetadata.fuseki.storage.StorageServlet;
 
 /**
- * Bounded Graph Store writes, free-space guards in front of every write and compaction, and the
- * storage report OpenMetadata reads to decide when to compact.
+ * Bounded Graph Store writes, a free-space guard in front of every write, and the storage report
+ * OpenMetadata reads to decide when to compact.
  */
 public final class OpenMetadataFusekiModule implements FusekiAutoModule {
   static final String STORAGE_ROOT = "OPENMETADATA_STORAGE_ROOT";
@@ -41,15 +40,13 @@ public final class OpenMetadataFusekiModule implements FusekiAutoModule {
   public void prepare(
       final FusekiServer.Builder builder, final Set<String> datasetNames, final Model config) {
     final Map<String, String> environment = System.getenv();
-    final Path databases = storageRoot(environment);
-    final StorageGuard guard = StorageGuard.forVolume(databases, environment);
+    final StorageGuard guard = StorageGuard.forVolume(storageRoot(environment), environment);
     builder.registerOperation(Operation.GSP_RW, new BoundedGraphStore(guard::requireWritable));
     // Fuseki routes a POST to the dataset URL by content type; registering the operation without
     // one would drop that route and answer SPARQL updates sent there with 415.
     builder.registerOperation(
         Operation.Update, WebContent.contentTypeSPARQLUpdate, new GuardedUpdate(guard));
     builder.addServlet(StorageServlet.PATH_SPEC, new StorageServlet(guard));
-    builder.addFilter(CompactionGuard.PATH_SPEC, new CompactionGuard(databases, guard));
   }
 
   /** The directory holding one TDB2 directory per dataset: $FUSEKI_BASE/databases by default. */

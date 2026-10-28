@@ -447,10 +447,9 @@ Fuseki cannot cancel a `CLEAR`, so a shorter budget would only abandon a clear t
 OpenMetadata's Fuseki images also refuse writes, with HTTP 507 Insufficient Storage, once the
 volume has less free space than `OPENMETADATA_STORAGE_MIN_FREE` (10% by default). TDB2 memory-maps
 its files, so a write on a full volume does not fail cleanly: the JVM gets SIGBUS and exits on every
-restart. The guard keeps the volume from filling and leaves room to compact; OpenMetadata treats its
-refusal like the maintenance pause. The images also refuse a compaction, with 507, unless the volume
-has as much free space as the dataset's current generation, because a compaction that fills the
-volume crashes Fuseki in the same way.
+restart. The guard keeps the volume from filling and leaves room to compact, as long as the reserve
+is at least the size of the live data, which is what a compaction copies. OpenMetadata treats its
+refusal like the maintenance pause.
 
 Each compaction is logged, and timed by result in `ontology.rdf.compaction`; alert on
 `ontology.rdf.compaction.last.success` falling behind the interval. A compaction that does not
