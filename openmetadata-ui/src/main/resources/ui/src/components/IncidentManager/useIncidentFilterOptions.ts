@@ -14,15 +14,35 @@ import { useCallback, useMemo, useState } from 'react';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
+import { EntityReference } from '../../generated/entity/type';
 import {
   SearchHitBody,
   TestCaseSearchSource,
 } from '../../interface/search.interface';
 import { Option } from '../../pages/TasksPage/TasksPage.interface';
 import { TestCaseIncidentStatusParams } from '../../rest/incidentManagerAPI';
-import { getUserAndTeamSearch } from '../../rest/miscAPI';
+import {
+  getUserAndTeamSearch,
+  postAggregateFieldOptions,
+} from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import { getQueryFilterForDataProducts } from '../../utils/DomainFilterUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+
+const ASSIGNEE_FIELD = 'testCaseResolutionStatusDetails.assignee';
+
+type AssigneeBucket = {
+  key: string;
+  'top_hits#top'?: {
+    hits?: {
+      hits?: {
+        _source?: {
+          testCaseResolutionStatusDetails?: { assignee?: EntityReference };
+        };
+      }[];
+    };
+  };
+};
 
 export interface UseIncidentFilterOptionsProps {
   filters: TestCaseIncidentStatusParams;
@@ -126,6 +146,48 @@ export const useIncidentFilterOptions = ({
     }
   }, []);
 
+  /**
+   * Users and teams assigned to at least one incident, read as a terms
+   * aggregation over the incident index so they never depend on the page of
+   * incidents on screen.
+   */
+  const searchAssignees = useCallback(
+    async (searchValue: string, domain?: string) => {
+      try {
+        const { data } = await postAggregateFieldOptions({
+          index: 'testCaseResolutionStatus',
+          fieldName: `${ASSIGNEE_FIELD}.name`,
+          fieldValue: searchValue,
+          size: PAGE_SIZE_BASE,
+          // Incident documents carry no top-level `deleted`, so the default
+          // `deleted: false` term would match none of them.
+          deleted: null as unknown as boolean,
+          query: domain
+            ? JSON.stringify(getQueryFilterForDataProducts(domain))
+            : undefined,
+          sourceFields: [ASSIGNEE_FIELD],
+          topHits: { size: 1 },
+        });
+        const buckets = (data.aggregations[`sterms#${ASSIGNEE_FIELD}.name`]
+          ?.buckets ?? []) as AssigneeBucket[];
+
+        return buckets.map((bucket) => {
+          const assignee =
+            bucket['top_hits#top']?.hits?.hits?.[0]?._source
+              ?.testCaseResolutionStatusDetails?.assignee;
+
+          return {
+            label: assignee ? getEntityName(assignee) : bucket.key,
+            value: assignee?.name ?? bucket.key,
+          };
+        });
+      } catch {
+        return [];
+      }
+    },
+    []
+  );
+
   return {
     users,
     setUsers,
@@ -133,5 +195,6 @@ export const useIncidentFilterOptions = ({
     selectedAssignees,
     fetchUserFilterOptions,
     searchTestCases,
+    searchAssignees,
   };
 };

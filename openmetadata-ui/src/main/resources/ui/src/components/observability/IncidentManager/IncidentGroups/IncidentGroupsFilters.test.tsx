@@ -13,7 +13,10 @@
 
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
+import { useDomainStore } from '../../../../hooks/useDomainStore';
+import { postAggregateFieldOptions } from '../../../../rest/miscAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTeamByName } from '../../../../rest/teamsAPI';
 import { getUserByName } from '../../../../rest/userAPI';
@@ -22,6 +25,7 @@ import { IncidentGroupFilters } from './IncidentGroups.types';
 import IncidentGroupsFilters from './IncidentGroupsFilters';
 
 const mockSearchQuery = searchQuery as jest.Mock;
+const mockPostAggregateFieldOptions = postAggregateFieldOptions as jest.Mock;
 const mockGetUserByName = getUserByName as jest.Mock;
 const mockGetTeamByName = getTeamByName as jest.Mock;
 const mockOnChange = jest.fn();
@@ -38,41 +42,10 @@ jest.mock('../../../../rest/teamsAPI', () => ({
   getTeamByName: jest.fn(),
 }));
 
-// The shared user/team picker owns its tabs and searches; the filter only has
-// to hand it the assignee and hear back the one picked.
-jest.mock(
-  '../../../common/UserTeamSelectableList/UserTeamSelectableList.component',
-  () => ({
-    UserTeamSelectableList: ({
-      children,
-      owner,
-      onUpdate,
-    }: {
-      children: ReactNode;
-      owner?: { name?: string }[];
-      onUpdate: (owners?: { id: string; type: string; name: string }[]) => void;
-    }) => (
-      <div data-testid="assignee-picker">
-        <span data-testid="assignee-picker-owner">
-          {owner?.map((assignee) => assignee.name).join(',')}
-        </span>
-        {children}
-        <button
-          aria-label="assignee-pick-team"
-          data-testid="assignee-pick-team"
-          onClick={() =>
-            onUpdate([{ id: 'team-1', type: 'team', name: 'data-platform' }])
-          }
-        />
-        <button
-          aria-label="assignee-pick-none"
-          data-testid="assignee-pick-none"
-          onClick={() => onUpdate([])}
-        />
-      </div>
-    ),
-  })
-);
+jest.mock('../../../../rest/miscAPI', () => ({
+  getUserAndTeamSearch: jest.fn(),
+  postAggregateFieldOptions: jest.fn(),
+}));
 
 interface MockFilterSelectProps {
   label: string;
@@ -212,6 +185,37 @@ describe('IncidentGroupsFilters', () => {
       displayName: 'Aaron Johnson',
     });
     mockGetTeamByName.mockRejectedValue(new Error('not found'));
+    mockPostAggregateFieldOptions.mockResolvedValue({
+      data: {
+        aggregations: {
+          'sterms#testCaseResolutionStatusDetails.assignee.name': {
+            buckets: [
+              {
+                key: 'aaron',
+                'top_hits#top': {
+                  hits: {
+                    hits: [
+                      {
+                        _source: {
+                          testCaseResolutionStatusDetails: {
+                            assignee: {
+                              name: 'Aaron',
+                              displayName: 'Aaron Johnson',
+                              type: 'user',
+                            },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+              { key: 'data-platform' },
+            ],
+          },
+        },
+      },
+    });
   });
 
   it('should caption every filter of the design', () => {
@@ -236,6 +240,7 @@ describe('IncidentGroupsFilters', () => {
 
     for (const testId of [
       'incident-groups-test-case',
+      'incident-groups-assignee',
       'incident-groups-status',
       'incident-groups-severity',
       'incident-groups-date-field',
@@ -243,11 +248,6 @@ describe('IncidentGroupsFilters', () => {
     ]) {
       expect(screen.getByTestId(testId)).toHaveAttribute('data-size', 'md');
     }
-
-    // The assignee trigger is the core input trigger itself.
-    expect(screen.getByTestId('incident-groups-assignee')).toHaveClass(
-      'tw:py-2.5'
-    );
   });
 
   it('should name the group of every control after its caption', () => {
@@ -388,20 +388,86 @@ describe('IncidentGroupsFilters', () => {
     ).toHaveTextContent('row_count');
   });
 
-  it('should filter by the user or team picked, and by none once cleared', () => {
+  it('should offer only the users and teams some incident is assigned to', async () => {
     renderFilters();
 
-    expect(screen.getByTestId('incident-groups-assignee')).toHaveTextContent(
-      'label.assignee'
-    );
+    expect(mockPostAggregateFieldOptions).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByTestId('assignee-pick-team'));
-
-    expect(mockOnChange).toHaveBeenLastCalledWith({
-      assignee: 'data-platform',
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('incident-groups-assignee-open'));
     });
 
-    fireEvent.click(screen.getByTestId('assignee-pick-none'));
+    expect(mockPostAggregateFieldOptions).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        index: 'testCaseResolutionStatus',
+        fieldName: 'testCaseResolutionStatusDetails.assignee.name',
+        fieldValue: '',
+        deleted: null,
+        query: undefined,
+      })
+    );
+    expect(
+      await screen.findByTestId('incident-groups-assignee-option-Aaron')
+    ).toHaveTextContent('Aaron Johnson');
+    // A bucket without its document still offers the assignee by name.
+    expect(
+      screen.getByTestId('incident-groups-assignee-option-data-platform')
+    ).toHaveTextContent('data-platform');
+
+    fireEvent.click(screen.getByTestId('incident-groups-assignee-search'));
+
+    await waitFor(() =>
+      expect(mockPostAggregateFieldOptions).toHaveBeenLastCalledWith(
+        expect.objectContaining({ fieldValue: 'query' })
+      )
+    );
+  });
+
+  it('should scope the assignees to the active domain', async () => {
+    useDomainStore.setState({ activeDomain: 'Finance' });
+    renderFilters();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('incident-groups-assignee-open'));
+    });
+
+    expect(
+      JSON.parse(mockPostAggregateFieldOptions.mock.lastCall[0].query)
+    ).toEqual(
+      expect.objectContaining({
+        query: {
+          bool: {
+            must: [
+              {
+                bool: {
+                  should: [
+                    { term: { 'domains.fullyQualifiedName': 'Finance' } },
+                    { prefix: { 'domains.fullyQualifiedName': 'Finance.' } },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      })
+    );
+
+    useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
+  });
+
+  it('should filter by the assignee picked, and by none once cleared', async () => {
+    renderFilters();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('incident-groups-assignee-open'));
+    });
+    fireEvent.click(
+      await screen.findByTestId('incident-groups-assignee-option-Aaron')
+    );
+
+    expect(mockOnChange).toHaveBeenLastCalledWith({ assignee: 'Aaron' });
+
+    fireEvent.click(screen.getByTestId('incident-groups-assignee-clear'));
 
     expect(mockOnChange).toHaveBeenLastCalledWith({ assignee: undefined });
   });
@@ -419,9 +485,9 @@ describe('IncidentGroupsFilters', () => {
       )
     );
 
-    expect(screen.getByTestId('assignee-picker-owner')).toHaveTextContent(
-      'aaron'
-    );
+    expect(
+      screen.getByTestId('incident-groups-assignee-selected')
+    ).toHaveTextContent('aaron');
   });
 
   it('should name a team assignee from the URL, and an unknown one by its name', async () => {
