@@ -86,7 +86,9 @@ export class AuthCoordinator {
   private cycleStaleToken: string | null = null;
   // Set by pause() while a sign-out (or a re-auth redirect) runs: no refresh
   // may start or land until resume(). The generation is bumped on both, so a
-  // refresh already in flight when either happens is dropped too.
+  // refresh already in flight when either happens is dropped too. Every
+  // pause is ended by resume() or by leaving the page:
+  // ADR:2026-10-28-auth-coordinator-pause-is-always-resumed-or-unloaded
   private paused = false;
   private pauseGeneration = 0;
   private disposeCrossTabDone: (() => void) | null = null;

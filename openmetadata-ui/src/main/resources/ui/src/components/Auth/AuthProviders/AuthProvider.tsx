@@ -584,6 +584,9 @@ export const AuthProvider = ({
 
       return;
     }
+    // Not resumed here: invokeSilentReauth leaves the page, and its failure
+    // signs out, which resumes.
+    // ADR:2026-10-28-auth-coordinator-pause-is-always-resumed-or-unloaded
     authCoordinator.pause();
     setApplicationLoading(true);
     try {
