@@ -72,6 +72,18 @@ def update_docker_tag(args):
         required=True,
     )
 
+    # `required` only catches a file where nothing matched; an image line in a new shape would
+    # still keep its old tag while the others move on.
+    with open(file_path, "r") as f:
+        stale = [
+            line.strip()
+            for line in f
+            if "docker.getcollate.io/openmetadata/" in line and f":{tag}" not in line
+        ]
+    if stale:
+        logger.error(f"Image lines in {file_path} matched nothing: {stale}")
+        sys.exit(1)
+
 
 def update_ri_version(args):
     """Updates a Dockerfile RI_VERSION ARG."""

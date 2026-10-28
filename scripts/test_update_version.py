@@ -140,3 +140,16 @@ def test_a_pattern_that_matches_nothing_fails_the_bump(tmp_path):
     assert result.returncode == 1
     assert "matched nothing" in result.stderr
     assert compose.read_text() == "    image: postgres:16\n"
+
+
+def test_an_image_line_in_another_shape_fails_the_bump(tmp_path):
+    compose = tmp_path / "docker-compose.yml"
+    compose.write_text(
+        "    image: docker.getcollate.io/openmetadata/server:2.0.0-SNAPSHOT\n"
+        '    image: "docker.getcollate.io/openmetadata/ingestion:2.0.0-SNAPSHOT"\n'
+    )
+
+    result = run_script("update_docker_tag", "-f", str(compose), "-t", "2.1.0", cwd=tmp_path)
+
+    assert result.returncode == 1
+    assert "matched nothing" in result.stderr
