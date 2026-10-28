@@ -369,11 +369,14 @@ class K8sPipelineClientTest {
     assertEquals("IgnoreExtraneous", annotations.get("argocd.argoproj.io/compare-options"));
     assertEquals("Prune=false", annotations.get("argocd.argoproj.io/sync-options"));
 
-    OMJob.OMJobPodSpec mainPod = cronOMJob.getSpec().getOmJobSpec().getMainPodSpec();
-    assertEquals("argocd-app", mainPod.getLabels().get("app.kubernetes.io/instance"));
-    assertEquals("ingestion", mainPod.getLabels().get("app.kubernetes.io/component"));
-    assertEquals(
-        "IgnoreExtraneous", mainPod.getAnnotations().get("argocd.argoproj.io/compare-options"));
+    OMJob.OMJobSpec omJobSpec = cronOMJob.getSpec().getOmJobSpec();
+    for (OMJob.OMJobPodSpec pod :
+        List.of(omJobSpec.getMainPodSpec(), omJobSpec.getExitHandlerSpec())) {
+      assertEquals("argocd-app", pod.getLabels().get("app.kubernetes.io/instance"));
+      assertEquals("ingestion", pod.getLabels().get("app.kubernetes.io/component"));
+      assertEquals(
+          "IgnoreExtraneous", pod.getAnnotations().get("argocd.argoproj.io/compare-options"));
+    }
   }
 
   @Test
@@ -1345,6 +1348,51 @@ class K8sPipelineClientTest {
         applicationJob.getSpec().getTemplate().getSpec().getContainers().get(0).getCommand());
     assertEquals(
         "query-runner", applicationJob.getMetadata().getLabels().get("app.kubernetes.io/app-name"));
+  }
+
+  @Test
+  void testConfiguredLabelsAndAnnotationsOnAutomationAndApplicationJobs() throws Exception {
+    K8sPipelineClient clientWithMetadata =
+        createClientWithParams(
+            Map.of(
+                "useOMJobOperator",
+                "false",
+                "podLabels",
+                "app.kubernetes.io/instance=argocd-app,app.kubernetes.io/component=x",
+                "podAnnotations",
+                "argocd.argoproj.io/compare-options=IgnoreExtraneous"));
+
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    clientWithMetadata.runAutomationsWorkflow(createTestWorkflow("Nightly Cleanup"));
+
+    ArgumentCaptor<V1Job> workflowJobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), workflowJobCaptor.capture());
+    assertConfiguredMetadataOnJobAndPod(workflowJobCaptor.getValue(), "automation");
+
+    reset(batchApi, createJobRequest);
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    clientWithMetadata.runApplicationFlow(createTestApplication("Query Runner"));
+
+    ArgumentCaptor<V1Job> applicationJobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), applicationJobCaptor.capture());
+    assertConfiguredMetadataOnJobAndPod(applicationJobCaptor.getValue(), "application");
+  }
+
+  private static void assertConfiguredMetadataOnJobAndPod(V1Job job, String builtInComponent) {
+    for (V1ObjectMeta metadata :
+        List.of(job.getMetadata(), job.getSpec().getTemplate().getMetadata())) {
+      assertEquals("argocd-app", metadata.getLabels().get("app.kubernetes.io/instance"));
+      assertEquals(
+          builtInComponent,
+          metadata.getLabels().get("app.kubernetes.io/component"),
+          "a built-in label wins over the configured value for the same key");
+      assertEquals(
+          "IgnoreExtraneous", metadata.getAnnotations().get("argocd.argoproj.io/compare-options"));
+    }
   }
 
   @Test
