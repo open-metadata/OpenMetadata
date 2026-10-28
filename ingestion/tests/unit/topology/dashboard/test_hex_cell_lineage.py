@@ -35,6 +35,7 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.generated.schema.type.tagLabel import LabelType, State, TagLabel, TagSource
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.hex.cell_lineage import (
     get_output_columns,
@@ -365,6 +366,7 @@ def make_source():
         source.dashboard_source_state = set()
         source.hex_project_lineage = {}
         source._cell_lineage = None
+        source._kept_data_model = None
         source._data_connections = None
         source._data_connections_denied = False
         return source
@@ -722,6 +724,7 @@ class TestHexCellLineage:
         source.metadata.get_by_name = MagicMock(side_effect=ConnectionError("server unavailable"))
         source.context.get.return_value = SimpleNamespace(dashboard_service=SERVICE, charts=[], dataModels=[])
 
+        run(source)
         (dashboard,) = source.yield_dashboard(PROJECT)
 
         assert dashboard.right.dataModels == []
@@ -1012,6 +1015,32 @@ class TestHexCellLineage:
         assert [child.name.root for child in request.columns[1].children] == ["id", "segment"]
         assert request.columns[1].fullyQualifiedName is None
 
+    def test_a_broken_cell_whose_group_cant_be_read_keeps_the_dashboard_linked(self, make_source):
+        first_run = make_source([REVENUE_CELL, CUSTOMERS_CELL])
+        run(first_run)
+        broken = CUSTOMERS_CELL.model_copy(
+            update={"contents": CellContents(sqlCell=SqlCellContents(source="select * from where"))}
+        )
+        source = make_source([REVENUE_CELL, broken])
+        source.metadata.entities.update(first_run.metadata.entities)
+        read_entity = source.metadata.get_by_name
+
+        def columns_unreadable(entity, fqn, fields=None):
+            if fields:
+                raise ConnectionError("server unavailable")
+            return read_entity(entity=entity, fqn=fqn)
+
+        source.metadata.get_by_name = columns_unreadable
+        source.context.get.return_value = SimpleNamespace(dashboard_service=SERVICE, charts=[], dataModels=[])
+
+        data_models, _ = run(source)
+        (dashboard,) = source.yield_dashboard(PROJECT)
+
+        model_fqn = f"{SERVICE}.model.{PROJECT.id}"
+        assert data_models == []
+        assert model_fqn in source.datamodel_source_state
+        assert [model.root for model in dashboard.right.dataModels] == [model_fqn]
+
     def test_a_cell_that_never_parsed_adds_no_group(self, make_source):
         broken = CUSTOMERS_CELL.model_copy(
             update={"contents": CellContents(sqlCell=SqlCellContents(source="select * from where"))}
@@ -1042,6 +1071,15 @@ class TestHexCellLineage:
                         Column(
                             name="kind",
                             dataType=DataType.VARCHAR,
+                            description="Event kind",
+                            tags=[
+                                TagLabel(
+                                    tagFQN="PII.Sensitive",
+                                    source=TagSource.Classification,
+                                    labelType=LabelType.Automated,
+                                    state=State.Suggested,
+                                )
+                            ],
                             fullyQualifiedName="snowflake_prod.prod.sales.events.payload.kind",
                         )
                     ],
@@ -1057,7 +1095,8 @@ class TestHexCellLineage:
 
         tags, payload = request.columns[0].children
         assert (tags.dataType, tags.arrayDataType) == (DataType.ARRAY, DataType.VARCHAR)
-        assert [(child.name.root, child.fullyQualifiedName) for child in payload.children] == [("kind", None)]
+        # The type, not what was curated or classified on the table
+        assert payload.children == [Column(name="kind", dataType=DataType.VARCHAR)]
 
 
 class TestHexApiClientCells:

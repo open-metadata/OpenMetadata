@@ -118,6 +118,8 @@ class HexSource(DashboardServiceSource):
 
         # Single slot: the data model and lineage stages of the same project share it
         self._cell_lineage: tuple[str, list[HexCellLineage] | None] | None = None
+        # The project whose existing data model the data model stage left as it is
+        self._kept_data_model: str | None = None
         self._data_connections: dict[str, DataConnection] | None = None
         self._data_connections_denied = False
 
@@ -399,7 +401,7 @@ class HexSource(DashboardServiceSource):
         if cell_lineage is None:
             # Unread is not gone: marking the existing data model as seen keeps this run
             # from deleting it and its lineage. Marking one that doesn't exist is harmless.
-            self.datamodel_source_state.add(self._build_fqn(DashboardDataModel, dashboard_details))
+            self._keep_data_model(dashboard_details)
             return
         try:
             columns = self._data_model_columns(dashboard_details, cell_lineage)
@@ -407,7 +409,7 @@ class HexSource(DashboardServiceSource):
             # Without the earlier data model, the groups of the cells that failed would be lost
             logger.debug(traceback.format_exc())
             logger.warning("Could not read the data model of Hex project %s: %s", dashboard_details.id, exc)
-            self.datamodel_source_state.add(self._build_fqn(DashboardDataModel, dashboard_details))
+            self._keep_data_model(dashboard_details)
             return
         if not columns:
             return
@@ -433,6 +435,10 @@ class HexSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def _keep_data_model(self, project: Project) -> None:
+        self._kept_data_model = project.id
+        self.datamodel_source_state.add(self._build_fqn(DashboardDataModel, project))
 
     def _data_model_columns(self, project: Project, cells: list[HexCellLineage]) -> list[Column]:
         """
@@ -558,15 +564,11 @@ class HexSource(DashboardServiceSource):
 
     def _kept_data_model_fqn(self, project: Project) -> str | None:
         """
-        The data model an earlier run created for a project whose cells this run could
-        not read, so the dashboard stays linked to it. None when it can't be confirmed:
-        linking a data model that doesn't exist would fail the dashboard.
+        The data model an earlier run created that the data model stage left as it is,
+        so the dashboard stays linked to it. None when it can't be confirmed: linking a
+        data model that doesn't exist would fail the dashboard.
         """
-        if (
-            not self.source_config.includeDataModels
-            or filter_by_datamodel(self.source_config.dataModelFilterPattern, project.title)
-            or self._get_cell_lineage(project) is not None
-        ):
+        if self._kept_data_model != project.id:
             return None
         data_model_fqn = self._build_fqn(DashboardDataModel, project)
         try:
@@ -799,16 +801,23 @@ class HexSource(DashboardServiceSource):
 
 
 def _output_column(column: HexCellColumn) -> Column:
-    """A column passed straight through keeps its table column's type, with its element type and fields"""
     source = column.passthrough
     if source is None:
         return Column(name=ColumnName(column.name), dataType=DataType.UNKNOWN)
+    return _type_of(source, ColumnName(column.name))
+
+
+def _type_of(source: Column, name: ColumnName) -> Column:
+    """
+    A column passed straight through keeps its table column's type, with its element
+    type and fields, but none of the table's descriptions, tags or profile
+    """
     return Column(
-        name=ColumnName(column.name),
+        name=name,
         dataType=source.dataType,
         dataTypeDisplay=source.dataTypeDisplay,
         arrayDataType=source.arrayDataType,
-        children=[_without_fqns(child) for child in source.children] if source.children else None,
+        children=[_type_of(child, child.name) for child in source.children] if source.children else None,
     )
 
 
