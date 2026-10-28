@@ -59,7 +59,12 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
 
       // In case of recursive delete if false and the deleting entity has data.
       // sometime socket throw the error before the API response
-      if (asyncDeleteJobRef.current?.status === 'FAILED') {
+      // Only this job's own early failure counts; a FAILED left by an earlier job must not
+      // report this one as failed.
+      if (
+        asyncDeleteJobRef.current?.jobId === response.jobId &&
+        asyncDeleteJobRef.current?.status === 'FAILED'
+      ) {
         showErrorToast(
           asyncDeleteJobRef.current.error ??
             t('server.delete-entity-error', {

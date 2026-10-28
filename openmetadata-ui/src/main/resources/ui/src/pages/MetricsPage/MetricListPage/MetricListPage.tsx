@@ -580,9 +580,10 @@ const MetricListPage = () => {
       const deleteJobs = await Promise.all(
         selectedMetrics.map(({ id }) => deleteMetricAsync(id, true))
       );
-      setPendingDeleteJobIds(
-        deleteJobs.flatMap((job) => (job?.jobId ? [job.jobId] : []))
-      );
+      setPendingDeleteJobIds((ids) => [
+        ...ids,
+        ...deleteJobs.flatMap((job) => (job?.jobId ? [job.jobId] : [])),
+      ]);
       showSuccessToast(
         t('message.metrics-delete-success', {
           count: selectedMetrics.length,
@@ -601,8 +602,9 @@ const MetricListPage = () => {
   }, [queryClient, resetHierarchy, selectedMetrics, t]);
 
   // Deletes run as async jobs, so the refetch in handleBulkDelete can land before a job
-  // finishes. Refresh again when one of this page's jobs completes; jobs started elsewhere are
-  // ignored. The id is matched even if the websocket message beat the API response.
+  // finishes. Refresh again when one of this page's jobs reports a final status; jobs started
+  // elsewhere are ignored. The provider keeps only the latest message, so a refresh on FAILED
+  // also covers an earlier COMPLETED that the same render batch hid.
   const { asyncDeleteJob } = useAsyncDeleteProvider();
   useEffect(() => {
     const { jobId, status } = asyncDeleteJob ?? {};
@@ -610,7 +612,7 @@ const MetricListPage = () => {
       return;
     }
     setPendingDeleteJobIds((ids) => ids.filter((id) => id !== jobId));
-    if (status === 'COMPLETED') {
+    if (status === 'COMPLETED' || status === 'FAILED') {
       queryClient.invalidateQueries({ queryKey: [METRIC_LISTING_QUERY_KEY] });
       resetHierarchy();
     }

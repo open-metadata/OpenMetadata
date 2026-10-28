@@ -1310,6 +1310,22 @@ describe('MetricListPage', () => {
     mockAsyncDeleteJob = undefined;
   });
 
+  it('refreshes when its job finished before the delete request resolved', async () => {
+    mockAsyncDeleteJob = { jobId: 'job-early', status: 'COMPLETED' };
+    mockDeleteMetric.mockResolvedValueOnce({ jobId: 'job-early', message: '' });
+    renderPage();
+    fireEvent.click(await screen.findByTestId('select-metric-1'));
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    // Once from handleBulkDelete, once when the already-stored message matches the new job id.
+    await waitFor(() =>
+      expect(hierarchyActions.reset).toHaveBeenCalledTimes(2)
+    );
+
+    mockAsyncDeleteJob = undefined;
+  });
+
   it('exports metrics from the core action menu', async () => {
     const dispatchSpy = jest.spyOn(window, 'dispatchEvent');
     renderPage();

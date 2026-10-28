@@ -306,4 +306,34 @@ describe('AsyncDeleteProvider', () => {
       expect.objectContaining({ jobId: 'job-2', status: 'COMPLETED' })
     );
   });
+
+  it('does not report a new delete as failed because an earlier job failed', async () => {
+    const onDeleteFailure = jest.fn();
+    const afterDeleteAction = jest.fn();
+    const { result } = renderHook(() => useAsyncDeleteProvider(), { wrapper });
+
+    act(() => {
+      result.current.handleDeleteEntityWebsocketResponse({
+        status: 'FAILED',
+        jobId: 'job-1',
+        entityName: 'First',
+        error: 'metric is not empty',
+      });
+    });
+    (deleteAsyncEntity as jest.Mock).mockResolvedValueOnce({
+      ...mockResponse,
+      jobId: 'job-2',
+    });
+
+    await act(async () => {
+      await result.current.handleOnAsyncEntityDeleteConfirm({
+        ...mockDeleteParams,
+        afterDeleteAction,
+        onDeleteFailure,
+      });
+    });
+
+    expect(afterDeleteAction).toHaveBeenCalledWith(true);
+    expect(onDeleteFailure).not.toHaveBeenCalled();
+  });
 });
