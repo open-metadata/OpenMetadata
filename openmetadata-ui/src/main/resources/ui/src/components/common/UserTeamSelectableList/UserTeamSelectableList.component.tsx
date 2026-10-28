@@ -98,11 +98,16 @@ export const UserTeamSelectableList = ({
   // switching tabs does not re-hit the search API, matching the legacy antd
   // Tabs. The caches are cleared when the popover closes so a re-open fetches
   // fresh data.
+  // Each cached page keeps the `allowedIds` it was read for: a list remounted
+  // for new ids fetches in its own mount effect, before any parent effect
+  // could clear the cache.
   const initialUserOptionsRef = useRef<{
+    key?: string;
     data: EntityReference[];
     paging: { total: number; after?: string };
   } | null>(null);
   const initialTeamOptionsRef = useRef<{
+    key?: string;
     data: EntityReference[];
     paging: { total: number; after?: string };
   } | null>(null);
@@ -159,7 +164,11 @@ export const UserTeamSelectableList = ({
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
     const isInitialPage = !searchText && afterPage <= 1;
 
-    if (isInitialPage && initialUserOptionsRef.current) {
+    if (
+      isInitialPage &&
+      initialUserOptionsRef.current &&
+      initialUserOptionsRef.current.key === allowedIdsKey
+    ) {
       return initialUserOptionsRef.current;
     }
 
@@ -189,7 +198,7 @@ export const UserTeamSelectableList = ({
       };
 
       if (isInitialPage) {
-        initialUserOptionsRef.current = result;
+        initialUserOptionsRef.current = { ...result, key: allowedIdsKey };
       }
 
       return result;
@@ -202,7 +211,11 @@ export const UserTeamSelectableList = ({
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
     const isInitialPage = !searchText && afterPage <= 1;
 
-    if (isInitialPage && initialTeamOptionsRef.current) {
+    if (
+      isInitialPage &&
+      initialTeamOptionsRef.current &&
+      initialTeamOptionsRef.current.key === allowedIdsKey
+    ) {
       return initialTeamOptionsRef.current;
     }
 
@@ -233,7 +246,7 @@ export const UserTeamSelectableList = ({
       };
 
       if (isInitialPage) {
-        initialTeamOptionsRef.current = result;
+        initialTeamOptionsRef.current = { ...result, key: allowedIdsKey };
       }
 
       return result;
@@ -385,8 +398,6 @@ export const UserTeamSelectableList = ({
     // Ids that arrive while the picker is open (e.g. still loading when it was
     // opened) re-read the lists, through their `key`, and both tab counts.
     if (isOpen) {
-      initialUserOptionsRef.current = null;
-      initialTeamOptionsRef.current = null;
       getUserCount();
       getTeamCount();
     }

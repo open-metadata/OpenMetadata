@@ -24,8 +24,21 @@ jest.mock('../../../rest/searchAPI', () => ({
     .mockResolvedValue({ hits: { hits: [], total: { value: 0 } } }),
 }));
 
+// Like the real list, each mount reads its first page in its own effect, which
+// React runs before the effects of the picker around it.
 jest.mock('../SelectableList/SelectableList.component', () => ({
-  SelectableList: jest.fn().mockReturnValue(<div>SelectableList</div>),
+  SelectableList: jest
+    .fn()
+    .mockImplementation(
+      ({ fetchOptions }: { fetchOptions: (text: string) => unknown }) => {
+        const { useEffect } = jest.requireActual('react');
+        useEffect(() => {
+          fetchOptions('');
+        }, []);
+
+        return <div>SelectableList</div>;
+      }
+    ),
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
@@ -194,7 +207,6 @@ describe('UserTeamSelectableList Component Test', () => {
     );
     await waitFor(() => expect(searchQuery).toHaveBeenCalled());
     (searchQuery as jest.Mock).mockClear();
-    const listMountsBefore = (SelectableList as jest.Mock).mock.calls.length;
 
     rerender(
       <UserTeamSelectableList
@@ -221,19 +233,18 @@ describe('UserTeamSelectableList Component Test', () => {
       );
     }
 
-    // Each list renders again under a new key, so it mounts and fetches anew.
-    const lastListProps = (SelectableList as jest.Mock).mock.calls.at(-1)[0];
-    await act(() => lastListProps.fetchOptions(''));
-
-    expect((SelectableList as jest.Mock).mock.calls.length).toBeGreaterThan(
-      listMountsBefore
-    );
-    expect(searchQuery).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        queryFilter: {
-          query: { bool: { must: [expect.anything(), allowedClause] } },
-        },
-      })
-    );
+    // Each list mounts again under a new key and reads its first page for the
+    // new ids, not the page cached while there were none.
+    for (const searchIndex of ['user', 'team']) {
+      expect(searchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          searchIndex,
+          pageSize: 25,
+          queryFilter: {
+            query: { bool: { must: [expect.anything(), allowedClause] } },
+          },
+        })
+      );
+    }
   });
 });
