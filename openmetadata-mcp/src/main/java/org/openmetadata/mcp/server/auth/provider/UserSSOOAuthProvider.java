@@ -24,6 +24,7 @@ import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.AuthorizationParams;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
+import org.openmetadata.mcp.auth.OAuthClientMetadata;
 import org.openmetadata.mcp.auth.OAuthToken;
 import org.openmetadata.mcp.auth.RefreshToken;
 import org.openmetadata.mcp.auth.exception.AuthorizeException;
@@ -1094,9 +1095,11 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       }
 
       // Validate scope downgrading (cannot request more scopes than originally granted)
-      List<String> originalScopes = tokenRecord.getScopes();
-      List<String> requestedScopes =
-          (scopes != null && !scopes.isEmpty()) ? scopes : originalScopes;
+      // Known scopes only: a token granted a long list earlier refreshes with a short one
+      List<String> originalScopes = OAuthClientMetadata.keepKnownScopes(tokenRecord.getScopes());
+      List<String> knownRequested =
+          scopes != null ? OAuthClientMetadata.keepKnownScopes(scopes) : List.of();
+      List<String> requestedScopes = !knownRequested.isEmpty() ? knownRequested : originalScopes;
 
       if (!originalScopes.containsAll(requestedScopes)) {
         LOG.warn(
