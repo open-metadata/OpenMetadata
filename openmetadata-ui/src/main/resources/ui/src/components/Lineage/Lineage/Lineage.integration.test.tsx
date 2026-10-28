@@ -31,6 +31,7 @@ import {
   getDataQualityLineage,
   getLineageDataByFQN,
 } from '../../../rest/lineageAPI';
+import { addLineage } from '../../../rest/miscAPI';
 import { positionNodesUsingElk } from '../../../utils/Lineage/Layout/ElkLayoutUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -584,6 +585,63 @@ describe('Lineage integration', () => {
     );
 
     expect(drawsDirectEdge()).toBe(false);
+  });
+
+  it('keeps the temp tables of a direct edge given a column while they are hidden', async () => {
+    useApplicationStore.setState({
+      currentUser: { id: 'u-admin', name: 'admin' } as User,
+    });
+    usePersistentStorage
+      .getState()
+      .setUserPreference('admin', { showLineageTempTables: false });
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue(TEMP_LINEAGE_RESPONSE);
+    let connect: ReturnType<typeof useLineageHandlers>['onConnect'] = jest.fn();
+    const ConnectConsumer = () => {
+      connect = useLineageHandlers().onConnect;
+
+      return null;
+    };
+
+    render(
+      <MemoryRouter>
+        <Lineage
+          entity={entityFixture}
+          entityFqn="svc.db.s.t1"
+          entityType={EntityType.TABLE}
+          isPlatformLineage={false}>
+          <ReactFlowInitConsumer />
+          <ConnectConsumer />
+        </Lineage>
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(
+        useLineageStore.getState().nodes.map((node) => node.id)
+      ).toContain('id-b')
+    );
+
+    await act(async () => {
+      connect({
+        source: 'id-a',
+        target: 'id-b',
+        sourceHandle: 'svc.db.s.t1.c1',
+        targetHandle: 'svc.db.s.tableB.c1',
+      });
+    });
+
+    // The server replaces an edge's details on save; leaving the temp tables
+    // out would delete them.
+    expect(addLineage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        edge: expect.objectContaining({
+          lineageDetails: expect.objectContaining({
+            tempLineageTables:
+              TEMP_LINEAGE_RESPONSE.downstreamEdges.ab.tempLineageTables,
+          }),
+        }),
+      })
+    );
   });
 
   it('updateEntityData imperatively syncs the entity context to the store', async () => {

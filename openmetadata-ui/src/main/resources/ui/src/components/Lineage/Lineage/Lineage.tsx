@@ -371,6 +371,7 @@ const buildColumnLineageDetails = (
     columnsLineage: updatedColumns,
     description: currentEdge?.description ?? '',
     sqlQuery: currentEdge?.sqlQuery,
+    tempLineageTables: currentEdge.tempLineageTables,
   };
 
   return { updatedColumns, lineageDetails };

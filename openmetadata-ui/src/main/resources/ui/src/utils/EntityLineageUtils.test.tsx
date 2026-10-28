@@ -28,6 +28,7 @@ import {
   getAllTracedEdges,
   getColumnLineageData,
   getLineageDetailsObject,
+  getNewLineageConnectionDetails,
   getLineageEdge,
   getLineageEdgeForAPI,
   getUpdatedColumnsFromEdge,
@@ -125,6 +126,30 @@ describe('Test EntityLineageUtils utility', () => {
       pipeline: undefined,
       source: undefined,
     });
+  });
+
+  it('keeps an edge\'s temp tables in the details saved for it', () => {
+    const tempLineageTables = [
+      { fromEntity: 'svc.db.s.a', toEntity: 'tmp_staging' },
+      { fromEntity: 'tmp_staging', toEntity: 'svc.db.s.b' },
+    ];
+    const edge = {
+      data: {
+        edge: {
+          fromEntity: { id: 'id-a', type: 'table' },
+          toEntity: { id: 'id-b', type: 'table' },
+          tempLineageTables,
+        },
+      },
+    } as Edge;
+
+    expect(getLineageDetailsObject(edge).tempLineageTables).toEqual(
+      tempLineageTables
+    );
+    expect(
+      getNewLineageConnectionDetails(edge, undefined).newEdge.edge
+        .lineageDetails?.tempLineageTables
+    ).toEqual(tempLineageTables);
   });
 
   it('should return the correct lineage edge with valid source and target nodes', () => {
