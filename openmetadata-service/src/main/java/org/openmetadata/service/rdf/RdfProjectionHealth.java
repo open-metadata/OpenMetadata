@@ -14,7 +14,6 @@ package org.openmetadata.service.rdf;
 
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 
 /** SQL is authoritative once RDF is initialized; local failures are flushed after SQL recovers. */
 @Slf4j
@@ -45,10 +44,13 @@ public final class RdfProjectionHealth {
     markDegraded(new IllegalStateException("RDF operation failed without durable recovery"));
   }
 
+  /** Whether the current write is a live-write queue entry, which the queue retries on failure. */
+  public static boolean inDurableRecovery() {
+    return Boolean.TRUE.equals(DURABLE_RECOVERY.get());
+  }
+
   public static void markDegraded(final Throwable failure) {
-    // A write held back by maintenance never reached the store; its caller retries it.
-    if (Boolean.TRUE.equals(DURABLE_RECOVERY.get())
-        || RdfStorageMaintenanceException.find(failure).isPresent()) {
+    if (inDurableRecovery()) {
       return;
     }
     if (store == null) {
@@ -93,7 +95,7 @@ public final class RdfProjectionHealth {
     }
   }
 
-  static void withDurableRecovery(final Runnable write) {
+  public static void withDurableRecovery(final Runnable write) {
     final Boolean previous = DURABLE_RECOVERY.get();
     DURABLE_RECOVERY.set(true);
     try {

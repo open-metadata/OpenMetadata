@@ -14,6 +14,7 @@ package org.openmetadata.service.rdf.maintenance;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.api.configuration.rdf.RdfStorageMaintenanceConfig
 import org.openmetadata.service.apps.bundles.rdf.RdfReindexRunLock;
 import org.openmetadata.service.jdbi3.InMemoryRdfReindexLockDAO;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.inference.InferenceRunLock;
 import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.StorageFacts;
 
@@ -128,6 +130,32 @@ class RdfStorageMaintenanceServiceTest {
   }
 
   @Test
+  void aRunningInferenceDefersTheCompaction() {
+    final InferenceRunLock inference = inferenceLock();
+    assertTrue(inference.tryAcquire("inference-run"));
+
+    assertNull(serverA.compactIfDue());
+    verify(repository, never()).compact(any());
+
+    inference.release("inference-run");
+    assertEquals(SUCCEEDED, serverA.compactIfDue());
+  }
+
+  @Test
+  void inferenceCannotStartUntilTheCompactionEnds() {
+    doAnswer(
+            invocation -> {
+              assertFalse(inferenceLock().tryAcquire("inference-run"));
+              return SUCCEEDED;
+            })
+        .when(repository)
+        .compact(any());
+
+    assertEquals(SUCCEEDED, serverA.compactIfDue());
+    assertTrue(inferenceLock().tryAcquire("inference-run"));
+  }
+
+  @Test
   void theReindexLockIsReleasedAfterACompaction() {
     serverA.compactIfDue();
 
@@ -178,6 +206,11 @@ class RdfStorageMaintenanceServiceTest {
         .thenReturn(Optional.of(new StorageFacts(100 * GIB, 90 * GIB, true)));
 
     assertEquals(SUCCEEDED, serverB.compactIfDue());
+  }
+
+  private InferenceRunLock inferenceLock() {
+    return InferenceRunLock.forCluster(
+        locks, InferenceRunLock.MATERIALIZATION_LOCK_KEY, "server-c");
   }
 
   private RdfStorageMaintenanceService service(final String serverId) {

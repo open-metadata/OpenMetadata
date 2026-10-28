@@ -31,7 +31,8 @@ import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
  * the dataset underneath them. A write that reached Fuseki then would wait, time out and use up one
  * of its delivery attempts, and enough of those dead-letter it. Instead, the pause is a lease every
  * server reads before writing the serving dataset: queued writes stay in the durable queue and are
- * applied once it ends, and synchronous writers get {@link RdfStorageMaintenanceException}.
+ * applied once it ends, and other writers wait up to {@link #WRITER_WAIT} for it, as they would
+ * have waited for Fuseki, before getting {@link RdfStorageMaintenanceException}.
  *
  * <p>The lease lives in the shared lock table and expires unless renewed, so a server that stops
  * mid-maintenance pauses writes for at most {@link RdfReindexRunLock#EXPIRY_MS}. The thread that
@@ -42,6 +43,9 @@ import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 public final class RdfLiveWritePause {
   public static final String LOCK_KEY = "RDF_LIVE_WRITES_PAUSED";
   public static final Duration RETRY_AFTER = Duration.ofSeconds(5);
+  // A write that nothing retries waits for the pause about as long as Fuseki's writer lock would
+  // have kept it waiting: the default RDF request timeout.
+  static final Duration WRITER_WAIT = Duration.ofSeconds(60);
   private static final long HEARTBEAT_SECONDS = 30;
   private static final String HOLDER =
       "SELECT jobId FROM rdf_reindex_lock WHERE lockKey = ? AND expiresAt > ?";

@@ -24,6 +24,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -96,7 +97,7 @@ public class RdfSourceRevisionIT {
   }
 
   @Test
-  void aPipelineRunRecordedInTheGraphRecordsOneUntrackedWrite(final TestNamespace ns) {
+  void aPipelineRunReachesTheGraphThroughTheLiveWriteQueue(final TestNamespace ns) {
     final Pipeline pipeline =
         SdkClients.adminClient()
             .pipelines()
@@ -106,18 +107,24 @@ public class RdfSourceRevisionIT {
                     .withService(
                         PipelineServiceTestFactory.createAirflow(ns).getFullyQualifiedName()));
 
-    final long recorded =
+    final List<String> queued = new ArrayList<>();
+    final long untracked =
         untrackedWritesDuring(
-            () ->
-                SdkClients.adminClient()
-                    .pipelines()
-                    .addPipelineStatus(
-                        pipeline.getFullyQualifiedName(),
-                        new PipelineStatus()
-                            .withExecutionStatus(StatusType.Successful)
-                            .withTimestamp(System.currentTimeMillis())));
+            () -> {
+              SdkClients.adminClient()
+                  .pipelines()
+                  .addPipelineStatus(
+                      pipeline.getFullyQualifiedName(),
+                      new PipelineStatus()
+                          .withExecutionStatus(StatusType.Successful)
+                          .withTimestamp(System.currentTimeMillis()));
+              queued.addAll(queuedPayloads());
+            });
 
-    assertEquals(1, recorded);
+    assertEquals(0, untracked, "the queue tracks the run, so no write bypasses it");
+    assertTrue(
+        queued.stream().anyMatch(payload -> payload.contains("\"pipelineExecution\"")),
+        () -> "The run was not queued: " + queued);
   }
 
   @Test
@@ -174,6 +181,16 @@ public class RdfSourceRevisionIT {
                     .createQuery("SELECT id FROM rdf_live_write_queue WHERE id > :id")
                     .bind("id", id)
                     .mapTo(Long.class)
+                    .list());
+  }
+
+  private static List<String> queuedPayloads() {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT payload FROM rdf_live_write_queue ORDER BY id")
+                    .mapTo(String.class)
                     .list());
   }
 
