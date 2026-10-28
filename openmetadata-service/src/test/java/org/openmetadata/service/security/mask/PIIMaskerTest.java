@@ -357,29 +357,7 @@ class PIIMaskerTest {
     String tableFqn = "service.db.schema.orders";
     EntityReference owner = entityReference(Entity.USER, "owner");
     // The leaf city carries the tag; the contact struct carries it above email; zip is untouched
-    Column address =
-        column(tableFqn, "address", false)
-            .withChildren(
-                List.of(
-                    column(tableFqn + ".address", "city", true).withProfile(profile("city")),
-                    column(tableFqn + ".address", "zip", false)
-                        .withProfile(profile("zip"))
-                        .withChildren(
-                            List.of(
-                                column(tableFqn + ".address.zip", "code", false)
-                                    .withProfile(profile("code"))))));
-    Column contact =
-        column(tableFqn, "contact", true)
-            .withChildren(
-                List.of(
-                    column(tableFqn + ".contact", "email", false).withProfile(profile("email"))));
-    Column id = column(tableFqn, "id", false);
-    List<Column> columns =
-        new ArrayList<>(
-            List.of(
-                address.withProfile(profile("address")),
-                contact.withProfile(profile("contact")),
-                id.withProfile(profile("id"))));
+    List<Column> columns = nestedProfileColumns(tableFqn);
     Table table = table(tableFqn, columns, false, List.of(owner));
     Authorizer authorizer = mock(Authorizer.class);
     SecurityContext securityContext = mock(SecurityContext.class);
@@ -414,10 +392,83 @@ class PIIMaskerTest {
       assertNotNull(masked.get(2).getProfile());
       assertEquals("id", masked.get(2).getName());
 
-      // An authorized caller gets the columns back untouched
-      assertSame(
-          columns, PIIMasker.getTableProfile(tableFqn, columns, authorizer, securityContext));
+      // An authorized caller gets every profile back: a fresh list, not the one the unauthorized
+      // pass above already mutated in place
+      List<Column> authorizedColumns = nestedProfileColumns(tableFqn);
+      List<Column> authorized =
+          PIIMasker.getTableProfile(tableFqn, authorizedColumns, authorizer, securityContext);
+
+      assertSame(authorizedColumns, authorized);
+      assertNotNull(authorized.getFirst().getProfile());
+      assertEquals("address", authorized.getFirst().getName());
+      assertNotNull(authorized.getFirst().getChildren().getFirst().getProfile());
+      assertEquals("city", authorized.getFirst().getChildren().getFirst().getName());
+      assertEquals("zip", authorized.getFirst().getChildren().get(1).getName());
+      assertEquals("email", authorized.get(1).getChildren().getFirst().getName());
+      assertNotNull(authorized.get(1).getChildren().getFirst().getProfile());
+      assertEquals("id", authorized.get(2).getName());
     }
+  }
+
+  private static List<Column> nestedProfileColumns(String tableFqn) {
+    Column address =
+        column(tableFqn, "address", false)
+            .withChildren(
+                List.of(
+                    column(tableFqn + ".address", "city", true).withProfile(profile("city")),
+                    column(tableFqn + ".address", "zip", false)
+                        .withProfile(profile("zip"))
+                        .withChildren(
+                            List.of(
+                                column(tableFqn + ".address.zip", "code", false)
+                                    .withProfile(profile("code"))))));
+    Column contact =
+        column(tableFqn, "contact", true)
+            .withChildren(
+                List.of(
+                    column(tableFqn + ".contact", "email", false).withProfile(profile("email"))));
+    return new ArrayList<>(
+        List.of(
+            address.withProfile(profile("address")),
+            contact.withProfile(profile("contact")),
+            column(tableFqn, "id", false).withProfile(profile("id"))));
+  }
+
+  @Test
+  void singleColumnProfileMaskingSeesTagsOnAncestorColumns() {
+    String tableFqn = "service.db.schema.orders";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // city carries no tag itself; the struct it nests under is the only PII-tagged column
+    Column address =
+        column(tableFqn, "address", true)
+            .withChildren(List.of(column(tableFqn + ".address", "city", false)));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, true);
+
+    List<Column> masked =
+        PIIMasker.getSingleColumnProfile(
+            List.of(owner),
+            List.of(address),
+            profiledCityColumn(tableFqn),
+            authorizer,
+            securityContext);
+    assertNull(masked.getFirst().getProfile());
+    assertEquals("city [MASKED]", masked.getFirst().getName());
+
+    List<Column> untouched =
+        PIIMasker.getSingleColumnProfile(
+            List.of(owner),
+            List.of(address),
+            profiledCityColumn(tableFqn),
+            authorizer,
+            securityContext);
+    assertNotNull(untouched.getFirst().getProfile());
+    assertEquals("city", untouched.getFirst().getName());
+  }
+
+  private static Column profiledCityColumn(String tableFqn) {
+    return column(tableFqn + ".address", "city", false).withProfile(profile("city"));
   }
 
   private static ColumnProfile profile(String name) {

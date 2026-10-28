@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.jdbi3.TopicRepository.getAllFieldTags;
 
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -173,6 +174,43 @@ public class PIIMasker {
       SecurityContext securityContext) {
     boolean authorizePII = authorizer.authorizePII(securityContext, owners);
     if (authorizePII) return columns;
+    maskColumnProfiles(columns);
+    return columns;
+  }
+
+  public static List<Column> getSingleColumnProfile(
+      String tableFqn,
+      List<Column> ancestors,
+      Column column,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    Table table = Entity.getEntityByName(Entity.TABLE, tableFqn, "owners", Include.ALL);
+    return getSingleColumnProfile(
+        table.getOwners(), ancestors, column, authorizer, securityContext);
+  }
+
+  /**
+   * A single-column GET serialises one column, so the {@link #getTableProfile} walk cannot see a
+   * {@code PII.Sensitive} tag sitting on a column above it in the tree. The caller hands the
+   * ancestor chain resolved from the table's own columns, and a direct tag on any of them masks
+   * this column the way the full-tree walk masks the subtree beneath it — while the regular walk
+   * below still covers the column's own subtree, as {@link #getTableProfile} would.
+   */
+  public static List<Column> getSingleColumnProfile(
+      List<EntityReference> owners,
+      List<Column> ancestors,
+      Column column,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    boolean authorizePII = authorizer.authorizePII(securityContext, owners);
+    if (authorizePII) {
+      return new ArrayList<>(List.of(column));
+    }
+    if (listOrEmpty(ancestors).stream().anyMatch(PIIMasker::hasDirectPiiSensitiveTag)) {
+      column.setProfile(null);
+      column.setName(flagMaskedName(column.getName()));
+    }
+    List<Column> columns = new ArrayList<>(List.of(column));
     maskColumnProfiles(columns);
     return columns;
   }
