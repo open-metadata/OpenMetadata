@@ -12,6 +12,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { last, partition, uniqBy } from 'lodash';
+import { SORT_ORDER } from '../../../../enums/common.enum';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { User } from '../../../../generated/entity/teams/user';
 import {
@@ -54,11 +55,16 @@ const getAssigneeParam = (user: User) =>
     .filter(Boolean)
     .join(',');
 
-// The server pages tasks by (createdAt, id), newest first. UUIDs are
-// single-case ASCII, so a plain string compare agrees with the DB's order.
+// The server pages tasks by (createdAt, id), newest first unless asked for
+// ascending. UUIDs are single-case ASCII, so a plain string compare agrees
+// with the DB's order.
 const compareKey = (a = '', b = '') => Number(a > b) - Number(a < b);
-const compareTasksInServerOrder = (a: Task, b: Task) =>
-  (b.createdAt ?? 0) - (a.createdAt ?? 0) || compareKey(b.id, a.id);
+const compareTasksOldestFirst = (a: Task, b: Task) =>
+  (a.createdAt ?? 0) - (b.createdAt ?? 0) || compareKey(a.id, b.id);
+const getServerOrder = (sortOrder?: SORT_ORDER) =>
+  sortOrder === SORT_ORDER.ASC
+    ? compareTasksOldestFirst
+    : (a: Task, b: Task) => compareTasksOldestFirst(b, a);
 
 // Fetch a source's next page only once its buffered tasks are used up.
 const loadSource = async (
@@ -99,6 +105,7 @@ export const fetchUserTasksPage = async (
     loadSource(cursor.created, { ...params, createdById: user.id }),
   ]);
 
+  const compareTasksInServerOrder = getServerOrder(params.sortOrder);
   // A source with pages left only returns tasks after its last loaded one.
   const bounds = sources
     .filter((source) => source.after !== null)

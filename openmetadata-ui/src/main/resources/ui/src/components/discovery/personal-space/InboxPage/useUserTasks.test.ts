@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SORT_ORDER } from '../../../../enums/common.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { TaskStatusGroup } from '../../../../rest/tasksAPI';
 import { fetchUserTasksPage, userTaskCountQuery } from './useUserTasks';
@@ -105,6 +106,29 @@ describe('fetchUserTasksPage', () => {
     const page = await fetchUserTasksPage(user, {});
 
     expect(ids(page)).toEqual(['id-2', 'id-1']);
+  });
+
+  it('merges oldest first when asked for ascending order', async () => {
+    mockListTasks.mockImplementation((params) => {
+      if (isCreatedQuery(params)) {
+        return Promise.resolve({ data: [task(2), task(5)], paging: {} });
+      }
+
+      return Promise.resolve({
+        data: [task(1), task(3)],
+        paging: { after: 'assigned-2' },
+      });
+    });
+
+    const page = await fetchUserTasksPage(user, {
+      sortOrder: SORT_ORDER.ASC,
+    });
+
+    expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ sortOrder: SORT_ORDER.ASC })
+    );
+    // Task 5 waits: the assigned source's next page may hold task 4.
+    expect(ids(page)).toEqual(['id-1', 'id-2', 'id-3']);
   });
 
   it('stops paging once both sources are exhausted', async () => {
