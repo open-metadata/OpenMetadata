@@ -720,6 +720,7 @@ class PIIMaskerTest {
     // the normalized hash, so masking must resolve the path through the same normalization — a
     // character offset taken against the normalized table FQN would slice the raw string mid-word
     String quotedServiceFqn = "\"service\".db.schema.orders.city";
+    String quotedEmailFqn = "\"service\".db.schema.orders.email";
     EntityReference owner = entityReference(Entity.USER, "owner");
     Table table =
         table(
@@ -729,7 +730,7 @@ class PIIMaskerTest {
             List.of(owner));
     Authorizer authorizer = mock(Authorizer.class);
     SecurityContext securityContext = mock(SecurityContext.class);
-    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, true);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, false, true);
 
     List<ColumnProfile> plainProfiles =
         List.of(new ColumnProfile().withName("city").withNullCount(1.0));
@@ -749,11 +750,11 @@ class PIIMaskerTest {
       assertEquals("city", unmasked.getFirst().getName());
       assertEquals(1.0, unmasked.getFirst().getNullCount());
 
-      // The PII-tagged column next to it is still masked under the same quoted FQN
+      // The PII-tagged column next to it is still masked under an equivalently quoted FQN
       List<ColumnProfile> piiProfiles =
           List.of(new ColumnProfile().withName("email").withNullCount(2.0));
       List<ColumnProfile> masked =
-          PIIMasker.getColumnProfile(quotedServiceFqn, piiProfiles, authorizer, securityContext);
+          PIIMasker.getColumnProfile(quotedEmailFqn, piiProfiles, authorizer, securityContext);
       assertEquals(1, masked.size());
       assertNull(masked.getFirst().getName());
       assertNull(masked.getFirst().getNullCount());
