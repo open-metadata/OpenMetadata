@@ -162,8 +162,10 @@ const IncidentManager = ({
     );
   }
 
+  // Keep the incident rows and filter band below the surrounding page-card surface.
+  // ADR:2026-10-28-incident-tables-and-filters-use-the-muted-step
   return (
-    <TableCard.Root>
+    <TableCard.Root variant="muted">
       <Box
         align="start"
         className="tw:p-4"
