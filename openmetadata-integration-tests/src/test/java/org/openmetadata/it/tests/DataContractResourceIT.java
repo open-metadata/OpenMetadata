@@ -9005,6 +9005,22 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(suitesBefore, suitesOf(client, test));
   }
 
+  /** A PUT for an entity type contracts do not support is a bad request, not a missing entity. */
+  @Test
+  void testPutForUnsupportedEntityTypeIsRejected(TestNamespace ns) {
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("unsupported_put"))
+            .withEntity(
+                new EntityReference().withId(UUID.randomUUID()).withType("unsupportedType"));
+
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().dataContracts().createOrUpdate(request));
+    assertEquals(400, error.getStatusCode());
+  }
+
   private static int suitesOf(OpenMetadataClient client, TestCase test) {
     List<TestSuite> suites =
         client.testCases().get(test.getId().toString(), "testSuites").getTestSuites();
