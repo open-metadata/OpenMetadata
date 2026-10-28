@@ -17,13 +17,12 @@ import java.io.UncheckedIOException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.Locale;
 import java.util.Map;
-import java.util.function.LongSupplier;
 import java.util.regex.Pattern;
 import org.apache.jena.fuseki.servlets.HttpAction;
 import org.apache.jena.fuseki.servlets.ServletOps;
+import org.apache.jena.web.HttpSC;
 
 /**
  * Refuses writes while the data volume has less free space than a reserve.
@@ -32,44 +31,32 @@ import org.apache.jena.fuseki.servlets.ServletOps;
  * I/O error the server can report: the JVM takes SIGBUS and dies, mid-transaction, and keeps dying
  * on every retry. Compaction is also the only way TDB2 gives space back, and it needs free space
  * about the size of the live data to copy it. So writes stop while there is still room to compact:
- * they get 503 with {@code Retry-After} and {@link #STORAGE_HEADER}, nothing is applied, and the
- * client may retry once maintenance has freed space. Reads and compaction are never refused. See
+ * they get 507 Insufficient Storage, nothing is applied, and the client may retry once maintenance
+ * has freed space. Reads and compaction are never refused. See
  * ADR:2026-10-28-the-fuseki-image-refuses-writes-below-a-free-space-reserve-and-reports-its-volume.
  */
 public final class StorageGuard {
-  public static final String STORAGE_HEADER = "X-OpenMetadata-Storage";
-  public static final String LOW_DISK = "low-disk";
-
-  /** In the 503 body as well as the header, because some clients only surface the body. */
-  public static final String REFUSAL_MESSAGE =
-      "OpenMetadata storage guard: the data volume is below its free-space reserve; "
-          + "writes resume once space is freed";
+  static final String REFUSAL_MESSAGE =
+      "The data volume is below its free-space reserve; writes resume once space is freed";
 
   public static final String MIN_FREE = "OPENMETADATA_STORAGE_MIN_FREE";
   static final String DEFAULT_MIN_FREE = "10%";
-  static final Duration RETRY_AFTER = Duration.ofSeconds(30);
   private static final Pattern PERCENT = Pattern.compile("([1-9][0-9]?)%");
   private static final Pattern SIZE = Pattern.compile("([1-9][0-9]{0,12})([kKmMgGtT]?)");
-  private static final long RECHECK_NANOS = Duration.ofSeconds(1).toNanos();
 
   private final FileStore volume;
   private final long reserveBytes;
-  private final LongSupplier nanoTime;
-  private volatile long checkedAt;
-  private volatile boolean lowDisk;
 
-  StorageGuard(final FileStore volume, final long reserveBytes, final LongSupplier nanoTime) {
+  StorageGuard(final FileStore volume, final long reserveBytes) {
     this.volume = volume;
     this.reserveBytes = reserveBytes;
-    this.nanoTime = nanoTime;
-    this.checkedAt = nanoTime.getAsLong() - RECHECK_NANOS;
   }
 
   /** The guard for the volume that holds {@code databases}, sized from the environment. */
   public static StorageGuard forVolume(
       final Path databases, final Map<String, String> environment) {
     final FileStore volume = fileStore(databases);
-    return new StorageGuard(volume, reserve(volume, environment.get(MIN_FREE)), System::nanoTime);
+    return new StorageGuard(volume, reserve(volume, environment.get(MIN_FREE)));
   }
 
   static long reserve(final FileStore volume, final String configured) {
@@ -84,7 +71,7 @@ public final class StorageGuard {
     }
   }
 
-  /** A size in the JVM's notation, such as 512m or 2g, as the entrypoint validates it. */
+  /** A size in the JVM's notation, such as 512m or 2g. */
   static long bytes(final String value) {
     final var size = SIZE.matcher(value);
     if (!size.matches()) {
@@ -121,23 +108,15 @@ public final class StorageGuard {
     }
   }
 
-  /** Answers with 503 instead of letting the write reach TDB2 when the volume is low. */
+  /** Answers 507 instead of letting the write reach TDB2 when the volume is low. */
   public void requireWritable(final HttpAction action) {
     if (isLowOnSpace()) {
-      action.setResponseHeader(STORAGE_HEADER, LOW_DISK);
-      action.setResponseHeader("Retry-After", Long.toString(RETRY_AFTER.toSeconds()));
-      ServletOps.error(503, REFUSAL_MESSAGE);
+      ServletOps.error(HttpSC.INSUFFICIENT_STORAGE_507, REFUSAL_MESSAGE);
     }
   }
 
-  /** Rechecked at most once a second: the check runs on every write. */
   public boolean isLowOnSpace() {
-    final long now = nanoTime.getAsLong();
-    if (now - checkedAt >= RECHECK_NANOS) {
-      lowDisk = usableBytes() < reserveBytes;
-      checkedAt = now;
-    }
-    return lowDisk;
+    return usableBytes() < reserveBytes;
   }
 
   public long reserveBytes() {

@@ -15,14 +15,14 @@ package org.openmetadata.service.rdf.storage;
 import java.time.Duration;
 
 /**
- * Fuseki's storage guard refused a write because its data volume is below the free-space
- * reserve. The guard answers before the write reaches TDB2, so nothing was applied: unlike other
- * 503s, the outcome is certain, and the write is retried, without using a delivery attempt, until
- * storage maintenance frees space. The queue's lag still marks the projection degraded meanwhile.
- * See ADR:2026-10-28-the-fuseki-image-refuses-writes-below-a-free-space-reserve-and-reports-its-volume.
+ * Fuseki answered 507 Insufficient Storage: its data volume is below the free-space reserve. The
+ * guard answers before the write reaches TDB2, so nothing was applied, and the write is retried,
+ * without using a delivery attempt, until storage maintenance frees space. The queue's lag still
+ * marks the projection degraded meanwhile. See
+ * ADR:2026-10-28-the-fuseki-image-refuses-writes-below-a-free-space-reserve-and-reports-its-volume.
  */
 public final class RdfStorageLowDiskException extends RdfStorageMaintenanceException {
-  static final String GUARD_MARKER = "OpenMetadata storage guard";
+  static final int INSUFFICIENT_STORAGE = 507;
   static final Duration RETRY_AFTER = Duration.ofSeconds(30);
 
   public RdfStorageLowDiskException(final String operation) {
