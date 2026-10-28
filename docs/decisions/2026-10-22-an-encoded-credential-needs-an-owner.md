@@ -96,10 +96,9 @@ are only accepted by the entity whose base they fall under — so a cross-cluste
 references still resolves nothing in the target and is rejected; export with secrets visible and
 re-import as plaintext still works. The test-before-save corner (a TEST_CONNECTION workflow with
 no stored service behind it) accepts plaintext and external references and rejects managed ones,
-since there is nothing to compare against. The legacy Collate-facing overloads for query runner
-configs and context plugin connections retain internal re-storage behavior: their existing callers
-restore stored encrypted values before saving. The policy-taking overloads allow those callers to
-adopt strict validation when their submission and re-storage paths are migrated together.
+since there is nothing to compare against. Collate-side re-storage call sites (query runner config,
+context plugin connections) must use the new internal re-storage overloads or strict defaults will
+reject their stored copies.
 
 ## Amendment — 2026-10-27: the accepted reference is an exact id, and provider identifier forms are canonicalized
 

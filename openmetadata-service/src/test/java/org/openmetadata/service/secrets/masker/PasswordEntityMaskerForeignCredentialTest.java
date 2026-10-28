@@ -74,17 +74,24 @@ class PasswordEntityMaskerForeignCredentialTest {
   }
 
   @Test
-  void legacyCollateOverloadsCanRestoreStoredCredentials() {
+  void explicitCollateReStoragePolicyCanRestoreStoredCredentials() {
     SecretsManager manager = SecretsManagerFactory.getSecretsManager();
     basicAuth stored = new basicAuth().withPassword(encrypted(STORED_PASSWORD));
 
     basicAuth queryConfig =
-        (basicAuth) manager.encryptQueryRunnerConfig(stored, "test-service", "user");
+        (basicAuth)
+            manager.encryptQueryRunnerConfig(
+                stored,
+                "test-service",
+                "user",
+                SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
     assertEquals(STORED_PASSWORD, Fernet.getInstance().decrypt(queryConfig.getPassword()));
     basicAuth pluginConfig =
         (basicAuth)
             manager.encryptContextPluginConnection(
-                new basicAuth().withPassword(encrypted(STORED_PASSWORD)), "test-plugin");
+                new basicAuth().withPassword(encrypted(STORED_PASSWORD)),
+                "test-plugin",
+                SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
     assertEquals(STORED_PASSWORD, Fernet.getInstance().decrypt(pluginConfig.getPassword()));
   }
 

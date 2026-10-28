@@ -248,8 +248,9 @@ public abstract class SecretsManager {
         authConfig,
         serviceName,
         configType,
-        // Collate callers re-save stored credentials; keep their existing contract until migrated.
-        CredentialPolicy.INTERNAL_RE_STORAGE);
+        CredentialPolicy.strictWithReferenceBases(
+            List.of(
+                buildSecretId(true, "DatabaseService", serviceName, "queryrunner", configType))));
   }
 
   public Object encryptQueryRunnerConfig(
@@ -326,8 +327,8 @@ public abstract class SecretsManager {
     return encryptContextPluginConnection(
         connectionConfig,
         pluginName,
-        // Collate callers restore stored OAuth tokens before invoking this legacy overload.
-        CredentialPolicy.INTERNAL_RE_STORAGE);
+        CredentialPolicy.strictWithReferenceBases(
+            List.of(buildSecretId(true, "contextPlugin", pluginName))));
   }
 
   public Object encryptContextPluginConnection(
