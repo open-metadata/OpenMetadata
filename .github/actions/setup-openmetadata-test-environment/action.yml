@@ -25,7 +25,7 @@ inputs:
     required: false
     default: "true"
   fast-mode:
-    description: Restore a pre-seeded PostgreSQL/OpenSearch fixture and start the server on the host
+    description: Restore a pre-seeded Playwright fixture (PostgreSQL/OpenSearch or MySQL/Elasticsearch) and start the server on the host
     required: false
     default: "false"
   fixture-path:
@@ -222,6 +222,22 @@ runs:
         max_attempts: 2
         retry_on: error
         command: ${{ inputs.startup-script }} ${{ inputs.args }}
+
+    # Registry pulls vary with load and used to eat the restore step's 5m
+    # budget: Elasticsearch from docker.elastic.co took 4-5 min when ~40 MySQL
+    # shards pulled it at once. Pulling first keeps that budget for startup.
+    - name: Pull fast Playwright environment images
+      if: ${{ inputs.install-server == 'true' && inputs.fast-mode == 'true' }}
+      run: |
+        mapfile -t images < <(
+          tar --zstd -xOf "${{ inputs.fixture-path }}" ./fixture-manifest.json |
+            jq -r '.databaseImage // empty, .searchImage // empty'
+        )
+        if [[ ${#images[@]} -gt 0 ]]; then
+          timeout --signal=TERM --kill-after=30s 15m \
+            ./.github/scripts/pull_playwright_fixture_images.sh "${images[@]}"
+        fi
+      shell: bash
 
     - name: Restore fast Playwright environment
       if: ${{ inputs.install-server == 'true' && inputs.fast-mode == 'true' }}

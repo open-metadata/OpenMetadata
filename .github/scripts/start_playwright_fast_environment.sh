@@ -194,63 +194,16 @@ if [[ -n "$ingestion_image_path" ]]; then
   fi
 fi
 
-# Pre-pull the compose images with retries so a transient Docker Hub blip does
-# not fail the shard on the very first step. Docker Hub's auth endpoint is
-# unreliable enough that a single request per image regularly times out (see
-# run 30730142750 where chromium-14/19/20 all failed on
-# `Get "https://auth.docker.io/token?..."` with no test having run). Separating
-# the pull from `docker compose up` also gives a clearer error when pulls
-# actually fail — no orphan containers, exit before the health-wait loop.
-pull_image_with_retry() {
-  local image=$1
-  if docker image inspect "$image" >/dev/null 2>&1; then
-    return 0  # already cached from a previous invocation on the same runner
-  fi
-  local delay=10
-  local attempt
-  for attempt in 1 2 3; do
-    if docker pull --quiet "$image"; then
-      return 0
-    fi
-    if [[ $attempt -eq 3 ]]; then
-      echo "docker pull failed for $image after 3 attempts" >&2
-      return 1
-    fi
-    echo "docker pull $image failed on attempt $attempt; retrying in ${delay}s" >&2
-    sleep "$delay"
-    delay=$(( delay * 2 ))
-  done
-}
-
-# Pulled together rather than one after the other: the whole of this script
-# runs under a 5m `timeout` in setup-openmetadata-test-environment, and the two
-# pulls are the bulk of it. import-export-02 on run 34826046448 spent 22s on
-# postgres and 3m44s on opensearch, leaving 54s for compose-up and the health
-# waits, and was killed at 5m03s — overlapping them would have brought it in
-# under the budget. `wait` is checked per job so a failed pull still stops the
-# script with its own message instead of being swallowed.
-pull_image_with_retry "$PW_DATABASE_IMAGE" &
-database_pull_pid=$!
-pull_image_with_retry "$PW_SEARCH_IMAGE" &
-search_pull_pid=$!
+# setup-openmetadata-test-environment pulls the database and search images
+# before this script's 5m budget starts, so these are normally cache hits.
 # The AutoPilot MySQL source is started only after the server is healthy, so a
 # bare `docker run` there pulled it late with no retry (run 36851901152 failed
 # on `network is unreachable` after everything else was up).
-autopilot_mysql_pull_pid=
+fast_images=("$PW_DATABASE_IMAGE" "$PW_SEARCH_IMAGE")
 if [[ -n "$ingestion_image_path" ]]; then
-  pull_image_with_retry "$PW_AUTOPILOT_MYSQL_IMAGE" &
-  autopilot_mysql_pull_pid=$!
+  fast_images+=("$PW_AUTOPILOT_MYSQL_IMAGE")
 fi
-
-pull_failed=0
-wait "$database_pull_pid" || pull_failed=1
-wait "$search_pull_pid" || pull_failed=1
-if [[ -n "$autopilot_mysql_pull_pid" ]]; then
-  wait "$autopilot_mysql_pull_pid" || pull_failed=1
-fi
-if [[ $pull_failed -ne 0 ]]; then
-  exit 1
-fi
+"$workspace_root/.github/scripts/pull_playwright_fixture_images.sh" "${fast_images[@]}"
 
 docker compose -f "$PW_COMPOSE_FILE" -f "$PW_FAST_COMPOSE_FILE" up -d --no-build "$PW_DATABASE_SERVICE" "$PW_SEARCH_SERVICE"
 
