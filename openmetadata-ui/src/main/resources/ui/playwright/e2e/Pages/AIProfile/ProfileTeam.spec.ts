@@ -28,7 +28,9 @@ import {
   openTeamTab,
   waitForTeamPatch,
 } from '../../../utils/aiProfile';
+import { okJson } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
+import { removeCustomPropertyViaApi } from '../../../utils/customProperty';
 import { waitForOwnedAssetCount } from '../../../utils/polling';
 import { expect, test } from '../../fixtures/pages';
 
@@ -554,9 +556,9 @@ test.describe('AI Profile Team Detail', () => {
   });
 
   // The Custom Properties tab is native to MembersTeamDetail (it renders the
-  // shared CustomPropertyTable): one pass covers that the tab is reachable and
-  // that a property defined for the `team` entity actually shows up in it.
-  test('Should show the Custom Properties tab and render a team property', async ({
+  // shared CustomPropertiesList): one pass covers that a property defined for
+  // the `team` entity shows up in it and that a value set inline is saved.
+  test('Should set a team custom property value inline from the Custom Properties tab', async ({
     browser,
     page,
   }) => {
@@ -565,22 +567,27 @@ test.describe('AI Profile Team Detail', () => {
 
     // Defined through the metadata type API rather than the settings UI: this
     // test is about the tab rendering the property, not about creating one.
-    const teamType = await (
-      await apiContext.get('/api/v1/metadata/types/name/team')
-    ).json();
+    const teamType = await okJson<{ id: string }>(
+      await apiContext.get('/api/v1/metadata/types/name/team'),
+      'Read the team type'
+    );
     const stringType = (
-      await (
-        await apiContext.get('/api/v1/metadata/types?category=field&limit=50')
-      ).json()
-    ).data.find((item: { name: string }) => item.name === 'string');
+      await okJson<{ data: { id: string; name: string }[] }>(
+        await apiContext.get('/api/v1/metadata/types?category=field&limit=50'),
+        'Read the property types'
+      )
+    ).data.find((item) => item.name === 'string');
 
-    await apiContext.put(`/api/v1/metadata/types/${teamType.id}`, {
-      data: {
-        name: propertyName,
-        description: propertyName,
-        propertyType: { id: stringType.id, type: 'type' },
-      },
-    });
+    await okJson(
+      await apiContext.put(`/api/v1/metadata/types/${teamType.id}`, {
+        data: {
+          name: propertyName,
+          description: propertyName,
+          propertyType: { id: stringType?.id, type: 'type' },
+        },
+      }),
+      'Add the team property'
+    );
 
     try {
       const team = await makeTeam(apiContext);
@@ -593,31 +600,36 @@ test.describe('AI Profile Team Detail', () => {
       await openTeamTab(page, /Custom Properties/);
 
       await expect(tab).toHaveAttribute('aria-selected', 'true');
-      await expect(page.getByTestId('custom-properties-card')).toBeVisible();
-      await expect(
-        page.getByTestId(`custom-property-${propertyName}-card`)
-      ).toBeVisible();
-    } finally {
-      // Leaving the property behind would alter every later team's tab. There
-      // is no REST delete for a single custom property, so remove it from the
-      // type's array by index.
-      const current = await (
+
+      const row = page.getByTestId(`custom-property-row-${propertyName}`);
+
+      await expect(row).toBeVisible();
+
+      const value = `team value ${uuid()}`;
+      await row.getByTestId(`edit-${propertyName}`).click();
+      await row.getByRole('textbox').fill(value);
+      const patch = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          new URL(response.url()).pathname ===
+            `/api/v1/teams/${team.responseData.id}`
+      );
+      await row.getByTestId('inline-save-btn').click();
+
+      expect((await patch).ok()).toBeTruthy();
+      await expect(row).toContainText(value);
+
+      const saved = await okJson<{ extension?: Record<string, unknown> }>(
         await apiContext.get(
-          '/api/v1/metadata/types/name/team?fields=customProperties'
-        )
-      ).json();
-      const index = (current.customProperties as { name: string }[]).findIndex(
-        (property) => property.name === propertyName
+          `/api/v1/teams/${team.responseData.id}?fields=extension`
+        ),
+        'Read the team extension'
       );
 
-      if (index >= 0) {
-        await apiContext
-          .patch(`/api/v1/metadata/types/${teamType.id}`, {
-            headers: { 'Content-Type': 'application/json-patch+json' },
-            data: [{ op: 'remove', path: `/customProperties/${index}` }],
-          })
-          .catch(() => undefined);
-      }
+      expect(saved.extension?.[propertyName]).toBe(value);
+    } finally {
+      // Leaving the property behind would alter every later team's tab.
+      await removeCustomPropertyViaApi(apiContext, 'team', propertyName);
     }
   });
 });

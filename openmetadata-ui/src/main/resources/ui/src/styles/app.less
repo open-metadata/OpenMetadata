@@ -1012,16 +1012,20 @@ a[href].link-text-grey,
     }
   }
 
+  // The mask dims the area outside the viewport, so it must be translucent —
+  // an opaque overlay framed the viewport as a flat grey slab. Nodes take the
+  // lineage node's brand tint instead of a raised grey block.
   .react-flow__minimap {
-    background-color: var(--om-color-bg-surface);
+    background-color: var(--tw-background-color-surface);
 
     .react-flow__minimap-mask {
-      fill: var(--om-color-bg-overlay);
+      fill: var(--tw-background-color-overlay);
+      fill-opacity: 0.6;
     }
 
     .react-flow__minimap-node {
-      fill: var(--om-color-bg-raised);
-      stroke: var(--om-color-border-subtle);
+      fill: var(--tw-background-color-brand-primary);
+      stroke: var(--tw-border-color-brand);
     }
   }
 
@@ -1185,10 +1189,6 @@ a[href].link-text-grey,
   line-height: normal;
   letter-spacing: 0.25px;
   margin-top: @size-md;
-}
-
-.no-data-placeholder-container {
-  margin: auto;
 }
 
 .placeholder-text {

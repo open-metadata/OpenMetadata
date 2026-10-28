@@ -100,6 +100,33 @@ describe('useClassificationTreeData', () => {
     });
   });
 
+  it('pages through tags with the page number as the cursor', async () => {
+    const firstPage = Array.from({ length: 10 }, (_, i) =>
+      makeRawResult(`Cls.Tag${i}`)
+    );
+    (tagClassBase.getTags as jest.Mock)
+      .mockResolvedValueOnce({ data: firstPage, paging: { total: 12 } })
+      .mockResolvedValueOnce({
+        data: [makeRawResult('Cls.Tag10'), makeRawResult('Cls.Tag11')],
+        paging: { total: 12 },
+      });
+    const { result } = renderHook(() => useClassificationTreeData());
+
+    const first = await result.current({ searchTerm: 'tag' });
+
+    expect(first).toEqual(
+      expect.objectContaining({ hasMore: true, nextCursor: '2', total: 12 })
+    );
+
+    const second = await result.current({ searchTerm: 'tag', after: '2' });
+
+    expect(tagClassBase.getTags).toHaveBeenLastCalledWith('tag', 2);
+    expect(second.nodes).toHaveLength(2);
+    expect(second).toEqual(
+      expect.objectContaining({ hasMore: false, nextCursor: undefined })
+    );
+  });
+
   it('uses searchTerm when provided', async () => {
     (tagClassBase.getTags as jest.Mock).mockResolvedValue({ data: [] });
 

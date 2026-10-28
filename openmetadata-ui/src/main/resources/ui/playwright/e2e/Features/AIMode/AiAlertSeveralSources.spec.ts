@@ -13,7 +13,9 @@
 
 /**
  * AI mode: every alert form takes several sources, as the classic form does. Covers the
- * Observability drawer, the Settings → Notifications drawer and the profile's Notification panel.
+ * Observability drawer and the settings modal's Notification panel. AI mode serves no
+ * `/settings/*` page (ADR:2026-10-21-settings-pages-are-classic-only), so there is no
+ * Settings → Notifications drawer to cover.
  */
 
 import { Locator, Page } from '@playwright/test';
@@ -195,42 +197,6 @@ test('An observability alert in the drawer takes several sources, with a trigger
       'Ingestion Pipeline',
     ]);
   });
-});
-
-test('A notification alert in the drawer takes sources of one kind only', async ({
-  page,
-}) => {
-  await openAlertsPage(page, '/settings/notifications/alerts');
-  const dialog = await openAddAlertDrawer(page);
-  await fillAlertName(dialog, `pw-ai-sources-${uuid()}`);
-
-  await selectAlertSource(page, 'Table');
-
-  await test.step('a source of another kind is shown disabled, with the reason', async () => {
-    const input = dialog.getByTestId('source-select').getByRole('combobox');
-    await input.fill('conv');
-    const conversation = page
-      .getByRole('listbox')
-      .getByRole('option')
-      .filter({ has: page.getByTestId('conversation-option') });
-
-    await expect(conversation).toHaveAttribute('aria-disabled', 'true');
-    await expect(conversation).toContainText('different kinds');
-
-    await input.fill('');
-    await dismissPopover(dialog);
-  });
-
-  await selectAlertSource(page, 'Dashboard', ['table']);
-  await addDestination(page, dialog, 'Owners', 0);
-  await selectInternalDestinationType(page, dialog, 'Email', 0);
-
-  const { request, response } = await saveAlertDrawer(page, dialog);
-  expect(response?.status()).toBe(201);
-  const created = await response?.json();
-  createdAlertIds.push(created.id);
-
-  expect(request.postDataJSON().resources).toEqual(['table', 'dashboard']);
 });
 
 test('A notification alert on the profile takes several sources, and its view shows them', async ({

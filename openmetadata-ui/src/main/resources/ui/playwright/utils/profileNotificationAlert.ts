@@ -401,6 +401,12 @@ export const addInternalDestinationProfile = async ({
       .getByRole('listbox', { name: /destination/i })
       .getByRole('option', { name: category, exact: true })
   );
+  // The category popover opens over the type select below it; until it has
+  // unmounted it intercepts the type click and can take focus from the type
+  // popover, closing it before the option is picked.
+  await expect(
+    page.getByRole('listbox', { name: /destination/i })
+  ).toBeHidden();
 
   await selectDropdownOption({
     page,

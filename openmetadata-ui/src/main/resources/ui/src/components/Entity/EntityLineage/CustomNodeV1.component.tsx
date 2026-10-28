@@ -37,10 +37,12 @@ import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext
 import { isContainerSceneNode } from '../../Lineage/LineageMap/LineageMap.utils';
 import LineageNodeMenu from '../../Lineage/LineageNodeMenu/LineageNodeMenu';
 import './custom-node.less';
+import { BASE_NODE_FILL_CLASS } from './CustomNode.constants';
 import {
   getCollapseHandle,
   getExpandHandle,
   getNodeClassNames,
+  hasBaseNodeFill,
 } from './CustomNode.utils';
 import {
   ExpandCollapseHandlesProps,
@@ -275,6 +277,13 @@ const CustomNodeV1 = (props: NodeProps) => {
     [isDQEnabled, dataQualityLineage, id]
   );
 
+  const badgeClass = classNames('lineage-node-badge-container', {
+    [BASE_NODE_FILL_CLASS]: hasBaseNodeFill({
+      isBaseNode: isRootNode,
+      isSelected,
+    }),
+  });
+
   const containerClass = classNames(
     getNodeClassNames({
       isSelected,
@@ -288,7 +297,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       'lineage-scene-node': Boolean(sceneNode),
       // Container nodes (service, database, schema, domain, data product) use
       // the container card, with its centred drill cue, in every band.
-      'lineage-scene-layer-node tw:bg-surface':
+      'lineage-scene-layer-node tw:bg-raised':
         Boolean(sceneNode) &&
         (sceneBand === LineageBand.Layer || isContainerSceneNode(sceneNode)),
     }
@@ -373,6 +382,7 @@ const CustomNodeV1 = (props: NodeProps) => {
         isChildrenListExpanded={columnsExpanded}
         isOnlyShowColumnsWithLineageFilterActive={showColumnsWithLineageOnly}
         node={node}
+        titleColor={isRootNode ? 'link-primary' : undefined}
         toggleColumnsList={toggleColumnsExpanded}
         toggleOnlyShowColumnsWithLineageFilterActive={
           toggleShowColumnsWithLineageOnly
@@ -460,7 +470,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       data-testid={`lineage-node-${fullyQualifiedName}`}
       style={{ width: nodeWidth }}>
       {isRootNode && (
-        <div className="lineage-node-badge-container tw:bg-surface">
+        <div className={badgeClass}>
           <div className="lineage-node-badge" />
         </div>
       )}
@@ -478,7 +488,7 @@ const CustomNodeV1 = (props: NodeProps) => {
         />
         <Box
           align="start"
-          className="label-container tw:bg-surface"
+          className="label-container tw:bg-raised"
           justify="between">
           {nodeLabel}
         </Box>

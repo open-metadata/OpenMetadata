@@ -37,6 +37,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
@@ -92,6 +93,7 @@ import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.DataAccessPermission;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.DataAccessType;
+import org.openmetadata.schema.type.DescriptionUpdatePayload;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
@@ -127,6 +129,8 @@ import org.openmetadata.service.jdbi3.TaskRepository;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
+
+  private static final String REQUESTED_DESCRIPTION = "Description requested by the creator";
 
   private static String entityLink(String entityType, String entityFqn) {
     return String.format("<#E::%s::%s>", entityType, entityFqn);
@@ -5193,6 +5197,112 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                   () -> SdkClients.adminClient().tasks().get(taskId.toString()),
                   "Deleted suggestion task should no longer be retrievable");
             });
+  }
+
+  @Test
+  void testSoftDeletingCreatorKeepsTheirTasks(TestNamespace ns) {
+    CreatorWithTasks creator = createUserWithMetadataTasks(ns, "soft_delete_creator");
+    String creatorId = creator.user().getId().toString();
+
+    SdkClients.adminClient().users().delete(creatorId);
+    assertTasksKeptWithCreator(creator);
+
+    SdkClients.adminClient().users().restore(creatorId);
+    assertTasksKeptWithCreator(creator);
+  }
+
+  @Test
+  void testHardDeletingCreatorRemovesOnlyTheirSuggestions(TestNamespace ns) {
+    CreatorWithTasks creator = createUserWithMetadataTasks(ns, "hard_delete_creator");
+
+    SdkClients.adminClient()
+        .users()
+        .delete(
+            creator.user().getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    for (Task suggestion : List.of(creator.openSuggestion(), creator.closedSuggestion())) {
+      ApiException notFound =
+          assertThrows(
+              ApiException.class,
+              () -> SdkClients.adminClient().tasks().get(suggestion.getId().toString()));
+      assertEquals(
+          404,
+          notFound.getStatusCode(),
+          "The deleted creator's suggestion " + suggestion.getName() + " should be removed");
+    }
+    Task resolvedRequest =
+        SdkClients.adminClient()
+            .tasks()
+            .resolve(
+                creator.descriptionRequest().getId().toString(),
+                new ResolveTask()
+                    .withResolutionType(TaskResolutionType.Approved)
+                    .withNewValue(REQUESTED_DESCRIPTION));
+    assertEquals(TaskEntityStatus.Approved, resolvedRequest.getStatus());
+  }
+
+  private record CreatorWithTasks(
+      User user, Task descriptionRequest, Task openSuggestion, Task closedSuggestion) {
+    List<Task> tasks() {
+      return List.of(descriptionRequest, openSuggestion, closedSuggestion);
+    }
+  }
+
+  private CreatorWithTasks createUserWithMetadataTasks(TestNamespace ns, String baseName) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    String about = entityLink("table", table.getFullyQualifiedName());
+    User user = UserTestFactory.createUser(ns, baseName);
+    OpenMetadataClient creatorClient =
+        SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+    DescriptionUpdatePayload request =
+        new DescriptionUpdatePayload()
+            .withFieldPath("description")
+            .withNewDescription(REQUESTED_DESCRIPTION);
+    Task descriptionRequest =
+        createMetadataTask(creatorClient, ns, about, TaskEntityType.DescriptionUpdate, request);
+    Task openSuggestion =
+        createMetadataTask(creatorClient, ns, about, TaskEntityType.Suggestion, suggestion());
+    Task closedSuggestion =
+        createMetadataTask(creatorClient, ns, about, TaskEntityType.Suggestion, suggestion());
+    SdkClients.adminClient().tasks().close(closedSuggestion.getId().toString());
+    return new CreatorWithTasks(user, descriptionRequest, openSuggestion, closedSuggestion);
+  }
+
+  private Task createMetadataTask(
+      OpenMetadataClient client,
+      TestNamespace ns,
+      String about,
+      TaskEntityType type,
+      Object payload) {
+    return client
+        .tasks()
+        .create(
+            new CreateTask()
+                .withName(ns.prefix(type.value() + "-" + UUID.randomUUID()))
+                .withCategory(TaskCategory.MetadataUpdate)
+                .withType(type)
+                .withAbout(about)
+                .withPayload(payload));
+  }
+
+  private static Map<String, Object> suggestion() {
+    return Map.of(
+        "suggestionType", "Description",
+        "fieldPath", "description",
+        "suggestedValue", "Description suggested by the creator",
+        "source", "User");
+  }
+
+  private void assertTasksKeptWithCreator(CreatorWithTasks creator) {
+    for (Task task : creator.tasks()) {
+      Task stored = SdkClients.adminClient().tasks().get(task.getId().toString(), "createdBy");
+      assertEquals(
+          creator.user().getId(),
+          stored.getCreatedBy().getId(),
+          "Soft-deleting the creator should keep the task " + task.getName());
+    }
   }
 
   @Test

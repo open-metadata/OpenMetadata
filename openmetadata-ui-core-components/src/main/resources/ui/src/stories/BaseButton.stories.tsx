@@ -165,6 +165,7 @@ export const LinkColors: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 16 }}>
       <Button color="link-gray">Link Gray</Button>
+      <Button color="link-primary">Link Primary</Button>
       <Button color="link-color">Link Color</Button>
       <Button color="link-destructive">Link Destructive</Button>
     </div>

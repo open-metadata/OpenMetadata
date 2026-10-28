@@ -292,24 +292,22 @@ public interface FeedDAOs {
         @Bind("category") String category,
         @BindList("statuses") List<String> statuses);
 
-    @SqlUpdate(
-        "DELETE FROM task_entity " + "WHERE createdById = :createdById AND category = :category")
-    void deleteByCreatorAndCategory(
-        @Bind("createdById") String createdById, @Bind("category") String category);
+    @SqlUpdate("DELETE FROM task_entity WHERE createdById = :createdById AND type = :type")
+    void deleteByCreatorAndType(@Bind("createdById") String createdById, @Bind("type") String type);
 
     @ConnectionAwareSqlQuery(
         value =
             "SELECT id, json_unquote(json_extract(json, '$.fullyQualifiedName')) AS fqn "
-                + "FROM task_entity WHERE createdById = :createdById AND category = :category",
+                + "FROM task_entity WHERE createdById = :createdById AND type = :type",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT id, json->>'fullyQualifiedName' AS fqn "
-                + "FROM task_entity WHERE createdById = :createdById AND category = :category",
+                + "FROM task_entity WHERE createdById = :createdById AND type = :type",
         connectionType = POSTGRES)
     @RegisterRowMapper(EntityDAO.EntityIdFqnPairMapper.class)
-    List<EntityDAO.EntityIdFqnPair> listIdAndFqnByCreatorAndCategory(
-        @Bind("createdById") String createdById, @Bind("category") String category);
+    List<EntityDAO.EntityIdFqnPair> listIdAndFqnByCreatorAndType(
+        @Bind("createdById") String createdById, @Bind("type") String type);
 
     @RegisterRowMapper(TaskCountSummaryMapper.class)
     @SqlQuery(

@@ -55,6 +55,7 @@ import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -250,6 +251,27 @@ class GetEntityToolTest {
         .doesNotContain(GIT_TOKEN)
         .doesNotContain(SIGNING_KEY)
         .doesNotContain(SIGNING_PASSPHRASE);
+  }
+
+  @Test
+  void userDetailsHideTheEmailFromCallersWithoutPiiAccess() throws Exception {
+    String fqn = "carol";
+    User user = new User().withName(fqn).withFullyQualifiedName(fqn).withEmail("carol@acme.com");
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityByName(eq(Entity.USER), eq(fqn), anyString(), any()))
+          .thenReturn(user);
+      result =
+          new GetEntityTool()
+              .execute(
+                  mock(Authorizer.class),
+                  securityContextFor("alice"),
+                  Map.of("entityType", Entity.USER, "fqn", fqn));
+    }
+
+    assertEquals(PIIMasker.MASKED_MAIL, result.get("email"));
   }
 
   static WorkflowDefinition gitSinkWorkflow(String name) {

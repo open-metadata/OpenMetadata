@@ -29,6 +29,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/teams/user';
 import {
   MetadataCollectionConfiguration,
+  Revision,
   TaskAssignees,
 } from '../../../../generated/governance/workflows/elements/nodes/automatedTask/collectMetadataTask';
 import { NodeSubType } from '../../../../generated/governance/workflows/elements/nodeSubType';
@@ -65,6 +66,94 @@ const ASSIGNEE_LABEL_KEYS: Record<TaskAssignees, string> = {
   [TaskAssignees.Owners]: 'label.owner-plural',
   [TaskAssignees.Reviewers]: 'label.reviewer-plural',
   [TaskAssignees.Candidates]: 'label.specific-users-and-teams',
+};
+
+/** Whether the node asks specific users or teams; a step closing a revision request asks nobody. */
+const asksCandidates = (
+  config: MetadataCollectionConfiguration,
+  taskAssignees: TaskAssignees
+) =>
+  config.revision !== Revision.Resubmit &&
+  taskAssignees === TaskAssignees.Candidates;
+
+/** What a revision step does: ask the stage's people to revise, or close that request. */
+const RevisionHint = ({
+  revision,
+  stage,
+}: Pick<MetadataCollectionConfiguration, 'revision' | 'stage'>) => {
+  const { t } = useTranslation();
+
+  return revision ? (
+    <FormField label={t('label.revise-and-resubmit')}>
+      <Typography
+        as="p"
+        color="secondary"
+        data-testid="collect-metadata-revision"
+        size="text-sm">
+        {t(
+          revision === Revision.Request
+            ? 'message.collect-metadata-revision-request-hint'
+            : 'message.collect-metadata-revision-resubmit-hint',
+          { stage }
+        )}
+      </Typography>
+    </FormField>
+  ) : null;
+};
+
+interface AssigneeSectionProps {
+  config: MetadataCollectionConfiguration;
+  entityTypes?: EntityType[];
+  isDisabled: boolean;
+  taskAssignees: TaskAssignees;
+  onChange: (assignees: TaskAssignees) => void;
+}
+
+/** Who gets the task; a step that only closes a revision request asks nobody. */
+const AssigneeSection = ({
+  config,
+  entityTypes,
+  isDisabled,
+  taskAssignees,
+  onChange,
+}: AssigneeSectionProps) => {
+  const { t } = useTranslation();
+
+  return config.revision === Revision.Resubmit ? null : (
+    <>
+      <FormField
+        description={t(
+          config.revision === Revision.Request
+            ? 'message.collect-metadata-revision-assignees-hint'
+            : 'message.collect-metadata-assignees-hint'
+        )}
+        label={t('label.assign-to')}>
+        <RadioGroup
+          aria-label={t('label.assign-to')}
+          data-testid="collect-metadata-assignees"
+          isDisabled={isDisabled}
+          value={taskAssignees}
+          onChange={(value) => onChange(value as TaskAssignees)}>
+          {ASSIGNEE_ORDER.filter(
+            (assignees) =>
+              assignees !== TaskAssignees.Reviewers ||
+              !entityTypes?.includes(EntityType.DOMAIN)
+          ).map((assignees) => (
+            <RadioButton
+              key={assignees}
+              label={t(ASSIGNEE_LABEL_KEYS[assignees])}
+              value={assignees}
+            />
+          ))}
+        </RadioGroup>
+      </FormField>
+      <AskedGroupWarning
+        assignees={taskAssignees}
+        fields={config.fields}
+        groupLabel={t(ASSIGNEE_LABEL_KEYS[taskAssignees])}
+      />
+    </>
+  );
 };
 
 /**
@@ -106,8 +195,7 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
         config: {
           ...config,
           taskAssignees,
-          candidates:
-            taskAssignees === TaskAssignees.Candidates ? candidates : [],
+          candidates: asksCandidates(config, taskAssignees) ? candidates : [],
         },
       })
     );
@@ -167,6 +255,8 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
           </FormField>
         )}
 
+        <RevisionHint revision={config.revision} stage={config.stage} />
+
         {config.conditions && (
           <div data-testid="collect-metadata-conditions">
             <QueryBuilderSection
@@ -181,36 +271,15 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
           </div>
         )}
 
-        <FormField
-          description={t('message.collect-metadata-assignees-hint')}
-          label={t('label.assign-to')}>
-          <RadioGroup
-            aria-label={t('label.assign-to')}
-            data-testid="collect-metadata-assignees"
-            isDisabled={isFormDisabled}
-            value={taskAssignees}
-            onChange={(value) => setTaskAssignees(value as TaskAssignees)}>
-            {ASSIGNEE_ORDER.filter(
-              (assignees) =>
-                assignees !== TaskAssignees.Reviewers ||
-                !entityTypes?.includes(EntityType.DOMAIN)
-            ).map((assignees) => (
-              <RadioButton
-                key={assignees}
-                label={t(ASSIGNEE_LABEL_KEYS[assignees])}
-                value={assignees}
-              />
-            ))}
-          </RadioGroup>
-        </FormField>
-
-        <AskedGroupWarning
-          assignees={taskAssignees}
-          fields={config.fields}
-          groupLabel={t(ASSIGNEE_LABEL_KEYS[taskAssignees])}
+        <AssigneeSection
+          config={config}
+          entityTypes={entityTypes}
+          isDisabled={isFormDisabled}
+          taskAssignees={taskAssignees}
+          onChange={setTaskAssignees}
         />
 
-        {taskAssignees === TaskAssignees.Candidates && (
+        {asksCandidates(config, taskAssignees) && (
           <FormField label={t('label.specific-users-and-teams')}>
             <ModeAwareFormField>
               <UserTeamSelectableList
@@ -247,8 +316,7 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
         showDelete
         isDisabled={
           !isValidString(displayName) ||
-          (taskAssignees === TaskAssignees.Candidates &&
-            candidates.length === 0)
+          (asksCandidates(config, taskAssignees) && candidates.length === 0)
         }
         onCancel={onClose}
         onDelete={handleDelete}

@@ -35,8 +35,6 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -281,15 +279,9 @@ class HexSource(DashboardServiceSource):
                         logger.debug("Table entity is None or has no ID")
                         continue
 
-                    # Create lineage from table to dashboard
-                    lineage_request = AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(id=table_entity.id, type="table"),
-                            toEntity=EntityReference(id=dashboard.id, type="dashboard"),
-                        )
-                    )
-
-                    yield Either(right=lineage_request)
+                    lineage = self._get_add_lineage_request(to_entity=dashboard, from_entity=table_entity)
+                    if lineage is not None:
+                        yield lineage
                     logger.debug(f"Added lineage: {table_entity.fullyQualifiedName.root} -> {dashboard_fqn}")
 
                 except Exception as e:

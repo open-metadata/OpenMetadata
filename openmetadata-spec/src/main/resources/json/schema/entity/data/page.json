@@ -156,6 +156,10 @@
       },
       "default": null
     },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
     "processingStatus": {
       "description": "Status of the most recent knowledge-pill extraction run on this article's body.",
       "$ref": "#/definitions/pageProcessingStatus"

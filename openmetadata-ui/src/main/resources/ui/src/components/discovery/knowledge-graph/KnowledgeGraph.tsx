@@ -378,7 +378,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         role="region"
       />
       {view.initialLoading && (
-        <div className="knowledge-graph-loading">
+        <div className="tw:pointer-events-none tw:absolute tw:inset-0 tw:flex tw:items-center tw:justify-center">
           <Loader />
         </div>
       )}
@@ -482,7 +482,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       <div
         {...overlayProps}
         {...fullscreenAria}
-        className={classNames({ 'full-screen-knowledge-graph': isFullscreen })}
+        className={classNames({
+          // `overflow-auto` is a short-viewport safety net: once the toolbar +
+          // canvas floor + drawer min stack past the viewport, the page can
+          // still scroll to reach the drawer footer.
+          'full-screen-knowledge-graph tw:fixed tw:inset-0 tw:z-900 tw:flex tw:flex-col tw:overflow-auto tw:bg-primary tw:p-4':
+            isFullscreen,
+        })}
         ref={fullscreenRef}>
         <Card
           className={classNames('knowledge-graph-container', {

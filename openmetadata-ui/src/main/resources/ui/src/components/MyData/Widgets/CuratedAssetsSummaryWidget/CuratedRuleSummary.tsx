@@ -33,7 +33,7 @@ const CuratedRuleSummary: React.FC<CuratedRuleSummaryProps> = ({ clauses }) => {
   }
 
   return (
-    <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-x-4 tw:gap-y-2 tw:rounded-xl tw:bg-utility-gray-blue-50 tw:p-3.5">
+    <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-x-4 tw:gap-y-2 tw:rounded-xl tw:bg-secondary tw:p-3.5">
       <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
         {/* `!` on the colours throughout: Typography renders `.prose`, whose
           unlayered `color` rule is emitted after the Tailwind utilities. */}

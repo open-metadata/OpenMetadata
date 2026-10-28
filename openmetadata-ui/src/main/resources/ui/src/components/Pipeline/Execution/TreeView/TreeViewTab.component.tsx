@@ -107,8 +107,8 @@ const TreeViewTab = ({
         {isEmpty(viewData) ? (
           <Box className="tw:relative tw:my-4 tw:min-h-40">
             <NoDataPlaceholder
+              description={t('message.no-execution-runs-found')}
               icon={<ClockRewind />}
-              title={t('message.no-execution-runs-found')}
             />
           </Box>
         ) : (

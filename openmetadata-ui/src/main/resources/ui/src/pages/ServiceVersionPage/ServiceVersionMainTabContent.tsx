@@ -119,7 +119,7 @@ function ServiceVersionMainTabContent({
                   emptyText: (
                     <div className="tw:relative tw:min-h-42">
                       <NoDataPlaceholder
-                        icon={<Assets className="tw:text-utility-gray-600" />}
+                        icon={<Assets />}
                         title={t('message.no-entity-data-available', {
                           entity: getCountLabel(serviceCategory),
                         })}

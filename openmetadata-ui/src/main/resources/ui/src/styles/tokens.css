@@ -37,7 +37,8 @@
  *
  *   Components (the .less / .css files) never hold raw values: colours read
  *   the Tailwind bridge vars (also in canvas token strings), every other value
- *   var(--om-*). Never add --om-color-* tokens or references.
+ *   the Tailwind theme vars (--tw-spacing, --tw-radius-*, ...). Never add
+ *   --om-* references (ADR:2026-10-20-less-non-colour-values-read-tailwind-theme-vars).
  *
  * Docs: ./specs/tokens/token-reference.md and ./specs/foundations/*.md
  * Lint: node scripts/token-audit.js   (CI: zero errors required)

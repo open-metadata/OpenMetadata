@@ -22,7 +22,6 @@ import {
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import {
   App,
   AppScheduleClass,
@@ -30,13 +29,13 @@ import {
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
-import { getCronDefaultValue } from '../../../../utils/CronExpressionUtils';
+import { getAppCronExpression } from '../../../../utils/ApplicationUtils';
 import Loader from '../../../common/Loader/Loader';
 import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
-import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
 import { AppScheduleProps } from './AppScheduleProps.interface';
+import { useAppScheduleOptions } from './useAppScheduleOptions';
 
 // The schedule read-out is self-contained; keeping it out of AppSchedule keeps
 // that component's branching down to the action buttons it actually owns.
@@ -148,6 +147,8 @@ const AppSchedule = ({
   onSave,
   onDemandTrigger,
   onDeployTrigger,
+  onEditSchedule,
+  onViewRunConfig,
 }: AppScheduleProps) => {
   const { t } = useTranslation();
   const [showModal, setShowModal] = useState(false);
@@ -157,7 +158,6 @@ const AppSchedule = ({
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const [scheduleValue, setScheduleValue] = useState<string>();
   const [isScheduleValid, setIsScheduleValid] = useState(true);
-  const { config } = useLimitStore();
   const isAppDisabled = disabled || Boolean(appData.deleted);
 
   const showRunNowButton = useMemo(() => {
@@ -165,11 +165,6 @@ const AppSchedule = ({
       appData?.scheduleType
     );
   }, [appData]);
-
-  const { pipelineSchedules } =
-    config?.limits?.config.featureLimits.find(
-      (feature) => feature.name === 'app'
-    ) ?? {};
 
   // Keyed on the two fields it reads, not the whole app: a schedule save
   // replaces appData, and refetching then would flash the loader over the
@@ -201,8 +196,7 @@ const AppSchedule = ({
   const [cronString, setCronString] = useState<string>('');
 
   useEffect(() => {
-    const cronExpression = (appData.appSchedule as AppScheduleClass)
-      ?.cronExpression;
+    const cronExpression = getAppCronExpression(appData.appSchedule);
     if (!cronExpression) {
       setCronString('');
 
@@ -229,9 +223,7 @@ const AppSchedule = ({
   };
 
   const onDialogOpen = () => {
-    setScheduleValue(
-      (appData.appSchedule as AppScheduleClass)?.cronExpression ?? undefined
-    );
+    setScheduleValue(getAppCronExpression(appData.appSchedule));
     setIsScheduleValid(true);
     setShowModal(true);
   };
@@ -264,6 +256,7 @@ const AppSchedule = ({
           maxRecords={1}
           ref={appRunsHistoryRef}
           showPagination={false}
+          onViewRunConfig={onViewRunConfig}
         />
       );
     }
@@ -284,19 +277,11 @@ const AppSchedule = ({
     isPipelineDeployed,
     appRunsHistoryRef,
     jsonSchema,
+    onViewRunConfig,
     t,
   ]);
 
-  const { initialOptions, defaultCron } = useMemo(() => {
-    return {
-      initialOptions: applicationsClassBase.getScheduleOptionsForApp(
-        appData.name,
-        appData.appType,
-        pipelineSchedules
-      ),
-      defaultCron: getCronDefaultValue(appData?.name ?? ''),
-    };
-  }, [appData.name, appData.appType, pipelineSchedules]);
+  const { initialOptions, defaultCron } = useAppScheduleOptions(appData);
 
   useEffect(() => {
     fetchPipelineDetails();
@@ -328,7 +313,7 @@ const AppSchedule = ({
               showEdit={canEdit && !appData.system}
               showRunNow={canTrigger && showRunNowButton}
               onDeploy={onDeployTrigger}
-              onEdit={onDialogOpen}
+              onEdit={onEditSchedule ?? onDialogOpen}
               onRunNow={onAppTrigger}
             />
           </Box>

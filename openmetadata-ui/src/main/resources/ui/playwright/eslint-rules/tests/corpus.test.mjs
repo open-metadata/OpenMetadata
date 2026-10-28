@@ -68,9 +68,10 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // customize-navigation switches to their tree rows removes four more, the
     // Data Marketplace announcements carousel spec dropped its `.first()` item
     // lookup, picking the bulk-import entity type by its option role removes
-    // one more, and editor-scoped bulk tag selection removes another
-    // positional fallback.
-    'om-playwright/no-positional-locator': 541,
+    // one more, editor-scoped bulk tag selection removes another
+    // positional fallback, and scoping the Topic nested copy-link button to its
+    // row removes two more.
+    'om-playwright/no-positional-locator': 538,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

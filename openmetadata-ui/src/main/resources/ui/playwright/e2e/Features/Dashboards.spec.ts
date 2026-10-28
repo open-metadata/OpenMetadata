@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -196,6 +197,11 @@ test.describe('Data Model', () => {
   test('expand / collapse should not appear after updating nested fields for dashboardDataModels', async ({
     page,
   }) => {
+    // ~50 rich-text column descriptions mount at once on this page; on a busy
+    // CI runner that stalls the browser long enough to outlast the default
+    // tag-picker open retry and the 60s budget for two tag round-trips.
+    test.slow();
+
     await page.goto(
       '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns',
       { waitUntil: 'domcontentloaded' }
@@ -209,6 +215,7 @@ test.describe('Data Model', () => {
       rowId:
         'sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0031',
       entityEndpoint: 'dashboard/datamodels',
+      pickerTimeout: LONG_ACTION_TIMEOUT,
     });
 
     // Should not show expand icon for non-nested columns
@@ -226,6 +233,7 @@ test.describe('Data Model', () => {
       rowId:
         'sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0031',
       entityEndpoint: 'dashboard/datamodels',
+      pickerTimeout: LONG_ACTION_TIMEOUT,
     });
   });
 });

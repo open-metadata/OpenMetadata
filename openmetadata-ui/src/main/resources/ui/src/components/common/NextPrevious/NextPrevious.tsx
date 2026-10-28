@@ -96,7 +96,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
 
   const computeNextDisableState = () => {
     if (isNumberBased) {
-      return currentPage === totalPages;
+      return currentPage >= totalPages;
     } else {
       return paging.after ? false : true;
     }

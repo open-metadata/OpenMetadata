@@ -195,6 +195,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
@@ -259,7 +260,6 @@ import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.StageOwnership;
-import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
@@ -1172,6 +1172,28 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
+   * The descriptors of an entity that other documents hold in a reference list (domains[],
+   * dataProducts[]) rather than under a field named after its type, where the nested display-name
+   * script would fail. SearchRepository relabels those copies by id, so the name and the display
+   * name only have to open the propagation pass.
+   */
+  protected static List<PropagationDescriptor> relabeledByReference(
+      List<PropagationDescriptor> descriptors) {
+    List<PropagationDescriptor> relabeled =
+        new ArrayList<>(
+            descriptors.stream()
+                .filter(descriptor -> !FIELD_DISPLAY_NAME.equals(descriptor.fieldName()))
+                .toList());
+    relabeled.add(
+        new PropagationDescriptor(
+            Entity.FIELD_NAME, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
+    relabeled.add(
+        new PropagationDescriptor(
+            FIELD_DISPLAY_NAME, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
+    return relabeled;
+  }
+
+  /**
    * Determine whether parent traversal is required for inheritance based on requested fields and
    * whether the entity already has local values.
    */
@@ -1586,28 +1608,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void validateEntityStatusChange(T current, T change, String from, String to) {
     requireMoveInLifecycle(from, to);
-    if (isDecidedByPeople(current, change, from)) {
-      checkDecidedByAPerson(current, change);
-      checkUpdatedByReviewer(current, change.getUpdatedBy());
-    } else {
-      checkEntityStatusNotOwnedByWorkflow(current, change);
-      checkReviewerLeavesReview(current, change, from, to);
-    }
+    checkEntityStatusNotOwnedByWorkflow(current, change);
+    checkReviewerLeavesReview(current, change, from, to);
+    checkStageDecision(current, change, from, to);
   }
 
-  // A workflow still moves the stages it opens on its own; only a direct change is left to people.
-  private boolean isDecidedByPeople(T current, T change, String from) {
-    return isStageDecidedByPeople(current, from) && !EntityStatusWorkflows.isWorkflowChange(change);
-  }
-
-  private void checkDecidedByAPerson(T current, T change) {
-    if (WorkflowEventConsumer.isBotChange(change.getUpdatedBy(), change.getImpersonatedBy())) {
-      throw new AuthorizationException(
-          String.format(
-              "A person must approve or reject %s '%s'; a bot cannot",
-              entityType, current.getFullyQualifiedName()));
-    }
-  }
+  /**
+   * Entity-specific rules on who may make a stage move. Unlike the ownership rule above, they also
+   * apply to a workflow's own writes, which act for the user a workflow variable names.
+   */
+  protected void checkStageDecision(T current, T change, String from, String to) {}
 
   // A workflow's approval task already decided who may approve (reviewers, owners or named
   // candidates), so the reviewer rule only guards direct edits and imports.
@@ -1617,16 +1627,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         && !EntityStatusWorkflows.isWorkflowChange(change)) {
       checkUpdatedByReviewer(current, change.getUpdatedBy());
     }
-  }
-
-  /**
-   * Whether people move this entity out of {@code from} directly, even while a workflow owns its
-   * stage, because no workflow will ever pick it up. Its reviewers decide when it has any; anyone
-   * allowed to edit it decides otherwise. A workflow's own writes still move it, and a bot never
-   * decides it.
-   */
-  protected boolean isStageDecidedByPeople(T current, String from) {
-    return false;
   }
 
   /**
@@ -1654,9 +1654,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   // rule would see an entity without reviewers. Load them the way a PATCH does, inherited ones
   // included, before checking who may move the entity out of review.
   private void loadReviewersForStageCheck(T original, String from) {
-    if (supportsReviewers
-        && (EntityStatus.IN_REVIEW.value().equals(from)
-            || isStageDecidedByPeople(original, from))) {
+    if (supportsReviewers && EntityStatus.IN_REVIEW.value().equals(from)) {
       T withReviewers =
           get(null, original.getId(), getFields(FIELD_REVIEWERS), Include.NON_DELETED, false);
       original.setReviewers(withReviewers.getReviewers());
@@ -3869,6 +3867,30 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         entityType);
   }
 
+  /**
+   * A rename or move rewrites every descendant's FQN in the database without running their
+   * updaters, so their search documents still carry the old FQN. Rebuild them from the renamed
+   * rows once the transaction commits. Matching by the ids captured before the rewrite stays
+   * boundary-safe, unlike a prefix rewrite over the raw FQN. If the rebuild fails, the retry is
+   * filed under the renamed entity, whose retry re-indexes its contained descendants.
+   */
+  protected final void reindexRenamedDescendants(
+      String descendantType, List<EntityDAO.EntityIdFqnPair> descendants, String newFqn) {
+    if (nullOrEmpty(descendants)) {
+      return;
+    }
+    List<EntityReference> references =
+        descendants.stream()
+            .map(descendant -> new EntityReference().withId(descendant.id).withType(descendantType))
+            .toList();
+    searchRepository.deferIfFlushScopeActive(
+        () -> searchRepository.updateEntitiesByReference(references),
+        "reindexRenamedDescendants",
+        null,
+        newFqn,
+        entityType);
+  }
+
   private static void dropDescendantCacheEntries(
       String entityType, List<EntityDAO.EntityIdFqnPair> affected) {
     // Rename cascades run inside the rename flush transaction. Route each descendant through
@@ -5328,6 +5350,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     setFieldsInternal(originalEntity, new Fields(allowedFields, "votes"));
+    // The search update rewrites only the votes when the entity carries this change. Without it,
+    // the document would be rebuilt from this bare read, blanking owners, domains and tags, and the
+    // last stored change would be replayed to the children.
+    originalEntity.setIncrementalChangeDescription(change);
+    originalEntity.setChangeDescription(change);
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
@@ -6409,6 +6436,41 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /** Relationship fields a CSV import replaces with the row's values. */
   public Set<String> getRelationsReplacedByImport() {
     return Set.of(FIELD_TAGS, FIELD_OWNERS, FIELD_DOMAINS, FIELD_REVIEWERS, FIELD_DATA_PRODUCTS);
+  }
+
+  /**
+   * Relations an approval can hold that the entity's JSON does not carry, such as a data product's
+   * ports. A change request names them as list fields of the entity.
+   * ADR:2026-10-19-a-data-product-port-change-is-held-as-a-list-field-of-the-data-product
+   */
+  public Set<String> getStagedRelationFields() {
+    return Set.of();
+  }
+
+  /** Adds {@code fields}, relations of {@link #getStagedRelationFields()}, to the entity's JSON. */
+  public void addStagedRelations(
+      final ObjectNode entityJson, final UUID entityId, final Set<String> fields) {
+    // Entities without staged relations carry everything a change request names in their JSON.
+  }
+
+  /** Refuses, without saving anything, staged relation changes that can no longer be made. */
+  public void validateStagedRelations(final UUID entityId, final List<MutationOp> ops) {
+    throw new IllegalArgumentException(
+        "%s has no relations an approval can hold".formatted(entityType));
+  }
+
+  /**
+   * Publishes approved changes of staged relations, as {@code requestedBy} would have. {@code
+   * withFieldChanges}: the same approval has just published field changes, which the relation
+   * changes join in the entity's change description.
+   */
+  public void applyStagedRelations(
+      final UUID entityId,
+      final List<MutationOp> ops,
+      final String requestedBy,
+      final boolean withFieldChanges) {
+    throw new IllegalArgumentException(
+        "%s has no relations an approval can hold".formatted(entityType));
   }
 
   protected List<String> getFieldsStrippedFromStorageJson() {
@@ -8548,12 +8610,29 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       invalidateMany(changedEntities);
     }
     try (var ignored = phase(phasePrefix + "LifecycleDispatch")) {
+      hydrateForSearchIndex(changedEntities);
       EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(changedEntities, null, null);
     }
     // Cascade children of a recursive delete/restore intentionally do NOT emit per-entity change
     // events. A single change event is recorded for the user-targeted root entity (see the delete
     // and restore paths in EntityResource). This keeps deleting a service with 100k descendants to
     // one audit-log entry and avoids 100k change_event inserts on the delete hot path.
+  }
+
+  /**
+   * The search handler indexes the dispatched entities as they are, and a bulk updater loads only
+   * what a PUT touches. Without the rest of what their documents carry (followers, votes, the owners
+   * and domains a descendant inherits), the rewrite would blank those fields.
+   */
+  private void hydrateForSearchIndex(List<T> entities) {
+    if (!supportsSearch || searchRepository == null) {
+      return;
+    }
+    setFieldsInBulk(
+        getOnlySupportedFields(
+            String.join(
+                ",", searchRepository.getSearchIndexFactory().getReindexFieldsFor(entityType))),
+        entities);
   }
 
   private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
@@ -10940,11 +11019,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         compareAndUpdate(
             FIELD_TAGS,
             () ->
-                updateTags(
-                    updated.getFullyQualifiedName(),
-                    FIELD_TAGS,
-                    original.getTags(),
-                    updated.getTags()));
+                updated.setTags(
+                    updateTags(
+                        updated.getFullyQualifiedName(),
+                        FIELD_TAGS,
+                        original.getTags(),
+                        updated.getTags())));
         compareAndUpdate(FIELD_DOMAINS, this::updateDomains);
         compareAndUpdate(FIELD_DATA_PRODUCTS, this::updateDataProducts);
         compareAndUpdate(FIELD_EXPERTS, this::updateExperts);
@@ -11152,8 +11232,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
-    protected void updateTags(
+    /**
+     * Applies the tag changes for {@code fqn} and returns the tags it ends up with. A PUT merges the
+     * stored tags into the requested ones, and when the request carried no tags that merge lands in
+     * a new list, so callers must keep the returned list rather than the one they passed in.
+     */
+    protected List<TagLabel> updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      final List<TagLabel> requestedTags = updatedTags;
       // `original` comes off the read path, so it carries its ancestors' tags as DERIVED, while
       // `updated` has been through prepareInternal, whose addDerivedTags strips that label class.
       // Diffing the two as-is sees an inherited label on one side only and calls it a deletion:
@@ -11170,14 +11256,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // inherited `original` and never runs it through prepareInternal, so there the derived
       // labels sit on the updated side instead -- and diffing that way records the same inherited
       // tag as an addition on every restore. `updatedTags` itself is left alone: the PUT branch
-      // merges into that list in place and the entity keeps the result, so only the two diff
-      // reads are narrowed.
+      // merges into that list and returns it, so only the two diff reads are narrowed.
       origTags = getNonDerivedTags(listOrEmpty(origTags));
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
       // its empty.
       updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
       if (origTags.isEmpty() && updatedTags.isEmpty()) {
-        return; // Nothing to update
+        return requestedTags; // Nothing to update
       }
 
       List<TagLabel> addedTags = new ArrayList<>();
@@ -11247,8 +11332,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // This diffs the two lists directly rather than reusing addedTags/deletedTags, so it needs
       // the same persistable view: the version history and the ChangeEvent are exactly what was
       // wrong before. Taken after the PUT merge above, so on that path it still sees the request's
-      // tags unioned with what already existed. `updatedTags` itself stays the live list -- the
-      // entity keeps the merged result and the sort below orders it.
+      // tags unioned with what already existed. `updatedTags` itself stays the live list -- it is
+      // what this method returns, ordered by the sort below.
       recordListChange(
           fieldName,
           origTags,
@@ -11257,6 +11342,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           new ArrayList<>(),
           tagLabelMatch);
       updatedTags.sort(compareTagLabel);
+      return updatedTags;
     }
 
     /**
@@ -12583,11 +12669,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         updateColumnDataLength(columnPrefix, stored, updated);
         updateColumnPrecision(columnPrefix, stored, updated);
         updateColumnScale(columnPrefix, stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(columnPrefix, FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+        updated.setTags(
+            updateTags(
+                stored.getFullyQualifiedName(),
+                EntityUtil.getFieldName(columnPrefix, FIELD_TAGS),
+                stored.getTags(),
+                updated.getTags()));
         updateColumnConstraint(columnPrefix, stored, updated);
         updateColumnExtension(entityId, columnPrefix, stored, updated);
 
@@ -15261,7 +15348,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         continue;
       }
       try {
-        deleteInternal(deletedBy, stale.id, recursive, hardDelete);
+        // The full delete, not deleteInternal: its post-delete steps take the entity out of search.
+        delete(deletedBy, stale.id, recursive, hardDelete);
         deletedHashes.add(fqnHash);
         successRequests.add(staleSuccess(stale.fqn));
       } catch (Exception e) {

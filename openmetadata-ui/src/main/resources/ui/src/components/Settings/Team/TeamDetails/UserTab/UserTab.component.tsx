@@ -435,7 +435,7 @@ export const UserTab = ({
       <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={t('message.no-user-part-of-team', {
+          title={t('message.no-user-part-of-team', {
             team: getEntityName(currentTeam),
           })}
         />

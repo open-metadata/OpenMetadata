@@ -104,6 +104,7 @@ const OntologyStudioScopeMenu = ({
       <Dropdown.Popover className="tw:w-72" placement="bottom left">
         <Dropdown.Menu
           aria-label={t('label.ontology-plural')}
+          className="tw:max-h-96"
           selectedKeys={new Set([getScopeKey(scope)])}
           onAction={(key) => handleAction(String(key))}>
           {isLoading ? (

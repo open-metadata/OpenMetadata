@@ -392,7 +392,7 @@ const KnowledgeGraphToolbar = ({
         <Select.ComboBox
           allowClear
           aria-label={t('label.kg-find-in-graph')}
-          className="kg-find"
+          className="tw:max-w-full tw:min-w-[min(--spacing(32.5),100%)] tw:flex-[1_1_--spacing(50)]"
           emptyState={t('label.kg-no-results')}
           fontSize="sm"
           inputValue={findText}

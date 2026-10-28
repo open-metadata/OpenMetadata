@@ -132,7 +132,8 @@ export const DummyChildrenTaskMentionsComponent = () => {
  * provider holds *between* a filter switch and the response landing.
  */
 export const DummyTaskListStateComponent = () => {
-  const { getTaskData, tasks, entityPaging } = useActivityFeedProvider();
+  const { getTaskData, tasks, entityPaging, listError } =
+    useActivityFeedProvider();
 
   const fetchTasks = (statusGroup: TaskStatusGroup) => {
     getTaskData(
@@ -160,6 +161,9 @@ export const DummyTaskListStateComponent = () => {
         {tasks.map((task) => task.id).join(',')}
       </span>
       <span data-testid="paging-after">{entityPaging.after ?? 'none'}</span>
+      <span data-testid="list-error">
+        {listError?.response?.status ?? 'none'}
+      </span>
     </div>
   );
 };

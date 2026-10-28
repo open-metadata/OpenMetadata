@@ -19,6 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import {
   Container,
   DataType as ContainerDataType,
@@ -1231,7 +1232,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       ).not.toBeInTheDocument();
     });
 
-    it('should show no-data when search text matches nothing', () => {
+    it('should show no matching results when search text matches nothing', () => {
       const result = getEntityChildDetailsV1(
         EntityType.TOPIC,
         mockTopicWithNestedFields,
@@ -1242,7 +1243,9 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
-      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+      expect(
+        screen.getByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
     });
   });
 
@@ -1329,7 +1332,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       ).not.toBeInTheDocument();
     });
 
-    it('should show no-data when search text matches nothing', () => {
+    it('should show no matching results when search text matches nothing', () => {
       const result = getEntityChildDetailsV1(
         EntityType.CONTAINER,
         mockContainerWithNestedColumns,
@@ -1340,7 +1343,9 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
-      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+      expect(
+        screen.getByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
     });
   });
 
@@ -1427,7 +1432,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       ).not.toBeInTheDocument();
     });
 
-    it('should show no-data when search text matches nothing', () => {
+    it('should show no matching results when search text matches nothing', () => {
       const result = getEntityChildDetailsV1(
         EntityType.SEARCH_INDEX,
         mockSearchIndexWithNestedFields,
@@ -1438,7 +1443,9 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
-      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+      expect(
+        screen.getByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
     });
   });
 
@@ -1515,5 +1522,32 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
         expect(showErrorToast).toHaveBeenCalled();
       });
     });
+  });
+});
+
+describe('EntitySummaryPanelUtilsV1 - API endpoint with no schema', () => {
+  // The search filters only the active schema's fields, so an endpoint with
+  // no schema at all is empty whatever the search: it is no data, not no match.
+  it('shows no data rather than no matching results while searching', () => {
+    const endpointWithoutSchema = {
+      name: 'endpoint',
+      requestSchema: { schemaFields: [] },
+      responseSchema: { schemaFields: [] },
+    } as unknown as APIEndpoint;
+
+    const result = getEntityChildDetailsV1(
+      EntityType.API_ENDPOINT,
+      endpointWithoutSchema,
+      undefined,
+      false,
+      'anything'
+    );
+
+    render(<div>{result}</div>);
+
+    expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.no-matching-result-plural')
+    ).not.toBeInTheDocument();
   });
 });

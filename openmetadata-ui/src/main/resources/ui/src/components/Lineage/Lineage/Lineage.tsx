@@ -46,7 +46,6 @@ import {
   LINEAGE_EXPORT_SELECTOR,
 } from '../../../constants/Export.constants';
 import { ELEMENT_DELETE_STATE } from '../../../constants/Lineage.constants';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
@@ -469,7 +468,6 @@ export const Lineage = ({
 }: LineageProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
-  const { isTourOpen, isTourPage, tourMockDatasetData } = useTourProvider();
   const { appPreferences } = useApplicationStore();
   const { activeDomain, isDomainRestricted } = useDomainStore();
   const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
@@ -549,7 +547,10 @@ export const Lineage = ({
     entityTypeProp
   );
   const queryParams = new URLSearchParams(location.search);
-  const isFullScreen = queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
+  // Full screen is an asset-lineage view only; the platform page has no toggle.
+  const isFullScreen =
+    !isPlatformLineageProp &&
+    queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
   const { ref: fullScreenRef, bounds: fullScreenBounds } =
     useFullScreenBounds(isFullScreen);
   const { showModal } = useEntityExportModalProvider();
@@ -753,7 +754,7 @@ export const Lineage = ({
     fqn: string,
     config?: LineageConfig
   ) => {
-    if (isTourOpen || !tableClassBase.getAlertEnableStatus()) {
+    if (!tableClassBase.getAlertEnableStatus()) {
       return;
     }
     try {
@@ -888,7 +889,7 @@ export const Lineage = ({
 
   const fetchLineageData = useCallback(
     async (fqn: string, entityType: string, config?: LineageConfig) => {
-      if (isTourOpen || lineageMode === 'impact_analysis') {
+      if (lineageMode === 'impact_analysis') {
         return;
       }
 
@@ -959,7 +960,6 @@ export const Lineage = ({
       }
     },
     [
-      isTourOpen,
       lineageMode,
       setNodes,
       setEdges,
@@ -2134,19 +2134,6 @@ export const Lineage = ({
     timeFilter.startTime,
     timeFilter.endTime,
   ]);
-
-  useEffect(() => {
-    if (isTourOpen || isTourPage) {
-      setInit(true);
-      setLoading(false);
-      const mock = tourMockDatasetData as
-        | { entityLineage: unknown }
-        | undefined;
-      if (mock?.entityLineage) {
-        setEntityLineage(mock.entityLineage as EntityLineageResponse);
-      }
-    }
-  }, [isTourOpen, isTourPage, tourMockDatasetData]);
 
   useEffect(() => {
     if (lineageLayer) {

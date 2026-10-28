@@ -36,6 +36,11 @@ jest.mock('../../../../utils/useRequiredParams', () => ({
 
 jest.mock('../../../../pages/CustomizablePage/CustomizeStore');
 
+// Header behaviour only; the AI-mode link mapping is covered by SettingsModalLinkUtils' tests.
+jest.mock('../../../../utils/SettingsModalLinkUtils', () => ({
+  getSettingsLink: jest.fn((path: string) => path),
+}));
+
 jest.mock('../../../../hooks/useAppMode', () => ({
   useIsAiMode: jest.fn().mockReturnValue(false),
 }));

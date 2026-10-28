@@ -15,6 +15,7 @@ import {
   Button,
   Dialog,
   DialogTrigger,
+  Input,
   Modal,
   ModalOverlay,
   Owner,
@@ -25,7 +26,7 @@ import {
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { ComponentProps, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestSuiteIcon } from '../../../assets/svg/icon-test-suite.svg';
@@ -39,6 +40,7 @@ import { HeaderDotSeparator } from '../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
@@ -188,6 +190,7 @@ const TestSuiteDetail = () => {
     isLoading,
     isTestCaseLoading,
     testCaseResult,
+    testCaseSearchQuery,
     testSuitePermissions,
     permissions,
     extraDropdownContent,
@@ -204,6 +207,7 @@ const TestSuiteDetail = () => {
     canAddMultipleTeamOwner,
     handleTestCasesRemoved,
     handleSortTestCase,
+    handleTestCaseSearch,
     handleAddTestCaseSubmit,
     onUpdateOwner,
     handleDomainUpdate,
@@ -219,6 +223,19 @@ const TestSuiteDetail = () => {
     () => getDerivedPermissionFlags(testSuitePermissions),
     [testSuitePermissions]
   );
+
+  const { searchInputProps } = useListSearchInput({
+    searchQuery: testCaseSearchQuery,
+    onSearchChange: handleTestCaseSearch,
+  });
+  // UI core and Untitled icons currently resolve React types from separate
+  // package trees even though their runtime component contract is compatible.
+  const searchInputIcon = searchInputProps.icon as ComponentProps<
+    typeof Input
+  >['icon'];
+  const testCaseSearchLabel = t('label.search-entity', {
+    entity: t('label.test-case-plural'),
+  });
 
   const afterDeleteAction = () => {
     navigate(
@@ -294,10 +311,23 @@ const TestSuiteDetail = () => {
             afterDeleteAction={handleTestCasesRemoved}
             breadcrumbData={incidentUrlState}
             fetchTestCases={handleSortTestCase}
+            hasActiveFilters={Boolean(testCaseSearchQuery.trim())}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
             removeFromTestSuite={removeFromTestSuite}
             showPagination={showPagination}
+            tableHeader={
+              <Box align="center" className="tw:w-full" justify="end">
+                <Input
+                  {...searchInputProps}
+                  aria-label={testCaseSearchLabel}
+                  className="tw:w-full tw:max-w-72"
+                  icon={searchInputIcon}
+                  inputDataTestId="test-suite-test-case-search"
+                  placeholder={testCaseSearchLabel}
+                />
+              </Box>
+            }
             testCases={testCaseResult}
             onTestCaseResultUpdate={handleTestSuiteUpdate}
             onTestUpdate={handleTestSuiteUpdate}
@@ -321,6 +351,10 @@ const TestSuiteDetail = () => {
     pagingData,
     showPagination,
     testCaseResult,
+    testCaseSearchQuery,
+    searchInputProps,
+    searchInputIcon,
+    testCaseSearchLabel,
     handleTestSuiteUpdate,
   ]);
 

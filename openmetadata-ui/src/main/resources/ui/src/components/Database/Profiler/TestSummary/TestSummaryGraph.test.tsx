@@ -236,7 +236,7 @@ describe('TestSummaryGraph', () => {
     jest.useRealTimers();
   });
 
-  it('should show the placeholder for the selected time range when there are no results', () => {
+  it('keeps the selected time range in the headline and extension guidance in the description', () => {
     render(
       <TestSummaryGraph
         {...mockProps}
@@ -248,7 +248,10 @@ describe('TestSummaryGraph', () => {
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     expect(
       screen.getByText('message.no-test-result-for-days Last 7 days')
-    ).toBeInTheDocument();
+    ).toHaveClass('tw:text-sm', 'tw:font-semibold');
+    expect(screen.getByText('message.try-extending-time-frame')).toHaveClass(
+      'tw:text-xs'
+    );
     expect(mockComposedChart).not.toHaveBeenCalled();
   });
 

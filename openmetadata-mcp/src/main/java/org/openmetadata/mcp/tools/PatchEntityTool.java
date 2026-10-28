@@ -13,11 +13,13 @@ import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -31,7 +33,8 @@ import org.openmetadata.service.util.RestUtil;
  * Applies a JSON Patch (RFC 6902) to an entity - the same document the REST PATCH API takes, passed
  * through as written.
  *
- * <p>Nothing here inspects or rewrites the operations. A patch touches exactly the paths it names,
+ * <p>Nothing here rewrites the operations, and only paths into a service's connection are
+ * refused ({@link #requireConnectionUntouched}). A patch touches exactly the paths it names,
  * which is the point of the format; this tool's job is to authorize it and hand it to the
  * repository. The parts that are easy to get wrong - {@code /owners} replaces the whole list where
  * {@code /owners/-} appends to it - are taught in the tool description, where the model reads them,
@@ -45,6 +48,7 @@ public class PatchEntityTool implements McpTool {
   private static final String PATH_KEY = "path";
   private static final String VALUE_KEY = "value";
   private static final String FROM_KEY = "from";
+  private static final String CONNECTION_POINTER = "/connection";
 
   // Resources that do lifecycle work outside EntityRepository.patch(), which a direct repository
   // patch would skip. Derived by auditing every @PATCH endpoint under openmetadata-service for a
@@ -96,6 +100,7 @@ public class PatchEntityTool implements McpTool {
     requireGenericPatchLifecycle(entityType);
 
     JsonPatch jsonPatch = parsePatch((String) params.get(PATCH_PARAM));
+    requireConnectionUntouched(entityType, jsonPatch);
 
     // The permission comes from the patch itself: the operations it carries decide which
     // MetadataOperations are checked, exactly as the REST resource does it.
@@ -152,6 +157,37 @@ public class PatchEntityTool implements McpTool {
               + " dedicated repositories and authorization. Use the entity's dedicated"
               + " OpenMetadata API. Nothing was changed.");
     }
+  }
+
+  /**
+   * A service's connection holds its credentials, and MCP reads return it masked. Stricter than
+   * REST PATCH on purpose: an agent neither edits the connection nor reads the stored config back
+   * through a {@code copy}, {@code move} or {@code test}; connection changes go through the
+   * service's REST API. The root pointer is refused too: replacing the whole document replaces the
+   * connection with it.
+   * ADR:2026-10-20-mcp-responses-mask-stored-credentials
+   */
+  private static void requireConnectionUntouched(String entityType, JsonPatch patch) {
+    boolean touchesConnection =
+        Entity.getEntityRepository(entityType) instanceof ServiceEntityRepository<?, ?>
+            && patch.toJsonArray().stream()
+                .map(JsonValue::asJsonObject)
+                .flatMap(op -> Stream.of(memberOrNull(op, PATH_KEY), memberOrNull(op, FROM_KEY)))
+                .anyMatch(PatchEntityTool::reachesConnection);
+    if (touchesConnection) {
+      throw new IllegalArgumentException(
+          "patch_entity cannot change or read a service's '"
+              + CONNECTION_POINTER
+              + "': it holds the service's credentials. Use the service's OpenMetadata REST API."
+              + " Nothing was changed.");
+    }
+  }
+
+  private static boolean reachesConnection(String pointer) {
+    return pointer != null
+        && (pointer.isEmpty()
+            || pointer.equals(CONNECTION_POINTER)
+            || pointer.startsWith(CONNECTION_POINTER + "/"));
   }
 
   private static JsonPatch parsePatch(String rawPatch) {

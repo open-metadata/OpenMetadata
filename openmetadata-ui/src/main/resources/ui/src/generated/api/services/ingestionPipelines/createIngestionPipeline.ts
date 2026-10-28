@@ -1382,6 +1382,12 @@ export interface CollateAIAppConfig {
      */
     testCaseResultsRetentionPeriod?: number;
     /**
+     * Enter the retention period in days for the run history of governance workflows. A
+     * finished run older than this is deleted with its stages, but the latest run of each
+     * workflow for every entity is always kept. Use 0 to retain the history forever.
+     */
+    workflowInstanceRetentionPeriod?: number;
+    /**
      * Enter the retention period in days for automation Workflows: the short-lived records left
      * behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them
      * forever.
@@ -5056,6 +5062,12 @@ export interface Connection {
      */
     snowflakeSourceHost?: string;
     /**
+     * Number of tables whose DML history is read from QUERY_HISTORY with a single query when
+     * the profiler computes system metrics. Higher values issue fewer scans but hold more
+     * history in memory at once.
+     */
+    systemMetricsBatchSize?: number;
+    /**
      * Use Snowflake's ACCOUNT_USAGE.ACCESS_HISTORY view as the source of query lineage.
      * ACCESS_HISTORY provides Snowflake-computed table- and column-level lineage, including for
      * queries OpenMetadata cannot parse. Enabled by default; if the configured role cannot read
@@ -5560,6 +5572,11 @@ export interface Connection {
      * Fivetran API Limit For Pagination.
      */
     limit?: number;
+    /**
+     * Destination schema holding the Fivetran Platform Connector log table, used to extract
+     * per-phase run status. Leave empty to read the schema name from the Fivetran API.
+     */
+    logSchema?: string;
     /**
      * URL to the Dagster instance
      *

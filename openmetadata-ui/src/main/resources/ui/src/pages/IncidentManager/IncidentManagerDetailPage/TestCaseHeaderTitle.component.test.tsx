@@ -63,4 +63,37 @@ describe('TestCaseHeaderTitle', () => {
     );
     expect(screen.getByTestId(TECHNICAL_NAME_TEST_ID).tagName).toBe('H2');
   });
+
+  it('shows the deleted badge for a deleted test case', () => {
+    render(
+      <TestCaseHeaderTitle
+        deleted
+        displayName={undefined}
+        hasCopied={false}
+        testCaseName="customer_count_check"
+        onCopy={mockOnCopy}
+      />
+    );
+
+    expect(screen.getByTestId('deleted-badge')).toHaveTextContent(
+      'label.deleted'
+    );
+  });
+
+  it.each([false, undefined])(
+    'hides the deleted badge when deleted is %s',
+    (deleted) => {
+      render(
+        <TestCaseHeaderTitle
+          deleted={deleted}
+          displayName={undefined}
+          hasCopied={false}
+          testCaseName="customer_count_check"
+          onCopy={mockOnCopy}
+        />
+      );
+
+      expect(screen.queryByTestId('deleted-badge')).not.toBeInTheDocument();
+    }
+  );
 });

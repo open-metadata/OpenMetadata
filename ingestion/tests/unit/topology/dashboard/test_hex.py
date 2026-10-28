@@ -41,6 +41,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import (
@@ -357,6 +358,7 @@ class TestHexSource(TestCase):
         self.assertIsInstance(lineage_request, AddLineageRequest)
         self.assertEqual(lineage_request.edge.fromEntity.id, EXAMPLE_TABLE.id)
         self.assertEqual(lineage_request.edge.toEntity.id, EXAMPLE_DASHBOARD.id)
+        self.assertEqual(lineage_request.edge.lineageDetails.source, LineageSource.DashboardLineage)
 
     def test_yield_dashboard_lineage_no_data(self):
         """Test lineage when no lineage data exists"""

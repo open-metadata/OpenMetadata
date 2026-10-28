@@ -826,6 +826,8 @@ export const checkAlertDetailsForWithPermissionUser = async ({
     activatorBtnDataTestId: 'edit-owner',
     endpoint: EntityTypeEndpoint.NotificationAlert,
     type: 'Users',
+    // The alert header shows owners as avatars only, with no owner-link.
+    resultTestId: 'alert-owners',
   });
 
   // UpdateDescription

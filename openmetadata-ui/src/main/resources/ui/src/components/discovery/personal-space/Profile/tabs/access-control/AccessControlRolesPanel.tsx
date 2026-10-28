@@ -307,7 +307,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     if (!viewPolicyPermission) {
       return (
         <Typography
-          className="tw:truncate tw:block"
+          className="tw:truncate tw:block tw:text-left"
           key={key}
           size="text-sm"
           tooltip={t(NO_PERMISSION_TO_VIEW)}>
@@ -318,7 +318,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
     return (
       <Button
-        className="tw:truncate tw:block"
+        className="tw:truncate tw:block tw:text-left"
         color="link-color"
         key={key}
         size="sm"

@@ -66,12 +66,11 @@ export const DEFAULT_INCIDENT_GROUP_BY = IncidentGroupBy.TestDefinition;
 export const INCIDENT_GROUPS_PAGE_SIZE = PAGE_SIZE_BASE;
 
 /**
- * The incident tables' card edge, as designed: a full border with no shadow.
- * Drawn as a border because the card's own outline is painted over by a
- * sticky header.
+ * The incident tables' card, as designed: the core TableCard edge with no
+ * shadow. That edge stays visible along a sticky header, so no border of its
+ * own is needed (one would draw a second line inside it).
  */
-export const INCIDENT_TABLE_CARD_CLASS =
-  'tw:border tw:border-secondary tw:shadow-none tw:outline-0';
+export const INCIDENT_TABLE_CARD_CLASS = 'tw:shadow-none';
 
 /**
  * The pager under an incident table: one line above it, and none of its own

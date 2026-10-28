@@ -672,7 +672,7 @@ const GlossaryPage = () => {
       return (
         <div className="content-height-with-resizable-panel tw:relative">
           <NoDataPlaceholder
-            description={getEntityMissingMessage(
+            title={getEntityMissingMessage(
               isGlossaryNotFound
                 ? t('label.glossary')
                 : t('label.glossary-term'),

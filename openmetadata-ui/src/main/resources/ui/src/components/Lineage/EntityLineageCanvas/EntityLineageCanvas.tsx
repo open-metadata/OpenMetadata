@@ -342,6 +342,7 @@ const EntityLineageCanvas = ({
         onConfirm={confirmNodeDelete}
       />
       <AddLineagePopover
+        canvasNodes={nodes}
         excludeEntityId={toEdgeEntity(editNode)?.id}
         nodeName={getEntityName(editNode?.data?.node)}
         request={editRequest}

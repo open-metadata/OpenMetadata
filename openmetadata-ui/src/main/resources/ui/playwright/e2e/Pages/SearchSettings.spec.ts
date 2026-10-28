@@ -428,12 +428,20 @@ test.describe('Search Settings', () => {
         // Regression for #35821: ranking cards stayed white in dark mode.
         test(`ranking cards follow the ${theme} theme`, async ({ page }) => {
           await seedTheme(page, theme);
-          await page.goto(`/${mockEntitySearchSettings.url}`, {
+          // AI mode serves settings only in the settings modal
+          // (ADR:2026-10-21-settings-pages-are-classic-only).
+          await page.goto('/my-data#platform-settings/search/tables', {
             waitUntil: 'domcontentloaded',
           });
+          // Sign-in already landed on /my-data, so the goto above is only a
+          // hash change: no document load, so the AI-mode and theme init
+          // scripts never ran. Reload to boot the app with them applied.
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
 
-          const rankingSignals = page.getByTestId('ranking-signals');
+          const rankingSignals = page
+            .getByTestId('ai-profile-page')
+            .getByTestId('ranking-signals');
 
           await expect(rankingSignals).toBeVisible();
           await expectTheme(page, theme);

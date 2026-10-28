@@ -32,9 +32,11 @@ const ObservabilityAlertsPage = () => {
     hasResourcePermissionError,
     refetchResourcePermission,
     alerts,
+    alertsError,
     columnList,
     pageSize,
     currentPage,
+    fetchAlerts,
     getAlertDetailsPath,
     handlePageSizeChange,
     showPagination,
@@ -83,6 +85,7 @@ const ObservabilityAlertsPage = () => {
             alertPermissions={alertPermissions}
             alertResourcePermission={alertResourcePermission}
             alerts={alerts}
+            alertsError={alertsError}
             columnList={columnList}
             currentPage={currentPage}
             getAlertDetailsPath={getAlertDetailsPath}
@@ -95,6 +98,7 @@ const ObservabilityAlertsPage = () => {
             onAddAlert={handleAddAlert}
             onPageChange={onPageChange}
             onPageSizeChange={handlePageSizeChange}
+            onRetry={() => fetchAlerts()}
             onRetryPermission={refetchResourcePermission}
             onSelectAlert={handleSelectAlert}
             onViewAlert={onViewAlert}

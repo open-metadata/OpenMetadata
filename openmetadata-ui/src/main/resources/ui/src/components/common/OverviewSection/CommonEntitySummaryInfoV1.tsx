@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { createPath } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ICON_DIMENSION } from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import {
   CommonEntitySummaryInfoV1Props,
   EntityInfoItemV1,
@@ -109,7 +110,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
       {visibleEntityInfo.length === 0 ? (
         <div className="overview-row">
           <Typography
-            className="no-data-placeholder"
+            className={NO_DATA_PLACEHOLDER_CLASS_NAME}
             data-testid="no-data-placeholder">
             {t('label.no-overview-available')}
           </Typography>

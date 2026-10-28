@@ -70,6 +70,7 @@ import {
 } from '../../../generated/entity/context/contextMemory';
 import { useMemoryConflictReviews } from '../../../hooks/discovery/context-center/useMemoryConflictReviews';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { queryClient } from '../../../queryClient';
 import {
   ContextMemoryListParams,
@@ -303,6 +304,7 @@ const ContextCenterMemoriesModals = ({
 
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const pageLayoutClassNames = useContextCenterPageLayout();
   const { currentUser } = useApplicationStore();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -854,14 +856,18 @@ const ContextCenterMemoriesPage: FC = () => {
 
   return (
     <Box
-      className={`tw:w-full tw:h-full tw:overflow-scroll ${contextCenterClassBase.getPageContainerClassName()}`}
+      className={`tw:w-full tw:h-full tw:overflow-scroll ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-memories-page"
       direction="col">
       <DocumentTitle title={t('label.memory-plural')} />
       <PageLayout
         className={pageLayoutClassNames.root}
         data-testid="context-center-page-layout">
-        <PageLayout.Header className={pageLayoutClassNames.header}>
+        <PageLayout.Header
+          className={pageLayoutClassNames.header}
+          data-tour-step="memories">
           <ContextCenterHeader
             actionsSlot={headerActions}
             breadcrumbs={[

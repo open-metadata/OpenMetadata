@@ -148,4 +148,21 @@ describe('PopoverTitle Component', () => {
 
     expect(mockPush).toHaveBeenCalledWith('/users/testUser');
   });
+
+  it('runs onTitleClick instead of leaving for the user page when provided', async () => {
+    const onTitleClick = jest.fn();
+    renderWithQueryClient(
+      <PopoverTitle
+        profilePicture={<div>ProfilePicture</div>}
+        type={OwnerType.USER}
+        userName="testUser"
+        onTitleClick={onTitleClick}
+      />
+    );
+
+    (await screen.findByText('Test User')).click();
+
+    expect(onTitleClick).toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
 });

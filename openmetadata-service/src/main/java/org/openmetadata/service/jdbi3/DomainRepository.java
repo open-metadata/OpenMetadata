@@ -64,6 +64,7 @@ import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
@@ -125,6 +126,11 @@ public class DomainRepository extends EntityRepository<Domain> {
     fieldFetchers.put(FIELD_PARENT, this::fetchAndSetParents);
     fieldFetchers.put(FIELD_EXPERTS, this::fetchAndSetExperts);
     fieldFetchers.put(FIELD_CHILDREN_COUNT, this::fetchAndSetChildrenCount);
+  }
+
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    return relabeledByReference(super.getSearchPropagationDescriptors());
   }
 
   @Override

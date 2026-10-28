@@ -893,9 +893,14 @@ export const TreeSelect = <T = unknown,>({
   const resolvedNoDataMessage = noDataMessage ?? t('label.no-data-found');
   const resolvedLoadingMessage = loadingMessage ?? t('label.loading');
 
+  // A cascade root only groups its descendants, which are already counted. In
+  // any other tree a root is a real pick, e.g. a top-level domain.
   const displayedSelectedCount = useMemo(
-    () => selectedData.filter((n) => !stableRootIds.has(n.id)).length,
-    [selectedData, stableRootIds]
+    () =>
+      cascadeSelection
+        ? selectedData.filter((n) => !stableRootIds.has(n.id)).length
+        : selectedData.length,
+    [cascadeSelection, selectedData, stableRootIds]
   );
 
   const selectableNodes = useMemo(

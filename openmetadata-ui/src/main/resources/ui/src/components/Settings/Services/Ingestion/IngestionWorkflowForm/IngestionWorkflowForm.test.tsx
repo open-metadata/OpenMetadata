@@ -27,6 +27,7 @@ import {
 import IngestionWorkflowForm from './IngestionWorkflowForm';
 
 const DBT_WORKFLOW_DATA = {
+  name: 'dbt_agent',
   type: 'DBT',
   dbtConfigSource: {
     dbtConfigType: 'local',
@@ -35,7 +36,7 @@ const DBT_WORKFLOW_DATA = {
   catalogMapping: { bq_catalog: 'my-gcp-project' },
 } as unknown as IngestionWorkflowData;
 
-const renderDbtForm = (onChange = jest.fn()) =>
+const renderDbtForm = (onChange = jest.fn(), onSubmit = jest.fn()) =>
   render(
     <IngestionWorkflowForm
       okText="Submit"
@@ -45,7 +46,7 @@ const renderDbtForm = (onChange = jest.fn()) =>
       onCancel={jest.fn()}
       onChange={onChange}
       onFocus={jest.fn()}
-      onSubmit={jest.fn()}
+      onSubmit={onSubmit}
     />
   );
 
@@ -84,6 +85,25 @@ describe('IngestionWorkflowForm dbt catalogMapping', () => {
     expect(Object.keys(catalogMapping)).toHaveLength(2);
     // RJSF's visible default, so an untouched row is noticed before it is saved
     expect(catalogMapping.newKey).toBe('New Value');
+  });
+
+  it('saves the catalog mapping without a row that was added but never filled in', async () => {
+    const onSubmit = jest.fn();
+    const { container } = renderDbtForm(jest.fn(), onSubmit);
+    await screen.findByText('Catalog Mapping');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.add-entity' }));
+    });
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    expect(onSubmit.mock.calls[0][0].catalogMapping).toEqual({
+      bq_catalog: 'my-gcp-project',
+    });
   });
 });
 

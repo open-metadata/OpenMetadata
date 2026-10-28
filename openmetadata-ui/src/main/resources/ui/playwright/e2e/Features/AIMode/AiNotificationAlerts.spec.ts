@@ -11,24 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { AlertClass } from '../../../support/entity/AlertClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext, uuid } from '../../../utils/common';
+import { uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import {
-  addFilter,
-  clearAlertSources,
-  dismissPopover,
-  fillAlertName,
-  getDestinationCategoryOptions,
-  getFilterArgumentOptions,
-  getFilterSelectOptions,
-  openAddAlertDrawer,
-  saveAlertDrawer,
-  selectAlertSource,
-  selectDestinationCategory,
-} from '../../Utils/aiAlertDrawer';
 import { enableAiAppMode } from '../../Utils/appMode';
 import {
   expectSurfaceTheme,
@@ -42,9 +29,32 @@ test.use({
 });
 
 const THEMES: UiTheme[] = ['light', 'dark'];
-const NOTIFICATION_ALERTS_PATH = '/settings/notifications/alerts';
+// Settings pages are classic-only; AI mode reaches notification alerts in the
+// settings modal (ADR:2026-10-21-settings-pages-are-classic-only).
+const MODAL_ALERTS_ROUTE = '/my-data#notification/alerts';
 
-test.describe('AI mode — Settings notification alerts use the AI alert pages', () => {
+const openAlertsList = async (page: Page) => {
+  await page.goto(MODAL_ALERTS_ROUTE, { waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('alerts-list-container')).toBeVisible();
+};
+
+const openAlertDetail = async (page: Page, alert: AlertClass) => {
+  const detail = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/events/subscriptions/name/') &&
+      response.request().method() === 'GET'
+  );
+  await page
+    .getByTestId(`alert-${alert.responseData.displayName}`)
+    .getByTestId('alert-name')
+    .click();
+  await detail;
+  // The header actions render once the alert's permissions resolve.
+  await expect(page.getByTestId('sync-alert-btn')).toBeVisible();
+};
+
+test.describe('AI mode — notification alerts live in the settings modal', () => {
   let alert: AlertClass;
   // Alerts created inside tests; afterAll removes any a failed test left behind
   // (already-deleted ones answer 404, which is fine).
@@ -79,179 +89,60 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
   });
 
   for (const theme of THEMES) {
-    test(`notification list renders the AI alerts table (${theme})`, async ({
+    test(`a notification alert opens from the modal list (${theme})`, async ({
       page,
     }) => {
       await seedTheme(page, theme);
+      await openAlertsList(page);
 
-      await page.goto(NOTIFICATION_ALERTS_PATH, {
-        waitUntil: 'domcontentloaded',
-      });
-      await waitForAllLoadersToDisappear(page);
+      const modal = page.getByTestId('ai-profile-page');
+      const row = page.getByTestId(`alert-${alert.responseData.displayName}`);
 
-      const shell = page.getByTestId('observability-page-shell');
-
-      await expect(shell).toBeVisible();
-      await expect(page.getByTestId('add-alert-button')).toBeVisible();
-      // Page 1 always starts with the system alert; user alerts follow it.
+      await expect(row).toBeVisible();
       await expect(
-        shell.getByRole('link', { name: 'Activity Feed Alerts' })
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(`alert-delete-${alert.responseData.name}`)
+        page.getByTestId(`alert-delete-${alert.responseData.displayName}`)
       ).toBeEnabled();
 
-      // The system activity feed alert is listed but read-only.
-      await expect(
-        page.getByTestId('alert-edit-ActivityFeedAlert')
-      ).toBeDisabled();
-      await expect(
-        page.getByTestId('alert-delete-ActivityFeedAlert')
-      ).toBeDisabled();
+      await openAlertDetail(page, alert);
+
+      await expect(page).toHaveURL(/\/my-data#notification\/alerts\/.+/);
+      await expect(page.getByTestId('edit-alert-btn')).toBeVisible();
+      await expect(page.getByTestId('delete-alert-btn')).toBeVisible();
 
       await expectTheme(page, theme);
-      await expectSurfaceTheme(shell, theme);
-    });
-
-    test(`notification alert details render the AI details page under settings (${theme})`, async ({
-      page,
-    }) => {
-      await seedTheme(page, theme);
-
-      await page.goto(
-        `${NOTIFICATION_ALERTS_PATH}/${encodeURIComponent(
-          alert.responseData.fullyQualifiedName
-        )}/configuration`,
-        { waitUntil: 'domcontentloaded' }
-      );
-      await waitForAllLoadersToDisappear(page);
-
-      const detailsPage = page.getByTestId('alert-details-ai-page');
-
-      await expect(detailsPage).toBeVisible();
-      await expect(page).toHaveURL(
-        /\/settings\/notifications\/alerts\/[^/]+\/configuration$/
-      );
-      await expect(
-        page.getByRole('link', { name: 'Notifications' })
-      ).toBeVisible();
-
-      await page.getByTestId('edit-button').click();
-      const dialog = page.getByRole('dialog');
-
-      await expect(dialog).toBeVisible();
-      await expect(dialog.getByRole('textbox', { name: /name/i })).toHaveValue(
-        alert.responseData.displayName
-      );
-
-      await expectTheme(page, theme);
-      await expectSurfaceTheme(detailsPage, theme);
-      await expectSurfaceTheme(dialog, theme);
-    });
-
-    test(`notification alert details show recent events and diagnostic info (${theme})`, async ({
-      page,
-    }) => {
-      await seedTheme(page, theme);
-      const alertId = alert.responseData.id;
-      const listEvents = (status?: string) =>
-        page.waitForResponse((response) => {
-          const url = new URL(response.url());
-
-          return (
-            url.pathname ===
-              `/api/v1/events/subscriptions/id/${alertId}/listEvents` &&
-            url.searchParams.get('limit') === '15' &&
-            url.searchParams.get('paginationOffset') === '0' &&
-            url.searchParams.get('status') === (status ?? null)
-          );
-        });
-      const allEvents = listEvents();
-
-      await page.goto(
-        `${NOTIFICATION_ALERTS_PATH}/${encodeURIComponent(
-          alert.responseData.fullyQualifiedName
-        )}/recentEvents`,
-        { waitUntil: 'domcontentloaded' }
-      );
-
-      const { data: events } = await (await allEvents).json();
-      const recentEvents = page.getByTestId('alert-recent-events');
-
-      await expect(page.getByTestId('total-events-count')).toHaveText(
-        /^Total Events: \d+$/
-      );
-      await expect(page.getByTestId('failed-events-count')).toHaveText(
-        /^Failed Events: \d+$/
-      );
-      // A failed event carries its change event inside, which is the id the page shows.
-      const changeEventIdOf = (event: {
-        status: string;
-        data: Array<{ id?: string; changeEvent?: { id?: string } }>;
-      }) =>
-        event.status === 'failed'
-          ? event.data[0].changeEvent?.id
-          : event.data[0].id;
-
-      await expect(
-        events.length > 0
-          ? recentEvents.getByTestId(
-              `event-collapse-${changeEventIdOf(events[0])}`
-            )
-          : recentEvents.getByText('No recent events')
-      ).toBeVisible();
-
-      const failedEvents = listEvents('failed');
-      await recentEvents.getByRole('button', { name: /Filter/ }).click();
-      await page.getByRole('option', { name: 'Failed', exact: true }).click();
-      const { data: failed } = await (await failedEvents).json();
-
-      if (failed.length === 0) {
-        await expect(
-          recentEvents.getByText('No results for these filters')
-        ).toBeVisible();
-      }
-
-      const diagnosticInfo = page.waitForResponse(
-        `/api/v1/events/subscriptions/**/diagnosticInfo`
-      );
-      await page.getByRole('tab', { name: 'Diagnostic Info' }).click();
-      await diagnosticInfo;
-      const diagnostics = page.getByTestId('alert-diagnostic-info');
-
-      await expect(page).toHaveURL(/\/diagnostic-info$/);
-      await expect(
-        diagnostics.getByTestId('diagnostic-value-Latest Offset')
-      ).toHaveText(/^\d+$/);
-      await expect(
-        diagnostics.getByTestId('diagnostic-value-Processed All Events')
-      ).toHaveText(/^(Yes|No)$/);
-
-      await expectTheme(page, theme);
-      await expectSurfaceTheme(diagnostics, theme);
+      await expectSurfaceTheme(modal, theme);
     });
   }
 
-  test('deletes a notification alert from the AI details page', async ({
+  test('the classic notification alert URLs are not served', async ({
+    page,
+  }) => {
+    await page.goto('/settings/notifications/alerts', {
+      waitUntil: 'domcontentloaded',
+    });
+
+    await expect(page.getByTestId('ai-not-found-page')).toBeVisible();
+    await expect(page.getByTestId('alerts-list-container')).not.toBeAttached();
+  });
+
+  test('deletes a notification alert from the modal details view', async ({
     browser,
     page,
   }) => {
     // Created per test so repeated runs in one worker each have an alert to delete.
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    const deletableAlert = new AlertClass({ alertType: 'Notification' });
+    const deletableAlert = new AlertClass({
+      alertType: 'Notification',
+      name: `0%0-pw-ai-notification-delete-${uuid()}`,
+    });
     await deletableAlert.create(apiContext);
     await afterAction();
     testAlerts.push(deletableAlert);
 
-    await page.goto(
-      `${NOTIFICATION_ALERTS_PATH}/${encodeURIComponent(
-        deletableAlert.responseData.fullyQualifiedName
-      )}/configuration`,
-      { waitUntil: 'domcontentloaded' }
-    );
-    await waitForAllLoadersToDisappear(page);
+    await openAlertsList(page);
+    await openAlertDetail(page, deletableAlert);
 
-    await page.getByTestId('delete-button').click();
+    await page.getByTestId('delete-alert-btn').click();
 
     const deleteResponse = page.waitForResponse(
       (response) =>
@@ -261,225 +152,13 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
             `/api/v1/events/subscriptions/${deletableAlert.responseData.id}`
           ) && response.request().method() === 'DELETE'
     );
-    await page
-      .getByTestId('delete-modal')
-      .getByTestId('confirm-button')
-      .click();
+    await page.getByTestId('confirm-button').click();
 
     expect((await deleteResponse).status()).toBe(200);
-    await expect(page).toHaveURL(/\/settings\/notifications\/alerts$/);
-  });
-});
-
-test.describe('AI mode — notification alert form keeps the classic behaviour', () => {
-  const createdAlertIds: string[] = [];
-
-  test.beforeEach(async ({ page }) => {
-    await enableAiAppMode(page);
-    await page.goto(NOTIFICATION_ALERTS_PATH, {
-      waitUntil: 'domcontentloaded',
-    });
-    await waitForAllLoadersToDisappear(page);
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    for (const id of createdAlertIds) {
-      await apiContext.delete(
-        `/api/v1/events/subscriptions/${id}?hardDelete=true`
-      );
-    }
-
-    await afterAction();
-  });
-
-  test('narrows destinations and event types to what the source supports', async ({
-    page,
-  }) => {
-    const dialog = await openAddAlertDrawer(page);
-
-    await selectAlertSource(page, 'Conversation');
-    await dialog.getByTestId('add-destination-button').click();
-
-    const conversationCategories = await getDestinationCategoryOptions(
-      page,
-      dialog
-    );
-
-    expect(conversationCategories).toEqual(
-      expect.arrayContaining(['Mentions', 'Owners', 'Slack', 'Webhook'])
-    );
-    expect(conversationCategories).not.toEqual(
-      expect.arrayContaining(['Followers'])
-    );
-    expect(conversationCategories).not.toEqual(
-      expect.arrayContaining(['Admins'])
-    );
-    expect(conversationCategories).not.toEqual(
-      expect.arrayContaining(['Users'])
-    );
-    expect(conversationCategories).not.toEqual(
-      expect.arrayContaining(['Teams'])
-    );
-
-    // Notification alerts have no triggers; only observability alerts do.
-    await expect(dialog.getByTestId('add-actions')).toHaveCount(0);
-
-    await dialog.getByTestId('add-filters').click();
-
-    expect(await getFilterSelectOptions(page, dialog)).toEqual([
-      'Mentioned Users',
-    ]);
-
-    // A table cannot join a conversation, so the conversation goes first.
-    await clearAlertSources(page, ['Conversation']);
-    await selectAlertSource(page, 'Table');
-    await dialog.getByTestId('add-destination-button').click();
-
-    const tableCategories = await getDestinationCategoryOptions(page, dialog);
-
-    expect(tableCategories).toEqual(
-      expect.arrayContaining(['Admins', 'Followers', 'Owners', 'Teams'])
-    );
-    expect(tableCategories).not.toEqual(expect.arrayContaining(['Mentions']));
-    expect(tableCategories).not.toEqual(expect.arrayContaining(['Assignees']));
-
-    await addFilter(page, dialog, 'Event Type');
-
-    // The table resource supports 9 event types; the full enum has more.
-    const eventTypes = await getFilterArgumentOptions(page, dialog);
-
-    expect(eventTypes).toContain('Entity Created');
-    expect(eventTypes).toHaveLength(9);
-  });
-
-  test('rejects alert names the classic form rejects', async ({ page }) => {
-    const dialog = await openAddAlertDrawer(page);
-
-    await fillAlertName(dialog, 'bad::name');
-    await dialog.getByTestId('save-button').click();
-
+    await expect(page).toHaveURL(/\/my-data#notification\/alerts$/);
+    await expect(page.getByTestId('alerts-list-container')).toBeVisible();
     await expect(
-      dialog.getByText(
-        'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.'
-      )
-    ).toBeVisible();
-
-    await fillAlertName(dialog, 'a'.repeat(129));
-    await dialog.getByTestId('save-button').click();
-
-    await expect(dialog.getByText(/between 1 and 128/)).toBeVisible();
-  });
-
-  test('creates a notification alert with a filter and an advanced webhook destination', async ({
-    page,
-  }) => {
-    const alertName = `pw-ai-notification-${uuid()}`;
-    const dialog = await openAddAlertDrawer(page);
-
-    await fillAlertName(dialog, alertName);
-    await selectAlertSource(page, 'Table');
-    await addFilter(page, dialog, 'Event Type');
-    await getFilterArgumentOptions(page, dialog);
-    await page.getByRole('option', { name: 'Entity Created' }).click();
-    await dismissPopover(dialog);
-
-    await dialog.getByTestId('add-destination-button').click();
-    await selectDestinationCategory(page, dialog, 'Webhook');
-    await dialog
-      .getByTestId('endpoint-input-0')
-      .getByRole('textbox')
-      .fill('https://example.com/hook');
-    await dialog.getByText('Advanced Configuration').click();
-    await dialog.getByTestId('add-header-button-0').click();
-    await dialog
-      .getByTestId('header-key-input-0-0')
-      .getByRole('textbox')
-      .fill('X-Source');
-    await dialog
-      .getByTestId('header-value-input-0-0')
-      .getByRole('textbox')
-      .fill('openmetadata');
-    await dialog.getByTestId('http-method-0').getByText('PUT').click();
-
-    const { request, response } = await saveAlertDrawer(page, dialog);
-    const body = request.postDataJSON();
-
-    expect(request.method()).toBe('POST');
-    expect(response?.status()).toBe(201);
-
-    const created = await response?.json();
-    createdAlertIds.push(created.id);
-
-    expect(created.displayName).toBe(alertName);
-
-    expect(body).toMatchObject({
-      alertType: 'Notification',
-      resources: ['table'],
-      input: {
-        filters: [
-          expect.objectContaining({
-            name: 'filterByEventType',
-            effect: 'include',
-          }),
-        ],
-      },
-      destinations: [
-        expect.objectContaining({
-          category: 'External',
-          type: 'Webhook',
-          config: expect.objectContaining({
-            endpoint: 'https://example.com/hook',
-            headers: { 'X-Source': 'openmetadata' },
-            httpMethod: 'PUT',
-          }),
-        }),
-      ],
-    });
-
-    await expect(page).toHaveURL(
-      `${NOTIFICATION_ALERTS_PATH}/${created.fullyQualifiedName}/configuration`
-    );
-    await expect(page.getByTestId('alert-details-ai-page')).toBeVisible();
-  });
-
-  test('edits a notification alert and sends a PATCH', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const editable = new AlertClass({ alertType: 'Notification' });
-    await editable.create(apiContext);
-    await afterAction();
-    createdAlertIds.push(editable.responseData.id);
-
-    await page.goto(
-      `${NOTIFICATION_ALERTS_PATH}/${encodeURIComponent(
-        editable.responseData.fullyQualifiedName
-      )}/configuration`,
-      { waitUntil: 'domcontentloaded' }
-    );
-    await waitForAllLoadersToDisappear(page);
-
-    await page.getByTestId('edit-button').click();
-    const dialog = page.getByRole('dialog');
-    const description = `edited from AI mode ${uuid()}`;
-    await dialog
-      .getByTestId('description')
-      .getByRole('textbox')
-      .fill(description);
-
-    const { request, response } = await saveAlertDrawer(page, dialog);
-
-    expect(request.method()).toBe('PATCH');
-    expect(response?.status()).toBe(200);
-    expect(request.postDataJSON()).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ path: '/description', value: description }),
-      ])
-    );
-
-    await expect(dialog).toBeHidden();
-    await expect(page.getByTestId('alert-details-ai-page')).toContainText(
-      description
-    );
+      page.getByTestId(`alert-${deletableAlert.responseData.displayName}`)
+    ).not.toBeAttached();
   });
 });

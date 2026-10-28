@@ -279,7 +279,8 @@
         }
 
         .entity-label-container {
-          padding: var(--om-space-8) var(--om-space-16) 0 var(--om-space-16);
+          padding: calc(var(--tw-spacing) * 3) var(--om-space-16) 0
+            var(--om-space-16);
 
           .entity-service-icon svg {
             height: 32px;
@@ -324,7 +325,7 @@
             box-shadow: none;
 
             background-color: var(--tw-color-utility-brand-100);
-            color: var(--tw-color-fg-brand-primary);
+            color: var(--tw-color-utility-brand-700);
             font-size: var(--om-font-size-xs);
             font-weight: var(--om-font-weight-medium);
             line-height: 18px;
@@ -334,7 +335,7 @@
             &:hover {
               box-shadow: none;
               background-color: var(--tw-color-utility-brand-100);
-              color: var(--tw-color-fg-brand-primary);
+              color: var(--tw-color-utility-brand-700);
             }
 
             &::after {
@@ -382,7 +383,6 @@
       min-height: 48px;
       padding: var(--om-space-12);
       padding-top: 0;
-      background-color: var(--tw-background-color-secondary);
 
       .inside-current-page-item {
         margin-top: 0;
@@ -460,28 +460,18 @@
     }
   }
 
-  &.columns-expanded {
-    .lineage-node-content {
-      .label-container {
-        .custom-node-label-container {
-          .entity-footer {
-            background-color: var(--tw-background-color-secondary);
-          }
-        }
-      }
-    }
-  }
-
+  // Only the node carries the tint: bg-brand-primary is translucent in dark,
+  // so repeating it on nested containers stacks into a saturated fill.
   &.custom-node-header-active {
     background-color: var(--tw-background-color-brand-primary);
 
     .lineage-node-content {
       .label-container {
-        background-color: var(--tw-background-color-brand-primary);
+        background-color: transparent;
 
         .custom-node-label-container {
           .entity-footer {
-            background-color: var(--tw-background-color-brand-primary);
+            background-color: transparent;
           }
         }
       }
@@ -612,20 +602,19 @@
   }
 }
 
-// The base node is a light brand card; selected / DQ states above still win.
+// The base node is a light brand card (its fill is BASE_NODE_FILL_CLASS in
+// CustomNode.utils); selected / DQ states above still win.
 .lineage-node.lineage-base-node {
   --lineage-node-border: var(--tw-border-color-brand);
-  background-color: var(--tw-background-color-brand-primary);
 
   &:not(.custom-node-header-active) {
-    .lineage-node-badge-container,
     .lineage-node-content .label-container,
     .lineage-node-content .column-container,
     .lineage-node-content
       .label-container
       .custom-node-label-container
       .entity-footer {
-      background-color: var(--tw-background-color-brand-primary);
+      background-color: transparent;
     }
   }
 }
@@ -682,10 +671,6 @@
       }
     }
   }
-
-  .lineage-node-content {
-    margin-top: var(--om-space-10);
-  }
 }
 
 .react-flow__node-default,
@@ -695,7 +680,9 @@
   padding: 0 !important;
   border: none !important;
   box-shadow: none !important;
-  background-color: var(--tw-background-color-surface) !important;
+  // The node inside draws the fill and the rounded corners; a filled wrapper
+  // shows its own square corners behind them.
+  background-color: transparent !important;
 }
 
 .react-flow__node-load-more {
@@ -800,7 +787,7 @@
       --lineage-node-border,
       var(--tw-border-color-primary)
     ) !important;
-    background: var(--tw-background-color-surface) !important;
+    background: var(--tw-background-color-raised) !important;
     top: min(58px, 50%) !important;
 
     gap: var(--om-space-1);
@@ -861,7 +848,7 @@
     --lineage-node-border,
     var(--tw-border-color-primary)
   ) !important;
-  background: var(--tw-background-color-surface) !important;
+  background: var(--tw-background-color-raised) !important;
   top: 60px !important; // Need to show handles on top half
   top: min(58px, 50%) !important;
 

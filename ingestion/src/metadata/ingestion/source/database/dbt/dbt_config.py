@@ -252,6 +252,9 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
             "order_by": "-finished_at",
             "limit": "1",
             "status__in": "[10,20]",
+            # Without `step` the artifacts endpoint serves only the last step's files, so a
+            # job whose `dbt test` is not its final command would lose every test result.
+            "include_related": '["run_steps"]',
         }
         if project_id:
             params_data["project_id"] = project_id
@@ -344,14 +347,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
                 raise DBTConfigException(
                     f"Manifest artifact not found for run {run_id}. Please ensure the dbt job generates artifacts."
                 ) from exc
-            try:
-                logger.debug("Requesting [dbt_run_results]")
-                dbt_run_results = client.get(
-                    f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}.json"
-                )
-            except Exception as exc:
-                logger.warning(f"dbt run_results file not found for run {run_id}, skipping dbt tests: {exc}")
-                logger.debug(traceback.format_exc())
+            dbt_run_results = _get_dbt_cloud_run_results(client, account_id, run_id, last_run.get("run_steps"))
         if not dbt_manifest:
             raise DBTConfigException(  # noqa: TRY301
                 "Manifest file not found in dbt Cloud. Please ensure your dbt job generates artifacts."
@@ -360,13 +356,36 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
         yield DbtFiles(
             dbt_catalog=dbt_catalog,
             dbt_manifest=dbt_manifest,
-            dbt_run_results=[dbt_run_results] if dbt_run_results else None,
+            dbt_run_results=dbt_run_results or None,
         )
     except DBTConfigException as exc:
         raise exc  # noqa: TRY201
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise DBTConfigException(f"Error fetching dbt files from dbt Cloud: {exc}")  # noqa: B904
+
+
+def _get_dbt_cloud_run_results(client, account_id, run_id, run_steps: list[dict] | None) -> list[dict]:
+    """
+    Collect run_results.json from every step of a dbt Cloud run. Steps that ran no dbt command
+    (clone, profile, deps) have no artifacts and 404; a run without step details falls back to
+    the endpoint's default, the last step.
+    """
+    path = f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}.json"
+    step_indexes = [step["index"] for step in run_steps or [] if step.get("index") is not None] or [None]
+    run_results = []
+    for step_index in step_indexes:
+        try:
+            logger.debug("Requesting [dbt_run_results] for step [%s]", step_index)
+            result = client.get(path, data={"step": step_index} if step_index is not None else None)
+        except Exception as exc:
+            logger.debug("No dbt run_results for run %s step %s: %s", run_id, step_index, exc)
+            continue
+        if isinstance(result, dict):
+            run_results.append(result)
+    if not run_results:
+        logger.warning("dbt run_results file not found for run %s, skipping dbt tests", run_id)
+    return run_results
 
 
 def get_blobs_grouped_by_dir(blobs: Iterable[str]) -> dict[str, list[str]]:
