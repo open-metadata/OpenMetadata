@@ -16,8 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
-import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.Json;
@@ -28,6 +26,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
 /**
@@ -38,7 +37,7 @@ import org.openmetadata.service.Entity;
 class AppRepositoryEventSubscriptionsTest {
 
   private static AppRepository repository() {
-    return mock(AppRepository.class, CALLS_REAL_METHODS);
+    return RealMethodRepositories.of(AppRepository.class, App.class);
   }
 
   private static App appWithAlert() {
@@ -66,7 +65,11 @@ class AppRepositoryEventSubscriptionsTest {
 
   @Test
   void versionHistoryLeavesOutTheAlertList() {
-    assertTrue(repository().getFieldsHiddenFromHistory().contains("eventSubscriptions"));
+    final ObjectNode snapshot =
+        (ObjectNode) JsonUtils.readTree(repository().serializeForVersionHistory(appWithAlert()));
+
+    assertFalse(snapshot.has("eventSubscriptions"));
+    assertTrue(snapshot.has("name"));
   }
 
   @Test

@@ -14,8 +14,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
-import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Map;
@@ -24,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Regression guard for the app runtime-secret exposure fix. {@code openMetadataServerConnection}
@@ -34,7 +33,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 class AppRepositoryStorageStrippingTest {
 
   private static AppRepository testRepository() {
-    return mock(AppRepository.class, CALLS_REAL_METHODS);
+    return RealMethodRepositories.of(AppRepository.class, App.class);
   }
 
   private static App appWithRuntimeSecrets() {
@@ -70,11 +69,20 @@ class AppRepositoryStorageStrippingTest {
         "openMetadataServerConnection must not be persisted to storage");
   }
 
-  // EntityRepository.storeVersions leaves these fields out of every stored version and every read.
   @Test
-  void getFieldsHiddenFromHistory_declaresRuntimeSecretFields() {
+  void versionHistoryJson_dropsRuntimeSecretFields() {
     AppRepository repository = testRepository();
-    assertTrue(repository.getFieldsHiddenFromHistory().contains("openMetadataServerConnection"));
-    assertTrue(repository.getFieldsHiddenFromHistory().contains("privateConfiguration"));
+
+    ObjectNode snapshot =
+        (ObjectNode)
+            JsonUtils.readTree(repository.serializeForVersionHistory(appWithRuntimeSecrets()));
+
+    assertFalse(
+        snapshot.has("privateConfiguration"),
+        "privateConfiguration must not appear in version-history snapshots");
+    assertFalse(
+        snapshot.has("openMetadataServerConnection"),
+        "openMetadataServerConnection must not appear in version-history snapshots");
+    assertTrue(snapshot.has("name"), "non-secret fields must remain in version-history snapshots");
   }
 }
