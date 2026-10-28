@@ -2430,24 +2430,61 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
   @Test
   void testScopedListsReturnNewestFirst(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
     Domain domain = createDomain(ns, "scoped-order-domain");
-    Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
-    createTaskAboutTable(ns, "scoped-order-0", table);
-    createTaskAboutTable(ns, "scoped-order-1", table);
-
-    for (String path : List.of("/created", "/assigned", "/visible", "/owned")) {
-      List<Long> createdAts = new ArrayList<>();
-      taskListPage("/v1/tasks" + path, RequestOptions.builder().queryParam("limit", "50").build())
-          .path("data")
-          .forEach(node -> createdAts.add(node.path("createdAt").asLong()));
-      assertEquals(
-          createdAts.stream().sorted(Comparator.reverseOrder()).toList(),
-          createdAts,
-          "%s lists the newest task first".formatted(path));
-      if ("/created".equals(path)) {
-        assertTrue(createdAts.size() >= 2, "The admin's own tasks are listed");
-      }
+    Table ownedTable =
+        createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of(shared.USER1_REF));
+    // Admin-filed tasks assigned to user1 reach /assigned; user1's own tasks reach /created. All
+    // four are about a user1-owned table, so /owned and /visible hold every one of them.
+    List<Task> assigned = new ArrayList<>();
+    List<Task> created = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      assigned.add(
+          SdkClients.adminClient()
+              .tasks()
+              .create(
+                  createTaskRequestAboutTable(ns, "scoped-order-assigned-" + i, ownedTable)
+                      .withAssignees(List.of(shared.USER1.getFullyQualifiedName()))));
+      created.add(
+          SdkClients.user1Client()
+              .tasks()
+              .create(createTaskRequestAboutTable(ns, "scoped-order-created-" + i, ownedTable)));
     }
+    List<Task> all = new ArrayList<>(assigned);
+    all.addAll(created);
+
+    String domainFqn = domain.getFullyQualifiedName();
+    assertScopedListNewestFirst("/assigned", domainFqn, assigned);
+    assertScopedListNewestFirst("/created", domainFqn, created);
+    assertScopedListNewestFirst("/owned", domainFqn, all);
+    assertScopedListNewestFirst("/visible", domainFqn, all);
+  }
+
+  /**
+   * Lists one of user1's scoped endpoints within the test's own domain, so tasks other concurrent
+   * tests file for user1 cannot satisfy or break the check, and requires every expected task on
+   * the page in non-increasing createdAt order.
+   */
+  private static void assertScopedListNewestFirst(
+      String path, String domainFqn, List<Task> expected) throws Exception {
+    RequestOptions options =
+        RequestOptions.builder().queryParam("domain", domainFqn).queryParam("limit", "100").build();
+    JsonNode page =
+        JsonUtils.readTree(
+            SdkClients.user1Client()
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, "/v1/tasks" + path, null, options));
+    List<UUID> ids = pageIds(page);
+    List<Long> createdAts = new ArrayList<>();
+    page.path("data").forEach(node -> createdAts.add(node.path("createdAt").asLong()));
+
+    assertTrue(
+        ids.containsAll(expected.stream().map(Task::getId).toList()),
+        "%s lists every task filed for this test".formatted(path));
+    assertEquals(
+        createdAts.stream().sorted(Comparator.reverseOrder()).toList(),
+        createdAts,
+        "%s lists the newest task first".formatted(path));
   }
 
   @Test
