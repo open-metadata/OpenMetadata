@@ -280,6 +280,7 @@ export const getMetricObservability = async (id: string) => {
   return response.data;
 };
 
+// ADR:2026-10-28-metric-hierarchy-search-filters-children-only-on-complete-paths
 const METRIC_SEARCH_PATH_PAGE_SIZE = 100;
 const METRIC_SEARCH_PATH_MAX_DEPTH = 6;
 

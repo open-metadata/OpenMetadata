@@ -592,7 +592,8 @@ const MetricListPage = () => {
     try {
       setIsDeletingMetrics(true);
       // Recursive so a parent's variants are deleted with it; a non-recursive job fails with
-      // "metric is not empty" once the parent has variants.
+      // "metric is not empty" once the parent has variants. Never a hard delete, so the hierarchy
+      // stays restorable (ADR:2026-10-28-metric-bulk-delete-is-a-recursive-soft-delete).
       const deleteJobs = await Promise.all(
         selectedMetrics.map(({ id }) => deleteMetricAsync(id, true))
       );

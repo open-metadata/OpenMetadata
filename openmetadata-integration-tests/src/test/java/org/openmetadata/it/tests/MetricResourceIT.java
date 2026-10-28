@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.ws.rs.core.Response;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -1286,20 +1288,34 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     params.put("hardDelete", "false");
     SdkClients.adminClient().metrics().delete(parent.getId().toString(), params);
 
-    Metric fetched =
-        assertDoesNotThrow(
-            () ->
-                SdkClients.adminClient()
-                    .getHttpClient()
-                    .execute(
-                        HttpMethod.GET,
-                        "/v1/metrics/" + child.getId() + "?fields=parent&include=all",
-                        null,
-                        Metric.class),
-            "A child whose parent was soft-deleted must still load with include=all");
+    // The list endpoint, not GET /{id}: only the list's batch parent hydration used to 404 here.
+    // The `parent` filter rejects deleted parents, so page through every metric to find the child.
+    JsonNode row = null;
+    String after = null;
+    do {
+      JsonNode page =
+          JSON.valueToTree(
+              SdkClients.adminClient()
+                  .getHttpClient()
+                  .execute(
+                      HttpMethod.GET,
+                      "/v1/metrics?fields=parent&include=all&limit=1000"
+                          + (after == null
+                              ? ""
+                              : "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8)),
+                      null,
+                      Object.class));
+      for (JsonNode metric : page.get("data")) {
+        if (child.getId().toString().equals(metric.get("id").asText())) {
+          row = metric;
+        }
+      }
+      after = page.get("paging").path("after").asText(null);
+    } while (row == null && after != null);
 
-    assertEquals(parent.getId(), fetched.getParent().getId());
-    assertTrue(fetched.getParent().getDeleted());
+    assertNotNull(row, "A child whose parent was soft-deleted must be listed with include=all");
+    assertEquals(parent.getId().toString(), row.get("parent").get("id").asText());
+    assertTrue(row.get("parent").get("deleted").asBoolean());
   }
 
   @Test
