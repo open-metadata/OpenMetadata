@@ -263,6 +263,16 @@ class SearchEntityTypeCountsTest {
                   hint.getIncludeSourceFields());
               assertEquals(10, hint.getSize());
               assertFalse(hint.getIncludeHighlights());
+              AtomicInteger passes = new AtomicInteger();
+              SearchRankingHelper.searchWithIdentifierPrecision(
+                  hint,
+                  ranked,
+                  (settings, window) -> {
+                    passes.incrementAndGet();
+                    return List.<String>of();
+                  },
+                  List::stream);
+              assertEquals(1, passes.get(), "the hint must serve as its own identity probe");
               ObjectNode body = envelope();
               ArrayNode hits = body.putObject("hits").put("max_score", 10).putArray("hits");
               hits.addObject()

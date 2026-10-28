@@ -283,8 +283,8 @@ public final class SearchEntityTypeCounts {
     return value.longValue();
   }
 
-  // Sized and projected so the identifier-precision search reuses it as its probe instead of
-  // running a second search; only the top hit is returned.
+  // ADR:2026-10-29-explore-top-hit-hint-is-the-identity-probe — sized and projected so the
+  // identifier-precision search reuses it as its probe; only the top hit is returned.
   private SearchRequest hintRequest(SearchRequest request) {
     List<String> fields =
         Stream.concat(Stream.of(ENTITY_TYPE), SearchRankingHelper.identityFields().stream())
