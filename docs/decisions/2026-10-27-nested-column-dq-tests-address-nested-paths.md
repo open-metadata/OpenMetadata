@@ -2,7 +2,8 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-27 (initial); v2 2026-10-27 (conformance type check uses the same walk;
-  paths that do not parse as an FQN match whole instead of erroring)
+  paths that do not parse as an FQN match whole instead of erroring); v3 2026-10-27
+  (dimensionColumns stay top-level: the runner groups only by top-level SQL columns)
 - **Deciders:** TeddyCr
 - **Guard:** `ColumnUtilTest` (`resolveColumnByPath*` / `validateColumnPath*`),
   `TestCaseDefinitionConformanceTest` (`aNestedColumnOfA*TypeIs*`),
@@ -26,8 +27,12 @@ compatibility a dotted literal column name arriving unquoted matches as a whole 
 segment walk fails. Raw names the Fqn grammar cannot split (an edge quote, an empty segment — all
 accepted as column names by `FullyQualifiedName.validateFqnName`) are never parsed as paths; they
 match as one whole name. `all` keeps its "every column" meaning. The same resolution governs the
-definition's `supportedDataTypes` conformance check, `dimensionColumns` and the tag inheritance of
-column-scoped test cases, and the CSV round-trip
+definition's `supportedDataTypes` conformance check and the tag inheritance of
+column-scoped test cases; `dimensionColumns` resolve against top-level `Table.columns` only
+(case-insensitive) until the runner can group by nested paths — the ingestion runner resolves
+dimensions against the top-level SQL columns (`SQAValidatorMixin.get_column_from_list`), so a
+nested path accepted here would be silently dropped at run time as an Aborted dimension. The CSV
+round-trip
 serializes the full quoted remaining path (`FullyQualifiedName` column segments joined by `.`,
 per-segment `quoteName`), never `getColumnName`, which truncates to the first segment.
 
@@ -38,8 +43,19 @@ override each — no shared dialect-capability registry in `ometa_to_sqa_orm`.
 
 ## Consequences
 Anything validating or resolving a test case's column (backing service, CSV import, future API
-surfaces) must use the segment walk, not a top-level `Stream` over `Table.columns`. Dialects that
+surfaces) must use the segment walk, not a top-level `Stream` over `Table.columns`.
+`dimensionColumns` are the exception (see v3): they stay top-level until the runner can group by
+nested paths. Dialects that
 address nested data with functions (MySQL JSON, Doris/StarRocks structs) can attach test cases but
 their runner fails the compatibility filter cleanly with "nested column tests not supported" until
 they learn those dialects. A shared unquoted/dotted raw path that is both a real nested path and a
 literal top-level column name resolves to the nested path.
+
+## Amendment — 2026-10-27: dimensionColumns stay top-level
+
+`validateDimensionColumns` resolves a dimension against top-level `Table.columns` only: the
+ingestion runner resolves dimensions against the top-level SQL columns
+(`SQAValidatorMixin.get_column_from_list`), so a nested path accepted here would be silently
+dropped at run time as an Aborted dimension. The v2 wording that put `dimensionColumns` under the
+segment walk is narrowed accordingly; test-case column links, the conformance check and tag
+inheritance still use the walk.

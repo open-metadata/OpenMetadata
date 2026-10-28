@@ -234,6 +234,61 @@ class PIIMaskerTest {
   }
 
   @Test
+  void columnProfileMaskingReachesNestedColumnsThroughTagsOnThePath() {
+    String tableFqn = "service.db.schema.orders";
+    String nestedFqn = tableFqn + ".address.city";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // The leaf carries the tag itself; the parent struct covers the nested fields beneath it
+    Column address =
+        column(tableFqn, "address", false)
+            .withChildren(List.of(column(tableFqn + ".address", "city", true)));
+    Column contact =
+        column(tableFqn, "contact", true)
+            .withChildren(List.of(column(tableFqn + ".contact", "email", false)));
+    Table table = table(tableFqn, List.of(address, contact), false, List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, true);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "columns,tags,owners", Include.ALL))
+          .thenReturn(table);
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.TABLE, tableFqn, "columns,tags", Include.ALL))
+          .thenReturn(table);
+
+      List<ColumnProfile> profiles =
+          List.of(new ColumnProfile().withName("city").withNullCount(1.0));
+
+      List<ColumnProfile> masked =
+          PIIMasker.getColumnProfile(nestedFqn, profiles, authorizer, securityContext);
+      assertEquals(1, masked.size());
+      assertNull(masked.getFirst().getName());
+      assertNull(masked.getFirst().getNullCount());
+
+      assertSame(
+          profiles, PIIMasker.getColumnProfile(nestedFqn, profiles, authorizer, securityContext));
+
+      ColumnProfile sensitiveProfile =
+          new ColumnProfile().withName("address.city").withNullCount(1.0);
+      ColumnProfile maskedProfile = PIIMasker.maskColumnProfile(tableFqn, sensitiveProfile);
+      assertEquals("address.city", maskedProfile.getName());
+      assertNull(maskedProfile.getNullCount());
+
+      // The same walk reaches a tag on the parent struct above the profiled field
+      ColumnProfile parentTaggedProfile =
+          new ColumnProfile().withName("contact.email").withNullCount(1.0);
+      ColumnProfile maskedViaParent = PIIMasker.maskColumnProfile(tableFqn, parentTaggedProfile);
+      assertEquals("contact.email", maskedViaParent.getName());
+      assertNull(maskedViaParent.getNullCount());
+    }
+  }
+
+  @Test
   void maskColumnProfileReturnsOnlyTheColumnNameForSensitiveColumns() {
     String tableFqn = "service.db.schema.orders";
     Table table =
@@ -322,8 +377,10 @@ class PIIMaskerTest {
     Table table = table(tableFqn, List.of(address, contact), false, List.of(owner));
     Authorizer authorizer = mock(Authorizer.class);
     SecurityContext securityContext = mock(SecurityContext.class);
-    // authorizePII is consulted per test case: the unauthorized page asks twice, the authorized page twice
-    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, false, true, true);
+    // authorizePII is consulted per test case: the unauthorized page asks twice, the authorized
+    // page twice
+    when(authorizer.authorizePII(securityContext, List.of(owner)))
+        .thenReturn(false, false, true, true);
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity

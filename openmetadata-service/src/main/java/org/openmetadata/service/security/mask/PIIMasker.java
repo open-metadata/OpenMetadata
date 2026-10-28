@@ -35,7 +35,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ColumnUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -190,14 +189,9 @@ public class PIIMasker {
     Table table =
         Entity.getEntityByName(
             Entity.TABLE, FullyQualifiedName.getTableFQN(fqn), "columns,tags,owners", Include.ALL);
-    Column column =
-        table.getColumns().stream()
-            .filter(c -> c.getFullyQualifiedName().equals(fqn))
-            .findFirst()
-            .orElse(null);
     boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwners());
 
-    if (column != null && hasPiiSensitiveTag(column) && !authorizePII) {
+    if (isPiiSensitiveColumn(table, fqn) && !authorizePII) {
       return Collections.nCopies(columnProfiles.size(), new ColumnProfile());
     }
     return columnProfiles;
@@ -205,18 +199,33 @@ public class PIIMasker {
 
   public static ColumnProfile maskColumnProfile(String fqn, ColumnProfile columnProfile) {
     Table table = Entity.getEntityByName(Entity.TABLE, fqn, "columns,tags", Include.ALL);
-    Column columnObj = EntityUtil.getColumn(table, columnProfile.getName());
-    String columnFQN = columnObj.getFullyQualifiedName();
-    Column column =
-        table.getColumns().stream()
-            .filter(c -> c.getFullyQualifiedName().equals(columnFQN))
-            .findFirst()
-            .orElse(null);
+    List<Column> columnPath =
+        ColumnUtil.resolveColumnChainByPath(table.getColumns(), columnProfile.getName());
 
-    if (column != null && hasPiiSensitiveTag(column)) {
+    if (!columnPath.isEmpty() && hasPiiSensitiveTagInPath(columnPath)) {
       return new ColumnProfile().withName(columnProfile.getName());
     }
     return columnProfile;
+  }
+
+  /**
+   * Whether a column FQN resolves to a PII.Sensitive column: the path is walked through nested
+   * children (a top-level-only match would leave nested profiles unmasked), and a tag on any
+   * column along the path covers the leaf.
+   */
+  private static boolean isPiiSensitiveColumn(Table table, String columnFqn) {
+    List<Column> columnPath = resolveColumnPath(table, columnFqn);
+    return !columnPath.isEmpty() && hasPiiSensitiveTagInPath(columnPath);
+  }
+
+  /** The chain of columns a column FQN resolves to, from the path relative to its table. */
+  private static List<Column> resolveColumnPath(Table table, String columnFqn) {
+    String tableFqn = FullyQualifiedName.getTableFQN(columnFqn);
+    if (tableFqn.equals(columnFqn)) {
+      return List.of();
+    }
+    return ColumnUtil.resolveColumnChainByPath(
+        table.getColumns(), columnFqn.substring(tableFqn.length() + 1));
   }
 
   /**
