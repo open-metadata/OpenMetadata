@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TableCardVariant } from '@openmetadata/ui-core-components';
 import type * as React from 'react';
 import type { DragAndDropHooks } from 'react-aria-components';
 import { NextPreviousProps } from '../NextPrevious/NextPrevious.interface';
@@ -344,6 +345,8 @@ export interface TableProps<RecordType> {
 
 export interface TableComponentProps<T> extends TableProps<T> {
   containerClassName?: string; // Applied to the table container
+  /** `muted` matches a muted Card / `TableCard.Root variant="muted"`. */
+  variant?: TableCardVariant;
   /**
    * Applied to the inner div that owns `scroll.x`/`scroll.y`'s overflow.
    * Only pass this alongside `tw:flex tw:flex-col` on `containerClassName`

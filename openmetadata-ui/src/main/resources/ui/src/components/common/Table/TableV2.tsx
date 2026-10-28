@@ -41,6 +41,7 @@
  */
 
 import {
+  MUTED_TABLE_SURFACE_CLASSES,
   PaginationCardWithControls,
   Table as UntitledTable,
 } from '@openmetadata/ui-core-components';
@@ -149,7 +150,7 @@ type CustomPaginationProps = NonNullable<
  */
 type PaginationContract<T> =
   | {
-      customPaginationProps?: undefined;
+      customPaginationProps?: never;
       pagination?: TableComponentProps<T>['pagination'];
     }
   | { customPaginationProps?: CustomPaginationProps; pagination: false };
@@ -510,6 +511,12 @@ const getRowInteractionProps = (
  * unique among themselves. Both are internal: `columnKeys` carries the original
  * key for anything reported back to the call site.
  */
+// `.table-container` paints bg-surface from unlayered LESS, so only an
+// `!important` utility can lift it onto the muted step; the bg-secondary row
+// hover is the same step as the muted rows, hence the translucent hover.
+// ADR:2026-10-27-settings-modal-surfaces-use-the-muted-step
+const MUTED_CONTAINER_CLASSES = `tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt! ${MUTED_TABLE_SURFACE_CLASSES}`;
+
 /**
  * AntD's `bordered` draws a full grid. Rows already carry their own horizontal
  * rule, so this adds the outer frame and the vertical separators, dropping the
@@ -883,6 +890,9 @@ const TableV2 = <T extends object>(
   }: TableV2Props<T>,
   ref: Ref<HTMLDivElement> | null | undefined
 ) => {
+  // Read once so callbacks depend on the handler, not on `rest` (a new object
+  // every render).
+  const { onChange: onTableChange } = rest;
   const { t } = useTranslation();
   const { type } = useGenericContext();
   const [reorderedList, setReorderedList] = useState<
@@ -1061,15 +1071,11 @@ const TableV2 = <T extends object>(
    */
   const sizeByContent = scroll?.x === 'max-content';
 
-  const scrollStyle = useMemo((): React.CSSProperties => {
-    if (!scroll) {
-      return {};
-    }
-
-    return {
-      ...(scroll.x ? { overflowX: 'auto' } : {}),
-    };
-  }, [scroll?.x]);
+  const scrollX = scroll?.x;
+  const scrollStyle = useMemo(
+    (): React.CSSProperties => (scrollX ? { overflowX: 'auto' } : {}),
+    [scrollX]
+  );
 
   /**
    * Derived, not state: seeding this from an effect left the first render with
@@ -1236,7 +1242,7 @@ const TableV2 = <T extends object>(
   // null — the filteredValue call sites read the next state off this argument.
   const reportFilterChange = useCallback(
     (nextState: Record<string, React.Key[]>) => {
-      if (!rest.onChange) {
+      if (!onTableChange) {
         return;
       }
       const filters: Record<string, FilterValue | null> = {};
@@ -1254,7 +1260,7 @@ const TableV2 = <T extends object>(
         effectiveNext[key] = keys;
         filters[key] = keys.length ? (keys as FilterValue) : null;
       });
-      rest.onChange(
+      onTableChange(
         {} as TablePaginationConfig,
         filters,
         {} as SorterResult<T>,
@@ -1267,7 +1273,7 @@ const TableV2 = <T extends object>(
         } as TableCurrentDataSource<T>
       );
     },
-    [rest.onChange, rest.columns, controlledFilterState, applyColumnFilters]
+    [onTableChange, rest.columns, controlledFilterState, applyColumnFilters]
   );
 
   const currentPage =
@@ -1281,7 +1287,7 @@ const TableV2 = <T extends object>(
   const handlePageChange = useCallback(
     (nextPage: number) => {
       setInternalCurrentPage(nextPage);
-      rest.onChange?.(
+      onTableChange?.(
         {
           current: nextPage,
           pageSize: clientPagination?.pageSize ?? DEFAULT_PAGE_SIZE,
@@ -1295,7 +1301,7 @@ const TableV2 = <T extends object>(
         } as TableCurrentDataSource<T>
       );
     },
-    [rest.onChange, clientPagination, filteredDataSource]
+    [onTableChange, clientPagination, filteredDataSource]
   );
 
   /**
@@ -1311,7 +1317,7 @@ const TableV2 = <T extends object>(
       // AntD reports a page-size change through `onChange` as well, which is
       // the only callback a server-paged table has to refetch on. Without it
       // the picker moves and nothing else happens.
-      rest.onChange?.(
+      onTableChange?.(
         {
           current: 1,
           pageSize: size,
@@ -1325,7 +1331,7 @@ const TableV2 = <T extends object>(
         } as TableCurrentDataSource<T>
       );
     },
-    [clientPagination, rest.onChange, filteredDataSource]
+    [clientPagination, onTableChange, filteredDataSource]
   );
 
   const pagedDataSource = useMemo((): T[] => {
@@ -1374,7 +1380,12 @@ const TableV2 = <T extends object>(
 
       setColumnDropdownSelections(updatedSelections);
     },
-    [columnDropdownSelections, selectedEntityTableColumns, entityKey]
+    [
+      columnDropdownSelections,
+      selectedEntityTableColumns,
+      entityKey,
+      setPreference,
+    ]
   );
 
   const handleBulkColumnAction = useCallback(() => {
@@ -1401,6 +1412,7 @@ const TableV2 = <T extends object>(
     columnDropdownSelections,
     selectedEntityTableColumns,
     entityKey,
+    setPreference,
   ]);
 
   // ─── Row key ──────────────────────────────────────────────────────────────
@@ -1585,7 +1597,7 @@ const TableV2 = <T extends object>(
       );
       setSortState({ columnKey: newKey, direction: newDirection });
 
-      if (!rest.onChange) {
+      if (!onTableChange) {
         return;
       }
 
@@ -1593,7 +1605,7 @@ const TableV2 = <T extends object>(
       const reportedOrder =
         newDirection === 'ascending' ? 'ascend' : descendingOrder;
 
-      rest.onChange(
+      onTableChange(
         {
           current: internalCurrentPage,
           pageSize: clientPagination?.pageSize ?? 10,
@@ -1613,9 +1625,10 @@ const TableV2 = <T extends object>(
       );
     },
     [
-      rest.onChange,
+      onTableChange,
       propsColumns,
       rest.dataSource,
+      filteredDataSource.length,
       internalCurrentPage,
       clientPagination,
       sortState.columnKey,
@@ -1747,8 +1760,9 @@ const TableV2 = <T extends object>(
     <div
       className={twMerge(
         'table-container',
-        'tw:border tw:border-utility-gray-200',
-        'tw:[&_tbody_tr:hover_td]:bg-secondary',
+        rest.variant === 'muted'
+          ? MUTED_CONTAINER_CLASSES
+          : 'tw:border tw:border-utility-gray-200 tw:[&_tbody_tr:hover_td]:bg-secondary',
         rest.containerClassName
       )}
       ref={ref}>
