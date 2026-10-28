@@ -958,25 +958,27 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   useEffect(() => {
     if (selectedTestLevel) {
       fetchTestDefinitions();
-      // Edit mode prefills testTypeId (and selectedColumn) via
-      // form.reset(buildEditDefaults(...)); testLevel is disabled there, so
-      // this effect only fires from that prefill and must not wipe it.
-      // Clearing the derived definition/type here also unmounts the params
-      // section whenever fetchTestDefinitions' identity changes (it depends on
-      // selectedTableData, which loads async on edit open) — making the params
-      // flicker. In edit mode these stay as prefilled and are re-derived by the
-      // [selectedTestTypeFqn, testDefinitions] effect.
-      if (!isEditMode) {
-        form.setValue('testTypeId', undefined as never);
-        if (selectedTestLevel === TestLevel.TABLE) {
-          form.setValue('selectedColumn', undefined as never);
-        }
-        setSelectedTestDefinition(undefined);
-        setSelectedTestType(undefined);
-        setIsCustomQuery(false);
-      }
     }
-  }, [selectedTestLevel, fetchTestDefinitions, form, isEditMode]);
+  }, [selectedTestLevel, fetchTestDefinitions]);
+
+  // Reset the picked type only when the level or the table changes. Keying it
+  // on fetchTestDefinitions' identity wiped a type picked before the selected
+  // table's details finished loading, unmounting its params mid-fill. Edit
+  // mode prefills testTypeId (and selectedColumn) via
+  // form.reset(buildEditDefaults(...)) with level and table disabled, so this
+  // only fires from that prefill and must not wipe it.
+  useEffect(() => {
+    if (!selectedTestLevel || isEditMode) {
+      return;
+    }
+    form.setValue('testTypeId', undefined as never);
+    if (selectedTestLevel === TestLevel.TABLE) {
+      form.setValue('selectedColumn', undefined as never);
+    }
+    setSelectedTestDefinition(undefined);
+    setSelectedTestType(undefined);
+    setIsCustomQuery(false);
+  }, [selectedTestLevel, selectedTableFqn, form, isEditMode]);
 
   useEffect(() => {
     if (

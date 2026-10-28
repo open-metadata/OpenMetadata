@@ -44,7 +44,9 @@ def test_execution_budget_stays_below_hang_protection_wrapper():
 
     reusable = (WORKFLOWS / "playwright-e2e-reusable.yml").read_text()
     match = re.search(
-        r"timeout --signal=TERM --kill-after=30s (\d+)m\s*\\\s*\n\s*npx playwright test",
+        # The visual lane swaps `npx` for a container runner array.
+        r"timeout --signal=TERM --kill-after=30s (\d+)m\s*\\\s*\n"
+        r"\s*(?:npx|\"\$\{runner\[@\]\}\") playwright test",
         reusable,
     )
     assert match, "hang-protection wrapper on the playwright test step not found"
