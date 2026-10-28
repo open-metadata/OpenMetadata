@@ -1717,6 +1717,7 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   protected void postRestore(Metric metric) {
     super.postRestore(metric);
+    refreshSearchDocument(metric.getMetricGroup());
     refreshSearchDocument(metric.getParent());
   }
 

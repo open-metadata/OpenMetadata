@@ -946,6 +946,23 @@ public class MetricGroupResourceIT {
     awaitMetricSearchDocument(
         rest, parent.getId(), document -> assertEquals(1, document.path("childrenCount").asInt()));
 
+    String bulkChildName = ns.prefix("count_bulk_child");
+    SdkClients.adminClient()
+        .metrics()
+        .bulkCreateOrUpdate(
+            List.of(
+                new CreateMetric()
+                    .withName(bulkChildName)
+                    .withDescription("Bulk-created child")
+                    .withParent(parent.getFullyQualifiedName())));
+    awaitMetricSearchDocument(
+        rest, parent.getId(), document -> assertEquals(2, document.path("childrenCount").asInt()));
+
+    Metric bulkChild = SdkClients.adminClient().metrics().getByName(bulkChildName);
+    SdkClients.adminClient().metrics().delete(bulkChild.getId().toString());
+    awaitMetricSearchDocument(
+        rest, parent.getId(), document -> assertEquals(1, document.path("childrenCount").asInt()));
+
     String parentJson = JSON.writeValueAsString(parent);
     parent.setDescription("Edited parent description");
     rest.patch("/v1/metrics", parent.getId(), parentJson, parent, Metric.class);
