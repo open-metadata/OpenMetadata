@@ -12,6 +12,7 @@
  */
 
 import { chunk, sumBy } from 'lodash';
+import { INCIDENT_STATUS_MENU_OPTIONS } from '../../../../constants/TestSuite.constant';
 import {
   CreateTestCaseResolutionStatus,
   TestCaseFailureReasonType,
@@ -22,7 +23,6 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
-import { INCIDENT_STATUS_MENU_OPTIONS } from '../../../../constants/TestSuite.constant';
 import { BulkOperationResult } from '../../../../generated/type/bulkOperationResult';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { MAX_BULK_INCIDENT_UPDATE_SIZE } from '../../../../rest/incidentManagerAPI';
