@@ -10866,6 +10866,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/applications/AppScheduleEdit.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ApplicationsSettingsModal.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/applications/ApplicationCard.tsx"
       ],
       "specs": [
@@ -11388,6 +11396,14 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/search/FieldValueBoostDialog.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/search/FieldValueBoostFields.tsx"
       ],
       "specs": [
         "playwright/e2e/Pages/SearchSettings.spec.ts"
