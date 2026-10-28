@@ -174,7 +174,7 @@ const EXPANDER_GUTTER_PX = 16;
  * the app, not just the ones being migrated. `compact` is available to a call
  * site that opts into it deliberately.
  */
-const CORE_SIZE_BY_ANTD_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
+const CORE_SIZE_BY_TABLE_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
   compact: 'compact',
   small: 'sm',
   middle: 'md',
@@ -182,7 +182,7 @@ const CORE_SIZE_BY_ANTD_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
 };
 
 const toCoreSize = (size: TableComponentProps<never>['size']) =>
-  CORE_SIZE_BY_ANTD_SIZE[size ?? 'middle'] ?? 'md';
+  CORE_SIZE_BY_TABLE_SIZE[size ?? 'middle'] ?? 'md';
 
 /**
  * The core `Table` root's `size` prop only accepts `'sm' | 'md'` today — the
@@ -240,7 +240,7 @@ const pingShadowClass = (
   return '';
 };
 
-const CELL_PADDING_BY_ANTD_SIZE: Record<string, string> = {
+const CELL_PADDING_BY_TABLE_SIZE: Record<string, string> = {
   compact: 'tw:py-1.5 tw:pl-3 tw:pr-2',
   small: 'tw:p-2',
   middle: 'tw:py-2 tw:pl-4 tw:pr-2',
@@ -248,8 +248,8 @@ const CELL_PADDING_BY_ANTD_SIZE: Record<string, string> = {
 };
 
 const toCellPaddingClass = (size: TableComponentProps<never>['size']) =>
-  CELL_PADDING_BY_ANTD_SIZE[size ?? 'middle'] ??
-  CELL_PADDING_BY_ANTD_SIZE.middle;
+  CELL_PADDING_BY_TABLE_SIZE[size ?? 'middle'] ??
+  CELL_PADDING_BY_TABLE_SIZE.middle;
 
 const resolvePageSize = (
   pageSizeOverride: number | null,

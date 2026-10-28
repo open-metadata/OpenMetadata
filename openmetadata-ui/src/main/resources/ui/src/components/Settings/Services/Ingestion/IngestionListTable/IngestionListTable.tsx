@@ -60,10 +60,9 @@ import {
 import IngestionStatusCount from './IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from './PipelineActions/PipelineActions';
 
-// Derived from symbols already in scope rather than imported from antd directly: tw-guard blocks
-// new antd specifiers, and this file's table is legacy AntD that is not being migrated here.
-type AntdSortOrder = ColumnsType<IngestionPipeline>[number]['sortOrder'];
-type AntdTableChangeHandler = NonNullable<
+// Derived from the table's own prop types.
+type ColumnSortOrder = ColumnsType<IngestionPipeline>[number]['sortOrder'];
+type TableChangeHandler = NonNullable<
   NonNullable<IngestionListTableProps['extraTableProps']>['onChange']
 >;
 
@@ -294,8 +293,8 @@ function IngestionListTable({
 
   const isServerSorted = !isUndefined(onSortChange);
 
-  const antdSortOrder = useMemo<AntdSortOrder>(() => {
-    let order: AntdSortOrder = null;
+  const columnSortOrder = useMemo<ColumnSortOrder>(() => {
+    let order: ColumnSortOrder = null;
     if (sortOrder === SORT_ORDER.ASC) {
       order = 'ascend';
     } else if (sortOrder === SORT_ORDER.DESC) {
@@ -305,7 +304,7 @@ function IngestionListTable({
     return order;
   }, [sortOrder]);
 
-  const toSortOrder = (order?: AntdSortOrder): SORT_ORDER | undefined => {
+  const toSortOrder = (order?: ColumnSortOrder): SORT_ORDER | undefined => {
     let updatedSortOrder: SORT_ORDER | undefined;
     if (order === 'ascend') {
       updatedSortOrder = SORT_ORDER.ASC;
@@ -318,7 +317,7 @@ function IngestionListTable({
 
   // AntD reports sort, filter and pagination through the same `onChange`. Only the sort action is
   // ours; everything else stays with the caller's handler, which must still receive every action.
-  const handleTableChange = useCallback<AntdTableChangeHandler>(
+  const handleTableChange = useCallback<TableChangeHandler>(
     (pagination, filters, sorter, extra) => {
       extraTableProps?.onChange?.(pagination, filters, sorter, extra);
 
@@ -343,7 +342,7 @@ function IngestionListTable({
         // has no relation to the label the user sees. `sorter: true` hands
         // ordering to the server so it spans every page, not just the loaded one.
         ...(isServerSorted
-          ? { sorter: true, sortOrder: antdSortOrder }
+          ? { sorter: true, sortOrder: columnSortOrder }
           : { sorter: columnSorter }),
         render: customRenderNameField ?? renderNameField(searchText),
       },
@@ -449,7 +448,7 @@ function IngestionListTable({
       pipelineTypeColumnObj,
       isLoading,
       isServerSorted,
-      antdSortOrder,
+      columnSortOrder,
     ]
   );
 

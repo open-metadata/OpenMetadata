@@ -808,7 +808,7 @@ Pick the wait that proves the state the **next step depends on** — not a gener
 | An entity created/updated via API showing up in search-backed UI | `waitForSearchIndexed` / `waitForOwnerIndexed` / `waitForOwnedAssetCount` (`playwright/utils/polling.ts`) | a bare `/search/query` wait — the component's initial query satisfies it |
 | A dropdown's aggregation for typed text | `waitForAggregation(page, { field, value })` (`playwright/utils/searchAggregation.ts`) | `waitForResponse('/search/aggregate*')` |
 | An async backend job (move, validation, propagation) | `expect.poll` on the entity GET | the 200 of the triggering call |
-| An Ant Design overlay/dropdown to finish animating | `waitForAntOverlayToOpen(overlay)` | `toBeVisible()` alone |
+| A modal or popover to finish fading in | `waitForOverlayToOpen(overlay)` | `toBeVisible()` alone |
 | Client-side persistence with no network call | poll the store (`waitForDraftPersisted`, `waitForRecentlyViewed` in `playwright/utils/ContextCenterUtil.ts`) | a hard wait |
 
 ### Search index lag
@@ -1111,7 +1111,7 @@ root-caused to the problem it solves. Paths are relative to `playwright/`.
 |---|---|---|
 | `waitForResponseWithStatus(page, predicate, status)` | `utils/waitHelpers.ts` | Awaiting a response: matches the request, then throws a legible error on the wrong status |
 | `clickAndWaitFor(page, locator, urlPattern, status?)` | `utils/waitHelpers.ts` | Click + hoisted response listener + status check in one call |
-| `waitForAntOverlayToOpen(overlay)` | `utils/waitHelpers.ts` | Before clicking inside an Ant modal/popover still running its zoom animation |
+| `waitForOverlayToOpen(overlay)` | `utils/waitHelpers.ts` | Before clicking inside a modal or popover that is still fading in |
 | `waitForAllLoadersToDisappear(page)` | `utils/entity.ts` | Data loaders gone |
 | `waitForWidgetsToRender(page)` | `utils/entity.ts` | Right-panel Suspense skeletons gone (tags, owners, glossary, domain) |
 | `waitForPageLoaded(page)` | `utils/polling.ts` | `domcontentloaded` + loaders + widgets; the `networkidle` replacement |

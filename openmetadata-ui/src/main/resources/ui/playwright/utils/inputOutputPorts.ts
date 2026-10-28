@@ -22,7 +22,7 @@ import {
 } from './assetDrawerQuickFilter';
 import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
 import {
-  waitForAntOverlayToOpen,
+  waitForOverlayToOpen,
   waitForResponseWithStatus,
 } from './waitHelpers';
 
@@ -40,7 +40,7 @@ export const confirmPortRemoval = async (
   }
 
   const dialog = page.getByRole('dialog', { name: 'Remove Port', exact: true });
-  await waitForAntOverlayToOpen(dialog);
+  await waitForOverlayToOpen(dialog);
   const response = waitForResponseWithStatus(
     page,
     (res) =>
