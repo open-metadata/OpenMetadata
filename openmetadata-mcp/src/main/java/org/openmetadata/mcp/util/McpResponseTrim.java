@@ -40,6 +40,11 @@ public final class McpResponseTrim {
    */
   public static final int DESCRIPTION_TRUNCATE_LENGTH = 450;
 
+  /** Read-side ceiling on the metric expression a summary carries. */
+  public static final int MAX_METRIC_CODE_CHARS = 1000;
+
+  private static final String METRIC_CODE_KEY = "code";
+
   /** Final safety net: even slimmed, a wide payload can blow the LLM/MCP context limit. */
   public static final int MAX_RESPONSE_CHARS = 100_000;
 
@@ -229,6 +234,20 @@ public final class McpResponseTrim {
       expiry = tag.get("expiryDate");
     }
     return expiry;
+  }
+
+  /**
+   * A metric expression as every metric summary returns it, with its code capped. A metric without
+   * its definition tells a caller almost nothing, but a 30 KB SQL body would crowd everything else
+   * out of the response budget.
+   */
+  public static Map<String, Object> cappedMetricExpression(Map<?, ?> expression) {
+    Map<String, Object> summary = new LinkedHashMap<>(expression.size());
+    expression.forEach((key, value) -> summary.put(String.valueOf(key), value));
+    if (summary.get(METRIC_CODE_KEY) instanceof String sql) {
+      summary.put(METRIC_CODE_KEY, truncate(sql, MAX_METRIC_CODE_CHARS));
+    }
+    return summary;
   }
 
   /** Cuts {@code value} to {@code maxLength} characters plus an ellipsis when it is longer. */

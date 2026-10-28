@@ -39,7 +39,7 @@ public class SearchMetadataTool implements McpTool {
   private static final int MAX_ALLOWED_AGGREGATION_BUCKETS = 50;
 
   private static final Set<String> REFERENCE_FIELDS =
-      Set.of("service", "database", "databaseSchema");
+      Set.of("service", "database", "databaseSchema", "parent", "metricGroup");
   private static final Set<String> REFERENCE_LIST_FIELDS = Set.of("owners", "domains");
   private static final Set<String> TAG_FIELDS = Set.of("tier", "tags");
   private static final String CERTIFICATION_FIELD = "certification";
@@ -85,7 +85,10 @@ public class SearchMetadataTool implements McpTool {
           "dataQualityDimensionName",
           "testPlatforms",
           "basic",
-          "lastResultTimestamp");
+          "lastResultTimestamp",
+          "parent",
+          "childrenCount",
+          "metricGroup");
 
   // Latest-result subset kept in test case search results; the full testCaseResult object
   // (testResultValue, sample row counts, ...) is available via the 'fields' parameter.

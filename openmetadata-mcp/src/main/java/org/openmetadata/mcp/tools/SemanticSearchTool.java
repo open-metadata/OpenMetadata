@@ -68,9 +68,6 @@ public class SemanticSearchTool implements McpTool {
   /** Sentinel unit meaning "see customUnitOfMeasurement" rather than a unit in its own right. */
   private static final String UNIT_OF_MEASUREMENT_OTHER = "OTHER";
 
-  /** Read-side ceiling on the metric expression a summary carries. */
-  private static final int MAX_METRIC_CODE_CHARS = 1000;
-
   private static final int MAX_COLUMN_NAMES = 60;
   private final PersonaSearchScope.Provider personaSearchScopeProvider;
   private final HitVisibility hitVisibility;
@@ -493,13 +490,7 @@ public class SemanticSearchTool implements McpTool {
    */
   private static void copyMetricExpression(Map<String, Object> hit, Map<String, Object> cleaned) {
     if (hit.get("metricExpression") instanceof Map<?, ?> expression) {
-      Map<String, Object> summary = new HashMap<>(expression.size());
-      expression.forEach((key, value) -> summary.put(String.valueOf(key), value));
-      Object code = summary.get("code");
-      if (code instanceof String sql) {
-        summary.put("code", McpResponseTrim.truncate(sql, MAX_METRIC_CODE_CHARS));
-      }
-      cleaned.put("metricExpression", summary);
+      cleaned.put("metricExpression", McpResponseTrim.cappedMetricExpression(expression));
     }
   }
 

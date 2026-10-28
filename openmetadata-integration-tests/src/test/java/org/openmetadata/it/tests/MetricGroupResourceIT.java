@@ -933,6 +933,44 @@ public class MetricGroupResourceIT {
   }
 
   @Test
+  void searchCountsSurviveChildCreateAndPlainEdits(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Metric parent = createMetric(ns, "count_parent");
+    MetricGroup group =
+        createGroup(
+            new CreateMetricGroup()
+                .withName(ns.prefix("count_group"))
+                .withMetrics(List.of(parent.getFullyQualifiedName())));
+    createChild(ns, "count_child", parent);
+
+    awaitMetricSearchDocument(
+        rest, parent.getId(), document -> assertEquals(1, document.path("childrenCount").asInt()));
+
+    String parentJson = JSON.writeValueAsString(parent);
+    parent.setDescription("Edited parent description");
+    rest.patch("/v1/metrics", parent.getId(), parentJson, parent, Metric.class);
+    awaitMetricSearchDocument(
+        rest,
+        parent.getId(),
+        document -> {
+          assertEquals("Edited parent description", document.path("description").asText());
+          assertEquals(1, document.path("childrenCount").asInt());
+        });
+
+    String groupJson = JSON.writeValueAsString(group);
+    group.setDescription("Edited group description");
+    rest.patch(GROUPS_PATH, group.getId(), groupJson, group, MetricGroup.class);
+    awaitSearchDocument(
+        rest,
+        "metric_group_search_index",
+        group.getId(),
+        document -> {
+          assertEquals("Edited group description", document.path("description").asText());
+          assertEquals(2, document.path("metricCount").asInt());
+        });
+  }
+
+  @Test
   void groupMutationsAndHardDeleteRefreshMemberSearchDocuments(TestNamespace ns) throws Exception {
     RestClient rest = RestClient.admin();
     Metric metric = createMetric(ns, "search_refresh_member");

@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.Edge;
@@ -282,6 +283,10 @@ public class GetEntityTool implements McpTool {
     Map<String, Object> cleaned = cleanEntityResponse(entityData);
     resolveCertification(cleaned);
     Map<String, Object> windowed = applyColumnWindow(cleaned, columnOffset, columnLimit);
+    if (entity instanceof Metric metric) {
+      MetricVariants.addExpressions(
+          windowed, metric, MetricVariants.viewableBy(authorizer, securityContext));
+    }
     addIncludes(
         windowed,
         new IncludeContext(authorizer, securityContext, entityType, fqn, entity, options(params)),
