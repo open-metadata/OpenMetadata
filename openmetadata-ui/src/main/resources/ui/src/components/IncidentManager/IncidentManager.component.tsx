@@ -163,7 +163,7 @@ const IncidentManager = ({
   }
 
   return (
-    <TableCard.Root variant="muted">
+    <TableCard.Root>
       <Box
         align="start"
         className="tw:p-4"

@@ -171,7 +171,7 @@ const IncidentGroupDetail = ({
           </Box>
         )}
       </Box>
-      <TableCard.Root className={INCIDENT_TABLE_CARD_CLASS} variant="muted">
+      <TableCard.Root className={INCIDENT_TABLE_CARD_CLASS}>
         {isError ? (
           <IncidentGroupsLoadError
             data-testid="incident-group-incidents-error"

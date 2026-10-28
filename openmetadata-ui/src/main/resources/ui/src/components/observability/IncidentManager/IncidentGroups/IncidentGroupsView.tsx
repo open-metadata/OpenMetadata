@@ -328,7 +328,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
             }
           />
         )}
-        <TableCard.Root className={INCIDENT_TABLE_CARD_CLASS} variant="muted">
+        <TableCard.Root className={INCIDENT_TABLE_CARD_CLASS}>
           <IncidentGroupsTable
             groupBy={groupBy}
             groups={incidentGroups}
