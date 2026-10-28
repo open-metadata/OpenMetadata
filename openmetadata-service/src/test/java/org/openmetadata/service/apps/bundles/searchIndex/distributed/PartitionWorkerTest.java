@@ -384,17 +384,28 @@ class PartitionWorkerTest {
     SearchIndexPartition partition = keyRangePartition();
     stubPartitionRun();
 
+    PartitionWorker.PartitionResult retried;
     try (MockedStatic<ServerIdentityResolver> resolverMock = mockServerIdentity();
         MockedConstruction<PaginatedEntitiesSource> ignored =
             mockConstruction(
                 PaginatedEntitiesSource.class,
-                (mock, context) ->
-                    doThrow(readerFailure()).when(mock).readNextKeyset("start-key"))) {
+                (mock, context) -> {
+                  if (context.getCount() == 1) {
+                    doThrow(readerFailure()).when(mock).readNextKeyset("start-key");
+                  } else {
+                    doReturn(page(2, "page-2")).when(mock).readNextKeyset("start-key");
+                    doReturn(page(1, null)).when(mock).readNextKeyset("page-2");
+                  }
+                })) {
       worker.processPartition(partition);
+      verify(coordinator).failPartition(eq(partition.getId()), anyString());
+      verify(coordinator, never()).completePartition(any(), anyLong(), anyLong(), anyLong());
+
+      retried = worker.processPartition(partition);
     }
 
-    verify(coordinator).failPartition(eq(partition.getId()), anyString());
-    verify(coordinator, never()).completePartition(any(), anyLong(), anyLong(), anyLong());
+    assertEquals(3, retried.successCount());
+    verify(coordinator).completePartition(partition.getId(), 3L, 0L, 0L);
   }
 
   @Test

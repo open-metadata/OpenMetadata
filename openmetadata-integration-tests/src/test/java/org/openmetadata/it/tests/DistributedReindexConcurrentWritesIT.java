@@ -89,19 +89,35 @@ public class DistributedReindexConcurrentWritesIT {
     SearchIndexJob job = planReindex(planner);
     List<Table> created = new ArrayList<>();
     try {
+      Set<UUID> beforeWrites = tablesAFullReadIndexes();
       created.addAll(createTables(ns, "0000_created_during_run", CREATED_DURING_RUN));
       existing
           .subList(0, DELETED_DURING_RUN)
-          .forEach(DistributedReindexConcurrentWritesIT::hardDelete);
+          .forEach(DistributedReindexConcurrentWritesIT::deleteUnderTest);
       DistributedSearchIndexCoordinator reader = readOnAnotherServer ? newCoordinator() : planner;
       Set<UUID> indexed = readAllPartitions(reader, job.getId());
       assertEquals(
-          Set.of(), missing(tablesAFullReadIndexes(), indexed), "tables never sent to search");
+          Set.of(),
+          missing(stillPresent(beforeWrites, created), indexed),
+          "tables never sent to search");
     } finally {
       discardJob(planner, job.getId());
-      created.forEach(DistributedReindexConcurrentWritesIT::hardDelete);
-      existing.forEach(DistributedReindexConcurrentWritesIT::hardDelete);
+      created.forEach(DistributedReindexConcurrentWritesIT::cleanUp);
+      existing.forEach(DistributedReindexConcurrentWritesIT::cleanUp);
     }
+  }
+
+  /**
+   * Tables that existed before the writes, plus the ones this test created, that a full read
+   * still finds after the run. Tables other tests create or delete meanwhile are left out, so
+   * only rows the reindex had to keep are asserted on.
+   */
+  private static Set<UUID> stillPresent(Set<UUID> beforeWrites, List<Table> created)
+      throws SearchIndexException {
+    Set<UUID> expected = new HashSet<>(beforeWrites);
+    created.forEach(table -> expected.add(table.getId()));
+    expected.retainAll(tablesAFullReadIndexes());
+    return expected;
   }
 
   private static void discardJob(DistributedSearchIndexCoordinator coordinator, UUID jobId) {
@@ -178,11 +194,15 @@ public class DistributedReindexConcurrentWritesIT {
     return missing;
   }
 
-  private static void hardDelete(Table table) {
+  private static void deleteUnderTest(Table table) {
+    SdkClients.adminClient()
+        .tables()
+        .delete(table.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+  }
+
+  private static void cleanUp(Table table) {
     try {
-      SdkClients.adminClient()
-          .tables()
-          .delete(table.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+      deleteUnderTest(table);
     } catch (Exception ignored) {
       // Already deleted by the test itself.
     }
