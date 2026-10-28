@@ -30,10 +30,10 @@ import { DataInsightChartCard } from '../DataInsightChartCard';
 const DataAssetsTab = () => {
   const { t } = useTranslation();
   const { kpi, chartFilter } = useDataInsightProvider();
-  // Every card needs the total-assets series (its own chart, or the base of a
-  // percentage change), so it is fetched once here instead of once per card.
+  // The total-assets card draws this series and the percentage cards base
+  // their change on it, so it is fetched once here instead of once per card.
   const [totalAssets, setTotalAssets] =
-    useState<DataInsightCustomChartResult>();
+    useState<DataInsightCustomChartResult | null>();
 
   useEffect(() => {
     if (kpi.isLoading) {
@@ -53,7 +53,7 @@ const DataAssetsTab = () => {
       .catch((error) => {
         if (!isStale) {
           showErrorToast(error as AxiosError);
-          setTotalAssets({ results: [] });
+          setTotalAssets(null);
         }
       });
 

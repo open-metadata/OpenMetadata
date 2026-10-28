@@ -85,9 +85,10 @@ interface DataInsightChartCardProps {
   listAssets?: boolean;
   /**
    * The `total_data_assets` series, fetched once by the parent tab and shared
-   * by every card. `undefined` while it is loading.
+   * by the cards that read it. `undefined` while it is loading, `null` when
+   * the request failed.
    */
-  totalAssets?: DataInsightCustomChartResult;
+  totalAssets?: DataInsightCustomChartResult | null;
 }
 
 const EMPTY_CHART_RESULT: DataInsightCustomChartResult = { results: [] };
@@ -270,6 +271,38 @@ const getChartLoadingState = (
   resultsLength: number
 ): boolean => isLoading || isKpiLoading || resultsLength === 0;
 
+/**
+ * The total-assets card draws the shared totals. Percentage cards derive their
+ * change from them, so they wait for the totals and fall back to the empty
+ * state if they failed, rather than showing a 0 change.
+ */
+const getCardDataState = ({
+  type,
+  totalAssets,
+  fetchedChartData,
+  isFetching,
+}: {
+  type: SystemChartType;
+  totalAssets: DataInsightChartCardProps['totalAssets'];
+  fetchedChartData: DataInsightCustomChartResult;
+  isFetching: boolean;
+}) => {
+  const isTotalAssetsChart = type === SystemChartType.TotalDataAssets;
+  const usesTotalAssets =
+    isTotalAssetsChart || ABSOLUTE_VALUES_CHART[type] !== undefined;
+  const totalAssetsFailed = usesTotalAssets && totalAssets === null;
+
+  return {
+    chartData:
+      isTotalAssetsChart || totalAssetsFailed
+        ? totalAssets ?? EMPTY_CHART_RESULT
+        : fetchedChartData,
+    isLoading:
+      (usesTotalAssets && totalAssets === undefined) ||
+      (!isTotalAssetsChart && isFetching),
+  };
+};
+
 const getProgressBarSuffix = (
   isPercentageGraph: boolean,
   type: SystemChartType
@@ -333,10 +366,12 @@ export const DataInsightChartCard = ({
     results: [],
   });
   const [isFetching, setIsFetching] = useState<boolean>(!isTotalAssetsChart);
-  const chartData = isTotalAssetsChart
-    ? totalAssets ?? EMPTY_CHART_RESULT
-    : fetchedChartData;
-  const isLoading = isTotalAssetsChart ? !totalAssets : isFetching;
+  const { chartData, isLoading } = getCardDataState({
+    type,
+    totalAssets,
+    fetchedChartData,
+    isFetching,
+  });
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
   const [searchEntityKeyWord, setSearchEntityKeyWord] = useState('');

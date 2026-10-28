@@ -34,6 +34,10 @@ jest.mock('../../../rest/DataInsightAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockTotalAssets)),
 }));
 
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
 jest.mock('../DataInsightChartCard', () => ({
   DataInsightChartCard: jest.fn().mockReturnValue(null),
 }));
@@ -69,6 +73,22 @@ describe('DataAssetsTab', () => {
     expect(sharing.map(({ type }) => type)).not.toContain(
       SystemChartType.TotalDataAssetsByTier
     );
+  });
+
+  it('hands the cards null when the totals request fails', async () => {
+    (getChartPreviewByName as jest.Mock).mockRejectedValueOnce(
+      new Error('boom')
+    );
+
+    await renderTab();
+
+    const cardProps = (DataInsightChartCard as jest.Mock).mock.calls
+      .slice(-6)
+      .map(([props]) => props);
+
+    expect(
+      cardProps.filter(({ totalAssets }) => totalAssets === null)
+    ).toHaveLength(5);
   });
 
   it('does not fetch while the KPIs are loading', async () => {

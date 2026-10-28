@@ -15,6 +15,7 @@ import {
   LineChart,
 } from '@openmetadata/ui-core-components/charts';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   DEFAULT_CHART_OPACITY,
@@ -96,7 +97,9 @@ const props = {
 const lastLineProps = () =>
   (LineChart as unknown as jest.Mock).mock.calls.at(-1)[0];
 
-const renderCard = (cardProps = props) =>
+const renderCard = (
+  cardProps: ComponentProps<typeof DataInsightChartCard> = props
+) =>
   act(async () => {
     render(<DataInsightChartCard {...cardProps} />, {
       wrapper: MemoryRouter,
@@ -138,6 +141,36 @@ describe('DataInsightChartCard', () => {
     ]);
 
     await act(async () => resolveOwn(mockChartResult));
+  });
+
+  it('keeps a percentage card loading until the shared totals arrive', async () => {
+    const ownerProps = {
+      ...props,
+      type: SystemChartType.PercentageOfDataAssetWithOwner,
+    };
+    let rerender: ReturnType<typeof render>['rerender'] = jest.fn();
+    await act(async () => {
+      ({ rerender } = render(
+        <DataInsightChartCard {...ownerProps} totalAssets={undefined} />,
+        { wrapper: MemoryRouter }
+      ));
+    });
+
+    expect(screen.queryByTestId('progress-bar')).not.toBeInTheDocument();
+
+    rerender(<DataInsightChartCard {...ownerProps} />);
+
+    expect(screen.getByTestId('progress-bar')).toBeInTheDocument();
+  });
+
+  it('shows the empty state, not a change, when the shared totals failed', async () => {
+    await renderCard({
+      ...props,
+      type: SystemChartType.PercentageOfDataAssetWithOwner,
+      totalAssets: null,
+    });
+
+    expect(screen.queryByTestId('progress-bar')).not.toBeInTheDocument();
   });
 
   it('draws one line per entity, colours matching the side panel', async () => {
