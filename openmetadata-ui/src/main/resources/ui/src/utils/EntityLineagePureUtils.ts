@@ -597,10 +597,28 @@ export const applyTempTableVisibility = <T extends EntityLineageResponse>(
     return lineage;
   }
 
+  // Stored edges that share a temp table each keep their own copy of the
+  // shared hop (pruneTempLineage needs them), but only one is drawn.
+  const drawnHops = new Set<string>();
+
   return show
     ? {
         ...lineage,
-        edges: edges.filter((edge) => !edge.tempLineageTables?.length),
+        edges: edges.filter((edge) => {
+          if (edge.tempLineageTables?.length) {
+            return false;
+          }
+          if (!edge.tempHopOf) {
+            return true;
+          }
+          const hop = getTempHopSourceKey(edge);
+          if (drawnHops.has(hop)) {
+            return false;
+          }
+          drawnHops.add(hop);
+
+          return true;
+        }),
       }
     : {
         ...lineage,

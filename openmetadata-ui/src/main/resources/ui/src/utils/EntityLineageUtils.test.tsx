@@ -2210,6 +2210,55 @@ describe('extractTempLineageNodes (via parseLineageData)', () => {
       expect((hidden.nodes ?? []).some((n) => n.isTempTable)).toBe(false);
     });
 
+    it('draws a temp table shared by two edges once per hop', () => {
+      const lineage = parseLineageData(
+        makeLineageData({
+          e1: {
+            fromEntity: {
+              id: 'id-a',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableA',
+            },
+            toEntity: {
+              id: 'id-b',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableB',
+            },
+            tempLineageTables: [
+              { fromEntity: 'db.tableA', toEntity: 'tmp_staging' },
+              { fromEntity: 'tmp_staging', toEntity: 'db.tableB' },
+            ],
+          },
+          e2: {
+            fromEntity: {
+              id: 'id-c',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableC',
+            },
+            toEntity: {
+              id: 'id-b',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableB',
+            },
+            tempLineageTables: [
+              { fromEntity: 'db.tableC', toEntity: 'tmp_staging' },
+              { fromEntity: 'tmp_staging', toEntity: 'db.tableB' },
+            ],
+          },
+        }),
+        'db.tableA',
+        'db.tableA'
+      );
+
+      expect(
+        edgeKeys(applyTempTableVisibility(lineage, true).edges ?? []).sort()
+      ).toEqual([
+        'db.tableA->tmp_staging',
+        'db.tableC->tmp_staging',
+        'tmp_staging->db.tableB',
+      ]);
+    });
+
     it('does not duplicate the direct edge when a hop joins two real tables', () => {
       const lineage = parseLineageData(
         makeLineageData({
