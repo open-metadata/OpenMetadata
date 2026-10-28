@@ -431,8 +431,8 @@ OpenMetadata compacts the serving dataset itself:
   `GET /$/openmetadata/storage`. When free space falls below `RDF_URGENT_COMPACTION_FREE_PERCENT`,
   or the image's write guard is refusing writes, the next check (every 15 minutes) compacts without
   waiting for the interval. If a compaction cannot bring the store back above that threshold, the
-  live graph itself fills the volume: urgent compactions then pause for an hour, and the server
-  logs that the volume needs expanding.
+  live graph or other datasets fill the volume: urgent compactions then wait for the next scheduled
+  compaction, and the server logs that the volume needs expanding.
 - **During indexing.** A recreate run clears the dataset, compacts it while it is empty, and
   compacts again after loading. Blue/green runs compact the target before promotion.
 
@@ -448,7 +448,9 @@ OpenMetadata's Fuseki images also refuse writes, with HTTP 507 Insufficient Stor
 volume has less free space than `OPENMETADATA_STORAGE_MIN_FREE` (10% by default). TDB2 memory-maps
 its files, so a write on a full volume does not fail cleanly: the JVM gets SIGBUS and exits on every
 restart. The guard keeps the volume from filling and leaves room to compact; OpenMetadata treats its
-refusal like the maintenance pause.
+refusal like the maintenance pause. The images also refuse a compaction, with 507, unless the volume
+has as much free space as the dataset's current generation, because a compaction that fills the
+volume crashes Fuseki in the same way.
 
 Each compaction is logged, and timed by result in `ontology.rdf.compaction`; alert on
 `ontology.rdf.compaction.last.success` falling behind the interval. A compaction that does not

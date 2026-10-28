@@ -339,7 +339,15 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       final String datasetEndpoint, final RDFConnection datasetConnection) {
     final DatasetEndpoint dataset = requireDatasetEndpoint(datasetEndpoint);
     final UnionDefaultGraphProbe probe = UnionDefaultGraphProbe.unique();
-    writeProbe(dataset, datasetConnection, probe);
+    if (writeProbe(dataset, datasetConnection, probe)) {
+      requireProbeVisible(dataset, datasetConnection, probe);
+    }
+  }
+
+  private void requireProbeVisible(
+      final DatasetEndpoint dataset,
+      final RDFConnection datasetConnection,
+      final UnionDefaultGraphProbe probe) {
     final boolean visible;
     try {
       visible = runWithTimeout(() -> askProbe(datasetConnection, probe), READINESS_PROBE);
@@ -353,12 +361,23 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
-  private void writeProbe(
+  /**
+   * Writes the probe triple, or returns false when the store's disk guard refuses it: Fuseki is
+   * reachable but takes no writes until space is freed, and queued writes wait for that.
+   */
+  private boolean writeProbe(
       final DatasetEndpoint dataset,
       final RDFConnection datasetConnection,
       final UnionDefaultGraphProbe probe) {
     try {
       runWriteWithTimeout(() -> datasetConnection.update(probe.write()), READINESS_PROBE);
+      return true;
+    } catch (RdfStorageLowDiskException lowDisk) {
+      LOG.warn(
+          "Fuseki dataset '{}' is below its free-space reserve; its union default graph is checked"
+              + " once it accepts writes again",
+          dataset.datasetName());
+      return false;
     } catch (RdfWriteOutcomeUnknownException exception) {
       // Fuseki may still apply a write the client stopped waiting for.
       removeProbe(dataset, datasetConnection, probe);
