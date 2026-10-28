@@ -3,8 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-28 (initial)
 - **Deciders:** Platform
-- **Guard:** `StorageGuardTest`, `StorageReportTest` (docker/rdf-store), `StorageGuardRefusalTest`,
-  `StorageFactsTest`, `RdfStorageMaintenanceServiceTest`
+- **Guard:** `StorageGuardTest` (docker/rdf-store), `StorageGuardRefusalTest`, `StorageFactsTest`,
+  `RdfStorageMaintenanceServiceTest`
 - **Related:** #36437, ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule
 
 ## Context
@@ -23,34 +23,30 @@ mid-commit; only OpenMetadata knows when compacting is safe.
   `open-metadata/jena`) carry the same storage extension.
 - **The write guard.** While the data volume has less usable space than
   `OPENMETADATA_STORAGE_MIN_FREE` (default `10%`; a percentage of the volume, or a size such as
-  `20g`), every SPARQL update and Graph Store write gets HTTP 503 with
-  `X-OpenMetadata-Storage: low-disk`, `Retry-After: 30`, and a body that starts with
-  `OpenMetadata storage guard`. Nothing is applied. Reads and compaction are never refused. The
-  free space is rechecked at most once a second.
+  `20g`), every SPARQL update and Graph Store write gets HTTP 507 Insufficient Storage, the status
+  RFC 4918 defines for this, and nothing is applied. Reads and compaction are never refused. This
+  is the same idea as Elasticsearch's flood-stage disk watermark.
 - **The storage report.** `GET /$/openmetadata/storage` returns JSON with `totalBytes`,
-  `usableBytes`, `reserveBytes`, `lowOnSpace`, and per dataset `name`, `generation`,
-  `generationBytes` and `orphanedGenerations`.
-- OpenMetadata recognises a refusal by status 503 plus the body marker, because some clients
-  surface only the body. It raises `RdfStorageLowDiskException`, a kind of
+  `usableBytes`, `reserveBytes` and `lowOnSpace`.
+- OpenMetadata maps a 507 to `RdfStorageLowDiskException`, a kind of
   `RdfStorageMaintenanceException`, so a refused write is deferred like a write held back by the
   maintenance pause: it uses no delivery attempt and trips no circuit breaker. Unlike the pause, the
   queue's lag still marks the projection degraded, because a full volume needs attention.
-- **Urgent compaction.** The maintenance check runs every 5 minutes. When the store reports
-  `lowOnSpace`, or free space below `storageMaintenance.urgentFreeSpacePercent` (50), it compacts
-  without waiting for the interval, under the same reindex lock and write pause. An urgent
-  compaction that brings the store back above the threshold frees its slot at once. One that does
-  not shows the live graph itself fills the volume, so urgent compactions then wait one hour and the
-  server logs, at ERROR, that the volume needs expanding.
-- At startup the images delete TDB2 generations older than the serving one, left behind when the
-  server stopped between switching to a compacted copy and deleting the old one. They also disable
-  JVM core dumps, which in production filled the node's disk and evicted the pod.
+- **Urgent compaction.** When a maintenance check finds the store reporting `lowOnSpace`, or free
+  space below `storageMaintenance.urgentFreeSpacePercent` (50), it compacts without waiting for the
+  interval, under the same reindex lock and write pause. An urgent compaction that brings the store
+  back above the threshold frees its slot at once. One that does not shows the live graph itself
+  fills the volume, so urgent compactions then wait one hour and the server logs, at ERROR, that
+  the volume needs expanding.
+- The images start the JVM with `-XX:-CreateCoredumpOnCrash`: a crash core dump is as large as the
+  heap and, in production, filled the node's disk and got the pod evicted.
 
 ## Consequences
 
-- A full volume no longer crashes Fuseki: writes pause in OpenMetadata's durable queue until a
+- A full volume no longer crashes Fuseki: writes wait in OpenMetadata's durable queue until a
   compaction frees space, and resume on their own.
-- The 503 contract, the header, the body marker and the report's JSON shape are shared by both
-  images and the server. Changing any of them needs all three changed together.
+- The 507 contract and the report's JSON shape are shared by both images and the server. Changing
+  either needs all three changed together.
 - A store without the extension reports nothing: OpenMetadata falls back to the scheduled
   compaction alone, and a full volume still crashes it.
 - The reserve only keeps the JVM alive. A compaction needs free space about the size of the live

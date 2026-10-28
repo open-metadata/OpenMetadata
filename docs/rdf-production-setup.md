@@ -429,7 +429,7 @@ OpenMetadata compacts the serving dataset itself:
   reindex lock keeps it from overlapping an indexing run.
 - **When the store runs low.** OpenMetadata's Fuseki images report their volume at
   `GET /$/openmetadata/storage`. When free space falls below `RDF_URGENT_COMPACTION_FREE_PERCENT`,
-  or the image's write guard is refusing writes, the next check (every 5 minutes) compacts without
+  or the image's write guard is refusing writes, the next check (every 15 minutes) compacts without
   waiting for the interval. If a compaction cannot bring the store back above that threshold, the
   live graph itself fills the volume: urgent compactions then pause for an hour, and the server
   logs that the volume needs expanding.
@@ -444,11 +444,11 @@ the projection degraded. Synchronous writes are refused with a retry-later error
 recreate run, may hold that pause. Both run under this budget rather than the per-request timeout:
 Fuseki cannot cancel a `CLEAR`, so a shorter budget would only abandon a clear that still completes.
 
-OpenMetadata's Fuseki images also refuse writes, with HTTP 503, once the volume has less free space
-than `OPENMETADATA_STORAGE_MIN_FREE` (10% by default). TDB2 memory-maps its files, so a write on a
-full volume does not fail cleanly: the JVM gets SIGBUS and exits on every restart. The guard keeps
-the volume from filling and leaves room to compact; OpenMetadata treats its refusal like the
-maintenance pause.
+OpenMetadata's Fuseki images also refuse writes, with HTTP 507 Insufficient Storage, once the
+volume has less free space than `OPENMETADATA_STORAGE_MIN_FREE` (10% by default). TDB2 memory-maps
+its files, so a write on a full volume does not fail cleanly: the JVM gets SIGBUS and exits on every
+restart. The guard keeps the volume from filling and leaves room to compact; OpenMetadata treats its
+refusal like the maintenance pause.
 
 Each compaction is logged, and timed by result in `ontology.rdf.compaction`; alert on
 `ontology.rdf.compaction.last.success` falling behind the interval. A compaction that does not

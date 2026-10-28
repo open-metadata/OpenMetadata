@@ -916,8 +916,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           description,
           timeoutMillis);
     } catch (RuntimeException exception) {
-      // Checked first: the guard's 503 would otherwise read as an uncertain server error, and it
-      // is thrown without its HttpException cause so no failure classifier counts it either.
+      // Checked first: a 507 would otherwise read as an uncertain server error, and the refusal is
+      // thrown without its HttpException cause so no failure classifier counts it either.
       if (isStorageGuardRefusal(exception)) {
         throw new RdfStorageLowDiskException(description);
       }
@@ -940,23 +940,17 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
-  /** Fuseki's storage guard answers 503 naming itself, before the write reaches TDB2. */
+  /** Fuseki's storage guard answers 507 Insufficient Storage before the write reaches TDB2. */
   static boolean isStorageGuardRefusal(final Throwable failure) {
     Throwable cause = failure;
     boolean refused = false;
     while (cause != null && !refused) {
       refused =
-          cause instanceof HttpException http && http.getStatusCode() == 503 && mentionsGuard(http);
+          cause instanceof HttpException http
+              && http.getStatusCode() == RdfStorageLowDiskException.INSUFFICIENT_STORAGE;
       cause = cause.getCause() == cause ? null : cause.getCause();
     }
     return refused;
-  }
-
-  private static boolean mentionsGuard(final HttpException http) {
-    final String body = http.getResponse();
-    final String message = http.getMessage();
-    return (body != null && body.contains(RdfStorageLowDiskException.GUARD_MARKER))
-        || (message != null && message.contains(RdfStorageLowDiskException.GUARD_MARKER));
   }
 
   // Union the translator's static "always managed" predicates with whatever

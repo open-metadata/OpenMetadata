@@ -61,9 +61,7 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
   static final String NEXT_COMPACTION_KEY = "RDF_STORAGE_NEXT_COMPACTION";
   static final String URGENT_COMPACTION_KEY = "RDF_STORAGE_URGENT_COMPACTION";
   static final Duration URGENT_MIN_GAP = Duration.ofHours(1);
-  // A check is one storage report read and one lease attempt. While the write guard refuses writes
-  // they wait for the next check, so it runs often enough to keep that wait short.
-  static final Duration CHECK_INTERVAL = Duration.ofMinutes(5);
+  static final Duration CHECK_INTERVAL = Duration.ofMinutes(15);
   private static final Duration FIRST_CHECK_DELAY = Duration.ofMinutes(5);
   private static final long LOCK_HEARTBEAT_SECONDS = 60;
 

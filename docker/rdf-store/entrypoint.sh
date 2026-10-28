@@ -92,23 +92,4 @@ fi
 mkdir -p "$FUSEKI_BASE/extra"
 cp /fuseki/extensions/openmetadata-fuseki-extensions.jar "$FUSEKI_BASE/extra/"
 
-# TDB2 serves a dataset's highest Data-NNNN generation. A compaction writes the next one, switches to
-# it and only then deletes the old one, so a server stopped in between leaves a full-size copy that
-# nothing reads and nothing would ever delete. Fuseki is not running yet, so removing it is safe.
-for dataset in "${LEGACY_TDB2_DIR}"/*/; do
-  [ -d "$dataset" ] || continue
-  serving=$(find "$dataset" -mindepth 1 -maxdepth 1 -type d -name 'Data-[0-9][0-9][0-9][0-9]' | sort | tail -n 1)
-  [ -n "$serving" ] || continue
-  find "$dataset" -mindepth 1 -maxdepth 1 -type d -name 'Data-[0-9][0-9][0-9][0-9]' | sort |
-    while IFS= read -r generation; do
-      if [ "$generation" != "$serving" ]; then
-        echo "Removing orphaned TDB2 generation $generation; $(basename "$serving") is the one in service" >&2
-        rm -rf -- "$generation"
-      fi
-    done
-done
-
-# A crash core dump is as large as the heap and lands on the node's disk, not the data volume.
-ulimit -c 0
-
 exec "$@"
