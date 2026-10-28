@@ -131,7 +131,10 @@ const EntitySearchSettings = () => {
 
   const rankingConfiguration = useMemo(
     () =>
-      getEffectiveRankingConfiguration(searchConfig, getEntityConfiguration),
+      getEffectiveRankingConfiguration(
+        searchConfig,
+        getEntityConfiguration ?? null
+      ),
     [searchConfig, getEntityConfiguration]
   );
 

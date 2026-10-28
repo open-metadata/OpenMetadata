@@ -102,22 +102,6 @@ BUILDER_PASSWORD_ATTR = "password"
 TIMEDELTA = "timedelta"
 COMPLEX_COLUMN_SEPARATOR = "_##"
 
-ES_SOURCE_TO_ES_OBJ_ARGS = {
-    "caCerts": "ca_certs",
-    "regionName": "region_name",
-    "timeout": "timeout",
-    "useAwsCredentials": "use_AWS_credentials",
-    "useSSL": "use_ssl",
-    "verifyCerts": "verify_certs",
-}
-
-ES_SOURCE_IGNORE_KEYS = {
-    "searchIndexMappingLanguage",
-    "batchSize",
-    "recreateIndex",
-    "type",
-}
-
 QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
 
 QUERY_WITH_DBT = '/* {"app": "dbt"'

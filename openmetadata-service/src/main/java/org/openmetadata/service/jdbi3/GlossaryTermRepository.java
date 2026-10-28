@@ -776,6 +776,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     descriptors.add(
         new PropagationDescriptor(
             FIELD_REVIEWERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null));
+    // Term labels on assets carry a copy of the term's style; propagateToRelatedEntities refreshes
+    // it.
+    descriptors.add(
+        new PropagationDescriptor(
+            Entity.FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     if (SettingsCache.isGlossaryTagPropagationEnabled()) {
       descriptors.add(
           new PropagationDescriptor(
@@ -1715,6 +1720,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(GLOSSARY_TERM);
+  }
+
+  @Override
   public void setFullyQualifiedName(GlossaryTerm entity) {
     // Validate parent
     if (entity.getParent() == null) { // Glossary term at the root of the glossary
@@ -2100,27 +2110,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       oldFqnForRenamedDescendant(oldFqn, newFqn, childNewFqn)
           .ifPresent(childOldFqn -> conversations.updateEntityReference(child, childOldFqn));
     }
-
-    // Task entities key tasks by aboutFqnHash (the about reference itself is stored as a
-    // relationship, not in the task JSON), and it is computed once at creation. Batch the hash
-    // rewrites for the moved term and every nested descendant.
-    Map<String, String> taskFqnHashUpdates = new HashMap<>();
-    taskFqnHashUpdates.put(
-        FullyQualifiedName.buildHash(oldFqn), FullyQualifiedName.buildHash(newFqn));
-    for (GlossaryTerm descendant : getNestedTerms(updated)) {
-      String descendantNewFqn = descendant.getFullyQualifiedName();
-      Optional<String> descendantOldFqn =
-          oldFqnForRenamedDescendant(oldFqn, newFqn, descendantNewFqn);
-      if (descendantOldFqn.isEmpty()) {
-        continue;
-      }
-      taskFqnHashUpdates.put(
-          FullyQualifiedName.buildHash(descendantOldFqn.get()),
-          FullyQualifiedName.buildHash(descendantNewFqn));
-    }
-    updateTaskAboutFqnHashes(taskFqnHashUpdates);
-
-    repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
   }
 
   static Optional<String> oldFqnForRenamedDescendant(
@@ -2462,8 +2451,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     @Override
-    protected void updateTags(
+    protected List<TagLabel> updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      final List<TagLabel> requestedTags = updatedTags;
       // Remove current entity tags in the database. It will be added back later from the merged tag
       // list.
       origTags = listOrEmpty(origTags);
@@ -2497,6 +2487,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         updatedTags.sort(compareTagLabel);
         applyTags(updatedTags, fqn);
       }
+      return updatedTags.isEmpty() ? requestedTags : updatedTags;
     }
 
     private void updateSynonyms(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
@@ -2665,6 +2656,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
     }
 
     /**
@@ -2731,6 +2723,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateAssetIndexes(oldFqn, newFqn);
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
     }
 
     private void validateParent() {

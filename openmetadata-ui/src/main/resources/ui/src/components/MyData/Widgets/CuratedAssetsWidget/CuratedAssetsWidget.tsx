@@ -115,17 +115,28 @@ const CuratedAssetsWidgetContent = ({
   );
 
   const queryFilter = useMemo(
-    () => get(curatedAssetsConfig, 'queryFilter', '{}'),
+    () =>
+      typeof curatedAssetsConfig?.queryFilter === 'string'
+        ? curatedAssetsConfig.queryFilter
+        : '{}',
     [curatedAssetsConfig]
   );
 
   const selectedResource = useMemo(
-    () => get(curatedAssetsConfig, 'resources', []),
+    () =>
+      Array.isArray(curatedAssetsConfig?.resources)
+        ? curatedAssetsConfig.resources.filter(
+            (resource): resource is string => typeof resource === 'string'
+          )
+        : [],
     [curatedAssetsConfig]
   );
 
   const title = useMemo(
-    () => get(curatedAssetsConfig, 'title', ''),
+    () =>
+      typeof curatedAssetsConfig?.title === 'string'
+        ? curatedAssetsConfig.title
+        : '',
     [curatedAssetsConfig]
   );
 
@@ -349,7 +360,16 @@ const CuratedAssetsWidgetContent = ({
 
   const entityListLinkItem = useCallback(
     (item: SearchIndexSearchSourceMapping[SearchIndex]) => {
-      const title = getEntityName(item);
+      const title = getEntityName({
+        name:
+          'name' in item && typeof item.name === 'string'
+            ? item.name
+            : undefined,
+        displayName:
+          'displayName' in item && typeof item.displayName === 'string'
+            ? item.displayName
+            : undefined,
+      });
       const description = get(item, 'description');
       const certification = get(item, 'certification');
 
@@ -357,7 +377,7 @@ const CuratedAssetsWidgetContent = ({
         <Link
           className="curated-assets-list-item-link"
           to={getEntityLinkFromType(
-            item.fullyQualifiedName as string,
+            'fullyQualifiedName' in item ? item.fullyQualifiedName ?? '' : '',
             item.type as EntityType
           )}>
           <div
@@ -403,7 +423,10 @@ const CuratedAssetsWidgetContent = ({
     return isFullSize ? (
       <Grid className="layout-row layout-grid curated-assets-grid">
         {data.map((item) => (
-          <Grid.Item className="layout-column" key={item.id} span={12}>
+          <Grid.Item
+            className="layout-column"
+            key={'id' in item ? item.id : undefined}
+            span={12}>
             {entityListLinkItem(item)}
           </Grid.Item>
         ))}

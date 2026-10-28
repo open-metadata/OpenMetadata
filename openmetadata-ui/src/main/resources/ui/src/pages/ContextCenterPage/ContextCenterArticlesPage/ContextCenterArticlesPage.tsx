@@ -55,11 +55,13 @@ import {
   ARTICLE_SORT_OPTIONS,
   DEFAULT_ARTICLE_SORT_OPTION,
 } from '../../../constants/ContextCenter.constants';
-import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
+import {
+  getKnowledgePageFields,
+  isKnowledgePageFullWidthTab,
+} from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -405,10 +407,10 @@ const ContextCenterArticlesPage = () => {
     );
   };
 
-  const isActivityFeedTab =
-    Boolean(fqn) && page.activeTab === EntityTabs.ACTIVITY_FEED;
+  const isFullWidthTab =
+    Boolean(fqn) && isKnowledgePageFullWidthTab(page.activeTab);
 
-  const leftSidebar = isActivityFeedTab ? null : (
+  const leftSidebar = isFullWidthTab ? null : (
     <KnowledgePagesHierarchy
       activeKey={fqn}
       activePage={page.data}
@@ -421,7 +423,7 @@ const ContextCenterArticlesPage = () => {
   );
 
   const rightSidebar = useMemo(() => {
-    if (isActivityFeedTab || version) {
+    if (isFullWidthTab || version) {
       return null;
     }
 
@@ -430,7 +432,7 @@ const ContextCenterArticlesPage = () => {
     }
 
     return null;
-  }, [isActivityFeedTab, version, isRightPanelOpen, page.rightPanel]);
+  }, [isFullWidthTab, version, isRightPanelOpen, page.rightPanel]);
 
   const centerContent = useMemo(() => {
     if (version) {
@@ -552,7 +554,7 @@ const ContextCenterArticlesPage = () => {
           <Card.Content
             className={classNames(
               'tw:flex-1 tw:min-h-0 tw:overflow-auto',
-              isActivityFeedTab && !version ? 'tw:p-0' : 'tw:p-6 tw:pl-8'
+              isFullWidthTab && !version ? 'tw:p-0' : 'tw:p-6 tw:pl-8'
             )}>
             {centerContent}
           </Card.Content>

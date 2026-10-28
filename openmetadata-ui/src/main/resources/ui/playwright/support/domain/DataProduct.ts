@@ -12,7 +12,11 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
-import { deleteFixtureEntity } from '../../utils/apiResponse';
+import {
+  deleteFixtureEntity,
+  okJson,
+  requireEntityIdentity,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { selectDataProduct } from '../../utils/domain';
 import { getEncodedFqn } from '../../utils/entity';
@@ -37,7 +41,7 @@ export type AssetReference = {
   deleted?: boolean;
 };
 
-type ResponseDataType = {
+type DataProductData = {
   name: string;
   displayName: string;
   description: string;
@@ -49,9 +53,14 @@ type ResponseDataType = {
   dataProductType?: string;
 };
 
+type ResponseDataType = DataProductData & {
+  id: string;
+  fullyQualifiedName: string;
+};
+
 export class DataProduct extends EntityClass {
   id: string;
-  data: ResponseDataType;
+  data: DataProductData;
   private domains: Domain[];
   createDomain = true;
   private subDomains?: SubDomain[];
@@ -111,7 +120,10 @@ export class DataProduct extends EntityClass {
       );
     }
 
-    const data = await response.json();
+    const data = requireEntityIdentity(
+      await okJson<DataProductData>(response, 'DataProduct.create'),
+      'DataProduct.create'
+    );
     this.responseData = data;
 
     return data;
@@ -157,7 +169,6 @@ export class DataProduct extends EntityClass {
     // failedRequest list), not a transport failure, so the caller inspects the
     // body rather than having it raised.
     const data = await response.json();
-    this.responseData = data;
 
     return data;
   }
