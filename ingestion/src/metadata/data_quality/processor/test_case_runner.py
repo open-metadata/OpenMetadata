@@ -60,13 +60,15 @@ logger = test_suite_logger()
 
 def _find_column(columns: list[Column], name: str) -> Column | None:
     """Exact-case name match first, then case-insensitive, mirroring the server's resolution."""
+    fallback = None
+    folded_name = name.casefold()
     for column in columns or []:
-        if column.name.root == name:
+        column_name = column.name.root
+        if column_name == name:
             return column
-    for column in columns or []:
-        if column.name.root.casefold() == name.casefold():
-            return column
-    return None
+        if fallback is None and column_name.casefold() == folded_name:
+            fallback = column
+    return fallback
 
 
 def resolve_column_path(table: Table, column_path: str) -> tuple[Column | None, int]:
