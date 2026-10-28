@@ -170,6 +170,14 @@ const UpdateEntityDataConsumer = () => {
   );
 };
 
+const seenHandlers: ReturnType<typeof useLineageHandlers>[] = [];
+
+const HandlersIdentityConsumer = () => {
+  seenHandlers.push(useLineageHandlers());
+
+  return null;
+};
+
 describe('Lineage integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -296,6 +304,30 @@ describe('Lineage integration', () => {
     expect(state.activeNode?.id).toBe('table1');
     expect(state.selectedNode).toEqual(nodeClickFixture.data.node);
     expect(state.tracedNodes.has('table1')).toBe(true);
+  });
+
+  it('keeps the handlers context value stable when the nodes change', () => {
+    seenHandlers.length = 0;
+    render(
+      <MemoryRouter>
+        <Lineage entityFqn="" isPlatformLineage={false}>
+          <HandlersIdentityConsumer />
+        </Lineage>
+      </MemoryRouter>
+    );
+    const initial = seenHandlers[seenHandlers.length - 1];
+
+    // A node drag replaces `nodes` on every frame; several handlers read them.
+    act(() => {
+      useLineageStore.getState().setNodes([nodeClickFixture]);
+    });
+    act(() => {
+      useLineageStore
+        .getState()
+        .setNodes([{ ...nodeClickFixture, position: { x: 10, y: 20 } }]);
+    });
+
+    expect(seenHandlers[seenHandlers.length - 1]).toBe(initial);
   });
 
   it('updateEntityData imperatively syncs the entity context to the store', async () => {

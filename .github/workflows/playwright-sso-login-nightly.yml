@@ -205,7 +205,10 @@ jobs:
           - name: 'msal-mock'
             env_prefix: 'MSAL_MOCK'
             filter: '--grep @msal-mock'
-            needs_docker: ''
+            # The MSAL SDK stays mocked in-page, but the ID token it hands
+            # the SPA comes from the mock IdP (`/test/id-token`) so the
+            # server verifies it against a real JWKS.
+            needs_docker: 'mock-oidc'
           - name: 'auth0-mock'
             env_prefix: 'AUTH0_MOCK'
             filter: '--grep @auth0-mock'
