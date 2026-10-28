@@ -143,6 +143,7 @@ const PopoverContent: FC<ImagePopoverContentProps> = (props) => {
 };
 
 const useAuthenticatedMediaUrls = (url: string, fileType: FileType) => {
+  // ADR:2026-10-28-block-editor-media-attachments-load-within-200px-of-the-viewport
   const { ref: inViewRef, inView } = useInView({
     triggerOnce: true,
     rootMargin: '200px',
