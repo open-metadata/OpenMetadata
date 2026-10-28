@@ -11,35 +11,12 @@
  *  limitations under the License.
  */
 
-import { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { INBOX_TASK_ID_PARAM } from '../personalSpace.constants';
 
-/** The task the URL names (`?taskId=`), and a setter that replaces or clears it. */
-export const useLinkedTaskId = (): readonly [
-  string | undefined,
-  (taskId?: string) => void
-] => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const setLinkedTaskId = useCallback(
-    (taskId?: string) =>
-      setSearchParams(
-        (params) => {
-          if (taskId) {
-            params.set(INBOX_TASK_ID_PARAM, taskId);
-          } else {
-            params.delete(INBOX_TASK_ID_PARAM);
-          }
+/** The task a link into the inbox names (`?taskId=`), if any. */
+export const useLinkedTaskId = (): string | undefined => {
+  const [searchParams] = useSearchParams();
 
-          return params;
-        },
-        { replace: true }
-      ),
-    [setSearchParams]
-  );
-
-  return [
-    searchParams.get(INBOX_TASK_ID_PARAM) ?? undefined,
-    setLinkedTaskId,
-  ] as const;
+  return searchParams.get(INBOX_TASK_ID_PARAM) ?? undefined;
 };

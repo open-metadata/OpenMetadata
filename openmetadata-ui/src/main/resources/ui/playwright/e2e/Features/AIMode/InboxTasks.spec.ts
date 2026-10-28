@@ -20,9 +20,7 @@ import {
 import { UserClass } from '../../../support/user/UserClass';
 import { okJson, settleAll } from '../../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-  AI_SHELL_TIMEOUT,
   composerEditor,
   createInboxTask,
   createPolicyUser,
@@ -537,36 +535,6 @@ test.describe(
       await expect(panel.getByTestId('task-transition-ack')).toBeVisible();
       await expect(panel.getByTestId('task-approve')).toHaveCount(0);
       await expect(panel.getByTestId('task-reject')).toHaveCount(0);
-    });
-
-    test('keeps the picked task in the URL across a reload', async ({
-      isolatedUserPage: page,
-      queue,
-    }) => {
-      const task = queue.tasks.incident;
-      const { taskId } = await okJson<{ taskId?: string }>(
-        await (
-          await getWorkerAdminAPIContext()
-        ).get(`/api/v1/tasks/${task.id}`),
-        'Read the incident task'
-      );
-      expect(taskId).toBeTruthy();
-      const linked = new RegExp(`[?&]taskId=${task.id}`);
-
-      await visitTriage(page);
-      await openInboxTask(page, task);
-      await expect(page).toHaveURL(linked);
-
-      await page.reload({ waitUntil: 'domcontentloaded' });
-      await expect(page.getByTestId('inbox-page')).toBeVisible({
-        timeout: AI_SHELL_TIMEOUT,
-      });
-      await waitForAllLoadersToDisappear(page);
-
-      const panel = page.getByTestId('task-detail-panel');
-      await expect(panel.getByTestId('task-type-badge')).toHaveText('Incident');
-      await expect(panel).toContainText(String(taskId));
-      await expect(page).toHaveURL(linked);
     });
 
     test('posts, edits and deletes a task comment', async ({
