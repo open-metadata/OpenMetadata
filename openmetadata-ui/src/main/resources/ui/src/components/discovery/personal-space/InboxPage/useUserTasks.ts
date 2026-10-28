@@ -54,11 +54,11 @@ const getAssigneeParam = (user: User) =>
     .filter(Boolean)
     .join(',');
 
-// The server pages tasks by (name, id) ascending. Names (TASK-00042) and UUIDs
-// are single-case ASCII, so a plain string compare agrees with the DB's order.
+// The server pages tasks by (createdAt, id), newest first. UUIDs are
+// single-case ASCII, so a plain string compare agrees with the DB's order.
 const compareKey = (a = '', b = '') => Number(a > b) - Number(a < b);
 const compareTasksInServerOrder = (a: Task, b: Task) =>
-  compareKey(a.name, b.name) || compareKey(a.id, b.id);
+  (b.createdAt ?? 0) - (a.createdAt ?? 0) || compareKey(b.id, a.id);
 
 // Fetch a source's next page only once its buffered tasks are used up.
 const loadSource = async (
