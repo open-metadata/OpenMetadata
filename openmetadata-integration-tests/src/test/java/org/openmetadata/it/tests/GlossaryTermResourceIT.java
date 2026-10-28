@@ -17,6 +17,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -50,15 +52,19 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.DescriptionUpdatePayload;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.ThreadType;
@@ -242,6 +248,30 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // ===================================================================
   // GLOSSARY TERM-SPECIFIC TESTS
   // ===================================================================
+
+  @Test
+  void createMany_deniedCallerCannotCreateTerms(TestNamespace ns) throws Exception {
+    final Glossary glossary = getOrCreateGlossary(ns);
+    final String termName = ns.prefix("bulkDenied");
+    final CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(termName)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Should not be created");
+    final String token = deniedGlossaryOperationToken(ns, "bulkCreate", MetadataOperation.CREATE);
+    final HttpRequest httpRequest =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/glossaryTerms/createMany"))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(List.of(request))))
+            .build();
+    final HttpResponse<String> response =
+        HttpClient.newHttpClient().send(httpRequest, HttpResponse.BodyHandlers.ofString());
+    assertEquals(403, response.statusCode(), response.body());
+    final String fqn = glossary.getFullyQualifiedName() + "." + termName;
+    assertThrows(Exception.class, () -> getEntityByName(fqn));
+  }
 
   @Test
   void post_glossaryTermWithSynonyms_200_OK(TestNamespace ns) {
@@ -1827,6 +1857,82 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     // FQN should have changed to include parent
     assertNotEquals(originalFqn, movedTerm.getFullyQualifiedName());
     assertTrue(movedTerm.getFullyQualifiedName().contains(parent.getName()));
+  }
+
+  // task_entity.aboutFqnHash stores one 32-char hash per FQN level, so eight levels (263 chars)
+  // need more than the varchar(256) the column was created with.
+  @Test
+  void test_createTaskAboutEighthLevelTerm(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "deepTaskGls");
+    GlossaryTerm term = null;
+    for (int level = 2; level <= 8; level++) {
+      term = createChildTerm(glossary, term, "l" + level);
+    }
+
+    Task task = SdkClients.adminClient().tasks().create(descriptionUpdateTask(ns, term));
+
+    assertEquals(List.of(task.getId()), taskIdsAbout(term.getFullyQualifiedName()));
+  }
+
+  @Test
+  void test_moveTermWithTaskToEighthLevel_repointsTask(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "deepMoveGls");
+    GlossaryTerm levelSix = null;
+    for (int level = 2; level <= 6; level++) {
+      levelSix = createChildTerm(glossary, levelSix, "l" + level);
+    }
+    GlossaryTerm newParent = createChildTerm(glossary, levelSix, "l7a");
+    GlossaryTerm term = createChildTerm(glossary, levelSix, "l7b");
+    Task task = SdkClients.adminClient().tasks().create(descriptionUpdateTask(ns, term));
+    String oldFqn = term.getFullyQualifiedName();
+
+    term.setParent(newParent.getEntityReference());
+    GlossaryTerm movedTerm = patchEntity(term.getId().toString(), term);
+
+    assertEquals(newParent.getId(), movedTerm.getParent().getId());
+    assertEquals(List.of(task.getId()), taskIdsAbout(movedTerm.getFullyQualifiedName()));
+    assertTrue(taskIdsAbout(oldFqn).isEmpty());
+  }
+
+  private Glossary createGlossary(TestNamespace ns, String name) {
+    return SdkClients.adminClient()
+        .glossaries()
+        .create(new CreateGlossary().withName(ns.prefix(name)).withDescription("Deep glossary"));
+  }
+
+  private GlossaryTerm createChildTerm(Glossary glossary, GlossaryTerm parent, String name) {
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(name)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Deep glossary term");
+    if (parent != null) {
+      request.withParent(parent.getFullyQualifiedName());
+    }
+    return createEntity(request);
+  }
+
+  private CreateTask descriptionUpdateTask(TestNamespace ns, GlossaryTerm term) {
+    return new CreateTask()
+        .withName(ns.prefix("deep-term-description"))
+        .withCategory(TaskCategory.MetadataUpdate)
+        .withType(TaskEntityType.DescriptionUpdate)
+        .withAbout("<#E::glossaryTerm::%s>".formatted(term.getFullyQualifiedName()))
+        .withPayload(
+            new DescriptionUpdatePayload()
+                .withFieldPath("description")
+                .withCurrentDescription(term.getDescription())
+                .withNewDescription("Updated deep term description"));
+  }
+
+  private List<UUID> taskIdsAbout(String entityFqn) {
+    return SdkClients.adminClient()
+        .tasks()
+        .listWithFilters(Map.of("aboutEntity", entityFqn, "limit", "100"))
+        .getData()
+        .stream()
+        .map(Task::getId)
+        .toList();
   }
 
   @Test
@@ -3981,13 +4087,18 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
    * restricted caller needs an explicit DENY rule — deny wins over the inherited allow.
    */
   private String deniedGlossaryEditToken(TestNamespace ns, String suffix) {
+    return deniedGlossaryOperationToken(ns, suffix, MetadataOperation.EDIT_GLOSSARY_TERMS);
+  }
+
+  private String deniedGlossaryOperationToken(
+      TestNamespace ns, String suffix, MetadataOperation operation) {
     OpenMetadataClient admin = SdkClients.adminClient();
     String prefix = ns.shortPrefix("gtNoEdit_" + suffix);
     Rule deny =
         new Rule()
             .withName("DenyGlossaryTermEdit")
             .withResources(List.of("All"))
-            .withOperations(List.of(MetadataOperation.EDIT_GLOSSARY_TERMS))
+            .withOperations(List.of(operation))
             .withEffect(Rule.Effect.DENY);
     Policy policy =
         admin

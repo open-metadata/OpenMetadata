@@ -87,6 +87,7 @@ import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -752,13 +753,18 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context SecurityContext securityContext,
       @Valid List<CreateGlossaryTerm> creates) {
     List<GlossaryTerm> terms =
-        creates.stream()
-            .map(
-                create ->
-                    mapper.createToEntity(create, securityContext.getUserPrincipal().getName()))
-            .toList();
+        creates.stream().map(create -> authorizedTerm(securityContext, create)).toList();
     List<GlossaryTerm> result = repository.createMany(uriInfo, terms);
     return Response.ok(result).build();
+  }
+
+  private GlossaryTerm authorizedTerm(SecurityContext securityContext, CreateGlossaryTerm create) {
+    GlossaryTerm term = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    CreateResourceContext<GlossaryTerm> context = new CreateResourceContext<>(entityType, term);
+    OperationContext operation = new OperationContext(entityType, MetadataOperation.CREATE);
+    limits.enforceLimits(securityContext, context, operation);
+    authorizer.authorize(securityContext, operation, context);
+    return term;
   }
 
   @PATCH

@@ -546,7 +546,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       for (MlFeature updatedFeature : listOrEmpty(updatedModel.getMlFeatures())) {
         MlFeature storedFeature =
             listOrEmpty(origModel.getMlFeatures()).stream()
-                .filter(feature -> mlFeatureMatch.test(feature, updatedFeature))
+                .filter(feature -> feature.getName().equals(updatedFeature.getName()))
                 .findAny()
                 .orElse(null);
         if (storedFeature == null) {
@@ -554,6 +554,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         }
 
         updateMlFeatureDescription(storedFeature, updatedFeature);
+        updatedFeature.setTags(
+            updateTags(
+                storedFeature.getFullyQualifiedName(),
+                EntityUtil.getFieldName("mlFeatures", updatedFeature.getName(), Entity.FIELD_TAGS),
+                storedFeature.getTags(),
+                updatedFeature.getTags()));
       }
     }
 

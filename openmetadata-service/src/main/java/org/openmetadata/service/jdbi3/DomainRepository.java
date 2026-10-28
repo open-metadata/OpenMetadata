@@ -65,6 +65,7 @@ import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -121,6 +122,11 @@ public class DomainRepository extends EntityRepository<Domain> {
     fieldFetchers.put(FIELD_PARENT, this::fetchAndSetParents);
     fieldFetchers.put(FIELD_EXPERTS, this::fetchAndSetExperts);
     fieldFetchers.put(FIELD_CHILDREN_COUNT, this::fetchAndSetChildrenCount);
+  }
+
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    return relabeledByReference(super.getSearchPropagationDescriptors());
   }
 
   @Override
@@ -772,6 +778,11 @@ public class DomainRepository extends EntityRepository<Domain> {
     super.restorePatchAttributes(original, updated);
     updated.withParent(original.getParent()); // Parent can't be changed
     updated.withChildren(original.getChildren()); // Children can't be changed
+  }
+
+  @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(DOMAIN);
   }
 
   @Override

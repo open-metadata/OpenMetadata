@@ -67,6 +67,7 @@ VERSIONS = {
     "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy>=3.8.2,<3.9",
+    "preshed": "preshed<3.0.14",  # 3.0.14 rejects unsigned 64-bit spaCy tokenizer hashes.
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
@@ -78,7 +79,7 @@ VERSIONS = {
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
-    "teradata": "teradatasqlalchemy==20.0.0.2",
+    "teradata": "teradatasqlalchemy==20.0.0.9",
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
@@ -360,8 +361,11 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "iomete": {
         "iomete-sqlalchemy>=1.0.22",
-        "adbc-driver-flightsql",
-        "adbc-driver-manager",
+        # ADBC 1.13 requires Python >=3.11; retain 1.12 for Python 3.10 compatibility.
+        "adbc-driver-flightsql==1.12.0; python_version < '3.11'",
+        "adbc-driver-flightsql>=1.13.0; python_version >= '3.11'",
+        "adbc-driver-manager==1.12.0; python_version < '3.11'",
+        "adbc-driver-manager>=1.13.0; python_version >= '3.11'",
     },
     "impala": {
         "presto-types-parser>=0.0.2",
@@ -440,6 +444,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
         VERSIONS["spacy"],
+        VERSIONS["preshed"],
         VERSIONS["presidio-analyzer"],
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
@@ -455,7 +460,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "ssrs": {"requests-ntlm"},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
-    "teradata": {VERSIONS["teradata"]},
+    "teradata": {VERSIONS["teradata"], "teradatasql>=20.0.0.72"},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5", DATA_DIFF["vertica"]},
     # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
@@ -464,11 +469,12 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "pyarrow": {VERSIONS["pyarrow"]},
     "pii-processor": {
         VERSIONS["spacy"],
+        VERSIONS["preshed"],
         VERSIONS["pandas"],
         VERSIONS["numpy"],
         VERSIONS["presidio-analyzer"],
     },
-    "presidio-analyzer": {VERSIONS["presidio-analyzer"]},
+    "presidio-analyzer": {VERSIONS["presidio-analyzer"], VERSIONS["preshed"]},
 }
 
 dev = {

@@ -64,18 +64,26 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
     [node.id]
   );
 
+  // Temp tables have no service / database / schema to show, so their
+  // breadcrumb would only be empty separators.
   const breadcrumbItems = useMemo(
     () =>
-      getEntityBreadcrumbs(
-        node as unknown as Table,
-        node.entityType as EntityType,
-        false
-      ).map((breadcrumb, index) => ({
-        id: `${index}-${breadcrumb.name}`,
-        label: (
-          <span className="lineage-breadcrumb-item">{breadcrumb.name}</span>
-        ),
-      })),
+      node.isTempTable
+        ? []
+        : getEntityBreadcrumbs(
+            node as unknown as Table,
+            node.entityType as EntityType,
+            false
+          )
+            .filter((breadcrumb) => Boolean(breadcrumb.name))
+            .map((breadcrumb, index) => ({
+              id: `${index}-${breadcrumb.name}`,
+              label: (
+                <span className="lineage-breadcrumb-item">
+                  {breadcrumb.name}
+                </span>
+              ),
+            })),
     [node]
   );
 
@@ -83,10 +91,12 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
 
   return (
     <div
-      className={classNames(
-        'items-center entity-label-container',
-        childrenCount > 0 ? 'with-footer' : ''
-      )}>
+      className={classNames('items-center entity-label-container', {
+        'with-footer': childrenCount > 0,
+        // Temp nodes have no breadcrumb or footer to fill the bottom of the
+        // leaf layout's top-weighted padding, so centre the name instead.
+        'tw:flex tw:items-center tw:py-3!': node.isTempTable,
+      })}>
       <div className="d-flex items-center flex-auto">
         {!node.isTempTable && (
           <div className="d-flex entity-service-icon m-r-xs">
@@ -105,13 +115,15 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
             {entityName}
           </Typography>
 
-          <Breadcrumbs
-            autoCollapse
-            className="m-b-xs lineage-breadcrumbs"
-            data-testid="lineage-breadcrumbs"
-            items={breadcrumbItems}
-            size="xs"
-          />
+          {breadcrumbItems.length > 0 && (
+            <Breadcrumbs
+              autoCollapse
+              className="m-b-xs lineage-breadcrumbs"
+              data-testid="lineage-breadcrumbs"
+              items={breadcrumbItems}
+              size="xs"
+            />
+          )}
         </Box>
         {!showDeletedIcon && showDbtIcon && (
           <div className="m-r-xs" data-testid="dbt-icon">

@@ -149,7 +149,7 @@ public class HtmlTemplates {
               <h1>Welcome to OpenMetadata</h1>
               <p class="subtitle">%s is requesting access to your account</p>
               %s
-              <form method="POST" action="/mcp/login">
+              <form method="POST" action="login">
                   <input type="hidden" name="csrf_token" value="%s">
 
                   <label for="username">Email <span class="required">*</span></label>
