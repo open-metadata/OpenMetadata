@@ -14,6 +14,7 @@
 package org.openmetadata.service.alerting;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.NotificationTemplateRenderRequest;
@@ -38,6 +39,7 @@ import org.openmetadata.service.alerting.content.preview.MockChangeEventFactory;
 import org.openmetadata.service.alerting.content.preview.MockChangeEventRegistry;
 import org.openmetadata.service.alerting.content.render.ChannelRenderer;
 import org.openmetadata.service.alerting.content.render.NotificationMessage;
+import org.openmetadata.service.alerting.content.render.RenderBudgetExceededException;
 import org.openmetadata.service.alerting.content.template.HandlebarsNotificationTemplateProcessor;
 import org.openmetadata.service.alerting.content.template.NotificationTemplateProcessor;
 
@@ -165,25 +167,33 @@ public final class TemplatePreview {
             .withName("test-notification")
             .withDisplayName("Test Notification Template");
 
-    TestSends.toEach(
-        request.getDestinations(),
-        dest -> sendAndLog(mockEvent, testSubscription, dest, testTemplate),
-        TemplatePreview::logTimedOut);
+    List<Optional<String>> tooLarge =
+        TestSends.toEach(
+            request.getDestinations(),
+            dest -> sendAndLog(mockEvent, testSubscription, dest, testTemplate),
+            TemplatePreview::logTimedOut);
 
-    return validation;
+    return tooLarge.stream()
+        .flatMap(Optional::stream)
+        .findFirst()
+        .map(reason -> validation.withIsValid(false).withBodyError(reason))
+        .orElse(validation);
   }
 
   // Delivery errors are logged only, as before: the response carries the template's validation.
-  private Boolean sendAndLog(
+  // A message too large for its channel is the template's own, so it is answered as a body error.
+  private Optional<String> sendAndLog(
       ChangeEvent event,
       EventSubscription subscription,
       SubscriptionDestination dest,
       NotificationTemplate template) {
-    boolean sent = false;
+    Optional<String> tooLarge = Optional.empty();
     try {
       sendToDestination(event, subscription, dest, template);
       LOG.info("Successfully sent test notification to {} destination", dest.getType());
-      sent = true;
+    } catch (RenderBudgetExceededException e) {
+      tooLarge =
+          Optional.of(String.format("Too large to send to %s: %s", dest.getType(), e.getMessage()));
     } catch (Exception e) {
       LOG.error(
           "Failed to send test notification to {} destination: {}",
@@ -191,15 +201,15 @@ public final class TemplatePreview {
           e.getMessage(),
           e);
     }
-    return sent;
+    return tooLarge;
   }
 
-  private static Boolean logTimedOut(SubscriptionDestination dest) {
+  private static Optional<String> logTimedOut(SubscriptionDestination dest) {
     LOG.error(
         "Test notification to {} destination timed out after {} s",
         dest.getType(),
         TestSends.DEADLINE.toSeconds());
-    return false;
+    return Optional.empty();
   }
 
   private void validateExternalDestinations(List<SubscriptionDestination> destinations) {
