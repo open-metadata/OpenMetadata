@@ -16,6 +16,7 @@ import {
   TrackedAsset,
   useOwnedAndFollowed,
 } from '../../../../hooks/useOwnedAndFollowed';
+import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import YoursAndFollowedWidget from './YoursAndFollowedWidget';
 
 jest.mock('react-i18next', () => ({
@@ -26,6 +27,11 @@ jest.mock('react-i18next', () => ({
 }));
 
 const mockNavigate = jest.fn();
+let mockIsAiMode = false;
+
+jest.mock('../../../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode,
+}));
 
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
@@ -122,7 +128,11 @@ const renderWidget = (state: Partial<OwnedAndFollowed> = {}) => {
 };
 
 describe('YoursAndFollowedWidget', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockIsAiMode = false;
+    usePersonalSpaceStore.setState({ activePanel: null, myDataTab: 'owned' });
+  });
 
   // The counts used to be the length of the five-row page on screen.
   it('reports the real totals, not the rows on screen', () => {
@@ -165,6 +175,33 @@ describe('YoursAndFollowedWidget', () => {
     fireEvent.click(screen.getByTestId('action'));
 
     expect(mockNavigate).toHaveBeenCalledWith('/users/ada/following');
+  });
+
+  it('opens the My Data & Following modal on the matching tab in AI mode', () => {
+    mockIsAiMode = true;
+    renderWidget();
+
+    fireEvent.click(screen.getByTestId('yours-and-followed-filter-following'));
+    fireEvent.click(screen.getByTestId('action'));
+
+    expect(usePersonalSpaceStore.getState()).toMatchObject({
+      activePanel: 'my-data',
+      myDataTab: 'following',
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('opens the modal on My Data from the Owned pill in AI mode', () => {
+    mockIsAiMode = true;
+    usePersonalSpaceStore.setState({ myDataTab: 'following' });
+    renderWidget();
+
+    fireEvent.click(screen.getByTestId('action'));
+
+    expect(usePersonalSpaceStore.getState()).toMatchObject({
+      activePanel: 'my-data',
+      myDataTab: 'owned',
+    });
   });
 
   it('opens on the followed assets when the user owns nothing', () => {

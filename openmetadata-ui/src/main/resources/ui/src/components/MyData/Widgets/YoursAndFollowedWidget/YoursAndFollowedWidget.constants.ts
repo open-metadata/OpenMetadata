@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { MyDataTab } from '../../../../hooks/usePersonalSpaceStore';
 import { UserPageTabs } from '../../../Settings/Users/Users.interface';
 
 export enum TrackedFilter {
@@ -21,7 +22,9 @@ export enum TrackedFilter {
 export interface TrackedListConfig {
   pillLabelKey: string;
   viewAllEntityKey: string;
-  /** The user-profile tab that holds the full list. */
+  /** The My Data & Following modal tab that holds the full list (AI mode). */
+  myDataTab: MyDataTab;
+  /** The user-profile tab that holds the full list (Classic mode). */
   profileTab: UserPageTabs;
   listTestId: string;
 }
@@ -29,12 +32,14 @@ export interface TrackedListConfig {
 export const TRACKED_LISTS: Record<TrackedFilter, TrackedListConfig> = {
   [TrackedFilter.OWNED]: {
     listTestId: 'owned-assets',
+    myDataTab: 'owned',
     pillLabelKey: 'label.owned',
     profileTab: UserPageTabs.MY_DATA,
     viewAllEntityKey: 'label.owned-asset-plural',
   },
   [TrackedFilter.FOLLOWING]: {
     listTestId: 'followed-assets',
+    myDataTab: 'following',
     pillLabelKey: 'label.following',
     profileTab: UserPageTabs.FOLLOWING,
     viewAllEntityKey: 'label.followed-asset-plural',

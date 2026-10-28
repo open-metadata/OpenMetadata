@@ -19,7 +19,9 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useOwnedAndFollowed } from '../../../../hooks/useOwnedAndFollowed';
+import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import TopicCard from '../Common/TopicWidget/TopicCard';
@@ -55,6 +57,8 @@ const YoursAndFollowedWidget: React.FC<YoursAndFollowedWidgetProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const currentUser = useApplicationStore((state) => state.currentUser);
+  const isAiMode = useIsAiMode();
+  const openPersonalSpace = usePersonalSpaceStore((state) => state.open);
   const [pickedFilter, setPickedFilter] = useState<TrackedFilter>();
   const {
     owned,
@@ -93,10 +97,12 @@ const YoursAndFollowedWidget: React.FC<YoursAndFollowedWidgetProps> = ({
         label: t('label.view-all-entity', {
           entity: t(list.viewAllEntityKey),
         }),
-        // The full lists live on the user's own profile; the landing page is
-        // where this card already is.
+        // The full lists live in the My Data & Following modal; only the AI
+        // shell mounts it, so Classic mode keeps the profile tabs.
         onPress: () =>
-          navigate(getUserPath(currentUser?.name ?? '', list.profileTab)),
+          isAiMode
+            ? openPersonalSpace('my-data', list.myDataTab)
+            : navigate(getUserPath(currentUser?.name ?? '', list.profileTab)),
       }}
       bodyClassName={TOPIC_FILTERED_BODY_CLASSES}
       emptyState={emptyState}
