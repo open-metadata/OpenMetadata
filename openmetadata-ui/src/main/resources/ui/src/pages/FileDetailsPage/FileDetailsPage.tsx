@@ -12,7 +12,7 @@
  */
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { get, isUndefined, omitBy, toString } from 'lodash';
+import { isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -144,7 +144,7 @@ function FileDetailsPage() {
   const followFile = async () => {
     try {
       const res = await addDriveAssetFollower(fileId, USERId, EntityType.FILE);
-      const { newValue } = get(res, 'changeDescription.fieldsAdded[0]', {});
+      const newValue = res.changeDescription?.fieldsAdded?.[0]?.newValue ?? [];
       setFileDetails((prev) => ({
         ...prev,
         followers: [...(prev?.followers ?? []), ...newValue],

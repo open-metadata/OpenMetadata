@@ -62,7 +62,7 @@ export const GenericTab = ({ type }: GenericTabProps) => {
         </div>
       );
     });
-  }, [layout, type]);
+  }, [layout, type, handleHeightChange]);
 
   // For default tabs we have rigid layout where we are not applying any bg to container
   // So we need to check if left panel is present to apply bg to container
@@ -83,7 +83,7 @@ export const GenericTab = ({ type }: GenericTabProps) => {
       autoSize
       useCSSTransforms
       verticalCompact
-      className={classNames('grid-container flat-left-panel', {
+      className={classNames('grid-container', {
         'custom-tab': !leftSideWidgetPresent,
         'height-auto': type === PageType.Glossary,
       })}

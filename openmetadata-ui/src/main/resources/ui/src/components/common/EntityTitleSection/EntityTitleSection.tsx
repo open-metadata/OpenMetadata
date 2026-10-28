@@ -72,7 +72,15 @@ const patchEntityDisplayName = async (
   );
 
   if (onDisplayNameUpdate) {
-    onDisplayNameUpdate(response.displayName || displayName || '');
+    const updatedDisplayName =
+      typeof response === 'object' &&
+      response !== null &&
+      'displayName' in response
+        ? response.displayName
+        : undefined;
+    const responseDisplayName =
+      typeof updatedDisplayName === 'string' ? updatedDisplayName : undefined;
+    onDisplayNameUpdate(responseDisplayName || displayName || '');
   }
 };
 

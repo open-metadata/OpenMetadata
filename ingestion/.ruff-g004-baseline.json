@@ -2984,9 +2984,6 @@
       "5c58fc540d32e15f9af5030abc74b1f3269d5ce9a1181801c565e16b620f2979": 1,
       "9b3b86658c58831ba062cdab38fe8424a093792fd1411584ad84115d4891eb16": 1
     },
-    "ingestion/tests/integration/great_expectations/test_great_expectation_integration.py": {
-      "3e6839a27270f43dd9a4839573cc9ea21b4b77bd917c68c97d6e88d4b2436f7a": 2
-    },
     "ingestion/tests/load/test_resources/all_resources.py": {
       "0b161019e5e476cd0c464807cf94b7d24c333e2a02bb92fa90bd0f4d1f95a912": 1
     },

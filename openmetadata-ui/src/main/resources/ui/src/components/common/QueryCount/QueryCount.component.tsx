@@ -14,15 +14,12 @@ import { Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
-import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { searchQuery } from '../../../rest/searchAPI';
 import { createQueryFilter } from '../../../utils/Query/QueryUtils';
 
 const QueryCount = ({ tableId }: { tableId: string }) => {
   const { t } = useTranslation();
-  const location = useCustomLocation();
   const [queryCount, setQueryCount] = useState({
     isLoading: false,
     count: 0,
@@ -47,8 +44,7 @@ const QueryCount = ({ tableId }: { tableId: string }) => {
     }
   };
   useEffect(() => {
-    const isTourPage = location.pathname.includes(ROUTES.TOUR);
-    if (tableId && !isTourPage) {
+    if (tableId) {
       fetchQueryCount();
     }
   }, [tableId]);

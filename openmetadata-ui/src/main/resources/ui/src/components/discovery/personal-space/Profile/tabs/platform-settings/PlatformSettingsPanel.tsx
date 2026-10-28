@@ -58,6 +58,7 @@ import PlatformSettingsLanding from './PlatformSettingsLanding';
 import ProfilerSettings from './ProfilerSettings';
 import ProfilerSettingsForm from './ProfilerSettingsForm';
 import EntitySearchSettings from './search/EntitySearchSettings';
+import FieldValueBoostForm from './search/FieldValueBoostForm';
 import SearchSettingsView from './search/SearchSettingsView';
 import TableSchemaSettings from './TableSchemaSettings';
 import TableSchemaSettingsForm from './TableSchemaSettingsForm';
@@ -124,6 +125,7 @@ const FORM_PAGES: Partial<
   'app-mode': (props) => <AppModeSettingsForm {...props} />,
   'table-schema': (props) => <TableSchemaSettingsForm {...props} />,
   'time-format': (props) => <TimeFormatSettingsForm {...props} />,
+  search: (props) => <FieldValueBoostForm {...props} />,
 };
 
 const isFormView = (view: PlatformSettingsView) =>
@@ -260,6 +262,8 @@ const PlatformSettingsPanel = ({
         showHint,
         onNavigate,
         itemId: view.itemId,
+        savedState: savedPageStates[view.page],
+        onSaveState: savePageState,
       });
     }
 

@@ -20,7 +20,6 @@ import { ENTITY_PATH } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { EntityReference } from '../../generated/entity/type';
@@ -344,7 +343,6 @@ export const DataAssetSummaryPanelV1 = ({
       ),
     [entityPermissions, dataAsset.deleted]
   );
-  const { isTourPage } = useTourProvider();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState<boolean>(false);
   const [statusCounts, setStatusCounts] = useState<TestCaseStatusCounts>({
     success: 0,
@@ -395,10 +393,9 @@ export const DataAssetSummaryPanelV1 = ({
     };
   }, [isColumnEntity, entityType, dataAsset.id, dataAsset.fullyQualifiedName]);
 
-  // An empty id disables the fetch: the tour's entity has no server-side change history.
   const { changeSummary } = useChangeSummary(
     changeSummaryEntityType,
-    isTourPage ? '' : changeSummaryEntityId,
+    changeSummaryEntityId,
     changeSummaryParams
   );
 
@@ -526,7 +523,7 @@ export const DataAssetSummaryPanelV1 = ({
 
   const init = useCallback(async () => {
     // Do not reset permissions to null when id is temporarily missing during re-renders
-    if (!dataAsset.id || isTourPage) {
+    if (!dataAsset.id) {
       return;
     }
 
@@ -571,13 +568,7 @@ export const DataAssetSummaryPanelV1 = ({
       dataAsset.id
     );
     setEntityPermissions(permissions);
-  }, [
-    dataAsset.id,
-    dataAsset.entityType,
-    entityType,
-    isTourPage,
-    getEntityPermission,
-  ]);
+  }, [dataAsset.id, dataAsset.entityType, entityType, getEntityPermission]);
 
   useEffect(() => {
     if (entityPermissions) {
