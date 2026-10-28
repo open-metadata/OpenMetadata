@@ -6502,18 +6502,41 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return JsonStorageUtils.sanitizeNulCharacters(storageJsonNode(entity).toString());
   }
 
-  protected String serializeForVersionHistory(T entity) {
+  /** Fields of this entity type that no version shows, besides the ones its schema masks. */
+  protected List<String> getFieldsHiddenFromHistory() {
+    return Collections.emptyList();
+  }
+
+  /** Stores each entity as the version it was before an update. The only writer of versions. */
+  protected final void storeVersions(final List<T> originals) {
+    if (originals.isEmpty()) {
+      return;
+    }
+    final List<UUID> ids = new ArrayList<>(originals.size());
+    final List<String> extensions = new ArrayList<>(originals.size());
+    final List<String> jsons = new ArrayList<>(originals.size());
+    for (T original : originals) {
+      ids.add(original.getId());
+      extensions.add(EntityUtil.getVersionExtension(entityType, original.getVersion()));
+      jsons.add(serializeForVersionHistory(original));
+    }
+    daoCollection.entityExtensionDAO().insertMany(ids, extensions, entityType, jsons);
+  }
+
+  final String serializeForVersionHistory(final T entity) {
     return withoutFieldsHiddenFromHistory(JsonUtils.pojoToJson(entity));
   }
 
   /**
-   * Fields no version of this entity shows: the ones its schema marks secret as a whole. Versions
-   * are stored without them, and every read of a version or of the entity history leaves them out,
-   * older rows included. A field that only holds secrets inside it, such as a service connection,
-   * stays; its resource masks those secrets for each caller.
+   * Fields no version of this entity shows: the ones its schema marks secret as a whole, and the
+   * ones its repository hides. Versions are stored without them, and every read of a version or of
+   * the entity history leaves them out, older rows included. A field that only holds secrets inside
+   * it, such as a service connection, stays; its resource masks those secrets for each caller.
    */
   private List<String> fieldsHiddenFromHistory() {
-    return MaskedFields.wholeFieldsOf(entityClass);
+    final List<String> hidden = new ArrayList<>(MaskedFields.wholeFieldsOf(entityClass));
+    hidden.addAll(getFieldsHiddenFromHistory());
+    return hidden;
   }
 
   private String withoutFieldsHiddenFromHistory(final String versionJson) {
@@ -8680,23 +8703,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
     try (var ignored = phase(phasePrefix + "VersionHistory")) {
-      List<UUID> historyIds = new ArrayList<>();
-      List<String> historyExtensions = new ArrayList<>();
-      List<String> historyJsons = new ArrayList<>();
-      for (EntityUpdater u : changed) {
-        if (u.isVersionChanged()) {
-          historyIds.add(u.getOriginal().getId());
-          historyExtensions.add(
-              EntityUtil.getVersionExtension(entityType, u.getOriginal().getVersion()));
-          historyJsons.add(serializeForVersionHistory(u.getOriginal()));
-        }
-      }
-      if (!historyIds.isEmpty()) {
-        daoCollection
-            .entityExtensionDAO()
-            .insertMany(historyIds, historyExtensions, entityType, historyJsons);
-      }
+      storeVersions(originalsOfNewVersions(changed));
     }
+  }
+
+  private List<T> originalsOfNewVersions(final List<EntityUpdater> updaters) {
+    return updaters.stream()
+        .filter(EntityUpdater::isVersionChanged)
+        .map(EntityUpdater::getOriginal)
+        .toList();
   }
 
   public final void addRelationship(
@@ -12342,11 +12357,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     private void storeEntityHistory() {
-      String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
-      daoCollection
-          .entityExtensionDAO()
-          .insert(
-              original.getId(), extensionName, entityType, serializeForVersionHistory(original));
+      storeVersions(List.of(original));
     }
 
     private void removeEntityHistory(Double version) {
@@ -14482,11 +14493,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     updated.setUpdatedBy(updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
 
-    // Store history of the previous version
-    String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
-    daoCollection
-        .entityExtensionDAO()
-        .insert(original.getId(), extensionName, entityType, serializeForVersionHistory(original));
+    storeVersions(List.of(original));
 
     // Directly update the entity in the database without calling other versioning methods
     dao.update(updated.getId(), updated.getFullyQualifiedName(), JsonUtils.pojoToJson(updated));
@@ -14816,23 +14823,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Batch DB writes
     try {
       try (var ignored = phase("batchDbWrites")) {
-        // Batch version history inserts
-        List<UUID> historyIds = new ArrayList<>();
-        List<String> historyExtensions = new ArrayList<>();
-        List<String> historyJsons = new ArrayList<>();
-        for (EntityUpdater updater : changedUpdaters) {
-          if (updater.isVersionChanged()) {
-            historyIds.add(updater.getOriginal().getId());
-            historyExtensions.add(
-                EntityUtil.getVersionExtension(entityType, updater.getOriginal().getVersion()));
-            historyJsons.add(JsonUtils.pojoToJson(updater.getOriginal()));
-          }
-        }
-        if (!historyIds.isEmpty()) {
-          daoCollection
-              .entityExtensionDAO()
-              .insertMany(historyIds, historyExtensions, entityType, historyJsons);
-        }
+        storeVersions(originalsOfNewVersions(changedUpdaters));
 
         // Batch entity row updates
         List<T> entitiesToStore = new ArrayList<>();

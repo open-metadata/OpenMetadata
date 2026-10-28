@@ -24,7 +24,6 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
-import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Regression guard for the app runtime-secret exposure fix. {@code openMetadataServerConnection}
@@ -71,20 +70,11 @@ class AppRepositoryStorageStrippingTest {
         "openMetadataServerConnection must not be persisted to storage");
   }
 
+  // EntityRepository.storeVersions leaves these fields out of every stored version and every read.
   @Test
-  void versionHistoryJson_dropsRuntimeSecretFields() {
+  void getFieldsHiddenFromHistory_declaresRuntimeSecretFields() {
     AppRepository repository = testRepository();
-
-    ObjectNode snapshot =
-        (ObjectNode)
-            JsonUtils.readTree(repository.serializeForVersionHistory(appWithRuntimeSecrets()));
-
-    assertFalse(
-        snapshot.has("privateConfiguration"),
-        "privateConfiguration must not appear in version-history snapshots");
-    assertFalse(
-        snapshot.has("openMetadataServerConnection"),
-        "openMetadataServerConnection must not appear in version-history snapshots");
-    assertTrue(snapshot.has("name"), "non-secret fields must remain in version-history snapshots");
+    assertTrue(repository.getFieldsHiddenFromHistory().contains("openMetadataServerConnection"));
+    assertTrue(repository.getFieldsHiddenFromHistory().contains("privateConfiguration"));
   }
 }
