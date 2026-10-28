@@ -14,9 +14,9 @@
 import { Form, Select, SimpleModal } from '@openmetadata/ui-core-components';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getSeverityLabel } from './Severity.utils';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { SeverityModalProps } from './Severity.interface';
+import { getSeverityLabel } from './Severity.utils';
 
 const NO_SEVERITY = 'none';
 

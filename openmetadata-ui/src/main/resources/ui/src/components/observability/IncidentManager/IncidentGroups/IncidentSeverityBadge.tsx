@@ -13,8 +13,8 @@
 
 import { Badge } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import { getSeverityLabel } from '../../../DataQuality/IncidentManager/Severity/Severity.utils';
 import { Severities } from '../../../../generated/tests/testCaseIncidentGroup';
+import { getSeverityLabel } from '../../../DataQuality/IncidentManager/Severity/Severity.utils';
 import { INCIDENT_GROUP_SEVERITY_COLOR } from './IncidentGroups.constants';
 
 /**

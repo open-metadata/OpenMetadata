@@ -16,7 +16,6 @@ import classNames from 'classnames';
 import { toLower } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getSeverityLabel } from './Severity.utils';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -28,6 +27,7 @@ import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import '../incident-manager.style.less';
 import InlineSeverity from './InlineSeverity.component';
 import { SeverityProps } from './Severity.interface';
+import { getSeverityLabel } from './Severity.utils';
 import SeverityModal from './SeverityModal.component';
 
 const Severity = ({

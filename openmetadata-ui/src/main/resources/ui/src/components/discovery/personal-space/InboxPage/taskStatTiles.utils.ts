@@ -20,12 +20,12 @@ import {
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { TagUpdatePayload } from '../../../../generated/type/tagUpdatePayload';
 import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseResolutionPayload';
-import { getSeverityLabel } from '../../../DataQuality/IncidentManager/Severity/Severity.utils';
 import { getElapsedTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Fqn from '../../../../utils/Fqn';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { getTagsWithoutTier } from '../../../../utils/TablePureUtils';
+import { getSeverityLabel } from '../../../DataQuality/IncidentManager/Severity/Severity.utils';
 import { StatTile, TaskAboutEntity } from './taskDetail.types';
 import { getTaskStatusBadge } from './taskResolution.utils';
 

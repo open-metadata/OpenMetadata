@@ -14,11 +14,11 @@
 import { Dropdown, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getSeverityLabel } from './Severity.utils';
 import { SEVERITY_COLORS } from '../../../../constants/Color.constants';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { ChipTrigger } from '../TestCaseStatus/InlineIncidentStatus/ChipTrigger.component';
 import { InlineSeverityProps } from './Severity.interface';
+import { getSeverityLabel } from './Severity.utils';
 
 const SELECTED_ITEM_CLASS =
   'tw:[&[data-selected]>div]:!bg-brand-solid tw:[&[data-selected]>div_*]:!text-white';

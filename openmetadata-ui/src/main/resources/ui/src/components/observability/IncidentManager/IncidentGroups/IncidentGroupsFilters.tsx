@@ -24,7 +24,6 @@ import {
 } from '@tanstack/react-query';
 import { ReactNode, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getSeverityLabel } from '../../../DataQuality/IncidentManager/Severity/Severity.utils';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -38,6 +37,7 @@ import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceU
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import DateRangeFilter from '../../../common/DateRangeFilter/DateRangeFilter';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { getSeverityLabel } from '../../../DataQuality/IncidentManager/Severity/Severity.utils';
 import { useIncidentFilterOptions } from '../../../IncidentManager/useIncidentFilterOptions';
 import {
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
