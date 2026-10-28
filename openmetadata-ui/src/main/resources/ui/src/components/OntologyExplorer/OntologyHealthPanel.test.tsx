@@ -12,9 +12,15 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { OntologyNode } from './OntologyExplorer.interface';
 import OntologyHealthPanel from './OntologyHealthPanel';
 import { OntologyHealthSummary } from './OntologyStudio.utils';
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 const isolatedTerms: OntologyNode[] = [
   { id: 'term-1', label: 'Account', type: 'glossaryTerm' },
@@ -108,5 +114,34 @@ describe('OntologyHealthPanel', () => {
     fireEvent.click(screen.getByTestId('ontology-health-restore'));
 
     expect(screen.getByText('label.ontology-health')).toBeInTheDocument();
+  });
+
+  describe('in AI mode', () => {
+    beforeEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(false);
+    });
+
+    it('keeps the review, minimise and connect controls working', () => {
+      const onConnect = jest.fn();
+      render(<OntologyHealthPanel health={health} onConnect={onConnect} />);
+
+      expect(screen.getByText('60%')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('ontology-health-review'));
+      fireEvent.click(screen.getByTestId('ontology-connect-term-1'));
+
+      expect(onConnect).toHaveBeenCalledWith(isolatedTerms[0]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.minimize' }));
+      fireEvent.click(screen.getByTestId('ontology-health-restore'));
+
+      expect(screen.getByTestId('ontology-isolated-count')).toHaveTextContent(
+        '2'
+      );
+    });
   });
 });

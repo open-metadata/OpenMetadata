@@ -22,7 +22,6 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { startCase } from 'lodash';
 import { ReactNode, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
@@ -38,6 +37,7 @@ import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceU
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import DateRangeFilter from '../../../common/DateRangeFilter/DateRangeFilter';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { getSeverityLabel } from '../../../DataQuality/IncidentManager/Severity/Severity.utils';
 import {
   useIncidentAssigneeIds,
   useIncidentFilterOptions,
@@ -138,7 +138,7 @@ const IncidentGroupsFilters = ({
         label:
           severity === NO_SEVERITY_FILTER
             ? t('label.no-entity', { entity: t('label.severity') })
-            : startCase(severity),
+            : getSeverityLabel(severity, t),
         icon: (
           <Dot
             aria-hidden="true"
