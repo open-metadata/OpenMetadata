@@ -770,10 +770,10 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
 
   /** A soft-deleted entity is hidden from a plain GET, and restoring it brings it back live. */
   @Test
-  void delete_restore_entity_200(TestNamespace ns) {
+  void delete_restore_entity_200(final TestNamespace ns) {
     if (!supportsSoftDelete || !supportsRestore) return;
-    T created = createEntity(createMinimalRequest(ns));
-    String entityId = created.getId().toString();
+    final T created = createEntity(createMinimalRequest(ns));
+    final String entityId = created.getId().toString();
 
     deleteEntity(entityId);
     assertThrows(
@@ -782,14 +782,14 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
         "Deleted entity should not be retrievable without include=deleted");
 
     restoreEntity(entityId);
-    T restored = getEntity(entityId);
+    final T restored = getEntity(entityId);
     assertEquals(created.getFullyQualifiedName(), restored.getFullyQualifiedName());
     assertFalse(Boolean.TRUE.equals(restored.getDeleted()), "Restored entity is live again");
   }
 
   /** The raw entity JSON, whether or not it is soft-deleted. */
-  private JsonNode readIncludingDeleted(String id) {
-    String json =
+  private JsonNode readIncludingDeleted(final String id) {
+    final String json =
         SdkClients.adminClient()
             .getHttpClient()
             .executeForString(HttpMethod.GET, getResourcePath() + id + "?include=all", null);
@@ -2803,10 +2803,10 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
    * property definition.
    */
   @Test
-  void put_addEntityCustomAttributes(TestNamespace ns) {
+  void put_addEntityCustomAttributes(final TestNamespace ns) {
     if (!supportsCustomExtension) return;
-    T entity = createEntity(createMinimalRequest(ns));
-    String entityPath = getResourcePath() + entity.getId();
+    final T entity = createEntity(createMinimalRequest(ns));
+    final String entityPath = getResourcePath() + entity.getId();
     CustomPropertyValueContract.exercise(
         SdkClients.adminClient(),
         getEntityType(),
@@ -2820,7 +2820,7 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
       implements CustomPropertyValueContract.ValueTarget {
     @Override
     public JsonNode extension() {
-      String json =
+      final String json =
           SdkClients.adminClient()
               .getHttpClient()
               .executeForString(HttpMethod.GET, entityPath + "?fields=extension", null);
@@ -2828,27 +2828,30 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
     }
 
     @Override
-    public void setValue(String propertyName, Object value) {
-      JsonNode current = extension();
-      Map<String, Object> operation =
-          current.isObject() && !current.isEmpty()
-              ? Map.of(
-                  "op",
-                  current.has(propertyName) ? "replace" : "add",
-                  "path",
-                  "/extension/" + propertyName,
-                  "value",
-                  value)
-              : Map.of("op", "add", "path", "/extension", "value", Map.of(propertyName, value));
-      patch(operation);
+    public void setValue(final String propertyName, final Object value) {
+      patch(setOperation(extension(), propertyName, value));
+    }
+
+    /** Patches the one key into an existing extension, or adds the whole extension when empty. */
+    private static Map<String, Object> setOperation(
+        final JsonNode current, final String propertyName, final Object value) {
+      return current.isObject() && !current.isEmpty()
+          ? Map.of(
+              "op",
+              current.has(propertyName) ? "replace" : "add",
+              "path",
+              "/extension/" + propertyName,
+              "value",
+              value)
+          : Map.of("op", "add", "path", "/extension", "value", Map.of(propertyName, value));
     }
 
     @Override
-    public void removeValue(String propertyName) {
+    public void removeValue(final String propertyName) {
       patch(Map.of("op", "remove", "path", "/extension/" + propertyName));
     }
 
-    private void patch(Map<String, Object> operation) {
+    private void patch(final Map<String, Object> operation) {
       SdkClients.adminClient()
           .getHttpClient()
           .executeForString(
@@ -2917,9 +2920,9 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
   protected boolean supportsAsyncDelete = false;
 
   @Test
-  void delete_async_nonExistentEntity_404(TestNamespace ns) {
+  void delete_async_nonExistentEntity_404(final TestNamespace ns) {
     if (!supportsAsyncDelete) return;
-    OpenMetadataException error =
+    final OpenMetadataException error =
         assertThrows(
             OpenMetadataException.class,
             () -> deleteAsync(SdkClients.adminClient(), UUID.randomUUID().toString(), false));
@@ -2927,10 +2930,10 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
   }
 
   @Test
-  void delete_async_entity_as_non_admin_401(TestNamespace ns) {
+  void delete_async_entity_as_non_admin_401(final TestNamespace ns) {
     if (!supportsAsyncDelete) return;
-    String entityId = createEntity(createMinimalRequest(ns)).getId().toString();
-    OpenMetadataException error =
+    final String entityId = createEntity(createMinimalRequest(ns)).getId().toString();
+    final OpenMetadataException error =
         assertThrows(
             OpenMetadataException.class,
             () -> deleteAsync(SdkClients.user3Client(), entityId, true));
@@ -2940,16 +2943,16 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
 
   /** The job hard-deletes the entity: it is gone even with include=all. */
   @Test
-  void delete_async_with_recursive_hardDelete(TestNamespace ns) throws Exception {
+  void delete_async_with_recursive_hardDelete(final TestNamespace ns) throws Exception {
     if (!supportsAsyncDelete) return;
-    T entity = createEntity(createMinimalRequest(ns));
+    final T entity = createEntity(createMinimalRequest(ns));
     assertAsyncDeleteAccepted(entity, true);
     Awaitility.await("async hard delete of " + entity.getName())
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofMillis(500))
         .untilAsserted(
             () -> {
-              OpenMetadataException gone =
+              final OpenMetadataException gone =
                   assertThrows(
                       OpenMetadataException.class,
                       () -> readIncludingDeleted(entity.getId().toString()));
@@ -2959,10 +2962,10 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
 
   /** The job soft-deletes the entity, and the soft-deleted entity can then be restored. */
   @Test
-  void delete_async_soft_delete(TestNamespace ns) throws Exception {
+  void delete_async_soft_delete(final TestNamespace ns) throws Exception {
     if (!supportsAsyncDelete || !supportsSoftDelete || !supportsRestore) return;
-    T entity = createEntity(createMinimalRequest(ns));
-    String entityId = entity.getId().toString();
+    final T entity = createEntity(createMinimalRequest(ns));
+    final String entityId = entity.getId().toString();
     assertAsyncDeleteAccepted(entity, false);
     Awaitility.await("async soft delete of " + entity.getName())
         .atMost(Duration.ofSeconds(60))
@@ -2973,33 +2976,56 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
     assertFalse(Boolean.TRUE.equals(getEntity(entityId).getDeleted()), "Restored entity is live");
   }
 
-  private void deleteAsync(OpenMetadataClient client, String id, boolean hardDelete) {
+  private void deleteAsync(
+      final OpenMetadataClient client, final String id, final boolean hardDelete) {
     client
         .getHttpClient()
         .executeForString(HttpMethod.DELETE, asyncDeletePath(id, hardDelete), null);
   }
 
-  private String asyncDeletePath(String id, boolean hardDelete) {
+  private String asyncDeletePath(final String id, final boolean hardDelete) {
     return getResourcePath() + "async/" + id + "?recursive=true&hardDelete=" + hardDelete;
   }
 
   /** Raw HTTP as admin: the SDK client discards the status, and the contract is a 202. */
-  private void assertAsyncDeleteAccepted(T entity, boolean hardDelete) throws Exception {
-    String url = SdkClients.getServerUrl() + asyncDeletePath(entity.getId().toString(), hardDelete);
-    HttpResponse<String> response =
-        HttpClient.newHttpClient()
-            .send(
-                HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-                    .DELETE()
-                    .build(),
-                HttpResponse.BodyHandlers.ofString());
+  private void assertAsyncDeleteAccepted(final T entity, final boolean hardDelete)
+      throws Exception {
+    final HttpResponse<String> response = deleteAsyncAsAdmin(entity.getId().toString(), hardDelete);
     assertEquals(202, response.statusCode(), response.body());
-    JsonNode accepted = JsonUtils.readTree(response.body());
+    final JsonNode accepted = JsonUtils.readTree(response.body());
     assertFalse(accepted.path("jobId").asText().isBlank(), "202 body names the delete job");
     assertEquals(entity.getName(), accepted.path("entityName").asText());
     assertEquals(hardDelete, accepted.path("hardDelete").asBoolean());
+  }
+
+  private HttpResponse<String> deleteAsyncAsAdmin(final String id, final boolean hardDelete)
+      throws Exception {
+    final String url = SdkClients.getServerUrl() + asyncDeletePath(id, hardDelete);
+    return HttpClient.newHttpClient()
+        .send(
+            HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+                .DELETE()
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+  }
+
+  /**
+   * Renames {@code entity}, then edits its description in the same session, and asserts the rename
+   * survives the change-consolidation of the second edit.
+   */
+  protected T renameThenUpdateDescription(final T entity, final String newName, final int cycle) {
+    entity.setName(newName);
+    final T renamed = patchEntity(entity.getId().toString(), entity);
+    assertEquals(newName, renamed.getName());
+    final String description = "Description after rename " + cycle;
+    renamed.setDescription(description);
+    final T updated = patchEntity(renamed.getId().toString(), renamed);
+    assertEquals(newName, updated.getName(), "Rename survives the in-session description edit");
+    assertEquals(description, updated.getDescription());
+    assertTrue(updated.getFullyQualifiedName().endsWith(newName), updated.getFullyQualifiedName());
+    return updated;
   }
 
   // ===================================================================

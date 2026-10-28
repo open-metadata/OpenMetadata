@@ -42,9 +42,10 @@ public final class CustomPropertyValueContract {
   private CustomPropertyValueContract() {}
 
   /** The 16 property types, with two users as the entity-reference values. */
-  public static List<Variant> variants(EntityReference firstUser, EntityReference secondUser) {
-    EntityReference first = userRef(firstUser);
-    EntityReference second = userRef(secondUser);
+  public static List<Variant> variants(
+      final EntityReference firstUser, final EntityReference secondUser) {
+    final EntityReference first = userRef(firstUser);
+    final EntityReference second = userRef(secondUser);
     return List.of(
         new Variant("integer", "integer", null, 42, 84),
         new Variant("markdown", "markdown", null, "**Initial value**", "_Updated value_"),
@@ -96,13 +97,13 @@ public final class CustomPropertyValueContract {
 
   /** Runs every variant on {@code entityType}, removing each definition even when a step fails. */
   public static void exercise(
-      OpenMetadataClient client,
-      String entityType,
-      String namePrefix,
-      List<Variant> variants,
-      ValueTarget target) {
-    for (Variant variant : variants) {
-      String propertyName = namePrefix + variant.key();
+      final OpenMetadataClient client,
+      final String entityType,
+      final String namePrefix,
+      final List<Variant> variants,
+      final ValueTarget target) {
+    for (final Variant variant : variants) {
+      final String propertyName = namePrefix + variant.key();
       try {
         exerciseVariant(client, entityType, propertyName, variant, target);
       } finally {
@@ -112,26 +113,14 @@ public final class CustomPropertyValueContract {
   }
 
   private static void exerciseVariant(
-      OpenMetadataClient client,
-      String entityType,
-      String propertyName,
-      Variant variant,
-      ValueTarget target) {
-    String context = entityType + "." + propertyName + " (" + variant.typeName() + ")";
-    Type propertyType = typeByName(client, variant.typeName());
-    Type defined = defineProperty(client, entityType, propertyName, variant, propertyType);
-    assertEquals(
-        propertyType.getId(),
-        propertyOf(defined, propertyName).getPropertyType().getId(),
-        context + " is defined with its property type");
-
-    target.setValue(propertyName, variant.initial());
-    assertValue(variant.initial(), target.extension().path(propertyName), context + " initial");
-    target.setValue(propertyName, variant.updated());
-    assertValue(variant.updated(), target.extension().path(propertyName), context + " updated");
-    target.removeValue(propertyName);
-    assertTrue(target.extension().path(propertyName).isMissingNode(), context + " value cleared");
-
+      final OpenMetadataClient client,
+      final String entityType,
+      final String propertyName,
+      final Variant variant,
+      final ValueTarget target) {
+    final String context = entityType + "." + propertyName + " (" + variant.typeName() + ")";
+    assertDefined(client, entityType, propertyName, variant, context);
+    assertValueRoundTrip(target, propertyName, variant, context);
     deletePropertyDefinition(client, entityType, propertyName);
     assertTrue(
         typeByName(client, entityType + "?fields=customProperties").getCustomProperties().stream()
@@ -139,29 +128,49 @@ public final class CustomPropertyValueContract {
         context + " definition removed");
   }
 
+  private static void assertDefined(
+      final OpenMetadataClient client,
+      final String entityType,
+      final String propertyName,
+      final Variant variant,
+      final String context) {
+    final Type propertyType = typeByName(client, variant.typeName());
+    final Type defined = defineProperty(client, entityType, propertyName, variant, propertyType);
+    assertEquals(
+        propertyType.getId(),
+        propertyOf(defined, propertyName).getPropertyType().getId(),
+        context + " is defined with its property type");
+  }
+
+  /** Sets the initial value, replaces it, then clears it, reading the extension back each time. */
+  private static void assertValueRoundTrip(
+      final ValueTarget target,
+      final String propertyName,
+      final Variant variant,
+      final String context) {
+    target.setValue(propertyName, variant.initial());
+    assertValue(variant.initial(), target.extension().path(propertyName), context + " initial");
+    target.setValue(propertyName, variant.updated());
+    assertValue(variant.updated(), target.extension().path(propertyName), context + " updated");
+    target.removeValue(propertyName);
+    assertTrue(target.extension().path(propertyName).isMissingNode(), context + " value cleared");
+  }
+
   /**
    * Every field the test wrote reads back with the same value; the server may add fields (an
    * entity reference comes back with its name and href).
    */
-  private static void assertValue(Object written, JsonNode actual, String context) {
+  private static void assertValue(
+      final Object written, final JsonNode actual, final String context) {
     assertContains(JsonUtils.valueToTree(written), actual, context);
   }
 
-  private static void assertContains(JsonNode expected, JsonNode actual, String context) {
+  private static void assertContains(
+      final JsonNode expected, final JsonNode actual, final String context) {
     if (expected.isObject()) {
-      expected
-          .fields()
-          .forEachRemaining(
-              field ->
-                  assertContains(
-                      field.getValue(),
-                      actual.path(field.getKey()),
-                      context + "." + field.getKey()));
+      assertObjectContains(expected, actual, context);
     } else if (expected.isArray()) {
-      assertEquals(expected.size(), actual.size(), context + " size");
-      for (int index = 0; index < expected.size(); index++) {
-        assertContains(expected.get(index), actual.path(index), context + "[" + index + "]");
-      }
+      assertArrayContains(expected, actual, context);
     } else if (expected.isNumber()) {
       assertEquals(expected.decimalValue(), actual.decimalValue(), context);
     } else {
@@ -169,13 +178,31 @@ public final class CustomPropertyValueContract {
     }
   }
 
+  private static void assertObjectContains(
+      final JsonNode expected, final JsonNode actual, final String context) {
+    expected
+        .fields()
+        .forEachRemaining(
+            field ->
+                assertContains(
+                    field.getValue(), actual.path(field.getKey()), context + "." + field.getKey()));
+  }
+
+  private static void assertArrayContains(
+      final JsonNode expected, final JsonNode actual, final String context) {
+    assertEquals(expected.size(), actual.size(), context + " size");
+    for (int index = 0; index < expected.size(); index++) {
+      assertContains(expected.get(index), actual.path(index), context + "[" + index + "]");
+    }
+  }
+
   private static Type defineProperty(
-      OpenMetadataClient client,
-      String entityType,
-      String propertyName,
-      Variant variant,
-      Type propertyType) {
-    CustomProperty property =
+      final OpenMetadataClient client,
+      final String entityType,
+      final String propertyName,
+      final Variant variant,
+      final Type propertyType) {
+    final CustomProperty property =
         new CustomProperty()
             .withName(propertyName)
             .withDescription(entityType + " " + variant.typeName() + " value contract")
@@ -183,14 +210,14 @@ public final class CustomPropertyValueContract {
     if (variant.config() != null) {
       property.withCustomPropertyConfig(new CustomPropertyConfig().withConfig(variant.config()));
     }
-    String typeId = typeByName(client, entityType).getId().toString();
+    final String typeId = typeByName(client, entityType).getId().toString();
     return client
         .getHttpClient()
         .execute(HttpMethod.PUT, "/v1/metadata/types/" + typeId, property, Type.class);
   }
 
   private static void deletePropertyDefinition(
-      OpenMetadataClient client, String entityType, String propertyName) {
+      final OpenMetadataClient client, final String entityType, final String propertyName) {
     try {
       CustomPropertyTestSupport.deleteProperty(client, entityType, propertyName);
     } catch (JsonProcessingException e) {
@@ -198,24 +225,24 @@ public final class CustomPropertyValueContract {
     }
   }
 
-  private static CustomProperty propertyOf(Type type, String propertyName) {
+  private static CustomProperty propertyOf(final Type type, final String propertyName) {
     return type.getCustomProperties().stream()
         .filter(property -> property.getName().equals(propertyName))
         .findFirst()
         .orElseThrow(() -> new AssertionError(propertyName + " missing from " + type.getName()));
   }
 
-  private static Type typeByName(OpenMetadataClient client, String nameAndQuery) {
+  private static Type typeByName(final OpenMetadataClient client, final String nameAndQuery) {
     return client
         .getHttpClient()
         .execute(HttpMethod.GET, "/v1/metadata/types/name/" + nameAndQuery, null, Type.class);
   }
 
-  private static EntityReference userRef(EntityReference user) {
+  private static EntityReference userRef(final EntityReference user) {
     return new EntityReference().withId(user.getId()).withType(user.getType());
   }
 
-  private static Map<String, Object> tableValue(String label) {
+  private static Map<String, Object> tableValue(final String label) {
     return Map.of(
         "columns",
         List.of("column1", "column2"),
@@ -225,8 +252,8 @@ public final class CustomPropertyValueContract {
 
   /** Applies {@code change} to a copy of the current extension; for targets that write it whole. */
   public static Map<String, Object> withChange(
-      JsonNode extension, Consumer<Map<String, Object>> change) {
-    Map<String, Object> copy = new HashMap<>();
+      final JsonNode extension, final Consumer<Map<String, Object>> change) {
+    final Map<String, Object> copy = new HashMap<>();
     extension.fields().forEachRemaining(field -> copy.put(field.getKey(), field.getValue()));
     change.accept(copy);
     return copy;

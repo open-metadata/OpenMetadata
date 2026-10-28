@@ -89,59 +89,57 @@ class TaskEntityTypeResolutionIT {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("targets")
-  void approvedMetadataTaskAppliesToEntity(TaskTarget target, TestNamespace ns) {
-    BaseEntityIT<?, ?> entityIt = target.entityIt().get();
-    EntityInterface<?> entity = create(entityIt, ns);
-    String about = TaskResourceIT.entityLink(target.entityType(), entity.getFullyQualifiedName());
-    SharedEntities shared = SharedEntities.get();
-    String description = "Approved description " + ns.uniqueShortId();
+  void approvedMetadataTaskAppliesToEntity(final TaskTarget target, final TestNamespace ns) {
+    final BaseEntityIT<?, ?> entityIt = target.entityIt().get();
+    final EntityInterface<?> entity = create(entityIt, ns);
+    final String about =
+        TaskResourceIT.entityLink(target.entityType(), entity.getFullyQualifiedName());
+    final String description = "Approved description " + ns.uniqueShortId();
 
-    for (TaskEntityType type : target.taskTypes()) {
+    for (final TaskEntityType type : target.taskTypes()) {
       approve(ns, about, type, payloadFor(type, entity, description), description);
     }
 
-    JsonNode updated = read(entityIt, entity);
-    assertApplied(
-        target,
-        TaskEntityType.DescriptionUpdate,
-        () -> assertEquals(description, updated.path("description").asText()));
-    assertApplied(
-        target,
-        TaskEntityType.OwnershipUpdate,
-        () ->
-            assertEquals(
-                Set.of(shared.USER2.getName()),
-                SearchDocs.fieldValues(updated.path("owners"), "name")));
-    assertApplied(
-        target,
-        TaskEntityType.TierUpdate,
-        () ->
-            assertTrue(
-                SearchDocs.tagFqns(updated).contains(TIER), "tags: " + updated.path("tags")));
-    assertApplied(
-        target,
-        TaskEntityType.DomainUpdate,
-        () ->
-            assertTrue(
-                SearchDocs.fieldValues(updated.path("domains"), "fullyQualifiedName")
-                    .contains(shared.DOMAIN.getFullyQualifiedName()),
-                "domains: " + updated.path("domains")));
-  }
-
-  private static <T extends EntityInterface<?>, K> T create(
-      BaseEntityIT<T, K> entityIt, TestNamespace ns) {
-    return entityIt.createEntity(entityIt.createMinimalRequest(ns));
-  }
-
-  private static void assertApplied(TaskTarget target, TaskEntityType type, Runnable assertion) {
-    if (target.taskTypes().contains(type)) {
-      assertion.run();
+    final JsonNode updated = read(entityIt, entity);
+    for (final TaskEntityType type : target.taskTypes()) {
+      assertApplied(type, updated, description);
     }
   }
 
+  private static <T extends EntityInterface<?>, K> T create(
+      final BaseEntityIT<T, K> entityIt, final TestNamespace ns) {
+    return entityIt.createEntity(entityIt.createMinimalRequest(ns));
+  }
+
+  /** The approved change of {@code type} is visible on the re-read entity. */
+  private static void assertApplied(
+      final TaskEntityType type, final JsonNode updated, final String description) {
+    switch (type) {
+      case DescriptionUpdate -> assertEquals(description, updated.path("description").asText());
+      case OwnershipUpdate -> assertOwnedBySharedUser2(updated);
+      case TierUpdate -> assertTrue(
+          SearchDocs.tagFqns(updated).contains(TIER), "tags: " + updated.path("tags"));
+      case DomainUpdate -> assertInSharedDomain(updated);
+      default -> throw new IllegalArgumentException("No assertion for " + type);
+    }
+  }
+
+  private static void assertOwnedBySharedUser2(final JsonNode updated) {
+    assertEquals(
+        Set.of(SharedEntities.get().USER2.getName()),
+        SearchDocs.fieldValues(updated.path("owners"), "name"));
+  }
+
+  private static void assertInSharedDomain(final JsonNode updated) {
+    assertTrue(
+        SearchDocs.fieldValues(updated.path("domains"), "fullyQualifiedName")
+            .contains(SharedEntities.get().DOMAIN.getFullyQualifiedName()),
+        "domains: " + updated.path("domains"));
+  }
+
   private static Object payloadFor(
-      TaskEntityType type, EntityInterface<?> entity, String description) {
-    SharedEntities shared = SharedEntities.get();
+      final TaskEntityType type, final EntityInterface<?> entity, final String description) {
+    final SharedEntities shared = SharedEntities.get();
     return switch (type) {
       case DescriptionUpdate -> new DescriptionUpdatePayload()
           .withFieldPath("description")
@@ -167,29 +165,38 @@ class TaskEntityTypeResolutionIT {
   }
 
   private static void approve(
-      TestNamespace ns, String about, TaskEntityType type, Object payload, String description) {
-    Task task =
-        SdkClients.adminClient()
-            .tasks()
-            .create(
-                new CreateTask()
-                    .withName(ns.prefix(type.value() + ns.uniqueShortId()))
-                    .withDescription(type.value() + " task")
-                    .withCategory(TaskCategory.MetadataUpdate)
-                    .withType(type)
-                    .withAbout(about)
-                    .withPayload(payload));
+      final TestNamespace ns,
+      final String about,
+      final TaskEntityType type,
+      final Object payload,
+      final String description) {
+    final Task task = createTask(ns, about, type, payload);
     TaskResourceIT.awaitTaskReadyForWorkflowResolution(task.getId());
-    ResolveTask resolve = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
+    final ResolveTask resolve = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
     if (type == TaskEntityType.DescriptionUpdate) {
       resolve.withNewValue(description);
     }
-    Task resolved = SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolve);
+    final Task resolved =
+        SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolve);
     assertEquals(TaskEntityStatus.Approved, resolved.getStatus(), type + " on " + about);
   }
 
+  private static Task createTask(
+      final TestNamespace ns, final String about, final TaskEntityType type, final Object payload) {
+    return SdkClients.adminClient()
+        .tasks()
+        .create(
+            new CreateTask()
+                .withName(ns.prefix(type.value() + ns.uniqueShortId()))
+                .withDescription(type.value() + " task")
+                .withCategory(TaskCategory.MetadataUpdate)
+                .withType(type)
+                .withAbout(about)
+                .withPayload(payload));
+  }
+
   private static <T extends EntityInterface<?>> JsonNode read(
-      BaseEntityIT<T, ?> entityIt, EntityInterface<?> entity) {
+      final BaseEntityIT<T, ?> entityIt, final EntityInterface<?> entity) {
     return JsonUtils.valueToTree(
         entityIt.getEntityWithFields(entity.getId().toString(), "owners,tags,domains"));
   }

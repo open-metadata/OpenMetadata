@@ -2486,9 +2486,9 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
   /** Rename, then edit the description in the same session: the rename survives consolidation. */
   @Test
-  void test_renameAndUpdateDescriptionConsolidation(TestNamespace ns) {
-    Tag entity = createEntity(createMinimalRequest(ns));
-    Tag updated = renameThenUpdateDescription(entity, "renamed_" + ns.uniqueShortId(), 1);
+  void test_renameAndUpdateDescriptionConsolidation(final TestNamespace ns) {
+    final Tag entity = createEntity(createMinimalRequest(ns));
+    final Tag updated = renameThenUpdateDescription(entity, "renamed_" + ns.uniqueShortId(), 1);
     assertEquals(
         updated.getFullyQualifiedName(),
         getEntityByName(updated.getFullyQualifiedName()).getFullyQualifiedName());
@@ -2496,28 +2496,15 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
   /** Three rename + description cycles in one session each resolve by the latest FQN. */
   @Test
-  void test_multipleRenamesWithUpdatesConsolidation(TestNamespace ns) {
+  void test_multipleRenamesWithUpdatesConsolidation(final TestNamespace ns) {
     Tag entity = createEntity(createMinimalRequest(ns));
     for (int cycle = 1; cycle <= 3; cycle++) {
-      String previousFqn = entity.getFullyQualifiedName();
+      final String previousFqn = entity.getFullyQualifiedName();
       entity =
           renameThenUpdateDescription(entity, "renamed_" + cycle + "_" + ns.uniqueShortId(), cycle);
       assertEquals(entity.getName(), getEntityByName(entity.getFullyQualifiedName()).getName());
-      String stale = previousFqn;
-      assertThrows(Exception.class, () -> getEntityByName(stale), "Old FQN no longer resolves");
+      assertThrows(
+          Exception.class, () -> getEntityByName(previousFqn), "Old FQN no longer resolves");
     }
-  }
-
-  private Tag renameThenUpdateDescription(Tag entity, String newName, int cycle) {
-    entity.setName(newName);
-    Tag renamed = patchEntity(entity.getId().toString(), entity);
-    assertEquals(newName, renamed.getName());
-    String description = "Description after rename " + cycle;
-    renamed.setDescription(description);
-    Tag updated = patchEntity(renamed.getId().toString(), renamed);
-    assertEquals(newName, updated.getName(), "Rename survives the in-session description edit");
-    assertEquals(description, updated.getDescription());
-    assertTrue(updated.getFullyQualifiedName().endsWith(newName), updated.getFullyQualifiedName());
-    return updated;
   }
 }

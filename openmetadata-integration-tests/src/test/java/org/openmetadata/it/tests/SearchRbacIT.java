@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
@@ -55,6 +57,7 @@ class SearchRbacIT {
   private static final String DATA_ASSET_INDEX = "dataAsset";
   private static final String TABLE = "table";
   private static final String DASHBOARD = "dashboard";
+  private static final String COLUMN_INDEX = "column_search_index";
 
   /** A searchable asset type: its policy resource, its index, and how to create one. */
   private record AssetType(
@@ -79,32 +82,19 @@ class SearchRbacIT {
           asset("metric", "metric_search_index", new MetricResourceIT()));
 
   private static <T extends EntityInterface<?>, K> AssetType asset(
-      String resource, String index, BaseEntityIT<T, K> entityIt) {
+      final String resource, final String index, final BaseEntityIT<T, K> entityIt) {
     return new AssetType(
         resource, index, ns -> entityIt.createEntity(entityIt.createMinimalRequest(ns)));
   }
 
   @Test
-  void viewAllowedUserFindsAssetAndDeniedUserDoesNot(TestNamespace ns) throws Exception {
-    OpenMetadataClient admin = SdkClients.adminClient();
-    Deque<Runnable> cleanup = new ArrayDeque<>();
+  void viewAllowedUserFindsAssetAndDeniedUserDoesNot(final TestNamespace ns) throws Exception {
+    final Deque<Runnable> cleanup = new ArrayDeque<>();
     try {
-      Map<AssetType, EntityInterface<?>> assets = new HashMap<>();
-      for (AssetType type : ASSET_TYPES) {
-        EntityInterface<?> entity = type.creator().apply(ns);
-        SearchDocs.awaitDoc(type.index(), entity.getId(), doc -> true);
-        assets.put(type, entity);
-      }
-      enableSearchAccessControl(admin, cleanup);
-      for (AssetType type : ASSET_TYPES) {
-        String fqn = assets.get(type).getFullyQualifiedName();
-        String label = type.resource() + " " + fqn;
-        OpenMetadataClient allowed =
-            userWithRole(ns, label + "allow", allowView(List.of(type.resource())), cleanup);
-        OpenMetadataClient denied =
-            userWithRole(ns, label + "deny", denyAll(List.of(type.resource())), cleanup);
-        awaitVisibility(allowed, type.index(), fqn, true, "ViewBasic-allowed user, " + label);
-        awaitVisibility(denied, type.index(), fqn, false, "All-denied user, " + label);
+      final Map<AssetType, EntityInterface<?>> assets = createAllIndexed(ns);
+      enableSearchAccessControl(SdkClients.adminClient(), cleanup);
+      for (final AssetType type : ASSET_TYPES) {
+        assertAllowedSeesAndDeniedDoesNot(ns, type, assets.get(type), cleanup);
       }
     } finally {
       drain(cleanup);
@@ -112,18 +102,20 @@ class SearchRbacIT {
   }
 
   @Test
-  void tableColumnSearchFollowsTheTablePolicy(TestNamespace ns) throws Exception {
-    OpenMetadataClient admin = SdkClients.adminClient();
-    Deque<Runnable> cleanup = new ArrayDeque<>();
+  void tableColumnSearchFollowsTheTablePolicy(final TestNamespace ns) throws Exception {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final Deque<Runnable> cleanup = new ArrayDeque<>();
     try {
-      Table table = (Table) ASSET_TYPES.get(1).creator().apply(ns);
-      String columnFqn = table.getColumns().getFirst().getFullyQualifiedName();
-      awaitVisibility(admin, "column_search_index", columnFqn, true, "admin, column");
-      OpenMetadataClient allowed = userWithRole(ns, "colallow", allowView(List.of(TABLE)), cleanup);
-      OpenMetadataClient denied = userWithRole(ns, "coldeny", denyAll(List.of(TABLE)), cleanup);
+      final Table table = (Table) ASSET_TYPES.get(1).creator().apply(ns);
+      final String columnFqn = table.getColumns().getFirst().getFullyQualifiedName();
+      awaitVisibility(admin, COLUMN_INDEX, columnFqn, true, "admin, column");
+      final OpenMetadataClient allowed =
+          userWithRole(ns, "colallow", allowView(List.of(TABLE)), cleanup);
+      final OpenMetadataClient denied =
+          userWithRole(ns, "coldeny", denyAll(List.of(TABLE)), cleanup);
       enableSearchAccessControl(admin, cleanup);
-      awaitVisibility(allowed, "column_search_index", columnFqn, true, "table-allowed, column");
-      awaitVisibility(denied, "column_search_index", columnFqn, false, "table-denied, column");
+      awaitVisibility(allowed, COLUMN_INDEX, columnFqn, true, "table-allowed, column");
+      awaitVisibility(denied, COLUMN_INDEX, columnFqn, false, "table-denied, column");
     } finally {
       drain(cleanup);
     }
@@ -136,45 +128,86 @@ class SearchRbacIT {
    * default roles in its global setup, which a shared IT server cannot do.)
    */
   @Test
-  void exploreAndTypeCountsShowOnlyPermittedAssetTypes(TestNamespace ns) throws Exception {
-    OpenMetadataClient admin = SdkClients.adminClient();
-    Deque<Runnable> cleanup = new ArrayDeque<>();
+  void exploreAndTypeCountsShowOnlyPermittedAssetTypes(final TestNamespace ns) throws Exception {
+    final Deque<Runnable> cleanup = new ArrayDeque<>();
     try {
-      EntityInterface<?> table = createIndexed(ASSET_TYPES.get(1), ns);
-      EntityInterface<?> dashboard = createIndexed(ASSET_TYPES.get(3), ns);
-      String scope = idsFilter(table, dashboard);
-      OpenMetadataClient all =
-          userWithRole(ns, "all", allowView(List.of(TABLE, DASHBOARD)), cleanup);
-      OpenMetadataClient tableOnly = userWithRole(ns, "tab", denyAll(List.of(DASHBOARD)), cleanup);
-      OpenMetadataClient dashOnly = userWithRole(ns, "dash", denyAll(List.of(TABLE)), cleanup);
-      OpenMetadataClient denied =
-          userWithRole(ns, "none", denyAll(List.of(TABLE, DASHBOARD)), cleanup);
-      enableSearchAccessControl(admin, cleanup);
-      Awaitility.await("explore and counts are RBAC-filtered")
-          .atMost(Duration.ofSeconds(60))
-          .pollInterval(Duration.ofSeconds(2))
-          .untilAsserted(
-              () -> {
-                assertExplore(all, scope, Map.of(TABLE, 1L, DASHBOARD, 1L));
-                assertExplore(tableOnly, scope, Map.of(TABLE, 1L));
-                assertExplore(dashOnly, scope, Map.of(DASHBOARD, 1L));
-                assertExplore(denied, scope, Map.of());
-              });
+      final EntityInterface<?> table = createIndexed(ASSET_TYPES.get(1), ns);
+      final EntityInterface<?> dashboard = createIndexed(ASSET_TYPES.get(3), ns);
+      final Map<OpenMetadataClient, Map<String, Long>> expectedByUser =
+          usersWithExpectedTypes(ns, cleanup);
+      enableSearchAccessControl(SdkClients.adminClient(), cleanup);
+      awaitExplore(expectedByUser, idsFilter(table, dashboard));
     } finally {
       drain(cleanup);
     }
   }
 
-  private EntityInterface<?> createIndexed(AssetType type, TestNamespace ns) {
-    EntityInterface<?> entity = type.creator().apply(ns);
+  private Map<AssetType, EntityInterface<?>> createAllIndexed(final TestNamespace ns) {
+    final Map<AssetType, EntityInterface<?>> assets = new HashMap<>();
+    for (final AssetType type : ASSET_TYPES) {
+      assets.put(type, createIndexed(type, ns));
+    }
+    return assets;
+  }
+
+  private EntityInterface<?> createIndexed(final AssetType type, final TestNamespace ns) {
+    final EntityInterface<?> entity = type.creator().apply(ns);
     SearchDocs.awaitDoc(type.index(), entity.getId(), doc -> true);
     return entity;
   }
 
+  /** A ViewBasic-allowed user finds the asset in its index; an All-denied user does not. */
+  private void assertAllowedSeesAndDeniedDoesNot(
+      final TestNamespace ns,
+      final AssetType type,
+      final EntityInterface<?> asset,
+      final Deque<Runnable> cleanup) {
+    final String fqn = asset.getFullyQualifiedName();
+    final String label = type.resource() + " " + fqn;
+    final List<String> resources = List.of(type.resource());
+    final OpenMetadataClient allowed =
+        userWithRole(ns, label + "allow", allowView(resources), cleanup);
+    final OpenMetadataClient denied = userWithRole(ns, label + "deny", denyAll(resources), cleanup);
+    awaitVisibility(allowed, type.index(), fqn, true, "ViewBasic-allowed user, " + label);
+    awaitVisibility(denied, type.index(), fqn, false, "All-denied user, " + label);
+  }
+
+  /** One user per visibility scope, mapped to the asset types (and counts) it must see. */
+  private Map<OpenMetadataClient, Map<String, Long>> usersWithExpectedTypes(
+      final TestNamespace ns, final Deque<Runnable> cleanup) {
+    final List<String> both = List.of(TABLE, DASHBOARD);
+    return Map.of(
+        userWithRole(ns, "all", allowView(both), cleanup), Map.of(TABLE, 1L, DASHBOARD, 1L),
+        userWithRole(ns, "tab", denyAll(List.of(DASHBOARD)), cleanup), Map.of(TABLE, 1L),
+        userWithRole(ns, "dash", denyAll(List.of(TABLE)), cleanup), Map.of(DASHBOARD, 1L),
+        userWithRole(ns, "none", denyAll(both), cleanup), Map.of());
+  }
+
+  private void awaitExplore(
+      final Map<OpenMetadataClient, Map<String, Long>> expectedByUser, final String scope) {
+    Awaitility.await("explore and counts are RBAC-filtered")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              for (final Map.Entry<OpenMetadataClient, Map<String, Long>> user :
+                  expectedByUser.entrySet()) {
+                assertExplore(user.getKey(), scope, user.getValue());
+              }
+            });
+  }
+
   /** The dataAsset (explore) hits and the per-type counts (browse tree) both match {@code expected}. */
-  private void assertExplore(OpenMetadataClient client, String scope, Map<String, Long> expected)
-      throws Exception {
-    JsonNode hits =
+  private void assertExplore(
+      final OpenMetadataClient client, final String scope, final Map<String, Long> expected)
+      throws JsonProcessingException {
+    assertEquals(expected, exploreHitsByType(client, scope), "Explore hits by entity type");
+    assertEquals(expected, typeCounts(client, scope), "Browse-tree counts by entity type");
+  }
+
+  private Map<String, Long> exploreHitsByType(final OpenMetadataClient client, final String scope)
+      throws JsonProcessingException {
+    final JsonNode hits =
         MAPPER.readTree(
             client
                 .search()
@@ -183,11 +216,15 @@ class SearchRbacIT {
                 .queryFilter(scope)
                 .size(10)
                 .execute());
-    Map<String, Long> exploreTypes = new HashMap<>();
+    final Map<String, Long> exploreTypes = new HashMap<>();
     hits.at("/hits/hits")
         .forEach(hit -> exploreTypes.merge(hit.at("/_source/entityType").asText(), 1L, Long::sum));
-    assertEquals(expected, exploreTypes, "Explore hits by entity type");
-    JsonNode counts =
+    return exploreTypes;
+  }
+
+  private Map<String, Long> typeCounts(final OpenMetadataClient client, final String scope)
+      throws JsonProcessingException {
+    final JsonNode counts =
         MAPPER.readTree(
             client
                 .search()
@@ -196,23 +233,27 @@ class SearchRbacIT {
                 .index(DATA_ASSET_INDEX)
                 .queryFilter(scope)
                 .execute());
-    Map<String, Long> countedTypes = new HashMap<>();
+    final Map<String, Long> countedTypes = new HashMap<>();
     counts
         .at("/aggregations/entityType/buckets")
         .forEach(
             bucket ->
                 countedTypes.put(bucket.get("key").asText(), bucket.get("doc_count").asLong()));
-    assertEquals(expected, countedTypes, "Browse-tree counts by entity type");
+    return countedTypes;
   }
 
-  private static String idsFilter(EntityInterface<?> first, EntityInterface<?> second) {
+  private static String idsFilter(final EntityInterface<?> first, final EntityInterface<?> second) {
     return "{\"query\":{\"terms\":{\"_id\":[\"%s\",\"%s\"]}}}"
         .formatted(first.getId(), second.getId());
   }
 
   private void awaitVisibility(
-      OpenMetadataClient client, String index, String fqn, boolean visible, String who) {
-    String filter =
+      final OpenMetadataClient client,
+      final String index,
+      final String fqn,
+      final boolean visible,
+      final String who) {
+    final String filter =
         "{\"query\":{\"term\":{\"fullyQualifiedName\":\"%s\"}}}"
             .formatted(fqn.toLowerCase(Locale.ROOT).replace("\"", "\\\""));
     Awaitility.await(who + (visible ? " sees " : " does not see ") + fqn)
@@ -220,15 +261,15 @@ class SearchRbacIT {
         .pollInterval(Duration.ofSeconds(1))
         .untilAsserted(
             () -> {
-              JsonNode response =
+              final JsonNode response =
                   MAPPER.readTree(
                       client.search().query("*").index(index).queryFilter(filter).execute());
-              long hits = response.at("/hits/total/value").asLong();
+              final long hits = response.at("/hits/total/value").asLong();
               assertEquals(visible ? 1L : 0L, hits, who + " in " + index);
             });
   }
 
-  private static Rule allowView(List<String> resources) {
+  private static Rule allowView(final List<String> resources) {
     return new Rule()
         .withName("allowViewBasic")
         .withEffect(Rule.Effect.ALLOW)
@@ -236,7 +277,7 @@ class SearchRbacIT {
         .withResources(resources);
   }
 
-  private static Rule denyAll(List<String> resources) {
+  private static Rule denyAll(final List<String> resources) {
     return new Rule()
         .withName("denyAll")
         .withEffect(Rule.Effect.DENY)
@@ -246,10 +287,19 @@ class SearchRbacIT {
 
   /** A regular user holding one role made of {@code rule}, and a client signed in as them. */
   private OpenMetadataClient userWithRole(
-      TestNamespace ns, String label, Rule rule, Deque<Runnable> cleanup) {
-    OpenMetadataClient admin = SdkClients.adminClient();
-    String name = ns.uniqueShortId() + "_rbac";
-    Policy policy =
+      final TestNamespace ns, final String label, final Rule rule, final Deque<Runnable> cleanup) {
+    final String name = ns.uniqueShortId() + "_rbac";
+    final Policy policy = createPolicy(name, label, rule, cleanup);
+    final Role role = createRole(name, policy, cleanup);
+    final String email = name + "@test.openmetadata.org";
+    createUser(name, email, role, cleanup);
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  private Policy createPolicy(
+      final String name, final String label, final Rule rule, final Deque<Runnable> cleanup) {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final Policy policy =
         admin
             .policies()
             .create(
@@ -258,7 +308,12 @@ class SearchRbacIT {
                     .withDescription("Search RBAC policy for " + label)
                     .withRules(List.of(rule)));
     cleanup.push(() -> admin.policies().delete(policy.getId()));
-    Role role =
+    return policy;
+  }
+
+  private Role createRole(final String name, final Policy policy, final Deque<Runnable> cleanup) {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final Role role =
         admin
             .roles()
             .create(
@@ -266,37 +321,44 @@ class SearchRbacIT {
                     .withName(name + "_role")
                     .withPolicies(List.of(policy.getFullyQualifiedName())));
     cleanup.push(() -> admin.roles().delete(role.getId()));
-    String email = name + "@test.openmetadata.org";
-    User user =
+    return role;
+  }
+
+  private void createUser(
+      final String name, final String email, final Role role, final Deque<Runnable> cleanup) {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final User user =
         admin
             .users()
             .create(
                 new CreateUser().withName(name).withEmail(email).withRoles(List.of(role.getId())));
     cleanup.push(() -> admin.users().delete(user.getId()));
-    return SdkClients.createClient(email, email, new String[] {});
   }
 
-  private void enableSearchAccessControl(OpenMetadataClient admin, Deque<Runnable> cleanup)
-      throws Exception {
-    SearchSettings settings = readSearchSettings(admin);
-    Boolean original = settings.getGlobalSettings().getEnableAccessControl();
+  private void enableSearchAccessControl(
+      final OpenMetadataClient admin, final Deque<Runnable> cleanup)
+      throws JsonProcessingException {
+    final SearchSettings settings = readSearchSettings(admin);
+    final Boolean original = settings.getGlobalSettings().getEnableAccessControl();
     settings.getGlobalSettings().setEnableAccessControl(true);
     writeSearchSettings(admin, settings);
     cleanup.push(() -> restoreAccessControl(admin, original));
   }
 
-  private void restoreAccessControl(OpenMetadataClient admin, Boolean original) {
+  private void restoreAccessControl(final OpenMetadataClient admin, final Boolean original) {
     try {
-      SearchSettings settings = readSearchSettings(admin);
+      final SearchSettings settings = readSearchSettings(admin);
       settings.getGlobalSettings().setEnableAccessControl(original);
       writeSearchSettings(admin, settings);
-    } catch (Exception e) {
-      throw new IllegalStateException("Could not restore search enableAccessControl", e);
+    } catch (JsonProcessingException | OpenMetadataException e) {
+      throw new IllegalStateException(
+          "Could not restore search enableAccessControl to " + original, e);
     }
   }
 
-  private SearchSettings readSearchSettings(OpenMetadataClient admin) throws Exception {
-    String json =
+  private SearchSettings readSearchSettings(final OpenMetadataClient admin)
+      throws JsonProcessingException {
+    final String json =
         admin
             .getHttpClient()
             .executeForString(
@@ -304,13 +366,14 @@ class SearchRbacIT {
                 "/v1/system/settings/" + SettingsType.SEARCH_SETTINGS.value(),
                 null,
                 RequestOptions.builder().build());
-    Settings settings = MAPPER.readValue(json, Settings.class);
+    final Settings settings = MAPPER.readValue(json, Settings.class);
     return MAPPER.convertValue(settings.getConfigValue(), SearchSettings.class);
   }
 
-  private void writeSearchSettings(OpenMetadataClient admin, SearchSettings searchSettings)
-      throws Exception {
-    Settings settings =
+  private void writeSearchSettings(
+      final OpenMetadataClient admin, final SearchSettings searchSettings)
+      throws JsonProcessingException {
+    final Settings settings =
         new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchSettings);
     admin
         .getHttpClient()
@@ -322,7 +385,7 @@ class SearchRbacIT {
   }
 
   /** Runs every cleanup step, so one failure cannot leave access control switched on. */
-  private void drain(Deque<Runnable> cleanup) {
+  private void drain(final Deque<Runnable> cleanup) {
     RuntimeException first = null;
     while (!cleanup.isEmpty()) {
       try {

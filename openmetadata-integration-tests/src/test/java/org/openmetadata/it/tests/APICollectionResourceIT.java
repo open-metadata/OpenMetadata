@@ -173,36 +173,41 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
 
   /** Endpoints inherit the collection's owners as they are set, switched to a team and removed. */
   @Test
-  void test_ownerInheritedByEndpoints(TestNamespace ns) {
+  void test_ownerInheritedByEndpoints(final TestNamespace ns) {
     APICollection collection = createEntity(createMinimalRequest(ns));
-    APIEndpoint endpoint =
-        SdkClients.adminClient()
-            .apiEndpoints()
-            .create(
-                new CreateAPIEndpoint()
-                    .withName(ns.prefix("inheritingEndpoint"))
-                    .withApiCollection(collection.getFullyQualifiedName())
-                    .withEndpointURL(URI.create("https://localhost:8585/api/v1/inherit"))
-                    .withRequestMethod(APIRequestMethod.GET));
+    final APIEndpoint endpoint = createEndpoint(collection, ns.prefix("inheritingEndpoint"));
 
-    List<EntityReference> users = List.of(testUser1Ref(), testUser2Ref());
+    final List<EntityReference> users = List.of(testUser1Ref(), testUser2Ref());
     collection = setOwners(collection, users);
     assertEndpointInherits(endpoint, users);
-    List<EntityReference> team = List.of(testTeam1().getEntityReference());
+    final List<EntityReference> team = List.of(testTeam1().getEntityReference());
     collection = setOwners(collection, team);
     assertEndpointInherits(endpoint, team);
     setOwners(collection, List.of());
     assertEndpointInherits(endpoint, List.of());
   }
 
-  private APICollection setOwners(APICollection collection, List<EntityReference> owners) {
-    APICollection current = getEntityWithFields(collection.getId().toString(), "owners");
+  private APIEndpoint createEndpoint(final APICollection collection, final String name) {
+    return SdkClients.adminClient()
+        .apiEndpoints()
+        .create(
+            new CreateAPIEndpoint()
+                .withName(name)
+                .withApiCollection(collection.getFullyQualifiedName())
+                .withEndpointURL(URI.create("https://localhost:8585/api/v1/inherit"))
+                .withRequestMethod(APIRequestMethod.GET));
+  }
+
+  private APICollection setOwners(
+      final APICollection collection, final List<EntityReference> owners) {
+    final APICollection current = getEntityWithFields(collection.getId().toString(), "owners");
     current.setOwners(owners);
     return patchEntity(current.getId().toString(), current);
   }
 
-  private void assertEndpointInherits(APIEndpoint endpoint, List<EntityReference> owners) {
-    List<EntityReference> inherited =
+  private void assertEndpointInherits(
+      final APIEndpoint endpoint, final List<EntityReference> owners) {
+    final List<EntityReference> inherited =
         SdkClients.adminClient()
             .apiEndpoints()
             .get(endpoint.getId().toString(), "owners")

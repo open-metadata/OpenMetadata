@@ -525,35 +525,45 @@ public class DomainIsolationIT {
 
   /** The ingestion bot reads assets moved into a domain, and their service once it joins too. */
   @Test
-  void test_ingestionBot_readsDomainAssetsAndServices(TestNamespace ns) throws Exception {
-    OpenMetadataClient admin = SdkClients.adminClient();
-    OpenMetadataClient bot = SdkClients.ingestionBotClient();
-    Deque<Runnable> cleanup = new ArrayDeque<>();
+  void test_ingestionBot_readsDomainAssetsAndServices(final TestNamespace ns) throws Exception {
+    final Deque<Runnable> cleanup = new ArrayDeque<>();
     try {
-      for (String suffix : List.of("_ingest1", "_ingest2")) {
-        Domain domain = createDomain(admin, ns.shortPrefix() + suffix, cleanup);
-        DatabaseSchema schema = createSchema(ns, cleanup);
-        Table table = createTable(admin, ns.shortPrefix() + suffix, schema, null, cleanup);
-        addAssetsToDomain(admin, domain, table.getEntityReference());
-        assertEquals(
-            List.of(domain.getFullyQualifiedName()),
-            domainFqns(bot.tables().get(table.getId().toString(), "domains").getDomains()));
-
-        DatabaseService service =
-            admin.databaseServices().get(schema.getService().getId().toString(), "domains");
-        service.setDomains(List.of(domain.getEntityReference()));
-        admin.databaseServices().update(service.getId().toString(), service);
-        assertEquals(
-            List.of(domain.getFullyQualifiedName()),
-            domainFqns(
-                bot.databaseServices().get(service.getId().toString(), "domains").getDomains()));
+      for (final String suffix : List.of("_ingest1", "_ingest2")) {
+        assertBotReadsDomainTableAndService(ns, ns.shortPrefix() + suffix, cleanup);
       }
     } finally {
       drain(cleanup);
     }
   }
 
-  private void addAssetsToDomain(OpenMetadataClient admin, Domain domain, EntityReference asset) {
+  /** A table moved into a new domain, then its service, both read back with that domain. */
+  private void assertBotReadsDomainTableAndService(
+      final TestNamespace ns, final String name, final Deque<Runnable> cleanup) {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final OpenMetadataClient bot = SdkClients.ingestionBotClient();
+    final Domain domain = createDomain(admin, name, cleanup);
+    final DatabaseSchema schema = createSchema(ns, cleanup);
+    final Table table = createTable(admin, name, schema, null, cleanup);
+    addAssetsToDomain(admin, domain, table.getEntityReference());
+    assertEquals(
+        List.of(domain.getFullyQualifiedName()),
+        domainFqns(bot.tables().get(table.getId().toString(), "domains").getDomains()));
+    final String serviceId = schema.getService().getId().toString();
+    moveServiceToDomain(admin, serviceId, domain);
+    assertEquals(
+        List.of(domain.getFullyQualifiedName()),
+        domainFqns(bot.databaseServices().get(serviceId, "domains").getDomains()));
+  }
+
+  private void moveServiceToDomain(
+      final OpenMetadataClient admin, final String serviceId, final Domain domain) {
+    final DatabaseService service = admin.databaseServices().get(serviceId, "domains");
+    service.setDomains(List.of(domain.getEntityReference()));
+    admin.databaseServices().update(service.getId().toString(), service);
+  }
+
+  private void addAssetsToDomain(
+      final OpenMetadataClient admin, final Domain domain, final EntityReference asset) {
     admin
         .getHttpClient()
         .execute(
@@ -563,7 +573,7 @@ public class DomainIsolationIT {
             Void.class);
   }
 
-  private List<String> domainFqns(List<EntityReference> domains) {
+  private List<String> domainFqns(final List<EntityReference> domains) {
     return domains.stream().map(EntityReference::getFullyQualifiedName).toList();
   }
 

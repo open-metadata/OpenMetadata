@@ -1140,13 +1140,13 @@ public class ColumnCustomPropertiesIT {
    * clear the value with {@code PUT /v1/columns/name/{fqn}}, then delete the definition.
    */
   @Test
-  void test_tableColumn_allPropertyTypes_crudViaColumnsApi(TestNamespace ns) {
-    Table table = createTestTable(ns);
-    String columnPath =
+  void test_tableColumn_allPropertyTypes_crudViaColumnsApi(final TestNamespace ns) {
+    final Table table = createTestTable(ns);
+    final String columnPath =
         "/v1/columns/name/"
             + UriTestUtils.encodeURIComponent(table.getColumns().getFirst().getFullyQualifiedName())
             + "?entityType=table";
-    SharedEntities shared = SharedEntities.get();
+    final SharedEntities shared = SharedEntities.get();
     CustomPropertyValueContract.exercise(
         SdkClients.adminClient(),
         TABLE_COLUMN,
@@ -1160,7 +1160,7 @@ public class ColumnCustomPropertiesIT {
       implements CustomPropertyValueContract.ValueTarget {
     @Override
     public JsonNode extension() {
-      String json =
+      final String json =
           SdkClients.adminClient()
               .getHttpClient()
               .executeForString(HttpMethod.GET, columnPath + "&fields=extension", null);
@@ -1168,20 +1168,20 @@ public class ColumnCustomPropertiesIT {
     }
 
     @Override
-    public void setValue(String propertyName, Object value) {
+    public void setValue(final String propertyName, final Object value) {
       write(
           CustomPropertyValueContract.withChange(
               extension(), extension -> extension.put(propertyName, value)));
     }
 
     @Override
-    public void removeValue(String propertyName) {
+    public void removeValue(final String propertyName) {
       write(
           CustomPropertyValueContract.withChange(
               extension(), extension -> extension.remove(propertyName)));
     }
 
-    private void write(Map<String, Object> extension) {
+    private void write(final Map<String, Object> extension) {
       SdkClients.adminClient()
           .getHttpClient()
           .executeForString(

@@ -124,9 +124,9 @@ public class GlossaryTermMoveApprovalIT {
   // immutable id (relatedEntityId), so approving after the move no longer depends on the FQN being
   // repointed first.
   @Test
-  void test_approveApprovalTaskAfterMovingParentTerm_drivesMovedTermToApproved(TestNamespace ns)
-      throws Exception {
-    MovedLeaf moved = moveParentOfLeafWithOpenTask(ns);
+  void test_approveApprovalTaskAfterMovingParentTerm_drivesMovedTermToApproved(
+      final TestNamespace ns) throws Exception {
+    final MovedLeaf moved = moveParentOfLeafWithOpenTask(ns);
 
     approveTask(moved.task().getId());
 
@@ -137,9 +137,9 @@ public class GlossaryTermMoveApprovalIT {
 
   /** Rejecting the same task after the move drives the moved leaf to Rejected. */
   @Test
-  void test_rejectApprovalTaskAfterMovingParentTerm_drivesMovedTermToRejected(TestNamespace ns)
-      throws Exception {
-    MovedLeaf moved = moveParentOfLeafWithOpenTask(ns);
+  void test_rejectApprovalTaskAfterMovingParentTerm_drivesMovedTermToRejected(
+      final TestNamespace ns) throws Exception {
+    final MovedLeaf moved = moveParentOfLeafWithOpenTask(ns);
 
     SdkClients.user1Client()
         .tasks()
@@ -160,30 +160,33 @@ public class GlossaryTermMoveApprovalIT {
    * A leaf term with an open approval task whose parent is then moved under a sibling. The move
    * neither duplicates nor drops the task: exactly the original one is open at the new FQN.
    */
-  private MovedLeaf moveParentOfLeafWithOpenTask(TestNamespace ns) {
-    Glossary glossary = createGlossary(ns);
-    GlossaryTerm securitiesLending = createTerm(glossary, null, "securities_lending", false);
-    GlossaryTerm eligibleSecurities =
+  private MovedLeaf moveParentOfLeafWithOpenTask(final TestNamespace ns) {
+    final Glossary glossary = createGlossary(ns);
+    final GlossaryTerm securitiesLending = createTerm(glossary, null, "securities_lending", false);
+    final GlossaryTerm eligibleSecurities =
         createTerm(glossary, securitiesLending, "eligible_securities", true);
-    String preMoveLeafFqn = eligibleSecurities.getFullyQualifiedName();
-    Task approvalTask = waitForOpenApprovalTask(preMoveLeafFqn);
-    GlossaryTerm productAndService = createTerm(glossary, null, "product_and_service", false);
+    final String preMoveLeafFqn = eligibleSecurities.getFullyQualifiedName();
+    final Task approvalTask = waitForOpenApprovalTask(preMoveLeafFqn);
+    final GlossaryTerm productAndService = createTerm(glossary, null, "product_and_service", false);
 
     moveGlossaryTerm(securitiesLending.getId(), reference(productAndService, Entity.GLOSSARY_TERM));
 
-    String movedLeafFqn = waitForTermFqnChange(eligibleSecurities.getId(), preMoveLeafFqn);
+    final String movedLeafFqn = waitForTermFqnChange(eligibleSecurities.getId(), preMoveLeafFqn);
     assertTrue(
         movedLeafFqn.startsWith(productAndService.getFullyQualifiedName() + "."),
         "Leaf term should now live under the new parent. fqn=" + movedLeafFqn);
-    Awaitility.await("the open task follows the leaf to " + movedLeafFqn)
-        .atMost(MOVE_TIMEOUT)
-        .pollInterval(POLL_INTERVAL)
-        .untilAsserted(
-            () -> assertEquals(List.of(approvalTask.getId()), openTaskIds(movedLeafFqn)));
+    awaitOnlyOpenTask(movedLeafFqn, approvalTask);
     return new MovedLeaf(eligibleSecurities.getId(), movedLeafFqn, approvalTask);
   }
 
-  private List<UUID> openTaskIds(String aboutFqn) {
+  private void awaitOnlyOpenTask(final String aboutFqn, final Task task) {
+    Awaitility.await("the open task follows the leaf to " + aboutFqn)
+        .atMost(MOVE_TIMEOUT)
+        .pollInterval(POLL_INTERVAL)
+        .untilAsserted(() -> assertEquals(List.of(task.getId()), openTaskIds(aboutFqn)));
+  }
+
+  private List<UUID> openTaskIds(final String aboutFqn) {
     return listTasks(
             Map.of(
                 "limit", "100", "status", TaskEntityStatus.Open.value(), "aboutEntity", aboutFqn))
