@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-10-28 (initial)
 - **Deciders:** Platform
 - **Guard:** `RdfStorageMaintenanceIT`, `RdfStorageMaintenanceServiceTest`, `FusekiCompactionTest`,
-  `RdfIndexAppTest`
+  `CompactionBlockedWriteTest`, `RdfIndexAppTest`
 - **Related:** #36437
 
 ## Context
@@ -25,13 +25,22 @@ dead-lettered, marking the projection degraded until a full rebuild.
 - One server compacts the serving dataset every `storageMaintenance.compactionIntervalHours` (24).
   The slot is a lease, `RDF_STORAGE_NEXT_COMPACTION`, in `rdf_reindex_lock`, taken for one interval.
   A compaction that does not succeed releases it, so the next check (every 15 minutes) retries.
-- Maintenance holds the RDF reindex lock while it runs, so it never overlaps an indexing run.
+- Maintenance holds the RDF reindex lock while it runs, so it never overlaps an indexing run. The
+  first check runs an hour after a server starts, so a rolling upgrade finishes before maintenance
+  pauses anything.
 - Before anything blocks Fuseki's writer, maintenance takes the write pause, a lease named
   `RDF_LIVE_WRITES_PAUSED` in the same table, and waits for in-flight serving writes to finish.
-  `RdfDatasetManager.writeActive` refuses every other writer with
-  `RdfStorageMaintenanceException` while the pause is held. That refusal uses no delivery attempt,
-  does not trip the circuit breaker, and does not mark the projection degraded. The pause expires
-  unless renewed, so a server that stops mid-maintenance holds writes for at most five minutes.
+  `RdfDatasetManager.writeActive` then holds back every other writer. A live-write queue entry is
+  deferred at once, using no delivery attempt and not tripping the circuit breaker. Any other
+  writer, which nothing retries, first waits up to 60 seconds for the pause to end, about as long
+  as Fuseki's own writer lock would have kept it waiting, and only then gets
+  `RdfStorageMaintenanceException`, which the REST API answers with 503 and `Retry-After`. The pause
+  expires unless renewed, so a server that stops mid-maintenance holds writes for at most five
+  minutes.
+- The pause ends only on Fuseki's answer: a status poll that fails counts as still running. A write
+  that times out while Fuseki reports a running compaction, whoever started it, is held back like a
+  paused write instead of counting as failed.
+- Pipeline run triples go through the live-write queue, so a maintenance window does not lose them.
 - Compaction and the clear that starts an in-place rebuild run under
   `storageMaintenance.maxDurationMinutes` (240), not the per-request timeout, and do not consult or
   feed the circuit breaker. A `CLEAR` cannot be cancelled in Fuseki, so a shorter budget only

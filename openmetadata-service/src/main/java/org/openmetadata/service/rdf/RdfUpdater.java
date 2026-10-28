@@ -108,6 +108,13 @@ public final class RdfUpdater {
     }
   }
 
+  /** Queues the PROV-O triples of one pipeline run, read back from its stored status. */
+  public static void recordPipelineExecution(final UUID pipelineId, final long timestamp) {
+    if (isEnabled()) {
+      submit(new RdfLiveWrite.PipelineExecution(pipelineId, timestamp));
+    }
+  }
+
   public static void updateEntity(final EntityInterface entity) {
     if (isEnabled() && !RdfExcludedEntities.isExcluded(Entity.getEntityTypeFromObject(entity))) {
       submit(RdfLiveWrite.EntityUpdate.capture(entity));

@@ -49,7 +49,9 @@ import org.openmetadata.service.rdf.storage.CompactionResult;
 public final class RdfStorageMaintenanceService implements AutoCloseable {
   static final String NEXT_COMPACTION_KEY = "RDF_STORAGE_NEXT_COMPACTION";
   static final Duration CHECK_INTERVAL = Duration.ofMinutes(15);
-  private static final Duration FIRST_CHECK_DELAY = Duration.ofMinutes(5);
+  // Servers older than this change do not hold their writes back for maintenance, so the first
+  // compaction waits for a rolling upgrade to finish.
+  private static final Duration FIRST_CHECK_DELAY = Duration.ofHours(1);
   private static final long LOCK_HEARTBEAT_SECONDS = 60;
 
   private final RdfStorageMaintenanceConfig config;

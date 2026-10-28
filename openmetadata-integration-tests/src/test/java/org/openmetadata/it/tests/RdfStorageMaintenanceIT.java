@@ -15,7 +15,6 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -29,9 +28,9 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -46,6 +45,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO.RdfReindexLockDAO;
 import org.openmetadata.service.rdf.RdfDatasetNames;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
+import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager;
 import org.openmetadata.service.rdf.rebuild.RdfLiveWritePause;
 import org.openmetadata.service.rdf.rebuild.RdfMutation;
@@ -53,7 +53,6 @@ import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
 import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
-import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
@@ -119,14 +118,14 @@ public class RdfStorageMaintenanceIT {
       fixture.queue.enqueue(insert(1));
       final HeldPause held = fixture.holdPause();
 
-      assertFalse(fixture.queue.processNext(fixture::applyServing), "the write must wait");
+      assertFalse(fixture.queue.processNext(fixture::applyQueued), "the write must wait");
       assertEquals(0, fixture.headAttempts(), "waiting for maintenance is not a failed attempt");
       fixture.clock.advance(TimeUnit.MINUTES.toMillis(1));
       assertFalse(fixture.queue.isDegraded(), "a write held by maintenance is late, not failing");
 
       held.release();
       fixture.clock.advance(RdfLiveWritePause.RETRY_AFTER.toMillis());
-      assertTrue(fixture.queue.processNext(fixture::applyServing));
+      assertTrue(fixture.queue.processNext(fixture::applyQueued));
       assertEquals(1, fixture.raw.getTripleCount(GRAPH));
       assertEquals(0, fixture.deadLetters());
       assertFalse(fixture.queue.isDegraded());
@@ -135,25 +134,36 @@ public class RdfStorageMaintenanceIT {
 
   @ParameterizedTest
   @EnumSource(RdfTestDatabase.Backend.class)
-  void theHolderWritesWhileEveryOtherWriterIsRefused(final RdfTestDatabase.Backend backend) {
+  void theHolderWritesDuringItsOwnPause(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       final RdfStorageInterface serving = fixture.manager.routedStorage();
       fixture.pause.during(
           UUID.randomUUID().toString(),
           () -> {
             serving.executeSparqlUpdate(sparql(1));
-            final CompletionException refused =
-                assertThrows(
-                    CompletionException.class,
-                    () ->
-                        CompletableFuture.runAsync(() -> serving.executeSparqlUpdate(sparql(2)))
-                            .join());
-            assertInstanceOf(RdfStorageMaintenanceException.class, refused.getCause());
             return null;
           });
 
-      assertDoesNotThrow(() -> serving.executeSparqlUpdate(sparql(3)));
-      assertEquals(2, fixture.raw.getTripleCount(GRAPH));
+      assertEquals(1, fixture.raw.getTripleCount(GRAPH));
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aWriterTheQueueDoesNotRetryWaitsForThePauseInsteadOfLosingItsWrite(
+      final RdfTestDatabase.Backend backend) throws Exception {
+    try (Fixture fixture = new Fixture(backend)) {
+      final RdfStorageInterface serving = fixture.manager.routedStorage();
+      final HeldPause held = fixture.holdPause();
+      final CompletableFuture<Void> write =
+          CompletableFuture.runAsync(() -> serving.executeSparqlUpdate(sparql(2)));
+
+      assertThrows(TimeoutException.class, () -> write.get(2, TimeUnit.SECONDS));
+      assertEquals(0, fixture.raw.getTripleCount(GRAPH), "nothing reaches Fuseki during a pause");
+
+      held.release();
+      assertDoesNotThrow(() -> write.get(30, TimeUnit.SECONDS));
+      assertEquals(1, fixture.raw.getTripleCount(GRAPH));
     }
   }
 
@@ -286,6 +296,11 @@ public class RdfStorageMaintenanceIT {
 
     void applyServing(final String payload) {
       JsonUtils.readValue(payload, RdfMutation.class).apply(manager.routedStorage());
+    }
+
+    /** As the live writer applies a queue row: the queue, not the write, owns a failure. */
+    void applyQueued(final String payload) {
+      RdfProjectionHealth.withDurableRecovery(() -> applyServing(payload));
     }
 
     int headAttempts() {
