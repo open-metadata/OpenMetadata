@@ -58,11 +58,17 @@ export const useThemeCssVariables = () => {
     palette.forEach((color, index) => {
       switch (index) {
         case 0:
-          document.documentElement.style.setProperty(`--theme-primary-25`, color);
+          document.documentElement.style.setProperty(
+            `--theme-primary-25`,
+            color
+          );
 
           break;
         case 1:
-          document.documentElement.style.setProperty(`--theme-primary-50`, color);
+          document.documentElement.style.setProperty(
+            `--theme-primary-50`,
+            color
+          );
 
           break;
         case 2:
