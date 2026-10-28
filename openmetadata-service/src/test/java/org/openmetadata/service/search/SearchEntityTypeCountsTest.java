@@ -263,6 +263,7 @@ class SearchEntityTypeCountsTest {
                   hint.getIncludeSourceFields());
               assertEquals(10, hint.getSize());
               assertFalse(hint.getIncludeHighlights());
+              assertFalse(hint.getTrackTotalHits());
               AtomicInteger passes = new AtomicInteger();
               SearchRankingHelper.searchWithIdentifierPrecision(
                   hint,

@@ -294,7 +294,8 @@ public final class SearchEntityTypeCounts {
         .withSize(SearchRankingHelper.identityProbeSize())
         .withFetchSource(true)
         .withIncludeSourceFields(fields)
-        .withIncludeHighlights(false);
+        .withIncludeHighlights(false)
+        .withTrackTotalHits(false);
   }
 
   private ObjectNode fetchHint(SearchRequest hint) throws IOException {
