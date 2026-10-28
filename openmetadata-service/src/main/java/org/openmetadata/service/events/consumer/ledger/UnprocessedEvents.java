@@ -1,6 +1,7 @@
 package org.openmetadata.service.events.consumer.ledger;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
@@ -35,11 +36,18 @@ final class UnprocessedEvents {
     return new PendingCount(count, moreUnread);
   }
 
-  static List<ChangeEvent> matching(List<String> rows, Predicate<ChangeEvent> matches) {
-    return rows.parallelStream()
-        .map(json -> ChangeEventJsonUtils.readOrNull(json, ChangeEvent.class))
-        .filter(event -> event != null && evaluateCleanly(event, matches))
-        .toList();
+  // Each event is parsed once for both lists. The rules read its entity, which is then left out,
+  // as every alert event listing leaves it out.
+  static AlertProgress.UnreadPage page(List<String> rows, Predicate<ChangeEvent> matches) {
+    List<ChangeEvent> all =
+        rows.parallelStream()
+            .map(json -> ChangeEventJsonUtils.readOrNull(json, ChangeEvent.class))
+            .filter(Objects::nonNull)
+            .toList();
+    List<ChangeEvent> relevant =
+        all.parallelStream().filter(event -> evaluateCleanly(event, matches)).toList();
+    all.forEach(event -> event.setEntity(null));
+    return new AlertProgress.UnreadPage(relevant, all);
   }
 
   private static boolean matchesCleanly(String json, Predicate<ChangeEvent> matches) {

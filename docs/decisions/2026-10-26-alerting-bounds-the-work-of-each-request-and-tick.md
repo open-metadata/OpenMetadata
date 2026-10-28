@@ -23,7 +23,7 @@ Every such path has a fixed bound, chosen well above what the UI or a normal ale
 | An alert's `batchSize` | 1 to 1000 |
 | Destinations per alert or per test send | 50 |
 | Receivers per destination | 100 listed entries: typed addresses, or user and team names, since each name is looked up on every event; who a team expands to is not counted |
-| Rows per alert event listing | 1000, and no embedded `entity` |
+| Rows per alert event listing | 1000, and no embedded `entity`; a page of unread events also stops at the 8 MB of one change-event read |
 | One change-event read | 1000 rows and 8 MB of event JSON, always at least one event |
 | Unread events evaluated per pending count | 500; past that the response sets `countsAreLowerBound` (`relevantUnprocessedEventsCountIsLowerBound`) and the page shows "N+" |
 | Pending counts | 4 running and 16 waiting across the server, then 429 |

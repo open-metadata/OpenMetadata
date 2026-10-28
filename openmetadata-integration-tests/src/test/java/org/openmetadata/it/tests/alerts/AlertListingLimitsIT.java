@@ -3,6 +3,7 @@ package org.openmetadata.it.tests.alerts;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.util.ApiAssertions.assertBadRequest;
+import static org.openmetadata.it.util.ApiAssertions.assertNotFound;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -60,6 +61,33 @@ class AlertListingLimitsIT {
     }
   }
 
+  @Test
+  void unreadEventsInDiagnosticsAreMatchedButListedWithoutTheEntity(TestNamespace ns)
+      throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert = webhookAlert(ns, "listing_unread", receiver);
+      QuietAlert.settle(alert);
+
+      FixtureEvents.insert(FixtureEvents.tableEvents().subList(1, 2));
+
+      for (String path : diagnosticsOf(alert)) {
+        JsonNode answer = JsonUtils.readTree(get(path, "50"));
+        assertChangeEventsHaveNoEntity(elements(answer.get("totalUnprocessedEventsList")).toList());
+        assertChangeEventsHaveNoEntity(
+            elements(answer.get("relevantUnprocessedEventsList")).toList());
+      }
+    }
+  }
+
+  // A typed refusal, such as a 429 when too many counts are running, reaches the caller as itself.
+  @Test
+  void anAlertMissingByNameIsAnsweredNotFoundByItsStatusRoutes() {
+    String missing = BASE + "/name/no_such_alert_" + System.nanoTime();
+    for (String route : List.of("/eventsRecord", "/diagnosticInfo")) {
+      assertNotFound(() -> get(missing + route, "15"), route + " answered a missing alert");
+    }
+  }
+
   private static void assertChangeEventsHaveNoEntity(List<JsonNode> events) {
     assertFalse(events.isEmpty(), "the alert listed no events");
     for (JsonNode event : events) {
@@ -99,6 +127,12 @@ class AlertListingLimitsIT {
         BASE + "/listAllFailedEvents",
         byId + "/listSuccessfullySentChangeEvents",
         byName + "/listSuccessfullySentChangeEvents");
+  }
+
+  private static List<String> diagnosticsOf(EventSubscription alert) {
+    return List.of(
+        BASE + "/id/" + alert.getId() + "/diagnosticInfo",
+        BASE + "/name/" + alert.getFullyQualifiedName() + "/diagnosticInfo");
   }
 
   private static List<JsonNode> rows(String path) throws Exception {

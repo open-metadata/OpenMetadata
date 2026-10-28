@@ -23,8 +23,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -1078,9 +1080,38 @@ public interface AccessControlDAOs {
   }
 
   interface ChangeEventDAO {
-    @SqlQuery(
-        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime DESC LIMIT :limit OFFSET :paginationOffset")
-    List<String> listUnprocessedEvents(
+    /**
+     * One page of the change events after {@code offset}, newest first: at most {@code limit}
+     * events and {@link #MAX_BYTES_PER_READ} bytes of them, and always the first, so a page can
+     * hold fewer events than asked and the next one starts after those it holds.
+     */
+    default List<String> listUnprocessedEvents(long offset, int limit, int paginationOffset) {
+      List<Long> offsets =
+          offsetsWithinBudget(
+              listUnprocessedSizes(offset, limit, paginationOffset), MAX_BYTES_PER_READ);
+      return offsets.isEmpty() ? List.of() : inPageOrder(offsets, listByOffsets(offsets));
+    }
+
+    // An event deleted between the two reads is left out of the page.
+    private static List<String> inPageOrder(List<Long> offsets, List<ChangeEventRecord> rows) {
+      Map<Long, String> jsonByOffset = new HashMap<>();
+      rows.forEach(row -> jsonByOffset.put(row.offset(), row.json()));
+      return offsets.stream().map(jsonByOffset::get).filter(Objects::nonNull).toList();
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset`, LENGTH(json) AS bytes FROM change_event WHERE `offset` > :offset "
+                + "ORDER BY eventTime DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\", octet_length(json::text) AS bytes FROM change_event "
+                + "WHERE \"offset\" > :offset "
+                + "ORDER BY eventTime DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventSizeMapper.class)
+    List<ChangeEventSize> listUnprocessedSizes(
         @Bind("offset") long offset,
         @Bind("limit") int limit,
         @Bind("paginationOffset") int paginationOffset);

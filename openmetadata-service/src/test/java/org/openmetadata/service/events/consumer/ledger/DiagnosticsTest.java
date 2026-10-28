@@ -1,6 +1,7 @@
 package org.openmetadata.service.events.consumer.ledger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -97,10 +98,24 @@ class DiagnosticsTest {
 
     try (MockedStatic<PerRequestContextCleaner> cleaner =
         mockStatic(PerRequestContextCleaner.class)) {
-      UnprocessedEvents.matching(oneRow, event -> true);
+      UnprocessedEvents.page(oneRow, event -> true);
 
       cleaner.verify(PerRequestContextCleaner::clear, times(2));
     }
+  }
+
+  @Test
+  void aPageIsMatchedOnTheEntityAndListedWithoutIt() {
+    ChangeEvent event =
+        new ChangeEvent().withId(UUID.randomUUID()).withEntityType("table").withEntity("{}");
+
+    AlertProgress.UnreadPage page =
+        UnprocessedEvents.page(
+            List.of(JsonUtils.pojoToJson(event)), unread -> unread.getEntity() != null);
+
+    assertEquals(1, page.relevant().size(), "the rules read the entity");
+    assertEquals(1, page.all().size());
+    assertNull(page.all().getFirst().getEntity(), "the listing leaves it out");
   }
 
   private static List<ChangeEventRecord> rows(long firstOffset, int count) {

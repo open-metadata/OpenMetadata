@@ -767,6 +767,9 @@ public class EventSubscriptionResource
                     mediaType = "application/json",
                     schema = @Schema(implementation = EventsRecord.class))),
         @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(
+            responseCode = "429",
+            description = "Too many alert counts are running; try again shortly"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   public Response getEventSubscriptionEventsRecordById(
@@ -779,24 +782,15 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(subscriptionId));
 
-    try {
-      if (!EventSubscriptionScheduler.getInstance().doesRecordExist(subscriptionId)) {
-        return Response.status(Response.Status.NOT_FOUND)
-            .entity("Event subscription not found for ID: " + subscriptionId)
-            .build();
-      }
-
-      EventsRecord eventsRecord = AlertDiagnostics.eventsRecord(subscriptionId);
-
-      return Response.ok().entity(eventsRecord).build();
-    } catch (Exception e) {
-      LOG.error("Error retrieving events record for subscription ID: {}", subscriptionId, e);
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(
-              "An error occurred while retrieving events record for subscription ID: "
-                  + subscriptionId)
+    if (!EventSubscriptionScheduler.getInstance().doesRecordExist(subscriptionId)) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity("Event subscription not found for ID: " + subscriptionId)
           .build();
     }
+
+    EventsRecord eventsRecord = AlertDiagnostics.eventsRecord(subscriptionId);
+
+    return Response.ok().entity(eventsRecord).build();
   }
 
   @GET
@@ -815,6 +809,9 @@ public class EventSubscriptionResource
                     mediaType = "application/json",
                     schema = @Schema(implementation = EventsRecord.class))),
         @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(
+            responseCode = "429",
+            description = "Too many alert counts are running; try again shortly"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   public Response getEventSubscriptionEventsRecordByName(
@@ -828,27 +825,18 @@ public class EventSubscriptionResource
     authorizer.authorize(
         securityContext, operationContext, getResourceContextByName(subscriptionName));
 
-    try {
-      EventSubscription subscription =
-          repository.getByName(null, subscriptionName, repository.getFields("id"));
+    EventSubscription subscription =
+        repository.getByName(null, subscriptionName, repository.getFields("id"));
 
-      if (subscription == null) {
-        return Response.status(Response.Status.NOT_FOUND)
-            .entity("Event subscription not found for name: " + subscriptionName)
-            .build();
-      }
-
-      EventsRecord eventsRecord = AlertDiagnostics.eventsRecord(subscription.getId());
-
-      return Response.ok().entity(eventsRecord).build();
-    } catch (Exception e) {
-      LOG.error("Error retrieving events record for subscription name: {}", subscriptionName, e);
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(
-              "An error occurred while retrieving events record for subscription name: "
-                  + subscriptionName)
+    if (subscription == null) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity("Event subscription not found for name: " + subscriptionName)
           .build();
     }
+
+    EventsRecord eventsRecord = AlertDiagnostics.eventsRecord(subscription.getId());
+
+    return Response.ok().entity(eventsRecord).build();
   }
 
   @GET
@@ -867,12 +855,19 @@ public class EventSubscriptionResource
                     mediaType = "application/json",
                     schema = @Schema(implementation = EventSubscriptionDiagnosticInfo.class))),
         @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(
+            responseCode = "429",
+            description = "Too many alert counts are running; try again shortly"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   public Response getEventSubscriptionDiagnosticInfoById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Maximum number of unprocessed events returned")
+      @Parameter(
+              description =
+                  "Maximum number of unprocessed events returned. A page holds at most 8 MB of"
+                      + " events, so it can hold fewer; the next page starts at paginationOffset"
+                      + " plus the events in totalUnprocessedEventsList")
           @DefaultValue("15")
           @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(value = AlertLimits.MAX_LISTING_ROWS, message = AlertLimits.MAX_LISTING_ROWS_MESSAGE)
@@ -895,25 +890,16 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(subscriptionId));
 
-    try {
-      if (!EventSubscriptionScheduler.getInstance().doesRecordExist(subscriptionId)) {
-        return Response.status(Response.Status.NOT_FOUND)
-            .entity("Event subscription not found for ID: " + subscriptionId)
-            .build();
-      }
-
-      EventSubscriptionDiagnosticInfo diagnosticInfo =
-          AlertDiagnostics.diagnosticInfo(subscriptionId, limit, paginationOffset, listCountOnly);
-
-      return Response.ok().entity(diagnosticInfo).build();
-    } catch (Exception e) {
-      LOG.error("Error retrieving diagnostic info for subscription ID: {}", subscriptionId, e);
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(
-              "An error occurred while retrieving diagnostic info for subscription ID: "
-                  + subscriptionId)
+    if (!EventSubscriptionScheduler.getInstance().doesRecordExist(subscriptionId)) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity("Event subscription not found for ID: " + subscriptionId)
           .build();
     }
+
+    EventSubscriptionDiagnosticInfo diagnosticInfo =
+        AlertDiagnostics.diagnosticInfo(subscriptionId, limit, paginationOffset, listCountOnly);
+
+    return Response.ok().entity(diagnosticInfo).build();
   }
 
   @GET
@@ -988,12 +974,19 @@ public class EventSubscriptionResource
                     mediaType = "application/json",
                     schema = @Schema(implementation = EventSubscriptionDiagnosticInfo.class))),
         @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(
+            responseCode = "429",
+            description = "Too many alert counts are running; try again shortly"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   public Response getEventSubscriptionDiagnosticInfoByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Maximum number of unprocessed events returned")
+      @Parameter(
+              description =
+                  "Maximum number of unprocessed events returned. A page holds at most 8 MB of"
+                      + " events, so it can hold fewer; the next page starts at paginationOffset"
+                      + " plus the events in totalUnprocessedEventsList")
           @DefaultValue("15")
           @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(value = AlertLimits.MAX_LISTING_ROWS, message = AlertLimits.MAX_LISTING_ROWS_MESSAGE)
@@ -1017,29 +1010,20 @@ public class EventSubscriptionResource
     authorizer.authorize(
         securityContext, operationContext, getResourceContextByName(subscriptionName));
 
-    try {
-      EventSubscription subscription =
-          repository.getByName(null, subscriptionName, repository.getFields("id"));
+    EventSubscription subscription =
+        repository.getByName(null, subscriptionName, repository.getFields("id"));
 
-      if (subscription == null) {
-        return Response.status(Response.Status.NOT_FOUND)
-            .entity("Event subscription not found for name: " + subscriptionName)
-            .build();
-      }
-
-      EventSubscriptionDiagnosticInfo diagnosticInfo =
-          AlertDiagnostics.diagnosticInfo(
-              subscription.getId(), limit, paginationOffset, listCountOnly);
-
-      return Response.ok().entity(diagnosticInfo).build();
-    } catch (Exception e) {
-      LOG.error("Error retrieving diagnostic info for subscription name: {}", subscriptionName, e);
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(
-              "An error occurred while retrieving diagnostic info for subscription name: "
-                  + subscriptionName)
+    if (subscription == null) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity("Event subscription not found for name: " + subscriptionName)
           .build();
     }
+
+    EventSubscriptionDiagnosticInfo diagnosticInfo =
+        AlertDiagnostics.diagnosticInfo(
+            subscription.getId(), limit, paginationOffset, listCountOnly);
+
+    return Response.ok().entity(diagnosticInfo).build();
   }
 
   @GET
