@@ -361,7 +361,7 @@ public class SearchServiceResource
                         JsonUtils.readValue((String) json, SearchService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, searchService));
                   } catch (Exception e) {
-                    return json;
+                    return withoutConnection(json);
                   }
                 })
             .collect(Collectors.toList());

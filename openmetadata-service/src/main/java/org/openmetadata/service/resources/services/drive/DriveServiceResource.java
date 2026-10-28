@@ -389,7 +389,7 @@ public class DriveServiceResource
                         JsonUtils.readValue((String) json, DriveService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, driveService));
                   } catch (Exception e) {
-                    return json;
+                    return withoutConnection(json);
                   }
                 })
             .collect(Collectors.toList());

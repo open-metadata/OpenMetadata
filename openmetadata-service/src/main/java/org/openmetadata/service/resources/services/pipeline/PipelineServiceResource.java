@@ -371,7 +371,7 @@ public class PipelineServiceResource
                         JsonUtils.readValue((String) json, PipelineService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, pipelineService));
                   } catch (Exception e) {
-                    return json;
+                    return withoutConnection(json);
                   }
                 })
             .collect(Collectors.toList());

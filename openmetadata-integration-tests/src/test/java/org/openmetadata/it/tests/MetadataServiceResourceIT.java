@@ -10,9 +10,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.services.CreateMetadataService;
@@ -26,9 +28,11 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 @Execution(ExecutionMode.CONCURRENT)
 public class MetadataServiceResourceIT
@@ -36,9 +40,22 @@ public class MetadataServiceResourceIT
 
   private static final String OM_SERVICE = "OpenMetadata";
   private static final String MASKED = "*********";
+  private static final String SERVICES_PATH = "/v1/services/metadataServices/";
+  private static final String AMUNDSEN_HOST = "bolt://localhost:7687";
+  private static final RequestOptions JSON_PATCH =
+      RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
 
   {
     supportsListHistoryByTimestamp = true;
+  }
+
+  /**
+   * A data-consumer token is authorized against its user, which exists only once some test has
+   * created it; creating it here keeps these tests independent of suite order.
+   */
+  @BeforeAll
+  static void ensureDataConsumerUser() {
+    UserTestFactory.getDataConsumer(null);
   }
 
   @Override
@@ -306,6 +323,107 @@ public class MetadataServiceResourceIT
     assertNull(botCfg.getElasticsSearch());
     assertTrue(
         botCfg.getSecurityConfig() == null || botCfg.getSecurityConfig().getJwtToken() == null);
+  }
+
+  /**
+   * Every response that carries a service follows the read rule, not only GET and list: a user who
+   * may only edit the description gets the patched service back without its connection.
+   */
+  @Test
+  void serviceConnection_notInPatchResponse_forFieldEditor(TestNamespace ns) throws Exception {
+    final MetadataService service = createAmundsenService(ns, "svc_conn_patch");
+
+    final String patched =
+        SdkClients.dataConsumerClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PATCH,
+                SERVICES_PATH + service.getId(),
+                JsonUtils.readTree(
+                    "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"edited by a consumer\"}]"),
+                JSON_PATCH);
+
+    assertTrue(patched.contains("edited by a consumer"), patched);
+    assertFalse(patched.contains(AMUNDSEN_HOST), patched);
+  }
+
+  /** Following answers with the service's change event, which must not carry the connection. */
+  @Test
+  void serviceConnection_notInFollowResponse_forViewer(TestNamespace ns) throws Exception {
+    final MetadataService service = createAmundsenService(ns, "svc_conn_follow");
+    final UUID consumerId = UserTestFactory.getDataConsumer(null).getId();
+
+    final String followed =
+        SdkClients.dataConsumerClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT, SERVICES_PATH + service.getId() + "/followers", consumerId);
+
+    assertTrue(followed.contains(service.getId().toString()), followed);
+    assertFalse(followed.contains(AMUNDSEN_HOST), followed);
+  }
+
+  /** Past versions follow the rule too: a viewer reads the history window without connections. */
+  @Test
+  void serviceConnection_notInTimestampHistory_forViewer(TestNamespace ns) throws Exception {
+    final long startTs = System.currentTimeMillis();
+    final MetadataService service = createAmundsenService(ns, "svc_conn_history");
+    service.setDescription("a second version");
+    patchEntity(service.getId().toString(), service);
+
+    final String history =
+        SdkClients.dataConsumerClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                SERVICES_PATH
+                    + "history?limit=500&startTs="
+                    + startTs
+                    + "&endTs="
+                    + (System.currentTimeMillis() + 60_000),
+                null);
+
+    assertTrue(history.contains(service.getId().toString()), "the window holds its versions");
+    assertFalse(history.contains(AMUNDSEN_HOST), history);
+  }
+
+  /** A patch may not copy a stored credential into a field the caller can read back. */
+  @Test
+  void patch_copyingOutOfTheConnection_needsEditAll(TestNamespace ns) {
+    final MetadataService service = createAmundsenService(ns, "svc_conn_copy");
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            SdkClients.dataConsumerClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PATCH,
+                    SERVICES_PATH + service.getId(),
+                    JsonUtils.readTree(
+                        "[{\"op\":\"copy\",\"from\":\"/connection/config/password\","
+                            + "\"path\":\"/description\"}]"),
+                    JSON_PATCH));
+  }
+
+  /** Restoring answers with the service, which an editor gets masked as on any read. */
+  @Test
+  void serviceConnection_maskedInRestoreResponse_forEditor(TestNamespace ns) {
+    final MetadataService service = createAmundsenService(ns, "svc_conn_restore");
+    SdkClients.adminClient().metadataServices().delete(service.getId().toString());
+
+    final MetadataService restored =
+        SdkClients.adminClient().metadataServices().restore(service.getId());
+
+    final AmundsenConnection conn =
+        JsonUtils.convertValue(restored.getConnection().getConfig(), AmundsenConnection.class);
+    assertEquals(MASKED, conn.getPassword());
+  }
+
+  private MetadataService createAmundsenService(TestNamespace ns, String name) {
+    final CreateMetadataService request = createMinimalRequest(ns);
+    request.setName(ns.prefix(name));
+    return createEntity(request);
   }
 
   @Test

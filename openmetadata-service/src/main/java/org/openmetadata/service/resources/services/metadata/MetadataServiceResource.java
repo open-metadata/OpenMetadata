@@ -385,14 +385,14 @@ public class MetadataServiceResource
 
     List<Object> versions =
         entityHistory.getVersions().stream()
-            .map(
+            .<Object>map(
                 json -> {
                   try {
                     MetadataService metadataService =
                         JsonUtils.readValue((String) json, MetadataService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, metadataService));
                   } catch (Exception e) {
-                    return json;
+                    return withoutConnection(json);
                   }
                 })
             .toList();

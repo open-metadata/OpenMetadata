@@ -50,6 +50,12 @@ application config.
 
 ## Amendment — 2026-10-27: MCP, and clients that run without a connection
 
+- **Every response that carries a service follows the rule.** Patch, follow and unfollow, restore
+  and the timestamp `/history` pass the service through `decryptOrNullify`, as GET and list do. A
+  stored version that no longer decrypts or masks goes out without its connection.
+- **A patch that reads from another path takes EditAll.** A `copy` or `move` reads its `from`
+  location, which patch authorization does not check; as in `WorkflowDefinitionResource`, it needs
+  EditAll, so a field-scoped edit cannot copy the stored connection into a field it reads back.
 - **MCP follows the same rule.** `get_entity` and `patch_entity` drop a service's `connection` for a
   caller without `EDIT_ALL` on the service, through the `ServiceConnectionAccess` check the REST
   resource uses. A caller with it gets the connection masked, bots included, as

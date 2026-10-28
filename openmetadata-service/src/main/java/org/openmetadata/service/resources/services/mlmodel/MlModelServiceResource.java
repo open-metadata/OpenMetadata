@@ -371,7 +371,7 @@ public class MlModelServiceResource
                         JsonUtils.readValue((String) json, MlModelService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, mlModelService));
                   } catch (Exception e) {
-                    return json;
+                    return withoutConnection(json);
                   }
                 })
             .collect(Collectors.toList());

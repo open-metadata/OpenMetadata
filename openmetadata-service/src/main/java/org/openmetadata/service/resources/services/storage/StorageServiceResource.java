@@ -355,7 +355,7 @@ public class StorageServiceResource
                         JsonUtils.readValue((String) json, StorageService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, storageService));
                   } catch (Exception e) {
-                    return json;
+                    return withoutConnection(json);
                   }
                 })
             .collect(Collectors.toList());

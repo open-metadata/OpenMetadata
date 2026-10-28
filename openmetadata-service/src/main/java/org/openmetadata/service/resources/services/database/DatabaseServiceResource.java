@@ -316,7 +316,7 @@ public class DatabaseServiceResource
                         JsonUtils.readValue((String) json, DatabaseService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, databaseService));
                   } catch (Exception e) {
-                    return json;
+                    return withoutConnection(json);
                   }
                 })
             .collect(Collectors.toList());
