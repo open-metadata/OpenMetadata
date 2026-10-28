@@ -266,7 +266,10 @@ public class RdfIndexApp extends AbstractNativeApplication {
         final boolean promoted = promoteBuildDataset(indexingRepository);
         updateJobStatus(EventPublisherJob.Status.COMPLETED);
         if (!promoted) {
-          // In-place indexing reports completion before potentially lengthy disk maintenance.
+          // In-place indexing reports completion before potentially lengthy disk maintenance, so
+          // it records its rewrite of the serving graph first: once reported, the run is over.
+          RdfUpdater.recordUntrackedWrite();
+          writesServingGraph = false;
           sendUpdates(jobExecutionContext, true);
           compactServingBestEffort();
         }
