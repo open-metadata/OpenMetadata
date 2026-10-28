@@ -89,13 +89,24 @@ public class FullyQualifiedName {
   }
 
   private static <L extends FqnBaseListener> void walk(String string, L listener) {
-    FqnLexer fqnLexer = new FqnLexer(CharStreams.fromString(string));
-    CommonTokenStream tokens = new CommonTokenStream(fqnLexer);
-    FqnParser fqnParser = new FqnParser(tokens);
-    fqnParser.setErrorHandler(new BailErrorStrategy());
-    FqnContext fqn = fqnParser.fqn();
+    FqnContext fqn = parse(string);
     ParseTreeWalker walker = new ParseTreeWalker();
     walker.walk(listener, fqn);
+  }
+
+  /**
+   * FQNs arrive from request paths and query parameters, so malformed input (an unbalanced quote,
+   * an empty segment) is a client error and is reported as one.
+   */
+  private static FqnContext parse(String fullyQualifiedName) {
+    FqnLexer fqnLexer = new FqnLexer(CharStreams.fromString(fullyQualifiedName));
+    FqnParser fqnParser = new FqnParser(new CommonTokenStream(fqnLexer));
+    fqnParser.setErrorHandler(new BailErrorStrategy());
+    try {
+      return fqnParser.fqn();
+    } catch (ParseCancellationException e) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidFQN(fullyQualifiedName), e);
+    }
   }
 
   public static String getParentFQN(String fqn) {
@@ -216,7 +227,7 @@ public class FullyQualifiedName {
     try {
       String[] parts = split(segment);
       roundTrips = parts.length == 1 && unquoteName(parts[0]).equals(name);
-    } catch (ParseCancellationException e) {
+    } catch (IllegalArgumentException e) {
       roundTrips = false;
     }
     return roundTrips;
@@ -235,7 +246,7 @@ public class FullyQualifiedName {
       try {
         split(fullyQualifiedName);
         valid = true;
-      } catch (ParseCancellationException e) {
+      } catch (IllegalArgumentException e) {
         valid = false;
       }
     }
