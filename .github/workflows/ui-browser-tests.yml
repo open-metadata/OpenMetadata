@@ -222,15 +222,16 @@ jobs:
       - uses: actions/download-artifact@v7
         if: needs.select.outputs.mode == 'all'
         with:
+          # One folder per shard: each names its file after its process id,
+          # which can repeat across runners.
           pattern: browser-impact-*
-          merge-multiple: true
           path: impact
       # Only a fully passing run is trusted as the map: a failed test may have
       # stopped before reaching the code it covers.
       - name: Build the impact map
         if: needs.select.outputs.mode == 'all' && needs.browser-tests.result == 'success'
         run: |
-          cat impact/*.jsonl | jq -s 'map({(.test): .used}) | add' > "$UI_DIR/impact-map.json"
+          cat impact/*/*.jsonl | jq -s 'map({(.test): .used}) | add' > "$UI_DIR/impact-map.json"
           echo "Impact map: $(jq length "$UI_DIR/impact-map.json") test files" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
         if: needs.select.outputs.mode == 'all' && needs.browser-tests.result == 'success'
