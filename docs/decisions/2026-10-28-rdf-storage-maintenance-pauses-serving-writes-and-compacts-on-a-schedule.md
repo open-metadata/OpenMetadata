@@ -25,6 +25,8 @@ dead-lettered, marking the projection degraded until a full rebuild.
 - One server compacts the serving dataset every `storageMaintenance.compactionIntervalHours` (24).
   The slot is a lease, `RDF_STORAGE_NEXT_COMPACTION`, in `rdf_reindex_lock`, taken for one interval.
   A compaction that does not succeed releases it, so the next check (every 15 minutes) retries.
+  One that Fuseki started and then lost keeps it: Fuseki restarted during the copy, as it does
+  when the volume cannot hold the copy, and retrying would only restart it again.
 - Maintenance holds the RDF reindex and inference locks while it runs, so it never overlaps an
   indexing or inference run. The first check runs an hour after a server starts, so a rolling
   upgrade finishes before maintenance pauses anything.
