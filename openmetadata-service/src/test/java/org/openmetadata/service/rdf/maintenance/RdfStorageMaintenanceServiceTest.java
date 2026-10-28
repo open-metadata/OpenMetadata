@@ -216,6 +216,24 @@ class RdfStorageMaintenanceServiceTest {
   }
 
   @Test
+  void anUrgentCompactionFusekiLostWaitsForTheNextScheduledOne() {
+    serverA.compactIfDue();
+    when(repository.storageFacts())
+        .thenReturn(Optional.of(new StorageFacts(100 * GIB, 5 * GIB, true)));
+    final CompactionResult lost =
+        new CompactionResult(
+            CompactionResult.Outcome.UNKNOWN,
+            "4",
+            "Fuseki no longer reports task 4",
+            Duration.ofMinutes(4));
+    when(repository.compact(any())).thenReturn(lost);
+
+    assertEquals(lost, serverB.compactIfDue());
+    assertNull(serverA.compactIfDue(), "Fuseki restarted during the copy; retrying restarts it");
+    verify(repository, times(2)).compact(any());
+  }
+
+  @Test
   void aStoreWithRoomWaitsForTheInterval() {
     serverA.compactIfDue();
     when(repository.storageFacts())
