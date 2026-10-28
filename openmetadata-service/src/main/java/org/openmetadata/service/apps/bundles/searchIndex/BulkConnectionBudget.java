@@ -3,7 +3,6 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import java.util.Objects;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManager;
 import org.apache.hc.core5.util.DeadlineTimeoutException;
@@ -13,7 +12,7 @@ import software.amazon.awssdk.http.SdkHttpConfigurationOption;
 /**
  * Server-wide cap on bulk requests in flight on one search client's connection pool. Every bulk
  * processor built on the client — reindex, live indexing, the retry worker, column indexing — holds
- * one of these permits while its request is outstanding, so bulks cannot outnumber its connections. A
+ * one of these permits while its request is on the wire, so bulks cannot outnumber its connections. A
  * request queued there fails after {@code connectionRequestTimeoutSecs} with a {@link
  * DeadlineTimeoutException} even though the cluster is healthy, and those failures used to open the
  * bulk circuit breaker and drop whole batches. Part of the pool is left to searches.
@@ -38,7 +37,6 @@ public final class BulkConnectionBudget {
   private final int poolCapacity;
   private final int permits;
   private final Semaphore semaphore;
-  private final AtomicLong completedAttempts = new AtomicLong();
 
   private BulkConnectionBudget(int poolCapacity) {
     this.poolCapacity = poolCapacity;
@@ -102,14 +100,6 @@ public final class BulkConnectionBudget {
 
   void release() {
     semaphore.release();
-  }
-
-  void recordAttemptCompleted() {
-    completedAttempts.incrementAndGet();
-  }
-
-  long completedAttempts() {
-    return completedAttempts.get();
   }
 
   private static int positiveOr(Integer value, int fallback) {

@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
@@ -110,7 +111,6 @@ class OpenSearchBulkProcessorConnectionPoolTest {
         ProcessorRun run =
             ProcessorRun.start(cluster.configuration(searchType(), 20, 5), settings, breaker)) {
       cluster.rejectNextBulks(2);
-      run.processor().setSemaphoreAcquireTimeoutSecondsForTesting(3);
 
       // Two full bulks are rejected and pause holding both send permits; the fifth document then
       // waits for a permit inside a flush while the periodic flush queues up behind it.
@@ -191,6 +191,39 @@ class OpenSearchBulkProcessorConnectionPoolTest {
     }
   }
 
+  @Test
+  void liveWritesKeepFlowingWhileAReindexWaitsOutAnOpenCircuit() throws Exception {
+    BulkCircuitBreaker reindexBreaker = new BulkCircuitBreaker(1, 30_000, 2_000);
+    try (FakeSearchCluster cluster = FakeSearchCluster.start(20);
+        ProcessorRun reindex =
+            ProcessorRun.start(
+                cluster.configuration(searchType(), 5, 5),
+                new BulkProcessorSettings(1, 1_048_576L, 3, 60_000L, retries(5, 50)),
+                reindexBreaker);
+        ProcessorRun live =
+            ProcessorRun.startOn(
+                reindex.client(),
+                new BulkProcessorSettings(1, 1_048_576L, 1, 60_000L, BulkRetryPolicy.LIVE),
+                new BulkCircuitBreaker(5, 30_000, 10_000))) {
+      // A 5-connection pool gives the server 3 bulk permits. The reindex sends 3 bulks, they are
+      // rejected, and its retries pause behind the open circuit until the probe 2 s later.
+      cluster.rejectNextBulks(3);
+      reindex.index(3);
+      await()
+          .atMost(Duration.ofSeconds(5))
+          .until(() -> reindexBreaker.getState() == BulkCircuitBreaker.State.OPEN);
+
+      assertTimeoutPreemptively(
+          Duration.ofMillis(1_500),
+          () -> {
+            live.index(1);
+            assertTrue(live.processor().flushAndWait(1, TimeUnit.SECONDS));
+          },
+          "a reindex waiting out an open circuit must not hold the connections live writes need");
+      assertEquals(1, live.succeeded().get());
+    }
+  }
+
   private static BulkRetryPolicy retries(int maxRetries, long initialBackoffMillis) {
     return new BulkRetryPolicy(maxRetries, initialBackoffMillis, 1_000L);
   }
@@ -203,7 +236,8 @@ class OpenSearchBulkProcessorConnectionPoolTest {
       OpenSearchBulkSink.CustomBulkProcessor processor,
       AtomicLong succeeded,
       AtomicLong failed,
-      OpenSearchClient client)
+      OpenSearchClient client,
+      boolean ownsClient)
       implements AutoCloseable {
 
     static ProcessorRun start(
@@ -221,9 +255,22 @@ class OpenSearchBulkProcessorConnectionPoolTest {
         ElasticSearchConfiguration configuration,
         BulkProcessorSettings settings,
         BulkCircuitBreaker breaker) {
+      return create(new OpenSearchClient(configuration), settings, breaker, true);
+    }
+
+    /** A processor on a client another run owns, sharing that client's connection budget. */
+    static ProcessorRun startOn(
+        OpenSearchClient client, BulkProcessorSettings settings, BulkCircuitBreaker breaker) {
+      return create(client, settings, breaker, false);
+    }
+
+    private static ProcessorRun create(
+        OpenSearchClient client,
+        BulkProcessorSettings settings,
+        BulkCircuitBreaker breaker,
+        boolean ownsClient) {
       AtomicLong succeeded = new AtomicLong();
       AtomicLong failed = new AtomicLong();
-      OpenSearchClient client = new OpenSearchClient(configuration);
       OpenSearchBulkSink.CustomBulkProcessor processor =
           new OpenSearchBulkSink.CustomBulkProcessor(
               client,
@@ -231,7 +278,7 @@ class OpenSearchBulkProcessorConnectionPoolTest {
               new BulkProcessorCounters(
                   new AtomicLong(), succeeded, failed, new AtomicLong(), () -> {}),
               breaker);
-      return new ProcessorRun(processor, succeeded, failed, client);
+      return new ProcessorRun(processor, succeeded, failed, client, ownsClient);
     }
 
     ScheduledExecutorService scheduler() throws ReflectiveOperationException {
@@ -254,7 +301,9 @@ class OpenSearchBulkProcessorConnectionPoolTest {
       try {
         processor.awaitClose(10, TimeUnit.SECONDS);
       } finally {
-        client.close();
+        if (ownsClient) {
+          client.close();
+        }
       }
     }
   }

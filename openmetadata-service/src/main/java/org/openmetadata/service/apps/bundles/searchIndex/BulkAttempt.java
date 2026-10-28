@@ -4,8 +4,8 @@ import java.util.List;
 
 /**
  * One bulk request on its way to the cluster: what it carries, which send this is, and the deadline
- * fixed at its first send. Retries and pauses behind an open circuit carry the same deadline, so
- * neither can keep a bulk alive past it.
+ * fixed when it was flushed. Waiting for permits, retries, and pauses behind an open circuit all
+ * carry the same deadline, so none of them can keep a bulk alive past it.
  * ADR:2026-10-27-bulk-requests-never-outnumber-search-connections
  */
 record BulkAttempt<T>(

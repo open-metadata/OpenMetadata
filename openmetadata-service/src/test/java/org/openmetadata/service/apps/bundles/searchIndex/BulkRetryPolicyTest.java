@@ -25,10 +25,11 @@ class BulkRetryPolicyTest {
   }
 
   @Test
-  void defaultKeepsTheShortBackoffLiveIndexingHasAlwaysUsed() {
-    assertEquals(3, BulkRetryPolicy.DEFAULT.maxRetries());
-    assertEquals(100, BulkRetryPolicy.DEFAULT.backoffMillis(0));
-    assertEquals(400, BulkRetryPolicy.DEFAULT.backoffMillis(2));
+  void liveWritesKeepTheirShortBackoffAndGiveUpWithinTenSeconds() {
+    assertEquals(3, BulkRetryPolicy.LIVE.maxRetries());
+    assertEquals(100, BulkRetryPolicy.LIVE.backoffMillis(0));
+    assertEquals(400, BulkRetryPolicy.LIVE.backoffMillis(2));
+    assertEquals(10_000, BulkRetryPolicy.LIVE.maxLifetimeMillis());
   }
 
   @Test
@@ -47,13 +48,13 @@ class BulkRetryPolicyTest {
             Deadline.fromUnixMilliseconds(System.currentTimeMillis() - 100));
 
     assertFalse(poolWait.getMessage().toLowerCase(Locale.ROOT).contains("timeout"));
-    assertTrue(BulkRetryPolicy.DEFAULT.shouldRetry(0, poolWait));
-    assertTrue(BulkRetryPolicy.DEFAULT.shouldRetry(0, new CompletionException(poolWait)));
+    assertTrue(BulkRetryPolicy.LIVE.shouldRetry(0, poolWait));
+    assertTrue(BulkRetryPolicy.LIVE.shouldRetry(0, new CompletionException(poolWait)));
   }
 
   @Test
   void clusterPushbackIsRetriedButRejectedDocumentsAreNot() {
-    BulkRetryPolicy policy = BulkRetryPolicy.DEFAULT;
+    BulkRetryPolicy policy = BulkRetryPolicy.LIVE;
 
     assertTrue(policy.shouldRetry(0, new RuntimeException("[es_rejected_execution_exception]")));
     assertTrue(policy.shouldRetry(0, new RuntimeException("status 429 too_many_requests")));

@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -11,6 +12,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -84,16 +86,12 @@ class OpenSearchBulkSinkSimpleTest {
    */
   @Test
   void semaphoreTimeoutRecordsPermanentFailureWithoutIncrementingActiveRequests() throws Exception {
-    // A zero bulk lifetime gives no parked-bulk allowance, so the stall window is the timeout
-    // alone.
+    // A zero bulk lifetime means its flush cannot wait at all for a free slot.
     OpenSearchBulkSink sink =
         new OpenSearchBulkSink(
             searchRepository, 10, 2, 1000000L, new BulkRetryPolicy(3, 100, 10_000, 0));
     try {
       OpenSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
-
-      // Shorten the wait so the test doesn't sleep a minute. 0 = immediate fail-fast on no-permit.
-      processor.setSemaphoreAcquireTimeoutSecondsForTesting(0L);
 
       // Drain the semaphore so flushInternal cannot acquire a permit. The sink was constructed
       // with concurrentRequests=2 (see setUp), so drain both.
@@ -133,6 +131,23 @@ class OpenSearchBulkSinkSimpleTest {
       assertTrue(buffer.isEmpty(), "buffer should be cleared after permanent failure");
     } finally {
       sink.close();
+    }
+  }
+
+  @Test
+  void liveWritesBuildDocumentsOffTheReindexPool() throws Exception {
+    OpenSearchBulkSink live = new OpenSearchBulkSink(searchRepository, 10, 2, 1000000L);
+    OpenSearchBulkSink reindex =
+        new OpenSearchBulkSink(
+            searchRepository, 10, 2, 1000000L, new BulkRetryPolicy(3, 1_000, 10_000));
+    try {
+      // A reindex out of send slots blocks its doc-build tasks; live writes must not queue there.
+      assertNotSame(
+          getField(reindex, "docBuildExecutor", Executor.class),
+          getField(live, "docBuildExecutor", Executor.class));
+    } finally {
+      live.close();
+      reindex.close();
     }
   }
 

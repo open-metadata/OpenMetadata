@@ -5199,21 +5199,19 @@ public class SearchRepository {
     }
   }
 
+  /** A sink for live indexing and the retry worker; see {@link BulkRetryPolicy#LIVE}. */
   public BulkSink createBulkSink(
       int batchSize, int maxConcurrentRequests, long maxPayloadSizeBytes) {
-    return newBulkSink(
-        batchSize, maxConcurrentRequests, maxPayloadSizeBytes, BulkRetryPolicy.DEFAULT);
+    ElasticSearchConfiguration.SearchType searchType = getSearchType();
+    if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
+      return new OpenSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+    } else {
+      return new ElasticSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+    }
   }
 
+  /** A sink for a reindex job, retrying with the job's settings. */
   public BulkSink createBulkSink(
-      int batchSize,
-      int maxConcurrentRequests,
-      long maxPayloadSizeBytes,
-      BulkRetryPolicy retryPolicy) {
-    return newBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes, retryPolicy);
-  }
-
-  private BulkSink newBulkSink(
       int batchSize,
       int maxConcurrentRequests,
       long maxPayloadSizeBytes,
