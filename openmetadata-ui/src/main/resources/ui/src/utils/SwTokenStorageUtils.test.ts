@@ -183,7 +183,7 @@ describe('SwTokenStorageUtils', () => {
       expect(result).toBe('');
     });
 
-    it('drops a bot token written into storage, clearing it and signing out once', async () => {
+    it('drops an API-only token, clearing it and signing out once', async () => {
       const onRejected = jest.fn();
       setApiOnlyTokenListener(onRejected);
       const botToken = tokenWith({ isBot: true, tokenType: 'BOT' });

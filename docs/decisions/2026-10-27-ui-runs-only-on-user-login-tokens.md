@@ -7,9 +7,9 @@
 - **Related:** #36250, #36318, #36319
 
 ## Context
-The UI used to accept any JWT the server accepts. A bot token or personal access token dropped into
-browser token storage drove the UI just like a token from a real login, so an API credential could
-act as an interactive session. Those tokens are meant for API clients and automation.
+Bot tokens and personal access tokens are issued for API clients and automation. Interactive UI
+sessions should come from the login flow, so the UI needs a single, explicit rule for which stored
+tokens it runs on.
 
 ## Decision
 The UI accepts only tokens from a user login flow. `getOidcToken()` in `SwTokenStorageUtils.ts`
@@ -35,8 +35,7 @@ REST API unchanged, because the server cannot reliably tell a UI request from an
 - The check depends on the server's claim names: `isBot` and `tokenType`, with values from
   `serviceTokenEnum.json`. Renaming a claim or adding a token type requires updating
   `isApiOnlyToken`.
-- It is enforced in the browser, so anyone who patches the client can get around it. It keeps API
-  credentials from being used as UI sessions by accident or through the app; it does not replace
-  server-side authorization.
+- It is a client-side session rule that complements server-side authorization; it does not
+  replace it.
 - A refresh already in flight when the sign-out starts can still restore the session; that race
   affects every sign-out and is tracked in #36319.

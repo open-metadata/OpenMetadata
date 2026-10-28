@@ -232,8 +232,7 @@ const rejectApiOnlyToken = () => {
 };
 
 // Every consumer (axios interceptor, AuthCoordinator, streams) reads the token
-// here, so a bot/PAT token written into storage by hand - on load or mid
-// session - is dropped before any request carries it.
+// here, so the check covers both a cold load and an active session.
 export const getOidcToken = async (): Promise<string> => {
   try {
     const state = await getAppState();
