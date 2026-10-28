@@ -2212,36 +2212,43 @@ export const Lineage = ({
     onPlatformViewUpdateRef.current();
   }, []);
 
-  const handlers = useMemo<LineageHandlersValue>(
-    () => ({
-      loadChildNodesHandler,
-      removeNodeHandler,
-      onNodeClick,
-      onNodeCollapse,
-      onConnect,
-      onEdgeDetailsUpdate,
-      updateEntityData,
-      handleEntityUpdate,
-      onExportClick,
-      onInitReactFlow,
-      onNodesChange,
-      refetchLineage,
-    }),
-    [
-      loadChildNodesHandler,
-      removeNodeHandler,
-      onNodeClick,
-      onNodeCollapse,
-      onConnect,
-      onEdgeDetailsUpdate,
-      updateEntityData,
-      handleEntityUpdate,
-      onExportClick,
-      onInitReactFlow,
-      onNodesChange,
-      refetchLineage,
-    ]
-  );
+  // Stable wrappers over the latest handlers: several close over `nodes`, which
+  // changes every drag frame, and must not re-render every context consumer.
+  const currentHandlers: LineageHandlersValue = {
+    loadChildNodesHandler,
+    removeNodeHandler,
+    onNodeClick,
+    onNodeCollapse,
+    onConnect,
+    onEdgeDetailsUpdate,
+    updateEntityData,
+    handleEntityUpdate,
+    onExportClick,
+    onInitReactFlow,
+    onNodesChange,
+    refetchLineage,
+  };
+  const latestHandlersRef = useRef(currentHandlers);
+  latestHandlersRef.current = currentHandlers;
+  const handlers = useMemo<LineageHandlersValue>(() => {
+    const latest = () => latestHandlersRef.current;
+
+    return {
+      loadChildNodesHandler: (...args) =>
+        latest().loadChildNodesHandler(...args),
+      removeNodeHandler: (...args) => latest().removeNodeHandler(...args),
+      onNodeClick: (...args) => latest().onNodeClick(...args),
+      onNodeCollapse: (...args) => latest().onNodeCollapse(...args),
+      onConnect: (...args) => latest().onConnect(...args),
+      onEdgeDetailsUpdate: (...args) => latest().onEdgeDetailsUpdate(...args),
+      updateEntityData: (...args) => latest().updateEntityData(...args),
+      handleEntityUpdate: (...args) => latest().handleEntityUpdate(...args),
+      onExportClick: (...args) => latest().onExportClick(...args),
+      onInitReactFlow: (...args) => latest().onInitReactFlow(...args),
+      onNodesChange: (...args) => latest().onNodesChange(...args),
+      refetchLineage: (...args) => latest().refetchLineage(...args),
+    };
+  }, []);
 
   const overlayHandlers = useMemo<LineageOverlaysHandlers>(
     () => ({

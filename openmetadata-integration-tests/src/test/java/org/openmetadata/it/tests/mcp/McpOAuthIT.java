@@ -368,6 +368,22 @@ public class McpOAuthIT extends McpTestBase {
 
   @Test
   @Order(14)
+  void testRefresh_rotatedTokenKeepsTheEndOfTheGrant() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    long grantEnd = System.currentTimeMillis() + Duration.ofDays(5).toMillis();
+    String refreshToken = seedRefreshToken(List.of(), grantEnd);
+
+    HttpResponse<String> response = refresh(refreshToken);
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    String rotated = OBJECT_MAPPER.readTree(response.body()).get("refresh_token").asText();
+    assertThat(new OAuthTokenRepository().findRefreshToken(rotated).getExpiresAt())
+        .isEqualTo(grantEnd);
+  }
+
+  @Test
+  @Order(15)
   void testRefreshOfAGrantHoldingUnknownScopes_keepsOnlyTheKnownOnes() throws Exception {
     Assumptions.assumeTrue(
         registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
@@ -375,7 +391,8 @@ public class McpOAuthIT extends McpTestBase {
         Stream.concat(
                 Stream.of("openid"), IntStream.range(0, 200).mapToObj(index -> "scope" + index))
             .toList();
-    String refreshToken = seedRefreshToken(granted);
+    String refreshToken =
+        seedRefreshToken(granted, System.currentTimeMillis() + Duration.ofDays(1).toMillis());
 
     HttpResponse<String> response = refresh(refreshToken);
 
@@ -385,10 +402,12 @@ public class McpOAuthIT extends McpTestBase {
         .containsExactly("openid");
   }
 
-  /** Stores a refresh token for admin granting {@code scopes}, as a sign-in would. */
-  private static String seedRefreshToken(List<String> scopes) {
+  /**
+   * Stores a refresh token for admin granting {@code scopes} and ending at {@code expiresAt}, as a
+   * sign-in would.
+   */
+  private static String seedRefreshToken(List<String> scopes, long expiresAt) {
     String value = UUID.randomUUID().toString();
-    long expiresAt = System.currentTimeMillis() + Duration.ofDays(1).toMillis();
     new OAuthTokenRepository()
         .storeRefreshToken(
             new RefreshToken(value, registeredClientId, scopes, expiresAt),
