@@ -501,9 +501,7 @@ describe('InlineTestCaseIncidentStatus', () => {
         fireEvent.click(screen.getByTestId(CHIP_TEST_ID));
       });
       await act(async () => {
-        fireEvent.click(
-          document.querySelector('[tooltip="label.back"]') as HTMLElement
-        );
+        fireEvent.click(screen.getByTestId('incident-status-popover-back'));
       });
 
       expect(

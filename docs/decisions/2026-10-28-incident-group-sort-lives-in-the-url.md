@@ -15,8 +15,9 @@ the open group and the page in the URL, but held the groups' order in component 
 so a shared link could carry the groups without carrying their order too.
 
 Release testing of 2.1.0 found the opposite expectation: sorting by Incidents, Severity or Last
-seen and then reloading, or sharing the link, silently reset the order. It was also the only piece
-of view state that did not survive a reload, which read as a bug.
+seen and then reloading, or sharing the link, silently reset the order, which read as a bug. The
+page and page size still live in component state (`useIncidentPaging`); this record does not move
+them.
 
 ## Decision
 
@@ -26,8 +27,10 @@ of view state that did not survive a reload, which read as a bug.
   `parseIncidentGroupSort` and holds no local copy.
 - A sort change replaces the current history entry and keeps every other param, the same way the
   group-by and filter changes do.
-- A missing or unknown `sortField`, or a `sortType` other than `asc`/`desc`, falls back to
-  `DEFAULT_INCIDENT_GROUP_SORT` rather than reaching the API.
+- The field and the direction fall back to `DEFAULT_INCIDENT_GROUP_SORT` independently, rather
+  than reaching the API: a missing or unknown `sortField` takes the default field, and a
+  `sortType` other than `asc`/`desc` takes the default direction. So
+  `?sortField=severity&sortType=bogus` sorts by severity in the default direction.
 
 ## Consequences
 

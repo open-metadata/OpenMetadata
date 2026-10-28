@@ -87,6 +87,8 @@ export const TEST_CASE_RESOLUTION_STATUS_LABELS: Record<
   [TestCaseResolutionStatusTypes.Resolved]: i18n.t('label.resolved'),
 };
 
+const ALL_INCIDENT_STATUSES = Object.values(TestCaseResolutionStatusTypes);
+
 /**
  * Statuses an incident's status menu offers from each status: its own, plus
  * the edges `TestCaseResolutionTaskWorkflow` declares from that stage. An
@@ -97,19 +99,13 @@ export const INCIDENT_STATUS_MENU_OPTIONS: Record<
   TestCaseResolutionStatusTypes,
   TestCaseResolutionStatusTypes[]
 > = {
-  [TestCaseResolutionStatusTypes.New]: Object.values(
-    TestCaseResolutionStatusTypes
-  ),
-  [TestCaseResolutionStatusTypes.ACK]: Object.values(
-    TestCaseResolutionStatusTypes
-  ),
+  [TestCaseResolutionStatusTypes.New]: ALL_INCIDENT_STATUSES,
+  [TestCaseResolutionStatusTypes.ACK]: ALL_INCIDENT_STATUSES,
   [TestCaseResolutionStatusTypes.Assigned]: [
     TestCaseResolutionStatusTypes.Assigned,
     TestCaseResolutionStatusTypes.Resolved,
   ],
-  [TestCaseResolutionStatusTypes.Resolved]: Object.values(
-    TestCaseResolutionStatusTypes
-  ),
+  [TestCaseResolutionStatusTypes.Resolved]: ALL_INCIDENT_STATUSES,
 };
 
 export const TABLE_DIFF = 'tableDiff';

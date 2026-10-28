@@ -345,27 +345,8 @@ export const useIncidentGroups = () => {
     [location.state, navigate, searchParams]
   );
 
-  const handleGroupByChange = useCallback(
-    (updatedGroupBy: IncidentGroupBy) => {
-      if (updatedGroupBy === groupBy) {
-        return;
-      }
-
-      navigate(
-        {
-          search: QueryString.stringify({
-            ...searchParams,
-            [INCIDENT_GROUP_BY_PARAM]: updatedGroupBy,
-          }),
-        },
-        { replace: true }
-      );
-    },
-    [groupBy, navigate, searchParams]
-  );
-
-  const handleFiltersChange = useCallback(
-    (changes: Partial<IncidentGroupFilters>) =>
+  const replaceSearch = useCallback(
+    (changes: Record<string, unknown>) =>
       navigate(
         {
           search: QueryString.stringify(
@@ -378,22 +359,29 @@ export const useIncidentGroups = () => {
     [navigate, searchParams]
   );
 
+  const handleGroupByChange = useCallback(
+    (updatedGroupBy: IncidentGroupBy) => {
+      if (updatedGroupBy === groupBy) {
+        return;
+      }
+
+      replaceSearch({ [INCIDENT_GROUP_BY_PARAM]: updatedGroupBy });
+    },
+    [groupBy, replaceSearch]
+  );
+
+  const handleFiltersChange = useCallback(
+    (changes: Partial<IncidentGroupFilters>) => replaceSearch(changes),
+    [replaceSearch]
+  );
+
   const handleSortChange = useCallback(
     ({ field, type }: IncidentGroupSort) =>
-      navigate(
-        {
-          search: QueryString.stringify(
-            {
-              ...searchParams,
-              [INCIDENT_GROUP_SORT_FIELD_PARAM]: field,
-              [INCIDENT_GROUP_SORT_TYPE_PARAM]: type,
-            },
-            { arrayFormat: 'repeat' }
-          ),
-        },
-        { replace: true }
-      ),
-    [navigate, searchParams]
+      replaceSearch({
+        [INCIDENT_GROUP_SORT_FIELD_PARAM]: field,
+        [INCIDENT_GROUP_SORT_TYPE_PARAM]: type,
+      }),
+    [replaceSearch]
   );
 
   const handlePageChange = useCallback(

@@ -528,4 +528,18 @@ describe('parseIncidentGroupSort', () => {
       DEFAULT_INCIDENT_GROUP_SORT
     );
   });
+
+  it('should keep a valid field when only the direction is unknown', () => {
+    expect(parseIncidentGroupSort('severity', 'bogus')).toEqual({
+      field: 'severity',
+      type: DEFAULT_INCIDENT_GROUP_SORT.type,
+    });
+  });
+
+  it('should keep a valid direction when only the field is unknown', () => {
+    expect(parseIncidentGroupSort('bogus', 'asc')).toEqual({
+      field: DEFAULT_INCIDENT_GROUP_SORT.field,
+      type: 'asc',
+    });
+  });
 });
