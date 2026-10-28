@@ -34,7 +34,7 @@ import {
   startCase,
   toLower,
 } from 'lodash';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightArrowIcon } from '../../assets/svg/right-arrow.svg';
 import {
@@ -508,7 +508,7 @@ export const DataInsightChartCard = ({
 
   const { t } = useTranslation();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsFetching(true);
     try {
       const params = {
@@ -534,7 +534,13 @@ export const DataInsightChartCard = ({
     } finally {
       setIsFetching(false);
     }
-  };
+  }, [
+    type,
+    chartFilter.startTs,
+    chartFilter.endTs,
+    chartFilter.team,
+    chartFilter.tier,
+  ]);
 
   const handleLegendClick = (entity: string) => {
     setActiveKeys((prevActiveKeys) =>
@@ -551,13 +557,7 @@ export const DataInsightChartCard = ({
 
   useEffect(() => {
     !kpi.isLoading && !isTotalAssetsChart && fetchData();
-  }, [
-    chartFilter.startTs,
-    chartFilter.endTs,
-    chartFilter.team,
-    chartFilter.tier,
-    kpi.isLoading,
-  ]);
+  }, [fetchData, kpi.isLoading, isTotalAssetsChart]);
 
   const rightSidePanelLabel = useMemo(() => {
     const config = RIGHT_SIDE_PANEL_LABEL_CONFIG[type];
