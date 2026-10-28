@@ -819,9 +819,6 @@ const OntologyConceptInspector = ({
           {concept.iri}
         </Typography>
       </Box>
-      <Typography as="p" className="tw:m-0 tw:text-secondary" size="text-sm">
-        {concept.description || t('label.no-description')}
-      </Typography>
       <Box align="center" data-testid="ontology-concept-completeness" gap={3}>
         <Typography className="tw:shrink-0 tw:text-tertiary" size="text-xs">
           {t('label.completeness')}
@@ -856,6 +853,13 @@ const OntologyConceptInspector = ({
       data-testid="ontology-concept-inspector">
       {renderAiHeader()}
       <div className="tw:min-h-0 tw:flex-1 tw:divide-y tw:divide-secondary tw:overflow-auto tw:px-6">
+        <Typography
+          as="p"
+          className="tw:m-0 tw:py-4 tw:text-secondary"
+          data-testid="ontology-concept-description"
+          size="text-sm">
+          {concept.description || t('label.no-description')}
+        </Typography>
         <ConceptSection
           addTestId="ontology-add-relationship"
           count={conceptRelations.length}

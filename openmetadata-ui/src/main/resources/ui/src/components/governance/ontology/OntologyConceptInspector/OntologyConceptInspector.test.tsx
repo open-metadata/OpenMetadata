@@ -303,6 +303,21 @@ describe('OntologyConceptInspector in AI mode', () => {
     return handlers;
   };
 
+  it('keeps the description in the scrollable body with the sections', async () => {
+    renderAiInspector();
+    const description = await screen.findByTestId(
+      'ontology-concept-description'
+    );
+    const header = screen.getByTestId(
+      'ontology-concept-completeness'
+    ).parentElement;
+
+    expect(header).not.toContainElement(description);
+    expect(description.closest('.tw\\:overflow-auto')).toContainElement(
+      screen.getByTestId(`ontology-concept-relation-${party.id}`)
+    );
+  });
+
   it('keeps the header, section controls and bindings working', async () => {
     const handlers = renderAiInspector();
     const assets = await screen.findByTestId('ontology-native-assets');
