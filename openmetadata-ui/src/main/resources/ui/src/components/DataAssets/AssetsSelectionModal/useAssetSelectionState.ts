@@ -639,6 +639,7 @@ export const useAssetSelectionState = ({
 
   return {
     assetsFilter: assetsFilterFor(type),
+    activeEntity,
     search,
     setSearch,
     items,
