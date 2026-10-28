@@ -141,6 +141,7 @@ export const UserTeamSelectableList = ({
       ),
     };
   }, [allowedIds]);
+  const allowedIdsKey = allowedIds?.join(',');
 
   const isMultiUser = multiple.user;
   const isMultiTeam = multiple.team;
@@ -380,6 +381,19 @@ export const UserTeamSelectableList = ({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    // Ids that arrive while the picker is open (e.g. still loading when it was
+    // opened) re-read the lists, through their `key`, and both tab counts.
+    if (isOpen) {
+      initialUserOptionsRef.current = null;
+      initialTeamOptionsRef.current = null;
+      getUserCount();
+      getTeamCount();
+    }
+    // Only a change of ids re-reads; opening the picker already reads in init.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowedIdsKey]);
+
   const handleOpenChange = (open: boolean) => {
     setPopupVisible(open);
     popoverProps?.onOpenChange?.(open);
@@ -478,6 +492,7 @@ export const UserTeamSelectableList = ({
     <SelectableList
       fetchOptions={fetchUserOptions}
       height={listHeight}
+      key={allowedIdsKey}
       multiSelect={isMultiUser}
       searchBarDataTestId="owner-select-users-search-bar"
       searchPlaceholder={t('label.search-for-type', {
@@ -516,6 +531,7 @@ export const UserTeamSelectableList = ({
               customTagRenderer={TeamListItemRenderer}
               fetchOptions={fetchTeamOptions}
               height={listHeight}
+              key={allowedIdsKey}
               multiSelect={isMultiTeam}
               searchBarDataTestId="owner-select-teams-search-bar"
               searchPlaceholder={t('label.search-for-type', {

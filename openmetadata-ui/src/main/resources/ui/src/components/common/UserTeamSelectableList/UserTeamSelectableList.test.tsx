@@ -181,4 +181,59 @@ describe('UserTeamSelectableList Component Test', () => {
       )
     );
   });
+
+  it('should re-read the lists and both counts when the ids arrive while open', async () => {
+    const { rerender } = render(
+      <UserTeamSelectableList
+        hasPermission
+        allowedIds={[]}
+        popoverProps={{ open: true }}
+        onUpdate={mockOnUpdate}>
+        <p>CustomRenderer</p>
+      </UserTeamSelectableList>
+    );
+    await waitFor(() => expect(searchQuery).toHaveBeenCalled());
+    (searchQuery as jest.Mock).mockClear();
+    const listMountsBefore = (SelectableList as jest.Mock).mock.calls.length;
+
+    rerender(
+      <UserTeamSelectableList
+        hasPermission
+        allowedIds={['user-1']}
+        popoverProps={{ open: true }}
+        onUpdate={mockOnUpdate}>
+        <p>CustomRenderer</p>
+      </UserTeamSelectableList>
+    );
+
+    const allowedClause = { terms: { 'id.keyword': ['user-1'] } };
+    for (const searchIndex of ['user', 'team']) {
+      await waitFor(() =>
+        expect(searchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({
+            searchIndex,
+            pageSize: 0,
+            queryFilter: {
+              query: { bool: { must: [expect.anything(), allowedClause] } },
+            },
+          })
+        )
+      );
+    }
+
+    // Each list renders again under a new key, so it mounts and fetches anew.
+    const lastListProps = (SelectableList as jest.Mock).mock.calls.at(-1)[0];
+    await act(() => lastListProps.fetchOptions(''));
+
+    expect((SelectableList as jest.Mock).mock.calls.length).toBeGreaterThan(
+      listMountsBefore
+    );
+    expect(searchQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        queryFilter: {
+          query: { bool: { must: [expect.anything(), allowedClause] } },
+        },
+      })
+    );
+  });
 });
