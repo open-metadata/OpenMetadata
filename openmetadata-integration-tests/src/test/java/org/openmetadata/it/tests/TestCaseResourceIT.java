@@ -50,6 +50,8 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
@@ -57,10 +59,12 @@ import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
@@ -90,6 +94,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.fluent.DatabaseServices;
 import org.openmetadata.sdk.fluent.TestCases;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
@@ -761,28 +766,22 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   private Table createTableWithNestedColumn(TestNamespace ns) {
     String shortId = ns.uniqueShortId();
 
-    org.openmetadata.schema.services.connections.database.PostgresConnection conn =
-        org.openmetadata.sdk.fluent.DatabaseServices.postgresConnection()
-            .hostPort("localhost:5432")
-            .username("test")
-            .build();
+    PostgresConnection conn =
+        DatabaseServices.postgresConnection().hostPort("localhost:5432").username("test").build();
 
     DatabaseService service =
-        org.openmetadata.sdk.fluent.DatabaseServices.builder()
+        DatabaseServices.builder()
             .name("pg_" + shortId)
             .connection(conn)
             .description("Test Postgres service")
             .create();
 
-    org.openmetadata.schema.api.data.CreateDatabase dbReq =
-        new org.openmetadata.schema.api.data.CreateDatabase();
+    CreateDatabase dbReq = new CreateDatabase();
     dbReq.setName("db_" + shortId);
     dbReq.setService(service.getFullyQualifiedName());
-    org.openmetadata.schema.entity.data.Database database =
-        SdkClients.adminClient().databases().create(dbReq);
+    Database database = SdkClients.adminClient().databases().create(dbReq);
 
-    org.openmetadata.schema.api.data.CreateDatabaseSchema schemaReq =
-        new org.openmetadata.schema.api.data.CreateDatabaseSchema();
+    CreateDatabaseSchema schemaReq = new CreateDatabaseSchema();
     schemaReq.setName("s_" + shortId);
     schemaReq.setDatabase(database.getFullyQualifiedName());
     DatabaseSchema schema = SdkClients.adminClient().databaseSchemas().create(schemaReq);

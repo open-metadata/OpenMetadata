@@ -2848,8 +2848,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String fqn = link.getEntityFQN();
 
       if (link.getFieldName() != null && link.getFieldName().equals("columns")) {
-        // Column test case - use FQN utility to properly handle quoting
-        fqn = FullyQualifiedName.add(fqn, link.getArrayFieldName());
+        // Column test case - compose the column path segment by segment so a nested path
+        // (address.city) stays separate FQN segments and round-trips through columnPathOf
+        fqn = ColumnUtil.columnFqn(fqn, link.getArrayFieldName());
       }
 
       return fqn;

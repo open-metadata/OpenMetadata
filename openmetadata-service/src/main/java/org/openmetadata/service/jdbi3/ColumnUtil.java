@@ -57,6 +57,31 @@ public final class ColumnUtil {
     throw new IllegalArgumentException("Invalid column name " + columnPath);
   }
 
+  /**
+   * Appends a column path to a table FQN, adding each segment separately: {@code address.city}
+   * stays two FQN segments, while a column literally named {@code a.b} stays one quoted segment.
+   * {@code FullyQualifiedName.add} would quote the whole dotted path as a single segment, so an
+   * entityFQN built with it can never be parsed back into the nested path. Paths the Fqn grammar
+   * cannot split are quoted whole, matching the whole-name fallback of {@link
+   * #resolveColumnByPath}.
+   */
+  public static String columnFqn(String tableFqn, String columnPath) {
+    if (nullOrEmpty(tableFqn)) {
+      return tableFqn;
+    }
+    if (nullOrEmpty(columnPath)) {
+      return tableFqn;
+    }
+    if (!FullyQualifiedName.isValid(columnPath)) {
+      return FullyQualifiedName.add(tableFqn, columnPath);
+    }
+    String fqn = tableFqn;
+    for (String segment : FullyQualifiedName.split(columnPath)) {
+      fqn = FullyQualifiedName.add(fqn, segment);
+    }
+    return fqn;
+  }
+
   private static Column matchPathSegments(List<Column> columns, List<String> segments) {
     String head = segments.getFirst();
     Column matchedColumn = findColumnByName(columns, FullyQualifiedName.unquoteName(head));

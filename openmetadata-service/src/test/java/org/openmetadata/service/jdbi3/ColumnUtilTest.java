@@ -5,10 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 class ColumnUtilTest {
 
@@ -152,5 +155,49 @@ class ColumnUtilTest {
             IllegalArgumentException.class,
             () -> ColumnUtil.validateColumnPath(columns, "address.state"));
     assertEquals("Invalid column name address.state", exception.getMessage());
+  }
+
+  @Test
+  void columnFqnKeepsANestedPathAsSeparateSegmentsThatRoundTrip() {
+    List<Column> columns =
+        List.of(column("address", ColumnDataType.STRUCT, column("city", ColumnDataType.STRING)));
+    String fqn = ColumnUtil.columnFqn("svc.db.sch.tbl", "address.city");
+    assertEquals("svc.db.sch.tbl.address.city", fqn);
+
+    // The CSV-import decode of that entityFQN must yield the same column path again
+    assertEquals("address.city", decodeColumnPart(fqn, 4));
+    ColumnUtil.validateColumnPath(columns, decodeColumnPart(fqn, 4));
+  }
+
+  @Test
+  void columnFqnKeepsALiteralDottedColumnAsOneQuotedSegment() {
+    List<Column> columns = List.of(column("a.b", ColumnDataType.STRING));
+    String fqn = ColumnUtil.columnFqn("svc.db.sch.tbl", "\"a.b\"");
+    assertEquals("svc.db.sch.tbl.\"a.b\"", fqn);
+    ColumnUtil.validateColumnPath(columns, decodeColumnPart(fqn, 4));
+  }
+
+  @Test
+  void columnFqnQuotesNestedChildrenLiteralsPerSegment() {
+    List<Column> columns =
+        List.of(column("address", ColumnDataType.STRUCT, column("a.b", ColumnDataType.STRING)));
+    String fqn = ColumnUtil.columnFqn("svc.db.sch.tbl", "address.\"a.b\"");
+    assertEquals("svc.db.sch.tbl.address.\"a.b\"", fqn);
+    ColumnUtil.validateColumnPath(columns, decodeColumnPart(fqn, 4));
+  }
+
+  @Test
+  void columnFqnQuotesWholeAPathTheFqnGrammarCannotSplit() {
+    String fqn = ColumnUtil.columnFqn("svc.db.sch.tbl", "a\"b");
+    assertEquals("svc.db.sch.tbl.\"a\"\"b\"", fqn);
+    assertEquals("a\"b", FullyQualifiedName.unquoteName(decodeColumnPart(fqn, 4)));
+  }
+
+  private String decodeColumnPart(String fqn, int tablePartCount) {
+    String[] parts = FullyQualifiedName.split(fqn);
+    return Arrays.stream(parts)
+        .skip(tablePartCount)
+        .map(FullyQualifiedName::quoteName)
+        .collect(Collectors.joining("."));
   }
 }
