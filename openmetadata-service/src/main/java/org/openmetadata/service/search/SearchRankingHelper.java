@@ -837,6 +837,7 @@ public final class SearchRankingHelper {
           .withIncludeSourceFields(IDENTITY_FIELDS)
           .withExcludeSourceFields(List.of())
           .withIncludeAggregations(false)
+          .withIncludeHighlights(false)
           .withExplain(false)
           .withSortFieldParam(DEFAULT_SORT_FIELD)
           .withSortOrder(DEFAULT_SORT_ORDER);

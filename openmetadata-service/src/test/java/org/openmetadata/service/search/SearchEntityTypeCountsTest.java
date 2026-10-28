@@ -12,6 +12,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.util.concurrent.Uninterruptibles;
 import jakarta.json.spi.JsonProvider;
@@ -257,20 +258,25 @@ class SearchEntityTypeCountsTest {
             hint -> {
               hints.incrementAndGet();
               assertEquals("cluster_dataAsset", hint.getIndex());
-              assertEquals(List.of("entityType"), hint.getIncludeSourceFields());
-              assertEquals(1, hint.getSize());
+              assertEquals(
+                  List.of("entityType", "name", "fullyQualifiedName"),
+                  hint.getIncludeSourceFields());
+              assertEquals(10, hint.getSize());
+              assertFalse(hint.getIncludeHighlights());
               ObjectNode body = envelope();
-              body.putObject("hits")
-                  .put("max_score", 10)
-                  .putArray("hits")
-                  .addObject()
+              ArrayNode hits = body.putObject("hits").put("max_score", 10).putArray("hits");
+              hits.addObject()
                   .putObject("_source")
-                  .put("entityType", "table");
+                  .put("entityType", "table")
+                  .put("name", "orders")
+                  .put("fullyQualifiedName", "svc.db.schema.orders");
+              hits.addObject().putObject("_source").put("entityType", "dashboard");
               return Response.ok(body.toString()).build();
             });
     JsonNode result = search(counts, request().withSize(1), "table", ranked);
     assertEquals(1, hints.get());
     assertEquals(2, result.at("/hits/total/value").longValue());
+    assertEquals(1, result.at("/hits/hits").size());
     assertEquals("table", result.at("/hits/hits/0/_source/entityType").textValue());
     assertEquals(1, result.at("/hits/hits/0/_source").size());
     assertEquals(14, result.path("took").longValue());
