@@ -26,4 +26,8 @@ export interface FeedCardFooterProps {
     showThreadIcon?: boolean;
     showRepliesContainer?: boolean;
   };
+  /** Replaces opening the conversation in the thread drawer. */
+  onReplyPress?: () => void;
+  /** Names the reply count on the reply button in place of the repliers' avatars. */
+  showReplyCount?: boolean;
 }

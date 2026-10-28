@@ -12,10 +12,11 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
+import { TFunction } from 'i18next';
 import * as pdfjsLib from 'pdfjs-dist';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { useEffect, useRef, useState } from 'react';
-import { TFunction, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { PreviewRendererProps } from './FilePreviewer.types';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorker;

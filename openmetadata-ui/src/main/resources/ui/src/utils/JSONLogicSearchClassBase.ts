@@ -42,6 +42,7 @@ import {
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { ProviderType } from '../generated/entity/data/glossaryTerm';
 import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
@@ -55,6 +56,12 @@ import { matchesTagSelectOption, toTagSelectOptions } from './SearchPureUtils';
 
 // The value format RAQB's `date` widget stores and the native `<input type="date">` renders.
 const DATE_WIDGET_VALUE_FORMAT = 'YYYY-MM-DD';
+
+const providerListValues = (): Record<ProviderType, string> => ({
+  [ProviderType.User]: t('label.user'),
+  [ProviderType.System]: t('label.system'),
+  [ProviderType.Automation]: t('label.automation'),
+});
 
 class JSONLogicSearchClassBase {
   baseConfig = OMConfig as Config;
@@ -473,6 +480,32 @@ class JSONLogicSearchClassBase {
         valueSources: ['value'],
         fieldSettings: {
           asyncFetch: lifecycleStatusAutocomplete([SearchIndex.TABLE]),
+          showSearch: true,
+          useAsyncSearch: true,
+        },
+      },
+
+      [EntityReferenceFields.PROVIDER]: {
+        label: t('label.provider'),
+        type: 'select',
+        operators: LIST_VALUE_OPERATORS,
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+        // Served like the Status field's values, so the two render the same control side by side.
+        fieldSettings: {
+          listValues: providerListValues(),
+          asyncFetch: async (search) => {
+            const query = (
+              Array.isArray(search) ? search.join(',') : search ?? ''
+            ).toLowerCase();
+
+            return {
+              values: Object.entries(providerListValues())
+                .filter(([, title]) => title.toLowerCase().includes(query))
+                .map(([value, title]) => ({ value, title })),
+              hasMore: false,
+            };
+          },
           showSearch: true,
           useAsyncSearch: true,
         },

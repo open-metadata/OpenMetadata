@@ -143,7 +143,7 @@ const AccessTokenEmptyState = ({
         <Button
           color="primary"
           data-testid="generate-token"
-          icon={Plus}
+          iconLeading={Plus}
           isDisabled={isLimitReached}
           isLoading={isLoading}
           size="sm"

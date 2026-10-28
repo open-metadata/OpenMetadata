@@ -12,6 +12,7 @@
  */
 import {
   Announcement02,
+  Article,
   Atom01,
   ClipboardMinus,
   CodeSquare01,
@@ -29,7 +30,6 @@ import { ReactComponent as AutomatorBotIcon } from '../assets/svg/automator-bot.
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/common/application.svg';
 import { ReactComponent as EventSubscriptionIcon } from '../assets/svg/common/event-subscription.svg';
-import { ReactComponent as FileIcon } from '../assets/svg/common/file.svg';
 import { ReactComponent as FolderIcon } from '../assets/svg/common/folder.svg';
 import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
 import { ReactComponent as PersonaIcon } from '../assets/svg/common/persona.svg';
@@ -457,7 +457,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_BLUE_700,
     bgClass: BG_UTILITY_BLUE_50,
     borderClass: BORDER_UTILITY_BLUE_200,
-    icon: FileIcon,
+    icon: Article,
   },
   [EntityType.KNOWLEDGE_CENTER]: {
     iconClass: TEXT_UTILITY_BLUE_700,

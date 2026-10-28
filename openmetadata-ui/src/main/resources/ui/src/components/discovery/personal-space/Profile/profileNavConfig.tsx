@@ -36,11 +36,11 @@ import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { userPermissions } from '../../../../utils/PermissionsUtils';
 import AccessTokenPanel from './components/AccessTokenPanel';
-import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileTabPanel from './ProfileTabPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import ApplicationsPanel from './tabs/applications/ApplicationsPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
+import CustomPropertiesPanel from './tabs/custom-properties/CustomPropertiesPanel';
 import GovernancePanel from './tabs/governance/GovernancePanel';
 import { canOpenMembers, getMembersAccess } from './tabs/members/Members.utils';
 import MembersPanel from './tabs/members/MembersPanel';
@@ -316,7 +316,7 @@ export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
   {
     id: 'notification',
     group: 'features',
-    label: 'label.notification',
+    label: 'label.alerts-and-notifications',
     description: 'message.alerts-description',
     icon: Bell01 as FC<{ className?: string }>,
     isVisible: (permissions) =>
