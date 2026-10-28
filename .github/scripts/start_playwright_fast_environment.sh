@@ -63,12 +63,7 @@ if [[ ! -f "$manifest" ]]; then
   exit 1
 fi
 
-fixture_database=$(jq -r '.database // empty' "$manifest")
-if [[ -n "${PLAYWRIGHT_DATABASE:-}" && "$fixture_database" != "$PLAYWRIGHT_DATABASE" ]]; then
-  echo "The Playwright fixture was seeded on '${fixture_database:-unknown}', not '$PLAYWRIGHT_DATABASE'" >&2
-  exit 1
-fi
-load_playwright_fixture_profile "$fixture_database"
+load_playwright_fixture_profile_from_manifest "$manifest"
 export PW_COMPOSE_FILE PW_FAST_COMPOSE_FILE PW_DATABASE_SERVICE PW_SEARCH_SERVICE
 
 current_fixture_compatibility_hash=$(python3 "$fingerprint_script" --kind fixture)

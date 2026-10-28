@@ -61,3 +61,14 @@ load_playwright_fixture_profile() {
       ;;
   esac
 }
+
+# Loads the profile of the database a fixture manifest was seeded on, refusing
+# a fixture from another engine when the workflow pins PLAYWRIGHT_DATABASE.
+load_playwright_fixture_profile_from_manifest() {
+  PW_FIXTURE_DATABASE=$(jq -r '.database // empty' "$1")
+  if [[ -n "${PLAYWRIGHT_DATABASE:-}" && "$PW_FIXTURE_DATABASE" != "$PLAYWRIGHT_DATABASE" ]]; then
+    echo "The Playwright fixture was seeded on '${PW_FIXTURE_DATABASE:-unknown}', not '$PLAYWRIGHT_DATABASE'" >&2
+    return 1
+  fi
+  load_playwright_fixture_profile "$PW_FIXTURE_DATABASE"
+}
