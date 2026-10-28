@@ -748,10 +748,13 @@ class HexSource(DashboardServiceSource):
             raise TableSearchError(f"searching {fqn_search_string}: {exc}") from exc
         if not isinstance(response, dict) or "hits" not in response:
             raise TableSearchError(f"searching {fqn_search_string}: no search response")
-        tables = (
-            self.metadata.get_by_name(entity=Table, fqn=hit["_source"]["fullyQualifiedName"])
-            for hit in response["hits"]["hits"]
-        )
+        try:
+            tables = [
+                self.metadata.get_by_name(entity=Table, fqn=hit["_source"]["fullyQualifiedName"])
+                for hit in response["hits"]["hits"]
+            ]
+        except Exception as exc:
+            raise TableSearchError(f"reading the tables found for {fqn_search_string}: {exc}") from exc
         return [table for table in tables if table is not None]
 
     @staticmethod

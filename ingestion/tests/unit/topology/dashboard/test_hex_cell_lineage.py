@@ -533,7 +533,7 @@ class TestHexCellLineage:
 
     @pytest.mark.parametrize(
         "failure",
-        ["cells unreadable", "data connections unreadable", "table search down"],
+        ["cells unreadable", "data connections unreadable", "table search down", "table read down"],
     )
     def test_a_failed_read_keeps_the_existing_data_model(self, make_source, failure):
         first_run = make_source([REVENUE_CELL])
@@ -543,6 +543,16 @@ class TestHexCellLineage:
             source.client.get_data_connections.return_value = None
         if failure == "table search down":
             source.metadata.search_error = ConnectionError("search unavailable")
+        if failure == "table read down":
+            # The search answers, but reading a table it found fails
+            get_by_name = source.metadata.get_by_name
+
+            def failing_table_read(entity, fqn, **kwargs):
+                if entity is Table:
+                    raise ConnectionError("server unavailable")
+                return get_by_name(entity, fqn, **kwargs)
+
+            source.metadata.get_by_name = failing_table_read
         source.metadata.entities.update(first_run.metadata.entities)
         source.context.get.return_value = SimpleNamespace(dashboard_service=SERVICE, charts=[], dataModels=[])
 
