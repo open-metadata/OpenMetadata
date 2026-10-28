@@ -42,7 +42,6 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getActivityEventHeaderText } from '../../../utils/FeedUtils';
 import {
   canManageFeedPost,
   entityDisplayName,
@@ -415,18 +414,6 @@ const ActivityFeedCardNew = ({
     isThreadPanel,
   ]);
 
-  const feedHeaderText = useMemo(() => {
-    if (isActivityEvent && activity) {
-      return getActivityEventHeaderText(
-        activity.eventType,
-        activity.fieldName,
-        entityType
-      );
-    }
-
-    return t('label.conversation-lowercase');
-  }, [isActivityEvent, activity, entityType, t]);
-
   const timestampValue =
     post?.createdAt ?? feed?.createdAt ?? activity?.timestamp;
 
@@ -481,21 +468,20 @@ const ActivityFeedCardNew = ({
     }
 
     const replies = isActivityEvent ? activityReplies : feed?.replies ?? [];
-    // The thread panel reads as a conversation, oldest reply first, with the
-    // composer beneath; elsewhere the newest reply leads.
-    const orderedPosts = orderBy(
-      replies,
-      ['createdAt'],
-      [isThreadPanel ? 'asc' : 'desc']
-    );
+    const orderedPosts = orderBy(replies, ['createdAt'], ['desc']);
 
     if (orderedPosts.length === 0) {
       return null;
     }
 
+    // A thread panel's compact replies carry no padding of their own, so the
+    // list spaces them from the comment input and from each other.
     return (
       <Box
-        className={classNames('p-l-0 p-r-0', isThreadPanel && 'tw:gap-4')}
+        className={classNames(
+          'p-l-0 p-r-0',
+          isThreadPanel && 'tw:mt-4 tw:gap-4'
+        )}
         data-testid="feed-replies"
         direction="col">
         {orderedPosts.map((reply, index, arr) => {
@@ -573,14 +559,14 @@ const ActivityFeedCardNew = ({
             className="card-style-feed-header"
             data-testid="headerText"
             size="text-sm">
-            {feedHeaderText}
+            {t('label.conversation-lowercase')}
           </Typography>
         )}
 
         {renderEntityLink}
       </Box>
     ),
-    [isPanelLayout, feedHeaderText, renderEntityLink, isThreadPanel]
+    [isPanelLayout, renderEntityLink, isThreadPanel, t]
   );
 
   const renderWidgetCard = () => (
@@ -753,28 +739,6 @@ const ActivityFeedCardNew = ({
     </Box>
   );
 
-  const renderThreadPanelComments = () => (
-    <Box
-      className="tw:mt-4"
-      data-testid="thread-panel-comments"
-      direction="col"
-      gap={4}>
-      {posts ? (
-        // A rule sets the replies apart from the message. Out to the card's
-        // edges past the body's 20px padding, so it spans the whole card.
-        <Box
-          className="tw:-mx-5 tw:border-t tw:border-secondary tw:px-5 tw:pt-4"
-          direction="col">
-          {posts}
-        </Box>
-      ) : null}
-      {renderCommentInput()}
-    </Box>
-  );
-
-  const renderReplies = () =>
-    isThreadPanel ? renderThreadPanelComments() : renderCommentsSection();
-
   const isContainerThread =
     showThread && entityRef?.type === EntityType.CONTAINER;
 
@@ -897,7 +861,7 @@ const ActivityFeedCardNew = ({
             </div>
           )}
         </Box>
-        {isPanelLayout && renderReplies()}
+        {isPanelLayout && renderCommentsSection()}
         {feedActions}
       </Card.Content>
     </Card>

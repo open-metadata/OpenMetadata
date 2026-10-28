@@ -20,7 +20,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { useCloseOnNavigation } from '../../../hooks/useCloseOnNavigation';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ActivityPanelBody from '../ActivityFeedPanel/ActivityPanelBody';
-import ActivityPanelHeader from '../ActivityFeedPanel/ActivityPanelHeader';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import TaskPanelHeader from '../ActivityFeedPanel/TaskPanelHeader';
@@ -81,29 +80,20 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       };
     }
 
+    const header = (
+      <FeedPanelHeader className={PANEL_HEADER_CLASS_NAME} onCancel={hideDrawer} />
+    );
+
     if (selectedActivity) {
       return {
-        header: (
-          <ActivityPanelHeader
-            activity={selectedActivity}
-            className={PANEL_HEADER_CLASS_NAME}
-            onCancel={hideDrawer}
-          />
-        ),
+        header,
         body: <ActivityPanelBody activity={selectedActivity} />,
       };
     }
 
     if (selectedThread) {
       return {
-        header: (
-          <FeedPanelHeader
-            className={PANEL_HEADER_CLASS_NAME}
-            entityLink={selectedThread.about ?? ''}
-            feed={selectedThread}
-            onCancel={hideDrawer}
-          />
-        ),
+        header,
         body: (
           <FeedPanelBodyV1
             isForFeedTab

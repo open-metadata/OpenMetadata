@@ -980,10 +980,10 @@ test.describe('ActivityFeed: conversation actions on the Activity tab', () => {
     ]);
     await ownerPage.keyboard.press('Escape');
 
-    // The drawer lists the replies over the comment input, as the
-    // description drawer does; the editor opens, focused, from that input.
+    // The drawer shows the comment input as the side panel does; the editor
+    // opens, focused, from that input.
     await card.getByTestId('reply-button').click();
-    const drawerComments = ownerPage.getByTestId('thread-panel-comments');
+    const drawerComments = ownerPage.getByTestId('activity-feed-drawer');
     const editor = drawerComments.locator('[contenteditable="true"]');
     await expect(
       drawerComments.getByTestId('comments-input-field')

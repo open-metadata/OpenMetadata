@@ -53,10 +53,6 @@ jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
   useUserProfile: () => [false, undefined, { id: 'author-id', name: 'alice' }],
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
-  getActivityEventHeaderText: jest.fn(() => 'updated description'),
-}));
-
 jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
   useActivityFeedProvider: () => mockProviderValue,
 }));
@@ -105,14 +101,6 @@ jest.mock('../Reactions/Reactions', () =>
         onReactionSelect(ReactionType.ThumbsUp, ReactionOperation.ADD)
       }>
       react
-    </button>
-  ))
-);
-
-jest.mock('../../common/CommentComposer/CommentComposer', () =>
-  jest.fn(({ onSave, placeHolder }) => (
-    <button data-testid="thread-composer" onClick={() => onSave('hi')}>
-      {placeHolder}
     </button>
   ))
 );
@@ -523,7 +511,19 @@ describe('ActivityFeedCardNew', () => {
     expect(screen.getByTestId('entity-link')).toBeInTheDocument();
   });
 
-  it('shows the replies above the comment input in the activity thread panel', async () => {
+  it('labels an activity event a conversation too', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew activity={activity} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('headerText')).toHaveTextContent(
+      'label.conversation-lowercase'
+    );
+  });
+
+  it('shows the comment input above the newest-first replies in the activity thread panel', async () => {
     render(
       <MemoryRouter>
         <ActivityFeedCardNew
@@ -554,13 +554,13 @@ describe('ActivityFeedCardNew', () => {
     const commentInput = screen.getByTestId('comments-input-field');
     const replies = screen.getAllByTestId('reply-message');
 
+    expect(screen.getByText('label.comment-plural')).toBeInTheDocument();
     expect(commentInput).toHaveTextContent('message.input-placeholder');
-    expect(screen.queryByTestId('thread-composer')).not.toBeInTheDocument();
     expect(replies.map((reply) => reply.textContent)).toEqual([
-      'Older',
       'Newer',
+      'Older',
     ]);
-    expect(replies[1].compareDocumentPosition(commentInput)).toBe(
+    expect(commentInput.compareDocumentPosition(replies[0])).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING
     );
 
