@@ -17,7 +17,6 @@ import '@fontsource/source-code-pro'; // Font 400
 // Unicode subset covering the full 100–900 weight axis, replacing the prior
 // 6 weight-specific woff2 files per subset (~30 → ~7 fetches). See the file
 // header in {@link ./inter-variable.css} for context.
-import './antd-master.less';
 import './app.less';
 import './components/add-edit-form-steps.less';
 import './components/code-mirror.less';
@@ -38,6 +37,8 @@ import './fonts.less';
 import './geist-mono-variable.css';
 import './inter-variable.css';
 import './knowledge-center.less';
+import './legacy-base.css';
+import './master.less';
 import './tailwind.css';
 import './temp.css';
 // Design tokens (--om-* aliases over globals.css). See ./tokens.css and ./specs/.

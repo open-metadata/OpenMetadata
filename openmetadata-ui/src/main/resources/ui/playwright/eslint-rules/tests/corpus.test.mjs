@@ -25,7 +25,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const suppressions = JSON.parse(fs.readFileSync(SUPPRESSIONS, 'utf8'));
 
   const actual = {};
-  // src/ entries belong to the antd ratchet in eslint-rules/openmetadata-antd.test.mjs.
+  // Only playwright/ entries carry suppressions; src/ is not suppressed.
   const playwrightFiles = Object.entries(suppressions)
     .filter(([path]) => path.startsWith('playwright/'))
     .map(([, file]) => file);

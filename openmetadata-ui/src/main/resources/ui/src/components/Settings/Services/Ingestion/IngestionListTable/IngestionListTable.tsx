@@ -15,7 +15,6 @@ import { Skeleton } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import { FixedType } from 'rc-table/lib/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -338,7 +337,7 @@ function IngestionListTable({
         className: 'name-column',
         dataIndex: 'name',
         key: 'name',
-        fixed: 'left' as FixedType,
+        fixed: 'left' as const,
         // Sort on the same value the cell renders (getEntityName), not the raw
         // `name`: agents created from the UI get a machine-generated name that
         // has no relation to the label the user sees. `sorter: true` hands
@@ -433,7 +432,7 @@ function IngestionListTable({
               dataIndex: 'actions',
               key: 'actions',
               width: 240,
-              fixed: 'right' as FixedType,
+              fixed: 'right' as const,
               render: renderActionsField,
             },
           ]
