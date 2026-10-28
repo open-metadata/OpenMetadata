@@ -157,6 +157,7 @@ describe('DataInsightChartCard', () => {
     });
 
     expect(screen.queryByTestId('progress-bar')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('no-data-placeholder')).not.toBeInTheDocument();
 
     rerender(<DataInsightChartCard {...ownerProps} />);
 
@@ -170,6 +171,7 @@ describe('DataInsightChartCard', () => {
       totalAssets: null,
     });
 
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
     expect(screen.queryByTestId('progress-bar')).not.toBeInTheDocument();
   });
 
