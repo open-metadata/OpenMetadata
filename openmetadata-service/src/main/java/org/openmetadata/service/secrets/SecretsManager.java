@@ -794,6 +794,7 @@ public abstract class SecretsManager {
       String reference, String secretId, String fieldName, CredentialPolicy policy) {
     String secretName =
         toNativeSecretName(reference.substring(SECRET_FIELD_PREFIX.length()))
+            .trim()
             .toLowerCase(Locale.ROOT);
     if (isEntitysOwnFieldReference(secretName, secretId, fieldName, policy)) {
       return true;
@@ -812,7 +813,22 @@ public abstract class SecretsManager {
   private boolean isEntitysOwnFieldReference(
       String secretName, String secretId, String fieldName, CredentialPolicy policy) {
     return policy.acceptedReferenceBases().stream().anyMatch(secretId::startsWith)
-        && secretName.equals(buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+        && matchesOwnFieldId(
+            secretName, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+  }
+
+  /**
+   * Whether a reference's canonical name is the id the walk derives for this field. The base
+   * provider compares exactly; a provider whose backend mints the id differently from the way
+   * {@link #buildSecretId(boolean, String...)} writes it overrides this. AWS Secrets Manager
+   * renames every created secret to {@code <name>-<6 random characters>}, so its ARN carries the
+   * field id followed by characters the server cannot recompute — a reference in that form is
+   * accepted only when the random suffix is exactly what its read call maps back (see {@link
+   * AWSSecretsManager#matchesOwnFieldId}); a shorter or other-suffixed name stays a foreign
+   * reference, which keeps a guessed prefix from claiming the id of a sibling entity.
+   */
+  protected boolean matchesOwnFieldId(String requestedSecretName, String ownFieldSecretId) {
+    return requestedSecretName.equals(ownFieldSecretId);
   }
 
   /**
@@ -843,6 +859,11 @@ public abstract class SecretsManager {
    * comparison is lower-cased because {@link #buildSecretId(boolean, String...)} lower-cases
    * every id it builds and Azure Key Vault, unlike AWS or GCP, resolves names case-insensitively,
    * so a case variant of a stored reference must not slip out of the namespace.
+   *
+   * <p>The name is trimmed first because the same backends accept a padded name wherever they
+   * accept the name: SSM removes spaces at the beginning and end of a parameter name when it
+   * resolves one, so without the trim a single space after {@code secret:} would send a reference
+   * to another entity's managed secret through the namespace check as an external one.
    */
   public boolean isManagedSecretReference(String reference) {
     return isManagedSecretName(reference.substring(SECRET_FIELD_PREFIX.length()));
@@ -851,6 +872,7 @@ public abstract class SecretsManager {
   private boolean isManagedSecretName(String secretName) {
     String namespaceRoot = buildSecretId(true);
     return toNativeSecretName(secretName)
+        .trim()
         .toLowerCase(Locale.ROOT)
         .startsWith(namespaceRoot + secretsIdConfig.separator());
   }

@@ -175,6 +175,34 @@ public abstract class ExternalSecretsManagerTest {
   }
 
   /**
+   * The backend resolves a padded parameter or secret name wherever it resolves the name - SSM
+   * removes spaces at the beginning and end of a parameter name, for one - so a single space after
+   * the {@code secret:} prefix cannot wave a reference to another entity's managed secret through
+   * as an external one.
+   */
+  @Test
+  void testEncryptRejectsAWhitespacePaddedReferenceToAnotherEntitysSecret() {
+    String foreignReference = servicePasswordReference("other-service");
+    String paddedReference =
+        SecretsManager.SECRET_FIELD_PREFIX
+            + " "
+            + foreignReference.substring(SecretsManager.SECRET_FIELD_PREFIX.length());
+    MysqlConnection connection =
+        new MysqlConnection().withAuthType(new basicAuth().withPassword(paddedReference));
+
+    SecretsManagerException rejected =
+        assertThrows(
+            SecretsManagerException.class,
+            () ->
+                secretsManager.encryptServiceConnectionConfig(
+                    connection, Mysql.value(), "test", ServiceType.DATABASE));
+
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertFalse(
+        rejected.getMessage().contains(paddedReference), "the reference must not be echoed");
+  }
+
+  /**
    * The entity's name is not the end of the comparison: the separator is a character entity names
    * may contain, so a reference merely starting with the entity's base plus a separator can name a
    * different entity's secret ("test" borrowing "test-more"'s reference where the separator is "-",

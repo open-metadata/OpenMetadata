@@ -4,7 +4,10 @@
 - **Revisions:** v1 2026-10-22 (initial); v2 2026-10-23 (the PATCH pipeline's prepare pass is a
   re-storage after the masker pass, and an HTTP request body is typed before its provenance is
   checked); v3 2026-10-27 (an own-base reference must be the exact per-field id, and provider
-  identifier forms are canonicalized before classification)
+  identifier forms are canonicalized before classification); v4 2026-10-28 (padded provider names
+  are canonicalized, an own ARN's AWS-generated suffix is accepted, a TEST_CONNECTION run of a
+  named service requires EditAll on it at create and trigger alike, and the version-checked store
+  encrypts)
 - **Deciders:** reviewers of the foreign-credential-rejection PR
 - **Guard:** `DBSecretsManagerTest#testEncryptRejectsAForeignFernetToken`,
   `ExternalSecretsManagerTest#testEncryptRejectsAReferenceToAnotherEntitysSecret` and
@@ -117,3 +120,38 @@ The secrets-manager migration that re-stores workflow values writes them back th
 DAO: EntityDAO.update binds the table of the DAO it is called on, and the migration previously
 called the ingestion-pipeline DAO's update with a workflow, updating zero rows and silently
 dropping the re-encrypted workflow.
+
+## Amendment — 2026-10-28: padded names, the AWS suffix, version-checked stores, and who may run a TEST_CONNECTION
+
+Layer 1 and 2 canonicalize before they classify, but layer 3's provider hook left two shapes
+unhandled, and one HTTP authorization was wider than the credential check it guarded.
+
+First, the same backends accept a padded name wherever they accept the name: SSM removes spaces at
+the beginning and end of a parameter name when it resolves one. A single space after
+`secret:` therefore sent a reference to another entity's managed secret through
+`isManagedSecretName` as an *external* one — outside the namespace it was not, at the padded name
+it appeared to resolve. Both classification entry points (`isAcceptedReference`'s canonical name
+and `isManagedSecretName`) now trim before they lowercase.
+
+Second, AWS renames every secret it creates to `<name>-<6 random characters>`, so the ARN of the
+secret a field itself stored cannot be recomputed from the field's id — the exact per-field
+comparison layer 3 v3 pinned down rejects it, and every later save of such an entity fails. The
+encrypt pass's own-field comparison is now provider-hooked (`matchesOwnFieldId`): the base provider
+compares exactly, and the AWS Secrets Manager additionally accepts a name that is its field's id
+followed by exactly six alphanumeric characters — the suffix AWS appends, which no caller can guess
+and nothing else names. Other managers keep the exact comparison.
+
+Third, the version-checked store — the store an If-Match PATCH takes — never runs `storeEntity`:
+it calls `store` directly to compare versions, so the re-encryption that pass relies on never runs
+and the plaintext the patch's unmask restored from a stored echo or mask is serialized as-is.
+The repositories that encrypt in `storeEntity` (workflow, bot user) now run that same encryption
+under internal re-storage in `storeEntityWithVersion` too.
+
+Fourth, the TEST_CONNECTION trigger required ANY of EditAll on the named service or Create on
+ingestion pipelines. A caller holding only the second could create a TEST_CONNECTION workflow
+naming a service it cannot edit and trigger it: the tested service's credential is a predictable
+reference on external vaults, the masker accepts its echo as the field's own, and the run connects
+on the request's own host and account with that service's credential. Both the create (and
+name-changing PUT, which reads the same stored connection as the echo's comparison base) and the
+trigger now require EditAll on the named service; requests that name no service keep the
+pipeline-create requirement on the trigger.

@@ -390,6 +390,24 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  /**
+   * A version-checked store (an If-Match PATCH) never runs {@link #storeEntity}: it calls {@link
+   * EntityRepository#store} directly to compare versions. Without this override the encryption that
+   * pass relies on never runs, and the masker's decrypted echo of a stored bot token would be
+   * serialized into the entity JSON as plaintext.
+   */
+  @Override
+  protected void storeEntityWithVersion(User user, boolean update, Double expectedVersion) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
+      secretsManager.encryptAuthenticationMechanism(
+          user.getName(),
+          user.getAuthenticationMechanism(),
+          SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
+    }
+    super.storeEntityWithVersion(user, update, expectedVersion);
+  }
+
   @Override
   public void storeEntities(List<User> entities) {
     List<String> fqns = new ArrayList<>(entities.size());

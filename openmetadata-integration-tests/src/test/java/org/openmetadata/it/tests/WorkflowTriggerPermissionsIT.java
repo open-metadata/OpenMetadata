@@ -50,8 +50,8 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  * <p>Covers the authorization branches added in {@code WorkflowResource#authorizeWorkflowTrigger}:
  *
  * <ul>
- *   <li>TEST_CONNECTION with {@code serviceName} set — authorized via ANY of EDIT_ALL on the
- *       service OR CREATE on INGESTION_PIPELINE.
+ *   <li>TEST_CONNECTION with {@code serviceName} set — the run uses the service's stored
+ *       credential on the request's own connection values, so it requires EDIT_ALL on the service.
  *   <li>TEST_CONNECTION with no {@code serviceName} — authorized via CREATE on INGESTION_PIPELINE.
  *   <li>REVERSE_INGESTION — authorized via EDIT_ALL on the service it writes back to.
  *   <li>QUERY_RUNNER — only the requester the stored query runs as, or an admin or bot.

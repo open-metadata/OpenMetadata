@@ -82,6 +82,23 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     store(entity, update);
   }
 
+  /**
+   * A version-checked store (an If-Match PATCH or PUT) never runs {@link #storeEntity}: it calls
+   * {@link EntityRepository#store} directly to compare versions. Without this override the
+   * encryption that pass relies on never runs, and the plaintext the patch's unmask restored from
+   * a stored echo or mask would be serialized into the entity JSON as-is.
+   */
+  @Override
+  protected void storeEntityWithVersion(Workflow entity, boolean update, Double expectedVersion) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    if (secretsManager != null) {
+      entity =
+          secretsManager.encryptWorkflow(
+              entity, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
+    }
+    super.storeEntityWithVersion(entity, update, expectedVersion);
+  }
+
   public void storeEntities(List<Workflow> workflows) {
     List<String> fqns = new ArrayList<>(workflows.size());
     List<String> jsons = new ArrayList<>(workflows.size());

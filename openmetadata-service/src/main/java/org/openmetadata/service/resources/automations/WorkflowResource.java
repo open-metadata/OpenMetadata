@@ -33,7 +33,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +46,7 @@ import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowStatus;
 import org.openmetadata.schema.entity.automations.WorkflowType;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline;
 import org.openmetadata.schema.type.EntityHistory;
@@ -69,9 +69,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
-import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -360,7 +358,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
     Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, unmask(workflow));
+    Response response = create(uriInfo, securityContext, unmask(securityContext, workflow));
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
@@ -482,7 +480,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
     Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    workflow = unmask(workflow);
+    workflow = unmask(securityContext, workflow);
     Response response = createOrUpdate(uriInfo, securityContext, workflow);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -669,26 +667,28 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     String serviceName = testRequest.getServiceName();
 
     if (serviceName != null && testRequest.getServiceType() != null) {
-      String serviceEntityType =
-          Entity.getServiceEntityRepository(testRequest.getServiceType()).getEntityType();
-      OperationContext serviceOpCtx =
-          new OperationContext(serviceEntityType, MetadataOperation.EDIT_ALL);
-      ResourceContext<?> serviceResourceCtx =
-          new ResourceContext<>(serviceEntityType, null, serviceName);
-
-      OperationContext pipelineOpCtx =
-          new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.CREATE);
-      ResourceContext<?> pipelineResourceCtx = new ResourceContext<>(Entity.INGESTION_PIPELINE);
-
-      authorizer.authorizeRequests(
-          securityContext,
-          List.of(
-              new AuthRequest(serviceOpCtx, serviceResourceCtx),
-              new AuthRequest(pipelineOpCtx, pipelineResourceCtx)),
-          AuthorizationLogic.ANY);
+      // The run connects with the request's host and account using the named service's stored
+      // credential, and for external vaults that credential is a predictable
+      // secret:/<cluster>/<service>/<field> reference. A caller able only to create pipelines
+      // could therefore run another service's credential on a host they control, so naming a
+      // service requires EditAll on it.
+      authorizeNamedServiceEdit(
+          securityContext, testRequest.getServiceType(), testRequest.getServiceName());
     } else {
       authorizeIngestionPipelineCreate(securityContext);
     }
+  }
+
+  private void authorizeNamedServiceEdit(
+      SecurityContext securityContext, ServiceType serviceType, String serviceName) {
+    if (serviceName == null || serviceType == null) {
+      return;
+    }
+    String serviceEntityType = Entity.getServiceEntityRepository(serviceType).getEntityType();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(serviceEntityType, MetadataOperation.EDIT_ALL),
+        new ResourceContext<>(serviceEntityType, null, serviceName));
   }
 
   private void authorizeIngestionPipelineCreate(SecurityContext securityContext) {
@@ -698,12 +698,20 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         new ResourceContext<>(Entity.INGESTION_PIPELINE));
   }
 
-  private Workflow unmask(Workflow workflow) {
+  private Workflow unmask(SecurityContext securityContext, Workflow workflow) {
     // Over HTTP the request body arrives as raw JSON, so it must be typed before the branch below
     // can read a TEST_CONNECTION request's service reference and build the comparison base from
     // the stored service's connection.
     workflow = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
     repository.setFullyQualifiedName(workflow);
+    if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())
+        && workflow.getRequest() instanceof TestServiceConnectionRequest testRequest) {
+      // Creating or updating a TEST_CONNECTION workflow reads the named service's stored
+      // connection as the comparison base for the reference the request may echo, so it carries
+      // the same service-permission requirement as triggering one.
+      authorizeNamedServiceEdit(
+          securityContext, testRequest.getServiceType(), testRequest.getServiceName());
+    }
     Workflow originalWorkflow;
     if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
       // in case of test connection type, we get the original connection values from the service
