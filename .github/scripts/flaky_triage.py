@@ -37,8 +37,15 @@ CHANNEL = "C0C008ZAK0V"  # #pw-health
 OSS = "github.com/open-metadata/OpenMetadata/"
 REPO = "open-metadata/OpenMetadata"
 MARKER = "Flaky triage"
-FIX_PATHS = "openmetadata-ui/src/main/resources/ui/playwright/"
-LABELS = ("safe to test", "UI", "skip-pr-checks")
+# Test code only. Not eslint-rules/, reporters/ or the configs: lint and the
+# reporters run them on every PR, before anyone has read the diff.
+FIX_PATHS = tuple(
+    f"openmetadata-ui/src/main/resources/ui/playwright/{d}/"
+    for d in ("e2e", "utils", "support", "constant", "fixtures", "test-data")
+)
+# No 'safe to test': the PR's tests run with repo secrets only after a human has
+# reviewed the agent-written diff and added it.
+LABELS = ("UI", "skip-pr-checks")
 FLAKY = re.compile(r"FLAKY `([^`]+)`")
 PR = re.compile(r"github\.com/open-metadata/OpenMetadata/pull/(\d+)")
 RUN = re.compile(
@@ -162,19 +169,27 @@ def fix_problem(fix, out, changed_files):
         return "branch changes nothing"
     outside = [f for f in changed_files if not f.startswith(FIX_PATHS)]
     if outside:
-        return f"changes files outside {FIX_PATHS}: {outside}"
+        return f"changes files outside the test code: {outside}"
     return None
 
 
 def publish(out, pending_ts, dry_run, run_url, summary):
     pr_urls = {}
     for path in sorted((out / "fixes").glob("*.json")):
-        fix = json.loads(path.read_text())
+        try:
+            fix = json.loads(path.read_text())
+        except ValueError:
+            summary.append(f"- skipped {path.name}: not JSON")
+            continue
         branch = fix.get("branch", "")
         changed = []
         if BRANCH.match(branch):
-            git("fetch", "-q", str(out / "fixes.bundle"), f"{branch}:{branch}")
-            changed = git("diff", "--name-only", f"origin/main...{branch}").split()
+            try:
+                git("fetch", "-q", str(out / "fixes.bundle"), f"{branch}:{branch}")
+                changed = git("diff", "--name-only", f"origin/main...{branch}").split()
+            except subprocess.CalledProcessError as e:
+                summary.append(f"- skipped fix `{branch}`: {(e.stderr or '').strip()}")
+                continue
         problem = fix_problem(fix, out, changed)
         if problem:
             summary.append(f"- skipped fix `{branch}`: {problem}")
@@ -182,7 +197,6 @@ def publish(out, pending_ts, dry_run, run_url, summary):
         if dry_run:
             summary.append(f"- would open `{branch}`: {fix['title']} ({changed})")
             continue
-        git("push", "-q", "origin", f"{branch}:refs/heads/{branch}")
         cmd = ["gh", "pr", "create", "-R", REPO, "--base", "main", "--head", branch]
         cmd += [
             "--title",
@@ -192,9 +206,15 @@ def publish(out, pending_ts, dry_run, run_url, summary):
         ]
         for label in LABELS:
             cmd += ["--label", label]
-        url = subprocess.run(
-            cmd, check=True, capture_output=True, text=True
-        ).stdout.strip()
+        try:
+            git("push", "-q", "origin", f"{branch}:refs/heads/{branch}")
+            url = subprocess.run(
+                cmd, check=True, capture_output=True, text=True
+            ).stdout.strip()
+        except subprocess.CalledProcessError as e:
+            # The reply still goes out, with "not opened, see <run>" for the link.
+            summary.append(f"- failed to open `{branch}`: {(e.stderr or '').strip()}")
+            continue
         pr_urls[branch] = url
         summary.append(f"- opened {url}")
         if fix.get("owner"):
@@ -230,13 +250,17 @@ def publish(out, pending_ts, dry_run, run_url, summary):
         if dry_run:
             summary.append(f"- would reply under {ts}:\n\n```\n{text}\n```")
             continue
-        call(
-            "chat.postMessage",
-            channel=CHANNEL,
-            thread_ts=ts,
-            text=text,
-            unfurl_links=False,
-        )
+        try:
+            call(
+                "chat.postMessage",
+                channel=CHANNEL,
+                thread_ts=ts,
+                text=text,
+                unfurl_links=False,
+            )
+        except (RuntimeError, OSError) as e:
+            summary.append(f"- failed to reply under {ts}: {e}")
+            continue
         summary.append(f"- replied under {ts}")
 
 

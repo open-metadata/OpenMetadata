@@ -16,9 +16,13 @@ trigger CI needs a PAT, and replying needs the Slack bot token.
 - The agent job holds only the read-only `github.token` and no Slack token. It leaves fix branches (as a
   git bundle), PR bodies and reply drafts as files.
 - A `publish` job that runs no agent code pushes and opens the PRs with the PAT and posts the replies. It
-  publishes a fix only if its branch matches `flaky-fix/…` and changes only files under
-  `openmetadata-ui/src/main/resources/ui/playwright/`. It posts a reply only under an alert from this run's
-  pending list, and only if the reply contains `Flaky triage`.
+  publishes a fix only if its branch matches `flaky-fix/…` and changes only test code: `e2e/`, `utils/`,
+  `support/`, `constant/`, `fixtures/` or `test-data/` under `openmetadata-ui/src/main/resources/ui/playwright/`.
+  Lint rules, reporters and configs are excluded because CI runs them on every PR. It posts a reply only
+  under an alert from this run's pending list, and only if the reply contains `Flaky triage`. One fix or
+  reply that fails to publish does not stop the rest.
+- Fix PRs get `UI` and `skip-pr-checks`, never `safe to test`. Agent-written test code is still code: a
+  maintainer reads the diff before adding the label that runs it with repo secrets, and before queueing it.
 - A #pw-health alert thread counts as triaged once it has a reply containing `Flaky triage`. That text
   is the contract between runs; a human can add it to stop the agent.
 - A fix is drafted only after 10 consecutive retry-free runs of the spec against the job's own stack. The
@@ -28,6 +32,6 @@ trigger CI needs a PAT, and replying needs the Slack bot token.
   misses no alert, and the marker prevents double replies.
 
 ## Consequences
-The agent cannot push, open PRs, post to Slack, or change anything outside `playwright/`, whatever text
-it reads. A fix that needs a product change is out of scope by construction: the agent reports the RCA
+The agent cannot push, open PRs, post to Slack, or change anything but Playwright test code, whatever text
+it reads. That test code runs with secrets only after a human has reviewed it. A fix that needs a product change is out of scope by construction: the agent reports the RCA
 instead. Widening the path allowlist, or giving the agent a write token, needs a new record.

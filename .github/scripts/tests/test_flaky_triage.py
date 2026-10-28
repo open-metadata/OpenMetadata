@@ -89,3 +89,36 @@ def test_fix_problem_only_passes_playwright_changes(tmp_path):
     assert "body" in triage.fix_problem(
         {**fix, "body": "../../etc/passwd"}, tmp_path, [PW]
     )
+
+
+def test_fix_problem_rejects_code_ci_runs_before_review(tmp_path):
+    (tmp_path / "fixes").mkdir()
+    (tmp_path / "fixes" / "a.md").write_text("body")
+    fix = {"branch": "flaky-fix/a", "title": "Fix flaky a", "body": "a.md"}
+    ui = "openmetadata-ui/src/main/resources/ui/playwright/"
+    for path in ("eslint-rules/no-x.mjs", "reporters/r.ts", "helper-tests.config.ts"):
+        assert "outside" in triage.fix_problem(fix, tmp_path, [ui + path])
+    assert triage.fix_problem(fix, tmp_path, [ui + "utils/glossary.ts"]) is None
+    assert "safe to test" not in triage.LABELS
+
+
+def test_publish_still_replies_when_a_fix_cannot_be_opened(tmp_path, monkeypatch):
+    (tmp_path / "fixes").mkdir()
+    (tmp_path / "replies").mkdir()
+    (tmp_path / "fixes" / "a.json").write_text(
+        '{"branch": "flaky-fix/a", "title": "t", "body": "a.md"}'
+    )
+    (tmp_path / "replies" / "1.2.txt").write_text(
+        "*Flaky triage* Fix: {{PR:flaky-fix/a}}"
+    )
+
+    def missing_branch(*args):
+        raise triage.subprocess.CalledProcessError(1, "git", stderr="couldn't find ref")
+
+    posted = []
+    monkeypatch.setattr(triage, "git", missing_branch)
+    monkeypatch.setattr(triage, "call", lambda method, **kw: posted.append(kw["text"]))
+    summary = []
+    triage.publish(tmp_path, {"1.2"}, False, "RUN", summary)
+    assert posted == ["*Flaky triage* Fix: not opened, see RUN"]
+    assert summary[0].startswith("- skipped fix `flaky-fix/a`")

@@ -21,8 +21,9 @@ the prompt.
 **Outputs** (the only things that leave this job)
 - `$OUT/fixes/<slug>.json` — `{"branch": "flaky-fix/<slug>", "title": "...", "body": "<slug>.md", "owner": "<github login>"}`
   and the PR body in `$OUT/fixes/<slug>.md`. The branch must exist locally as `refs/heads/flaky-fix/<slug>`
-  (lowercase `a-z0-9._-`) and change only files under `openmetadata-ui/src/main/resources/ui/playwright/`;
-  publish drops anything else.
+  (lowercase `a-z0-9._-`) and change only test code under `openmetadata-ui/src/main/resources/ui/playwright/`:
+  `e2e/`, `utils/`, `support/`, `constant/`, `fixtures/`, `test-data/`. Publish drops anything else. The PR
+  opens with `UI` and `skip-pr-checks`; a maintainer adds `safe to test` after reading the diff.
 - `$OUT/replies/<alert ts>.txt` — one reply per alert. Placeholders: `{{PR:<branch>}}` becomes the PR URL
   publish opens, `{{USER:<email>|<github login>}}` becomes a Slack mention (or `@login`).
 
