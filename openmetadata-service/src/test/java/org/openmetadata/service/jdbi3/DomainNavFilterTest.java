@@ -181,6 +181,24 @@ class DomainNavFilterTest {
   }
 
   @Test
+  void apply_sharedConfigurationKeepsItemsWithNoDomain() {
+    ListFilter filter = new ListFilter();
+    DomainNavFilter.apply(
+        filter, Entity.AI_GOVERNANCE_FRAMEWORK, true, DOMAIN_ID, () -> DOMAIN_AND_SUB_DOMAIN_IDS);
+    assertEquals(DOMAIN_AND_SUB_DOMAIN_IDS, filter.getQueryParams().get("domainId"));
+    assertEquals("true", filter.getQueryParams().get("domainAccessControl"));
+  }
+
+  @Test
+  void apply_registeredExtensionTypeKeepsItemsWithNoDomain() {
+    DomainFilterExclusions.registerKeepsUnassigned("extensionConfig");
+    ListFilter filter = new ListFilter();
+    DomainNavFilter.apply(
+        filter, "extensionConfig", true, DOMAIN_ID, () -> DOMAIN_AND_SUB_DOMAIN_IDS);
+    assertEquals("true", filter.getQueryParams().get("domainAccessControl"));
+  }
+
+  @Test
   void apply_doesNotStampEntityType() {
     // entityType is a list param with resource-specific meaning (e.g. the type of the entity a
     // list is "about"); the domain condition doesn't need it, so the filter must not add it.

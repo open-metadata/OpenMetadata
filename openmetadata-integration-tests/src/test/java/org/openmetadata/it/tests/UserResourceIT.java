@@ -38,8 +38,10 @@ import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.ai.CreateAIGovernancePolicy;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
@@ -49,8 +51,13 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
+import org.openmetadata.schema.entity.ai.PolicyType;
+import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -854,6 +861,73 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(
         children.getData().stream().noneMatch(t -> t.getId().equals(otherTerm.getId())),
         "directChildrenOf must not list a term whose own domain is outside the selection");
+  }
+
+  @Test
+  void test_pickKeepsArticlesAndAiPoliciesWithNoDomain(TestNamespace ns) {
+    // Mostly global content (built-in AI governance, Context Center articles) stays listed under a
+    // pick when it has no domain; another domain's items are still filtered out.
+    Domain picked = createAggregateDomain(ns.prefix("navShared"));
+    Domain other = createAggregateDomain(ns.prefix("navSharedOther"));
+    AIGovernancePolicy globalPolicy = createAiPolicy(ns.prefix("globalPolicy"), null);
+    AIGovernancePolicy otherPolicy = createAiPolicy(ns.prefix("otherPolicy"), other);
+    Page pickedPage = createArticle(ns.prefix("pickedArticle"), picked);
+    Page globalPage = createArticle(ns.prefix("globalArticle"), null);
+    Page otherPage = createArticle(ns.prefix("otherArticle"), other);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    String policies = getAs(user, "/v1/aiGovernancePolicies?limit=1000000");
+    assertTrue(policies.contains(globalPolicy.getId().toString()));
+    assertFalse(policies.contains(otherPolicy.getId().toString()));
+
+    // The Articles page sorts by update time, which lists from search.
+    String articles = getAs(user, "/v1/contextCenter/pages?sortBy=updatedAt&limit=10000");
+    assertTrue(articles.contains(pickedPage.getId().toString()));
+    assertTrue(articles.contains(globalPage.getId().toString()));
+    assertFalse(articles.contains(otherPage.getId().toString()));
+  }
+
+  private static Domain createAggregateDomain(String name) {
+    return SdkClients.adminClient()
+        .domains()
+        .create(
+            new CreateDomain()
+                .withName(name)
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("navbar pick"));
+  }
+
+  private static AIGovernancePolicy createAiPolicy(String name, Domain domain) {
+    CreateAIGovernancePolicy request =
+        new CreateAIGovernancePolicy()
+            .withName(name)
+            .withPolicyType(PolicyType.DataAccess)
+            .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName()));
+    String created =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.POST, "/v1/aiGovernancePolicies", request);
+    return JsonUtils.readValue(created, AIGovernancePolicy.class);
+  }
+
+  private static Page createArticle(String name, Domain domain) {
+    CreatePage request =
+        new CreatePage()
+            .withName(name)
+            .withPageType(PageType.ARTICLE)
+            .withPage(new Article())
+            .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName()));
+    String created =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.POST, "/v1/contextCenter/pages", request);
+    return JsonUtils.readValue(created, Page.class);
+  }
+
+  private static String getAs(User user, String path) {
+    return clientFor(user).getHttpClient().executeForString(HttpMethod.GET, path, null);
   }
 
   @Test
@@ -2187,6 +2261,24 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     User fetched = Users.get(updated.getId().toString(), "profile");
     assertNotNull(fetched.getProfile(), "Profile should be present");
     assertNotNull(fetched.getProfile().getSubscription(), "Subscription should be present");
+  }
+
+  @Test
+  void patch_keepsLoginAndActivityTimes(TestNamespace ns) {
+    String userName = ns.prefix("loginTimesUser");
+    User user = createEntity(new CreateUser().withName(userName).withEmail(toValidEmail(userName)));
+    long loginTime = System.currentTimeMillis();
+    user.setLastLoginTime(loginTime);
+    user.setLastActivityTime(loginTime);
+    patchEntity(user.getId().toString(), user);
+
+    User fetched = Users.get(user.getId().toString());
+    fetched.setDescription("edited after login");
+    patchEntity(fetched.getId().toString(), fetched);
+
+    User reloaded = Users.get(user.getId().toString(), "lastLoginTime,lastActivityTime");
+    assertEquals(loginTime, reloaded.getLastLoginTime());
+    assertEquals(loginTime, reloaded.getLastActivityTime());
   }
 
   @Test

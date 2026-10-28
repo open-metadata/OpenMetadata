@@ -370,6 +370,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       List<AuthRequest> authRequests)
       throws IOException {
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+    EntityUtil.addNavbarDomainFilter(securityContext, searchListFilter, entityType);
     ResultList<T> resultList =
         repository.listFromSearchWithOffset(
             uriInfo,

@@ -76,10 +76,12 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
+import org.openmetadata.service.jdbi3.DomainFilterExclusions;
 import org.openmetadata.service.jdbi3.DomainNavFilter;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.ActiveDomainContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -1150,6 +1152,28 @@ public final class EntityUtil {
             nullOrEmpty(selectedFqn)
                 ? DomainNavFilter.ParentScope.NONE
                 : parentScope(parent.get(), selectedFqn));
+  }
+
+  /** The navbar domain filter for a search-backed list (e.g. articles sorted by update time). */
+  public static void addNavbarDomainFilter(
+      SecurityContext securityContext, SearchListFilter filter, String entityType) {
+    if (getSubjectContext(securityContext).isBot()) {
+      return;
+    }
+    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+    boolean applies =
+        selected != null
+            && DomainNavFilter.shouldApply(
+                entityType,
+                supportsDomains(entityType),
+                filter.getQueryParam("domains") != null,
+                selected.getId().toString());
+    if (applies) {
+      filter.addQueryParam(SearchListFilter.NAV_DOMAIN_PARAM, selected.getFullyQualifiedName());
+      filter.addQueryParam(
+          SearchListFilter.NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM,
+          String.valueOf(DomainFilterExclusions.keepsUnassigned(entityType)));
+    }
   }
 
   // Resolved up front so list queries bind plain ids: planners estimate an id list well, but not a

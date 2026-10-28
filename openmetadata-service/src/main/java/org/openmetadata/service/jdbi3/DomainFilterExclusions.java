@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.openmetadata.service.Entity;
 
 /**
@@ -48,8 +49,31 @@ public final class DomainFilterExclusions {
           Entity.TEST_SUITE,
           Entity.QUERY);
 
+  // Mostly global content (e.g. the built-in AI governance frameworks, Context Center articles):
+  // under a pick these lists keep items with no domain and drop other domains' items.
+  private static final Set<String> KEEPS_UNASSIGNED = ConcurrentHashMap.newKeySet();
+
+  static {
+    KEEPS_UNASSIGNED.addAll(
+        Set.of(
+            Entity.AI_GOVERNANCE_FRAMEWORK,
+            Entity.AI_GOVERNANCE_POLICY,
+            Entity.AI_FRAMEWORK_CONTROL,
+            Entity.PAGE));
+  }
+
   /** True when the global domain filter must never narrow lists of the given entity type. */
   public static boolean isExcluded(String entityType) {
     return !nullOrEmpty(entityType) && EXCLUDED.contains(entityType);
+  }
+
+  /** True when lists of the given type keep items with no domain under a pick. */
+  public static boolean keepsUnassigned(String entityType) {
+    return !nullOrEmpty(entityType) && KEEPS_UNASSIGNED.contains(entityType);
+  }
+
+  /** Marks an extension's shared-configuration type (e.g. a Collate entity) as keeping unassigned. */
+  public static void registerKeepsUnassigned(String entityType) {
+    KEEPS_UNASSIGNED.add(entityType);
   }
 }
