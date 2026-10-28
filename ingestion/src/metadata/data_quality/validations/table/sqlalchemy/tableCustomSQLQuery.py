@@ -13,8 +13,8 @@
 Validator for table custom SQL Query test case
 """
 
-import numbers
 import traceback
+from decimal import Decimal
 from typing import Any, cast
 
 import sqlparse
@@ -288,14 +288,15 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             )
             if strategy == Strategy.COUNT:
                 result = cursor.scalar()
-                if not isinstance(result, (int, numbers.Number)) or (
-                    not isinstance(result, int) and result != int(result)
-                ):
+                # Some dialects (e.g. Snowflake) return COUNT(*) as a whole-number Decimal
+                if isinstance(result, Decimal) and result.is_finite() and result == result.to_integral_value():
+                    result = int(result)
+                if not isinstance(result, int):
                     raise ValueError(  # noqa: TRY301
                         f"When using COUNT strategy, the result must be an integer. Received: {type(result)}\n"
                         "Example: SELECT COUNT(*) FROM table_name WHERE my_value IS NOT NULL"
                     )
-                return int(result)
+                return result
             return cursor.fetchall()
         except Exception as exc:
             self.runner._session.rollback()  # pylint: disable=protected-access
