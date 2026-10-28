@@ -26,10 +26,7 @@ import { WidgetCommonProps } from '../../../../interface/customization.interface
 import { getUserPath } from '../../../../utils/RouterUtils';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
-import {
-  TOPIC_FILTERED_BODY_CLASSES,
-  TOPIC_FILTERED_LIST_CLASSES,
-} from '../Common/TopicWidget/topicRowStyles';
+import { TOPIC_FILTERED_BODY_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
@@ -146,7 +143,9 @@ const YoursAndFollowedWidget: React.FC<YoursAndFollowedWidgetProps> = ({
             value={filter}
             onChange={(next) => setPickedFilter(next as TrackedFilter)}
           />
-          <div className={TOPIC_FILTERED_LIST_CLASSES}>
+          {/* The list opens on a heading, not a row, so the pills get the same
+            room below as the body's top padding gives them above. */}
+          <div className="tw:mt-3.5">
             <TrackedAssetList
               assets={filter === TrackedFilter.OWNED ? owned : followed}
               dataTestId={list.listTestId}
