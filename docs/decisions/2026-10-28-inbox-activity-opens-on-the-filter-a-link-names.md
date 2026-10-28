@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-10-28 (initial)
 - **Deciders:** Shrabanti Paul
 - **Guard:** `InboxPage/inbox.utils.test.ts` (the landing link names a real filter), `InboxContent.test.tsx` (an unknown value is ignored)
-- **Related:** PR #36409, ADR:2026-10-28-domain-chips-cache-style-per-domain-fqn
+- **Related:** PR #36409, ADR:2026-10-28-domain-chips-read-styles-from-one-shared-query
 
 ## Context
 The landing page's Team Activity card reads the `my-feed` endpoint, which is the AI-mode Inbox's

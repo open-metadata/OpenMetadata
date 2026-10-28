@@ -56,7 +56,7 @@ import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { domainStyleQueryKey } from '../../../hooks/useDomainStyle';
+import { DOMAIN_STYLES_QUERY_KEY } from '../../../hooks/useDomainStyle';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { VotingDataProps } from '../../../interface/entity/vote.interface';
@@ -808,7 +808,7 @@ const DomainDetails = ({
     await onUpdate(updatedDetails);
     // Domain chips cache the style; refresh them so they pick up the change.
     void queryClient.invalidateQueries({
-      queryKey: domainStyleQueryKey(domain.fullyQualifiedName),
+      queryKey: DOMAIN_STYLES_QUERY_KEY,
     });
     setIsStyleEditing(false);
   };
