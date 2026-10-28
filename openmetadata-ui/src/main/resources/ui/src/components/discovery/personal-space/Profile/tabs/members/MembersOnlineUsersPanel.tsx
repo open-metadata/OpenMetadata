@@ -326,6 +326,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
           }),
         }}
         size="small"
+        variant="muted"
       />
 
       {showPagination && (
