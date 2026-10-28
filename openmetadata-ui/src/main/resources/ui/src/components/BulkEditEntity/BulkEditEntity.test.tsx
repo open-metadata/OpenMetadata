@@ -289,12 +289,12 @@ describe('BulkEditEntity', () => {
       });
       await screen.findByTestId('data-grid');
 
-      const { rowHeight } = (DataGrid as unknown as jest.Mock).mock.calls.at(
-        -1
-      )[0];
+      const { rowHeight, rows: gridRows } = (
+        DataGrid as unknown as jest.Mock
+      ).mock.calls.at(-1)[0];
 
-      expect(rowHeight({ ...rows[0] })).toBe(52);
-      expect(rowHeight({ ...rows[1] })).toBe(140);
+      expect(rowHeight(gridRows[0])).toBe(52);
+      expect(rowHeight(gridRows[1])).toBe(140);
     });
   });
 

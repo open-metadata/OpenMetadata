@@ -12,6 +12,7 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  createEvent,
   fireEvent,
   render,
   screen,
@@ -1366,11 +1367,12 @@ describe('MetricListPage', () => {
       '/users/alice'
     );
 
-    fireEvent.click(glossaryLink);
+    // The real table starts its row press on pointerdown; the link must keep that from bubbling.
+    const pointerDown = createEvent.pointerDown(glossaryLink);
+    const stopPropagation = jest.spyOn(pointerDown, 'stopPropagation');
+    fireEvent(glossaryLink, pointerDown);
 
-    expect(mockNavigate).not.toHaveBeenCalledWith(
-      expect.stringContaining('/metric/')
-    );
+    expect(stopPropagation).toHaveBeenCalled();
   });
 
   it('exports metrics from the core action menu', async () => {

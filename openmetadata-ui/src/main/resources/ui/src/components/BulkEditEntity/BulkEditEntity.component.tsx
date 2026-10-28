@@ -376,9 +376,8 @@ const BulkEditEntity = ({
     [visibleRows, initialRowById, changedCellKeysByRowId, workflowMode]
   );
 
-  const rowIndexById = useMemo(
-    () =>
-      new Map(dataSourceWithOperations.map((row, index) => [row.id, index])),
+  const rowIndexByRow = useMemo(
+    () => new Map(dataSourceWithOperations.map((row, index) => [row, index])),
     [dataSourceWithOperations]
   );
 
@@ -506,7 +505,7 @@ const BulkEditEntity = ({
           }}
           rowHeight={(row: Record<string, string>) =>
             editingRowHeight &&
-            rowIndexById.get(row.id) === editingRowHeight.rowIdx
+            rowIndexByRow.get(row) === editingRowHeight.rowIdx
               ? Math.max(BULK_EDIT_ROW_HEIGHT, editingRowHeight.height)
               : BULK_EDIT_ROW_HEIGHT
           }
@@ -534,7 +533,7 @@ const BulkEditEntity = ({
     dataSource,
     dataSourceWithOperations,
     editingRowHeight,
-    rowIndexById,
+    rowIndexByRow,
     visibleRows,
     handleCopy,
     handlePaste,

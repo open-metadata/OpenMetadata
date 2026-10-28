@@ -136,10 +136,12 @@ describe('getRichTextDiff', () => {
 });
 
 describe('getTextDiff', () => {
-  it('diffs the readable text of HTML descriptions instead of their markup', () => {
+  it('diffs the readable text of rich-text descriptions instead of their markup', () => {
     const result = getTextDiff(
       'Seed metric',
-      '<p>Seed metric <strong>updated</strong> &#61; x</p>'
+      '<p>Seed metric <strong>updated</strong> &#61; x</p>',
+      undefined,
+      { isRichText: true }
     );
 
     expect(result).not.toContain('&lt;p&gt;');
@@ -147,6 +149,13 @@ describe('getTextDiff', () => {
     expect(result).toContain('Seed metric');
     expect(result).toMatch(/data-testid="diff-added"[^>]*>[^<]*updated/);
     expect(result).toContain('=');
+  });
+
+  it('keeps angle-bracket text in plain values such as column types', () => {
+    const result = getTextDiff('array<string>', 'array<string> nullable');
+
+    expect(result).toContain('array&lt;string&gt;');
+    expect(result).toMatch(/data-testid="diff-added"[^>]*>[^<]*nullable/);
   });
 
   it('keeps plain-text diffs unchanged', () => {

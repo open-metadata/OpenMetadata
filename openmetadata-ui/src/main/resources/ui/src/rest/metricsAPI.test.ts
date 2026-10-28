@@ -179,20 +179,47 @@ describe('Metric hierarchy, assets, and observability API contracts', () => {
 
   it('collects search matches and walks their parents up to the root', async () => {
     const hits = (docs: object[]) => ({
-      hits: { hits: docs.map((doc) => ({ _source: doc })) },
+      hits: {
+        hits: docs.map((doc) => ({ _source: doc })),
+        total: { value: docs.length },
+      },
     });
     (searchQuery as jest.Mock)
       .mockResolvedValueOnce(hits([{ id: 'canada', parent: { id: 'na' } }]))
       .mockResolvedValueOnce(hits([{ id: 'na', parent: { id: 'total' } }]))
       .mockResolvedValueOnce(hits([{ id: 'total' }]));
 
-    const { matchIds, ancestorIds } = await getMetricSearchPaths('canada');
+    const { matchIds, ancestorIds, complete } = await getMetricSearchPaths(
+      'canada'
+    );
 
     expect([...matchIds]).toEqual(['canada']);
     expect([...ancestorIds]).toEqual(['na', 'total']);
+    expect(complete).toBe(true);
     expect(searchQuery).toHaveBeenCalledTimes(3);
     expect(
       JSON.stringify((searchQuery as jest.Mock).mock.calls[1][0].queryFilter)
     ).toContain('"id.keyword":"na"');
+  });
+
+  it('reports an incomplete path set when hits exceed one page or nothing matched', async () => {
+    (searchQuery as jest.Mock).mockResolvedValueOnce({
+      hits: {
+        hits: [{ _source: { id: 'match' } }],
+        total: { value: 500 },
+      },
+    });
+
+    await expect(getMetricSearchPaths('rev')).resolves.toMatchObject({
+      complete: false,
+    });
+
+    (searchQuery as jest.Mock).mockResolvedValueOnce({
+      hits: { hits: [], total: { value: 0 } },
+    });
+
+    await expect(getMetricSearchPaths('zzz')).resolves.toMatchObject({
+      complete: false,
+    });
   });
 });

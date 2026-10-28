@@ -366,18 +366,28 @@ export const useMetricHierarchy = ({
 
   const withChildren = useCallback(
     (metric: MetricTreeNode): MetricTableRow => {
-      const hydrateNode = (node: MetricTreeNode): MetricTableRow => {
+      // Below a matched metric every child shows: the match itself is what was searched for.
+      const hydrateNode = (
+        node: MetricTreeNode,
+        isBelowMatch = false
+      ): MetricTableRow => {
         const childPage = childrenByParentId[node.id];
         if (!childPage || !expandedRowKeys.includes(node.id)) {
           return { ...node, children: undefined };
         }
-        const visibleChildren = searchPaths
-          ? childPage.rows.filter(
-              ({ id }) =>
-                searchPaths.matchIds.has(id) || searchPaths.ancestorIds.has(id)
-            )
-          : childPage.rows;
-        const childRows: MetricTableRow[] = visibleChildren.map(hydrateNode);
+        const isMatchOrBelow =
+          isBelowMatch || Boolean(searchPaths?.matchIds.has(node.id));
+        const visibleChildren =
+          searchPaths?.complete && !isMatchOrBelow
+            ? childPage.rows.filter(
+                ({ id }) =>
+                  searchPaths.matchIds.has(id) ||
+                  searchPaths.ancestorIds.has(id)
+              )
+            : childPage.rows;
+        const childRows: MetricTableRow[] = visibleChildren.map((child) =>
+          hydrateNode(child, isMatchOrBelow)
+        );
         if (childPage.after) {
           childRows.push(
             createLoadMoreRow({
@@ -433,9 +443,14 @@ export const useMetricHierarchy = ({
       )
       .forEach((metric) => {
         autoExpandedIds.current.add(metric.id);
-        toggleExpand(true, metric);
+        setExpandedRowKeys((keys) =>
+          keys.includes(metric.id) ? keys : [...keys, metric.id]
+        );
+        // Fetched directly, not via toggleExpand: right after a query change its closure still
+        // holds the previous query's children, so it would skip the fetch.
+        fetchChildren(metric).catch(() => undefined);
       });
-  }, [childrenByParentId, searchPaths, toggleExpand, topLevelNodes]);
+  }, [childrenByParentId, fetchChildren, searchPaths, topLevelNodes]);
 
   const buildRows = useCallback(
     (nodes: MetricHierarchyNode[]): MetricTableRow[] => {

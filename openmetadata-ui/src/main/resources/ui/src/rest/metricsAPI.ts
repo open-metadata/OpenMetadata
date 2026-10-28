@@ -294,30 +294,33 @@ const searchMetricDocs = async (
     pageNumber: 1,
     pageSize: METRIC_SEARCH_PATH_PAGE_SIZE,
     searchIndex: SearchIndex.METRIC,
+    trackTotalHits: true,
     queryFilter,
   });
 
-  return response.hits.hits.map(
-    ({ _source }) => _source as unknown as MetricSearchDoc
-  );
+  return {
+    docs: response.hits.hits.map(
+      ({ _source }) => _source as unknown as MetricSearchDoc
+    ),
+    total: response.hits.total.value,
+  };
 };
 
 /**
  * The hierarchy search keeps a root when any descendant matches, but listing a parent's children
  * has no search. These ids let the tree show only the branches that lead to a match: the matches
  * themselves, and every metric on their parent chains (walked a bounded number of levels).
+ * `complete` is false when a cap was hit or nothing matched; the caller must then show children
+ * unfiltered, or a match the server found could become unreachable.
  */
 export const getMetricSearchPaths = async (query: string) => {
-  const matches = await searchMetricDocs(query);
+  const { docs: matches, total } = await searchMetricDocs(query);
   const matchIds = new Set(matches.map(({ id }) => id));
   const ancestorIds = new Set<string>();
   let level = matches;
+  let depth = 0;
 
-  for (
-    let depth = 0;
-    level.length && depth < METRIC_SEARCH_PATH_MAX_DEPTH;
-    depth += 1
-  ) {
+  while (level.length && depth < METRIC_SEARCH_PATH_MAX_DEPTH) {
     const parentIds = [
       ...new Set(
         level.flatMap(({ parent }) => (parent?.id ? [parent.id] : []))
@@ -325,12 +328,22 @@ export const getMetricSearchPaths = async (query: string) => {
     ].filter((id) => !ancestorIds.has(id));
     parentIds.forEach((id) => ancestorIds.add(id));
     level = parentIds.length
-      ? await searchMetricDocs(
-          '',
-          getTermQuery({ 'id.keyword': parentIds }, 'should', 1)
-        )
+      ? (
+          await searchMetricDocs(
+            '',
+            getTermQuery({ 'id.keyword': parentIds }, 'should', 1)
+          )
+        ).docs
       : [];
+    depth += 1;
   }
 
-  return { matchIds, ancestorIds };
+  return {
+    matchIds,
+    ancestorIds,
+    complete:
+      matches.length > 0 &&
+      total <= METRIC_SEARCH_PATH_PAGE_SIZE &&
+      level.length === 0,
+  };
 };

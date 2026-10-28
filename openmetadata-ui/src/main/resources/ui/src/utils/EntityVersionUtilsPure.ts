@@ -80,7 +80,8 @@ export const getEntityVersionByField = (
   return getTextDiff(
     toString(oldField) ?? '',
     toString(newField),
-    toString(fallbackText)
+    toString(fallbackText),
+    { isRichText: field === EntityField.DESCRIPTION }
   );
 };
 
