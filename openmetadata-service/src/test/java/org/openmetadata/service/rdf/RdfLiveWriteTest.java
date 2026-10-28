@@ -18,8 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
@@ -38,6 +41,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.entity.data.RelationshipType;
@@ -51,6 +55,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.PipelineRepository;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
@@ -194,6 +199,17 @@ class RdfLiveWriteTest {
     assertFalse(RdfProjectionHealth.isDegraded());
     RdfProjectionHealth.markDegraded();
     assertTrue(RdfProjectionHealth.isDegraded());
+  }
+
+  @Test
+  void aPipelineRunIsReplayedFromItsStoredStatus() {
+    final UUID pipelineId = UUID.randomUUID();
+    final PipelineRepository pipelines = mock(PipelineRepository.class);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.PIPELINE)).thenReturn(pipelines);
+      replay(new RdfLiveWrite.PipelineExecution(pipelineId, 1_793_200_000_000L));
+    }
+    verify(pipelines).writePipelineExecutionToRdf(repository, pipelineId, 1_793_200_000_000L);
   }
 
   @Test

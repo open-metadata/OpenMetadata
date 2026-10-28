@@ -124,6 +124,7 @@ import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
+import org.openmetadata.service.exception.RdfStorageMaintenanceExceptionMapper;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.approval.ChangeRequestRecoveryScheduler;
 import org.openmetadata.service.governance.workflows.OntologyReviewReconciler;
@@ -798,6 +799,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new JsonProcessingExceptionMapper(false));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
+    environment.jersey().register(RdfStorageMaintenanceExceptionMapper.class);
   }
 
   private void registerMicrometerFilter(

@@ -126,6 +126,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final String REQUEST_OUTCOME_TIMEOUT = "timeout";
   private static final String REQUEST_OUTCOME_ERROR = "error";
   private static final String READINESS_PROBE = "readinessProbe";
+  private static final Duration COMPACTION_RETRY_AFTER = Duration.ofSeconds(5);
 
   // Dedicated virtual-thread executor for the timeout wrapper. We deliberately
   // do NOT share ForkJoinPool.commonPool: a timed-out Jena call continues to
@@ -924,11 +925,23 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           description,
           timeoutMillis);
     } catch (RuntimeException exception) {
+      // A compaction this server did not pause for (a lost pause lease, an operator, an older
+      // server) blocks the write until it ends: retry it without counting a failure.
       if (RdfWriteRetry.isUncertain(exception)) {
-        throw new RdfWriteOutcomeUnknownException(description, exception);
+        throw isCompacting()
+            ? new RdfStorageMaintenanceException(
+                "compaction (" + description + " waited)", COMPACTION_RETRY_AFTER)
+            : new RdfWriteOutcomeUnknownException(description, exception);
       }
       throw exception;
     }
+  }
+
+  private boolean isCompacting() {
+    final DatasetEndpoint info = parseDatasetEndpoint(endpoint);
+    return info != null
+        && compaction.isCompacting(
+            info.serverBaseUrl(), builder -> authenticated(builder, info.userInfo()));
   }
 
   // Union the translator's static "always managed" predicates with whatever

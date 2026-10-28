@@ -27,6 +27,7 @@ import org.openmetadata.service.apps.bundles.rdf.RdfReindexRunLock;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.inference.InferenceRunLock;
 import org.openmetadata.service.rdf.storage.CompactionResult;
 
 /**
@@ -40,16 +41,18 @@ import org.openmetadata.service.rdf.storage.CompactionResult;
  *
  * <p>Every server checks every {@link #CHECK_INTERVAL}; the first to find a compaction due takes a
  * lease that marks the next one due one interval later, so the cluster compacts once per interval.
- * The compaction holds the RDF reindex lock, so it never overlaps a reindex, and pauses writes to
- * the serving dataset, because Fuseki blocks them for the whole copy. A compaction that does not
- * succeed releases its lease, so the next check tries again. See
+ * The compaction holds the RDF reindex and inference locks, so it never overlaps a reindex or an
+ * inference run, and pauses writes to the serving dataset, because Fuseki blocks them for the whole
+ * copy. A compaction that does not succeed releases its lease, so the next check tries again. See
  * ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule.
  */
 @Slf4j
 public final class RdfStorageMaintenanceService implements AutoCloseable {
   static final String NEXT_COMPACTION_KEY = "RDF_STORAGE_NEXT_COMPACTION";
   static final Duration CHECK_INTERVAL = Duration.ofMinutes(15);
-  private static final Duration FIRST_CHECK_DELAY = Duration.ofMinutes(5);
+  // Servers older than this change do not hold their writes back for maintenance, so the first
+  // compaction waits for a rolling upgrade to finish.
+  private static final Duration FIRST_CHECK_DELAY = Duration.ofHours(1);
   private static final long LOCK_HEARTBEAT_SECONDS = 60;
 
   private final RdfStorageMaintenanceConfig config;
@@ -149,12 +152,34 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
                 LOCK_HEARTBEAT_SECONDS,
                 TimeUnit.SECONDS);
     try {
-      final RdfRepository rdf = repository.get();
-      return rdf.withServingWritesPaused(jobId, () -> rdf.compact(maxDuration()));
+      return compactWithoutInference(jobId);
     } finally {
       heartbeat.cancel(false);
       reindexLock.release();
     }
+  }
+
+  /**
+   * An inference run rewrites its rule graphs in several writes, so a pause starting in between
+   * would leave them half derived. Returns null when a run holds the lock; the next check retries.
+   */
+  private CompactionResult compactWithoutInference(final String jobId) {
+    final InferenceRunLock inference =
+        InferenceRunLock.forCluster(locks, InferenceRunLock.MATERIALIZATION_LOCK_KEY, serverId);
+    CompactionResult result = null;
+    if (inference.tryAcquire(jobId)) {
+      final Runnable stopRenewing = inference.keepAlive(jobId);
+      try {
+        final RdfRepository rdf = repository.get();
+        result = rdf.withServingWritesPaused(jobId, () -> rdf.compact(maxDuration()));
+      } finally {
+        stopRenewing.run();
+        inference.release(jobId);
+      }
+    } else {
+      LOG.info("Skipping RDF compaction while inference runs; retrying on the next check");
+    }
+    return result;
   }
 
   /** A failed renewal is retried on the next beat; a scheduled task that throws never runs again. */

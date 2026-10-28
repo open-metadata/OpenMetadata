@@ -76,6 +76,32 @@ public final class FusekiCompaction {
     }
   }
 
+  /**
+   * Whether Fuseki is still compacting a dataset, whoever started it. Fuseki blocks writers for the
+   * whole copy, so a write that timed out meanwhile was held up by maintenance, not refused.
+   */
+  public boolean isCompacting(
+      final String serverBaseUrl, final UnaryOperator<HttpRequest.Builder> authenticate) {
+    boolean compacting = false;
+    try {
+      compacting = new Run(serverBaseUrl, authenticate).isCompacting();
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+    }
+    return compacting;
+  }
+
+  static boolean anyRunningCompaction(final String body) {
+    final JsonNode tasks = body == null || body.isBlank() ? null : JsonUtils.readTree(body);
+    boolean running = false;
+    if (tasks != null && tasks.isArray()) {
+      for (final JsonNode task : tasks) {
+        running |= COMPACT_TASK.equals(task.path("task").asText()) && !task.hasNonNull("finished");
+      }
+    }
+    return running;
+  }
+
   private static CompactionResult.Outcome startFailure(final int status) {
     return status == 404 || status == 405
         ? CompactionResult.Outcome.UNSUPPORTED
@@ -124,7 +150,7 @@ public final class FusekiCompaction {
 
     private CompactionResult poll(
         final String taskId, final Instant requestedAt, final Instant deadline)
-        throws IOException, InterruptedException {
+        throws InterruptedException {
       TaskState state = taskState(taskId);
       while (state.outcome() == null && clock.instant().isBefore(deadline)) {
         sleeper.sleep(POLL_INTERVAL);
@@ -135,16 +161,37 @@ public final class FusekiCompaction {
       return CompactionResult.of(outcome, taskId, state.detail(), requestedAt, clock);
     }
 
-    private TaskState taskState(final String taskId) throws IOException, InterruptedException {
-      final HttpResponse<String> response =
-          send(
-              serverBaseUrl + "/$/tasks/" + URLEncoder.encode(taskId, StandardCharsets.UTF_8),
-              HttpRequest.Builder::GET);
-      return response.statusCode() == 200
-          ? TaskState.parse(response.body())
-          : new TaskState(
-              CompactionResult.Outcome.UNKNOWN,
-              "Fuseki no longer reports task " + taskId + ": HTTP " + response.statusCode());
+    /**
+     * Fuseki keeps compacting while it cannot answer, so only its own answer ends the wait: a poll
+     * that fails counts as still running. A task Fuseki no longer knows did not survive a restart.
+     */
+    private TaskState taskState(final String taskId) throws InterruptedException {
+      try {
+        final HttpResponse<String> response =
+            send(
+                serverBaseUrl + "/$/tasks/" + URLEncoder.encode(taskId, StandardCharsets.UTF_8),
+                HttpRequest.Builder::GET);
+        return switch (response.statusCode()) {
+          case 200 -> TaskState.parse(response.body());
+          case 404 -> new TaskState(
+              CompactionResult.Outcome.UNKNOWN, "Fuseki no longer reports task " + taskId);
+          default -> new TaskState(
+              null, "Fuseki answered HTTP " + response.statusCode() + " for task " + taskId);
+        };
+      } catch (IOException exception) {
+        return new TaskState(null, describe(exception));
+      }
+    }
+
+    /** Whether Fuseki reports a compaction that has not finished; false when it cannot tell. */
+    boolean isCompacting() throws InterruptedException {
+      try {
+        final HttpResponse<String> response =
+            send(serverBaseUrl + "/$/tasks", HttpRequest.Builder::GET);
+        return response.statusCode() == 200 && anyRunningCompaction(response.body());
+      } catch (IOException exception) {
+        return false;
+      }
     }
 
     private HttpResponse<String> send(

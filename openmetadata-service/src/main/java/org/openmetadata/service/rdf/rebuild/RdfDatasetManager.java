@@ -24,6 +24,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfDatasetNames;
+import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 /** Owns stable dataset handles, durable mutation capture, and online rebuild cutover. */
@@ -112,6 +113,10 @@ public final class RdfDatasetManager implements AutoCloseable {
 
   void writeActive(
       final Consumer<RdfStorageInterface> mutation, final Supplier<RdfMutation> captured) {
+    // The live-write queue retries a held-back write; any other writer would lose it.
+    if (!RdfProjectionHealth.inDurableRecovery() && !RdfLiveWritePause.isHeldByCurrentThread()) {
+      store.awaitLiveWritesAllowed(RdfLiveWritePause.WRITER_WAIT);
+    }
     withPermit(
         activePermit,
         () ->
