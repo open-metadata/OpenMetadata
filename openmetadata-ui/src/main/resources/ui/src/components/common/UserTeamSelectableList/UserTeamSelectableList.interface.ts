@@ -42,4 +42,9 @@ export interface UserSelectDropdownProps {
   triggerDataTestId?: string;
   /** Classes for the span wrapping a `children` trigger. */
   triggerClassName?: string;
+  /**
+   * Only offer the users and teams with these ids, in the lists, their
+   * searches and the tab counts. Unset offers everyone.
+   */
+  allowedIds?: string[];
 }

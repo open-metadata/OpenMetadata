@@ -13,10 +13,7 @@
 
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
-import {
-  AGGREGATE_PAGE_SIZE_LARGE,
-  DEFAULT_DOMAIN_VALUE,
-} from '../../../../constants/constants';
+import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { postAggregateFieldOptions } from '../../../../rest/miscAPI';
@@ -37,6 +34,11 @@ jest.mock('../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
+jest.mock('../../../../rest/miscAPI', () => ({
+  getUserAndTeamSearch: jest.fn(),
+  postAggregateFieldOptions: jest.fn(),
+}));
+
 jest.mock('../../../../rest/userAPI', () => ({
   getUserByName: jest.fn(),
 }));
@@ -45,10 +47,46 @@ jest.mock('../../../../rest/teamsAPI', () => ({
   getTeamByName: jest.fn(),
 }));
 
-jest.mock('../../../../rest/miscAPI', () => ({
-  getUserAndTeamSearch: jest.fn(),
-  postAggregateFieldOptions: jest.fn(),
-}));
+// The shared user/team picker owns its tabs and searches; the filter only has
+// to hand it the assignee and hear back the one picked.
+jest.mock(
+  '../../../common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: ({
+      allowedIds,
+      children,
+      owner,
+      onUpdate,
+    }: {
+      allowedIds?: string[];
+      children: ReactNode;
+      owner?: { name?: string }[];
+      onUpdate: (owners?: { id: string; type: string; name: string }[]) => void;
+    }) => (
+      <div data-testid="assignee-picker">
+        <span data-testid="assignee-picker-allowed">
+          {allowedIds?.join(',') ?? 'everyone'}
+        </span>
+        <span data-testid="assignee-picker-owner">
+          {owner?.map((assignee) => assignee.name).join(',')}
+        </span>
+        {children}
+        <button
+          aria-label="assignee-pick-team"
+          data-testid="assignee-pick-team"
+          onClick={() =>
+            onUpdate([{ id: 'team-1', type: 'team', name: 'data-platform' }])
+          }
+        />
+        <button
+          aria-label="assignee-pick-none"
+          data-testid="assignee-pick-none"
+          onClick={() => onUpdate([])}
+        />
+      </div>
+    ),
+  })
+);
 
 interface MockFilterSelectProps {
   label: string;
@@ -191,34 +229,75 @@ describe('IncidentGroupsFilters', () => {
     mockPostAggregateFieldOptions.mockResolvedValue({
       data: {
         aggregations: {
-          'sterms#testCaseResolutionStatusDetails.assignee.name': {
-            buckets: [
-              {
-                key: 'aaron',
-                'top_hits#top': {
-                  hits: {
-                    hits: [
-                      {
-                        _source: {
-                          testCaseResolutionStatusDetails: {
-                            assignee: {
-                              name: 'Aaron',
-                              displayName: 'Aaron Johnson',
-                              type: 'user',
-                            },
-                          },
-                        },
-                      },
-                    ],
-                  },
-                },
-              },
-              { key: 'data-platform' },
-            ],
+          'sterms#testCaseResolutionStatusDetails.assignee.id': {
+            buckets: [{ key: 'user-1' }, { key: 'team-1' }],
           },
         },
       },
     });
+  });
+
+  it('should offer only the users and teams some incident is assigned to', async () => {
+    renderFilters();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('assignee-picker-allowed')).toHaveTextContent(
+        'user-1,team-1'
+      )
+    );
+
+    expect(mockPostAggregateFieldOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        index: 'testCaseResolutionStatus',
+        fieldName: 'testCaseResolutionStatusDetails.assignee.id',
+        size: 1000,
+        deleted: null,
+        query: undefined,
+      })
+    );
+  });
+
+  it('should offer no one while the assignees load or when their read fails', async () => {
+    mockPostAggregateFieldOptions.mockRejectedValue(new Error('down'));
+    renderFilters();
+
+    expect(screen.getByTestId('assignee-picker-allowed')).toHaveTextContent('');
+
+    await waitFor(() =>
+      expect(mockPostAggregateFieldOptions).toHaveBeenCalled()
+    );
+
+    expect(screen.getByTestId('assignee-picker-allowed')).toHaveTextContent('');
+  });
+
+  it('should read the assignees of the active domain', async () => {
+    useDomainStore.setState({ activeDomain: 'Finance' });
+    renderFilters();
+
+    await waitFor(() =>
+      expect(mockPostAggregateFieldOptions).toHaveBeenCalled()
+    );
+
+    expect(
+      JSON.parse(mockPostAggregateFieldOptions.mock.lastCall[0].query)
+    ).toEqual({
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                should: [
+                  { term: { 'domains.fullyQualifiedName': 'Finance' } },
+                  { prefix: { 'domains.fullyQualifiedName': 'Finance.' } },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
   });
 
   it('should caption every filter of the design', () => {
@@ -243,7 +322,6 @@ describe('IncidentGroupsFilters', () => {
 
     for (const testId of [
       'incident-groups-test-case',
-      'incident-groups-assignee',
       'incident-groups-status',
       'incident-groups-severity',
       'incident-groups-date-field',
@@ -251,6 +329,11 @@ describe('IncidentGroupsFilters', () => {
     ]) {
       expect(screen.getByTestId(testId)).toHaveAttribute('data-size', 'md');
     }
+
+    // The assignee trigger is the core input trigger itself.
+    expect(screen.getByTestId('incident-groups-assignee')).toHaveClass(
+      'tw:py-2.5'
+    );
   });
 
   it('should name the group of every control after its caption', () => {
@@ -391,101 +474,20 @@ describe('IncidentGroupsFilters', () => {
     ).toHaveTextContent('row_count');
   });
 
-  it('should offer only the users and teams some incident is assigned to', async () => {
+  it('should filter by the user or team picked, and by none once cleared', () => {
     renderFilters();
 
-    expect(mockPostAggregateFieldOptions).not.toHaveBeenCalled();
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('incident-groups-assignee-open'));
-    });
-
-    expect(mockPostAggregateFieldOptions).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        index: 'testCaseResolutionStatus',
-        fieldName: 'testCaseResolutionStatusDetails.assignee.name',
-        fieldValue: '',
-        size: AGGREGATE_PAGE_SIZE_LARGE,
-        deleted: null,
-        query: undefined,
-      })
-    );
-    expect(
-      await screen.findByTestId('incident-groups-assignee-option-Aaron')
-    ).toHaveTextContent('Aaron Johnson');
-    // A bucket without its document still offers the assignee by name.
-    expect(
-      screen.getByTestId('incident-groups-assignee-option-data-platform')
-    ).toHaveTextContent('data-platform');
-
-    fireEvent.click(screen.getByTestId('incident-groups-assignee-search'));
-
-    await waitFor(() =>
-      expect(mockPostAggregateFieldOptions).toHaveBeenLastCalledWith(
-        expect.objectContaining({ fieldValue: 'query' })
-      )
-    );
-  });
-
-  it('should offer no assignees when the aggregation fails', async () => {
-    mockPostAggregateFieldOptions.mockRejectedValueOnce(new Error('down'));
-    renderFilters();
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('incident-groups-assignee-open'));
-    });
-
-    expect(mockPostAggregateFieldOptions).toHaveBeenCalledTimes(1);
-    expect(
-      screen.queryByTestId('incident-groups-assignee-option-Aaron')
-    ).not.toBeInTheDocument();
-  });
-
-  it('should scope the assignees to the active domain', async () => {
-    useDomainStore.setState({ activeDomain: 'Finance' });
-    renderFilters();
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('incident-groups-assignee-open'));
-    });
-
-    expect(
-      JSON.parse(mockPostAggregateFieldOptions.mock.lastCall[0].query)
-    ).toEqual(
-      expect.objectContaining({
-        query: {
-          bool: {
-            must: [
-              {
-                bool: {
-                  should: [
-                    { term: { 'domains.fullyQualifiedName': 'Finance' } },
-                    { prefix: { 'domains.fullyQualifiedName': 'Finance.' } },
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      })
+    expect(screen.getByTestId('incident-groups-assignee')).toHaveTextContent(
+      'label.assignee'
     );
 
-    useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
-  });
+    fireEvent.click(screen.getByTestId('assignee-pick-team'));
 
-  it('should filter by the assignee picked, and by none once cleared', async () => {
-    renderFilters();
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('incident-groups-assignee-open'));
+    expect(mockOnChange).toHaveBeenLastCalledWith({
+      assignee: 'data-platform',
     });
-    fireEvent.click(
-      await screen.findByTestId('incident-groups-assignee-option-Aaron')
-    );
 
-    expect(mockOnChange).toHaveBeenLastCalledWith({ assignee: 'Aaron' });
-
-    fireEvent.click(screen.getByTestId('incident-groups-assignee-clear'));
+    fireEvent.click(screen.getByTestId('assignee-pick-none'));
 
     expect(mockOnChange).toHaveBeenLastCalledWith({ assignee: undefined });
   });
@@ -503,9 +505,9 @@ describe('IncidentGroupsFilters', () => {
       )
     );
 
-    expect(
-      screen.getByTestId('incident-groups-assignee-selected')
-    ).toHaveTextContent('aaron');
+    expect(screen.getByTestId('assignee-picker-owner')).toHaveTextContent(
+      'aaron'
+    );
   });
 
   it('should name a team assignee from the URL, and an unknown one by its name', async () => {

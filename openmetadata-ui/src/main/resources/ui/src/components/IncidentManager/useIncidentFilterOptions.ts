@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   AGGREGATE_PAGE_SIZE_LARGE,
+  DEFAULT_DOMAIN_VALUE,
   PAGE_SIZE_BASE,
 } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
-import { EntityReference } from '../../generated/entity/type';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import {
   SearchHitBody,
   TestCaseSearchSource,
@@ -32,19 +34,49 @@ import { searchQuery } from '../../rest/searchAPI';
 import { getQueryFilterForDataProducts } from '../../utils/DomainFilterUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 
-const ASSIGNEE_FIELD = 'testCaseResolutionStatusDetails.assignee';
+const ASSIGNEE_ID_FIELD = 'testCaseResolutionStatusDetails.assignee.id';
+const NO_ASSIGNEE_IDS: string[] = [];
 
-type AssigneeBucket = {
-  key: string;
-  'top_hits#top'?: {
-    hits?: {
-      hits?: {
-        _source?: {
-          testCaseResolutionStatusDetails?: { assignee?: EntityReference };
-        };
-      }[];
-    };
-  };
+const fetchIncidentAssigneeIds = async (domain?: string) => {
+  const { data } = await postAggregateFieldOptions({
+    index: 'testCaseResolutionStatus',
+    fieldName: ASSIGNEE_ID_FIELD,
+    fieldValue: '',
+    // ponytail: a terms aggregation cannot page, so read the whole set up to
+    // this cap. Composite aggregation in /search/aggregate if catalogs ever
+    // exceed it.
+    size: AGGREGATE_PAGE_SIZE_LARGE,
+    // Incident documents carry no top-level `deleted`, so the default
+    // `deleted: false` term would match none of them.
+    deleted: null as unknown as boolean,
+    query: domain
+      ? JSON.stringify(getQueryFilterForDataProducts(domain))
+      : undefined,
+  });
+
+  return (
+    (data.aggregations[`sterms#${ASSIGNEE_ID_FIELD}`]?.buckets ?? []) as {
+      key: string;
+    }[]
+  ).map((bucket) => bucket.key);
+};
+
+/**
+ * Ids of the users and teams assigned to at least one incident in the active
+ * domain, read as a terms aggregation over the incident index so they never
+ * depend on the page of incidents on screen. Empty while they load and when
+ * the read fails, so the assignee picker offers no one rather than everyone.
+ */
+export const useIncidentAssigneeIds = () => {
+  const { activeDomain } = useDomainStore();
+  const domain =
+    activeDomain === DEFAULT_DOMAIN_VALUE ? undefined : activeDomain;
+  const { data = NO_ASSIGNEE_IDS } = useQuery({
+    queryKey: ['incident-assignee-ids', domain],
+    queryFn: () => fetchIncidentAssigneeIds(domain),
+  });
+
+  return data;
 };
 
 export interface UseIncidentFilterOptionsProps {
@@ -149,51 +181,6 @@ export const useIncidentFilterOptions = ({
     }
   }, []);
 
-  /**
-   * Users and teams assigned to at least one incident, read as a terms
-   * aggregation over the incident index so they never depend on the page of
-   * incidents on screen.
-   */
-  const searchAssignees = useCallback(
-    async (searchValue: string, domain?: string) => {
-      try {
-        const { data } = await postAggregateFieldOptions({
-          index: 'testCaseResolutionStatus',
-          fieldName: `${ASSIGNEE_FIELD}.name`,
-          fieldValue: searchValue,
-          // ponytail: a terms aggregation cannot page, so read the whole set
-          // up to this cap; past it, typing narrows. Composite aggregation in
-          // /search/aggregate if catalogs ever exceed it.
-          size: AGGREGATE_PAGE_SIZE_LARGE,
-          // Incident documents carry no top-level `deleted`, so the default
-          // `deleted: false` term would match none of them.
-          deleted: null as unknown as boolean,
-          query: domain
-            ? JSON.stringify(getQueryFilterForDataProducts(domain))
-            : undefined,
-          sourceFields: [ASSIGNEE_FIELD],
-          topHits: { size: 1 },
-        });
-        const buckets = (data.aggregations[`sterms#${ASSIGNEE_FIELD}.name`]
-          ?.buckets ?? []) as AssigneeBucket[];
-
-        return buckets.map((bucket) => {
-          const assignee =
-            bucket['top_hits#top']?.hits?.hits?.[0]?._source
-              ?.testCaseResolutionStatusDetails?.assignee;
-
-          return {
-            label: assignee ? getEntityName(assignee) : bucket.key,
-            value: assignee?.name ?? bucket.key,
-          };
-        });
-      } catch {
-        return [];
-      }
-    },
-    []
-  );
-
   return {
     users,
     setUsers,
@@ -201,6 +188,5 @@ export const useIncidentFilterOptions = ({
     selectedAssignees,
     fetchUserFilterOptions,
     searchTestCases,
-    searchAssignees,
   };
 };

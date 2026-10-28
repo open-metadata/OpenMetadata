@@ -285,6 +285,15 @@ jest.mock('../../rest/miscAPI', () => ({
   getUserAndTeamSearch: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
+  postAggregateFieldOptions: jest.fn().mockResolvedValue({
+    data: {
+      aggregations: {
+        'sterms#testCaseResolutionStatusDetails.assignee.id': {
+          buckets: [{ key: 'user-1' }],
+        },
+      },
+    },
+  }),
 }));
 jest.mock('../../rest/userAPI', () => ({
   getUsers: jest.fn().mockImplementation(() => Promise.resolve({ data: [] })),
@@ -533,6 +542,34 @@ describe('IncidentManagerPage', () => {
       { replace: true }
     );
     expect(screen.queryByTestId('select-owner-tabs')).not.toBeInTheDocument();
+  });
+
+  it('offers only the users and teams some incident is assigned to', async () => {
+    const mockSearchQuery = require('../../rest/searchAPI').searchQuery;
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-assignee'));
+    });
+
+    for (const searchIndex of ['user', 'team']) {
+      expect(mockSearchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          searchIndex,
+          queryFilter: {
+            query: {
+              bool: {
+                must: [
+                  expect.anything(),
+                  { terms: { 'id.keyword': ['user-1'] } },
+                ],
+              },
+            },
+          },
+        })
+      );
+    }
   });
 
   it('clears a URL-selected assignee after reopening the picker without needing a combobox', async () => {

@@ -11,18 +11,25 @@
  *  limitations under the License.
  */
 
-import { Box, Dot, FilterSelect } from '@openmetadata/ui-core-components';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import {
+  Box,
+  Dot,
+  FilterSelect,
+  TriggerButton,
+} from '@openmetadata/ui-core-components';
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { startCase } from 'lodash';
 import { ReactNode, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
-import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useDebouncedValue } from '../../../../hooks/common/useDebouncedValue';
-import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { OpenIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getTeamByName } from '../../../../rest/teamsAPI';
 import { getUserByName } from '../../../../rest/userAPI';
@@ -30,7 +37,11 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import DateRangeFilter from '../../../common/DateRangeFilter/DateRangeFilter';
-import { useIncidentFilterOptions } from '../../../IncidentManager/useIncidentFilterOptions';
+import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import {
+  useIncidentAssigneeIds,
+  useIncidentFilterOptions,
+} from '../../../IncidentManager/useIncidentFilterOptions';
 import {
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
   INCIDENT_GROUP_STATUS_OPTIONS,
@@ -49,7 +60,7 @@ const STATUS_OPTIONS = INCIDENT_GROUP_STATUS_OPTIONS.map((status) => ({
   label: TEST_CASE_RESOLUTION_STATUS_LABELS[status],
 }));
 
-const SEARCH_DEBOUNCE_MS = 300;
+const TEST_CASE_SEARCH_DEBOUNCE_MS = 300;
 const NO_OPTIONS: { value: string; label: string }[] = [];
 
 const toSelection = (value?: string) => (value ? [value] : []);
@@ -138,17 +149,15 @@ const IncidentGroupsFilters = ({
       })),
     [t]
   );
-  const { activeDomain } = useDomainStore();
-  const domain =
-    activeDomain === DEFAULT_DOMAIN_VALUE ? undefined : activeDomain;
-  const { searchTestCases, searchAssignees } = useIncidentFilterOptions({
+  const queryClient = useQueryClient();
+  const { searchTestCases } = useIncidentFilterOptions({
     filters: { testCaseFQN: filters.testCaseFQN, assignee: filters.assignee },
   });
   const [isTestCasePickerOpened, setIsTestCasePickerOpened] = useState(false);
   const [testCaseSearch, setTestCaseSearch] = useState('');
   const debouncedTestCaseSearch = useDebouncedValue(
     testCaseSearch,
-    SEARCH_DEBOUNCE_MS
+    TEST_CASE_SEARCH_DEBOUNCE_MS
   );
   // One query per search text, so a slow older search never overwrites the
   // results of a newer one.
@@ -166,23 +175,7 @@ const IncidentGroupsFilters = ({
       enabled: isTestCasePickerOpened,
       placeholderData: keepPreviousData,
     });
-  const [isAssigneePickerOpened, setIsAssigneePickerOpened] = useState(false);
-  const [assigneeSearch, setAssigneeSearch] = useState('');
-  const debouncedAssigneeSearch = useDebouncedValue(
-    assigneeSearch,
-    SEARCH_DEBOUNCE_MS
-  );
-  const { data: assigneeOptions = NO_OPTIONS, isFetching: isAssigneeLoading } =
-    useQuery({
-      queryKey: [
-        'incident-group-assignee-options',
-        debouncedAssigneeSearch,
-        domain,
-      ],
-      queryFn: () => searchAssignees(debouncedAssigneeSearch, domain),
-      enabled: isAssigneePickerOpened,
-      placeholderData: keepPreviousData,
-    });
+  const assigneeIds = useIncidentAssigneeIds();
   const { data: selectedAssignee } = useQuery({
     queryKey: assigneeQueryKey(filters.assignee),
     // Only runs with an assignee to read, as `enabled` below says.
@@ -190,6 +183,15 @@ const IncidentGroupsFilters = ({
     enabled: Boolean(filters.assignee),
     staleTime: Infinity,
   });
+
+  const handleAssigneeUpdate = (assignees?: EntityReference[]) => {
+    const assignee = assignees?.[0];
+    // The picker hands back who it is, so the name needs no lookup.
+    if (assignee?.name) {
+      queryClient.setQueryData(assigneeQueryKey(assignee.name), assignee);
+    }
+    onChange({ assignee: assignee?.name });
+  };
 
   const dateFieldOptions = [
     { value: 'timestamp', label: t('label.created-at') },
@@ -220,26 +222,27 @@ const IncidentGroupsFilters = ({
         />
       </FilterField>
       <FilterField label={t('label.assignee')}>
-        {/* Only the users and teams some incident is assigned to. */}
-        <FilterSelect
-          searchable
-          data-testid="incident-groups-assignee"
-          isLoading={isAssigneeLoading}
+        {/* Incidents are assigned to users and to teams: the shared picker
+            lists both, a tab each. */}
+        <UserTeamSelectableList
+          hasPermission
+          allowedIds={assigneeIds}
           label={t('label.assignee')}
-          options={assigneeOptions}
-          resolveMissingLabel={(name) =>
-            getEntityName(selectedAssignee) || name
-          }
-          selectedValues={toSelection(filters.assignee)}
-          selectionMode="single"
-          size="md"
-          triggerVariant="input"
-          onChange={([assignee]) => onChange({ assignee })}
-          onOpenChange={(isOpen) =>
-            isOpen ? setIsAssigneePickerOpened(true) : setAssigneeSearch('')
-          }
-          onSearch={setAssigneeSearch}
-        />
+          owner={filters.assignee && selectedAssignee ? [selectedAssignee] : []}
+          onUpdate={handleAssigneeUpdate}>
+          <TriggerButton
+            hasSelection={Boolean(filters.assignee)}
+            label={t('label.assignee')}
+            size="md"
+            testId="incident-groups-assignee"
+            text={
+              filters.assignee
+                ? getEntityName(selectedAssignee) || filters.assignee
+                : t('label.assignee')
+            }
+            variant="input"
+          />
+        </UserTeamSelectableList>
       </FilterField>
       <FilterField label={t('label.status')}>
         <FilterSelect

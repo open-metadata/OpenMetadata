@@ -74,6 +74,7 @@ export const UserTeamSelectableList = ({
   overlayClassName,
   triggerDataTestId = 'edit-owner',
   triggerClassName,
+  allowedIds,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -116,6 +117,31 @@ export const UserTeamSelectableList = ({
     return EntityType.TEAM;
   }, [owner]);
 
+  const { userQueryFilter, teamQueryFilter } = useMemo(() => {
+    const scope = (queryFilter: ReturnType<typeof getTermQuery>) =>
+      allowedIds
+        ? {
+            query: {
+              bool: {
+                must: [
+                  queryFilter.query,
+                  { terms: { 'id.keyword': allowedIds } },
+                ],
+              },
+            },
+          }
+        : queryFilter;
+
+    return {
+      userQueryFilter: scope(getTermQuery({ isBot: 'false' })),
+      teamQueryFilter: scope(
+        getTermQuery({}, 'must', undefined, {
+          matchTerms: { teamType: 'Group' },
+        })
+      ),
+    };
+  }, [allowedIds]);
+
   const isMultiUser = multiple.user;
   const isMultiTeam = multiple.team;
 
@@ -141,7 +167,7 @@ export const UserTeamSelectableList = ({
         query: searchText,
         pageNumber: afterPage,
         pageSize: PAGE_SIZE_MEDIUM,
-        queryFilter: getTermQuery({ isBot: 'false' }),
+        queryFilter: userQueryFilter,
         sortField: 'displayName.keyword',
         sortOrder: 'asc',
         searchIndex: SearchIndex.USER,
@@ -184,9 +210,7 @@ export const UserTeamSelectableList = ({
         query: searchText || '',
         pageNumber: afterPage,
         pageSize: PAGE_SIZE_MEDIUM,
-        queryFilter: getTermQuery({}, 'must', undefined, {
-          matchTerms: { teamType: 'Group' },
-        }),
+        queryFilter: teamQueryFilter,
         sortField: 'displayName.keyword',
         sortOrder: 'asc',
         searchIndex: SearchIndex.TEAM,
@@ -257,7 +281,7 @@ export const UserTeamSelectableList = ({
       query: '',
       pageNumber: 1,
       pageSize: 0,
-      queryFilter: getTermQuery({ isBot: 'false' }),
+      queryFilter: userQueryFilter,
       searchIndex: SearchIndex.USER,
     });
 
@@ -269,9 +293,7 @@ export const UserTeamSelectableList = ({
       query: '',
       pageNumber: 1,
       pageSize: 0,
-      queryFilter: getTermQuery({}, 'must', undefined, {
-        matchTerms: { teamType: 'Group' },
-      }),
+      queryFilter: teamQueryFilter,
       searchIndex: SearchIndex.TEAM,
     });
 

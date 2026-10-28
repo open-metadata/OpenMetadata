@@ -11,10 +11,18 @@
  *  limitations under the License.
  */
 import { Popover } from '@openmetadata/ui-core-components';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import { searchQuery } from '../../../rest/searchAPI';
+import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTeamSelectableList } from './UserTeamSelectableList.component';
 
 const mockOnUpdate = jest.fn();
+
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest
+    .fn()
+    .mockResolvedValue({ hits: { hits: [], total: { value: 0 } } }),
+}));
 
 jest.mock('../SelectableList/SelectableList.component', () => ({
   SelectableList: jest.fn().mockReturnValue(<div>SelectableList</div>),
@@ -93,6 +101,84 @@ describe('UserTeamSelectableList Component Test', () => {
         isOpen: true,
       }),
       {}
+    );
+  });
+
+  it('should search and count only the allowed users and teams', async () => {
+    render(
+      <UserTeamSelectableList
+        hasPermission
+        allowedIds={['user-1', 'team-1']}
+        popoverProps={{ open: true }}
+        onUpdate={mockOnUpdate}>
+        <p>CustomRenderer</p>
+      </UserTeamSelectableList>
+    );
+
+    const allowedClause = { terms: { 'id.keyword': ['user-1', 'team-1'] } };
+
+    // The tab not shown first is counted up front.
+    await waitFor(() =>
+      expect(searchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          searchIndex: 'user',
+          pageSize: 0,
+          queryFilter: {
+            query: {
+              bool: {
+                must: [
+                  { bool: { must: [{ term: { isBot: 'false' } }] } },
+                  allowedClause,
+                ],
+              },
+            },
+          },
+        })
+      )
+    );
+
+    const { fetchOptions } = (SelectableList as jest.Mock).mock.calls[0][0];
+    await act(() => fetchOptions('ops'));
+
+    expect(searchQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        searchIndex: 'team',
+        query: 'ops',
+        queryFilter: {
+          query: {
+            bool: {
+              must: [
+                {
+                  bool: { must: [{ match: { teamType: 'Group' } }] },
+                },
+                allowedClause,
+              ],
+            },
+          },
+        },
+      })
+    );
+  });
+
+  it('should search everyone when no ids are given', async () => {
+    render(
+      <UserTeamSelectableList
+        hasPermission
+        popoverProps={{ open: true }}
+        onUpdate={mockOnUpdate}>
+        <p>CustomRenderer</p>
+      </UserTeamSelectableList>
+    );
+
+    await waitFor(() =>
+      expect(searchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          searchIndex: 'user',
+          queryFilter: {
+            query: { bool: { must: [{ term: { isBot: 'false' } }] } },
+          },
+        })
+      )
     );
   });
 });
