@@ -115,40 +115,44 @@ class ElasticSearchBulkSinkSimpleTest {
     ElasticSearchBulkSink sink =
         new ElasticSearchBulkSink(
             searchRepository, 10, 2, 1000000L, new BulkRetryPolicy(3, 100, 10_000, 0));
-    ElasticSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
+    try {
+      ElasticSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
 
-    processor.setSemaphoreAcquireTimeoutSecondsForTesting(0L);
+      processor.setSemaphoreAcquireTimeoutSecondsForTesting(0L);
 
-    BulkSendPermits sendPermits = getField(processor, "sendPermits", BulkSendPermits.class);
-    Semaphore semaphore = getField(sendPermits, "processorSlots", Semaphore.class);
-    semaphore.acquire(2);
-    int permitsBefore = semaphore.availablePermits();
+      BulkSendPermits sendPermits = getField(processor, "sendPermits", BulkSendPermits.class);
+      Semaphore semaphore = getField(sendPermits, "processorSlots", Semaphore.class);
+      semaphore.acquire(2);
+      int permitsBefore = semaphore.availablePermits();
 
-    AtomicInteger activeBulkRequests =
-        getField(processor, "activeBulkRequests", AtomicInteger.class);
-    AtomicLong totalFailed = getField(sink, "totalFailed", AtomicLong.class);
-    long failedBefore = totalFailed.get();
-    int activeBefore = activeBulkRequests.get();
+      AtomicInteger activeBulkRequests =
+          getField(processor, "activeBulkRequests", AtomicInteger.class);
+      AtomicLong totalFailed = getField(sink, "totalFailed", AtomicLong.class);
+      long failedBefore = totalFailed.get();
+      int activeBefore = activeBulkRequests.get();
 
-    @SuppressWarnings("unchecked")
-    List<BulkOperation> buffer = getField(processor, "buffer", List.class);
-    buffer.add(mock(BulkOperation.class));
+      @SuppressWarnings("unchecked")
+      List<BulkOperation> buffer = getField(processor, "buffer", List.class);
+      buffer.add(mock(BulkOperation.class));
 
-    Method flushInternal =
-        ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod("flushInternal");
-    flushInternal.setAccessible(true);
-    flushInternal.invoke(processor);
+      Method flushInternal =
+          ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod("flushInternal");
+      flushInternal.setAccessible(true);
+      flushInternal.invoke(processor);
 
-    assertEquals(failedBefore + 1, totalFailed.get(), "totalFailed must increment on timeout");
-    assertEquals(
-        activeBefore,
-        activeBulkRequests.get(),
-        "activeBulkRequests must not increment when semaphore acquire times out");
-    assertEquals(
-        permitsBefore,
-        semaphore.availablePermits(),
-        "permits must not change when tryAcquire returns false");
-    assertTrue(buffer.isEmpty(), "buffer should be cleared after permanent failure");
+      assertEquals(failedBefore + 1, totalFailed.get(), "totalFailed must increment on timeout");
+      assertEquals(
+          activeBefore,
+          activeBulkRequests.get(),
+          "activeBulkRequests must not increment when semaphore acquire times out");
+      assertEquals(
+          permitsBefore,
+          semaphore.availablePermits(),
+          "permits must not change when tryAcquire returns false");
+      assertTrue(buffer.isEmpty(), "buffer should be cleared after permanent failure");
+    } finally {
+      sink.close();
+    }
   }
 
   @SuppressWarnings("unchecked")
