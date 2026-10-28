@@ -97,6 +97,14 @@
       "specs": ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
     },
     {
+      "_comment": "The Data Insight page's tabs and chart cards.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataInsight/**"
+      ],
+      "projects": ["Data Insight"],
+      "specs": ["playwright/e2e/Pages/DataInsight.spec.ts"]
+    },
+    {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityLink.ts",
