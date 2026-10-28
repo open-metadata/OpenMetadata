@@ -14,9 +14,14 @@ import { expect, Page } from '@playwright/test';
 import { selectOptionWithRetry } from '../utils/common';
 
 const selectConstraintType = async (page: Page, type: RegExp) => {
+  const trigger = page
+    .getByTestId('constraint-type-select')
+    .getByRole('button');
   await selectOptionWithRetry(
-    page.getByTestId('constraint-type-select').getByRole('button'),
-    page.getByRole('option', { name: type })
+    trigger,
+    page.getByRole('option', { name: type }),
+    undefined,
+    trigger.filter({ hasText: type })
   );
 };
 
