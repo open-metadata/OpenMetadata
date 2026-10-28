@@ -66,6 +66,7 @@ public class AbstractNativeApplication implements NativeApplication {
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
+  private static final String DEFAULT_PIPELINE_TIMEZONE = "UTC";
 
   public AbstractNativeApplication(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     this.collectionDAO = collectionDAO;
@@ -204,6 +205,17 @@ public class AbstractNativeApplication implements NativeApplication {
     return appConfig;
   }
 
+  // The app schedule is the source of truth for its bound pipeline, so an app without a
+  // timezone resets the pipeline to the pipeline schema default rather than keeping a stale zone.
+  private static AirflowConfig syncSchedule(AirflowConfig airflowConfig, AppSchedule schedule) {
+    airflowConfig.setScheduleInterval(deriveInterval(schedule));
+    airflowConfig.setPipelineTimezone(
+        schedule == null || schedule.getTimezone() == null || schedule.getTimezone().isBlank()
+            ? DEFAULT_PIPELINE_TIMEZONE
+            : schedule.getTimezone());
+    return airflowConfig;
+  }
+
   private static String deriveInterval(AppSchedule schedule) {
     String result = null;
     if (schedule != null
@@ -247,7 +259,7 @@ public class AbstractNativeApplication implements NativeApplication {
       airflowConfig = new AirflowConfig();
       updated.setAirflowConfig(airflowConfig);
     }
-    airflowConfig.withScheduleInterval(deriveInterval(this.getApp().getAppSchedule()));
+    syncSchedule(airflowConfig, this.getApp().getAppSchedule());
     repository.update(null, original, updated, updatedBy);
   }
 
@@ -274,9 +286,7 @@ public class AbstractNativeApplication implements NativeApplication {
                             .withSourcePythonClass(this.getApp().getSourcePythonClass())
                             .withAppConfig(decryptedConfig)
                             .withAppPrivateConfig(this.getApp().getPrivateConfiguration())))
-            .withAirflowConfig(
-                new AirflowConfig()
-                    .withScheduleInterval(deriveInterval(this.getApp().getAppSchedule())))
+            .withAirflowConfig(syncSchedule(new AirflowConfig(), this.getApp().getAppSchedule()))
             .withService(service);
 
     // Get Pipeline

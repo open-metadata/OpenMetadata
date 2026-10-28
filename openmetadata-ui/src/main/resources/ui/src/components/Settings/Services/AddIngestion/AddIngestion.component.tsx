@@ -302,6 +302,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
       const ingestionDetails: CreateIngestionPipeline = {
         airflowConfig: {
           scheduleInterval: extraData.cron,
+          pipelineTimezone: extraData.timezone,
           startDate: date,
           retries: extraData.retries,
         },
@@ -351,6 +352,8 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
           airflowConfig: {
             ...data.airflowConfig,
             scheduleInterval: extraData.cron,
+            pipelineTimezone:
+              extraData.timezone ?? data.airflowConfig.pipelineTimezone,
             retries: extraData.retries,
           },
           raiseOnError: extraData.raiseOnError ?? true,
@@ -489,6 +492,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
               includePeriodOptions={periodOptions}
               initialData={{
                 cron: data?.airflowConfig.scheduleInterval,
+                timezone: data?.airflowConfig.pipelineTimezone,
                 raiseOnError: data?.raiseOnError ?? true,
                 retries,
               }}

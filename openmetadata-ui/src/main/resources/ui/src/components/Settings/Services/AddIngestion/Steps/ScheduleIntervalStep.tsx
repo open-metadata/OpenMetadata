@@ -36,6 +36,7 @@ import {
   cronValidator,
   getDefaultScheduleValue,
 } from '../../../../../utils/CronExpressionUtils';
+import { getBrowserTimezone } from '../../../../../utils/date-time/DateTimeUtils';
 import ScheduleInterval from './ScheduleInterval';
 import {
   IngestionExtraConfig,
@@ -62,6 +63,7 @@ export interface ScheduleIntervalStepProps {
 
 interface ScheduleIntervalStepFormData {
   cron?: string;
+  timezone?: string;
   retries?: number | string;
   raiseOnError?: boolean;
 }
@@ -116,10 +118,17 @@ const ScheduleIntervalStep = forwardRef<
             includePeriodOptions,
             allowNoSchedule: true,
           }),
+      timezone: initialData?.timezone ?? getBrowserTimezone(),
       retries: initialData?.retries ?? 0,
       raiseOnError: initialData?.raiseOnError ?? true,
     },
   });
+  const timezone = form.watch('timezone');
+
+  const handleTimezoneChange = useCallback(
+    (value: string) => form.setValue('timezone', value, { shouldDirty: true }),
+    [form]
+  );
 
   // The scheduler renders its own inline message for an unusable custom cron,
   // so this only has to stop the submit - hence a message-less `false` below.
@@ -132,6 +141,7 @@ const ScheduleIntervalStep = forwardRef<
   const handleFinish = (data: ScheduleIntervalStepFormData) => {
     onDeploy?.({
       cron: data.cron || undefined,
+      timezone: data.timezone || undefined,
       retries: Math.max(0, Number(data.retries ?? 0)),
       raiseOnError: data.raiseOnError ?? true,
     });
@@ -196,8 +206,10 @@ const ScheduleIntervalStep = forwardRef<
               disabled={disabled}
               entity={t('label.ingestion')}
               includePeriodOptions={includePeriodOptions}
+              timezone={timezone}
               value={field.value || undefined}
               onChange={(cron) => field.onChange(cron ?? '')}
+              onTimezoneChange={handleTimezoneChange}
               onValidityChange={handleSchedulerValidityChange}
             />
             {fieldState.error?.message && (

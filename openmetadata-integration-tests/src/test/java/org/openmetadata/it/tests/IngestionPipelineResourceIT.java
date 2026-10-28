@@ -165,6 +165,24 @@ public class IngestionPipelineResourceIT
   }
 
   @Test
+  void createRejectsUnknownPipelineTimezoneAndStoresIanaZone(TestNamespace ns) throws Exception {
+    CreateIngestionPipeline request =
+        createMinimalRequest(ns).withName(ns.prefix("pipelineTimezone"));
+    request.getAirflowConfig().withPipelineTimezone("Mars/Olympus");
+
+    HttpResponse<String> response =
+        sendRawRequest(
+            "POST", IngestionPipelineResource.COLLECTION_PATH, request, "application/json");
+
+    assertEquals(400, response.statusCode());
+    assertTrue(response.body().contains("Invalid timezone"));
+
+    request.getAirflowConfig().withPipelineTimezone("Europe/Tallinn");
+    IngestionPipeline pipeline = createEntity(request);
+    assertEquals("Europe/Tallinn", pipeline.getAirflowConfig().getPipelineTimezone());
+  }
+
+  @Test
   void createRejectsSourceConfigWithoutTypeAndDoesNotPersist(TestNamespace ns) throws Exception {
     CreateIngestionPipeline request =
         createMinimalRequest(ns).withName(ns.prefix("missingTypeCreate"));
