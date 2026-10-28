@@ -20,7 +20,13 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { OntologyControlButtonsProps } from './OntologyExplorer.interface';
+
+// The design's 14px glyph; an element icon keeps ButtonUtility from resizing it.
+const AI_ICON_CLASS_NAME = 'tw:size-3.5';
+const AI_CELL_CLASS_NAME =
+  'tw:flex tw:items-center tw:px-0.5 tw:not-first:border-l tw:not-first:border-secondary';
 
 const OntologyControlButtons: FC<OntologyControlButtonsProps> = ({
   onZoomIn,
@@ -30,6 +36,55 @@ const OntologyControlButtons: FC<OntologyControlButtonsProps> = ({
   isLoading = false,
 }) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+
+  if (isAiMode) {
+    return (
+      <div className="tw:flex tw:shrink-0 tw:items-stretch">
+        <div className={AI_CELL_CLASS_NAME}>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="fit-view"
+            icon={<Maximize01 className={AI_ICON_CLASS_NAME} />}
+            size="lg"
+            tooltip={t('label.fit-to-screen')}
+            onClick={onFitToScreen}
+          />
+        </div>
+        <div className={AI_CELL_CLASS_NAME}>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="zoom-in"
+            icon={<ZoomIn className={AI_ICON_CLASS_NAME} />}
+            size="lg"
+            tooltip={t('label.zoom-in')}
+            onClick={onZoomIn}
+          />
+        </div>
+        <div className={AI_CELL_CLASS_NAME}>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="zoom-out"
+            icon={<ZoomOut className={AI_ICON_CLASS_NAME} />}
+            size="lg"
+            tooltip={t('label.zoom-out')}
+            onClick={onZoomOut}
+          />
+        </div>
+        <div className={AI_CELL_CLASS_NAME}>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="refresh"
+            icon={<RefreshCw01 className={AI_ICON_CLASS_NAME} />}
+            isDisabled={isLoading}
+            size="lg"
+            tooltip={t('label.refresh')}
+            onClick={onRefresh}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="tw:flex tw:shrink-0 tw:flex-wrap-nowrap tw:items-center tw:gap-1">

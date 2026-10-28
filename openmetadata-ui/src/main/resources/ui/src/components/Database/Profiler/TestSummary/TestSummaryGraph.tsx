@@ -75,8 +75,11 @@ import TestSummaryStatusKey from './TestSummaryStatusKey';
 
 type PlottedPoint = TestCaseChartDataType['data'][number];
 
+// The tooltip and the selection ring are the hover feedback. ECharts' own
+// hover state animated every dot and line and re-ordered the series on each
+// pass of the pointer, and Safari lost lines in that re-ordering.
+const NO_HOVER_STATE = { emphasis: { disabled: true } };
 // The tooltip is the app's own React component, so ECharts draws none.
-const MULTI_SERIES_EMPHASIS = { emphasis: { focus: 'series' as const } };
 const TOOLTIP_OFF = { show: false };
 
 // Aborted is drawn as a ring, matching the status key: a run that produced no
@@ -418,17 +421,14 @@ function TestSummaryGraph({
         // The line bridges the runs placed off it, so it joins measured
         // runs only.
         connectNulls: true,
-        // Focusing the hovered series fades the others, and with them the
-        // band and the expectation label; only worth it when there are others.
-        ...(isSingleSeries
-          ? {
-              areaStyle: {
-                // The palette's first series colour is its brand blue.
-                color: hexToRgba(palette.series[0], SINGLE_SERIES_WASH),
-              },
-              lineStyle: { width: SINGLE_SERIES_LINE_WIDTH },
-            }
-          : MULTI_SERIES_EMPHASIS),
+        ...NO_HOVER_STATE,
+        ...(isSingleSeries && {
+          areaStyle: {
+            // The palette's first series colour is its brand blue.
+            color: hexToRgba(palette.series[0], SINGLE_SERIES_WASH),
+          },
+          lineStyle: { width: SINGLE_SERIES_LINE_WIDTH },
+        }),
       },
     }));
     // Aborted and queued runs as dots alone, after the lines so no line's
@@ -443,7 +443,7 @@ function TestSummaryGraph({
           name: label,
           type: 'line',
           pointStyle: pointStyleOf(key),
-          seriesOption: { lineStyle: { opacity: 0 } },
+          seriesOption: { ...NO_HOVER_STATE, lineStyle: { opacity: 0 } },
         });
       }
 

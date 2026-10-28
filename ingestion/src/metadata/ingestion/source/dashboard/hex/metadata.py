@@ -254,6 +254,7 @@ class HexSource(DashboardServiceSource):
     def yield_dashboard(self, dashboard_details: Project) -> Iterable[Either[CreateDashboardRequest]]:
         """Method to Get Dashboard Entity"""
         try:
+            source_url = self.client.get_project_url(dashboard_details)
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.title,
@@ -284,7 +285,7 @@ class HexSource(DashboardServiceSource):
                 if self.source_config.includeDataModels
                 else None,
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-                sourceUrl=SourceUrl(self.client.get_project_url(dashboard_details)),
+                sourceUrl=SourceUrl(source_url) if source_url else None,
                 tags=self._get_dashboard_tags(dashboard_details),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
@@ -409,13 +410,14 @@ class HexSource(DashboardServiceSource):
             return
         cells = [cell for cell in cell_lineage if not cell.failed]
         try:
+            source_url = self.client.get_project_url(dashboard_details)
             data_model_request = CreateDashboardDataModelRequest(
                 name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.title,
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),  # pyright: ignore[reportAttributeAccessIssue]
                 dataModelType=DataModelType.HexDataModel,
                 serviceType=self.service_connection.type.value,
-                sourceUrl=SourceUrl(self.client.get_project_url(dashboard_details)),
+                sourceUrl=SourceUrl(source_url) if source_url else None,
                 sql=SqlQuery("\n\n".join(f"-- {cell.label}\n{cell.sql}" for cell in cells)),
                 columns=columns,
             )
