@@ -38,14 +38,9 @@ fi
 tar --zstd -xf "$fixture_path" -C "$validation_root" ./fixture-manifest.json
 manifest="$validation_root/fixture-manifest.json"
 
-fixture_database=$(jq -r '.database // empty' "$manifest")
-if [[ -n "${PLAYWRIGHT_DATABASE:-}" && "$fixture_database" != "$PLAYWRIGHT_DATABASE" ]]; then
-  echo "Cached Playwright fixture was seeded on '${fixture_database:-unknown}', not '$PLAYWRIGHT_DATABASE'" >&2
-  exit 1
-fi
 # shellcheck source=playwright_fixture_profile.sh
 source "$workspace_root/.github/scripts/playwright_fixture_profile.sh"
-load_playwright_fixture_profile "$fixture_database"
+load_playwright_fixture_profile_from_manifest "$manifest"
 
 for required_path in \
   "$PW_DATABASE_MARKER" \
@@ -106,4 +101,4 @@ if ! jq -e '
   exit 1
 fi
 
-echo "Validated reusable $fixture_database Playwright fixture from $(jq -r .sourceSha "$manifest")"
+echo "Validated reusable $PW_FIXTURE_DATABASE Playwright fixture from $(jq -r .sourceSha "$manifest")"

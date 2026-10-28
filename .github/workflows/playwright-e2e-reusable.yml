@@ -2051,15 +2051,16 @@ jobs:
             tail -n 5000 "$PW_SERVER_LOG" > "$DIAGNOSTICS_DIR/openmetadata-server.log" 2>&1 || true
           fi
           if [[ -n "${PW_RUNTIME_ROOT:-}" ]]; then
-            docker compose \
-              -f "$PW_COMPOSE_FILE" \
-              -f "$PW_FAST_COMPOSE_FILE" \
-              ps --all \
+            # Fallbacks cover a release-branch checkout whose launcher predates
+            # the per-database PW_* exports and only runs postgres + opensearch.
+            compose_files=(
+              -f "${PW_COMPOSE_FILE:-$DB_COMPOSE_FILE}"
+              -f "${PW_FAST_COMPOSE_FILE:-docker/development/docker-compose-playwright-fast.yml}"
+            )
+            docker compose "${compose_files[@]}" ps --all \
               > "$DIAGNOSTICS_DIR/docker-compose-ps.txt" 2>&1 || true
-            docker compose \
-              -f "$PW_COMPOSE_FILE" \
-              -f "$PW_FAST_COMPOSE_FILE" \
-              logs --no-color --tail 5000 "$PW_DATABASE_SERVICE" "$PW_SEARCH_SERVICE" \
+            docker compose "${compose_files[@]}" \
+              logs --no-color --tail 5000 "${PW_DATABASE_SERVICE:-postgresql}" "${PW_SEARCH_SERVICE:-opensearch}" \
               > "$DIAGNOSTICS_DIR/docker-compose.log" 2>&1 || true
             if [[ -n "${PW_AIRFLOW_CONTAINER:-}" ]]; then
               docker logs --tail 5000 "$PW_AIRFLOW_CONTAINER" \
