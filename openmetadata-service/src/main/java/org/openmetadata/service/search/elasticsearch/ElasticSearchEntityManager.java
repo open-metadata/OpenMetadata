@@ -261,12 +261,24 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
 
     DeleteByQueryResponse response =
         client.deleteByQuery(
-            d -> d.index(indexNames).query(q -> q.bool(boolQueryBuilder.build())).refresh(true));
+            d ->
+                d.index(indexNames)
+                    .query(q -> q.bool(boolQueryBuilder.build()))
+                    .conflicts(Conflicts.Proceed)
+                    .refresh(true));
 
     LOG.info(
         "DeleteByQuery response From ES - Deleted: {}, Failures: {}",
         response.deleted(),
         response.failures().size());
+
+    if (response.versionConflicts() != null && response.versionConflicts() > 0) {
+      LOG.warn(
+          "DeleteByQuery skipped {} documents due to version conflicts for indices: {}, fields: {}",
+          response.versionConflicts(),
+          indexNames,
+          fieldAndValue);
+    }
 
     if (!response.failures().isEmpty()) {
       String failureDetails =
