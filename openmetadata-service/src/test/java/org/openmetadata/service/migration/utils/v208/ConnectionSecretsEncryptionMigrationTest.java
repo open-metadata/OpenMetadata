@@ -4,14 +4,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.secrets.DBSecretsManager;
+import org.openmetadata.service.secrets.InMemorySecretsManager;
+import org.openmetadata.service.secrets.SecretsManager;
 
 class ConnectionSecretsEncryptionMigrationTest {
   @BeforeEach
@@ -69,6 +76,26 @@ class ConnectionSecretsEncryptionMigrationTest {
       })
   void preservesAbsentValues(final String json) {
     assertEquals(json, ConnectionSecretsEncryptionMigration.encrypted(json));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"Mlflow,registryUri,ML_MODEL", "Teradata,logdata,DATABASE"})
+  void migratedReferencesReachTheRunnerUnchanged(
+      final String type, final String field, final ServiceType serviceType) {
+    final String reference = "secret:/demo_connection";
+    final String migrated =
+        ConnectionSecretsEncryptionMigration.encrypted(stored(type, field, reference));
+    final var config = JsonUtils.readTree(migrated).at("/connection/config");
+    assertTrue(Fernet.isTokenized(config.path(field).asText()));
+    final var secretsConfig = new SecretsManager.SecretsConfig("openmetadata", "", List.of(), null);
+    for (final var manager :
+        List.of(
+            DBSecretsManager.getInstance(SecretsManagerProvider.DB, secretsConfig),
+            InMemorySecretsManager.getInstance(secretsConfig))) {
+      final Object decrypted = manager.decryptServiceConnectionConfig(config, type, serviceType);
+      assertEquals(reference, JsonUtils.valueToTree(decrypted).path(field).asText());
+    }
+    assertEquals(migrated, ConnectionSecretsEncryptionMigration.encrypted(migrated));
   }
 
   @ParameterizedTest
