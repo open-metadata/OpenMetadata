@@ -229,6 +229,88 @@ public abstract class ExternalSecretsManagerTest {
         rejected.getMessage().contains(extendedReference), "the reference must not be echoed");
   }
 
+  /**
+   * The default policy for the query runner and context plugin overloads accepts a reference under
+   * the path the walk itself derives - a PATCH may echo back the reference a GET returned - while
+   * the base the default builds (`.../databaseservice/<service>/queryrunner/<configType>`,
+   * `.../contextplugin/<plugin>`) is what accepts it; a wrong base would reject the entity's own
+   * stored reference or admit a sibling's.
+   */
+  @Test
+  void testEncryptQueryRunnerConfigAcceptsTheEntitysOwnStoredReference() {
+    String storedReference = queryRunnerPasswordReference("test-service", "admin");
+    basicAuth auth = new basicAuth().withPassword(storedReference);
+
+    // The reference the entity itself holds round-trips through the store
+    basicAuth encrypted =
+        (basicAuth) secretsManager.encryptQueryRunnerConfig(auth, "test-service", "admin");
+    assertNotEquals(storedReference, encrypted.getPassword());
+
+    basicAuth decrypted = (basicAuth) secretsManager.decryptQueryRunnerConfig(encrypted);
+    assertEquals(storedReference, decrypted.getPassword());
+  }
+
+  @Test
+  void testEncryptQueryRunnerConfigRejectsAnotherQueryRunnersReference() {
+    String foreignReference = queryRunnerPasswordReference("other-service", "admin");
+    basicAuth auth = new basicAuth().withPassword(foreignReference);
+
+    SecretsManagerException rejected =
+        assertThrows(
+            SecretsManagerException.class,
+            () -> secretsManager.encryptQueryRunnerConfig(auth, "test-service", "admin"));
+
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertTrue(rejected.getMessage().contains("Password"), rejected.getMessage());
+    assertFalse(
+        rejected.getMessage().contains(foreignReference), "the reference must not be echoed");
+  }
+
+  @Test
+  void testEncryptContextPluginConnectionAcceptsTheEntitysOwnStoredReference() {
+    String storedReference = contextPluginPasswordReference("my-plugin");
+    basicAuth auth = new basicAuth().withPassword(storedReference);
+
+    // The reference the entity itself holds round-trips through the store
+    basicAuth encrypted =
+        (basicAuth) secretsManager.encryptContextPluginConnection(auth, "my-plugin");
+    assertNotEquals(storedReference, encrypted.getPassword());
+
+    basicAuth decrypted = (basicAuth) secretsManager.decryptContextPluginConnection(encrypted);
+    assertEquals(storedReference, decrypted.getPassword());
+  }
+
+  @Test
+  void testEncryptContextPluginConnectionRejectsAnotherPluginsReference() {
+    String foreignReference = contextPluginPasswordReference("other-plugin");
+    basicAuth auth = new basicAuth().withPassword(foreignReference);
+
+    SecretsManagerException rejected =
+        assertThrows(
+            SecretsManagerException.class,
+            () -> secretsManager.encryptContextPluginConnection(auth, "my-plugin"));
+
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertTrue(rejected.getMessage().contains("Password"), rejected.getMessage());
+    assertFalse(
+        rejected.getMessage().contains(foreignReference), "the reference must not be echoed");
+  }
+
+  private String queryRunnerPasswordReference(String serviceName, String configType) {
+    return SecretsManager.SECRET_FIELD_PREFIX
+        + secretsManager.buildSecretId(
+            false,
+            secretsManager.buildSecretId(
+                true, "databaseservice", serviceName, "queryrunner", configType),
+            "password");
+  }
+
+  private String contextPluginPasswordReference(String pluginName) {
+    return SecretsManager.SECRET_FIELD_PREFIX
+        + secretsManager.buildSecretId(
+            false, secretsManager.buildSecretId(true, "contextplugin", pluginName), "password");
+  }
+
   @Test
   void testEncryptWorkflowAcceptsTheNamedServicesReference() {
     String serviceReference = servicePasswordReference("test-service");

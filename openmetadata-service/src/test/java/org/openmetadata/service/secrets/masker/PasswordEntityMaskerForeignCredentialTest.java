@@ -111,6 +111,28 @@ class PasswordEntityMaskerForeignCredentialTest {
                 foreign, "plugin", SecretsManager.CredentialPolicy.STRICT));
   }
 
+  /**
+   * The default policy the no-policy overloads build for the entity is the strict one with the
+   * entity's own reference bases, so a foreign Fernet token meets the same rejection the explicit
+   * STRICT policy applies - a caller forgetting the policy argument must not open the re-storage
+   * exemption.
+   */
+  @Test
+  void defaultCollateOverloadsRejectAForeignToken() {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    basicAuth foreign = new basicAuth().withPassword(encrypted(VICTIM_PASSWORD));
+    SecretsManagerException queryRunnerRejected =
+        assertThrows(
+            SecretsManagerException.class,
+            () -> manager.encryptQueryRunnerConfig(foreign, "service", "user"));
+    assertEquals(400, queryRunnerRejected.getResponse().getStatus());
+    SecretsManagerException pluginRejected =
+        assertThrows(
+            SecretsManagerException.class,
+            () -> manager.encryptContextPluginConnection(foreign, "plugin"));
+    assertEquals(400, pluginRejected.getResponse().getStatus());
+  }
+
   @Test
   void unmaskRejectsAForeignFernetToken() {
     String foreignToken = encrypted(VICTIM_PASSWORD);
