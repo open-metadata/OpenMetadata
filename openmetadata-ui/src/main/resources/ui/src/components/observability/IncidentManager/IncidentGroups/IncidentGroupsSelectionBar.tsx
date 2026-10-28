@@ -20,8 +20,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { CheckCircle } from '@openmetadata/ui-core-components/icons';
-import { startCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
+import { getSeverityLabel } from '../../../DataQuality/IncidentManager/Severity/Severity.utils';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import { Severities as CreateSeverities } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
@@ -142,7 +142,7 @@ const IncidentGroupsSelectionBar = ({
                   data-testid={`incident-groups-severity-${severity}`}
                   id={severity}
                   key={severity}
-                  label={startCase(severity)}
+                  label={getSeverityLabel(severity, t)}
                 />
               ))}
             </Dropdown.Section>

@@ -32,6 +32,7 @@ import {
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
   INCIDENT_GROUP_BY_OPTIONS,
   INCIDENT_GROUP_SEPARATOR,
+  INCIDENT_GROUP_SORTABLE_COLUMNS,
   INCIDENT_GROUP_STATUS_OPTIONS,
   INCIDENT_SEVERITY_FILTER_OPTIONS,
   INCIDENT_TREND_COLORS,
@@ -307,6 +308,17 @@ export const getPageAfterEmptyRead = (
  * Sort params for the groups request. The endpoint's own default field is
  * left out, so the usual request stays bare.
  */
+export const parseIncidentGroupSort = (
+  field: unknown,
+  type: unknown
+): IncidentGroupSort => ({
+  field:
+    INCIDENT_GROUP_SORTABLE_COLUMNS.find((column) => column === field) ??
+    DEFAULT_INCIDENT_GROUP_SORT.field,
+  type:
+    type === 'asc' || type === 'desc' ? type : DEFAULT_INCIDENT_GROUP_SORT.type,
+});
+
 export const getIncidentGroupSortQuery = ({
   field,
   type,

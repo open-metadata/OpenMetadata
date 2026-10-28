@@ -13,9 +13,10 @@
 
 import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { startCase, toLower } from 'lodash';
+import { toLower } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getSeverityLabel } from './Severity.utils';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -104,7 +105,7 @@ const Severity = ({
           {severity ? (
             <AppBadge
               className={classNames('severity', toLower(severity))}
-              label={startCase(severity)}
+              label={getSeverityLabel(severity, t)}
             />
           ) : (
             NO_DATA_PLACEHOLDER
@@ -122,7 +123,7 @@ const Severity = ({
         {severity ? (
           <AppBadge
             className={classNames('severity', toLower(severity))}
-            label={startCase(severity)}
+            label={getSeverityLabel(severity, t)}
           />
         ) : (
           NO_DATA_PLACEHOLDER

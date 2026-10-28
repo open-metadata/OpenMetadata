@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { isString, omit, pick } from 'lodash';
 import { PagingResponse } from 'Models';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
@@ -36,11 +36,12 @@ import {
 } from '../../../../rest/queries/incidentGroupsQuery';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
-  DEFAULT_INCIDENT_GROUP_SORT,
   INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUP_BY_PARAM,
   INCIDENT_GROUP_DETAIL_PARAM,
   INCIDENT_GROUP_FILTER_KEYS,
+  INCIDENT_GROUP_SORT_FIELD_PARAM,
+  INCIDENT_GROUP_SORT_TYPE_PARAM,
 } from './IncidentGroups.constants';
 import {
   IncidentGroupFilters,
@@ -53,6 +54,7 @@ import {
   getPageAfterEmptyRead,
   parseIncidentGroupBy,
   parseIncidentGroupFilters,
+  parseIncidentGroupSort,
 } from './IncidentGroups.utils';
 import { useIncidentPaging } from './useIncidentPaging';
 
@@ -277,13 +279,11 @@ export const useIncidentGroups = () => {
   const detailParam = searchParams[INCIDENT_GROUP_DETAIL_PARAM];
   const detailKey = isString(detailParam) ? detailParam : undefined;
 
-  /**
-   * Ordering of the groups. Local rather than in the URL: unlike the dimension
-   * it is a view preference the endpoint defaults on its own, so a shared link
-   * carries the groups without having to carry their order too.
-   */
-  const [sort, setSort] = useState<IncidentGroupSort>(
-    DEFAULT_INCIDENT_GROUP_SORT
+  const sortFieldParam = searchParams[INCIDENT_GROUP_SORT_FIELD_PARAM];
+  const sortTypeParam = searchParams[INCIDENT_GROUP_SORT_TYPE_PARAM];
+  const sort = useMemo(
+    () => parseIncidentGroupSort(sortFieldParam, sortTypeParam),
+    [sortFieldParam, sortTypeParam]
   );
   const { currentPage, pageSize, setPageSize, goToPage } = useIncidentPaging(
     `${groupBy}|${sort.field}|${sort.type}|${domain}|${filtersSearch}`,
@@ -378,6 +378,24 @@ export const useIncidentGroups = () => {
     [navigate, searchParams]
   );
 
+  const handleSortChange = useCallback(
+    ({ field, type }: IncidentGroupSort) =>
+      navigate(
+        {
+          search: QueryString.stringify(
+            {
+              ...searchParams,
+              [INCIDENT_GROUP_SORT_FIELD_PARAM]: field,
+              [INCIDENT_GROUP_SORT_TYPE_PARAM]: type,
+            },
+            { arrayFormat: 'repeat' }
+          ),
+        },
+        { replace: true }
+      ),
+    [navigate, searchParams]
+  );
+
   const handlePageChange = useCallback(
     (nextPage: number) => goToPage(nextPage),
     [goToPage]
@@ -413,7 +431,7 @@ export const useIncidentGroups = () => {
     closeGroup,
     handleGroupByChange,
     handleFiltersChange,
-    handleSortChange: setSort,
+    handleSortChange,
     handlePageChange,
     handlePageSizeChange: setPageSize,
   };
