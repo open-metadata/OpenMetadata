@@ -137,7 +137,7 @@ const SectionCard = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <Card className="tw:overflow-hidden tw:mb-4" variant="muted">
+  <Card className="tw:overflow-hidden tw:mb-4">
     <Box className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary">
       <Typography className="tw:text-primary" size="text-sm" weight="semibold">
         {title}
