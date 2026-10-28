@@ -241,6 +241,7 @@ jobs:
               - '.github/scripts/create_playwright_fixture.sh'
               - '.github/scripts/playwright_cache_fingerprint.py'
               - '.github/scripts/playwright_fixture_profile.sh'
+              - '.github/scripts/pull_playwright_fixture_images.sh'
               - '.github/scripts/pack_playwright_ingestion_image.sh'
               - '.github/scripts/playwright_distribution_cache.sh'
               - '.github/scripts/rotate_playwright_auth_state.py'
