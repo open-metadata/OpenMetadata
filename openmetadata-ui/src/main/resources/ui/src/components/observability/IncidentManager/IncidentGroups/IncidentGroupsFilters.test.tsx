@@ -13,7 +13,10 @@
 
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
+import {
+  AGGREGATE_PAGE_SIZE_LARGE,
+  DEFAULT_DOMAIN_VALUE,
+} from '../../../../constants/constants';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { postAggregateFieldOptions } from '../../../../rest/miscAPI';
@@ -402,6 +405,7 @@ describe('IncidentGroupsFilters', () => {
         index: 'testCaseResolutionStatus',
         fieldName: 'testCaseResolutionStatusDetails.assignee.name',
         fieldValue: '',
+        size: AGGREGATE_PAGE_SIZE_LARGE,
         deleted: null,
         query: undefined,
       })

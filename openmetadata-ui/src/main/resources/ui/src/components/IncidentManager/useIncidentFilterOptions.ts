@@ -12,7 +12,10 @@
  */
 import { useCallback, useMemo, useState } from 'react';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import { PAGE_SIZE_BASE } from '../../constants/constants';
+import {
+  AGGREGATE_PAGE_SIZE_LARGE,
+  PAGE_SIZE_BASE,
+} from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/entity/type';
 import {
@@ -158,7 +161,10 @@ export const useIncidentFilterOptions = ({
           index: 'testCaseResolutionStatus',
           fieldName: `${ASSIGNEE_FIELD}.name`,
           fieldValue: searchValue,
-          size: PAGE_SIZE_BASE,
+          // ponytail: a terms aggregation cannot page, so read the whole set
+          // up to this cap; past it, typing narrows. Composite aggregation in
+          // /search/aggregate if catalogs ever exceed it.
+          size: AGGREGATE_PAGE_SIZE_LARGE,
           // Incident documents carry no top-level `deleted`, so the default
           // `deleted: false` term would match none of them.
           deleted: null as unknown as boolean,
