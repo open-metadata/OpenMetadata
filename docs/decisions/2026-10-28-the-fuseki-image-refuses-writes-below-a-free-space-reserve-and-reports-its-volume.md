@@ -34,11 +34,11 @@ mid-commit; only OpenMetadata knows when compacting is safe.
   queue's lag still marks the projection degraded, because a full volume needs attention.
 - **Urgent compaction.** When a maintenance check finds the store reporting `lowOnSpace`, or free
   space below `storageMaintenance.urgentFreeSpacePercent` (50), it compacts without waiting for the
-  interval, under the same locks and write pause. An urgent compaction that brings the store back
-  above the threshold frees its slot at once. One that does not shows that data compaction cannot
-  remove fills the volume, such as the live graph or other datasets on it, so urgent compactions
-  wait for the next scheduled compaction and the server logs, at ERROR, that the volume needs
-  expanding.
+  interval, under the same reindex lock and write pause. An urgent compaction that brings the store
+  back above the threshold frees its slot at once. One that does not shows that data compaction
+  cannot remove fills the volume, such as the live graph or other datasets on it, so urgent
+  compactions wait for the next scheduled compaction and the server logs, at ERROR, that the
+  volume needs expanding.
 - The images start the JVM with `-XX:-CreateCoredumpOnCrash`: a crash core dump is as large as the
   heap and, in production, filled the node's disk and got the pod evicted.
 
