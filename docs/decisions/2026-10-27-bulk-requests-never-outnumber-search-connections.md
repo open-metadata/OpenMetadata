@@ -43,8 +43,9 @@ pool size added failures, not throughput.
   reconciles sink operations that are still pending, whatever backoff is configured.
 - The bulk circuit breaker ignores pool-wait timeouts and counts each bulk once: its first attempt,
   or its probe. When half-open it admits one probe at a time, claimed with a single compare-and-set,
-  and a probe silent for three probe intervals is replaced. Bulks the open circuit rejects are
-  paused instead of failed.
+  and a probe silent for three probe intervals is replaced. A bulk asks the breaker only once it
+  holds a connection, so a claimed probe never waits for one. Bulks the open circuit rejects give
+  their connection back and are paused instead of failed.
 - Live sinks build their documents on their own pool. A reindex that is out of slots blocks its
   doc-build tasks inside the reindex pool, which a reindex job resizes, and live writes queued
   behind them would hold their request threads.

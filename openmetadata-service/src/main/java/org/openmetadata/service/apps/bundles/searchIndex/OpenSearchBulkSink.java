@@ -1553,16 +1553,19 @@ public class OpenSearchBulkSink implements BulkSink {
     }
 
     private void executeBulkWithRetry(BulkAttempt<BulkOperation> attempt) {
-      if (!circuitBreaker.allowRequest()) {
-        pauseWhileCircuitOpen(attempt);
-        return;
-      }
+      // Connection before circuit: a half-open circuit admits a single probe, and a probe that then
+      // waited for a connection would keep every other bulk paused behind it.
       if (!acquireConnection(attempt)) {
         LOG.warn(
             "No search connection freed up within the deadline of bulk request {} - failing {} actions",
             attempt.executionId(),
             attempt.size());
         failBulk(attempt, NO_CONNECTION_FAILURE);
+        return;
+      }
+      if (!circuitBreaker.allowRequest()) {
+        sendPermits.releaseConnection();
+        pauseWhileCircuitOpen(attempt);
         return;
       }
       List<BulkOperation> operations = attempt.operations();

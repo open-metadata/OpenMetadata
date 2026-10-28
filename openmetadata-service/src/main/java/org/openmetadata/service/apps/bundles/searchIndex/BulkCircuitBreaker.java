@@ -61,7 +61,11 @@ public class BulkCircuitBreaker {
     this.halfOpenProbeMs = halfOpenProbeMs;
   }
 
-  /** CLOSED admits everything; an open circuit admits one probe once the probe interval passes. */
+  /**
+   * CLOSED admits everything; an open circuit admits one probe once the probe interval passes. Ask
+   * only when the request can be sent at once: a claimed probe that is not sent holds up every other
+   * request until it is presumed lost.
+   */
   public boolean allowRequest() {
     return switch (state.get()) {
       case CLOSED -> true;

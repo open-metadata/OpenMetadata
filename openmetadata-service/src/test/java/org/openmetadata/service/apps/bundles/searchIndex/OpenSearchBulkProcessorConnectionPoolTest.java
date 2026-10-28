@@ -224,6 +224,47 @@ class OpenSearchBulkProcessorConnectionPoolTest {
     }
   }
 
+  @Test
+  void aBulkThatNeverGetsAConnectionLeavesTheProbeToTheNextBulk() throws Exception {
+    BulkCircuitBreaker breaker = new BulkCircuitBreaker(1, 30_000, 1_000);
+    try (FakeSearchCluster cluster = FakeSearchCluster.start(20);
+        ProcessorRun run =
+            ProcessorRun.start(
+                cluster.configuration(searchType(), 5, 5),
+                1,
+                breaker,
+                new BulkRetryPolicy(5, 50, 1_000, 500))) {
+      breaker.recordFailure();
+      await().atMost(Duration.ofSeconds(5)).until(() -> breaker.millisUntilProbe() == 0);
+      BulkConnectionBudget budget = run.client().getBulkConnectionBudget();
+
+      // Other writers hold every connection, so the first bulk reaches its deadline unsent.
+      holdConnections(budget, budget.permits());
+      run.index(1);
+      releaseConnections(budget, budget.permits());
+      run.index(1);
+
+      assertTrue(run.processor().flushAndWait(5, TimeUnit.SECONDS));
+      assertEquals(1, run.failed().get(), "the bulk that never got a connection fails");
+      assertEquals(1, run.succeeded().get(), "the next bulk must be free to probe");
+      assertEquals(1, cluster.indexedDocuments());
+      assertEquals(BulkCircuitBreaker.State.CLOSED, breaker.getState());
+    }
+  }
+
+  private static void holdConnections(BulkConnectionBudget budget, int connections)
+      throws InterruptedException {
+    for (int i = 0; i < connections; i++) {
+      assertTrue(budget.tryAcquire(0, TimeUnit.MILLISECONDS));
+    }
+  }
+
+  private static void releaseConnections(BulkConnectionBudget budget, int connections) {
+    for (int i = 0; i < connections; i++) {
+      budget.release();
+    }
+  }
+
   private static BulkRetryPolicy retries(int maxRetries, long initialBackoffMillis) {
     return new BulkRetryPolicy(maxRetries, initialBackoffMillis, 1_000L);
   }
