@@ -113,6 +113,7 @@ import { clearPersonaSession } from '../../../utils/PersonaSessionUtils';
 import {
   clearOidcToken,
   getOidcToken,
+  setApiOnlyTokenListener,
 } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
@@ -470,6 +471,17 @@ export const AuthProvider = ({
 
   // Handler to perform logout within application
   const onLogoutHandler = useCallback(() => signOut(true), [signOut]);
+
+  // Bot and personal access tokens are API-only: a full sign-out pauses the
+  // AuthCoordinator, so a silent renewal cannot restore the session.
+  useEffect(() => {
+    setApiOnlyTokenListener(() => {
+      showErrorToast(t('server.api-only-token-ui-access-denied'));
+      onLogoutHandler();
+    });
+
+    return () => setApiOnlyTokenListener();
+  }, [onLogoutHandler, t]);
 
   // Signing out in one tab signs every tab out. Without this the others kept
   // showing a signed-in app until their next request failed.
