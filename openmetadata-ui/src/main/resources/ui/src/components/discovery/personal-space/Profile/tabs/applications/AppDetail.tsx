@@ -15,6 +15,7 @@ import {
   Badge,
   Box,
   Button,
+  ConfirmPopover,
   Dropdown,
   Skeleton,
   Tabs,
@@ -36,9 +37,11 @@ import { isEmpty, noop } from 'lodash';
 import {
   FC,
   ReactNode,
+  RefObject,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import type { Key } from 'react-aria-components';
@@ -80,7 +83,6 @@ import AppRunsHistory from '../../../../../Settings/Applications/AppRunsHistory/
 import type { AppRunRecordWithId } from '../../../../../Settings/Applications/AppRunsHistory/AppRunsHistory.interface';
 import AppSchedule from '../../../../../Settings/Applications/AppSchedule/AppSchedule.component';
 import type { AppPlugin } from '../../../../../Settings/Applications/plugins/AppPlugin';
-import ConfirmDialog from '../platform-settings/ConfirmDialog';
 import { HintToggle } from './AppConfigForm';
 import {
   SUB_PAGE_EDIT_SCHEDULE,
@@ -126,13 +128,14 @@ const getPluginDetails = (plugins: AppPlugin[], app?: App) =>
 /** Three-dot menu: Disable or Restore, plus Uninstall for non-system apps. */
 const AppManageMenu: FC<{
   app: App;
+  triggerRef: RefObject<HTMLButtonElement>;
   onAction: (action: AppAction) => void;
-}> = ({ app, onAction }) => {
+}> = ({ app, triggerRef, onAction }) => {
   const { t } = useTranslation();
 
   return (
     <Dropdown.Root>
-      <Dropdown.DotsButton data-testid="manage-button" />
+      <Dropdown.DotsButton data-testid="manage-button" ref={triggerRef} />
       <Dropdown.Popover className="tw:w-min">
         <Dropdown.Menu
           aria-label={t('label.manage-entity', {
@@ -166,6 +169,43 @@ const AppManageMenu: FC<{
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown.Root>
+  );
+};
+
+/** Confirms a manage-menu action, anchored to the menu's "..." button. */
+const AppActionConfirm: FC<{
+  action: AppAction;
+  app: App;
+  triggerRef: RefObject<HTMLButtonElement>;
+  onConfirm: () => Promise<boolean | undefined>;
+  onClose: () => void;
+}> = ({ action, app, triggerRef, onConfirm, onClose }) => {
+  const { t } = useTranslation();
+  const appName = getEntityName(app);
+
+  const messages: Record<AppAction, string> = {
+    restore: t('message.restore-action-description', { entityType: appName }),
+    disable: t('message.disable-app', { app: appName }),
+    uninstall: t('message.uninstall-app', { app: appName }),
+  };
+  const labels: Record<AppAction, string> = {
+    restore: t('label.restore'),
+    disable: t('label.disable'),
+    uninstall: t('label.uninstall'),
+  };
+
+  return (
+    <ConfirmPopover
+      isOpen
+      confirmText={labels[action]}
+      data-testid="app-action-confirm"
+      description={messages[action]}
+      title={t('message.are-you-sure')}
+      triggerRef={triggerRef}
+      variant={action === 'restore' ? 'primary' : 'destructive'}
+      onConfirm={onConfirm}
+      onOpenChange={(open) => !open && onClose()}
+    />
   );
 };
 
@@ -213,6 +253,8 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [action, setAction] = useState<AppAction>();
+  // The action confirmation anchors to the "..." button in the page header.
+  const manageButtonRef = useRef<HTMLButtonElement>(null);
   const [selectedTab, setSelectedTab] = useState<Key>();
   const [showHint, setShowHint] = useState(false);
   const [subPage, setSubPage] = useState<AppSubPage>();
@@ -358,11 +400,11 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
     }
   };
 
+  // Resolves false on failure so the confirmation stays open for a retry.
   const handleConfirmAction = async () => {
     if (!appData || !action) {
       return;
     }
-    setLoadingFor('action', true);
     try {
       if (action === 'restore') {
         await restoreApp(appData.id);
@@ -381,16 +423,22 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
             ? t('message.app-disabled-successfully')
             : t('message.app-uninstalled-successfully')
         );
-        // Update current count when Create / Delete operation performed
-        await getResourceLimit('app', true, true);
       }
-      setAction(undefined);
-      onNavigate({ type: 'list' });
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setLoadingFor('action', false);
+
+      return false;
     }
+    if (action !== 'restore') {
+      // Best-effort count refresh, kept out of the try: the app is already
+      // gone, so a failure here must not keep the confirmation open and invite
+      // a retry that would uninstall it again.
+      getResourceLimit('app', true, true).catch(noop);
+    }
+    setAction(undefined);
+    onNavigate({ type: 'list' });
+
+    return true;
   };
 
   const handleViewRunConfig = (record: AppRunRecordWithId) =>
@@ -428,6 +476,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
               isRunLoading: Boolean(loading.run),
               isDeployLoading: Boolean(loading.deploy),
             }}
+            runsHistoryVariant="muted"
             onDemandTrigger={handleRunNow}
             onDeployTrigger={handleDeploy}
             onEditSchedule={() => setSubPage({ type: SUB_PAGE_EDIT_SCHEDULE })}
@@ -469,6 +518,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
           <AppRunsHistory
             appData={appData}
             jsonSchema={jsonSchema}
+            variant="muted"
             onViewRunConfig={handleViewRunConfig}
           />
         ),
@@ -569,7 +619,11 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
             <HintToggle isSelected={showHint} onChange={setShowHint} />
           )}
           {canDelete && (
-            <AppManageMenu app={appData} onAction={(key) => setAction(key)} />
+            <AppManageMenu
+              app={appData}
+              triggerRef={manageButtonRef}
+              onAction={(key) => setAction(key)}
+            />
           )}
         </Box>
       ),
@@ -668,20 +722,6 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
     );
   };
 
-  const actionMessage: Record<AppAction, string> = {
-    restore: t('message.restore-action-description', {
-      entityType: getEntityName(appData),
-    }),
-    disable: t('message.disable-app', { app: getEntityName(appData) }),
-    uninstall: t('message.uninstall-app', { app: getEntityName(appData) }),
-  };
-
-  const actionLabel: Record<AppAction, string> = {
-    restore: t('label.restore'),
-    disable: t('label.disable'),
-    uninstall: t('label.uninstall'),
-  };
-
   return (
     <Box
       className="tw:flex-1 tw:px-8 tw:pb-8"
@@ -689,17 +729,17 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       direction="col">
       {renderContent()}
 
-      <ConfirmDialog
-        confirmLabel={action ? actionLabel[action] : ''}
-        isDestructive={action !== 'restore'}
-        isLoading={Boolean(loading.action)}
-        isOpen={Boolean(action)}
-        message={action ? actionMessage[action] : ''}
-        testId="app-action-confirm"
-        title={t('message.are-you-sure')}
-        onCancel={() => setAction(undefined)}
-        onConfirm={handleConfirmAction}
-      />
+      {/* Mounted only while an action is pending: the label and colour derive
+          from `action`, which would otherwise flip during the exit animation. */}
+      {action && (
+        <AppActionConfirm
+          action={action}
+          app={appData}
+          triggerRef={manageButtonRef}
+          onClose={() => setAction(undefined)}
+          onConfirm={handleConfirmAction}
+        />
+      )}
     </Box>
   );
 };
