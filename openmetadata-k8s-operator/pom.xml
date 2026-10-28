@@ -142,12 +142,12 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- kubernetes-server-mock brings mockwebserver 3.x, which breaks against the okhttp 4.12.0
-             pinned in the root pom; this aligns it -->
+        <!-- kubernetes-server-mock brings an older mockwebserver. Declared here without a version,
+             the root okhttp-bom holds it on the same okhttp line as okhttp-jvm: a pinned 4.x
+             mockwebserver needs okhttp3.internal.Util, which okhttp 5 no longer ships. -->
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>mockwebserver</artifactId>
-            <version>4.12.0</version>
             <scope>test</scope>
             <exclusions>
                 <exclusion>

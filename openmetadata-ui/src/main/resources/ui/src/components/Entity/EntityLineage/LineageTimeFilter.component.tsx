@@ -17,11 +17,10 @@ import {
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Calendar, ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { DateTime } from 'luxon';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Calendar } from '../../../assets/svg/calendar.svg';
-import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
 import {
   dateValueToEndOfDayMillis,
   millisToPickerDateValue,
@@ -212,14 +211,13 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
           aria-label={t('label.lineage-time-filter')}
           className="tw:px-3.5 tw:py-2.5"
           color="tertiary"
-          data-testid="lineage-time-filter">
-          <div className="tw:flex tw:items-center tw:gap-1">
-            <Calendar height={16} width={16} />
-            <Typography as="span" className="tw:font-normal">
-              {triggerLabel}
-            </Typography>
-            <DropdownIcon height={12} width={12} />
-          </div>
+          data-testid="lineage-time-filter"
+          // Sized to the label; the button's default icon slot outweighs it.
+          iconLeading={<Calendar className="tw:size-4 tw:shrink-0" />}
+          iconTrailing={ChevronDown}>
+          <Typography as="span" className="tw:font-normal">
+            {triggerLabel}
+          </Typography>
         </Button>
         <Dropdown.Popover className="tw:min-w-44">
           <Dropdown.Menu

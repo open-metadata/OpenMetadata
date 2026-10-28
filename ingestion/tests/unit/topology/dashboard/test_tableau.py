@@ -199,7 +199,7 @@ class TableauUnitTest(TestCase):
             mock_tableau_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.tableau.client = SimpleNamespace()
+        self.tableau.client = SimpleNamespace(metadata_api_backfill_running=False)
         self.tableau.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_dashboard_name(self):

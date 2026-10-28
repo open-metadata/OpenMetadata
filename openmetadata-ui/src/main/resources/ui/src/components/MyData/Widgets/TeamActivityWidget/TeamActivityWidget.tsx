@@ -31,6 +31,7 @@ import { ActivitySentence } from '../Common/TopicWidget/activityVerb';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import {
   TopicEmptyStateConfig,
+  TopicIconTone,
   TopicKey,
 } from '../Common/TopicWidget/topics.types';
 
@@ -51,9 +52,9 @@ const MAX_VISIBLE_ROWS = 6;
  */
 export const TEAM_ACTIVITY_COUNT_CAP = 20;
 
-const TONE = {
+const TONE: TopicIconTone = {
   icon: Teams,
-  tile: 'tw:bg-utility-gray-100 tw:text-utility-gray-700',
+  color: 'gray',
 };
 
 const fetchTeamActivity = async (): Promise<ActivityEvent[]> => {
@@ -126,6 +127,7 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
             getUserPath(currentUser?.name ?? '', EntityTabs.ACTIVITY_FEED)
           ),
       }}
+      bodyClassName="tw:pt-3"
       emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
@@ -164,7 +166,7 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
 
             return (
               <li
-                className="tw:flex tw:min-w-0 tw:items-start tw:gap-3 tw:py-3"
+                className="tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3 tw:first:pt-0"
                 data-testid={`team-activity-${event.id}`}
                 key={event.id}>
                 <Avatar

@@ -10,14 +10,20 @@ import java.util.List;
 
 /** One key-set URL: downloaded whole, with timeouts, no more often than its budget allows. */
 final class KeySetSource {
+  private final String url;
   private final UrlJwkProvider keySet;
   private final FetchBudget budget;
 
   KeySetSource(URL url, KeySetFetchPolicy policy, Ticker ticker) {
+    this.url = url.toExternalForm();
     this.keySet =
         new UrlJwkProvider(
             url, (int) policy.connectTimeout().toMillis(), (int) policy.readTimeout().toMillis());
     this.budget = new FetchBudget(policy.fetchBurst(), policy.refillInterval(), ticker::read);
+  }
+
+  String url() {
+    return url;
   }
 
   /** Every key the set publishes; {@link RateLimitReachedException} when the budget is spent. */

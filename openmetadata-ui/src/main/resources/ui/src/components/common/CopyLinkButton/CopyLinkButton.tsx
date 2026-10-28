@@ -12,7 +12,7 @@
  */
 import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
 
-import { FC, useCallback } from 'react';
+import { FC, MouseEvent, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { EntityType } from '../../../enums/entity.enum';
@@ -55,10 +55,10 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
         className="hover-cell-icon"
         color="tertiary"
         data-testid={testId}
-        icon={ShareIcon}
+        icon={<ShareIcon height={16} width={16} />}
         isDisabled={!fieldFqn}
         size="xs"
-        onClick={(e) => {
+        onClick={(e: MouseEvent<HTMLButtonElement>) => {
           // Rendered inside clickable rows/cells; copying must not trigger their click handlers.
           e.stopPropagation();
           if (fieldFqn) {

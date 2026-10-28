@@ -70,7 +70,7 @@ test('table entity details (schema tab) matches baseline', async ({ page }) => {
     // Bumped from the 0.01 shared default: consecutive CI renders of this
     // page differ by a few thousand px (async right-panel content), so a
     // margin is kept. The baseline was refreshed from a CI render in
-    // `mcr.microsoft.com/playwright:v1.57.0-jammy` (see playwright-visual.yml)
+    // `mcr.microsoft.com/playwright:v1.57.0-jammy` (the `visual` lane of playwright-e2e-reusable.yml)
     // when the summary-panel font sizes moved to the 12/14px scale.
     maxDiffPixelRatio: 0.03,
     mask: maskFor(page),

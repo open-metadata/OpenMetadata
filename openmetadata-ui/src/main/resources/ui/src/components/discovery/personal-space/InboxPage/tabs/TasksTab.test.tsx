@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import type { Task } from '../../../../../generated/entity/tasks/task';
+import type { User } from '../../../../../generated/entity/teams/user';
 import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
 
@@ -31,7 +32,10 @@ let hookState: {
   isLoading: boolean;
   total: number;
   hasMore?: boolean;
+  error?: unknown;
 };
+const mockRefetch = jest.fn();
+let mockCountQueries: { data?: number; isError: boolean }[];
 // Extra fields merged into the task the mock panel resolves with, so a test can
 // simulate resolving into a specific status/type (e.g. an Approved DAR).
 let resolvedPayload: Record<string, unknown> = {};
@@ -41,13 +45,18 @@ jest.mock('@tanstack/react-query', () => ({
   // The badge totals come from React Query; return static totals so tests stay
   // synchronous. The fetch/dedup itself is the library's concern — the component
   // contract we assert is that mutations invalidate the counts cache.
-  useQueries: () => [{ data: 0 }, { data: 0 }, { data: 0 }],
+  useQueries: () => mockCountQueries,
 }));
 
 let mockCurrentUserIds: ReadonlySet<string> = new Set();
+const mockCurrentUserIdsFor = jest.fn();
 
 jest.mock('../useCurrentUserIds', () => ({
-  useCurrentUserIds: () => mockCurrentUserIds,
+  useCurrentUserIds: (user?: unknown) => {
+    mockCurrentUserIdsFor(user);
+
+    return mockCurrentUserIds;
+  },
 }));
 
 jest.mock('../useInboxInfiniteList', () => ({
@@ -66,6 +75,8 @@ jest.mock('../useInboxInfiniteList', () => ({
       isLoadingMore: false,
       hasMore: Boolean(hookState.hasMore),
       total: hookState.total,
+      error: hookState.error ?? null,
+      refetch: mockRefetch,
       scrollRef: { current: null },
       sentinelRef: { current: null },
       setItems: mockSetItems,
@@ -210,13 +221,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const TabsItem = ({
     id,
     label,
+    badge,
     children,
   }: {
     id: string;
     label?: ReactNode;
+    badge?: number;
     children?: ReactNode | ((state: { isSelected: boolean }) => ReactNode);
   }) => (
     <button
+      data-badge={badge}
       data-testid={`task-status-${id}`}
       type="button"
       onClick={() => tabsOnChange?.(id)}>
@@ -301,6 +315,11 @@ describe('TasksTab', () => {
     jest.clearAllMocks();
     resolvedPayload = {};
     hookState = { items: [], isLoading: false, total: 0 };
+    mockCountQueries = [
+      { data: 0, isError: false },
+      { data: 0, isError: false },
+      { data: 0, isError: false },
+    ];
     // The list fetchers resolve with a paging total (used when a test invokes the
     // captured fetchPage). Status-count totals come from the mocked useQueries.
     mockListTasks.mockResolvedValue({ paging: { total: 0 } });
@@ -312,6 +331,95 @@ describe('TasksTab', () => {
 
     // Defaults to the Open filter, so the Open empty state renders.
     expect(screen.getByText('label.no-open-tasks-yet')).toBeInTheDocument();
+  });
+
+  // A failed load must not read as an empty queue.
+  describe('when the task list fails to load', () => {
+    it('shows a permission placeholder for a 403, with no retry', () => {
+      hookState = {
+        items: [],
+        isLoading: false,
+        total: 0,
+        error: { response: { status: 403 } },
+      };
+      renderTab();
+
+      expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+      expect(
+        screen.queryByText('label.no-open-tasks-yet')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'label.reload' })
+      ).not.toBeInTheDocument();
+      // Nothing can be listed or filtered, so the list column is not shown.
+      expect(screen.queryByTestId('toolbar')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('inbox-tasks-scroll')
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows an error with a retry that reloads the list and its counts', () => {
+      hookState = {
+        items: [],
+        isLoading: false,
+        total: 0,
+        error: { response: { status: 500 } },
+      };
+      renderTab();
+
+      // Nothing loaded, so the error takes the whole tab like a 403 does.
+      expect(screen.queryByTestId('toolbar')).not.toBeInTheDocument();
+
+      expect(
+        screen.getByText('message.something-went-wrong')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('label.no-open-tasks-yet')
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+      expect(mockRefetch).toHaveBeenCalled();
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: [expect.any(String)],
+      });
+    });
+
+    it('keeps the toolbar when a filter hides the loaded rows and a later page fails', () => {
+      hookState = {
+        items: [{ id: 't2', type: 'TestCaseResolution' } as unknown as Task],
+        isLoading: false,
+        total: 2,
+        error: { response: { status: 500 } },
+      };
+      renderTab();
+
+      fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+      // The user can still clear the filter that hides the loaded rows.
+      expect(screen.getByTestId('toolbar')).toBeInTheDocument();
+    });
+
+    it('drops a status badge whose count failed instead of showing 0', () => {
+      mockCountQueries = [
+        { data: 4, isError: false },
+        { isError: true },
+        { data: 0, isError: false },
+      ];
+      renderTab();
+
+      expect(screen.getByTestId('task-status-all')).toHaveAttribute(
+        'data-badge',
+        '4'
+      );
+      expect(screen.getByTestId('task-status-open')).not.toHaveAttribute(
+        'data-badge'
+      );
+      expect(screen.getByTestId('task-status-closed')).toHaveAttribute(
+        'data-badge',
+        '0'
+      );
+    });
   });
 
   // A filter that matches nothing must not claim the queue is empty.
@@ -409,6 +517,14 @@ describe('TasksTab', () => {
     fireEvent.click(screen.getByTestId('toolbar-status-pending'));
 
     expect(capturedCanLoadMore?.(scanned)).toBe(false);
+  });
+
+  it('shows a task that landed on two loaded pages once', () => {
+    const task = { id: 't1', type: 'TestCaseResolution' } as unknown as Task;
+    hookState = { items: [task, task], isLoading: false, total: 1 };
+    renderTab();
+
+    expect(screen.getAllByTestId('task-t1')).toHaveLength(1);
   });
 
   it('shows the skeleton while loading', () => {
@@ -847,6 +963,107 @@ describe('TasksTab', () => {
         'approved,rejected'
       );
       expect(screen.getByTestId('toolbar')).toHaveAttribute('data-status', '');
+    });
+  });
+
+  describe('scoped to a user', () => {
+    const user = {
+      id: 'u1',
+      name: 'alice',
+      teams: [{ id: 'team1', type: 'team', name: 'Finance' }],
+    } as unknown as User;
+
+    it('fetches the tasks assigned to them or their teams, or created by them', async () => {
+      renderTab({ user });
+
+      await capturedFetchPage(undefined);
+
+      expect(capturedQueryKey[1]).toBe('user:u1');
+      expect(mockListTasks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assignee: 'alice,Finance',
+          statusGroup: 'open',
+        })
+      );
+      expect(mockListTasks).toHaveBeenCalledWith(
+        expect.objectContaining({ createdById: 'u1', statusGroup: 'open' })
+      );
+      expect(mockListVisibleTasks).not.toHaveBeenCalled();
+    });
+
+    it('reads "pending approval" from their side, not the viewer\'s', () => {
+      renderTab({ user });
+
+      expect(mockCurrentUserIdsFor).toHaveBeenCalledWith(user);
+    });
+  });
+
+  describe('list-only layout', () => {
+    beforeEach(() => {
+      hookState = {
+        items: [{ id: 't1' } as Task, { id: 't2' } as Task],
+        isLoading: false,
+        total: 2,
+      };
+    });
+
+    it('opens a clicked task through onOpenTask, with no detail pane', () => {
+      const onOpenTask = jest.fn();
+      renderTab({ onOpenTask });
+
+      fireEvent.click(screen.getByTestId('task-t2'));
+
+      expect(onOpenTask).toHaveBeenCalledWith('t2');
+      expect(screen.queryByTestId('detail')).not.toBeInTheDocument();
+    });
+
+    it('shows the empty state in the list', () => {
+      hookState = { items: [], isLoading: false, total: 0 };
+      renderTab({ onOpenTask: jest.fn() });
+
+      expect(
+        within(screen.getByTestId('inbox-tasks-scroll')).getByText(
+          'label.no-open-tasks-yet'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it("names another user in their empty state instead of 'you', keeping the status", () => {
+      hookState = { items: [], isLoading: false, total: 0 };
+      renderTab({
+        onOpenTask: jest.fn(),
+        user: { id: 'u1', name: 'alice', displayName: 'Alice Doe' } as User,
+      });
+
+      // The tab opens on Open: an empty Open list says no open tasks, not none.
+      expect(
+        screen.getByTestId('inbox-tasks-user-open-empty')
+      ).toBeInTheDocument();
+      expect(screen.getByText('label.no-open-tasks-yet')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.user-open-tasks-empty-description')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.tasks-open-empty-description')
+      ).not.toBeInTheDocument();
+    });
+
+    // Alice may have only open tasks: her empty Closed list must not say she
+    // has no tasks at all.
+    it('says another user has no closed tasks on their Closed tab', () => {
+      hookState = { items: [], isLoading: false, total: 0 };
+      renderTab({
+        onOpenTask: jest.fn(),
+        user: { id: 'u1', name: 'alice', displayName: 'Alice Doe' } as User,
+      });
+
+      fireEvent.click(screen.getByTestId('task-status-closed'));
+
+      expect(
+        screen.getByTestId('inbox-tasks-user-closed-empty')
+      ).toBeInTheDocument();
+      expect(screen.getByText('label.no-closed-tasks-yet')).toBeInTheDocument();
+      expect(screen.queryByText('label.no-tasks-yet')).not.toBeInTheDocument();
     });
   });
 });

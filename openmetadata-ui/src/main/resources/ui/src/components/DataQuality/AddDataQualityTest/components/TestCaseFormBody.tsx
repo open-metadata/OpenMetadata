@@ -570,8 +570,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   // Dimensions are entities managed in Settings > Preferences > Data Quality; the shared hook
   // owns the fetch so this form, the test definition form and the test case filters all list the
   // same set and degrade the same way.
-  const { dimensions: dataQualityDimensions, isLoading: isDimensionsLoading } =
-    useDataQualityDimensions();
+  const { dimensions: dataQualityDimensions } = useDataQualityDimensions();
 
   const testLevelFieldValue = useWatch({
     control: form.control,
@@ -1376,7 +1375,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }),
     props: {
       'data-testid': 'data-quality-dimension',
-      isLoading: isDimensionsLoading,
       options: dataQualityDimensionOptions,
       onItemInserted: () => setIsDimensionManuallyEdited(true),
       onItemCleared: () => setIsDimensionManuallyEdited(true),

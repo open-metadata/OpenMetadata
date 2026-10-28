@@ -122,7 +122,6 @@
     background: @grey-9;
     display: flex;
     flex-direction: column;
-    flex-wrap: wrap;
     width: inherit;
     border: 0.5px solid @grey-15;
 
@@ -153,7 +152,6 @@
 
     display: flex;
     flex-direction: column;
-    flex-wrap: wrap;
     width: inherit;
 
     .activity-feed-card-new-body {
@@ -516,7 +514,8 @@
 
 .owner-chip {
   border-radius: var(--om-radius-lg);
-  background: @grey-16;
+  // Was @grey-16, a fixed hex that stayed a white pill in dark mode.
+  background: var(--tw-background-color-tertiary);
   padding: var(--om-space-4) var(--om-space-8);
   margin-right: @margin-xs;
   border: 1px solid @grey-15;

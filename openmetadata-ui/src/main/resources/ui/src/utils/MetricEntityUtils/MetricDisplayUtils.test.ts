@@ -11,10 +11,18 @@
  *  limitations under the License.
  */
 import type { TFunction } from 'i18next';
-import { MetricType } from '../../generated/entity/data/metric';
+import {
+  EntityStatus,
+  Language,
+  MetricGranularity,
+  MetricType,
+  UnitOfMeasurement,
+} from '../../generated/entity/data/metric';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
+import enUS from '../../locale/languages/en-us.json';
 import {
   getMetricEnumLabel,
+  getMetricLanguageLabel,
   getMetricTierTag,
   getMetricTypeBadgeColor,
   isMetricTierTag,
@@ -47,6 +55,23 @@ describe('MetricDisplayUtils', () => {
       'Standard Deviation'
     );
     expect(getMetricEnumLabel(fallbackT, 'DOLLARS')).toBe('Dollars');
+  });
+
+  it.each([
+    ...Object.values(MetricType),
+    ...Object.values(MetricGranularity),
+    ...Object.values(UnitOfMeasurement),
+    ...Object.values(EntityStatus),
+  ])('has an en-us label for metric enum value %s', (value) => {
+    const key = getMetricEnumLabel(t, value).replace('label.', '');
+
+    expect(enUS.label).toHaveProperty([key]);
+  });
+
+  it('shows language names as-is and localizes only External', () => {
+    expect(getMetricLanguageLabel(t, Language.JavaScript)).toBe('JavaScript');
+    expect(getMetricLanguageLabel(t, Language.SQL)).toBe('SQL');
+    expect(getMetricLanguageLabel(t, Language.External)).toBe('label.external');
   });
 
   it.each([

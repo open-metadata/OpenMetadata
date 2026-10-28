@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -173,49 +174,46 @@ public class ActivityStreamRepository {
     return getEntityActivityById(securityContext, entityType, entity.getId(), domain, days, limit);
   }
 
+  /** The window shared by the user-scoped feeds: domain filter, look-back and page size. */
+  public record FeedWindow(String domain, int days, Long startTs, int limit) {}
+
+  /** Activity for entities owned by {@code subject} or one of their teams. */
   public ResultList<ActivityEvent> getMyFeed(
-      SecurityContext securityContext, String domain, int days, Long startTs, int limit) {
-    String userName = securityContext.getUserPrincipal().getName();
-    EntityReference user = Entity.getEntityReferenceByName(Entity.USER, userName, null);
+      SecurityContext securityContext, User subject, FeedWindow window) {
     return result(
         listByOwners(
-            user.getId().toString(),
-            getTeamIds(userName),
-            getEffectiveDomainsByFqn(securityContext, domain),
-            afterTimestamp(days, startTs),
-            limit));
+            subject.getId().toString(),
+            teamIds(subject),
+            getEffectiveDomainsByFqn(securityContext, window.domain()),
+            afterTimestamp(window.days(), window.startTs()),
+            window.limit()));
   }
 
+  /** Activity for entities {@code subject} follows. */
   public ResultList<ActivityEvent> getFollowingFeed(
-      SecurityContext securityContext, String domain, int days, Long startTs, int limit) {
-    EntityReference user = currentUser(securityContext);
+      SecurityContext securityContext, User subject, FeedWindow window) {
     return result(
         listByFollowers(
-            user.getId().toString(),
-            getEffectiveDomainsByFqn(securityContext, domain),
-            afterTimestamp(days, startTs),
-            limit));
+            subject.getId().toString(),
+            getEffectiveDomainsByFqn(securityContext, window.domain()),
+            afterTimestamp(window.days(), window.startTs()),
+            window.limit()));
   }
 
   /**
-   * Activity whose replies mention the current user or one of their teams, optionally only the
+   * Activity whose replies mention {@code subject} or one of their teams, optionally only the
    * activity about one entity (the entityLink's entity, matched as {@code /activity/about} does).
    */
   public ResultList<ActivityEvent> getMentionsFeed(
-      SecurityContext securityContext,
-      String domain,
-      String entityLink,
-      int days,
-      Long startTs,
-      int limit) {
-    String userName = securityContext.getUserPrincipal().getName();
+      SecurityContext securityContext, User subject, String entityLink, FeedWindow window) {
     MentionScope scope =
         new MentionScope(
-            currentUser(securityContext).getId().toString(),
-            getTeamIds(userName),
-            getEffectiveDomainsByFqn(securityContext, domain),
+            subject.getId().toString(),
+            teamIds(subject),
+            getEffectiveDomainsByFqn(securityContext, window.domain()),
             buildAboutFqnHash(entityLink));
-    return result(listByMentions(scope, afterTimestamp(days, startTs), limit));
+    return result(
+        listByMentions(scope, afterTimestamp(window.days(), window.startTs()), window.limit()));
   }
 
   public ResultList<ActivityEvent> getActivityByEntityLink(
@@ -793,21 +791,10 @@ public class ActivityStreamRepository {
     return new ResultList<>(events, null, null, events.size());
   }
 
-  private List<String> getTeamIds(String userName) {
-    List<String> teamIds = new ArrayList<>();
-    try {
-      org.openmetadata.schema.entity.teams.User user =
-          Entity.getEntityByName(Entity.USER, userName, "teams", null);
-      if (user.getTeams() != null) {
-        user.getTeams().stream()
-            .map(EntityReference::getId)
-            .map(UUID::toString)
-            .forEach(teamIds::add);
-      }
-    } catch (EntityNotFoundException exception) {
-      LOG.debug("Could not get team IDs for user {}: {}", userName, exception.getMessage());
-    }
-    return teamIds;
+  private List<String> teamIds(User user) {
+    return nullOrEmpty(user.getTeams())
+        ? List.of()
+        : user.getTeams().stream().map(EntityReference::getId).map(UUID::toString).toList();
   }
 
   private List<UUID> getEffectiveDomains(SecurityContext securityContext, String domainsParam) {

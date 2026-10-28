@@ -122,6 +122,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getClassificationTagsCondition(tableName));
     conditions.add(getGlossaryTermsCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
+    conditions.add(getWorkflowInstanceIdCondition());
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getTestDefinitionCondition());
     conditions.add(getTestCaseOwnerCondition());
@@ -147,6 +148,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
+    conditions.add(getEntityLinkHashCondition());
     conditions.add(getActiveCondition());
     conditions.add(getAnnouncementTypeCondition());
     conditions.add(getAnnouncementStatusCondition());
@@ -527,6 +529,24 @@ public class ListFilter extends Filter<ListFilter> {
   private String getEntityLinkCondition() {
     String entityLinkStr = queryParams.get("entityLink");
     return entityLinkStr == null ? "" : "entityLink = :entityLink";
+  }
+
+  /**
+   * Matches workflow runs by the md5 of their entityLink, in the exact form the
+   * idx_wf_instance_entity_link key takes (2.0.7 migration), so the run list for an entity is an
+   * index lookup; entityLink is unbounded TEXT and has no index of its own. See
+   * ADR:2026-10-22-governance-workflow-runs-keep-each-entitys-latest-run.
+   */
+  private String getEntityLinkHashCondition() {
+    final String entityLinkHash = queryParams.get("entityLinkHash");
+    String condition = "";
+    if (entityLinkHash != null) {
+      condition =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? "entityLinkHash = :entityLinkHash"
+              : "md5(COALESCE(entityLink, '')) = :entityLinkHash";
+    }
+    return condition;
   }
 
   /**
@@ -1359,6 +1379,11 @@ public class ListFilter extends Filter<ListFilter> {
   private String getEntityFQNHashCondition() {
     String entityFQN = getQueryParam("entityFQNHash");
     return entityFQN == null ? "" : "entityFQNHash = :entityFQNHash";
+  }
+
+  private String getWorkflowInstanceIdCondition() {
+    String workflowInstanceId = queryParams.get("workflowInstanceId");
+    return workflowInstanceId == null ? "" : "workflowInstanceId = :workflowInstanceId";
   }
 
   public String getParentCondition(String tableName) {

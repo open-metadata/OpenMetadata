@@ -629,6 +629,7 @@ function SearchIndexDetailsPage() {
 
   return (
     <PageLayoutV1
+      fillEntityTabs
       pageTitle={entityName}
       title={t('label.entity-detail-plural', {
         entity: t('label.search-index'),

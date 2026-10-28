@@ -117,6 +117,8 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     [isFilterSelected, filter, showResultCount]
   );
 
+  const resultCount = ResultCount(totalValue);
+
   return (
     <>
       {isLoading ? (
@@ -126,7 +128,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
           {totalValue > 0 ? (
             <>
               {children}
-              <div className="tw:mb-4">{ResultCount(totalValue)}</div>
+              {resultCount && <div className="tw:mb-4">{resultCount}</div>}
               <div data-testid="search-results">{searchResultCards}</div>
             </>
           ) : (

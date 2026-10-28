@@ -8,7 +8,6 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.StringJoiner;
 import lombok.Builder;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -21,38 +20,13 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
-import org.apache.tika.exception.TikaConfigException;
-import org.apache.tika.exception.TikaException;
-import org.apache.tika.metadata.Metadata;
-import org.apache.tika.parser.ParseContext;
-import org.apache.tika.parser.ocr.TesseractOCRConfig;
-import org.apache.tika.parser.ocr.TesseractOCRParser;
-import org.apache.tika.sax.BodyContentHandler;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
-import org.xml.sax.SAXException;
 
 public class ContextFileTextExtractor {
   static final int MAX_CANONICAL_TEXT_LENGTH = 1_000_000;
   static final int MAX_INDEXED_TEXT_LENGTH = 200_000;
-  public static final String TIKA_TESSERACT_PATH_PROPERTY = "collate.tika.tesseract.path";
-  public static final String TIKA_TESSERACT_PATH_ENV = "COLLATE_TIKA_TESSERACT_PATH";
-  public static final String TIKA_TESSDATA_PATH_PROPERTY = "collate.tika.tessdata.path";
-  public static final String TIKA_TESSDATA_PATH_ENV = "COLLATE_TIKA_TESSDATA_PATH";
-  @Deprecated public static final String TESSERACT_COMMAND_PROPERTY = "collate.tesseract.command";
-  @Deprecated public static final String TESSERACT_COMMAND_ENV = "COLLATE_TESSERACT_COMMAND";
-  private static final long OCR_TIMEOUT_SECONDS = 60;
-
-  private final ImageOcrEngine imageOcrEngine;
-
-  public ContextFileTextExtractor() {
-    this(new TesseractImageOcrEngine());
-  }
-
-  ContextFileTextExtractor(ImageOcrEngine imageOcrEngine) {
-    this.imageOcrEngine = imageOcrEngine;
-  }
 
   public ExtractionResult extract(InputStream inputStream, ContextFile file) throws IOException {
     if (inputStream == null) {
@@ -66,8 +40,7 @@ public class ContextFileTextExtractor {
       case Spreadsheet -> extractSpreadsheet(inputStream, file.getFileExtension());
       case Document, Presentation -> extractOfficeDocument(inputStream, file.getFileExtension());
       case CSV, Text -> extractPlainText(inputStream);
-      case Image -> extractImage(inputStream, file.getFileExtension());
-      case Archive, Other -> ExtractionResult.unsupported(
+      case Image, Archive, Other -> ExtractionResult.unsupported(
           "Text extraction is not supported for file type " + fileType);
     };
   }
@@ -136,20 +109,6 @@ public class ContextFileTextExtractor {
     }
   }
 
-  private ExtractionResult extractImage(InputStream inputStream, String fileExtension)
-      throws IOException {
-    Path tempFile = spoolToTempFile(inputStream, fileExtension);
-    try {
-      if (!imageOcrEngine.isAvailable()) {
-        return ExtractionResult.unsupported(
-            "Image OCR requires tesseract to be installed and configured for Apache Tika");
-      }
-      return ExtractionResult.processed(imageOcrEngine.extract(tempFile), 1);
-    } finally {
-      Files.deleteIfExists(tempFile);
-    }
-  }
-
   private Path spoolToTempFile(InputStream inputStream, String fileExtension) throws IOException {
     String suffix = fileExtension == null || fileExtension.isBlank() ? ".bin" : "." + fileExtension;
     Path tempFile = Files.createTempFile("context-file-extract-", suffix);
@@ -213,148 +172,6 @@ public class ContextFileTextExtractor {
 
     static ExtractionResult unsupported(String reason) {
       return new ExtractionResult(ProcessingStatus.Unsupported, null, null, null, reason);
-    }
-  }
-
-  interface ImageOcrEngine {
-    boolean isAvailable();
-
-    String extract(Path imagePath) throws IOException;
-  }
-
-  static class TesseractImageOcrEngine implements ImageOcrEngine {
-    private volatile Boolean available;
-    private volatile String availableForConfiguration;
-
-    @Override
-    public boolean isAvailable() {
-      String configuration = resolveAvailabilityConfiguration();
-      Boolean cached = available;
-      if (cached != null && configuration.equals(availableForConfiguration)) {
-        return cached;
-      }
-      synchronized (this) {
-        configuration = resolveAvailabilityConfiguration();
-        if (available != null && configuration.equals(availableForConfiguration)) {
-          return available;
-        }
-        available = detectAvailability();
-        availableForConfiguration = configuration;
-        return available;
-      }
-    }
-
-    @Override
-    public String extract(Path imagePath) throws IOException {
-      try {
-        TesseractOCRParser parser = createParser();
-        TesseractOCRConfig config = createConfig();
-        ParseContext parseContext = new ParseContext();
-        parseContext.set(TesseractOCRConfig.class, config);
-        // Bound the handler at MAX_CANONICAL_TEXT_LENGTH so a very large or malicious image
-        // cannot drive Tika to accumulate unbounded OCR output on the heap (OOM risk).
-        BodyContentHandler handler = new BodyContentHandler(MAX_CANONICAL_TEXT_LENGTH);
-        Metadata metadata = new Metadata();
-
-        try (InputStream stream = Files.newInputStream(imagePath)) {
-          parser.parse(stream, handler, metadata, parseContext);
-        }
-        return handler.toString();
-      } catch (TikaConfigException e) {
-        throw new IOException("Invalid Apache Tika OCR configuration", e);
-      } catch (TikaException | SAXException e) {
-        throw new IOException("Apache Tika OCR failed", e);
-      }
-    }
-
-    private boolean detectAvailability() {
-      try {
-        return createParser().hasTesseract();
-      } catch (TikaConfigException e) {
-        return false;
-      }
-    }
-
-    private TesseractOCRParser createParser() throws TikaConfigException {
-      TesseractOCRParser parser = new TesseractOCRParser();
-      String tesseractPath = resolveTesseractPath();
-      if (!tesseractPath.isBlank()) {
-        parser.setTesseractPath(tesseractPath);
-      }
-      String tessdataPath = resolveTessdataPath();
-      if (!tessdataPath.isBlank()) {
-        parser.setTessdataPath(tessdataPath);
-      }
-      parser.initialize(Collections.emptyMap());
-      return parser;
-    }
-
-    private TesseractOCRConfig createConfig() {
-      TesseractOCRConfig config = new TesseractOCRConfig();
-      config.setTimeoutSeconds((int) OCR_TIMEOUT_SECONDS);
-      return config;
-    }
-
-    private String resolveAvailabilityConfiguration() {
-      return resolveTesseractPath() + "|" + resolveTessdataPath();
-    }
-
-    private String resolveTesseractPath() {
-      String configuredValue =
-          firstNonBlankPropertyOrEnv(
-              TIKA_TESSERACT_PATH_PROPERTY,
-              TIKA_TESSERACT_PATH_ENV,
-              TESSERACT_COMMAND_PROPERTY,
-              TESSERACT_COMMAND_ENV);
-      if (configuredValue == null) {
-        return "";
-      }
-      return normalizeTesseractPath(configuredValue);
-    }
-
-    private String resolveTessdataPath() {
-      String configuredValue =
-          firstNonBlankPropertyOrEnv(TIKA_TESSDATA_PATH_PROPERTY, TIKA_TESSDATA_PATH_ENV);
-      if (configuredValue == null) {
-        return "";
-      }
-      return Path.of(configuredValue.trim()).normalize().toString();
-    }
-
-    private String firstNonBlankPropertyOrEnv(
-        String propertyName, String envName, String fallbackPropertyName, String fallbackEnvName) {
-      String configuredValue = firstNonBlankPropertyOrEnv(propertyName, envName);
-      if (configuredValue != null) {
-        return configuredValue;
-      }
-      return firstNonBlankPropertyOrEnv(fallbackPropertyName, fallbackEnvName);
-    }
-
-    private String firstNonBlankPropertyOrEnv(String propertyName, String envName) {
-      String propertyValue = System.getProperty(propertyName);
-      if (propertyValue != null && !propertyValue.isBlank()) {
-        return propertyValue.trim();
-      }
-
-      String envValue = System.getenv(envName);
-      if (envValue != null && !envValue.isBlank()) {
-        return envValue.trim();
-      }
-
-      return null;
-    }
-
-    private String normalizeTesseractPath(String configuredValue) {
-      Path path = Path.of(configuredValue.trim()).normalize();
-      Path fileName = path.getFileName();
-      if (fileName != null) {
-        String lastSegment = fileName.toString();
-        if ("tesseract".equals(lastSegment) || "tesseract.exe".equalsIgnoreCase(lastSegment)) {
-          Path parent = path.getParent();
-          return parent == null ? "" : parent.toString();
-        }
-      }
-      return path.toString();
     }
   }
 }

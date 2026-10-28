@@ -20,7 +20,9 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { TableTagsComponentProps, TableUnion } from './TableTags.interface';
 
-const TableTags = <T extends TableUnion>({
+const TableTags = <
+  T extends Pick<Partial<TableUnion>, 'name' | 'fullyQualifiedName' | 'tags'>
+>({
   tags,
   record,
   index,

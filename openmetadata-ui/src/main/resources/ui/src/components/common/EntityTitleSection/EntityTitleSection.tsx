@@ -72,7 +72,15 @@ const patchEntityDisplayName = async (
   );
 
   if (onDisplayNameUpdate) {
-    onDisplayNameUpdate(response.displayName || displayName || '');
+    const updatedDisplayName =
+      typeof response === 'object' &&
+      response !== null &&
+      'displayName' in response
+        ? response.displayName
+        : undefined;
+    const responseDisplayName =
+      typeof updatedDisplayName === 'string' ? updatedDisplayName : undefined;
+    onDisplayNameUpdate(responseDisplayName || displayName || '');
   }
 };
 
@@ -83,6 +91,7 @@ export const EntityTitleSection = ({
   tooltipPlacement = 'top left',
   testId = 'entity-link',
   className,
+  plain = false,
   hasEditPermission = false,
   onDisplayNameUpdate,
   entityDisplayName,
@@ -153,7 +162,11 @@ export const EntityTitleSection = ({
         'tw:sticky tw:p-1 tw:z-999 tw:top-0 tw:bg-primary',
         className
       )}>
-      <div className="tw:flex tw:gap-2 tw:items-center tw:rounded-lg tw:px-1 tw:bg-gray-blue-50 tw:dark:bg-secondary tw:py-2">
+      <div
+        className={classNames(
+          'tw:flex tw:gap-2 tw:items-center tw:rounded-lg tw:px-1 tw:py-2',
+          { 'tw:bg-gray-blue-50 tw:dark:bg-secondary': !plain }
+        )}>
         <span className="tw:text-blue-700 tw:ml-1 tw:shrink-0 tw:leading-0">
           {searchClassBase.getEntityIcon(entityTypeValue, 'tw:w-4.5 tw:h-4.5')}
         </span>

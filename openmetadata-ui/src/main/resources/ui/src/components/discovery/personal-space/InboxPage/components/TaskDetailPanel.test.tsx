@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ComponentProps, ComponentType, ReactNode } from 'react';
 import APIClient from '../../../../../rest/axiosClient';
 import {
@@ -45,6 +45,7 @@ jest.mock('./ClampedText', () => ({
 }));
 
 jest.mock('constants/Task.constant', () => ({
+  INCIDENT_TASK_TYPES: new Set(['IncidentResolution', 'TestCaseResolution']),
   TASK_ENTITY_TYPES: {
     RequestApproval: 'message.request-approval-message',
     GlossaryApproval: 'message.request-approval-message',
@@ -53,7 +54,7 @@ jest.mock('constants/Task.constant', () => ({
 }));
 
 jest.mock('rest/tasksAPI', () => ({
-  getTaskById: (...args: unknown[]) => mockGetTaskById(...args),
+  getTask: (...args: unknown[]) => mockGetTaskById(...args),
   resolveTask: (...args: unknown[]) => mockResolveTask(...args),
   addTaskComment: (...a: unknown[]) => mockAddComment(...a),
   editTaskComment: (...a: unknown[]) => mockEditComment(...a),
@@ -404,13 +405,22 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   EmptyPlaceholder: ({
     title,
     description,
+    actions,
+    'data-testid': testId,
   }: {
     title?: ReactNode;
     description?: ReactNode;
+    actions?: { key: string; label: ReactNode; onPress?: () => void }[];
+    'data-testid'?: string;
   }) => (
-    <div>
+    <div data-testid={testId}>
       <span>{title}</span>
       <span>{description}</span>
+      {actions?.map(({ key, label, onPress }) => (
+        <button key={key} onClick={onPress}>
+          {label}
+        </button>
+      ))}
     </div>
   ),
   Tabs: Object.assign(
@@ -549,6 +559,29 @@ describe('TaskDetailPanel', () => {
     await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
     expect(screen.getByText('message.task-outcome-by-on')).toBeInTheDocument();
+  });
+
+  // An AI agent's proposal reads as opened by the agent, not by the bot it writes as.
+  it('names the AI agent that opened a proposal in the byline', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        type: 'RequestApproval',
+        createdBy: { id: 'bot', name: 'aiautomationapplicationbot' },
+        payload: {
+          proposal: { provider: 'automation', agent: 'Glossary Agent' },
+        },
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    const byline = screen.getByTestId('task-byline');
+
+    expect(within(byline).getByTestId('agent-badge')).toHaveTextContent(
+      'Glossary Agent'
+    );
+    expect(byline).toHaveTextContent('message.task-opened-by');
   });
 
   it('falls back to the description when the name is only the taskId', async () => {
@@ -846,13 +879,51 @@ describe('TaskDetailPanel', () => {
     );
   });
 
-  it('shows an error toast and no-data when the task fails to load', async () => {
-    mockGetTaskById.mockRejectedValue(new Error('nope'));
+  it('says the task is not found only for a 404', async () => {
+    mockGetTaskById.mockRejectedValue({ response: { status: 404 } });
 
     await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
-    expect(mockShowErrorToast).toHaveBeenCalled();
-    expect(screen.getByText('label.no-task-found')).toBeInTheDocument();
+    expect(screen.getByTestId('task-not-found')).toHaveTextContent(
+      'label.no-task-found'
+    );
+    expect(
+      screen.queryByText('message.something-went-wrong')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows a load error with a retry, not "not found", for a server error', async () => {
+    mockGetTaskById.mockRejectedValueOnce({ response: { status: 500 } });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    expect(
+      screen.getByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('label.no-task-found')).not.toBeInTheDocument();
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
+
+    mockGetTaskById.mockResolvedValueOnce({ data: TASK });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+    });
+
+    expect(mockGetTaskById).toHaveBeenCalledTimes(2);
+    expect(
+      screen.queryByText('message.something-went-wrong')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows an access placeholder for a 403', async () => {
+    mockGetTaskById.mockRejectedValue({ response: { status: 403 } });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.reload' })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('label.no-task-found')).not.toBeInTheDocument();
   });
 
   it('opens the assignee picker for a reassign transition instead of firing', async () => {
@@ -1264,15 +1335,52 @@ describe('TaskDetailPanel', () => {
       expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
     });
 
-    it('does not gate a non-DAR task on ResolveTask and skips the permission fetch', async () => {
+    it('hides Approve/Reject on any task the viewer cannot resolve and says why', async () => {
       mockGetTaskById.mockResolvedValue({ data: TASK });
+      mockGetEntityPermission.mockResolvedValue({ ResolveTask: false });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(mockGetEntityPermission).toHaveBeenCalledWith('task', 'task-1');
+      expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+      expect(screen.queryByText('label.reject')).not.toBeInTheDocument();
+      expect(screen.getByTestId('task-resolve-denied-hint')).toHaveTextContent(
+        'message.only-reviewers-can-approve-or-reject'
+      );
+    });
+
+    it('explains the self-approval deny to the viewer who filed the task', async () => {
+      mockCurrentUser = { name: 'alice', id: 'u1' };
+      mockGetTaskById.mockResolvedValue({ data: DAR_TASK });
+      mockGetEntityPermission.mockResolvedValue({ ResolveTask: false });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.getByTestId('task-resolve-denied-hint')).toHaveTextContent(
+        'message.no-permission-for-action'
+      );
+    });
+
+    it('shows no hint while the permission is still resolving', async () => {
+      mockGetEntityPermission.mockReturnValue(new Promise(() => undefined));
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(
+        screen.queryByTestId('task-resolve-denied-hint')
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not gate an incident task on ResolveTask and skips the permission fetch', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: { ...TASK, type: 'TestCaseResolution' },
+      });
       mockGetEntityPermission.mockResolvedValue({ ResolveTask: false });
 
       await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
       expect(mockGetEntityPermission).not.toHaveBeenCalled();
       expect(screen.getByText('label.approve')).toBeInTheDocument();
-      expect(screen.getByText('label.reject')).toBeInTheDocument();
     });
   });
 
