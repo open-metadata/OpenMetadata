@@ -30,7 +30,7 @@ describe('FieldErrorTemplate', () => {
     );
 
     const errorItems = container.querySelectorAll(
-      '.ant-form-item-explain-error'
+      '.form-field-error'
     );
 
     expect(errorItems).toHaveLength(errors.length);
@@ -55,7 +55,7 @@ describe('FieldErrorTemplate', () => {
     );
 
     const errorItems = container.querySelectorAll(
-      '.ant-form-item-explain-error'
+      '.form-field-error'
     );
 
     expect(errorItems).toHaveLength(0);

@@ -20,9 +20,13 @@ across the whole app.
   with the package gone an antd import no longer resolves, so the build is the guard.
 - `src/styles/legacy-base.css` holds every rule antd 4.24.16 emitted that does not target an
   `ant-*` component, compiled with our `variables.less` so the values are the ones that shipped,
-  plus the antd rules for `ant-form-item-explain-error` and `ant-layout-content`, which
-  `FieldErrorTemplate` and `Loader` still render. It loads where `antd-master.less` did, ahead of
+  plus the antd rules for the two `ant-*` classes `FieldErrorTemplate` and `Loader` still rendered,
+  renamed with them to `form-field-error` and `loader-content`. It loads where `antd-master.less` did, ahead of
   `master.less` (the renamed `antd-master.less`, minus the antd import).
+- No `ant-*` name survives: the `--ant-*` colour properties become `--theme-*` (the runtime theme
+  in `useThemeCssVariables` writes them), `--ant-navbar-height` becomes `--navbar-height`, and the
+  remaining `ant-*` class names are renamed or dropped. `tw-guard` and `tw-audit` stop checking
+  for antd imports.
 - `rc-virtual-list`, which `SelectableList` used through antd, is a direct dependency at the
   version antd resolved.
 - The file is a vendored snapshot: `token-audit` exempts it. Rules are deleted as their consumers

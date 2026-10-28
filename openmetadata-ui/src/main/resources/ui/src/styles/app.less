@@ -921,7 +921,7 @@ a[href].link-text-grey,
 }
 
 // Legacy Ant links: `.text-link-color` uses `@primary-color`
-// (= var(--ant-primary-color)), injected by useThemeCssVariables as #1570ef and
+// (= var(--theme-primary-color)), injected by useThemeCssVariables as #1570ef and
 // never flipped. Point it at the core link token, which flips in dark.
 .dark-mode .text-link-color,
 .dark-mode a.text-link-color {
@@ -943,7 +943,7 @@ a[href].link-text-grey,
   color: var(--om-color-text-tertiary);
 }
 
-// Carousel active dot draws with --ant-primary-color (#1570ef) via a `!important`
+// Carousel active dot draws with --theme-primary-color (#1570ef) via a `!important`
 // rule in temp.css; match !important to win and re-tint in dark.
 .dark-mode .slick-dots li.slick-active button:before {
   color: var(--tw-color-brand-400) !important;

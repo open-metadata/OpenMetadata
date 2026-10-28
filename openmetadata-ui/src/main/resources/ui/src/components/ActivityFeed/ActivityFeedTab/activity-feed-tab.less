@@ -135,7 +135,7 @@
     background: @primary-50;
     border: 1px solid @primary-3;
 
-    // --ant-primary-* are injected theme-agnostic, so they stay light in dark.
+    // --theme-primary-* are injected theme-agnostic, so they stay light in dark.
     // Match the AI sidebar's selected nav surface instead.
     .dark-mode & {
       border-color: var(--om-color-border-brand-subtle);
@@ -339,7 +339,7 @@
   }
 
   // Selected-row and count-chip colours follow the configurable antd theme
-  // primary (--ant-primary-*), which has no Tailwind counterpart yet.
+  // primary (--theme-primary-*), which has no Tailwind counterpart yet.
   .task-tab-filter-menu-item {
     box-shadow: 0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-05);
     padding: 0;
@@ -348,7 +348,7 @@
       box-shadow: 0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-05);
       background-color: @primary-25;
 
-      // --ant-primary-25 is a fixed light tint; use the sidebar selected surface.
+      // --theme-primary-25 is a fixed light tint; use the sidebar selected surface.
       .dark-mode & {
         background-color: var(--om-color-bg-brand);
       }

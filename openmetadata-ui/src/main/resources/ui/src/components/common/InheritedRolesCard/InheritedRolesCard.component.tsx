@@ -42,7 +42,7 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
                   key={inheritedRole.id}>
                   <IconUser className="tw:size-4 tw:shrink-0" />
                   <Typography
-                    className="ant-typography-ellipsis-custom w-48"
+                    className="w-48"
                     ellipsis={{ tooltip: true }}>
                     {getEntityName(inheritedRole)}
                   </Typography>

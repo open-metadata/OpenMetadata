@@ -14,53 +14,27 @@
 /*
  * The global rules antd 4.24.16 (MIT) emitted, compiled with our variables.less
  * so the values match what shipped. Removing the antd package must not move
- * any element, so this keeps its element reset, the --ant-* defaults that
- * variables.less reads, and the two component rules whose class names our
- * code still renders. Delete a rule once nothing depends on it, rather than
+ * any element, so this keeps its element reset, the --theme-* colour defaults
+ * that variables.less reads, and the rules for .form-field-error and
+ * .loader-content. Delete a rule once nothing depends on it, rather than
  * restyling it here.
  */
 
 html {
-  --ant-primary-color: #eff5ff;
-  --ant-primary-color-hover: #f0f6ff;
-  --ant-primary-color-active: #c1c9d9;
-  --ant-primary-color-outline: rgba(239, 245, 255, 0.2);
-  --ant-primary-1: #f0f8ff;
-  --ant-primary-2: #f0f7ff;
-  --ant-primary-3: #f0f7ff;
-  --ant-primary-4: #f0f6ff;
-  --ant-primary-5: #f0f6ff;
-  --ant-primary-6: #eff5ff;
-  --ant-primary-7: #c1c9d9;
-  --ant-primary-color-deprecated-pure: ;
-  --ant-primary-color-deprecated-l-35: #ffffff;
-  --ant-primary-color-deprecated-l-20: #ffffff;
-  --ant-primary-color-deprecated-t-20: #f2f7ff;
-  --ant-primary-color-deprecated-t-50: #f7faff;
-  --ant-primary-color-deprecated-f-12: rgba(239, 245, 255, 0.12);
-  --ant-primary-color-active-deprecated-f-30: rgba(240, 248, 255, 0.3);
-  --ant-primary-color-active-deprecated-d-02: #e6f3ff;
-  --ant-success-color: #effffb;
-  --ant-success-color-hover: #f0fffb;
-  --ant-success-color-active: #c1d9d4;
-  --ant-success-color-outline: rgba(239, 255, 251, 0.2);
-  --ant-success-color-deprecated-bg: #f0fff9;
-  --ant-success-color-deprecated-border: #f0fffa;
-  --ant-error-color: #ffc2c2;
-  --ant-error-color-hover: #ffebeb;
-  --ant-error-color-active: #d99a9c;
-  --ant-error-color-outline: rgba(255, 194, 194, 0.2);
-  --ant-error-color-deprecated-bg: #fff2f0;
-  --ant-error-color-deprecated-border: #fff1f0;
-  --ant-warning-color: #faad14;
-  --ant-warning-color-hover: #ffc53d;
-  --ant-warning-color-active: #d48806;
-  --ant-warning-color-outline: rgba(250, 173, 20, 0.2);
-  --ant-warning-color-deprecated-bg: #fffbe6;
-  --ant-warning-color-deprecated-border: #ffe58f;
-  --ant-info-color: #eff5ff;
-  --ant-info-color-deprecated-bg: #f0f8ff;
-  --ant-info-color-deprecated-border: #f0f7ff;
+  --theme-primary-color: #eff5ff;
+  --theme-primary-color-hover: #f0f6ff;
+  --theme-primary-color-active: #c1c9d9;
+  --theme-primary-1: #f0f8ff;
+  --theme-primary-2: #f0f7ff;
+  --theme-primary-3: #f0f7ff;
+  --theme-primary-4: #f0f6ff;
+  --theme-primary-5: #f0f6ff;
+  --theme-primary-6: #eff5ff;
+  --theme-primary-7: #c1c9d9;
+  --theme-success-color: #effffb;
+  --theme-error-color: #ffc2c2;
+  --theme-warning-color: #faad14;
+  --theme-info-color: #eff5ff;
 }
 html,
 body {
@@ -181,7 +155,7 @@ sup {
   top: -0.5em;
 }
 a {
-  color: var(--ant-primary-color);
+  color: var(--theme-primary-color);
   text-decoration: none;
   background-color: transparent;
   outline: none;
@@ -190,10 +164,10 @@ a {
   -webkit-text-decoration-skip: objects;
 }
 a:hover {
-  color: var(--ant-primary-color-hover);
+  color: var(--theme-primary-color-hover);
 }
 a:active {
-  color: var(--ant-primary-color-active);
+  color: var(--theme-primary-color-active);
 }
 a:active,
 a:hover {
@@ -350,16 +324,12 @@ mark {
 }
 ::selection {
   color: #fff;
-  background: var(--ant-primary-color);
+  background: var(--theme-primary-color);
 }
-html {
-  --antd-wave-shadow-color: var(--ant-primary-color);
-  --scroll-bar: 0;
+.form-field-error {
+  color: var(--theme-error-color);
 }
-.ant-form-item-explain-error {
-  color: var(--ant-error-color);
-}
-.ant-layout-content {
+.loader-content {
   flex: auto;
   min-height: 0;
 }

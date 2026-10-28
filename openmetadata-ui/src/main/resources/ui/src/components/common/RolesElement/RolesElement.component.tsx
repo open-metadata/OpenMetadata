@@ -37,7 +37,7 @@ const RolesElement = ({ userData }: RolesElementProps) => {
         <div className="mb-2 d-flex items-center gap-2" key={role.id}>
           <IconUser className="tw:size-4 tw:shrink-0" />
           <Typography
-            className="ant-typography-ellipsis-custom w-48"
+            className="w-48"
             ellipsis={{ tooltip: true }}>
             {getEntityName(role)}
           </Typography>
