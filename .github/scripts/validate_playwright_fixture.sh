@@ -31,10 +31,25 @@ trap cleanup EXIT
 
 tar_listing="$validation_root/listing.txt"
 tar --zstd -tf "$fixture_path" > "$tar_listing"
+if ! grep -Fxq './fixture-manifest.json' "$tar_listing"; then
+  echo "Cached Playwright fixture is missing ./fixture-manifest.json" >&2
+  exit 1
+fi
+tar --zstd -xf "$fixture_path" -C "$validation_root" ./fixture-manifest.json
+manifest="$validation_root/fixture-manifest.json"
+
+fixture_database=$(jq -r '.database // empty' "$manifest")
+if [[ -n "${PLAYWRIGHT_DATABASE:-}" && "$fixture_database" != "$PLAYWRIGHT_DATABASE" ]]; then
+  echo "Cached Playwright fixture was seeded on '${fixture_database:-unknown}', not '$PLAYWRIGHT_DATABASE'" >&2
+  exit 1
+fi
+# shellcheck source=playwright_fixture_profile.sh
+source "$workspace_root/.github/scripts/playwright_fixture_profile.sh"
+load_playwright_fixture_profile "$fixture_database"
+
 for required_path in \
-  './fixture-manifest.json' \
-  './postgres/PG_VERSION' \
-  './opensearch/nodes/' \
+  "$PW_DATABASE_MARKER" \
+  "$PW_SEARCH_MARKER" \
   './playwright-state/auth/admin.json' \
   './playwright-state/auth/admin-api-token.json' \
   './playwright-state/entity-response-data.json' \
@@ -46,10 +61,7 @@ for required_path in \
   fi
 done
 
-tar --zstd -xf "$fixture_path" -C "$validation_root" \
-  ./fixture-manifest.json \
-  ./playwright-state
-manifest="$validation_root/fixture-manifest.json"
+tar --zstd -xf "$fixture_path" -C "$validation_root" ./playwright-state
 playwright_state="$validation_root/playwright-state"
 
 current_compatibility_hash=$(
@@ -72,7 +84,7 @@ playwright_state_hash=$(
 )
 
 if [[ "$current_compatibility_hash" != "$expected_compatibility_hash" ||
-      "$(jq -r .version "$manifest")" != "2" ||
+      "$(jq -r .version "$manifest")" != "3" ||
       "$(jq -r .compatibilityHash "$manifest")" != "$expected_compatibility_hash" ||
       "$(jq -r .schemaHash "$manifest")" != "$current_schema_hash" ||
       "$(jq -r .seedHash "$manifest")" != "$current_seed_hash" ||
@@ -86,12 +98,12 @@ fi
 if ! jq -e '
   (.sourceSha | type == "string" and test("^[0-9a-f]{40}$")) and
   (.createdAt | type == "string" and length > 0) and
-  (.postgresImage | type == "string" and test("^[^ @]+@sha256:[0-9a-f]{64}$")) and
-  (.opensearchImage | type == "string" and test("^[^ @]+@sha256:[0-9a-f]{64}$")) and
+  (.databaseImage | type == "string" and test("^[^ @]+@sha256:[0-9a-f]{64}$")) and
+  (.searchImage | type == "string" and test("^[^ @]+@sha256:[0-9a-f]{64}$")) and
   (.searchClusterAlias | type == "string" and test("^[A-Za-z0-9_-]+$"))
 ' "$manifest" >/dev/null; then
   echo "Cached Playwright fixture has invalid provenance or immutable image references" >&2
   exit 1
 fi
 
-echo "Validated reusable Playwright fixture from $(jq -r .sourceSha "$manifest")"
+echo "Validated reusable $fixture_database Playwright fixture from $(jq -r .sourceSha "$manifest")"
