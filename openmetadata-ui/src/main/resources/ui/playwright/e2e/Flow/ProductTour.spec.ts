@@ -23,7 +23,9 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const NEXT_BUTTON = '[data-tour-elem="right-arrow"]';
 const CLOSE_BUTTON = '[class*="reactour__close"]';
 const STEP_TIMEOUT = 30_000;
+const MAX_STEPS = 20;
 const API_BASE_PATH = '/api/v1';
+const SERVICES_PAGE = /\/settings\/services\/databases/;
 
 const popover = (page: Page) => page.locator('.product-tour-helper');
 
@@ -62,10 +64,46 @@ const goNext = async (page: Page) => {
   await expectNoFallback(page);
 };
 
-const goToStep = async (page: Page, step: number) => {
-  for (let current = 1; current < step; current++) {
+// On the last step react-tour renders the finish button inside its Next arrow,
+// so one Next too many ends the tour. The button renders with the step's text,
+// but is not visible until react-tour places the popover, after a page change's
+// view transition ends: check that it is rendered, not that it is visible.
+const isLastStep = async (page: Page) =>
+  (await page.getByTestId('last-step-button').count()) > 0;
+
+interface PageStep {
+  path: string;
+  text: string;
+}
+
+// The step's copy, without the step number badge.
+const readPageStep = async (page: Page): Promise<PageStep> => ({
+  path: new URL(page.url()).pathname,
+  text: (await readStep(page)).split('\n')[0],
+});
+
+const expectPageStep = async (page: Page, { path, text }: PageStep) => {
+  await expect.poll(() => new URL(page.url()).pathname).toBe(path);
+  await expectStep(page, text);
+};
+
+/**
+ * Steps Next until the tour reaches the page at `route`, returning the step
+ * each page opened on, from the first step. A distribution adds its own pages
+ * between the OSS ones, so the specs find a page by its route, not its number.
+ */
+const goToPage = async (page: Page, route: RegExp) => {
+  const pageSteps = [await readPageStep(page)];
+  for (let step = 1; step < MAX_STEPS && !route.test(page.url()); step++) {
+    const previousUrl = page.url();
     await goNext(page);
+    if (page.url() !== previousUrl) {
+      pageSteps.push(await readPageStep(page));
+    }
   }
+  await expect(page).toHaveURL(route);
+
+  return pageSteps;
 };
 
 /** Opens Help > Tour on `path`. */
@@ -131,8 +169,11 @@ test.describe('Product tour — Classic', () => {
       await expect(page).toHaveURL(/\/explore/);
       await expectStep(page, 'Explore');
 
-      const lastStep = page.getByTestId('last-step-button');
-      for (let step = 2; step < 20 && !(await lastStep.isVisible()); step++) {
+      for (
+        let step = 2;
+        step < MAX_STEPS && !(await isLastStep(page));
+        step++
+      ) {
         await goNext(page);
       }
       await expect(page).toHaveURL(/\/context-center\/memories/);
@@ -157,8 +198,7 @@ test.describe('Product tour — Classic', () => {
   }) => {
     await test.step('Close with the X on a later page', async () => {
       await startTourFrom(page, '/explore');
-      await goToStep(page, 3);
-      await expect(page).toHaveURL(/\/settings\/services\/databases/);
+      await goToPage(page, SERVICES_PAGE);
       await page.locator(CLOSE_BUTTON).click();
       await expect(page).toHaveURL(/\/explore$/);
       await expectTourClosed(page);
@@ -176,26 +216,25 @@ test.describe('Product tour — Classic', () => {
 
   test('follows the browser Back and Forward buttons', async ({ page }) => {
     await startTourFrom(page, '/explore');
-    await goToStep(page, 3);
-    await expect(page).toHaveURL(/\/settings\/services\/databases/);
+    const pageSteps = await goToPage(page, SERVICES_PAGE);
+    const earlierPageSteps = pageSteps.slice(0, -1).reverse();
 
     await test.step('Back returns to the previous page step', async () => {
       await page.goBack();
-      await expect(page).toHaveURL(/\/explore$/);
-      await expectStep(page, 'Explore');
+      await expectPageStep(page, earlierPageSteps[0]);
     });
 
     await test.step('Forward moves on again', async () => {
       await page.goForward();
-      await expect(page).toHaveURL(/\/settings\/services\/databases/);
+      await expect(page).toHaveURL(SERVICES_PAGE);
       await expectStep(page, 'Services');
     });
 
     await test.step('Back past the first step leaves the tour', async () => {
-      await page.goBack();
-      await expectStep(page, 'Explore');
-      await page.goBack();
-      await expectStep(page, 'Topics to catch up on');
+      for (const pageStep of earlierPageSteps) {
+        await page.goBack();
+        await expectPageStep(page, pageStep);
+      }
       await page.goBack();
       await expect(page).toHaveURL(/\/explore$/);
       await expectTourClosed(page);
@@ -206,13 +245,13 @@ test.describe('Product tour — Classic', () => {
     page,
   }) => {
     await startTourFrom(page, '/explore');
-    await goToStep(page, 3);
+    await goToPage(page, SERVICES_PAGE);
     await expectStep(page, 'Services');
 
     const reachedServer = watchServerRequests(page, { fromNow: true });
     await page.reload();
 
-    await expect(page).toHaveURL(/\/settings\/services\/databases/);
+    await expect(page).toHaveURL(SERVICES_PAGE);
     await expectStep(page, 'Services');
     expect(
       reachedServer.filter((request) => request.includes('/services/'))
