@@ -8,6 +8,7 @@
   `test_pipeline_filters_match_fully_qualified_names_with_use_fqn_for_filtering`,
   `test_get_tables_stops_once_the_table_scan_budget_is_spent`,
   `test_get_tables_stops_once_the_database_scan_budget_is_spent`,
+  `test_get_tables_stops_paging_databases_once_a_table_is_found`,
   `test_get_tables_matches_the_table_filter_on_the_name_ingestion_keeps`,
   `test_get_tables_flags_a_count_cut_short_by_the_scan_budget`)
 - **Related:** open-metadata/OpenMetadata#36348, open-metadata/OpenMetadata#36347
@@ -35,7 +36,9 @@ nothing can read an entire large catalog and outrun the step timeout.
   caveat. A count of kept tables found before the budget ran out is reported as a floor
   ("scan stopped after 1000 tables read; more may exist").
 - Likewise, finding the databases to probe reads at most `MAX_DATABASES_TO_SCAN` = 1000 databases;
-  running out first returns the same non-blocking caveat.
+  running out first returns the same non-blocking caveat, worded for whether the filters kept no
+  database or kept some that exposed no table. Database paging stays lazy, so a database that
+  proves access stops further `GetDatabases` requests.
 
 ## Consequences
 A filter excluding an unreadable database is enough to pass the check; no grant on that database is

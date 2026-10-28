@@ -440,7 +440,7 @@ def test_get_tables_stops_once_the_database_scan_budget_is_spent():
 
     evidence = _checks(client, schema=FilterPattern(includes=["^sales$"])).get_tables()
 
-    assert evidence.summary == f"no kept table in the first {MAX_DATABASES_TO_SCAN} databases read"
+    assert evidence.summary == f"no kept database among the first {MAX_DATABASES_TO_SCAN} databases read"
     assert evidence.caveat is not None
     assert evidence.caveat.title == "Table probe stopped early"
     assert "does not mean ingestion would collect nothing" in evidence.caveat.remediation
@@ -457,7 +457,53 @@ def test_get_tables_caps_the_databases_glue_returns():
 
     _checks(client).get_tables()
 
-    databases_paginator.paginate.assert_called_once_with(PaginationConfig={"MaxItems": MAX_DATABASES_TO_SCAN})
+    # One past the budget, so reading it proves more databases exist.
+    databases_paginator.paginate.assert_called_once_with(PaginationConfig={"MaxItems": MAX_DATABASES_TO_SCAN + 1})
+
+
+def test_get_tables_says_the_kept_databases_were_empty_when_the_database_budget_runs_out():
+    # The filters kept databases; it is their tables, not the filters, that came up empty.
+    databases = [{"Name": f"other_{i}"} for i in range(MAX_DATABASES_TO_SCAN - 2)]
+    databases += [{"Name": "sales_a"}, {"Name": "sales_b"}, {"Name": "sales_c"}]
+    client = _client_denying(denied="", databases=databases, tables={})
+
+    evidence = _checks(client, schema=FilterPattern(includes=["^sales_"])).get_tables()
+
+    assert (
+        evidence.summary == f"no tables in the 2 kept databases among the first {MAX_DATABASES_TO_SCAN} databases read"
+    )
+    assert evidence.caveat is not None
+    assert evidence.caveat.remediation.startswith("The 2 databases the filters kept")
+
+
+def test_get_tables_does_not_flag_a_catalog_of_exactly_the_database_budget():
+    databases = [{"Name": f"other_{i}"} for i in range(MAX_DATABASES_TO_SCAN)]
+    client = _client_denying(denied="", databases=databases, tables={})
+
+    evidence = _checks(client, schema=FilterPattern(includes=["^sales$"])).get_tables()
+
+    assert evidence.summary == "no databases available to probe"
+    assert evidence.caveat is not None
+    assert evidence.caveat.title == "No tables visible"
+
+
+def test_get_tables_stops_paging_databases_once_a_table_is_found():
+    # A later GetDatabases page must not be requested, so its failure cannot fail the check.
+    def pages(**_kwargs):
+        yield {"DatabaseList": [{"Name": "sales"}, {"Name": "other"}]}
+        raise _client_error("ThrottlingException", "GetDatabases")
+
+    client = MagicMock()
+    databases_paginator = MagicMock()
+    databases_paginator.paginate.side_effect = pages
+    tables_paginator = _paginator([{"TableList": [{"Name": "orders"}]}])
+    client.get_paginator.side_effect = lambda operation: (
+        tables_paginator if operation == "get_tables" else databases_paginator
+    )
+
+    evidence = _checks(client, schema=FilterPattern(includes=["^sales$"])).get_tables()
+
+    assert evidence.summary == "1 table in database 'sales'"
 
 
 def test_get_tables_matches_the_table_filter_on_the_name_ingestion_keeps():

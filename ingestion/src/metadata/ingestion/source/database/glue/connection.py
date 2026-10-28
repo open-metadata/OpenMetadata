@@ -38,6 +38,8 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
@@ -174,26 +176,36 @@ class GlueFilters:
         return fqn.build(None, entity_type=entity_type, service_name=self.service_name, **parts) or name
 
 
-def _targeted_databases(client: Any, filters: GlueFilters) -> tuple[list[dict[str, Any]], bool]:
-    """Return the Glue databases ingestion would read, at most ``MAX_DATABASES_TO_PROBE``,
-    and whether ``MAX_DATABASES_TO_SCAN`` ran out before the listing ended.
+class _TargetedDatabases:
+    """Lazily yield the Glue databases ingestion would read, at most ``MAX_DATABASES_TO_PROBE``.
 
     The filters apply while paging, not after a capped listing: the targeted
     database can sort well past the cap, and a database the filters exclude - one
-    the identity may not even be allowed to read - must never be probed."""
-    targeted: list[dict[str, Any]] = []
-    scanned = 0
-    pages = client.get_paginator("get_databases").paginate(PaginationConfig={"MaxItems": MAX_DATABASES_TO_SCAN})
-    for page in pages:
-        for database in page.get("DatabaseList", []):
-            scanned += 1
-            if not filters.excludes_database(database):
-                targeted.append(database)
-                if len(targeted) >= MAX_DATABASES_TO_PROBE:
-                    return targeted, False
-            if scanned >= MAX_DATABASES_TO_SCAN:
-                return targeted, True
-    return targeted, False
+    the identity may not even be allowed to read - must never be probed. Paging is
+    lazy so a database that proves access stops further requests; ``cut_short``
+    tells whether ``MAX_DATABASES_TO_SCAN`` ran out before the listing ended."""
+
+    def __init__(self, client: Any, filters: GlueFilters) -> None:
+        self._client = client
+        self._filters = filters
+        self.cut_short = False
+
+    def __iter__(self) -> Iterator[dict[str, Any]]:
+        targeted, scanned = 0, 0
+        # One past the budget, so reading it proves more databases exist.
+        config = {"MaxItems": MAX_DATABASES_TO_SCAN + 1}
+        for page in self._client.get_paginator("get_databases").paginate(PaginationConfig=config):
+            for database in page.get("DatabaseList", []):
+                if scanned >= MAX_DATABASES_TO_SCAN:
+                    self.cut_short = True
+                    return
+                scanned += 1
+                if self._filters.excludes_database(database):
+                    continue
+                yield database
+                targeted += 1
+                if targeted >= MAX_DATABASES_TO_PROBE:
+                    return
 
 
 def _targeted_tables(
@@ -228,10 +240,11 @@ def list_tables(client: Any, filters: GlueFilters | None = None, limit: int = DE
     empty list rather than an error when grants are missing."""
     filters = filters or GlueFilters()
     command = "glue:GetDatabases"
-    budget = MAX_TABLES_TO_SCAN
+    probed, budget = 0, MAX_TABLES_TO_SCAN
+    databases = _TargetedDatabases(client, filters)
     try:
-        databases, databases_cut_short = _targeted_databases(client, filters)
         for database in databases:
+            probed += 1
             name = database["Name"]
             command = f"glue:GetTables (DatabaseName={name})"
             tables, scanned = _targeted_tables(client, database, filters, limit, budget)
@@ -243,24 +256,18 @@ def list_tables(client: Any, filters: GlueFilters | None = None, limit: int = DE
                     summary=f"no kept table in the first {count(MAX_TABLES_TO_SCAN, 'table')} read",
                     command=command,
                     caveat=_scan_budget_caveat(
-                        f"table among the first {MAX_TABLES_TO_SCAN}", "tableFilterPattern keeps the tables"
+                        f"The filters excluded every table among the first {MAX_TABLES_TO_SCAN} read",
+                        "tableFilterPattern keeps the tables",
                     ),
                 )
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
-    if databases_cut_short:
-        return Evidence(
-            summary=f"no kept table in the first {count(MAX_DATABASES_TO_SCAN, 'database')} read",
-            command=command,
-            caveat=_scan_budget_caveat(
-                f"database among the first {MAX_DATABASES_TO_SCAN}",
-                "databaseFilterPattern and schemaFilterPattern keep the databases",
-            ),
-        )
-    if not databases:
+    if databases.cut_short:
+        return _database_budget_spent(probed, command)
+    if not probed:
         return Evidence(summary="no databases available to probe", command=command, caveat=_no_tables_caveat())
     return Evidence(
-        summary=f"no tables in the first {count(len(databases), 'database')}",
+        summary=f"no tables in the first {count(probed, 'database')}",
         command=command,
         caveat=_no_tables_caveat(),
     )
@@ -285,14 +292,30 @@ def _tables_summary(tables: list[Any], database: str, limit: int, budget_spent: 
     return summary
 
 
-def _scan_budget_caveat(excluded: str, verify: str) -> Diagnosis:
+def _database_budget_spent(probed: int, command: str) -> Evidence:
+    """The database budget ran out with no kept table: either the filters kept no
+    database among those read, or the ones they kept exposed no table."""
+    read = f"the first {count(MAX_DATABASES_TO_SCAN, 'database')} read"
+    if probed:
+        summary = f"no tables in the {count(probed, 'kept database')} among {read}"
+        found = f"The {count(probed, 'database')} the filters kept among {read} exposed no table"
+    else:
+        summary = f"no kept database among {read}"
+        found = f"The filters excluded every database among {read}"
+    return Evidence(
+        summary=summary,
+        command=command,
+        caveat=_scan_budget_caveat(found, "databaseFilterPattern and schemaFilterPattern keep the databases"),
+    )
+
+
+def _scan_budget_caveat(found: str, verify: str) -> Diagnosis:
     # Running out of reads proves nothing about what ingestion collects, so this must
     # not reuse the "would collect nothing" caveat.
     return Diagnosis(
         title="Table probe stopped early",
-        remediation=f"The filters excluded every {excluded} read, so the probe stopped before "
-        f"finding a table they keep. This does not mean ingestion would collect nothing; verify "
-        f"{verify} you expect.",
+        remediation=f"{found}, so the probe stopped before finding a table they keep. This does not "
+        f"mean ingestion would collect nothing; verify {verify} you expect.",
     )
 
 
