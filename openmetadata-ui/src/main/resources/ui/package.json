@@ -131,7 +131,7 @@
     "luxon": "^3.2.1",
     "oidc-client": "^1.11.5",
     "process": "^0.11.10",
-    "qs": "6.16.1",
+    "qs": "6.16.2",
     "quill-mention": "^6.0.1",
     "quilljs-markdown": "^1.2.0",
     "rapidoc": "^9.3.8",
@@ -315,7 +315,7 @@
     "postcss-selector-parser": "7.1.7",
     "socket.io-parser": "4.2.7",
     "undici": "^6.29.1",
-    "qs": "6.16.1",
+    "qs": "6.16.2",
     "follow-redirects": "1.16.1"
   }
 }
