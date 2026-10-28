@@ -14,6 +14,8 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 public final class ConnectionSecretsEncryptionMigration {
   public static final String STEP_NAME = "encrypt-mlflow-teradata-connection-secrets";
   private static final int BATCH_SIZE = 500;
+  private static final String MLFLOW = "Mlflow";
+  private static final String TERADATA = "Teradata";
   private static final String ID = "id";
   private static final String EXTENSION = "extension";
   private static final String JSON = "json";
@@ -24,19 +26,20 @@ public final class ConnectionSecretsEncryptionMigration {
 
   private static final List<Service> SERVICES =
       List.of(
-          new Service("mlmodel_service_entity", "mlmodelService.version.%", "Mlflow"),
-          new Service("dbservice_entity", "databaseService.version.%", "Teradata"));
+          new Service("mlmodel_service_entity", "mlmodelService.version.%", MLFLOW),
+          new Service("dbservice_entity", "databaseService.version.%", TERADATA));
 
   private ConnectionSecretsEncryptionMigration() {}
 
-  public static void encryptConnectionSecrets(Handle handle, ConnectionType connectionType) {
+  public static void encryptConnectionSecrets(
+      final Handle handle, final ConnectionType connectionType) {
     if (!Fernet.getInstance().isKeyDefined()) {
       LOG.info("No Fernet key is configured; connection secrets stay as stored");
       return;
     }
-    for (Service service : SERVICES) {
-      int current = encryptCurrent(handle, connectionType, service);
-      int history = encryptHistory(handle, connectionType, service);
+    for (final Service service : SERVICES) {
+      final int current = encryptCurrent(handle, connectionType, service);
+      final int history = encryptHistory(handle, connectionType, service);
       LOG.info(
           "Encrypted connection secrets in {} current rows and {} snapshots for {}",
           current,
@@ -45,13 +48,14 @@ public final class ConnectionSecretsEncryptionMigration {
     }
   }
 
-  private static int encryptCurrent(Handle handle, ConnectionType connectionType, Service service) {
+  private static int encryptCurrent(
+      final Handle handle, final ConnectionType connectionType, final Service service) {
     String afterId = "";
     int encrypted = 0;
     List<Snapshot> rows;
     do {
       rows = currentBatch(handle, connectionType, service, afterId);
-      for (Snapshot row : rows) {
+      for (final Snapshot row : rows) {
         encrypted += encryptRow(handle, connectionType, service.table(), row);
         afterId = row.id();
       }
@@ -60,7 +64,10 @@ public final class ConnectionSecretsEncryptionMigration {
   }
 
   private static List<Snapshot> currentBatch(
-      Handle handle, ConnectionType connectionType, Service service, String afterId) {
+      final Handle handle,
+      final ConnectionType connectionType,
+      final Service service,
+      final String afterId) {
     return handle
         .createQuery(
             "SELECT id, json FROM "
@@ -75,13 +82,14 @@ public final class ConnectionSecretsEncryptionMigration {
         .list();
   }
 
-  private static int encryptHistory(Handle handle, ConnectionType connectionType, Service service) {
+  private static int encryptHistory(
+      final Handle handle, final ConnectionType connectionType, final Service service) {
     Snapshot cursor = new Snapshot("", "", null);
     int encrypted = 0;
     List<Snapshot> rows;
     do {
       rows = historyBatch(handle, connectionType, service, cursor);
-      for (Snapshot row : rows) {
+      for (final Snapshot row : rows) {
         encrypted += encryptRow(handle, connectionType, "entity_extension", row);
         cursor = row;
       }
@@ -90,7 +98,10 @@ public final class ConnectionSecretsEncryptionMigration {
   }
 
   private static List<Snapshot> historyBatch(
-      Handle handle, ConnectionType connectionType, Service service, Snapshot cursor) {
+      final Handle handle,
+      final ConnectionType connectionType,
+      final Service service,
+      final Snapshot cursor) {
     return handle
         .createQuery(
             "SELECT id, extension, json FROM entity_extension WHERE extension LIKE :prefix"
@@ -109,20 +120,24 @@ public final class ConnectionSecretsEncryptionMigration {
         .list();
   }
 
-  private static String connectorFilter(ConnectionType connectionType) {
+  private static String connectorFilter(final ConnectionType connectionType) {
     return connectionType == ConnectionType.POSTGRES
         ? "json #>> '{connection,config,type}' = :connectionType"
         : "JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.type')) = :connectionType";
   }
 
   private static int encryptRow(
-      Handle handle, ConnectionType connectionType, String table, Snapshot row) {
-    String encrypted = encrypted(row.json());
+      final Handle handle,
+      final ConnectionType connectionType,
+      final String table,
+      final Snapshot row) {
+    final String encrypted = encrypted(row.json());
     if (encrypted.equals(row.json())) {
       return 0;
     }
-    String value = connectionType == ConnectionType.POSTGRES ? "CAST(:json AS jsonb)" : ":json";
-    var update =
+    final String value =
+        connectionType == ConnectionType.POSTGRES ? "CAST(:json AS jsonb)" : ":json";
+    final var update =
         handle
             .createUpdate(
                 "UPDATE "
@@ -139,13 +154,13 @@ public final class ConnectionSecretsEncryptionMigration {
     return update.execute();
   }
 
-  static String encrypted(String json) {
-    JsonNode entity = JsonUtils.readTree(json);
-    JsonNode config = entity.at("/connection/config");
-    String field =
+  static String encrypted(final String json) {
+    final JsonNode entity = JsonUtils.readTree(json);
+    final JsonNode config = entity.at("/connection/config");
+    final String field =
         switch (config.path("type").asText()) {
-          case "Mlflow" -> "registryUri";
-          case "Teradata" -> "logdata";
+          case MLFLOW -> "registryUri";
+          case TERADATA -> "logdata";
           default -> null;
         };
     if (field != null

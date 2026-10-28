@@ -30,11 +30,11 @@ class ConnectionSecretsEncryptionMigrationTest {
         " \t\n ",
         ""
       })
-  void encryptsWholeRegistryValueAndIsIdempotent(String value) {
-    String original = stored("Mlflow", "registryUri", value);
-    String encrypted = ConnectionSecretsEncryptionMigration.encrypted(original);
-    var node = JsonUtils.readTree(encrypted);
-    String token = node.at("/connection/config/registryUri").asText();
+  void encryptsWholeRegistryValueAndIsIdempotent(final String value) {
+    final String original = stored("Mlflow", "registryUri", value);
+    final String encrypted = ConnectionSecretsEncryptionMigration.encrypted(original);
+    final var node = JsonUtils.readTree(encrypted);
+    final String token = node.at("/connection/config/registryUri").asText();
     assertTrue(Fernet.isTokenized(token));
     assertEquals(value, Fernet.getInstance().decrypt(token));
     assertEquals(encrypted, ConnectionSecretsEncryptionMigration.encrypted(encrypted));
@@ -51,8 +51,8 @@ class ConnectionSecretsEncryptionMigrationTest {
         "CN=demo,OU=example",
         "quotes\" backslash\\ unicode λ日本語 🔑"
       })
-  void encryptsLogdataRegardlessOfLogonMechanism(String value) {
-    String encrypted =
+  void encryptsLogdataRegardlessOfLogonMechanism(final String value) {
+    final String encrypted =
         ConnectionSecretsEncryptionMigration.encrypted(stored("Teradata", "logdata", value));
     assertEquals(
         value,
@@ -67,18 +67,18 @@ class ConnectionSecretsEncryptionMigrationTest {
         "{\"connection\":{\"config\":{\"type\":\"Teradata\",\"logdata\":null}}}",
         "{\"connection\":{\"config\":{\"type\":\"Mlflow\"}}}"
       })
-  void preservesAbsentValues(String json) {
+  void preservesAbsentValues(final String json) {
     assertEquals(json, ConnectionSecretsEncryptionMigration.encrypted(json));
   }
 
   @ParameterizedTest
   @MethodSource("unchangedValues")
-  void preservesUnrelatedConnectorsAndNonStringValues(String json) {
+  void preservesUnrelatedConnectorsAndNonStringValues(final String json) {
     assertEquals(json, ConnectionSecretsEncryptionMigration.encrypted(json));
   }
 
   static Stream<String> unchangedValues() {
-    Stream<String> shapes =
+    final Stream<String> shapes =
         Stream.of("null", "false", "0", "[]", "{}", "\"text\"")
             .flatMap(
                 value ->
@@ -86,7 +86,7 @@ class ConnectionSecretsEncryptionMigrationTest {
                         value,
                         "{\"connection\":" + value + "}",
                         "{\"connection\":{\"config\":" + value + "}}"));
-    Stream<String> types =
+    final Stream<String> types =
         Stream.of(
                 "null",
                 "false",
@@ -103,7 +103,7 @@ class ConnectionSecretsEncryptionMigrationTest {
                     "{\"connection\":{\"config\":{\"type\":"
                         + type
                         + ",\"registryUri\":\"unchanged\",\"logdata\":\"unchanged\"}}}");
-    Stream<String> fields =
+    final Stream<String> fields =
         Stream.of(
                 "null",
                 "false",
@@ -129,9 +129,9 @@ class ConnectionSecretsEncryptionMigrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"Mlflow", "Teradata"})
-  void preservesExistingCiphertextWithoutNeedingItsKey(String type) {
-    String field = type.equals("Mlflow") ? "registryUri" : "logdata";
-    String original = stored(type, field, Fernet.getInstance().encrypt("stored-value"));
+  void preservesExistingCiphertextWithoutNeedingItsKey(final String type) {
+    final String field = type.equals("Mlflow") ? "registryUri" : "logdata";
+    final String original = stored(type, field, Fernet.getInstance().encrypt("stored-value"));
     Fernet.getInstance().setFernetKey((String) null);
     try {
       assertEquals(original, ConnectionSecretsEncryptionMigration.encrypted(original));
@@ -142,10 +142,11 @@ class ConnectionSecretsEncryptionMigrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"Mlflow", "Teradata"})
-  void roundTripsLongValues(String type) {
-    String field = type.equals("Mlflow") ? "registryUri" : "logdata";
-    String value = "λ/demo+value=".repeat(5000);
-    String encrypted = ConnectionSecretsEncryptionMigration.encrypted(stored(type, field, value));
+  void roundTripsLongValues(final String type) {
+    final String field = type.equals("Mlflow") ? "registryUri" : "logdata";
+    final String value = "λ/demo+value=".repeat(5000);
+    final String encrypted =
+        ConnectionSecretsEncryptionMigration.encrypted(stored(type, field, value));
     assertEquals(
         value,
         Fernet.getInstance()
@@ -154,7 +155,7 @@ class ConnectionSecretsEncryptionMigrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"Mlflow", "Teradata"})
-  void individualFieldEncryptionRequiresAKey(String type) {
+  void individualFieldEncryptionRequiresAKey(final String type) {
     Fernet.getInstance().setFernetKey((String) null);
     try {
       assertThrows(
@@ -167,7 +168,7 @@ class ConnectionSecretsEncryptionMigrationTest {
     }
   }
 
-  private String stored(String type, String field, String value) {
+  private String stored(final String type, final String field, final String value) {
     return JsonUtils.pojoToJson(
         Map.of(
             "description",

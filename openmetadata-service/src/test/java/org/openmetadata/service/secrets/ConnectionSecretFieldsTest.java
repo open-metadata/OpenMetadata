@@ -20,11 +20,11 @@ import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 class ConnectionSecretFieldsTest {
   record ConnectionField(String type, ServiceType serviceType, String field, String value) {
-    Map<String, String> config(String secret) {
+    Map<String, String> config(final String secret) {
       return Map.of("type", type, field, secret);
     }
 
-    String valueOf(Object config) {
+    String valueOf(final Object config) {
       return JsonUtils.valueToTree(config).path(field).asText();
     }
   }
@@ -48,15 +48,16 @@ class ConnectionSecretFieldsTest {
 
   @ParameterizedTest
   @MethodSource("fields")
-  void masksAndPreservesMaskedUpdates(ConnectionField field) {
-    var masker = EntityMaskerFactory.createEntityMasker();
-    Object original = field.config(field.value());
-    Object masked = masker.maskServiceConnectionConfig(original, field.type(), field.serviceType());
+  void masksAndPreservesMaskedUpdates(final ConnectionField field) {
+    final var masker = EntityMaskerFactory.createEntityMasker();
+    final Object original = field.config(field.value());
+    final Object masked =
+        masker.maskServiceConnectionConfig(original, field.type(), field.serviceType());
     assertEquals(PasswordEntityMasker.PASSWORD_MASK, field.valueOf(masked));
-    Object restored =
+    final Object restored =
         masker.unmaskServiceConnectionConfig(masked, original, field.type(), field.serviceType());
     assertEquals(field.value(), field.valueOf(restored));
-    Object replacement =
+    final Object replacement =
         masker.unmaskServiceConnectionConfig(
             field.config("replacement"), original, field.type(), field.serviceType());
     assertEquals("replacement", field.valueOf(replacement));
@@ -64,33 +65,33 @@ class ConnectionSecretFieldsTest {
 
   @ParameterizedTest
   @MethodSource("fields")
-  void encryptsLegacyPlaintextAndDecryptsWithoutChangingIt(ConnectionField field) {
-    var manager = DBSecretsManager.getInstance(SecretsManagerProvider.DB, config());
+  void encryptsLegacyPlaintextAndDecryptsWithoutChangingIt(final ConnectionField field) {
+    final var manager = DBSecretsManager.getInstance(SecretsManagerProvider.DB, config());
     manager.setFernet(Fernet.getInstance());
-    Object encrypted =
+    final Object encrypted =
         manager.encryptServiceConnectionConfig(
             field.config(field.value()), field.type(), "my_service", field.serviceType());
     assertTrue(Fernet.isTokenized(field.valueOf(encrypted)));
     assertEquals(field.value(), Fernet.getInstance().decrypt(field.valueOf(encrypted)));
-    Object decrypted =
+    final Object decrypted =
         manager.decryptServiceConnectionConfig(encrypted, field.type(), field.serviceType());
     assertEquals(field.value(), field.valueOf(decrypted));
   }
 
   @ParameterizedTest
   @MethodSource("fields")
-  void storesWholeValueInManagedSecretsAndPreservesReferences(ConnectionField field) {
-    var manager = new InMemorySecretsManager(config());
-    Object encrypted =
+  void storesWholeValueInManagedSecretsAndPreservesReferences(final ConnectionField field) {
+    final var manager = new InMemorySecretsManager(config());
+    final Object encrypted =
         manager.encryptServiceConnectionConfig(
             field.config(field.value()), field.type(), "my_service", field.serviceType());
-    Object decrypted =
+    final Object decrypted =
         manager.decryptServiceConnectionConfig(encrypted, field.type(), field.serviceType());
-    String reference = field.valueOf(decrypted);
+    final String reference = field.valueOf(decrypted);
     assertTrue(reference.startsWith("secret:"));
     assertEquals(field.value(), manager.getSecretValue(reference));
     assertFalse(JsonUtils.pojoToJson(encrypted).contains(field.value()));
-    Object resaved =
+    final Object resaved =
         manager.encryptServiceConnectionConfig(
             decrypted, field.type(), "my_service", field.serviceType());
     assertEquals(
@@ -98,7 +99,7 @@ class ConnectionSecretFieldsTest {
         field.valueOf(
             manager.decryptServiceConnectionConfig(resaved, field.type(), field.serviceType())));
     assertEquals(1, manager.getSecretsMap().size());
-    Object cleared =
+    final Object cleared =
         manager.encryptServiceConnectionConfig(
             field.config(""), field.type(), "my_service", field.serviceType());
     assertNull(JsonUtils.valueToTree(cleared).get(field.field()));

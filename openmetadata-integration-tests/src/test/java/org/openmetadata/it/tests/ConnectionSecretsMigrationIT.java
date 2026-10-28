@@ -6,18 +6,23 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.CURRENT;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.PREVIOUS;
-import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.assertLegacyEncrypted;
+import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.VERSION;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.collection;
+import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.configureEncryption;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.create;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.field;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.migrate;
+import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.preserveUpgradeState;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.read;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.runNormalUpgrade;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.secret;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.seedLegacy;
+import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.seedServices;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.store;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.stored;
-import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.storedLegacy;
+import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.storedRows;
+import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.storedServices;
+import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.table;
 import static org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.write;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -38,6 +43,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.tests.ConnectionSecretsMigrationFixtures.LegacyService;
+import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -58,81 +64,74 @@ class ConnectionSecretsMigrationIT {
   @TempDir Path migrationRoot;
   private static final String MASK = "*********";
 
-  private record LoggedSql(String statement, String checksum) {}
-
   private record FieldValue(JsonNode input, String plaintext) {}
 
   @ParameterizedTest
   @CsvSource({"true,true", "true,false", "false,true", "false,false"})
   void normalUpgradeHonorsEncryptionConfiguration(
-      boolean mlflow, boolean encryptionEnabled, TestNamespace ns) throws Exception {
-    List<LegacyService> services = new ArrayList<>();
-    for (boolean deleted : List.of(false, true)) {
-      for (String value : List.of(CURRENT, mlflow ? "http://localhost:5000" : "EXAMPLE.REALM")) {
-        services.add(seedLegacy(mlflow, deleted, value, ns));
-      }
-    }
-    List<List<String>> plaintext = services.stream().map(service -> storedLegacy(service)).toList();
-    var jdbi = TestSuiteBootstrap.getJdbi();
-    MigrationDAO dao = jdbi.onDemand(MigrationDAO.class);
-    var original =
-        dao.listMetricsFromDBMigrations().stream()
-            .filter(row -> row.getVersion().equals("2.0.8"))
-            .findFirst()
-            .orElseThrow();
-    List<LoggedSql> sql =
-        dao.getServerMigrationSQLWithVersion("2.0.8").stream()
-            .map(checksum -> new LoggedSql(dao.getSqlQuery("2.0.8", checksum), checksum))
-            .toList();
-    try {
-      jdbi.useHandle(
-          handle -> {
-            handle.execute("DELETE FROM SERVER_MIGRATION_SQL_LOGS WHERE version = '2.0.8'");
-            handle.execute("DELETE FROM SERVER_CHANGE_LOG WHERE version = '2.0.8'");
-          });
-      if (!encryptionEnabled) {
-        Fernet.getInstance().setFernetKey((String) null);
-      }
+      final boolean mlflow, final boolean encryptionEnabled, final TestNamespace ns)
+      throws Exception {
+    final var services = seedServices(mlflow, ns);
+    final var plaintext = storedServices(services);
+    try (final var state = preserveUpgradeState()) {
+      state.resetLogs();
+      configureEncryption(encryptionEnabled);
       runNormalUpgrade(migrationRoot, encryptionEnabled);
       upgradeRecordsTheRepairIn208();
-      if (encryptionEnabled) {
-        services.forEach(service -> assertLegacyEncrypted(service));
-      } else {
-        assertEquals(plaintext, services.stream().map(service -> storedLegacy(service)).toList());
-      }
-      List<List<String>> migrated =
-          services.stream().map(service -> storedLegacy(service)).toList();
-      runNormalUpgrade(migrationRoot, encryptionEnabled);
-      assertEquals(migrated, services.stream().map(service -> storedLegacy(service)).toList());
-      if (!encryptionEnabled) {
-        Fernet.getInstance().setFernetKey(TestSuiteBootstrap.createApplicationConfigCopy());
-        runNormalUpgrade(migrationRoot, true);
-        assertEquals(migrated, services.stream().map(service -> storedLegacy(service)).toList());
-      }
-    } finally {
-      Fernet.getInstance().setFernetKey(TestSuiteBootstrap.createApplicationConfigCopy());
-      dao.upsertServerMigration(
-          original.getVersion(),
-          original.getMigrationFileName(),
-          original.getChecksum(),
-          original.getMetrics());
-      sql.forEach(row -> dao.upsertServerMigrationSQL("2.0.8", row.statement(), row.checksum()));
+      assertUpgradeResult(services, plaintext, encryptionEnabled);
+      assertRepeatUpgrade(services, encryptionEnabled);
     }
+  }
+
+  private void assertUpgradeResult(
+      final List<LegacyService> services,
+      final List<List<String>> plaintext,
+      final boolean encryptionEnabled) {
+    if (encryptionEnabled) {
+      services.forEach(ConnectionSecretsMigrationFixtures::assertLegacyEncrypted);
+    } else {
+      assertEquals(plaintext, storedServices(services));
+    }
+  }
+
+  private void assertRepeatUpgrade(
+      final List<LegacyService> services, final boolean encryptionEnabled) throws Exception {
+    final var migrated = storedServices(services);
+    runNormalUpgrade(migrationRoot, encryptionEnabled);
+    assertEquals(migrated, storedServices(services));
+    if (!encryptionEnabled) {
+      configureEncryption(true);
+      runNormalUpgrade(migrationRoot, true);
+      assertEquals(migrated, storedServices(services));
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"true,false", "true,true", "false,false", "false,true"})
+  void cleanupDeletesServicesAndHistory(
+      final boolean mlflow, final boolean deleted, final TestNamespace ns) {
+    final var service = seedLegacy(mlflow, deleted, CURRENT, ns);
+    assertEquals(1, storedRows(table(mlflow), service.id()));
+    assertTrue(storedRows("entity_extension", service.id()) > 0);
+    NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
+    assertEquals(0, storedRows(table(mlflow), service.id()));
+    assertEquals(0, storedRows("entity_extension", service.id()));
   }
 
   @Test
   void upgradeRecordsTheRepairIn208() {
-    MigrationDAO dao = TestSuiteBootstrap.getJdbi().onDemand(MigrationDAO.class);
-    String marker = "data-migration-step:2.0.8:" + ConnectionSecretsEncryptionMigration.STEP_NAME;
-    assertNotNull(dao.getSqlQuery("2.0.8", marker));
+    final MigrationDAO dao = TestSuiteBootstrap.getJdbi().onDemand(MigrationDAO.class);
+    final String marker =
+        "data-migration-step:" + VERSION + ":" + ConnectionSecretsEncryptionMigration.STEP_NAME;
+    assertNotNull(dao.getSqlQuery(VERSION, marker));
   }
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void masksReadsAndPreservesMaskedWrites(boolean mlflow, TestNamespace ns) {
-    JsonNode created = create(mlflow, ns);
-    String id = created.path("id").asText();
-    String path = collection(mlflow) + "/" + id;
+  void masksReadsAndPreservesMaskedWrites(final boolean mlflow, final TestNamespace ns) {
+    final JsonNode created = create(mlflow, ns);
+    final String id = created.path("id").asText();
+    final String path = collection(mlflow) + "/" + id;
     assertEquals(MASK, secret(created, mlflow));
     assertFalse(read(SdkClients.testUserClient(), path).hasNonNull("connection"));
     assertFalse(
@@ -149,7 +148,7 @@ class ConnectionSecretsMigrationIT {
                 collection(mlflow) + "/name/" + created.path("name").asText()),
             mlflow));
     assertEquals(CURRENT, secret(read(SdkClients.botClient(), path), mlflow));
-    JsonNode listed =
+    final JsonNode listed =
         read(SdkClients.adminClient(), collection(mlflow) + "?fields=connection&limit=1000000");
     assertTrue(listed.path("data").findValuesAsText("id").contains(id));
     listed
@@ -160,7 +159,7 @@ class ConnectionSecretsMigrationIT {
                 assertEquals(MASK, secret(row, mlflow));
               }
             });
-    Object request =
+    final Object request =
         mlflow
             ? new CreateMlModelService()
                 .withName(created.path("name").asText())
@@ -176,14 +175,14 @@ class ConnectionSecretsMigrationIT {
                 .withDescription("updated description");
     write(HttpMethod.PUT, collection(mlflow), request);
     assertEquals(CURRENT, secret(read(SdkClients.botClient(), path), mlflow));
-    JsonNode patch =
+    final JsonNode patch =
         JsonUtils.readTree(
             "[{\"op\":\"replace\",\"path\":\"/connection/config/"
                 + field(mlflow)
                 + "\",\"value\":\"*********\"}]");
     write(HttpMethod.PATCH, path, patch);
     assertEquals(CURRENT, secret(read(SdkClients.botClient(), path), mlflow));
-    JsonNode history = read(SdkClients.adminClient(), path + "/versions");
+    final JsonNode history = read(SdkClients.adminClient(), path + "/versions");
     assertFalse(history.path("versions").isEmpty());
     history
         .path("versions")
@@ -199,25 +198,26 @@ class ConnectionSecretsMigrationIT {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void migratesDeletedServicesAndHistoricalValuesIndependently(boolean mlflow, TestNamespace ns) {
-    JsonNode service = create(mlflow, ns);
-    String id = service.path("id").asText();
+  void migratesDeletedServicesAndHistoricalValuesIndependently(
+      final boolean mlflow, final TestNamespace ns) {
+    final JsonNode service = create(mlflow, ns);
+    final String id = service.path("id").asText();
     write(HttpMethod.DELETE, collection(mlflow) + "/" + id, null);
-    ObjectNode legacy = (ObjectNode) JsonUtils.readTree(stored(mlflow, id));
+    final ObjectNode legacy = (ObjectNode) JsonUtils.readTree(stored(mlflow, id));
     ((ObjectNode) legacy.at("/connection/config")).put(field(mlflow), CURRENT);
     store(mlflow, id, legacy.toString());
-    ObjectNode old = legacy.deepCopy();
+    final ObjectNode old = legacy.deepCopy();
     ((ObjectNode) old.at("/connection/config")).put(field(mlflow), PREVIOUS);
-    String extension = (mlflow ? "mlmodelService" : "databaseService") + ".version.0.1";
-    var dao = Entity.getCollectionDAO().entityExtensionDAO();
+    final String extension = (mlflow ? "mlmodelService" : "databaseService") + ".version.0.1";
+    final var dao = Entity.getCollectionDAO().entityExtensionDAO();
     dao.insert(
         UUID.fromString(id),
         extension,
         mlflow ? "mlmodelService" : "databaseService",
         old.toString());
     migrate();
-    String current = stored(mlflow, id);
-    String historical = dao.getExtension(UUID.fromString(id), extension);
+    final String current = stored(mlflow, id);
+    final String historical = dao.getExtension(UUID.fromString(id), extension);
     assertEquals(
         CURRENT, Fernet.getInstance().decrypt(secret(JsonUtils.readTree(current), mlflow)));
     assertEquals(
@@ -232,37 +232,38 @@ class ConnectionSecretsMigrationIT {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void migratesMoreThanOnePageOfVersionsForTheSameService(boolean mlflow, TestNamespace ns) {
-    JsonNode service = create(mlflow, ns);
-    UUID id = UUID.fromString(service.path("id").asText());
-    ObjectNode old = (ObjectNode) service.deepCopy();
+  void migratesMoreThanOnePageOfVersionsForTheSameService(
+      final boolean mlflow, final TestNamespace ns) {
+    final JsonNode service = create(mlflow, ns);
+    final UUID id = UUID.fromString(service.path("id").asText());
+    final ObjectNode old = (ObjectNode) service.deepCopy();
     ((ObjectNode) old.at("/connection/config")).put(field(mlflow), PREVIOUS);
-    String type = mlflow ? "mlmodelService" : "databaseService";
-    List<String> extensions =
+    final String type = mlflow ? "mlmodelService" : "databaseService";
+    final List<String> extensions =
         IntStream.range(0, 1002).mapToObj(index -> type + ".version." + index + ".1").toList();
-    List<String> rows =
+    final List<String> rows =
         IntStream.range(0, 1002)
             .mapToObj(
                 index -> {
-                  ObjectNode version = old.deepCopy();
+                  final ObjectNode version = old.deepCopy();
                   if (index % 2 != 0) {
-                    ObjectNode config = (ObjectNode) version.at("/connection/config");
+                    final ObjectNode config = (ObjectNode) version.at("/connection/config");
                     config.put("type", mlflow ? "Teradata" : "Mlflow");
                     config.put(mlflow ? "logdata" : "registryUri", "unrelated-value");
                   }
                   return version.toString();
                 })
             .toList();
-    var dao = Entity.getCollectionDAO().entityExtensionDAO();
+    final var dao = Entity.getCollectionDAO().entityExtensionDAO();
     try {
       dao.insertMany(Collections.nCopies(1002, id), extensions, type, rows);
-      List<String> originals =
+      final List<String> originals =
           extensions.stream().map(extension -> dao.getExtension(id, extension)).toList();
       migrate();
       for (int index = 0; index < extensions.size(); index++) {
-        String row = dao.getExtension(id, extensions.get(index));
+        final String row = dao.getExtension(id, extensions.get(index));
         if (index % 2 == 0) {
-          String stored = secret(JsonUtils.readTree(row), mlflow);
+          final String stored = secret(JsonUtils.readTree(row), mlflow);
           assertTrue(Fernet.isTokenized(stored));
           assertEquals(PREVIOUS, Fernet.getInstance().decrypt(stored));
         } else {
@@ -276,14 +277,16 @@ class ConnectionSecretsMigrationIT {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void filtersCurrentRowsAndHistoryByTheirOwnConnectorType(boolean mlflow, TestNamespace ns) {
-    String id = create(mlflow, ns).path("id").asText();
-    String original = stored(mlflow, id);
-    String type = mlflow ? "mlmodelService" : "databaseService";
-    var dao = Entity.getCollectionDAO().entityExtensionDAO();
-    List<String> extensions = new ArrayList<>();
-    List<String> configs = new ArrayList<>(List.of("null", "false", "0", "[]", "\"text\"", "{}"));
-    for (String connector :
+  void filtersCurrentRowsAndHistoryByTheirOwnConnectorType(
+      final boolean mlflow, final TestNamespace ns) {
+    final String id = create(mlflow, ns).path("id").asText();
+    final String original = stored(mlflow, id);
+    final String type = mlflow ? "mlmodelService" : "databaseService";
+    final var dao = Entity.getCollectionDAO().entityExtensionDAO();
+    final List<String> extensions = new ArrayList<>();
+    final List<String> configs =
+        new ArrayList<>(List.of("null", "false", "0", "[]", "\"text\"", "{}"));
+    for (final String connector :
         List.of(
             "\"Postgres\"",
             "\"CustomDatabase\"",
@@ -302,25 +305,25 @@ class ConnectionSecretsMigrationIT {
               + ",\"registryUri\":\"unchanged-registry\",\"logdata\":\"unchanged-logdata\"}");
     }
     try {
-      for (String config : configs) {
-        ObjectNode row = (ObjectNode) JsonUtils.readTree(original);
+      for (final String config : configs) {
+        final ObjectNode row = (ObjectNode) JsonUtils.readTree(original);
         ((ObjectNode) row.path("connection")).set("config", JsonUtils.readTree(config));
         store(mlflow, id, row.toString());
-        String extension = type + ".version.20." + extensions.size();
+        final String extension = type + ".version.20." + extensions.size();
         extensions.add(extension);
         dao.insert(UUID.fromString(id), extension, type, row.toString());
-        String current = stored(mlflow, id);
-        String historical = dao.getExtension(UUID.fromString(id), extension);
+        final String current = stored(mlflow, id);
+        final String historical = dao.getExtension(UUID.fromString(id), extension);
         migrate();
         assertEquals(current, stored(mlflow, id), config);
         assertEquals(historical, dao.getExtension(UUID.fromString(id), extension), config);
       }
-      ObjectNode previous = (ObjectNode) JsonUtils.readTree(original);
+      final ObjectNode previous = (ObjectNode) JsonUtils.readTree(original);
       ((ObjectNode) previous.at("/connection/config")).put(field(mlflow), PREVIOUS);
-      String extension = type + ".version.21.0";
+      final String extension = type + ".version.21.0";
       extensions.add(extension);
       dao.insert(UUID.fromString(id), extension, type, previous.toString());
-      String unrelatedCurrent = stored(mlflow, id);
+      final String unrelatedCurrent = stored(mlflow, id);
       migrate();
       assertEquals(unrelatedCurrent, stored(mlflow, id));
       assertEquals(
@@ -331,8 +334,8 @@ class ConnectionSecretsMigrationIT {
                       JsonUtils.readTree(dao.getExtension(UUID.fromString(id), extension)),
                       mlflow)));
       store(mlflow, id, previous.toString());
-      String unrelatedExtension = extensions.getFirst();
-      String unrelatedHistory = dao.getExtension(UUID.fromString(id), unrelatedExtension);
+      final String unrelatedExtension = extensions.getFirst();
+      final String unrelatedHistory = dao.getExtension(UUID.fromString(id), unrelatedExtension);
       migrate();
       assertEquals(
           PREVIOUS,
@@ -346,16 +349,17 @@ class ConnectionSecretsMigrationIT {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void preservesValueShapesAndOnlyChangesTheTargetField(boolean mlflow, TestNamespace ns) {
-    String id = create(mlflow, ns).path("id").asText();
-    String original = stored(mlflow, id);
-    String type = mlflow ? "mlmodelService" : "databaseService";
-    var dao = Entity.getCollectionDAO().entityExtensionDAO();
-    List<String> extensions = new ArrayList<>();
+  void preservesValueShapesAndOnlyChangesTheTargetField(
+      final boolean mlflow, final TestNamespace ns) {
+    final String id = create(mlflow, ns).path("id").asText();
+    final String original = stored(mlflow, id);
+    final String type = mlflow ? "mlmodelService" : "databaseService";
+    final var dao = Entity.getCollectionDAO().entityExtensionDAO();
+    final List<String> extensions = new ArrayList<>();
     try {
-      for (FieldValue value : fieldValues()) {
-        ObjectNode row = (ObjectNode) JsonUtils.readTree(original);
-        ObjectNode config = (ObjectNode) row.at("/connection/config");
+      for (final FieldValue value : fieldValues()) {
+        final ObjectNode row = (ObjectNode) JsonUtils.readTree(original);
+        final ObjectNode config = (ObjectNode) row.at("/connection/config");
         config.put(mlflow ? "logdata" : "registryUri", "untouched-other-field");
         if (value.input() == null) {
           config.remove(field(mlflow));
@@ -363,14 +367,14 @@ class ConnectionSecretsMigrationIT {
           config.set(field(mlflow), value.input());
         }
         store(mlflow, id, row.toString());
-        String extension = type + ".version.22." + extensions.size();
+        final String extension = type + ".version.22." + extensions.size();
         extensions.add(extension);
         dao.insert(UUID.fromString(id), extension, type, row.toString());
-        String current = stored(mlflow, id);
-        String historical = dao.getExtension(UUID.fromString(id), extension);
+        final String current = stored(mlflow, id);
+        final String historical = dao.getExtension(UUID.fromString(id), extension);
         migrate();
-        String migrated = stored(mlflow, id);
-        String migratedHistory = dao.getExtension(UUID.fromString(id), extension);
+        final String migrated = stored(mlflow, id);
+        final String migratedHistory = dao.getExtension(UUID.fromString(id), extension);
         assertFieldResult(mlflow, current, migrated, value);
         assertFieldResult(mlflow, historical, migratedHistory, value);
         migrate();
@@ -384,8 +388,8 @@ class ConnectionSecretsMigrationIT {
   }
 
   private List<FieldValue> fieldValues() {
-    List<FieldValue> values = new ArrayList<>();
-    for (String value :
+    final List<FieldValue> values = new ArrayList<>();
+    for (final String value :
         List.of(
             "",
             " \t\n ",
@@ -398,7 +402,7 @@ class ConnectionSecretsMigrationIT {
             "demo/value=".repeat(5000))) {
       values.add(new FieldValue(TextNode.valueOf(value), value));
     }
-    for (String json :
+    for (final String json :
         List.of(
             "null",
             "false",
@@ -418,11 +422,12 @@ class ConnectionSecretsMigrationIT {
     return values;
   }
 
-  private void assertFieldResult(boolean mlflow, String before, String after, FieldValue value) {
+  private void assertFieldResult(
+      final boolean mlflow, final String before, final String after, final FieldValue value) {
     if (value.plaintext() == null) {
       assertEquals(before, after);
     } else {
-      ObjectNode actual = (ObjectNode) JsonUtils.readTree(after);
+      final ObjectNode actual = (ObjectNode) JsonUtils.readTree(after);
       assertEquals(value.plaintext(), Fernet.getInstance().decrypt(secret(actual, mlflow)));
       ((ObjectNode) actual.at("/connection/config")).set(field(mlflow), value.input());
       assertEquals(JsonUtils.readTree(before), actual);
@@ -431,24 +436,26 @@ class ConnectionSecretsMigrationIT {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void paginatesMatchingCurrentRowsAmongUnrelatedRows(boolean mlflow, TestNamespace ns) {
-    JsonNode template = JsonUtils.readTree(stored(mlflow, create(mlflow, ns).path("id").asText()));
-    var dao =
+  void paginatesMatchingCurrentRowsAmongUnrelatedRows(
+      final boolean mlflow, final TestNamespace ns) {
+    final JsonNode template =
+        JsonUtils.readTree(stored(mlflow, create(mlflow, ns).path("id").asText()));
+    final var dao =
         mlflow
             ? Entity.getCollectionDAO().mlModelServiceDAO()
             : Entity.getCollectionDAO().dbServiceDAO();
-    List<UUID> ids = new ArrayList<>();
-    List<String> names = new ArrayList<>();
-    List<String> rows = new ArrayList<>();
+    final List<UUID> ids = new ArrayList<>();
+    final List<String> names = new ArrayList<>();
+    final List<String> rows = new ArrayList<>();
     for (int index = 0; index < 1002; index++) {
-      UUID id = UUID.randomUUID();
-      String name = ns.prefix("page_" + id);
-      ObjectNode row = (ObjectNode) template.deepCopy();
+      final UUID id = UUID.randomUUID();
+      final String name = ns.prefix("page_" + id);
+      final ObjectNode row = (ObjectNode) template.deepCopy();
       row.put("id", id.toString())
           .put("name", name)
           .put("fullyQualifiedName", name)
           .put("deleted", index % 3 == 0);
-      ObjectNode config = (ObjectNode) row.at("/connection/config");
+      final ObjectNode config = (ObjectNode) row.at("/connection/config");
       config.put(field(mlflow), CURRENT);
       if (index % 2 != 0) {
         config.put("type", mlflow ? "Teradata" : "Mlflow");
@@ -460,10 +467,10 @@ class ConnectionSecretsMigrationIT {
     }
     try {
       dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), names, rows);
-      List<String> originals = ids.stream().map(id -> stored(mlflow, id.toString())).toList();
+      final List<String> originals = ids.stream().map(id -> stored(mlflow, id.toString())).toList();
       migrate();
       for (int index = 0; index < ids.size(); index++) {
-        String row = stored(mlflow, ids.get(index).toString());
+        final String row = stored(mlflow, ids.get(index).toString());
         if (index % 2 == 0) {
           assertEquals(
               CURRENT, Fernet.getInstance().decrypt(secret(JsonUtils.readTree(row), mlflow)));
