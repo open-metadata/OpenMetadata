@@ -93,6 +93,7 @@ public class TestCaseResolutionStatusRepository
   private static final String SEVERITY_MILDEST_FIRST =
       "MIN(i.severity) IS NOT NULL, MIN(i.severity) DESC";
   private static final int TREND_BUCKET_COUNT = 8;
+  // ADR:2026-10-28-incident-history-uses-bounded-keyset-pages
   private static final int ORPHAN_HISTORY_BATCH_SIZE = 100;
   // A record range that holds every record, for listings whose range applies to the incidents.
   // Boxed, as a listing without a range passes null bounds through the same expression.

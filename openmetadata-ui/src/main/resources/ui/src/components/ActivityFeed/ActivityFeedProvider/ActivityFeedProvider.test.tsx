@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { Task } from '../../../generated/entity/tasks/task';
@@ -68,6 +69,7 @@ import {
   TaskEntityType,
 } from '../../../rest/tasksAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import TaskTabIncidentManagerHeaderNewFromTask from '../../Entity/Task/TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
 } from './ActivityFeedProvider';
@@ -141,6 +143,15 @@ jest.mock('../../../rest/tasksAPI', () => ({
     Open: 'open',
   },
 }));
+
+jest.mock(
+  '../../DataQuality/IncidentManager/Severity/Severity.component',
+  () => () => null
+);
+jest.mock(
+  '../../common/RichTextEditor/RichTextEditorPreviewerV1',
+  () => () => null
+);
 
 jest.mock('../../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentByStateId: jest.fn(),
@@ -968,10 +979,116 @@ const IncidentHistoryConsumer = () => {
   );
 };
 
+const IncidentHeaderConsumer = () => {
+  const { setActiveTask } = useActivityFeedProvider();
+  const task = {
+    id: 'incident-history',
+    type: TaskEntityType.TestCaseResolution,
+  } as Task;
+
+  return (
+    <>
+      <button onClick={() => setActiveTask(task)}>Open incident</button>
+      <TaskTabIncidentManagerHeaderNewFromTask task={task} />
+    </>
+  );
+};
+
 describe('incident history paging', () => {
   const history = getListTestCaseIncidentByStateId as jest.Mock;
 
   beforeEach(() => history.mockReset());
+
+  it('loads older steps through the production control while retaining the latest status', async () => {
+    let finishOlder: (value: unknown) => void = () => {};
+    history
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'resolved',
+            timestamp: 300,
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Resolved,
+            testCaseResolutionStatusDetails: {
+              testCaseFailureReason: 'FalsePositive',
+            },
+          },
+          {
+            id: 'assigned',
+            timestamp: 200,
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Assigned,
+          },
+        ],
+        paging: { after: 'older', total: 4 },
+      })
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishOlder = resolve;
+        })
+      );
+    render(
+      <ActivityFeedProvider>
+        <IncidentHeaderConsumer />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Open incident' }));
+    const steps = screen.getByTestId('task-resolution-steps');
+    await waitFor(() =>
+      expect(
+        within(steps)
+          .getAllByText(/^(Assigned|Resolved)$/)
+          .map((node) => node.textContent)
+      ).toEqual(['Assigned', 'Resolved'])
+    );
+
+    expect(screen.getByTestId('failure-reason')).toHaveTextContent(
+      'FalsePositive'
+    );
+
+    const loadMore = screen.getByRole('button', { name: 'label.load-more' });
+
+    expect(loadMore).toBeEnabled();
+
+    fireEvent.click(loadMore);
+    await waitFor(() => expect(loadMore).toBeDisabled());
+
+    expect(screen.getByTestId('failure-reason')).toHaveTextContent(
+      'FalsePositive'
+    );
+
+    await act(async () =>
+      finishOlder({
+        data: [
+          {
+            id: 'ack',
+            timestamp: 100,
+            testCaseResolutionStatusType: TestCaseResolutionStatusTypes.ACK,
+          },
+          {
+            id: 'new',
+            timestamp: 0,
+            testCaseResolutionStatusType: TestCaseResolutionStatusTypes.New,
+          },
+        ],
+        paging: { total: 4 },
+      })
+    );
+    await waitFor(() =>
+      expect(
+        within(steps)
+          .getAllByText(/^(New|Ack|Assigned|Resolved)$/)
+          .map((node) => node.textContent)
+      ).toEqual(['New', 'Ack', 'Assigned', 'Resolved'])
+    );
+
+    expect(screen.getByTestId('failure-reason')).toHaveTextContent(
+      'FalsePositive'
+    );
+    expect(
+      screen.queryByRole('button', { name: 'label.load-more' })
+    ).not.toBeInTheDocument();
+  });
 
   it('prepends older events chronologically, deduplicates, and resets paging on reload', async () => {
     history
