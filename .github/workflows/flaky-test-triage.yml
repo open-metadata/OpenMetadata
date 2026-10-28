@@ -38,6 +38,13 @@ on:
         description: Draft replies and fixes in the job log; post nothing, open no PR.
         type: boolean
         default: false
+  # TRIAL ONLY — revert this commit before merge. Runs the agent for real on one
+  # alert from the last 24h, since workflow_dispatch needs the file on main.
+  pull_request:
+    paths:
+      - .github/workflows/flaky-test-triage.yml
+      - .github/scripts/flaky_triage_slack.py
+      - skills/flaky-test-triage/**
 
 permissions:
   contents: read
@@ -49,8 +56,8 @@ concurrency:
 
 env:
   # Scheduled runs overlap by an hour so a late alert is not missed.
-  SINCE_HOURS: ${{ inputs.since_hours || 2 }}
-  MAX_ALERTS: ${{ inputs.max_alerts || 0 }}
+  SINCE_HOURS: ${{ inputs.since_hours || (github.event_name == 'pull_request' && 24) || 2 }}
+  MAX_ALERTS: ${{ inputs.max_alerts || (github.event_name == 'pull_request' && 1) || 0 }}
   DRY_RUN: ${{ inputs.dry_run || false }}
 
 jobs:
