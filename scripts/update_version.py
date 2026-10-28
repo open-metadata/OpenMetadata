@@ -1,6 +1,7 @@
 import argparse
 import re
 import logging
+import sys
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger()
@@ -18,14 +19,27 @@ def get_python_version(version: str) -> str:
     return f"{version}.0"
 
 
-def regex_sub(file_path: str, pattern: str, substitution: str):
+def regex_sub(
+    file_path: str, pattern: str, substitution: str, required: bool = False
+) -> int:
+    """Substitutes `pattern` in `file_path` and returns how many matches it replaced.
+
+    With `required`, a pattern that matches nothing exits non-zero instead of leaving the file
+    untouched: a release bump whose pattern no longer fits its file otherwise ships the old version.
+    `required` stays off by default because Collate's release bump imports this function and
+    expects some of its patterns to match nothing on a release branch.
+    """
     with open(file_path, "r") as f:
         content = f.read()
 
-    updated_content = re.sub(pattern, substitution, content)
+    updated_content, count = re.subn(pattern, substitution, content)
+    if required and count == 0:
+        logger.error(f"Pattern {pattern!r} matched nothing in {file_path}")
+        sys.exit(1)
 
     with open(file_path, "w") as f:
         f.write(updated_content)
+    return count
 
 
 def update_dockerfile_arg(arg, file_path, value):
@@ -37,6 +51,7 @@ def update_dockerfile_arg(arg, file_path, value):
         file_path,
         rf"(ARG\s+{arg}=).+",
         rf'\1"{value}"',
+        required=True,
     )
 
 
@@ -48,10 +63,13 @@ def update_docker_tag(args):
 
     logger.info(f"Updating Docker Tag in {file_path} to {tag}\n")
 
+    # Matches both `image: docker.getcollate.io/...:tag` and the overridable
+    # `image: ${VAR:-docker.getcollate.io/...:tag}` form, keeping the closing brace.
     regex_sub(
         file_path,
-        r"(image: docker\.getcollate\.io/openmetadata/.*?):.+",
+        r"(image: (?:\$\{\w+:-)?docker\.getcollate\.io/openmetadata/[^:\s}]+):[^\s}]+",
         rf"\1:{tag}",
+        required=True,
     )
 
 
@@ -82,6 +100,7 @@ def update_pyproject_version(args):
         file_path,
         r'(?m)^version\s*=\s*"[^"]+"',
         f'version = "{version}"',
+        required=True,
     )
 
 
@@ -95,8 +114,9 @@ def update_openapi_version(args):
 
     regex_sub(
         file_path,
-        r'(@Info\s*\(\s*title\s*=\s*"OpenMetadata APIs",\s*version\s*=\s*")\d+\.\d+\.\d+(")',
+        r'(@Info\s*\(\s*title\s*=\s*"OpenMetadata APIs",\s*version\s*=\s*")[^"]+(")',
         rf"\g<1>{version}\g<2>",
+        required=True,
     )
 
 
