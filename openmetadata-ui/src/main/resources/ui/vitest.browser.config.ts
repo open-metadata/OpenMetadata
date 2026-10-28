@@ -23,8 +23,8 @@
  *   yarn test:ui --ui       # Vitest UI: watch tests + see the rendered page live
  *   yarn test:ui:coverage   # istanbul coverage, merged with Jest's in CI
  */
-import { readFileSync } from 'fs';
 import { playwright } from '@vitest/browser-playwright';
+import { readFileSync } from 'fs';
 import { defineConfig, mergeConfig, type Plugin } from 'vitest/config';
 import appViteConfig from './vite.config';
 

@@ -12,6 +12,9 @@ HEADED=true yarn test:ui:run   # see the browser
 
 ## Where a test goes
 
+The rule, and how Playwright tests leave once covered here:
+ADR:2026-10-28-page-behaviour-is-tested-in-vitest-browser-mode-and-e2e-tests-leave-by-marking.
+
 | Assertion is about…                                                                                                                             | Layer                                     |
 | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
 | a pure function, hook, reducer, formatter, leaf component                                                                                       | Jest (`*.test.ts(x)`)                     |

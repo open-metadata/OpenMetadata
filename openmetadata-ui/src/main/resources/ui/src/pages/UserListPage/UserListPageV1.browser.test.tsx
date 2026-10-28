@@ -35,7 +35,9 @@ describePaginatedList({
   setup: () =>
     worker.use(
       http.get('/api/v1/users/name/:fqn', ({ params }) =>
-        HttpResponse.json(users.find((u) => u.fullyQualifiedName === params.fqn))
+        HttpResponse.json(
+          users.find((u) => u.fullyQualifiedName === params.fqn)
+        )
       )
     ),
 });

@@ -94,8 +94,10 @@ jobs:
           npx vitest --config vitest.browser.config.ts --merge-reports --coverage \
             --reporter=default --reporter=junit \
             --outputFile.junit=src/test/browser/junit.xml
+      # A fork PR's token cannot comment; its results stay in the job log.
       - name: Coverage comment
-        if: github.event_name == 'pull_request'
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
         uses: MishaKav/jest-coverage-comment@v1.0.34
         with:
           coverage-summary-path: ${{ env.UI_DIR }}/src/test/browser/coverage/coverage-summary.json

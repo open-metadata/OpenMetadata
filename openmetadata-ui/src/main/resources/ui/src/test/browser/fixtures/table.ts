@@ -13,13 +13,13 @@
 import { deepClone } from 'fast-json-patch';
 import { http, HttpResponse } from 'msw';
 import { UpdateColumn } from '../../../generated/api/data/updateColumn';
-import { Paging } from '../../../generated/type/paging';
 import {
   Column,
   DataType,
   Table,
   TableType,
 } from '../../../generated/entity/data/table';
+import { Paging } from '../../../generated/type/paging';
 import { worker } from '../msw';
 
 export const TABLE_FQN = 'sample_data.ecommerce_db.shopify.orders';
