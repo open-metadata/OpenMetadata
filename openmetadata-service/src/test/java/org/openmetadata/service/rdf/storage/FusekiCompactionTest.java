@@ -13,6 +13,7 @@
 package org.openmetadata.service.rdf.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -101,7 +102,28 @@ class FusekiCompactionTest {
     final CompactionResult result = compact(Duration.ofMinutes(10));
 
     assertEquals(CompactionResult.Outcome.UNKNOWN, result.outcome());
-    assertTrue(result.detail().contains("HTTP 404"));
+    assertTrue(result.detail().contains("no longer reports task 7"));
+  }
+
+  @Test
+  void aFailedPollKeepsWaitingBecauseFusekiKeepsCompacting() {
+    taskReplies.add(new Reply(503, "Service Unavailable"));
+    taskReplies.add(new Reply(200, finished(true)));
+
+    assertEquals(CompactionResult.Outcome.SUCCEEDED, compact(Duration.ofMinutes(10)).outcome());
+  }
+
+  @Test
+  void reportsWhetherACompactionIsStillRunning() {
+    taskReplies.add(new Reply(200, "[" + RUNNING + "," + finished(true) + "]"));
+    assertTrue(isCompacting());
+
+    taskReplies.clear();
+    taskReplies.add(new Reply(200, "[" + finished(true) + "]"));
+    assertFalse(isCompacting());
+
+    server.stop(0);
+    assertFalse(isCompacting(), "an unreachable Fuseki cannot be said to compact");
   }
 
   @Test
@@ -147,12 +169,22 @@ class FusekiCompactionTest {
     assertEquals(CompactionResult.Outcome.UNKNOWN, compact(Duration.ofMinutes(1)).outcome());
   }
 
+  private boolean isCompacting() {
+    return compaction()
+        .isCompacting(
+            "http://localhost:" + server.getAddress().getPort(),
+            builder -> builder.header("Authorization", "Basic test"));
+  }
+
+  private FusekiCompaction compaction() {
+    return new FusekiCompaction(
+        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build(),
+        clock,
+        clock::advance);
+  }
+
   private CompactionResult compact(final Duration maxWait) {
-    final FusekiCompaction compaction =
-        new FusekiCompaction(
-            HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build(),
-            clock,
-            clock::advance);
+    final FusekiCompaction compaction = compaction();
     return compaction.compact(
         "http://localhost:" + server.getAddress().getPort(),
         "collate",

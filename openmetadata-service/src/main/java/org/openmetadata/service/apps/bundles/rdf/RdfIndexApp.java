@@ -267,6 +267,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
         updateJobStatus(EventPublisherJob.Status.COMPLETED);
         if (!promoted) {
           // In-place indexing reports completion before potentially lengthy disk maintenance.
+          sendUpdates(jobExecutionContext, true);
           compactServingBestEffort();
         }
       }
