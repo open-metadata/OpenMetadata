@@ -42,7 +42,8 @@ import org.openmetadata.service.rdf.storage.CompactionResult;
  * lease that marks the next one due one interval later, so the cluster compacts once per interval.
  * The compaction holds the RDF reindex lock, so it never overlaps a reindex, and pauses writes to
  * the serving dataset, because Fuseki blocks them for the whole copy. A compaction that does not
- * succeed releases its lease, so the next check tries again. See
+ * succeed releases its lease, so the next check tries again, unless Fuseki restarted during it:
+ * that one waits for the next interval. See
  * ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule.
  */
 @Slf4j
@@ -133,11 +134,27 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
     } catch (RdfReindexRunLock.HeldByAnotherRun reindexRunning) {
       LOG.info("Skipping RDF compaction while a reindex runs; it compacts itself");
     } finally {
-      if (result == null || !result.succeeded()) {
+      if (retryAtNextCheck(result)) {
         locks.releaseLock(slot, jobId);
       }
     }
     return result;
+  }
+
+  /**
+   * A compaction that did not run or did not succeed is retried at the next check, except one that
+   * Fuseki started and then lost: Fuseki restarted during the copy, as it does when the volume
+   * cannot hold the copy, and retrying would only restart it again.
+   */
+  private static boolean retryAtNextCheck(final CompactionResult result) {
+    final boolean lost = result != null && result.lostByTheStore();
+    if (lost) {
+      LOG.error(
+          "Fuseki restarted while compacting the RDF store, as it does when the volume has less"
+              + " free space than the live data. The next compaction waits for its schedule; expand"
+              + " the volume if this repeats.");
+    }
+    return result == null || !result.succeeded() && !lost;
   }
 
   private CompactionResult compactExclusively(final String jobId) {
