@@ -230,7 +230,7 @@ runs:
       if: ${{ inputs.install-server == 'true' && inputs.fast-mode == 'true' }}
       run: |
         mapfile -t images < <(
-          tar --zstd -xOf "${{ inputs.fixture-path }}" ./fixture-manifest.json |
+          tar --zstd --occurrence=1 -xOf "${{ inputs.fixture-path }}" ./fixture-manifest.json |
             jq -r '.databaseImage // empty, .searchImage // empty'
         )
         if [[ ${#images[@]} -gt 0 ]]; then
