@@ -708,6 +708,9 @@ class PowerbiSource(DashboardServiceSource):
                     table.name,
                 )
                 continue
+            if measure.isHidden and not self.service_connection.includeHiddenFields:
+                logger.debug("Skipping hidden PowerBI measure [%s]", measure.name)
+                continue
             try:
                 measure_type = DataType.MEASURE_VISIBLE
                 if measure.isHidden:
@@ -740,6 +743,9 @@ class PowerbiSource(DashboardServiceSource):
                     table.name,
                 )
                 continue
+            if column.isHidden and not self.service_connection.includeHiddenFields:
+                logger.debug("Skipping hidden PowerBI column [%s]", column.name)
+                continue
             try:
                 parsed_column = {
                     "dataTypeDisplay": (column.dataType if column.dataType else DataType.UNKNOWN.value),
@@ -765,6 +771,9 @@ class PowerbiSource(DashboardServiceSource):
                     "Skipping PowerBI table with empty name on dataset [id=%s]",
                     dataset.id,
                 )
+                continue
+            if table.isHidden and not self.service_connection.includeHiddenFields:
+                logger.debug("Skipping hidden PowerBI table [%s]", table.name)
                 continue
             try:
                 table_display_name = None

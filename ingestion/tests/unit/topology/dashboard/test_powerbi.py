@@ -34,6 +34,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Group,
     PowerBiColumns,
     PowerBIDashboard,
+    PowerBiMeasures,
     PowerBIReport,
     PowerBiTable,
     PowerBITableSource,
@@ -2503,3 +2504,53 @@ class PowerBIUnitTest(TestCase):
         assert request.dataModelType == DataModelType.PowerBIDatamart
         assert request.columns == []
         assert request.sourceUrl.root.endswith("/groups/ws-1/datamarts/datamart_b?experience=power-bi")
+
+    def _dataset_with_hidden_fields(self) -> Dataset:
+        return Dataset(
+            id="hidden-dataset-id",
+            name="hidden-dataset",
+            tables=[
+                PowerBiTable(
+                    name="Fact",
+                    columns=[
+                        PowerBiColumns(name="Amount", dataType="Double"),
+                        PowerBiColumns(name="InternalKey", dataType="Int64", isHidden=True),
+                    ],
+                    measures=[
+                        PowerBiMeasures(name="Total", expression="SUM(Fact[Amount])"),
+                        PowerBiMeasures(name="HelperMeasure", expression="1", isHidden=True),
+                    ],
+                ),
+                PowerBiTable(
+                    name="Helper",
+                    isHidden=True,
+                    columns=[PowerBiColumns(name="Key", dataType="Int64")],
+                ),
+            ],
+        )
+
+    @pytest.mark.order(59)
+    def test_hidden_fields_skipped_when_include_hidden_fields_disabled(self):
+        """
+        Hidden tables, columns and measures are not ingested into the data model
+        when includeHiddenFields is False
+        """
+        with patch.object(self.powerbi.service_connection, "includeHiddenFields", False):
+            result = self.powerbi._get_column_info(self._dataset_with_hidden_fields())
+
+        assert [table.displayName for table in result] == ["Fact"]
+        assert [child.displayName for child in result[0].children] == ["Amount", "Total"]
+
+    @pytest.mark.order(60)
+    def test_hidden_fields_kept_when_include_hidden_fields_enabled(self):
+        """
+        With includeHiddenFields True, hidden objects are ingested as before
+        and hidden measures keep the MEASURE_HIDDEN type
+        """
+        with patch.object(self.powerbi.service_connection, "includeHiddenFields", True):
+            result = self.powerbi._get_column_info(self._dataset_with_hidden_fields())
+
+        assert [table.displayName for table in result] == ["Fact", "Helper"]
+        children = {child.displayName: child.dataType for child in result[0].children}
+        assert list(children) == ["Amount", "InternalKey", "Total", "HelperMeasure"]
+        assert children["HelperMeasure"] == DataType.MEASURE_HIDDEN
