@@ -13962,8 +13962,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (nullOrEmpty(domains)) {
       return domains;
     }
-    EntityRepository<? extends EntityInterface<?>> domainRepository =
-        Entity.getEntityRepository(DOMAIN);
+    EntityRepository<? extends EntityInterface<?>> domainRepository;
+    try {
+      domainRepository = Entity.getEntityRepository(DOMAIN);
+    } catch (EntityNotFoundException e) {
+      // Only before the domain repository is registered (startup, unit tests); nothing to copy yet.
+      return domains;
+    }
     for (EntityReference domain : domains) {
       if (domain == null || domain.getId() == null) {
         continue;
