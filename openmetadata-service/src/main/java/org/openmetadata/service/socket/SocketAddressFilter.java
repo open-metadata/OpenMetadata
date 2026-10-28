@@ -46,7 +46,10 @@ public class SocketAddressFilter implements Filter {
   private static final String SOCKET_USER_TOKEN_MISMATCH_MESSAGE =
       "Socket user does not match token";
 
-  /** Null when sockets connect without a token. Replaced whole when security settings reload. */
+  /**
+   * Null only when the authentication or authorizer configuration is absent — every presented token
+   * is then rejected. Replaced whole when security settings reload.
+   */
   private volatile JwtFilter jwtFilter;
 
   /**
@@ -343,16 +346,28 @@ public class SocketAddressFilter implements Filter {
         hasText(sessionValidation.sessionId())
             ? sessionValidation.sessionId()
             : principal != null ? principal.sessionId() : null;
-    return new HandshakeIdentity(
-        hasText(socketUserId) ? socketUserId : sessionValidation.userId(), sessionId);
+    String userId = hasText(socketUserId) ? socketUserId : sessionValidation.userId();
+    if (!hasText(userId)) {
+      // Nothing to key the socket under: WebSocketManager would accept the connection and never
+      // register it, leaving the client "connected" to a feed that delivers nothing.
+      throw new HandshakeRejectedException(
+          HttpServletResponse.SC_UNAUTHORIZED, HANDSHAKE_UNAUTHORIZED_MESSAGE);
+    }
+    return new HandshakeIdentity(userId, sessionId);
   }
 
   private static ValidatedTokenPrincipal tokenPrincipal(TokenIdentity tokenIdentity) {
     return tokenIdentity != null ? tokenIdentity.tokenPrincipal() : null;
   }
 
+  /**
+   * The client's own identity headers are always hidden, so a validated field that is absent leaves
+   * the header absent rather than falling back to the client's value.
+   */
   private static void stampIdentity(
       HeaderRequestWrapper requestWrapper, HandshakeIdentity identity) {
+    requestWrapper.removeHeader("UserId");
+    requestWrapper.removeHeader("SessionId");
     if (hasText(identity.userId())) {
       requestWrapper.addHeader("UserId", identity.userId());
     }

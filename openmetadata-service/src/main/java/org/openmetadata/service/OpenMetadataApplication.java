@@ -1382,6 +1382,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               SecurityConfigurationManager.getCurrentAuthConfig(),
               SecurityConfigurationManager.getCurrentAuthzConfig());
     } else {
+      LOG.warn(
+          "No authorizer configuration is present: push-feed WebSocket handshakes have no token"
+              + " validator or session store and will be rejected"
+              + " (ADR:2026-10-26-push-feed-handshakes-always-authenticate)");
       socketAddressFilter = new SocketAddressFilter();
     }
     SocketAddressFilter websocketFilter = socketAddressFilter;

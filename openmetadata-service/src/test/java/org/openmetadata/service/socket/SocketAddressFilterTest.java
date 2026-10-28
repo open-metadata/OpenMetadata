@@ -330,6 +330,116 @@ class SocketAddressFilterTest {
     verify(chain, never()).doFilter(any(), any());
   }
 
+  /**
+   * Regression guard for the configuration gate this change removed: the real {@link JwtFilter}
+   * the production constructor builds must reject a garbage token even with the deprecated flag
+   * explicitly off and a valid session cookie alongside. No validator is injected here.
+   */
+  @Test
+  void realValidatorRejectsInvalidTokenWithSecureSocketFlagOff() throws Exception {
+    lenient().when(authorizerConfig.getEnableSecureSocketConnection()).thenReturn(false);
+    SocketAddressFilter productionFilter =
+        new SocketAddressFilter(authConfig, authorizerConfig, sessionService);
+    when(request.getQueryString()).thenReturn("token=not-a-jwt");
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    String sessionId = validSessionId('s');
+    lenient()
+        .when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+    lenient()
+        .when(sessionService.getFreshSessionById(sessionId))
+        .thenReturn(Optional.of(activeSession(sessionId, "sam", UUID.randomUUID().toString())));
+
+    productionFilter.doFilter(request, response, chain);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(chain, never()).doFilter(any(), any());
+    verify(jwtFilter, never()).validateJwtAndGetClaims(any());
+  }
+
+  /**
+   * A field the handshake did not establish must leave the header absent on the polling path too:
+   * an external token carries no session, so a client-sent SessionId must not reach the servlet.
+   */
+  @Test
+  void clientSessionIdHeaderIsDroppedWhenTokenCarriesNoSession() throws Exception {
+    UUID tokenUserId = UUID.randomUUID();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    when(jwtFilter.validateJwtAndGetClaims("token")).thenReturn(Map.of("sub", mock(Claim.class)));
+    when(jwtFilter.resolveUserName(any())).thenReturn("sam");
+    // Lenient: with the fix the wrapper never consults the client's SessionId at all.
+    lenient().when(request.getHeader("SessionId")).thenReturn("attacker-session");
+    lenient()
+        .when(request.getHeaders("SessionId"))
+        .thenReturn(java.util.Collections.enumeration(List.of("attacker-session")));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      filter.doFilter(request, response, chain);
+    }
+
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
+    org.junit.jupiter.api.Assertions.assertNull(wrappedRequest.getHeader("SessionId"));
+    org.junit.jupiter.api.Assertions.assertEquals(
+        List.of(), java.util.Collections.list(wrappedRequest.getHeaders("SessionId")));
+    org.junit.jupiter.api.Assertions.assertEquals(
+        tokenUserId.toString(), wrappedRequest.getHeader("UserId"));
+  }
+
+  /** A cookie session keys the socket under the session's user, never a client-sent UserId. */
+  @Test
+  void clientUserIdHeaderIsReplacedBySessionUserId() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    UUID sessionUserId = UUID.randomUUID();
+    String sessionId = validSessionId('s');
+    when(request.getQueryString()).thenReturn(null);
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    lenient()
+        .when(request.getHeaders("UserId"))
+        .thenReturn(java.util.Collections.enumeration(List.of("attacker-uuid")));
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+    when(sessionService.getFreshSessionById(sessionId))
+        .thenReturn(Optional.of(activeSession(sessionId, "sam", sessionUserId.toString())));
+
+    defaultFilter.doFilter(request, response, chain);
+
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
+    org.junit.jupiter.api.Assertions.assertEquals(
+        List.of(sessionUserId.toString()),
+        java.util.Collections.list(wrappedRequest.getHeaders("UserId")));
+  }
+
+  /**
+   * A session row without a user id and no requested user id leaves nothing to key the socket
+   * under; WebSocketManager would accept and never register it, so the handshake is rejected.
+   */
+  @Test
+  void cookieSessionWithoutUserIdIsRejected() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    String sessionId = validSessionId('n');
+    when(request.getQueryString()).thenReturn(null);
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+    when(sessionService.getFreshSessionById(sessionId))
+        .thenReturn(Optional.of(activeSession(sessionId, "sam")));
+
+    defaultFilter.doFilter(request, response, chain);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
   /** Externally-issued tokens carry no session claim and are accepted on token validity alone. */
   @Test
   void externalTokenWithoutSessionClaimIsAcceptedWithoutStoreValidation() throws Exception {

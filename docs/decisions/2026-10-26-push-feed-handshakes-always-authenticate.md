@@ -55,9 +55,14 @@ Every push-feed handshake carries at least one validated credential, under every
 
 Custom non-UI clients must open push-feed sockets with a valid token or session — an uncredentialed
 socket gets 401. The handshake query is the only place a browser can present a token, so the token
-rides an upgrade URL (same-origin only, like the cookie it replaces); the servlet therefore does not
-log the handshake query string. Configurations that once enabled `enableSecureSocketConnection` see
-no behavior change; those that disabled it gain the token and session checks it previously guarded.
+rides an upgrade URL (same-origin only, like the cookie it replaces); neither the servlet nor the
+WebSocket upgrade handler logs the handshake query string or the upgrade URI. That mitigation stops
+at OpenMetadata's own logs: a reverse proxy or access log in front of it must redact the `token`
+query parameter on `/api/v1/push/feed`, or the bearer token lands in those logs instead.
+Configurations that once enabled `enableSecureSocketConnection` see no behavior change; those that
+disabled it gain the token and session checks it previously guarded. A deployment with no
+`authorizerConfiguration` has neither a token validator nor a session store, so it can no longer
+open push-feed sockets at all; the server warns about this at startup.
 Because a presented token must validate, the browser cannot reconnect with a token that expired while
 the socket was down; the UI therefore drives its own bounded reconnection, reading the current token
 before each attempt instead of relying on socket.io's automatic reconnect, whose handshake query is
