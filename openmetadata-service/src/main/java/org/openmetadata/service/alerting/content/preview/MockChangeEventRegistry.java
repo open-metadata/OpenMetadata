@@ -1,9 +1,9 @@
 package org.openmetadata.service.alerting.content.preview;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -64,8 +64,9 @@ public final class MockChangeEventRegistry {
     }
   }
 
-  private final Map<String, EntityFixtureBuilder> builders = new HashMap<>();
-  private final Map<Scenario, EntityFixtureEventApplier> appliers = new HashMap<>();
+  // One registry serves every preview and test send, so requests fill these at the same time.
+  private final Map<String, EntityFixtureBuilder> builders = new ConcurrentHashMap<>();
+  private final Map<Scenario, EntityFixtureEventApplier> appliers = new ConcurrentHashMap<>();
   private final EntityFixtureLoader fixtures;
 
   public MockChangeEventRegistry(EntityFixtureLoader fixtures) {
