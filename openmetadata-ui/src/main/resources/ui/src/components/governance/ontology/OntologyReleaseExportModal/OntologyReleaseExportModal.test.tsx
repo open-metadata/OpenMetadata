@@ -20,7 +20,6 @@ import {
   OperationType,
 } from '../../../../generated/api/data/createOntologyChangeSet';
 import { Ontology } from '../../../../generated/entity/data/ontology';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   OntologyChangeSet,
   OntologyChangeSetState,
@@ -31,6 +30,7 @@ import {
   LogicalCheck,
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   acquireOntologyEditLock,
   applyOntologyChangeSet,

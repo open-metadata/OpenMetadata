@@ -13,11 +13,11 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
-import { PaletteKey } from '../../../../generated/entity/data/relationshipType';
 import {
   Kind,
   OntologyProperty,
 } from '../../../../generated/entity/data/ontologyProperty';
+import { PaletteKey } from '../../../../generated/entity/data/relationshipType';
 import {
   AssetType,
   OntologyConceptBindingsResponse,

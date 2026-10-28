@@ -24,11 +24,11 @@ import { Fragment, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   ConceptMappingType,
   OntologyConcept,
 } from '../../../../generated/entity/data/ontologyConcept';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   createOntologyConcept,
   patchOntologyConcept,
