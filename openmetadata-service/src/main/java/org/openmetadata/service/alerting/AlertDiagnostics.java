@@ -64,6 +64,7 @@ public final class AlertDiagnostics {
     AlertProgress progress = AlertProgress.of(alert);
     AlertProgress.Counts counts = progress.counts();
     PendingCount pending = pendingCount(alert, progress);
+    AlertProgress.UnreadPage page = unreadPage(progress, limit, paginationOffset, listCountOnly);
     return new EventSubscriptionDiagnosticInfo()
         .withLatestOffset(progress.latestOffset())
         .withCurrentOffset(progress.currentOffset())
@@ -74,10 +75,8 @@ public final class AlertDiagnostics {
         .withTotalUnprocessedEventsCount(progress.unread())
         .withRelevantUnprocessedEventsCount(pending.count())
         .withRelevantUnprocessedEventsCountIsLowerBound(pending.lowerBound())
-        .withRelevantUnprocessedEventsList(
-            listCountOnly ? null : relevantUnread(progress, limit, paginationOffset))
-        .withTotalUnprocessedEventsList(
-            listCountOnly ? null : progress.allUnread(limit, paginationOffset));
+        .withRelevantUnprocessedEventsList(page.relevant())
+        .withTotalUnprocessedEventsList(page.all());
   }
 
   // Shared by every request for the alert at its position, and run at most a few at a time.
@@ -89,9 +88,11 @@ public final class AlertDiagnostics {
         key, () -> progress.relevantUnreadCount(AlertDiagnostics::matchingRules));
   }
 
-  private static List<ChangeEvent> relevantUnread(
-      AlertProgress progress, int limit, int paginationOffset) {
-    return progress.relevantUnread(limit, paginationOffset, AlertDiagnostics::matchingRules);
+  private static AlertProgress.UnreadPage unreadPage(
+      AlertProgress progress, int limit, int paginationOffset, boolean listCountOnly) {
+    return listCountOnly
+        ? AlertProgress.UnreadPage.UNLISTED
+        : progress.unreadPage(limit, paginationOffset, AlertDiagnostics::matchingRules);
   }
 
   public static SubscriptionStatus destinationStatus(UUID alertId, UUID destinationId) {

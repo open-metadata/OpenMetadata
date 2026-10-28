@@ -3,6 +3,7 @@ package org.openmetadata.it.tests.alerts;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,10 +11,13 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /** One tick reads change events up to a byte budget, so large events cannot fill the heap. */
 @Isolated
@@ -48,6 +52,36 @@ class ChangeEventReadBudgetIT {
         String id = JsonUtils.readTree(events.get(index)).get("id").asText();
         assertEquals(true, receiver.received().get(index).body().contains(id), "in order");
       }
+    }
+  }
+
+  // A page of unread events holds what one read may load; the events it holds tell where the next
+  // page starts.
+  @Test
+  void diagnosticsListsLargeUnreadEventsOnlyUpToTheReadBudget(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert =
+          AlertFixtures.tableAlert(
+              ns,
+              "read_budget_diagnostics",
+              null,
+              List.of(AlertFixtures.external(WEBHOOK, receiver.url("/webhook"))));
+      QuietAlert.settle(alert);
+      FixtureEvents.insert(largeEvents());
+
+      JsonNode answer =
+          JsonUtils.readTree(
+              SdkClients.adminClient()
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET,
+                      "/v1/events/subscriptions/id/" + alert.getId() + "/diagnosticInfo",
+                      null,
+                      RequestOptions.builder().queryParam("limit", "50").build()));
+
+      assertEquals(LARGE_EVENTS, answer.get("totalUnprocessedEventsCount").asInt());
+      assertEquals(1, answer.get("totalUnprocessedEventsList").size(), "one 5 MB event per 8 MB");
+      assertEquals(1, answer.get("relevantUnprocessedEventsList").size(), "the same page, matched");
     }
   }
 
