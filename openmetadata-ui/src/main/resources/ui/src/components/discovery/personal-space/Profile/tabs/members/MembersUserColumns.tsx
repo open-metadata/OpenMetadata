@@ -106,7 +106,7 @@ export const EntityLinksCell: FC<{
             size="xs">
             {t('label.plus-count-more', { count: items.length - LIST_CAP })}
           </Button>
-          <Popover className="tw:max-h-80! tw:overflow-scroll">
+          <Popover className="tw:max-h-80! tw:overflow-y-auto">
             <Box className="tw:p-3" direction="col" gap={1}>
               {items.slice(LIST_CAP).map(renderItem)}
             </Box>

@@ -47,9 +47,17 @@ export const useMainCollapse = (
     readCompactSidebarPreference
   );
 
+  // Transient main-nav expand *inside* a sub-context — never persisted.
+  const [subExpanded, setSubExpanded] = useState(false);
+
   useEffect(() => {
-    const onPreferenceChange = (event: Event) =>
+    const onPreferenceChange = (event: Event) => {
       setTopLevelCollapsed(Boolean((event as CustomEvent<boolean>).detail));
+      // Inside a sub-context the preference drives the submenu
+      // (`useSubCollapse`), so the main nav goes back to its rail; leaving a
+      // transient expand would show both full panels.
+      setSubExpanded(false);
+    };
     globalThis.addEventListener(SIDEBAR_COLLAPSED_EVENT, onPreferenceChange);
 
     return () =>
@@ -58,9 +66,6 @@ export const useMainCollapse = (
         onPreferenceChange
       );
   }, []);
-
-  // Transient main-nav expand *inside* a sub-context — never persisted.
-  const [subExpanded, setSubExpanded] = useState(false);
 
   // Re-rail the main nav (drop any transient expand) whenever the sub-context
   // changes, synchronously during render so it lands in the same commit the new
@@ -110,4 +115,46 @@ export const useMainCollapse = (
   }, []);
 
   return [collapsed, toggle, set] as const;
+};
+
+/**
+ * Submenu collapse. The compact-sidebar preference decides how a sub-context
+ * opens: compact → the submenu starts on its icon rail (both navs railed),
+ * otherwise it starts expanded. A user toggle is transient — never persisted —
+ * and is dropped when the active sub-context changes or on reload. Changing the
+ * preference (e.g. from the Preferences page) applies straight away.
+ *
+ * @param contextKey identifies the active sub-context; a change re-derives the
+ *   collapse state from the preference
+ */
+export const useSubCollapse = (
+  contextKey: string | null
+): readonly [boolean, (value: boolean) => void, () => void] => {
+  const [subCollapsed, setSubCollapsed] = useState<boolean>(
+    readCompactSidebarPreference
+  );
+
+  // Re-derived during render, like `useMainCollapse`'s context reset, so a new
+  // sub-context never paints one frame in the previous submenu state.
+  const [prevContext, setPrevContext] = useState(contextKey);
+  if (prevContext !== contextKey) {
+    setPrevContext(contextKey);
+    setSubCollapsed(readCompactSidebarPreference());
+  }
+
+  useEffect(() => {
+    const onPreferenceChange = (event: Event) =>
+      setSubCollapsed(Boolean((event as CustomEvent<boolean>).detail));
+    globalThis.addEventListener(SIDEBAR_COLLAPSED_EVENT, onPreferenceChange);
+
+    return () =>
+      globalThis.removeEventListener(
+        SIDEBAR_COLLAPSED_EVENT,
+        onPreferenceChange
+      );
+  }, []);
+
+  const toggle = useCallback(() => setSubCollapsed((prev) => !prev), []);
+
+  return [subCollapsed, setSubCollapsed, toggle] as const;
 };

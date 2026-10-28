@@ -60,6 +60,11 @@ const AppIconTile = ({ appName }: { appName: string }) => {
   );
 };
 
+// Runtime-blocked apps are "Unavailable"; "Disabled" is kept for soft-deleted
+// apps, which the "Show Disabled" toggle lists.
+const getBadgeLabelKey = (isAvailable: boolean) =>
+  isAvailable ? 'label.disabled' : 'label.unavailable';
+
 const ApplicationCard: FC<ApplicationCardProps> = ({
   appName,
   title,
@@ -107,7 +112,7 @@ const ApplicationCard: FC<ApplicationCardProps> = ({
                   data-testid="disabled-badge"
                   size="sm"
                   type="pill-color">
-                  {t('label.disabled')}
+                  {t(getBadgeLabelKey(isAvailable))}
                 </Badge>
               )}
             </Box>
