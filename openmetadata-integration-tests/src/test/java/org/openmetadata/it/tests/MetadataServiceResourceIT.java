@@ -41,6 +41,7 @@ public class MetadataServiceResourceIT
 
   @BeforeAll
   static void ensureDataConsumerUser() {
+    SdkClients.adminClient();
     UserTestFactory.getDataConsumer(null);
   }
 
