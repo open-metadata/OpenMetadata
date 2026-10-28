@@ -378,4 +378,31 @@ describe('MetricDefinitionCard', () => {
       expect(unitSlot).not.toHaveTextContent('Leads');
     });
   });
+
+  it('keeps the expression language of an ingested metric with no formula', async () => {
+    const onUpdate = jest.fn().mockResolvedValue(undefined);
+    render(
+      <MemoryRouter>
+        <MetricDefinitionCard
+          canEdit
+          metric={{
+            ...metric,
+            metricExpression: { language: Language.External },
+          }}
+          onUpdate={onUpdate}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('metric-definition-edit'));
+    fireEvent.click(screen.getByTestId('metric-definition-save'));
+
+    await waitFor(() =>
+      expect(onUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metricExpression: { language: Language.External, code: undefined },
+        })
+      )
+    );
+  });
 });

@@ -28,6 +28,7 @@ import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
+import type { AsyncDeleteJob } from '../interface/entity/asyncDelete.interface';
 import type { QueryVote as VoteType } from '../interface/entity/vote.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
@@ -204,9 +205,12 @@ export const exportMetricDetailsInCSVSync = async (fqn: string) => {
 };
 
 export const deleteMetricAsync = async (id: string, recursive = false) => {
-  const response = await APIClient.delete(`/metrics/async/${id}`, {
-    params: { recursive },
-  });
+  const response = await APIClient.delete<AsyncDeleteJob>(
+    `/metrics/async/${id}`,
+    {
+      params: { recursive },
+    }
+  );
 
   return response.data;
 };

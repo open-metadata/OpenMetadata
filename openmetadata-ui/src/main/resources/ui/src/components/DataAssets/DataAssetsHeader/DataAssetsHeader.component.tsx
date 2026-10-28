@@ -156,6 +156,7 @@ export const DataAssetsHeader = ({
   allowRename = false,
   showDomain = true,
   afterDeleteAction,
+  onDeleteFailure,
   dataAsset,
   onUpdateVote,
   onOwnerUpdate,
@@ -970,6 +971,7 @@ export const DataAssetsHeader = ({
       onAnnouncementClick={
         flags.canEditAll ? handleOpenAnnouncementDrawer : undefined
       }
+      onDeleteFailure={onDeleteFailure}
       onEditDisplayName={onDisplayNameUpdate}
       onProfilerSettingUpdate={onProfilerSettingUpdate}
       onRestoreEntity={onRestoreDataAsset}

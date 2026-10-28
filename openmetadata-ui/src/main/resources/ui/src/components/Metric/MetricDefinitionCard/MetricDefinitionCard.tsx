@@ -201,10 +201,16 @@ const MetricDefinitionEditDialog = ({
         customUnitOfMeasurement:
           unit === UnitOfMeasurement.Other ? customUnit.trim() : undefined,
         // The expression is optional (API, import and ingestion can omit it), so an empty code
-        // must not block editing the type, granularity or unit.
-        metricExpression: code.trim()
-          ? { ...metric.metricExpression, code: code.trim(), language }
-          : undefined,
+        // must not block editing the type, granularity or unit. An existing expression keeps its
+        // language (ingestion stores `External` with no formula); only the code is cleared.
+        metricExpression:
+          code.trim() || metric.metricExpression
+            ? {
+                ...metric.metricExpression,
+                code: code.trim() || undefined,
+                language,
+              }
+            : undefined,
       });
       onClose();
     } catch {

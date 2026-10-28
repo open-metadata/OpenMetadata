@@ -15,6 +15,7 @@ import type { EntityReference } from '../generated/entity/type';
 import APIClient from './axiosClient';
 import {
   addAssetsToMetric,
+  deleteMetricAsync,
   getMetricAssets,
   getMetricHierarchy,
   getMetricHierarchyContext,
@@ -25,6 +26,7 @@ import {
 jest.mock('./axiosClient', () => ({
   get: jest.fn(),
   put: jest.fn(),
+  delete: jest.fn(),
 }));
 
 const assets: EntityReference[] = [
@@ -153,5 +155,19 @@ describe('Metric hierarchy, assets, and observability API contracts', () => {
     await expect(
       getMetricAssets('metric-id', { limit: 20, offset: 0 })
     ).rejects.toBe(error);
+  });
+
+  it('sends recursive on async delete so variants are deleted with their parent', async () => {
+    (APIClient.delete as jest.Mock).mockResolvedValue({
+      data: { jobId: 'job-1', message: 'accepted' },
+    });
+
+    await expect(deleteMetricAsync('metric-id', true)).resolves.toEqual({
+      jobId: 'job-1',
+      message: 'accepted',
+    });
+    expect(APIClient.delete).toHaveBeenCalledWith('/metrics/async/metric-id', {
+      params: { recursive: true },
+    });
   });
 });

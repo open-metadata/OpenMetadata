@@ -222,8 +222,8 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     }
   }, [decodedMetricFqn]);
 
-  // A soft-deleted metric stays on this page, so flip it to deleted right away; otherwise the
-  // header, edit controls and Add Child Metric stay live until a reload.
+  // A soft-deleted metric stays on this page, so it is shown as deleted as soon as the delete
+  // job is accepted. If the job then fails, fetchMetricDetails restores the server's state.
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
       isSoftDelete ? onToggleDelete(version) : navigate(ROUTES.METRICS),
@@ -375,6 +375,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             openTaskCount={feedCount.openTaskCount}
             permissions={metricPermissions}
             onCertificationUpdate={onCertificationUpdate}
+            onDeleteFailure={fetchMetricDetails}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followMetric}
             onMetricUpdate={onMetricUpdate}

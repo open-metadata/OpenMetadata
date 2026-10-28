@@ -271,6 +271,7 @@ const MetricListPage = () => {
   const [isMetricActionsOpen, setIsMetricActionsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeletingMetrics, setIsDeletingMetrics] = useState(false);
+  const [pendingDeleteJobIds, setPendingDeleteJobIds] = useState<string[]>([]);
   const defaultExpandedGroupScopeRef = useRef<string>();
 
   const debounceSetSearch = useMemo(
@@ -574,10 +575,13 @@ const MetricListPage = () => {
   const handleBulkDelete = useCallback(async () => {
     try {
       setIsDeletingMetrics(true);
-      // Recursive so a parent's variants go with it; without it the async job fails with
-      // "metric is not empty" after the success toast has already shown.
-      await Promise.all(
+      // Recursive so a parent's variants are deleted with it; a non-recursive job fails with
+      // "metric is not empty" once the parent has variants.
+      const deleteJobs = await Promise.all(
         selectedMetrics.map(({ id }) => deleteMetricAsync(id, true))
+      );
+      setPendingDeleteJobIds(
+        deleteJobs.flatMap((job) => (job?.jobId ? [job.jobId] : []))
       );
       showSuccessToast(
         t('message.metrics-delete-success', {
@@ -596,15 +600,21 @@ const MetricListPage = () => {
     }
   }, [queryClient, resetHierarchy, selectedMetrics, t]);
 
-  // Deletes run as async jobs, so the refetch in handleBulkDelete can land before the job
-  // finishes and leave the deleted rows on screen. Refresh again once a job completes.
+  // Deletes run as async jobs, so the refetch in handleBulkDelete can land before a job
+  // finishes. Refresh again when one of this page's jobs completes; jobs started elsewhere are
+  // ignored. The id is matched even if the websocket message beat the API response.
   const { asyncDeleteJob } = useAsyncDeleteProvider();
   useEffect(() => {
-    if (asyncDeleteJob?.status === 'COMPLETED') {
+    const { jobId, status } = asyncDeleteJob ?? {};
+    if (!jobId || !pendingDeleteJobIds.includes(jobId)) {
+      return;
+    }
+    setPendingDeleteJobIds((ids) => ids.filter((id) => id !== jobId));
+    if (status === 'COMPLETED') {
       queryClient.invalidateQueries({ queryKey: [METRIC_LISTING_QUERY_KEY] });
       resetHierarchy();
     }
-  }, [asyncDeleteJob, queryClient, resetHierarchy]);
+  }, [asyncDeleteJob, pendingDeleteJobIds, queryClient, resetHierarchy]);
 
   const handleRetry = useCallback(() => {
     if (permissionError) {
@@ -854,8 +864,8 @@ const MetricListPage = () => {
     );
   };
 
-  // Without this an expanded empty group shows nothing, so the next standalone metric reads as
-  // one of its members.
+  // An expanded group with no members gets an explicit empty row, so the standalone metric
+  // that follows it is not read as one of its members.
   const renderGroupRow = (
     row: Extract<MetricTableRow, { isGroupRow: true }>
   ) => {

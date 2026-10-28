@@ -95,9 +95,10 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
   const handleDeleteEntityWebsocketResponse = (
     response: AsyncDeleteWebsocketResponse
   ) => {
+    // The websocket message is newer than the stored job, so its jobId and status must win.
     const updatedAsyncDeleteJob: Partial<AsyncDeleteJob> = {
-      ...response,
       ...asyncDeleteJob,
+      ...response,
     };
     setAsyncDeleteJob(updatedAsyncDeleteJob);
     asyncDeleteJobRef.current = updatedAsyncDeleteJob;
