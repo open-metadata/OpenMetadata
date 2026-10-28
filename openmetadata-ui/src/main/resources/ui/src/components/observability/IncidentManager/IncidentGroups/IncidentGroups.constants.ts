@@ -62,7 +62,8 @@ export const INCIDENT_GROUP_DETAIL_PARAM = 'group';
 
 /**
  * Query string params holding the groups' order, named after the API params
- * like the dimension's, so a reload or a shared link keeps the order.
+ * like the dimension's, so a reload or a shared link keeps the order
+ * (ADR:2026-10-28-incident-group-sort-lives-in-the-url).
  */
 export const INCIDENT_GROUP_SORT_FIELD_PARAM = 'sortField';
 export const INCIDENT_GROUP_SORT_TYPE_PARAM = 'sortType';
