@@ -470,6 +470,10 @@ const getOrCreateTempNode = (
   return tempNode;
 };
 
+/** Links a temp hop to the stored edge it was expanded from. */
+const getTempHopSourceKey = (edge: EdgeDetails) =>
+  `${edge.fromEntity.id}-${edge.toEntity.id}`;
+
 const extractTempLineageNodes = (
   edges: EdgeDetails[],
   existingNodes: LineageNodeType[]
@@ -489,6 +493,7 @@ const extractTempLineageNodes = (
     if (!edge.tempLineageTables?.length) {
       return;
     }
+    const tempHopOf = getTempHopSourceKey(edge);
     edge.tempLineageTables.forEach((hop: TempLineageTable) => {
       const fromNode = getOrCreateTempNode(
         hop.fromEntity,
@@ -501,7 +506,7 @@ const extractTempLineageNodes = (
         newTempNodes
       );
       newEdges.push({
-        isTempLineageHop: true,
+        tempHopOf,
         fromEntity: {
           id: fromNode.id,
           type: fromNode.type ?? EntityType.TABLE,
@@ -588,7 +593,7 @@ export const applyTempTableVisibility = (
   show: boolean
 ): EntityLineageResponse => {
   const edges = lineage.edges ?? [];
-  if (!edges.some((edge) => edge.isTempLineageHop)) {
+  if (!edges.some((edge) => edge.tempHopOf)) {
     return lineage;
   }
 
@@ -600,8 +605,52 @@ export const applyTempTableVisibility = (
     : {
         ...lineage,
         nodes: (lineage.nodes ?? []).filter((node) => !node.isTempTable),
-        edges: edges.filter((edge) => !edge.isTempLineageHop),
+        edges: edges.filter((edge) => !edge.tempHopOf),
       };
+};
+
+/**
+ * Keeps a stored edge and its temp hops consistent after an edit made in one
+ * view: drops an edge with temp tables whose end node is gone, the hops of a
+ * stored edge that is gone, and temp tables no edge reaches. Returns the input
+ * unchanged when nothing needs dropping.
+ */
+export const pruneTempLineage = (
+  lineage: EntityLineageResponse
+): EntityLineageResponse => {
+  const edges = lineage.edges ?? [];
+  const nodes = lineage.nodes ?? [];
+  if (!edges.some((edge) => edge.tempHopOf || edge.tempLineageTables?.length)) {
+    return lineage;
+  }
+
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  if (lineage.entity?.id) {
+    nodeIds.add(lineage.entity.id);
+  }
+  const keptStored = edges.filter(
+    (edge) =>
+      !edge.tempLineageTables?.length ||
+      (nodeIds.has(edge.fromEntity.id) && nodeIds.has(edge.toEntity.id))
+  );
+  const storedKeys = new Set(
+    keptStored
+      .filter((edge) => edge.tempLineageTables?.length)
+      .map(getTempHopSourceKey)
+  );
+  const keptEdges = keptStored.filter(
+    (edge) => !edge.tempHopOf || storedKeys.has(edge.tempHopOf)
+  );
+  const reachedIds = new Set(
+    keptEdges.flatMap((edge) => [edge.fromEntity.id, edge.toEntity.id])
+  );
+  const keptNodes = nodes.filter(
+    (node) => !node.isTempTable || reachedIds.has(node.id)
+  );
+
+  return keptEdges.length === edges.length && keptNodes.length === nodes.length
+    ? lineage
+    : { ...lineage, nodes: keptNodes, edges: keptEdges };
 };
 
 export const getLineageConfigFormValues = (

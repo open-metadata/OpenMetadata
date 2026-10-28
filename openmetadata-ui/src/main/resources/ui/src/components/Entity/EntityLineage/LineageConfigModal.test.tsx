@@ -113,12 +113,32 @@ describe('LineageConfigModal', () => {
     const renderModal = () =>
       render(
         <LineageConfigModal
+          showTempTablesToggle
           visible
           config={config}
           onCancel={onCancel}
           onSave={onSave}
         />
       );
+
+    it('is absent where temp tables are not drawn', async () => {
+      render(
+        <LineageConfigModal
+          visible
+          config={config}
+          onCancel={onCancel}
+          onSave={onSave}
+        />
+      );
+
+      await screen.findByTestId('field-upstream');
+
+      expect(
+        screen.queryByRole('switch', {
+          name: /label.show-temporary-table-plural/,
+        })
+      ).not.toBeInTheDocument();
+    });
 
     it('is on when the user has not chosen', async () => {
       renderModal();

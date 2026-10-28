@@ -31,6 +31,7 @@ import {
   getDataQualityLineage,
   getLineageDataByFQN,
 } from '../../../rest/lineageAPI';
+import { positionNodesUsingElk } from '../../../utils/Lineage/Layout/ElkLayoutUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { Lineage } from './Lineage';
@@ -39,6 +40,11 @@ import { useLineageHandlers } from './LineageHandlersContext';
 // ELK is a third-party layout engine; position is not what these tests check.
 jest.mock('../../../utils/Lineage/Layout/ElkLayoutUtils', () => ({
   positionNodesUsingElk: jest.fn(async (nodes, edges) => ({ nodes, edges })),
+}));
+
+jest.mock('../../../rest/miscAPI', () => ({
+  ...jest.requireActual('../../../rest/miscAPI'),
+  deleteLineageEdge: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -191,6 +197,53 @@ const ReactFlowInitConsumer = () => {
   }, [onInitReactFlow]);
 
   return null;
+};
+
+// tableA -> tableB through one temp table.
+const TEMP_LINEAGE_RESPONSE = {
+  nodes: {
+    a: {
+      entity: {
+        id: 'id-a',
+        type: 'table',
+        entityType: 'table',
+        name: 'tableA',
+        fullyQualifiedName: 'svc.db.s.t1',
+        columns: [],
+      },
+      paging: {},
+    },
+    b: {
+      entity: {
+        id: 'id-b',
+        type: 'table',
+        entityType: 'table',
+        name: 'tableB',
+        fullyQualifiedName: 'svc.db.s.tableB',
+        columns: [],
+      },
+      paging: {},
+    },
+  },
+  downstreamEdges: {
+    ab: {
+      fromEntity: {
+        id: 'id-a',
+        type: 'table',
+        fullyQualifiedName: 'svc.db.s.t1',
+      },
+      toEntity: {
+        id: 'id-b',
+        type: 'table',
+        fullyQualifiedName: 'svc.db.s.tableB',
+      },
+      tempLineageTables: [
+        { fromEntity: 'svc.db.s.t1', toEntity: 'tmp_staging' },
+        { fromEntity: 'tmp_staging', toEntity: 'svc.db.s.tableB' },
+      ],
+    },
+  },
+  upstreamEdges: {},
 };
 
 const seenHandlers: ReturnType<typeof useLineageHandlers>[] = [];
@@ -357,51 +410,7 @@ describe('Lineage integration', () => {
     useApplicationStore.setState({
       currentUser: { id: 'u-admin', name: 'admin' } as User,
     });
-    (getLineageDataByFQN as jest.Mock).mockResolvedValue({
-      nodes: {
-        a: {
-          entity: {
-            id: 'id-a',
-            type: 'table',
-            entityType: 'table',
-            name: 'tableA',
-            fullyQualifiedName: 'svc.db.s.t1',
-            columns: [],
-          },
-          paging: {},
-        },
-        b: {
-          entity: {
-            id: 'id-b',
-            type: 'table',
-            entityType: 'table',
-            name: 'tableB',
-            fullyQualifiedName: 'svc.db.s.tableB',
-            columns: [],
-          },
-          paging: {},
-        },
-      },
-      downstreamEdges: {
-        ab: {
-          fromEntity: {
-            id: 'id-a',
-            type: 'table',
-            fullyQualifiedName: 'svc.db.s.t1',
-          },
-          toEntity: {
-            id: 'id-b',
-            type: 'table',
-            fullyQualifiedName: 'svc.db.s.tableB',
-          },
-          tempLineageTables: [
-            { fromEntity: 'svc.db.s.t1', toEntity: 'tmp_staging' },
-            { fromEntity: 'tmp_staging', toEntity: 'svc.db.s.tableB' },
-          ],
-        },
-      },
-      upstreamEdges: {},
-    });
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue(TEMP_LINEAGE_RESPONSE);
     const drawnNodeIds = () =>
       useLineageStore.getState().nodes.map((node) => node.id);
 
@@ -440,6 +449,80 @@ describe('Lineage integration', () => {
     await waitFor(() => expect(drawnNodeIds()).toContain('temp_tmp_staging'));
 
     expect(getLineageDataByFQN).toHaveBeenCalledTimes(1);
+
+    usePersistentStorage.getState().clearUserPreference('admin');
+  });
+
+  it('keeps a node removed with temp tables hidden gone once they are shown', async () => {
+    useApplicationStore.setState({
+      currentUser: { id: 'u-admin', name: 'admin' } as User,
+    });
+    usePersistentStorage
+      .getState()
+      .setUserPreference('admin', { showLineageTempTables: false });
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue(TEMP_LINEAGE_RESPONSE);
+    const drawnNodeIds = () =>
+      useLineageStore.getState().nodes.map((node) => node.id);
+    let removeNode: ReturnType<typeof useLineageHandlers>['removeNodeHandler'] =
+      jest.fn();
+    const RemoveNodeConsumer = () => {
+      removeNode = useLineageHandlers().removeNodeHandler;
+
+      return null;
+    };
+
+    render(
+      <MemoryRouter>
+        <Lineage
+          entity={entityFixture}
+          entityFqn="svc.db.s.t1"
+          entityType={EntityType.TABLE}
+          isPlatformLineage={false}>
+          <ReactFlowInitConsumer />
+          <RemoveNodeConsumer />
+        </Lineage>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(drawnNodeIds()).toContain('id-b'));
+
+    expect(drawnNodeIds()).not.toContain('temp_tmp_staging');
+
+    const nodeB = useLineageStore
+      .getState()
+      .nodes.find((node) => node.id === 'id-b') as Node;
+    await act(async () => {
+      await removeNode(nodeB);
+    });
+    await waitFor(() => expect(drawnNodeIds()).not.toContain('id-b'));
+
+    // The temp table and hops behind the removed edge go with it, so showing
+    // temp tables cannot bring the removed path back.
+    const { entityLineage } = useLineageStore.getState();
+
+    expect(entityLineage.nodes?.some((node) => node.isTempTable)).toBe(false);
+    expect(entityLineage.edges?.some((edge) => edge.tempHopOf)).toBe(false);
+
+    // Assert on the drawing the switch produces, not the one before it: wait
+    // for its layout call, then let that call's result be drawn.
+    const layoutCalls = (positionNodesUsingElk as jest.Mock).mock.calls.length;
+    act(() => {
+      usePersistentStorage
+        .getState()
+        .setUserPreference('admin', { showLineageTempTables: true });
+    });
+    await waitFor(() =>
+      expect(
+        (positionNodesUsingElk as jest.Mock).mock.calls.length
+      ).toBeGreaterThan(layoutCalls)
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(drawnNodeIds()).toContain('id-a');
+    expect(drawnNodeIds()).not.toContain('temp_tmp_staging');
+    expect(drawnNodeIds()).not.toContain('id-b');
 
     usePersistentStorage.getState().clearUserPreference('admin');
   });

@@ -47,6 +47,7 @@ import {
   applyTempTableVisibility,
   getColumnFunctionValue,
   parseLineageData,
+  pruneTempLineage,
 } from './EntityLineagePureUtils';
 import { getLineageTableConfig } from './EntityLineageUtils';
 jest.mock('../rest/miscAPI', () => ({
@@ -2099,7 +2100,7 @@ describe('extractTempLineageNodes (via parseLineageData)', () => {
     });
 
     const { edges } = parseLineageData(data, 'db.tableA', 'db.tableA');
-    const hops = edges.filter((e) => e.isTempLineageHop);
+    const hops = edges.filter((e) => e.tempHopOf);
 
     expect(hops).toHaveLength(2);
     expect(hops[0].fromEntity.fullyQualifiedName).toBe('db.tableA');
@@ -2129,7 +2130,10 @@ describe('extractTempLineageNodes (via parseLineageData)', () => {
     const original = edges.filter((e) => e.tempLineageTables?.length);
 
     expect(original).toHaveLength(1);
-    expect(original[0].isTempLineageHop).toBeUndefined();
+    expect(original[0].tempHopOf).toBeUndefined();
+    expect(edges.filter((e) => e.tempHopOf).map((e) => e.tempHopOf)).toEqual([
+      'id-a-id-b',
+    ]);
   });
 
   describe('applyTempTableVisibility', () => {
@@ -2210,6 +2214,53 @@ describe('extractTempLineageNodes (via parseLineageData)', () => {
       expect(
         edgeKeys(applyTempTableVisibility(lineage, true).edges ?? [])
       ).toEqual(['db.tableA->db.tableB']);
+    });
+
+    describe('pruneTempLineage', () => {
+      const withoutEdge = (
+        lineage: ReturnType<typeof throughTemp>,
+        from: string,
+        to: string
+      ) => ({
+        ...lineage,
+        edges: lineage.edges.filter(
+          (e) =>
+            !(
+              e.fromEntity.fullyQualifiedName === from &&
+              e.toEntity.fullyQualifiedName === to
+            )
+        ),
+      });
+
+      it('drops the hops and temp tables of a deleted direct edge', () => {
+        const pruned = pruneTempLineage(
+          withoutEdge(throughTemp(), 'db.tableA', 'db.tableB')
+        );
+
+        expect(pruned.edges).toEqual([]);
+        expect((pruned.nodes ?? []).some((n) => n.isTempTable)).toBe(false);
+      });
+
+      it('drops the direct edge and hops when an end node is removed', () => {
+        const lineage = throughTemp();
+        const pruned = pruneTempLineage({
+          ...lineage,
+          nodes: lineage.nodes.filter(
+            (n) => n.fullyQualifiedName !== 'db.tableB'
+          ),
+        });
+
+        expect(pruned.edges).toEqual([]);
+        expect((pruned.nodes ?? []).map((n) => n.fullyQualifiedName)).toEqual([
+          'db.tableA',
+        ]);
+      });
+
+      it('returns the same object when everything is consistent', () => {
+        const lineage = throughTemp();
+
+        expect(pruneTempLineage(lineage)).toBe(lineage);
+      });
     });
 
     it('returns the same object when there is nothing to project', () => {

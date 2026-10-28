@@ -22,6 +22,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type SetStateAction,
 } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -120,6 +121,7 @@ import {
   addLineageHandler,
   applyTempTableVisibility,
   parseLineageData,
+  pruneTempLineage,
   removeLineageHandler,
   withoutLineageEdges,
 } from '../../../utils/EntityLineagePureUtils';
@@ -516,11 +518,21 @@ export const Lineage = ({
     closeDeleteModal,
   } = useLineageStore();
 
-  const [entityLineage, setEntityLineage] = useState<EntityLineageResponse>({
-    nodes: [],
-    edges: [],
-    entity: {} as LineageNodeType,
-  });
+  const [entityLineage, setEntityLineageState] =
+    useState<EntityLineageResponse>({
+      nodes: [],
+      edges: [],
+      entity: {} as LineageNodeType,
+    });
+  // Every write is pruned so an edit made with temp tables shown or hidden
+  // also updates the other view (see pruneTempLineage).
+  const setEntityLineage = useCallback(
+    (next: SetStateAction<EntityLineageResponse>) =>
+      setEntityLineageState((prev) =>
+        pruneTempLineage(typeof next === 'function' ? next(prev) : next)
+      ),
+    []
+  );
   const [lineageData, setLineageData] = useState<LineageData>();
   const [entity, setEntity] = useState<SourceType | undefined>(entityProp);
   const navigate = useNavigate();
@@ -682,8 +694,9 @@ export const Lineage = ({
   const {
     preferences: { showLineageTempTables = true },
   } = useCurrentUserPreferences();
-  // What the canvas draws; edits keep reading `entityLineage`, which holds both
-  // the stored edges and the temp-table hops expanded from them.
+  // What the canvas draws. `entityLineage` holds both the stored edges and the
+  // temp-table hops expanded from them; edits read it, and every write is
+  // pruned so both views stay consistent.
   const visibleLineage = useMemo(
     () => applyTempTableVisibility(entityLineage, showLineageTempTables),
     [entityLineage, showLineageTempTables]
@@ -793,7 +806,7 @@ export const Lineage = ({
       }
 
       const lineageToDraw = applyTempTableVisibility(
-        lineageData,
+        pruneTempLineage(lineageData),
         showLineageTempTables
       );
       const seen = new Set<string>();
@@ -912,7 +925,7 @@ export const Lineage = ({
         redrawLineage(newLineageData, centerNode, isFirstTime);
       }
     },
-    [redrawLineage]
+    [setEntityLineage, redrawLineage]
   );
 
   const fetchLineageData = useCallback(
@@ -988,6 +1001,7 @@ export const Lineage = ({
       }
     },
     [
+      setEntityLineage,
       lineageMode,
       setNodes,
       setEdges,
@@ -1442,6 +1456,7 @@ export const Lineage = ({
       closeDeleteModal();
     },
     [
+      setEntityLineage,
       bumpLineageMutationTick,
       closeDeleteModal,
       entityFqn,
@@ -1554,7 +1569,10 @@ export const Lineage = ({
 
         const uniqueEdgeMap = new Map<string, (typeof newEdges)[0]>();
         newEdges.forEach((e) => {
-          const key = `${e.fromEntity.id}-${e.toEntity.id}`;
+          // A temp hop can join the same two tables as its stored edge.
+          const key = `${e.fromEntity.id}-${e.toEntity.id}-${
+            e.tempHopOf ?? ''
+          }`;
           uniqueEdgeMap.set(key, e);
         });
 
@@ -1911,6 +1929,7 @@ export const Lineage = ({
       }
     },
     [
+      setEntityLineage,
       selectedEdge,
       entityLineage,
       bumpLineageMutationTick,
@@ -1981,6 +2000,7 @@ export const Lineage = ({
       }
     },
     [
+      setEntityLineage,
       bumpLineageMutationTick,
       entityLineage.edges,
       selectedEdge,
@@ -2139,7 +2159,7 @@ export const Lineage = ({
         nodes: updatedNodes,
       });
     }
-  }, [updatedEntityLineage, entityFqn]);
+  }, [setEntityLineage, updatedEntityLineage, entityFqn]);
 
   useEffect(() => {
     if (reactFlowInstance?.viewportInitialized) {

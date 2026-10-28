@@ -33,6 +33,7 @@ import {
 const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   visible,
   config,
+  showTempTablesToggle = false,
   onCancel,
   onSave,
 }) => {
@@ -62,7 +63,9 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   // changing only them redraws without refetching. Keep the rest of the
   // config (e.g. pipelineViewMode): callers store the saved object whole.
   const onSubmit = (values: LineageConfigFormValues) => {
-    setPreference({ showLineageTempTables: values.showTempTables });
+    if (showTempTablesToggle) {
+      setPreference({ showLineageTempTables: values.showTempTables });
+    }
     onSave({
       ...config,
       upstreamDepth: Number(values.upstreamDepth),
@@ -124,20 +127,24 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
                   />
                 )
               )}
-              <Controller
-                control={form.control}
-                name="showTempTables"
-                render={({ field }) => (
-                  <Toggle
-                    data-testid="lineage-config-show-temp-tables"
-                    hint={t('message.lineage-show-temporary-table-plural-hint')}
-                    isSelected={field.value}
-                    label={t('label.show-temporary-table-plural')}
-                    size="sm"
-                    onChange={field.onChange}
-                  />
-                )}
-              />
+              {showTempTablesToggle && (
+                <Controller
+                  control={form.control}
+                  name="showTempTables"
+                  render={({ field }) => (
+                    <Toggle
+                      data-testid="lineage-config-show-temp-tables"
+                      hint={t(
+                        'message.lineage-show-temporary-table-plural-hint'
+                      )}
+                      isSelected={field.value}
+                      label={t('label.show-temporary-table-plural')}
+                      size="sm"
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              )}
             </HookForm>
           </Dialog.Content>
           <Dialog.Footer>

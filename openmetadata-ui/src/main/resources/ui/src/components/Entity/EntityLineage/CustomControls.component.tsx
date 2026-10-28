@@ -579,6 +579,7 @@ const CustomControls: FC<{
 
       <LineageConfigModal
         config={lineageConfig}
+        showTempTablesToggle={activeTab !== 'impact_analysis'}
         visible={dialogVisible}
         onCancel={() => setDialogVisible(false)}
         onSave={handleDialogSave}

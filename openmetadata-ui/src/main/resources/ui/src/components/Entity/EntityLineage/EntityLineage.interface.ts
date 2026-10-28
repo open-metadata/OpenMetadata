@@ -73,6 +73,8 @@ export interface LineageConfigField {
 export interface LineageConfigModalProps {
   visible: boolean;
   config: LineageConfig;
+  /** Only the entity Lineage canvas draws temp tables, so only it offers the switch. */
+  showTempTablesToggle?: boolean;
   onCancel: () => void;
   onSave: (config: LineageConfig) => void;
 }

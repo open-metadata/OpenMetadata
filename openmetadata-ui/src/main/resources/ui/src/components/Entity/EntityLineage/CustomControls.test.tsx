@@ -23,6 +23,7 @@ import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext';
 import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import CustomControlsComponent from './CustomControls.component';
+import LineageConfigModal from './LineageConfigModal';
 
 const mockOnExportClick = jest.fn();
 const mockOnLineageConfigUpdate = jest.fn();
@@ -424,6 +425,26 @@ describe('CustomControls', () => {
       expect(mockOnLineageConfigUpdate).toHaveBeenCalledWith(mockLineageConfig);
     });
   });
+
+  it.each([
+    ['lineage', true],
+    ['impact_analysis', false],
+  ])(
+    'offers the temp-table switch only where temp tables are drawn (%s)',
+    (mode, offered) => {
+      (useCustomLocation as jest.Mock).mockImplementation(() => ({
+        search: `?mode=${mode}&depth=3&dir=downstream`,
+      }));
+      render(<CustomControlsComponent {...defaultProps} />, {
+        wrapper: Wrapper,
+      });
+
+      expect(LineageConfigModal).toHaveBeenLastCalledWith(
+        expect.objectContaining({ showTempTablesToggle: offered }),
+        expect.anything()
+      );
+    }
+  );
 
   it('does not update the lineage config when the dialog saves it unchanged', async () => {
     (useLineageStore as unknown as jest.Mock).mockImplementation(
