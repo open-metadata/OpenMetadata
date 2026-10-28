@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -249,6 +250,38 @@ class OpenSearchBulkProcessorConnectionPoolTest {
       assertEquals(1, run.succeeded().get(), "the next bulk must be free to probe");
       assertEquals(1, cluster.indexedDocuments());
       assertEquals(BulkCircuitBreaker.State.CLOSED, breaker.getState());
+    }
+  }
+
+  @Test
+  void anInterruptedWaitForAConnectionFailsTheBulkAndKeepsTheInterrupt() throws Exception {
+    BulkCircuitBreaker breaker = new BulkCircuitBreaker(5, 30_000, 10_000);
+    try (FakeSearchCluster cluster = FakeSearchCluster.start(20);
+        ProcessorRun run =
+            ProcessorRun.start(
+                cluster.configuration(searchType(), 5, 5), 1, breaker, retries(5, 50))) {
+      BulkConnectionBudget budget = run.client().getBulkConnectionBudget();
+      holdConnections(budget, budget.permits());
+      AtomicBoolean interruptKept = new AtomicBoolean();
+      Thread producer =
+          Thread.ofPlatform()
+              .start(
+                  () -> {
+                    run.index(1);
+                    interruptKept.set(Thread.currentThread().isInterrupted());
+                  });
+      await()
+          .atMost(Duration.ofSeconds(5))
+          .until(() -> producer.getState() == Thread.State.TIMED_WAITING);
+
+      producer.interrupt();
+      producer.join(5_000);
+      releaseConnections(budget, budget.permits());
+
+      assertEquals(1, run.failed().get(), "an interrupted bulk is recorded, not left pending");
+      assertTrue(interruptKept.get(), "the producer must still see its interrupt");
+      assertTrue(run.processor().flushAndWait(5, TimeUnit.SECONDS), "the bulk frees its slot");
+      assertEquals(0, cluster.indexedDocuments());
     }
   }
 
