@@ -139,9 +139,9 @@ jobs:
         working-directory: ${{ env.UI_DIR }}
         continue-on-error: true
         env:
-          # Full runs on main (and manual ones) record what each test file
-          # executes, for the impact map.
-          BROWSER_IMPACT_DIR: ${{ github.event_name != 'pull_request' && format('{0}/{1}/.impact', github.workspace, env.UI_DIR) || '' }}
+          # Every full run records what each test file executes; main's
+          # becomes the impact map pull requests select from.
+          BROWSER_IMPACT_DIR: ${{ needs.select.outputs.mode == 'all' && format('{0}/{1}/.impact', github.workspace, env.UI_DIR) || '' }}
         # The blob report carries this shard's results and coverage for the
         # merge in browser-tests-report.
         run: |
@@ -159,7 +159,7 @@ jobs:
           include-hidden-files: true
           retention-days: 1
       - uses: actions/upload-artifact@v7
-        if: always() && github.event_name != 'pull_request'
+        if: always() && needs.select.outputs.mode == 'all'
         with:
           name: browser-impact-${{ matrix.shard }}
           path: ${{ env.UI_DIR }}/.impact/*.jsonl
@@ -220,7 +220,7 @@ jobs:
           badge-title: Browser coverage
           unique-id-for-comment: ui-browser-tests
       - uses: actions/download-artifact@v7
-        if: github.event_name != 'pull_request'
+        if: needs.select.outputs.mode == 'all'
         with:
           pattern: browser-impact-*
           merge-multiple: true
@@ -228,12 +228,12 @@ jobs:
       # Only a fully passing run is trusted as the map: a failed test may have
       # stopped before reaching the code it covers.
       - name: Build the impact map
-        if: github.event_name != 'pull_request' && needs.browser-tests.result == 'success'
+        if: needs.select.outputs.mode == 'all' && needs.browser-tests.result == 'success'
         run: |
           cat impact/*.jsonl | jq -s 'map({(.test): .used}) | add' > "$UI_DIR/impact-map.json"
           echo "Impact map: $(jq length "$UI_DIR/impact-map.json") test files" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
-        if: github.event_name != 'pull_request' && needs.browser-tests.result == 'success'
+        if: needs.select.outputs.mode == 'all' && needs.browser-tests.result == 'success'
         with:
           name: browser-impact-map
           path: ${{ env.UI_DIR }}/impact-map.json
