@@ -558,9 +558,20 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // A link from outside the inbox opens on its task. The task may sit past the
   // loaded page, so the selection keeps it rather than falling back to the
   // top row; the detail panel fetches it by id.
-  const linkedTaskId = useLinkedTaskId();
+  const [linkedTaskId, setLinkedTaskId] = useLinkedTaskId();
+  const [openedOnTaskId] = useState(linkedTaskId);
   const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(
     linkedTaskId
+  );
+  const isPersonalInbox = !aboutEntity && !user;
+  const selectTask = useCallback(
+    (taskId: string) => {
+      setSelectedTaskId(taskId);
+      if (isPersonalInbox) {
+        setLinkedTaskId(taskId);
+      }
+    },
+    [isPersonalInbox, setLinkedTaskId]
   );
   // Land on Open by default: it's the actionable set, and its total feeds the
   // Tasks tab count so the badge matches the sidebar's open-task red bubble.
@@ -767,11 +778,17 @@ const TasksTab: React.FC<TasksTabProps> = ({
   useEffect(() => {
     setSelectedTaskId((prev) =>
       prev &&
-      (prev === linkedTaskId || visibleTasks.some((task) => task.id === prev))
+      (prev === openedOnTaskId || visibleTasks.some((task) => task.id === prev))
         ? prev
         : firstTaskId
     );
-  }, [visibleTasks, firstTaskId, linkedTaskId]);
+  }, [visibleTasks, firstTaskId, openedOnTaskId]);
+
+  useEffect(() => {
+    if (isPersonalInbox && linkedTaskId && linkedTaskId !== selectedTaskId) {
+      setLinkedTaskId(selectedTaskId);
+    }
+  }, [isPersonalInbox, linkedTaskId, selectedTaskId, setLinkedTaskId]);
 
   // The Triage tab badge and the sidebar inbox bubble read one open-task query,
   // so a mutation here would otherwise sit behind its stale window — and the
@@ -902,7 +919,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
         scrollRef={scrollRef}
         selectedTaskId={selectedTaskId}
         sentinelRef={sentinelRef}
-        setSelectedTaskId={setSelectedTaskId}
+        setSelectedTaskId={selectTask}
         statusUserIds={currentUserIds}
         tasks={visibleTasks}
         toolbar={

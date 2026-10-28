@@ -13,7 +13,7 @@
 
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigationType } from 'react-router-dom';
 import type { Task } from '../../../../../generated/entity/tasks/task';
 import type { User } from '../../../../../generated/entity/teams/user';
 import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
@@ -300,15 +300,28 @@ jest.mock('react-i18next', () => ({
 
 import TasksTab, { TasksTabProps } from './TasksTab';
 
+const LocationProbe = () => {
+  const { search } = useLocation();
+  const navigationType = useNavigationType();
+
+  return (
+    <span data-navigation={navigationType} data-testid="location">
+      {search}
+    </span>
+  );
+};
+
+const tabTree = (props: Partial<TasksTabProps>, initialEntry: string) => (
+  <MemoryRouter initialEntries={[initialEntry]}>
+    <TasksTab {...props} />
+    <LocationProbe />
+  </MemoryRouter>
+);
+
 const renderTab = (
   props: Partial<TasksTabProps> = {},
   initialEntry = '/inbox/tasks'
-) =>
-  render(
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <TasksTab {...props} />
-    </MemoryRouter>
-  );
+) => render(tabTree(props, initialEntry));
 
 describe('TasksTab', () => {
   beforeEach(() => {
@@ -639,6 +652,82 @@ describe('TasksTab', () => {
     fireEvent.click(screen.getByTestId('task-t2'));
 
     expect(screen.getByTestId('detail')).toHaveTextContent('t2');
+  });
+
+  it('puts a picked task in the URL without adding a history entry', () => {
+    hookState = {
+      items: [{ id: 't1' }, { id: 't2' }] as unknown as Task[],
+      isLoading: false,
+      total: 2,
+    };
+
+    renderTab();
+
+    expect(screen.getByTestId('location')).toHaveTextContent(/^$/);
+
+    fireEvent.click(screen.getByTestId('task-t2'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t2');
+    expect(screen.getByTestId('location')).toHaveTextContent('?taskId=t2');
+    expect(screen.getByTestId('location')).toHaveAttribute(
+      'data-navigation',
+      'REPLACE'
+    );
+  });
+
+  it.each([
+    ['an entity', { aboutEntity: 'glossary.term' }],
+    ['a member profile', { user: { id: 'u1', name: 'u1' } as User }],
+  ])('leaves the URL alone in %s task tab', (_, props) => {
+    hookState = {
+      items: [{ id: 't1' }, { id: 't2' }] as unknown as Task[],
+      isLoading: false,
+      total: 2,
+    };
+
+    renderTab(props as Partial<TasksTabProps>, '/glossary/glossary.term');
+    fireEvent.click(screen.getByTestId('task-t2'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t2');
+    expect(screen.getByTestId('location')).toHaveTextContent(/^$/);
+  });
+
+  it('moves the URL with the selection when a picked task leaves the list', () => {
+    hookState = {
+      items: [{ id: 't1' }, { id: 't2' }] as unknown as Task[],
+      isLoading: false,
+      total: 2,
+    };
+
+    const { rerender } = renderTab();
+    fireEvent.click(screen.getByTestId('task-t2'));
+    hookState = {
+      items: [{ id: 't1' }] as unknown as Task[],
+      isLoading: false,
+      total: 1,
+    };
+    rerender(tabTree({}, '/inbox/tasks'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t1');
+    expect(screen.getByTestId('location')).toHaveTextContent('?taskId=t1');
+  });
+
+  it('clears the URL when a picked task leaves an otherwise empty list', () => {
+    hookState = {
+      items: [{ id: 't1' }, { id: 't2' }] as unknown as Task[],
+      isLoading: false,
+      total: 2,
+    };
+
+    const { rerender } = renderTab();
+    fireEvent.click(screen.getByTestId('task-t2'));
+
+    expect(screen.getByTestId('location')).toHaveTextContent('?taskId=t2');
+
+    hookState = { items: [], isLoading: false, total: 0 };
+    rerender(tabTree({}, '/inbox/tasks'));
+
+    expect(screen.getByTestId('location')).toHaveTextContent(/^$/);
   });
 
   it('removes a resolved task and decrements the total when it leaves the filter', () => {
