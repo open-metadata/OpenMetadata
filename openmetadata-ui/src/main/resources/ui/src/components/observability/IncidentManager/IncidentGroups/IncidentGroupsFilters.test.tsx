@@ -423,6 +423,20 @@ describe('IncidentGroupsFilters', () => {
     );
   });
 
+  it('should offer no assignees when the aggregation fails', async () => {
+    mockPostAggregateFieldOptions.mockRejectedValueOnce(new Error('down'));
+    renderFilters();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('incident-groups-assignee-open'));
+    });
+
+    expect(mockPostAggregateFieldOptions).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByTestId('incident-groups-assignee-option-Aaron')
+    ).not.toBeInTheDocument();
+  });
+
   it('should scope the assignees to the active domain', async () => {
     useDomainStore.setState({ activeDomain: 'Finance' });
     renderFilters();
