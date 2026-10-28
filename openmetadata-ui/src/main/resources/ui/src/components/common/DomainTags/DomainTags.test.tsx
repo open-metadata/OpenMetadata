@@ -10,13 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityReference } from '../../../generated/entity/type';
+import { queryClient } from '../../../queryClient';
+import { getDomainByName } from '../../../rest/domainAPI';
 import DomainTags from './DomainTags';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   DomainTag: ({
     label,
+    color,
+    icon,
     href,
     inherited,
     inheritedLabel,
@@ -25,6 +29,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     closeButtonTestId,
   }: {
     label: string;
+    color?: string;
+    icon?: string;
     href?: string;
     inherited?: boolean;
     inheritedLabel?: string;
@@ -33,7 +39,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     closeButtonTestId?: string;
   }) => (
     <div
+      data-color={color ?? ''}
       data-href={href ?? ''}
+      data-icon={icon ?? ''}
       data-inherited={String(Boolean(inherited))}
       data-inherited-label={inheritedLabel ?? ''}
       data-testid={dataTestId}>
@@ -69,6 +77,10 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+jest.mock('../../../rest/domainAPI', () => ({
+  getDomainByName: jest.fn(),
+}));
+
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: (fqn?: string) => `/domain/${fqn}`,
 }));
@@ -85,7 +97,59 @@ const makeDomain = (
   ...extra,
 });
 
+const mockGetDomainByName = getDomainByName as jest.MockedFunction<
+  typeof getDomainByName
+>;
+
 describe('DomainTags', () => {
+  beforeEach(() => {
+    queryClient.clear();
+    mockGetDomainByName.mockReset();
+    mockGetDomainByName.mockResolvedValue({} as never);
+  });
+
+  // Asset domain references carry no style, so the chip used to fall back to
+  // the default colour and globe whatever the domain was set to.
+  it("should paint each chip in its domain's custom colour and icon", async () => {
+    mockGetDomainByName.mockImplementation(async (fqn) =>
+      fqn === 'Sales'
+        ? ({ style: { color: '#F14C75', iconURL: 'Database01' } } as never)
+        : ({} as never)
+    );
+
+    render(<DomainTags domains={[makeDomain('Sales'), makeDomain('Plain')]} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('domain-tag-Sales')).toHaveAttribute(
+        'data-color',
+        '#F14C75'
+      )
+    );
+
+    expect(screen.getByTestId('domain-tag-Sales')).toHaveAttribute(
+      'data-icon',
+      'Database01'
+    );
+    expect(screen.getByTestId('domain-tag-Plain')).toHaveAttribute(
+      'data-color',
+      ''
+    );
+    expect(mockGetDomainByName).toHaveBeenCalledWith('Sales');
+  });
+
+  it('should keep the default chip when the domain cannot be read', async () => {
+    mockGetDomainByName.mockRejectedValue(new Error('403'));
+
+    render(<DomainTags domains={[makeDomain('Secret')]} />);
+
+    await waitFor(() => expect(mockGetDomainByName).toHaveBeenCalled());
+
+    expect(screen.getByTestId('domain-tag-Secret')).toHaveAttribute(
+      'data-color',
+      ''
+    );
+  });
+
   it('should render the empty placeholder when there are no domains', () => {
     render(<DomainTags domains={[]} />);
 

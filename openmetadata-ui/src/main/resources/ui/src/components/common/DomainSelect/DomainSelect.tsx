@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  DomainTag,
   TreeSelect,
   TreeSelectDataFetcherParams,
   TreeSelectDataResponse,
@@ -40,6 +39,7 @@ import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import StyledDomainTag from '../DomainTags/StyledDomainTag';
 import { DomainSelectProps } from './DomainSelect.types';
 import {
   buildDomainSearchQuery,
@@ -353,9 +353,10 @@ const DomainSelect: FC<DomainSelectProps> = ({
       const isLocked = disabled || !hasPermission;
 
       return (
-        <DomainTag
+        <StyledDomainTag
           data-testid={`domain-tag-${node.value}`}
           disabled={isLocked}
+          fqn={domain?.fullyQualifiedName ?? node.value}
           href={
             isClearable || !node.value ? undefined : getDomainPath(node.value)
           }
