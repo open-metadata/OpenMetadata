@@ -618,6 +618,24 @@ class JwtFilterTest {
     assertTrue(exception.getMessage().contains("revoked"));
   }
 
+  /** Signed with our key under an issuer the server has since changed: still looked up. */
+  @Test
+  void mcpAccessTokenFromAnEarlierIssuerIsStillLookedUp() throws Exception {
+    String token =
+        JWT.create()
+            .withKeyId(OM_KEY_ID)
+            .withIssuer("an-earlier-issuer")
+            .withExpiresAt(Date.from(Instant.now().plus(10, ChronoUnit.MINUTES)))
+            .withClaim("sub", "sam")
+            .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
+            .withClaim(JWTTokenGenerator.CLIENT_ID_CLAIM, "mcp-client")
+            .sign(algorithm);
+
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> filterMcpAccessToken(token, null));
+    assertTrue(exception.getMessage().contains("revoked"));
+  }
+
   @Test
   void mcpAccessTokenStillStoredIsAccepted() throws Exception {
     String token = mcpAccessToken();

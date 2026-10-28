@@ -585,8 +585,12 @@ public class JwtFilter implements ContainerRequestFilter {
    * not require the current issuer: long-lived bot tokens minted under an earlier one are still ours.
    */
   private static boolean isSignedWithOpenMetadataKey(DecodedJWT jwt) {
+    return isOpenMetadataKeyId(jwt.getKeyId());
+  }
+
+  private static boolean isOpenMetadataKeyId(String tokenKeyId) {
     String openMetadataKeyId = JWTTokenGenerator.getInstance().getKid();
-    return !nullOrEmpty(openMetadataKeyId) && openMetadataKeyId.equals(jwt.getKeyId());
+    return !nullOrEmpty(openMetadataKeyId) && openMetadataKeyId.equals(tokenKeyId);
   }
 
   /** The OIDC client IDs this deployment's sign-in flows request tokens for. */
@@ -689,14 +693,14 @@ public class JwtFilter implements ContainerRequestFilter {
   /**
    * An MCP OAuth access token is stored when issued and deleted when revoked or when its client is
    * deleted, so one missing from the store is refused on every server. Only a token OpenMetadata
-   * signed is looked up: a provider's own token may carry a client_id claim too.
+   * signed is looked up, a provider's own token may carry a client_id claim too, and it is picked by
+   * our key id like the signature check, not by the current issuer, which can change.
    * ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server
    */
   private void validateMcpAccessTokenIsActive(
       String token, Map<String, Claim> claims, String tokenKeyId) {
     boolean isMcpAccessToken =
-        claims.containsKey(JWTTokenGenerator.CLIENT_ID_CLAIM)
-            && isInternallyIssuedToken(claims, tokenKeyId);
+        claims.containsKey(JWTTokenGenerator.CLIENT_ID_CLAIM) && isOpenMetadataKeyId(tokenKeyId);
     if (isMcpAccessToken
         && Entity.getCollectionDAO()
                 .oauthAccessTokenDAO()
