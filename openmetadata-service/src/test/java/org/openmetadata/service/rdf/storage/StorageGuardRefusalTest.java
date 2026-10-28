@@ -19,17 +19,13 @@ import org.apache.jena.atlas.web.HttpException;
 import org.junit.jupiter.api.Test;
 
 /**
- * Fuseki's storage guard refuses a write before applying it, so its 503 is told apart from a 503
- * whose write may have been applied: only the guard's is a certain, retry-later refusal.
+ * Fuseki's storage guard refuses a write before applying it with 507 Insufficient Storage, a
+ * certain, retry-later refusal unlike the 5xx answers whose write may have been applied.
  */
 class StorageGuardRefusalTest {
-  private static final String GUARD_BODY =
-      "OpenMetadata storage guard: the data volume is below its free-space reserve; "
-          + "writes resume once space is freed";
-
   @Test
-  void theGuardsServiceUnavailableIsARefusal() {
-    final HttpException refused = new HttpException(503, "Service Unavailable", GUARD_BODY);
+  void insufficientStorageIsARefusal() {
+    final HttpException refused = new HttpException(507, "Insufficient Storage", null);
 
     assertTrue(JenaFusekiStorage.isStorageGuardRefusal(refused));
     assertTrue(
@@ -37,12 +33,11 @@ class StorageGuardRefusalTest {
   }
 
   @Test
-  void anyOtherServiceUnavailableIsNot() {
+  void otherServerErrorsAreNot() {
     assertFalse(
         JenaFusekiStorage.isStorageGuardRefusal(
-            new HttpException(503, "Service Unavailable", "Jetty is overloaded")));
-    assertFalse(
-        JenaFusekiStorage.isStorageGuardRefusal(new HttpException(500, "Error", GUARD_BODY)));
+            new HttpException(503, "Service Unavailable", null)));
+    assertFalse(JenaFusekiStorage.isStorageGuardRefusal(new HttpException(500, "Error", null)));
     assertFalse(JenaFusekiStorage.isStorageGuardRefusal(new IllegalStateException("x")));
   }
 

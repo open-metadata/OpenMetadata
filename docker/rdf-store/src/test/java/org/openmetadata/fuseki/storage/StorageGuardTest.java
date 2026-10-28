@@ -20,15 +20,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.FileStore;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileStoreAttributeView;
-import java.time.Duration;
-import java.util.concurrent.atomic.AtomicLong;
+import org.apache.jena.atlas.json.JsonObject;
 import org.junit.jupiter.api.Test;
 
 class StorageGuardTest {
   private static final long GIB = 1L << 30;
 
   private final Volume volume = new Volume(250 * GIB);
-  private final AtomicLong now = new AtomicLong();
 
   @Test
   void theReserveIsAPercentageOfTheVolumeByDefault() {
@@ -51,30 +49,28 @@ class StorageGuardTest {
 
   @Test
   void writesStopOnceFreeSpaceFallsBelowTheReserve() {
-    final StorageGuard guard = new StorageGuard(volume, 25 * GIB, now::get);
+    final StorageGuard guard = new StorageGuard(volume, 25 * GIB);
     volume.usable = 26 * GIB;
     assertFalse(guard.isLowOnSpace());
 
     volume.usable = 24 * GIB;
-    now.addAndGet(Duration.ofSeconds(1).toNanos());
     assertTrue(guard.isLowOnSpace());
 
     volume.usable = 100 * GIB;
-    now.addAndGet(Duration.ofSeconds(1).toNanos());
     assertFalse(guard.isLowOnSpace(), "writes resume once maintenance freed space");
   }
 
   @Test
-  void theVolumeIsRecheckedAtMostOnceASecond() {
-    final StorageGuard guard = new StorageGuard(volume, 25 * GIB, now::get);
-    volume.usable = 100 * GIB;
-    assertFalse(guard.isLowOnSpace());
+  void theReportStatesTheVolumeAndWhetherWritesAreRefused() {
+    final StorageGuard guard = new StorageGuard(volume, 25 * GIB);
+    volume.usable = 24 * GIB;
 
-    volume.usable = 0;
-    now.addAndGet(Duration.ofMillis(500).toNanos());
-    assertFalse(guard.isLowOnSpace());
-    now.addAndGet(Duration.ofMillis(500).toNanos());
-    assertTrue(guard.isLowOnSpace());
+    final JsonObject report = StorageServlet.report(guard);
+
+    assertEquals(250 * GIB, report.get("totalBytes").getAsNumber().value().longValue());
+    assertEquals(24 * GIB, report.get("usableBytes").getAsNumber().value().longValue());
+    assertEquals(25 * GIB, report.get("reserveBytes").getAsNumber().value().longValue());
+    assertTrue(report.get("lowOnSpace").getAsBoolean().value());
   }
 
   /** A volume whose free space the test sets. */

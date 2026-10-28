@@ -18,34 +18,41 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import org.apache.jena.atlas.json.JSON;
+import org.apache.jena.atlas.json.JsonObject;
 
 /**
- * {@code GET} {@value #PATH_SPEC}: the volume's free space and each TDB2 dataset's size, as
- * {@link StorageReport}. It sits behind the image's Shiro filter like every admin path.
+ * {@code GET} {@value #PATH_SPEC}: the data volume's size, free space and reserve, and whether
+ * writes are refused, for the client that decides when to compact. It sits behind the image's
+ * Shiro filter like every admin path.
  */
 public final class StorageServlet extends HttpServlet {
   public static final String PATH_SPEC = "/$/openmetadata/storage";
 
-  private final transient Path databases;
   private final transient StorageGuard guard;
 
-  public StorageServlet(final Path databases, final StorageGuard guard) {
-    this.databases = databases;
+  public StorageServlet(final StorageGuard guard) {
     this.guard = guard;
   }
 
   @Override
   protected void doGet(final HttpServletRequest request, final HttpServletResponse response)
       throws IOException {
-    final byte[] body =
-        JSON.toString(StorageReport.of(databases, guard).toJson()).getBytes(StandardCharsets.UTF_8);
+    final byte[] body = JSON.toString(report(guard)).getBytes(StandardCharsets.UTF_8);
     response.setStatus(200);
     response.setContentType("application/json");
     response.setContentLength(body.length);
     try (OutputStream out = response.getOutputStream()) {
       out.write(body);
     }
+  }
+
+  static JsonObject report(final StorageGuard guard) {
+    final JsonObject json = new JsonObject();
+    json.put("totalBytes", guard.totalBytes());
+    json.put("usableBytes", guard.usableBytes());
+    json.put("reserveBytes", guard.reserveBytes());
+    json.put("lowOnSpace", guard.isLowOnSpace());
+    return json;
   }
 }

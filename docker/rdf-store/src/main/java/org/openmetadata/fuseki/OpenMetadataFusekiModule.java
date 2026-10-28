@@ -40,14 +40,13 @@ public final class OpenMetadataFusekiModule implements FusekiAutoModule {
   public void prepare(
       final FusekiServer.Builder builder, final Set<String> datasetNames, final Model config) {
     final Map<String, String> environment = System.getenv();
-    final Path databases = storageRoot(environment);
-    final StorageGuard guard = StorageGuard.forVolume(databases, environment);
+    final StorageGuard guard = StorageGuard.forVolume(storageRoot(environment), environment);
     builder.registerOperation(Operation.GSP_RW, new BoundedGraphStore(guard::requireWritable));
     // Fuseki routes a POST to the dataset URL by content type; registering the operation without
     // one would drop that route and answer SPARQL updates sent there with 415.
     builder.registerOperation(
         Operation.Update, WebContent.contentTypeSPARQLUpdate, new GuardedUpdate(guard));
-    builder.addServlet(StorageServlet.PATH_SPEC, new StorageServlet(databases, guard));
+    builder.addServlet(StorageServlet.PATH_SPEC, new StorageServlet(guard));
   }
 
   /** The directory holding one TDB2 directory per dataset: $FUSEKI_BASE/databases by default. */
