@@ -468,6 +468,24 @@ public class EntityCsvTest {
   }
 
   @Test
+  void test_parseMalformedCsvReportsParserFailureInsteadOfThrowing() throws IOException {
+    // A stray character after a closing quote makes Commons CSV raise an UncheckedIOException
+    // while iterating records; it must be reported as an import failure, not propagated.
+    String csv = HEADER_STRING + "\"value1\"x,value2,value3" + LINE_SEPARATOR;
+
+    TestCsv parseCsv = new TestCsv();
+    assertNull(parseCsv.parse(csv));
+    assertNotNull(parseCsv.parse(csv, true));
+
+    TestCsv importCsv = new TestCsv();
+    CsvImportResult importResult = importCsv.importCsv(csv, true);
+    assertEquals(ApiStatus.ABORTED, importResult.getStatus(), importResult.toString());
+    assertTrue(
+        importResult.getAbortReason().contains("Invalid character between encapsulated token"),
+        importResult.getAbortReason());
+  }
+
+  @Test
   void test_getNextRecordRejectsInvalidFieldCountsAndMissingRequiredFields() throws IOException {
     TestCsv wrongFieldCountCsv = new TestCsv();
     wrongFieldCountCsv.enableProcessing();
