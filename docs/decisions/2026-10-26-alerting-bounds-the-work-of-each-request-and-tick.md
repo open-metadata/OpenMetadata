@@ -35,6 +35,10 @@ Every such path has a fixed bound, chosen well above what the UI or a normal ale
 A short read is not the end of the backlog: callers decide they are caught up from offsets,
 never from a read returning fewer rows than asked.
 
+A message past the chat rendering bound is not sent. On an event it is recorded as that
+event's failure for that channel; on a template test send it is answered as a body error, so a
+template too large on its own is caught before it is saved.
+
 A stored alert's bounds are checked by `AlertLimits` on every save, and a save may only refuse
 a value that grows past a bound. An alert stored past one, before the bound existed, keeps its
 value and stays editable. The create schema therefore states no bound, because PUT sends it
