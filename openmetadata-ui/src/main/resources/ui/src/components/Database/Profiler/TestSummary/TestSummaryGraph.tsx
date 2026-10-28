@@ -75,11 +75,11 @@ import TestSummaryStatusKey from './TestSummaryStatusKey';
 
 type PlottedPoint = TestCaseChartDataType['data'][number];
 
-// The tooltip is the app's own React component, so ECharts draws none.
 // The tooltip and the selection ring are the hover feedback. ECharts' own
 // hover state animated every dot and line and re-ordered the series on each
 // pass of the pointer, and Safari lost lines in that re-ordering.
 const NO_HOVER_STATE = { emphasis: { disabled: true } };
+// The tooltip is the app's own React component, so ECharts draws none.
 const TOOLTIP_OFF = { show: false };
 
 // Aborted is drawn as a ring, matching the status key: a run that produced no

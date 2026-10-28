@@ -743,6 +743,16 @@ describe('TestSummaryGraph', () => {
     });
   });
 
+  it('should give the dots of aborted and queued runs no hover state', () => {
+    render(
+      <TestSummaryGraph {...mockProps} testCaseResults={runsAroundAnAbort} />
+    );
+
+    expect(getSeries(placedSeriesKey('value')).seriesOption).toEqual(
+      expect.objectContaining({ emphasis: { disabled: true } })
+    );
+  });
+
   it('should draw several series as palette lines', () => {
     render(<TestSummaryGraph {...mockProps} />);
 

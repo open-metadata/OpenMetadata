@@ -184,6 +184,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/**",
         "openmetadata-ui/src/main/resources/ui/src/components/IncidentManager/**",
         "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Visualisations/Chart/DataDistributionHistogram*",
         "openmetadata-ui/src/main/resources/ui/src/components/Alerts/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/DataQuality/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/IncidentManager/**",
