@@ -705,7 +705,11 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   @Test
   void post_nestedColumnLevelTest_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTableWithNestedColumn(ns);
+    TagLabel nestedColumnTag = SharedEntities.get().PERSONAL_DATA_TAG_LABEL;
+    table.getColumns().getFirst().getChildren().getFirst().setTags(List.of(nestedColumnTag));
+    client.tables().update(table.getId().toString(), table);
     String columnLink =
         String.format(
             "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "address.city");
@@ -722,6 +726,54 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertTrue(
         created.getEntityLink().contains("::columns::address.city"),
         "Nested column link should be preserved, got " + created.getEntityLink());
+
+    long timestamp = System.currentTimeMillis();
+    CreateTestCaseResult result =
+        new CreateTestCaseResult()
+            .withTimestamp(timestamp)
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withResult("All nested city values match the regex");
+    client.testCaseResults().create(created.getFullyQualifiedName(), result);
+
+    List<TestCaseResult> storedResults = listTestCaseResults(created.getFullyQualifiedName());
+    assertEquals(1, storedResults.size());
+    assertEquals(timestamp, storedResults.getFirst().getTimestamp());
+    assertEquals(TestCaseStatus.Success, storedResults.getFirst().getTestCaseStatus());
+    assertEquals(result.getResult(), storedResults.getFirst().getResult());
+
+    TestCase fetched = client.testCases().get(created.getId().toString(), "tags,testCaseResult");
+    assertEquals(columnLink, fetched.getEntityLink());
+    assertNotNull(fetched.getTestCaseResult());
+    assertEquals(timestamp, fetched.getTestCaseResult().getTimestamp());
+    assertEquals(TestCaseStatus.Success, fetched.getTestCaseResult().getTestCaseStatus());
+    assertEquals(result.getResult(), fetched.getTestCaseResult().getResult());
+    assertNotNull(fetched.getTags());
+    assertEquals(
+        List.of(nestedColumnTag.getTagFQN()),
+        fetched.getTags().stream().map(TagLabel::getTagFQN).toList(),
+        "GET must inherit the tag attached only to the nested column");
+
+    ListResponse<TestCase> listed =
+        client
+            .testCases()
+            .list(
+                new ListParams()
+                    .setFields("tags,testCaseResult")
+                    .setLimit(10)
+                    .addQueryParam("includeAllTests", "true")
+                    .addQueryParam("entityLink", tableEntityLink(table)));
+    assertEquals(List.of(created.getId()), idsOf(listed));
+    TestCase listedTestCase = listed.getData().getFirst();
+    assertEquals(columnLink, listedTestCase.getEntityLink());
+    assertNotNull(listedTestCase.getTestCaseResult());
+    assertEquals(timestamp, listedTestCase.getTestCaseResult().getTimestamp());
+    assertEquals(TestCaseStatus.Success, listedTestCase.getTestCaseResult().getTestCaseStatus());
+    assertEquals(result.getResult(), listedTestCase.getTestCaseResult().getResult());
+    assertNotNull(listedTestCase.getTags());
+    assertEquals(
+        List.of(nestedColumnTag.getTagFQN()),
+        listedTestCase.getTags().stream().map(TagLabel::getTagFQN).toList(),
+        "List responses must inherit the tag attached only to the nested column");
   }
 
   @Test
