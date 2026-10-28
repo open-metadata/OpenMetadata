@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -981,20 +982,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
     }
-    AppScheduler.getInstance().deleteScheduledApplication(app);
-    Response response = patchInternal(uriInfo, securityContext, id, patch);
-    App updatedApp = (App) response.getEntity();
-    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
-      ApplicationHandler.getInstance()
-          .installApplication(
-              updatedApp,
-              Entity.getCollectionDAO(),
-              searchRepository,
-              securityContext.getUserPrincipal().getName());
-    }
-    // We don't want to store this information
-    unsetAppRuntimeProperties(updatedApp);
-    return response;
+    return patchScheduledApp(
+        app, () -> patchInternal(uriInfo, securityContext, id, patch), securityContext);
   }
 
   @PATCH
@@ -1033,20 +1022,42 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
     }
+    return patchScheduledApp(
+        app, () -> patchInternal(uriInfo, securityContext, fqn, patch), securityContext);
+  }
+
+  private Response patchScheduledApp(
+      App app, Supplier<Response> patch, SecurityContext securityContext)
+      throws SchedulerException {
+    boolean scheduled = SCHEDULED_TYPES.contains(app.getScheduleType());
     AppScheduler.getInstance().deleteScheduledApplication(app);
-    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
+    Response response;
+    try {
+      response = patch.get();
+    } catch (RuntimeException e) {
+      // The job is already gone when the patch is validated; a rejected edit must not leave the
+      // app unscheduled.
+      if (scheduled) {
+        install(app, securityContext);
+      }
+      throw e;
+    }
     App updatedApp = (App) response.getEntity();
-    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
-      ApplicationHandler.getInstance()
-          .installApplication(
-              updatedApp,
-              Entity.getCollectionDAO(),
-              searchRepository,
-              securityContext.getUserPrincipal().getName());
+    if (scheduled) {
+      install(updatedApp, securityContext);
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(updatedApp);
     return response;
+  }
+
+  private void install(App app, SecurityContext securityContext) {
+    ApplicationHandler.getInstance()
+        .installApplication(
+            app,
+            Entity.getCollectionDAO(),
+            searchRepository,
+            securityContext.getUserPrincipal().getName());
   }
 
   @PUT

@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROUP;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 import static org.openmetadata.service.jdbi3.AppRepository.APP_BOT_IMPERSONATION_ROLE;
@@ -73,9 +74,12 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
+import org.quartz.JobKey;
+import org.quartz.Scheduler;
 import org.quartz.TriggerBuilder;
 import org.quartz.impl.JobExecutionContextImpl;
 import org.quartz.spi.OperableTrigger;
@@ -1504,6 +1508,75 @@ public class AppsResourceIT {
           "An unknown zone id must be rejected");
       assertEquals(
           "America/New_York",
+          Apps.getByName(appName).getAppSchedule().getTimezone(),
+          "A rejected patch must leave the stored timezone untouched");
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_rejectedSchedulePatchKeepsInternalAppScheduled(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("keepSchedule");
+    RequestOptions patchOptions =
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
+    JobKey job = new JobKey(appName, APPS_JOB_GROUP);
+
+    try {
+      CreateAppMarketPlaceDefinitionReq marketPlaceReq =
+          new CreateAppMarketPlaceDefinitionReq()
+              .withName(appName)
+              .withDisplayName("Keep Schedule Test App")
+              .withDescription("Validates that a rejected patch keeps the Quartz job")
+              .withFeatures("schedule restore")
+              .withDeveloper("Test Developer")
+              .withDeveloperUrl("https://www.example.com")
+              .withPrivacyPolicyUrl("https://www.example.com/privacy")
+              .withSupportEmail("support@example.com")
+              .withClassName("org.openmetadata.service.resources.apps.TestApp")
+              .withAppType(AppType.Internal)
+              .withScheduleType(ScheduleType.Scheduled)
+              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+              .withAppConfiguration(new HashMap<>())
+              .withPermission(NativeAppPermission.All);
+      AppMarketPlaceDefinition marketPlaceDef =
+          httpClient.execute(
+              HttpMethod.POST,
+              "/v1/apps/marketplace",
+              marketPlaceReq,
+              AppMarketPlaceDefinition.class);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression("17 4 * * *")
+                      .withTimezone("Europe/Tallinn"));
+      App installedApp = httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+      Scheduler scheduler = AppScheduler.getInstance().getScheduler();
+      assertTrue(
+          scheduler.checkExists(job), "Installing a scheduled internal app registers its job");
+
+      String badZonePatch =
+          "[{\"op\":\"replace\",\"path\":\"/appSchedule/timezone\",\"value\":\"Mars/Olympus\"}]";
+      assertThrows(
+          Exception.class,
+          () ->
+              httpClient.executeForString(
+                  HttpMethod.PATCH, "/v1/apps/" + installedApp.getId(), badZonePatch, patchOptions),
+          "An unknown zone id must be rejected");
+      assertTrue(
+          scheduler.checkExists(job),
+          "A rejected patch must put the stored schedule back instead of leaving the app unscheduled");
+      assertEquals(
+          "Europe/Tallinn",
           Apps.getByName(appName).getAppSchedule().getTimezone(),
           "A rejected patch must leave the stored timezone untouched");
     } finally {
