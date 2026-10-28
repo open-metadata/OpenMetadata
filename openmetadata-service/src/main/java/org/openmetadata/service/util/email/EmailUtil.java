@@ -258,7 +258,12 @@ public class EmailUtil {
   public static CompletableFuture<Void> handOverNotificationEmail(
       String to, String subject, String htmlContent) {
     CompletableFuture<Void> outcome = CompletableFuture.completedFuture(null);
-    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer()) && mailer != null) {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      if (mailer == null) {
+        return CompletableFuture.failedFuture(
+            new IllegalStateException(
+                "SMTP mailer is not initialized. Verify the SMTP configuration."));
+      }
       Email email =
           EmailBuilder.startingBlank()
               .withSubject(subject)

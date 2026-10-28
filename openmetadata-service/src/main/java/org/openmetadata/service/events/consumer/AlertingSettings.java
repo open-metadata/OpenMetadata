@@ -10,16 +10,17 @@ import org.openmetadata.service.config.AlertingConfiguration;
  */
 public record AlertingSettings(
     Duration tickTimeBudget, boolean skipUnreachableTargetWithinTick, Sending sending) {
-  /** How messages leave. The defaults are what the server did before each could be chosen. */
+  /** How messages leave, including the explicit legacy fire-and-forget option. */
   public record Sending(
       boolean honourWebhookMethod, boolean awaitEmailOutcome, int targetSendConcurrency) {
+    public static final Sending DEFAULT = new Sending(false, true, 1);
     public static final Sending AS_BEFORE = new Sending(false, false, 1);
   }
 
   private static volatile AlertingSettings current = from(new AlertingConfiguration());
 
   public AlertingSettings(Duration tickTimeBudget, boolean skipUnreachableTargetWithinTick) {
-    this(tickTimeBudget, skipUnreachableTargetWithinTick, Sending.AS_BEFORE);
+    this(tickTimeBudget, skipUnreachableTargetWithinTick, Sending.DEFAULT);
   }
 
   public static AlertingSettings current() {

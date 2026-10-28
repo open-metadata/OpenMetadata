@@ -39,8 +39,22 @@ class AlertingConfigurationTest {
 
     assertEquals(Duration.ofSeconds(60), settings.tickTimeBudget());
     assertFalse(settings.skipUnreachableTargetWithinTick());
-    assertEquals(AlertingSettings.Sending.AS_BEFORE, settings.sending());
+    assertTrue(settings.sending().awaitEmailOutcome());
+    assertFalse(settings.sending().honourWebhookMethod());
+    assertEquals(1, settings.sending().targetSendConcurrency());
     assertTrue(VALIDATOR.validate(new AlertingConfiguration()).isEmpty());
+  }
+
+  @Test
+  void defaultSettingsAwaitSmtpOutcome() {
+    assertTrue(new AlertingSettings(Duration.ofSeconds(60), false).sending().awaitEmailOutcome());
+  }
+
+  @Test
+  void outcomeWaitingCanBeExplicitlyDisabled() {
+    AlertingConfiguration configuration = new AlertingConfiguration();
+    configuration.setAwaitEmailOutcome(false);
+    assertFalse(AlertingSettings.from(configuration).sending().awaitEmailOutcome());
   }
 
   @Test
@@ -64,13 +78,14 @@ class AlertingConfigurationTest {
   @Test
   void shippedYamlCarriesTheDefaults() throws Exception {
     assumeTrue(System.getenv("ALERTING_TICK_TIME_BUDGET_SECONDS") == null);
+    assumeTrue(System.getenv("ALERTING_AWAIT_EMAIL_OUTCOME") == null);
 
     AlertingConfiguration shipped = parse(BUDGET_PLACEHOLDER).getAlertingConfiguration();
 
     assertEquals(60, shipped.getTickTimeBudgetSeconds());
     assertFalse(shipped.isSkipUnreachableTargetWithinTick());
     assertFalse(shipped.isHonourWebhookMethod());
-    assertFalse(shipped.isAwaitEmailOutcome());
+    assertTrue(shipped.isAwaitEmailOutcome());
     assertEquals(1, shipped.getTargetSendConcurrency());
   }
 

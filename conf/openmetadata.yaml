@@ -882,7 +882,7 @@ alerting:
   # When true, an event waits for the mail server's answer to each of its emails, up to the time
   # left in the tick's budget, and a rejection or a wait that runs out is recorded as a failure.
   # When false an email counts as delivered once it is handed to the mail library.
-  awaitEmailOutcome: ${ALERTING_AWAIT_EMAIL_OUTCOME:-false}
+  awaitEmailOutcome: ${ALERTING_AWAIT_EMAIL_OUTCOME:-true}
   # How many of one event's targets are sent to at the same time, 1 to 8. With 1 they are sent one
   # after another, so an event takes the sum of its targets' waits. The next event never starts
   # before every target of the previous one is done.
