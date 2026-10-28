@@ -65,6 +65,7 @@ import org.openmetadata.service.rdf.storage.RdfStorageFactory;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
+import org.openmetadata.service.rdf.storage.StorageFacts;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 
 @Slf4j
@@ -4168,6 +4169,11 @@ public class RdfRepository {
   /** Compacts the dataset this repository writes to and reports the outcome. */
   public CompactionResult compact(final Duration maxWait) {
     return isEnabled() ? storageService.compact(maxWait) : CompactionResult.unsupported();
+  }
+
+  /** The store's data volume, when the store reports it. */
+  public Optional<StorageFacts> storageFacts() {
+    return isEnabled() ? storageService.storageFacts() : Optional.empty();
   }
 
   /**

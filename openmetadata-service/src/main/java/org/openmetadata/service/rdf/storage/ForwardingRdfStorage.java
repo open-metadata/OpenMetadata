@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf.storage;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
@@ -119,6 +120,11 @@ public abstract class ForwardingRdfStorage implements RdfStorageInterface {
   @Override
   public CompactionResult compact(Duration maxWait) {
     return delegate().compact(maxWait);
+  }
+
+  @Override
+  public Optional<StorageFacts> storageFacts() {
+    return delegate().storageFacts();
   }
 
   @Override

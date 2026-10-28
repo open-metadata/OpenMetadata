@@ -17,13 +17,14 @@ import java.util.Optional;
 import lombok.Getter;
 
 /**
- * A write to the RDF store was held back because storage maintenance is running. Nothing was sent
- * to the store, so retrying after {@link #getRetryAfter()} is always safe, and the write is not a
- * delivery failure: it must not use up a retry, trip the circuit breaker or mark the projection
- * degraded.
+ * A write to the RDF store was held back because storage maintenance is running or the store is
+ * low on disk. Nothing was applied, so retrying after {@link #getRetryAfter()} is always safe, and
+ * the write is not a delivery failure: it must not use up a retry, trip the circuit breaker or mark
+ * the projection degraded.
  */
 @Getter
-public final class RdfStorageMaintenanceException extends RuntimeException {
+public sealed class RdfStorageMaintenanceException extends RuntimeException
+    permits RdfStorageLowDiskException {
   private final transient Duration retryAfter;
 
   public RdfStorageMaintenanceException(final String maintenanceJob, final Duration retryAfter) {
