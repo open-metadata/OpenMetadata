@@ -89,7 +89,7 @@ public class FullyQualifiedName {
   }
 
   private static <L extends FqnBaseListener> void walk(String string, L listener) {
-    FqnContext fqn = parse(string);
+    final FqnContext fqn = parse(string);
     ParseTreeWalker walker = new ParseTreeWalker();
     walker.walk(listener, fqn);
   }
@@ -98,9 +98,9 @@ public class FullyQualifiedName {
    * FQNs arrive from request paths and query parameters, so malformed input (an unbalanced quote,
    * an empty segment) is a client error and is reported as one.
    */
-  private static FqnContext parse(String fullyQualifiedName) {
-    FqnLexer fqnLexer = new FqnLexer(CharStreams.fromString(fullyQualifiedName));
-    FqnParser fqnParser = new FqnParser(new CommonTokenStream(fqnLexer));
+  private static FqnContext parse(final String fullyQualifiedName) {
+    final FqnLexer fqnLexer = new FqnLexer(CharStreams.fromString(fullyQualifiedName));
+    final FqnParser fqnParser = new FqnParser(new CommonTokenStream(fqnLexer));
     fqnParser.setErrorHandler(new BailErrorStrategy());
     try {
       return fqnParser.fqn();
