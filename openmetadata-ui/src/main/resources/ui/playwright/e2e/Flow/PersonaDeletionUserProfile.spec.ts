@@ -12,6 +12,7 @@
  */
 
 import { expect, Page } from '@playwright/test';
+import { migratedTo } from '../../constant/migration';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -22,7 +23,6 @@ import {
   navigateToPersonaWithPagination,
 } from '../../utils/persona';
 import { test } from '../fixtures/pages';
-import { migratedTo } from '../../constant/migration';
 
 const PERSONA_DETAILS = {
   name: `test-persona-${uuid()}`,

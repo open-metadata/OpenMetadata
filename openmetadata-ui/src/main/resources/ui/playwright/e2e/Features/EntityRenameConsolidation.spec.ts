@@ -13,6 +13,7 @@
 
 import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { migratedTo } from '../../constant/migration';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { expect, test } from '../../support/fixtures/base';
@@ -31,7 +32,6 @@ import {
 import { selectDomain } from '../../utils/domain';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
-import { migratedTo } from '../../constant/migration';
 
 const adminUser = new UserClass();
 

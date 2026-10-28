@@ -27,6 +27,7 @@
 
 import test, { expect } from '@playwright/test';
 import { LONG_ACTION_TIMEOUT } from '../../../constant/common';
+import { migratedTo } from '../../../constant/migration';
 import { SidebarItem } from '../../../constant/sidebar';
 import { TableClass } from '../../../support/entity/TableClass';
 import {
@@ -35,7 +36,6 @@ import {
   redirectToHomePage,
 } from '../../../utils/common';
 import { sidebarClick } from '../../../utils/sidebar';
-import { migratedTo } from '../../../constant/migration';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

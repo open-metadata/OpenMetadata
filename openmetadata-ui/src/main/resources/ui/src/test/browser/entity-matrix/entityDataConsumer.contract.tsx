@@ -28,12 +28,13 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import { page } from 'vitest/browser';
 import { DATA_CONSUMER } from '../fixtures/personas';
+import { suiteTimeout } from '../timeouts';
 import {
   addUpdateRemoveChildDescription,
   addUpdateRemoveGlossaryTerms,
   addUpdateRemoveTags,
-  ChildServer,
   childRow,
+  ChildServer,
   entityConfig,
   EntityLabel,
   EntityPage,
@@ -48,7 +49,6 @@ import {
   upVoteThenDownVote,
   USERS,
 } from './entityMatrix';
-import { suiteTimeout } from '../timeouts';
 
 export const describeDataConsumerFlows = (label: EntityLabel) => {
   const config = entityConfig(label);

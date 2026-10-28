@@ -12,12 +12,12 @@
  */
 
 import { APIRequestContext } from '@playwright/test';
+import { migratedTo } from '../../../constant/migration';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage, getApiContext } from '../../../utils/common';
 import { signInThroughForm } from '../../../utils/formSignIn';
 import { withAppConfigLock } from '../../Utils/appConfigMutex';
-import { migratedTo } from '../../../constant/migration';
 
 /**
  * Pure API-level authz coverage for the preferences surface

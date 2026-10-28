@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { migratedTo } from '../../constant/migration';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -32,7 +33,6 @@ import {
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { migratedTo } from '../../constant/migration';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

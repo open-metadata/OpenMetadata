@@ -38,8 +38,8 @@ import {
 import { ADMIN } from '../fixtures/personas';
 import { ALL_COLUMNS } from '../fixtures/table';
 import { EMPTY_LIST, worker } from '../msw';
-import { setValue, VALUES } from './customPropertyEditors';
 import { suiteTimeout } from '../timeouts';
+import { setValue, VALUES } from './customPropertyEditors';
 
 const COLUMN_FQN = ALL_COLUMNS[0].fullyQualifiedName ?? '';
 

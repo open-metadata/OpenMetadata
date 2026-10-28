@@ -21,16 +21,16 @@
 import { describe, expect, test } from 'vitest';
 import { Locator, page, userEvent } from 'vitest/browser';
 import { CustomProperty } from '../../../generated/type/customProperty';
-import { serveEntityType, TypeServer } from '../fixtures/customProperties';
-import { serveSearch } from '../fixtures/search';
-import { renderApp } from '../renderWithApp';
 import {
   modal,
   openAdvancedSearch,
   pickField,
 } from '../advanced-search/queryBuilder';
-import { blockEditor } from './customPropertyEditors';
+import { serveEntityType, TypeServer } from '../fixtures/customProperties';
+import { serveSearch } from '../fixtures/search';
+import { renderApp } from '../renderWithApp';
 import { suiteTimeout } from '../timeouts';
+import { blockEditor } from './customPropertyEditors';
 
 /** One entity type's settings page, keyed as the spec keys it. */
 export interface SettingsEntity {

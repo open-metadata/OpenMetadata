@@ -25,9 +25,9 @@ import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import {
+  entityConfig,
   EntityLabel,
   EntityLike,
-  entityConfig,
   mountEntityPage,
 } from '../entity-matrix/entityMatrix';
 import {
@@ -41,8 +41,8 @@ import { ADMIN } from '../fixtures/personas';
 import { serveSearch } from '../fixtures/search';
 import { EMPTY_LIST, worker } from '../msw';
 import { renderApp } from '../renderWithApp';
-import { expectCardShows, setValue, VALUES } from './customPropertyEditors';
 import { suiteTimeout } from '../timeouts';
+import { expectCardShows, setValue, VALUES } from './customPropertyEditors';
 
 /** The entity type each page's custom properties belong to, and its Explore tab. */
 const EXPLORE: Partial<

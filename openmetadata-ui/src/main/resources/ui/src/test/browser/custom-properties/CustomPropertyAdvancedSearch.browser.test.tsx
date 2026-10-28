@@ -23,12 +23,6 @@
 import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import {
-  customProperty,
-  FieldTypeName,
-  SPEC_CONFIG,
-  summaryOf,
-} from '../fixtures/customProperties';
-import {
   applyAdvancedSearch,
   clearAdvancedSearch,
   modal,
@@ -39,6 +33,12 @@ import {
   rule,
   serveExplore,
 } from '../advanced-search/queryBuilder';
+import {
+  customProperty,
+  FieldTypeName,
+  SPEC_CONFIG,
+  summaryOf,
+} from '../fixtures/customProperties';
 import { suiteTimeout } from '../timeouts';
 
 /** As long as the spec's generated names, so the labels overflow the select. */

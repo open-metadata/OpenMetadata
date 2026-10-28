@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { migratedTo } from '../../../constant/migration';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { migratedTo } from '../../../constant/migration';
 
 /**
  * Task Suggestion API Tests

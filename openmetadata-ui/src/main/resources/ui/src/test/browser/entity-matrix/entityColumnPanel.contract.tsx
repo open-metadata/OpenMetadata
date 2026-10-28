@@ -33,20 +33,21 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../generated/tests/testCaseResolutionStatus';
+import { makeMlModel, UNTOUCHED } from '../fixtures/dataAssets';
+import { GLOSSARY_TERMS } from '../fixtures/glossary';
+import { ADMIN, DATA_CONSUMER } from '../fixtures/personas';
 import {
   makeColumn,
   makeTable,
   serveColumns,
   TABLE_FQN,
 } from '../fixtures/table';
-import { ADMIN, DATA_CONSUMER } from '../fixtures/personas';
-import { worker } from '../msw';
-import { makeMlModel, UNTOUCHED } from '../fixtures/dataAssets';
-import { GLOSSARY_TERMS } from '../fixtures/glossary';
 import { PERSONAL_DATA_PERSONAL, PII_NONE } from '../fixtures/tags';
+import { worker } from '../msw';
+import { suiteTimeout } from '../timeouts';
 import {
-  ChildServer,
   childRow,
+  ChildServer,
   DESCRIPTION,
   entityConfig,
   EntityLabel,
@@ -60,7 +61,6 @@ import {
   tagFqns,
   toggleTag,
 } from './entityMatrix';
-import { suiteTimeout } from '../timeouts';
 
 export const panel = () => page.getByCSS('.column-detail-panel');
 

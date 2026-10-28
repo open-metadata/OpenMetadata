@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { migratedTo } from '../../constant/migration';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
@@ -20,7 +21,6 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
-import { migratedTo } from '../../constant/migration';
 
 /**
  * Playwright tests for the pipeline-as-annotator lineage scenario.

@@ -19,9 +19,9 @@
 import { http, HttpResponse } from 'msw';
 import { expect } from 'vitest';
 import { Locator, page, userEvent } from 'vitest/browser';
+import { EntityStatus } from '../../../generated/entity/data/searchIndex';
 import '../entity-matrix/entityMatrix';
 import { SearchCorpus, serveSearch } from '../fixtures/search';
-import { EntityStatus } from '../../../generated/entity/data/searchIndex';
 import { EMPTY_LIST, worker } from '../msw';
 import { renderApp } from '../renderWithApp';
 

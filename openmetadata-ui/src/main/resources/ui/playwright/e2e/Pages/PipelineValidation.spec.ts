@@ -12,9 +12,9 @@
  */
 
 import { type APIRequestContext } from '@playwright/test';
+import { migratedTo } from '../../constant/migration';
 import { expect, test } from '../../support/fixtures/base';
 import { getDefaultAdminAPIContext, uuid } from '../../utils/common';
-import { migratedTo } from '../../constant/migration';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

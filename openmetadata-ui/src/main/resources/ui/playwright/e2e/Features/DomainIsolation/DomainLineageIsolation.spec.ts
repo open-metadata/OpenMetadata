@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { migratedTo } from '../../../constant/migration';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test as base } from '../../../support/fixtures/base';
@@ -26,7 +27,6 @@ import {
   visitLineageTab,
 } from '../../../utils/lineage';
 import { enableDisableSearchRBAC } from '../../../utils/searchRBAC';
-import { migratedTo } from '../../../constant/migration';
 
 // Issue #24180 — lineage search is RBAC-gated by the global `enableAccessControl` setting. With it
 // on, the lineage graph for a user holding the seeded DomainOnlyAccessRole must prune nodes that

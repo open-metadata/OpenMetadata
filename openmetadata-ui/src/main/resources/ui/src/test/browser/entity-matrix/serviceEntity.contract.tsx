@@ -47,12 +47,13 @@ import {
   makeStorageService,
 } from '../fixtures/services';
 import { worker } from '../msw';
+import { suiteTimeout } from '../timeouts';
 import {
   addReplaceRemoveTeamOwner,
-  announcementLifecycle,
   addReplaceRemoveUserOwners,
   addUpdateRemoveGlossaryTerms,
   addUpdateRemoveTags,
+  announcementLifecycle,
   DeleteTarget,
   domainWithDataProducts,
   EntityLike,
@@ -68,7 +69,6 @@ import {
   updateDescription,
   updateDisplayName,
 } from './entityMatrix';
-import { suiteTimeout } from '../timeouts';
 
 export type ServiceLabel =
   | 'ApiService'

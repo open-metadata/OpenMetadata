@@ -32,11 +32,7 @@ import {
 } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { AssetCertification } from '../../../generated/type/assetCertification';
-import {
-  EntityServer,
-  serveEntity,
-  serveSeededEntityRules,
-} from '../fixtures/entityPage';
+import { AnnouncementServer } from '../fixtures/announcements';
 import {
   makeApiEndpoint,
   makeChart,
@@ -55,11 +51,21 @@ import {
   makeWorksheet,
   UNTOUCHED,
 } from '../fixtures/dataAssets';
-import { AnnouncementServer } from '../fixtures/announcements';
 import { DATA_PRODUCTS, DOMAINS, serveDomains } from '../fixtures/domains';
+import {
+  EntityServer,
+  serveEntity,
+  serveSeededEntityRules,
+} from '../fixtures/entityPage';
 import { GLOSSARY_TERMS, serveGlossary } from '../fixtures/glossary';
 import { Persona, servePersona } from '../fixtures/personas';
 import { serveSearch } from '../fixtures/search';
+import {
+  ALL_COLUMNS,
+  makeTable,
+  serveColumns,
+  TABLE_FQN,
+} from '../fixtures/table';
 import {
   CERTIFICATIONS,
   CLASSIFICATION_TAGS,
@@ -68,12 +74,6 @@ import {
   serveCertifications,
   serveTiers,
 } from '../fixtures/tags';
-import {
-  ALL_COLUMNS,
-  makeTable,
-  serveColumns,
-  TABLE_FQN,
-} from '../fixtures/table';
 import { EMPTY_LIST, worker } from '../msw';
 import { renderApp } from '../renderWithApp';
 

@@ -22,8 +22,8 @@ import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import {
-  EntityLabel,
   entityConfig,
+  EntityLabel,
   EntityPage,
   mountEntityPage,
   TEAMS,
@@ -37,6 +37,7 @@ import {
 import { ADMIN } from '../fixtures/personas';
 import { serveSearch } from '../fixtures/search';
 import { EMPTY_LIST, worker } from '../msw';
+import { suiteTimeout } from '../timeouts';
 import {
   blockEditor,
   closeListbox,
@@ -45,7 +46,6 @@ import {
   expectCardShows,
   openEditModal,
 } from './customPropertyEditors';
-import { suiteTimeout } from '../timeouts';
 
 const card = (type: FieldTypeName) =>
   page.getByTestId(`custom-property-${propertyOf(type).name}-card`);

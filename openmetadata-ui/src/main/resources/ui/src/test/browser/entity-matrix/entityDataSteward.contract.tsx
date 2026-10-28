@@ -24,14 +24,15 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { DATA_STEWARD } from '../fixtures/personas';
+import { suiteTimeout } from '../timeouts';
 import {
   addReplaceRemoveTeamOwner,
   addReplaceRemoveUserOwners,
   addUpdateRemoveChildDescription,
   addUpdateRemoveGlossaryTerms,
   addUpdateRemoveTags,
-  ChildServer,
   childRow,
+  ChildServer,
   EntityConfig,
   entityConfig,
   EntityLabel,
@@ -45,7 +46,6 @@ import {
   updateDisplayName,
   upVoteThenDownVote,
 } from './entityMatrix';
-import { suiteTimeout } from '../timeouts';
 
 export const describeDataStewardFlows = (label: EntityLabel) => {
   const config: EntityConfig = entityConfig(label);

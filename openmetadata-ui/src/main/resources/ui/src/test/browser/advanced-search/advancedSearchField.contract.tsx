@@ -24,6 +24,7 @@
  */
 import { beforeEach, describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
+import { suiteTimeout } from '../timeouts';
 import {
   applyAdvancedSearch,
   clearAdvancedSearch,
@@ -35,7 +36,6 @@ import {
   pickSelect,
   serveExplore,
 } from './queryBuilder';
-import { suiteTimeout } from '../timeouts';
 
 /** A field as the spec lists it: its label and the ES field it filters. */
 export interface SearchField {

@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { migratedTo } from '../../constant/migration';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { migratedTo } from '../../constant/migration';
 
 const metricSuffix = uuid();
 const metric = new MetricClass();

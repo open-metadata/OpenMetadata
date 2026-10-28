@@ -26,9 +26,9 @@
 
 import test, { expect } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../../../constant/common';
+import { migratedTo } from '../../../constant/migration';
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage } from '../../../utils/common';
-import { migratedTo } from '../../../constant/migration';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

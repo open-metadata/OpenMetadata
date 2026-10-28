@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { migratedTo } from '../../../constant/migration';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test as base } from '../../../support/fixtures/base';
@@ -22,7 +23,6 @@ import {
   assignDomainToTable,
   safeDelete,
 } from '../../../utils/domainIsolationUtils';
-import { migratedTo } from '../../../constant/migration';
 
 // Issue #24180 — a user holding the seeded DomainOnlyAccessRole must only see tasks about entities
 // in their accessible domains. Task isolation is role-based (EntityUtil.addDomainQueryParam +

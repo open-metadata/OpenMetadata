@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { migratedTo } from '../../../constant/migration';
 import { Domain } from '../../../support/domain/Domain';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { migratedTo } from '../../../constant/migration';
 
 const RESOLUTION_IT = migratedTo.javaIT(
   'TaskEntityTypeResolutionIT#approvedMetadataTaskAppliesToEntity'

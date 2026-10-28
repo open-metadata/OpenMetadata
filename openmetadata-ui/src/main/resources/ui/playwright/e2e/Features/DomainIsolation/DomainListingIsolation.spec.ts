@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { migratedTo } from '../../../constant/migration';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { expect, test as base } from '../../../support/fixtures/base';
@@ -26,7 +27,6 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForSearchIndexed } from '../../../utils/polling';
 import { enableDisableSearchRBAC } from '../../../utils/searchRBAC';
 import { sidebarClick } from '../../../utils/sidebar';
-import { migratedTo } from '../../../constant/migration';
 
 // Issue #24180 — the Domains listing page is driven by the `index=domain` search query, which is
 // RBAC-gated by the seeded DomainOnlyAccessRole. A restricted user must only see the domain cards

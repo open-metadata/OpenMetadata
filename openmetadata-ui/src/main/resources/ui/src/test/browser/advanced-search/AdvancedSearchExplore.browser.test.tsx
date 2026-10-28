@@ -20,6 +20,7 @@ import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { EntityStatus } from '../../../generated/entity/data/searchIndex';
 import { makeTable } from '../fixtures/table';
+import { suiteTimeout } from '../timeouts';
 import {
   applyAdvancedSearch,
   clearAdvancedSearch,
@@ -31,7 +32,6 @@ import {
   rule,
   serveExplore,
 } from './queryBuilder';
-import { suiteTimeout } from '../timeouts';
 
 /** Three tables, so a filtered search has a count to show. */
 const TABLES = [1, 2, 3].map((n) => ({

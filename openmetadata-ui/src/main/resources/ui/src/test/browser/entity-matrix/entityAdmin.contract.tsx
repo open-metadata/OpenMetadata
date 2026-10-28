@@ -38,6 +38,7 @@ import {
   serveEntities,
 } from '../fixtures/hierarchy';
 import { ADMIN, DATA_CONSUMER } from '../fixtures/personas';
+import { suiteTimeout } from '../timeouts';
 import {
   announcementLifecycle,
   DeleteTarget,
@@ -57,7 +58,6 @@ import {
   usersPanel,
 } from './entityMatrix';
 import { landingOn } from './serviceEntity.contract';
-import { suiteTimeout } from '../timeouts';
 
 /** Where each page goes after a hard delete (its `afterDeleteAction`). */
 const DELETE_TARGETS: Record<EntityLabel, () => DeleteTarget> = {

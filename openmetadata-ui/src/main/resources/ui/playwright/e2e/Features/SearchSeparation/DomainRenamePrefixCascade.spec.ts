@@ -26,10 +26,10 @@
  */
 
 import test, { expect } from '@playwright/test';
+import { migratedTo } from '../../../constant/migration';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage, uuid } from '../../../utils/common';
-import { migratedTo } from '../../../constant/migration';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

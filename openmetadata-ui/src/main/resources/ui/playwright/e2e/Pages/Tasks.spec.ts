@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { migratedTo } from '../../constant/migration';
 import { expect, test } from '../../fixtures/testNamespace';
 import { TaskClass } from '../../support/entity/TaskClass';
 import { UserClass } from '../../support/user/UserClass';
 import { findTaskInList } from '../../utils/taskAPI';
-import { migratedTo } from '../../constant/migration';
 
 test.describe('Task Entity API Tests', () => {
   const DAR_EXPIRATION_MS = 14 * 24 * 60 * 60 * 1000;

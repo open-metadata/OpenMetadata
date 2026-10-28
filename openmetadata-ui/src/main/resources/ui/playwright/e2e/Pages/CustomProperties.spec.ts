@@ -36,9 +36,9 @@ import {
   CP_RANGE_VALUES,
 } from '../../constant/customPropertyAdvancedSearch';
 import { ENDPOINT_TO_EXPLORE_TAB_MAP } from '../../constant/explore';
+import { migratedTo } from '../../constant/migration';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
-import { migratedTo } from '../../constant/migration';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';

@@ -39,8 +39,8 @@ import {
   MessagingServiceType,
 } from '../../../generated/entity/services/messagingService';
 import {
-  MlModelServiceType,
   MlmodelService,
+  MlModelServiceType,
 } from '../../../generated/entity/services/mlmodelService';
 import {
   PipelineService,

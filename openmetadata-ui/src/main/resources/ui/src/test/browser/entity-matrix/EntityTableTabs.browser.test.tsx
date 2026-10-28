@@ -17,16 +17,16 @@
  * denies ViewQueries and ViewSampleData finding both tabs closed. Real page,
  * real tabs; only the network is mocked.
  */
+import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { http, HttpResponse } from 'msw';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { UNTOUCHED } from '../fixtures/dataAssets';
 import { ADMIN, DATA_CONSUMER } from '../fixtures/personas';
 import { makeTable, TABLE_FQN } from '../fixtures/table';
 import { EMPTY_LIST, worker } from '../msw';
-import { entityConfig, mountEntityPage } from './entityMatrix';
 import { suiteTimeout } from '../timeouts';
+import { entityConfig, mountEntityPage } from './entityMatrix';
 
 const table = entityConfig('Table');
 
