@@ -128,8 +128,8 @@ class FullyQualifiedNameTest {
   @Test
   void test_invalid() {
     // Empty quoted segments ("") and unbalanced quotes are not valid FQN segments either.
-    for (String malformed : List.of("..a", "a..", "\"\"", "a.\"\".b", "\"", "a.\"b")) {
-      IllegalArgumentException error =
+    for (final String malformed : List.of("..a", "a..", "\"\"", "a.\"\".b", "\"", "a.\"b")) {
+      final IllegalArgumentException error =
           assertThrows(IllegalArgumentException.class, () -> FullyQualifiedName.split(malformed));
       assertEquals("Invalid fully qualified name " + malformed, error.getMessage());
       assertInstanceOf(ParseCancellationException.class, error.getCause());
