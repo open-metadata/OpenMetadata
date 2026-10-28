@@ -13,6 +13,7 @@ REST Auth & Client for Hex
 """
 
 import traceback
+from functools import cached_property
 from typing import List  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.dashboard.hexConnection import (
@@ -95,8 +96,27 @@ class HexApiClient:
 
         return projects
 
-    def get_project_url(self, project: Project) -> str:
+    @cached_property
+    def workspace_id(self) -> str | None:
+        """
+        Hex app URLs are scoped by the workspace (org) UUID, which no project endpoint returns
+        """
+        try:
+            response = self.client.get("/users/me")
+            if not isinstance(response, dict):
+                raise TypeError(f"Unexpected /users/me response: {response!r}")  # noqa: TRY301
+            return response["org"]["id"]
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not fetch the Hex workspace id, dashboard URLs will be skipped: %s", exc)
+            return None
+
+    def get_project_url(self, project: Project) -> str | None:
         """
         Build the URL for a project
         """
-        return f"{clean_uri(self.config.hostPort)}/app/projects/{project.id}"
+        if not self.workspace_id:
+            return None
+        # Only editors can open the notebook (/hex); a published app (/app) is viewable by everyone
+        path = "app" if project.lastPublishedAt else "hex"
+        return f"{clean_uri(self.config.hostPort)}/{self.workspace_id}/{path}/{project.id}"
