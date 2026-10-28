@@ -389,16 +389,23 @@ def test_ingestion_default_make_installs_application(nox_repo: Path) -> None:
 
 @pytest.mark.parametrize("directory", [".", "ingestion"])
 def test_direct_nox_session_installs_locked_profile(nox_repo: Path, directory: str) -> None:
+    prefix_file = nox_repo / "unit-python-prefix"
+    (nox_repo / "ingestion/tests/unit/test_selection.py").write_text(
+        "import sys\nfrom pathlib import Path\n\ndef test_unit_selected():\n"
+        f"    Path({str(prefix_file)!r}).write_text(sys.prefix)\n"
+        "\ndef test_unit_rejected():\n    assert False\n"
+    )
     noxfile = "ingestion/noxfile.py" if directory == "." else "noxfile.py"
     result = run(
         "nox", "-f", noxfile, "-s", "unit-tests", "--", "-k", "selected and not rejected", cwd=nox_repo / directory
     )
     assert_success(result)
     assert reported_test_names(nox_repo, "unit") == ["test_unit_selected"]
-    environments = list((nox_repo / "ingestion/.nox").glob("unit-tests*/bin/python"))
-    assert len(environments) == 1
+    environment = Path(prefix_file.read_text())
+    assert environment.parent == nox_repo / "ingestion/.nox"
+    assert (environment / "pyvenv.cfg").is_file()
     assert not (nox_repo / ".nox").exists()
-    assert_success(run(str(environments[0]), "-c", "import pytest, coverage, uv", cwd=nox_repo))
+    assert_success(run(str(environment / "bin/python"), "-I", "-c", "import pytest, coverage, uv", cwd=nox_repo))
 
 
 def test_nox_rejects_stale_lock_before_executing(nox_repo: Path) -> None:
