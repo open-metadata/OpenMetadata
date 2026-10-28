@@ -27,7 +27,8 @@ def regex_sub(
     With `required`, a pattern that matches nothing exits non-zero instead of leaving the file
     untouched: a release bump whose pattern no longer fits its file otherwise ships the old version.
     `required` stays off by default because Collate's release bump imports this function and
-    expects some of its patterns to match nothing on a release branch.
+    expects some of its patterns to match nothing on a release branch
+    (ADR:2026-10-28-regex-sub-stays-lenient-by-default).
     """
     with open(file_path, "r") as f:
         content = f.read()
@@ -74,11 +75,13 @@ def update_docker_tag(args):
 
     # `required` only catches a file where nothing matched; an image line in a new shape would
     # still keep its old tag while the others move on.
+    # The tag must end where the line's tag ends: `:2.1.0` is also a prefix of `:2.1.0-SNAPSHOT`.
+    bumped = re.compile(rf":{re.escape(tag)}(?![\w.-])")
     with open(file_path, "r") as f:
         stale = [
             line.strip()
             for line in f
-            if "docker.getcollate.io/openmetadata/" in line and f":{tag}" not in line
+            if "docker.getcollate.io/openmetadata/" in line and not bumped.search(line)
         ]
     if stale:
         logger.error(f"Image lines in {file_path} matched nothing: {stale}")
