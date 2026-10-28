@@ -11,7 +11,33 @@
  *  limitations under the License.
  */
 
-import { getHtmlStringFromMarkdownString } from '../../../utils/BlockEditorPureUtils';
+import {
+  getHtmlStringFromMarkdownString,
+  isDescriptionContentEmpty,
+} from '../../../utils/BlockEditorPureUtils';
+
+const BLOCK_TAGS = new Set([
+  'P',
+  'DIV',
+  'UL',
+  'OL',
+  'BLOCKQUOTE',
+  'PRE',
+  'TABLE',
+  'HR',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+]);
+
+const getPlainText = (element: Element) => {
+  element.querySelectorAll('br').forEach((br) => br.replaceWith(' '));
+
+  return (element.textContent ?? '').replace(/\s+/g, ' ').trim();
+};
 
 /**
  * A tier description is a summary block followed by its details. Seeded tiers
@@ -19,21 +45,30 @@ import { getHtmlStringFromMarkdownString } from '../../../utils/BlockEditorPureU
  * HTML: the first block is the summary text, the rest are the details.
  */
 export const splitTierDescription = (description = '') => {
-  const doc = new DOMParser().parseFromString(
+  const { body } = new DOMParser().parseFromString(
     getHtmlStringFromMarkdownString(description),
     'text/html'
   );
-  // The editor saves stray empty paragraphs; they are neither summary nor details.
-  const [first, ...rest] = Array.from(doc.body.children).filter((element) =>
-    element.textContent?.trim()
+  const nodes = Array.from(body.childNodes);
+  const isBlockStructured = nodes.every((node) =>
+    node.nodeType === Node.ELEMENT_NODE
+      ? BLOCK_TAGS.has((node as Element).tagName)
+      : !node.textContent?.trim()
   );
 
-  if (!first) {
-    return { summary: doc.body.textContent?.trim() ?? '', details: '' };
+  // Inline-only content (text or <strong> at the top level) is one summary.
+  if (!isBlockStructured) {
+    return { summary: getPlainText(body), details: '' };
   }
 
+  // The editor saves stray empty paragraphs; they are neither summary nor
+  // details. Image-only blocks are not empty and stay in the details.
+  const [first, ...rest] = Array.from(body.children).filter(
+    (element) => !isDescriptionContentEmpty(element.outerHTML)
+  );
+
   return {
-    summary: first.textContent?.trim() ?? '',
+    summary: first ? getPlainText(first) : '',
     details: rest.map((element) => element.outerHTML).join(''),
   };
 };

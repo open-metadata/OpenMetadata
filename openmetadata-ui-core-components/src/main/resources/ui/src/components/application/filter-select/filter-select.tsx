@@ -325,9 +325,14 @@ const OptionRow = ({
           !hasIndicator &&
             state.isSelected &&
             'tw:[&_svg]:text-fg-brand-secondary_alt!',
-          // A multi-line row keeps its indicator on the first line; mt-0.5
-          // centres the 16px radio/checkbox/icon on the 20px label line.
-          isMultiLine && 'tw:[&>div]:items-start tw:[&>div>:not(span)]:mt-0.5'
+          // A multi-line row keeps its indicator on the first line, centred on
+          // the 20px label line: 2px for the 16px radio and icon, 3px for the
+          // 14px xs checkbox.
+          isMultiLine &&
+            cx(
+              'tw:[&>div]:items-start tw:[&>div>svg]:mt-0.5',
+              showCheckbox ? 'tw:[&>div>div]:mt-0.75' : 'tw:[&>div>div]:mt-0.5'
+            )
         )
       }
       data-testid={option.value}
