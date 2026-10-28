@@ -272,6 +272,33 @@ class JWTTokenGeneratorTest {
     assertNull(jwtAuthMechanism.getJWTTokenExpiresAt());
   }
 
+  /** Only an MCP access token names its client; JwtFilter looks those up in the token store. */
+  @Test
+  void mcpAccessTokenNamesItsClient() {
+    JWTAuthMechanism mcpToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of(),
+            "mcp-client");
+    JWTAuthMechanism sessionToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam", Set.of(), false, "sam@example.com", 600, false, ServiceTokenType.OM_USER);
+
+    assertEquals(
+        "mcp-client",
+        decodedJWT(mcpToken.getJWTToken()).getClaim(JWTTokenGenerator.CLIENT_ID_CLAIM).asString());
+    assertTrue(
+        decodedJWT(sessionToken.getJWTToken())
+            .getClaim(JWTTokenGenerator.CLIENT_ID_CLAIM)
+            .isMissing());
+  }
+
   @Test
   void testECAlgorithmSupport() {
     // Test that the EC algorithms are supported in the enum

@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,8 @@ import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 @ExtendWith(MockitoExtension.class)
 public class RevocationHandlerTest {
 
+  private static final String CLIENT_ID = "mcp-client";
+
   @Mock private OAuthTokenRepository tokenRepository;
 
   private RevocationHandler revocationHandler;
@@ -40,35 +43,50 @@ public class RevocationHandlerTest {
   void testRevokeRefreshToken() {
     String token = "test-refresh-token";
 
-    CompletableFuture<Void> result = revocationHandler.revokeToken(token, "refresh_token");
+    CompletableFuture<Void> result =
+        revocationHandler.revokeToken(token, "refresh_token", CLIENT_ID);
 
     assertThat(result).isNotNull();
     result.join();
-    verify(tokenRepository).revokeRefreshToken(token);
-    verify(tokenRepository, never()).deleteAccessToken(anyString());
+    verify(tokenRepository).revokeRefreshTokenIssuedTo(token, CLIENT_ID);
+    verify(tokenRepository, never()).revokeAccessTokenIssuedTo(anyString(), anyString());
   }
 
   @Test
   void testRevokeAccessToken() {
     String token = "test-access-token";
 
-    CompletableFuture<Void> result = revocationHandler.revokeToken(token, "access_token");
+    CompletableFuture<Void> result =
+        revocationHandler.revokeToken(token, "access_token", CLIENT_ID);
 
     assertThat(result).isNotNull();
     result.join();
-    verify(tokenRepository).deleteAccessToken(token);
-    verify(tokenRepository, never()).revokeRefreshToken(anyString());
+    verify(tokenRepository).revokeAccessTokenIssuedTo(token, CLIENT_ID);
+    verify(tokenRepository, never()).revokeRefreshTokenIssuedTo(anyString(), anyString());
   }
 
   @Test
   void testRevokeWithoutTypeHint() {
     String token = "test-token";
+    when(tokenRepository.revokeRefreshTokenIssuedTo(token, CLIENT_ID)).thenReturn(true);
 
-    CompletableFuture<Void> result = revocationHandler.revokeToken(token, null);
+    CompletableFuture<Void> result = revocationHandler.revokeToken(token, null, CLIENT_ID);
 
     assertThat(result).isNotNull();
     result.join();
-    verify(tokenRepository).revokeRefreshToken(token);
+    verify(tokenRepository).revokeRefreshTokenIssuedTo(token, CLIENT_ID);
+  }
+
+  /** Clients often send no hint: an access token must still be revoked once no refresh matches. */
+  @Test
+  void accessTokenWithoutTypeHintIsRevokedWhenNoRefreshTokenMatches() {
+    String token = "access-token";
+    when(tokenRepository.revokeAccessTokenIssuedTo(token, CLIENT_ID)).thenReturn(true);
+
+    revocationHandler.revokeToken(token, null, CLIENT_ID).join();
+
+    verify(tokenRepository).revokeRefreshTokenIssuedTo(token, CLIENT_ID);
+    verify(tokenRepository).revokeAccessTokenIssuedTo(token, CLIENT_ID);
   }
 
   @Test
@@ -76,37 +94,37 @@ public class RevocationHandlerTest {
     String token = "non-existent-token";
     doThrow(new IllegalArgumentException("Token not found"))
         .when(tokenRepository)
-        .revokeRefreshToken(token);
+        .revokeRefreshTokenIssuedTo(token, CLIENT_ID);
     doThrow(new IllegalArgumentException("Token not found"))
         .when(tokenRepository)
-        .deleteAccessToken(token);
+        .revokeAccessTokenIssuedTo(token, CLIENT_ID);
 
-    CompletableFuture<Void> result = revocationHandler.revokeToken(token, null);
+    CompletableFuture<Void> result = revocationHandler.revokeToken(token, null, CLIENT_ID);
 
     assertThat(result).isNotNull();
     result.join();
-    verify(tokenRepository).revokeRefreshToken(token);
-    verify(tokenRepository).deleteAccessToken(token);
+    verify(tokenRepository).revokeRefreshTokenIssuedTo(token, CLIENT_ID);
+    verify(tokenRepository).revokeAccessTokenIssuedTo(token, CLIENT_ID);
   }
 
   @Test
   void testRevokeEmptyToken() {
-    CompletableFuture<Void> result = revocationHandler.revokeToken("", null);
+    CompletableFuture<Void> result = revocationHandler.revokeToken("", null, CLIENT_ID);
 
     assertThat(result).isNotNull();
     result.join();
-    verify(tokenRepository, never()).revokeRefreshToken(anyString());
-    verify(tokenRepository, never()).deleteAccessToken(anyString());
+    verify(tokenRepository, never()).revokeRefreshTokenIssuedTo(anyString(), anyString());
+    verify(tokenRepository, never()).revokeAccessTokenIssuedTo(anyString(), anyString());
   }
 
   @Test
   void testRevokeNullToken() {
-    CompletableFuture<Void> result = revocationHandler.revokeToken(null, null);
+    CompletableFuture<Void> result = revocationHandler.revokeToken(null, null, CLIENT_ID);
 
     assertThat(result).isNotNull();
     result.join();
-    verify(tokenRepository, never()).revokeRefreshToken(anyString());
-    verify(tokenRepository, never()).deleteAccessToken(anyString());
+    verify(tokenRepository, never()).revokeRefreshTokenIssuedTo(anyString(), anyString());
+    verify(tokenRepository, never()).revokeAccessTokenIssuedTo(anyString(), anyString());
   }
 
   @Test
@@ -114,37 +132,40 @@ public class RevocationHandlerTest {
     String token = "access-token";
     doThrow(new IllegalArgumentException("Token not found"))
         .when(tokenRepository)
-        .revokeRefreshToken(token);
+        .revokeRefreshTokenIssuedTo(token, CLIENT_ID);
 
-    CompletableFuture<Void> result = revocationHandler.revokeToken(token, "refresh_token");
+    CompletableFuture<Void> result =
+        revocationHandler.revokeToken(token, "refresh_token", CLIENT_ID);
 
     assertThat(result).isNotNull();
     result.join();
-    verify(tokenRepository).revokeRefreshToken(token);
-    verify(tokenRepository, never()).deleteAccessToken(anyString());
+    verify(tokenRepository).revokeRefreshTokenIssuedTo(token, CLIENT_ID);
+    verify(tokenRepository, never()).revokeAccessTokenIssuedTo(anyString(), anyString());
   }
 
   @Test
   void testRevokeWithAccessTokenHintButIsRefreshToken() {
     String token = "refresh-token";
 
-    CompletableFuture<Void> result = revocationHandler.revokeToken(token, "access_token");
+    CompletableFuture<Void> result =
+        revocationHandler.revokeToken(token, "access_token", CLIENT_ID);
 
     assertThat(result).isNotNull();
     result.join();
-    verify(tokenRepository).deleteAccessToken(token);
-    verify(tokenRepository, never()).revokeRefreshToken(anyString());
+    verify(tokenRepository).revokeAccessTokenIssuedTo(token, CLIENT_ID);
+    verify(tokenRepository, never()).revokeRefreshTokenIssuedTo(anyString(), anyString());
   }
 
   @Test
   void testRevokeWithInvalidTypeHint() {
     String token = "test-token";
 
-    CompletableFuture<Void> result = revocationHandler.revokeToken(token, "invalid_hint");
+    CompletableFuture<Void> result =
+        revocationHandler.revokeToken(token, "invalid_hint", CLIENT_ID);
 
     assertThat(result).isNotNull();
     result.join();
-    verify(tokenRepository, never()).revokeRefreshToken(anyString());
-    verify(tokenRepository, never()).deleteAccessToken(anyString());
+    verify(tokenRepository, never()).revokeRefreshTokenIssuedTo(anyString(), anyString());
+    verify(tokenRepository, never()).revokeAccessTokenIssuedTo(anyString(), anyString());
   }
 }

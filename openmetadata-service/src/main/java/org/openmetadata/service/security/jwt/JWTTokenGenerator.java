@@ -65,6 +65,10 @@ public class JWTTokenGenerator {
   public static final String USERNAME = "username";
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   public static final String SESSION_ID_CLAIM = "sessionId";
+
+  /** The MCP OAuth client an access token was issued to (RFC 9068); only MCP tokens carry it. */
+  public static final String CLIENT_ID_CLAIM = "client_id";
+
   public static final String SCOPE_CLAIM = "scope";
   private static final String INTERNAL_TOKEN_CONFIGURATION_ERROR =
       "Internal action tokens require valid values for "
@@ -196,6 +200,20 @@ public class JWTTokenGenerator {
       boolean isBot,
       ServiceTokenType tokenType,
       List<String> scopes) {
+    return generateJWTToken(
+        userName, roles, isAdmin, email, expiryInSeconds, isBot, tokenType, scopes, null);
+  }
+
+  public JWTAuthMechanism generateJWTToken(
+      String userName,
+      Set<String> roles,
+      boolean isAdmin,
+      String email,
+      long expiryInSeconds,
+      boolean isBot,
+      ServiceTokenType tokenType,
+      List<String> scopes,
+      String clientId) {
     return getJwtAuthMechanism(
         userName,
         roles,
@@ -205,7 +223,9 @@ public class JWTTokenGenerator {
         tokenType,
         getCustomExpiryDate(expiryInSeconds),
         null,
-        scopes);
+        scopes,
+        null,
+        clientId);
   }
 
   public JWTAuthMechanism generateJWTTokenForSession(
@@ -267,6 +287,23 @@ public class JWTTokenGenerator {
       JWTTokenExpiry expiry,
       List<String> scopes,
       String sessionId) {
+    return getJwtAuthMechanism(
+        userName, roles, isAdmin, email, isBot, tokenType, expires, expiry, scopes, sessionId,
+        null);
+  }
+
+  public JWTAuthMechanism getJwtAuthMechanism(
+      String userName,
+      Set<String> roles,
+      boolean isAdmin,
+      String email,
+      boolean isBot,
+      ServiceTokenType tokenType,
+      Date expires,
+      JWTTokenExpiry expiry,
+      List<String> scopes,
+      String sessionId,
+      String clientId) {
     try {
       if (isAdmin) {
         if (nullOrEmpty(roles)) {
@@ -293,6 +330,9 @@ public class JWTTokenGenerator {
       }
       if (!nullOrEmpty(sessionId)) {
         tokenBuilder.withClaim(SESSION_ID_CLAIM, sessionId);
+      }
+      if (!nullOrEmpty(clientId)) {
+        tokenBuilder.withClaim(CLIENT_ID_CLAIM, clientId);
       }
 
       String token = tokenBuilder.sign(algorithm);

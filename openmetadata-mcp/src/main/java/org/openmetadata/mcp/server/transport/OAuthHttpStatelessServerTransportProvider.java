@@ -1136,7 +1136,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         return;
       }
 
-      revocationHandler.revokeToken(token, tokenTypeHint).join();
+      revocationHandler.revokeToken(token, tokenTypeHint, credentials.clientId()).join();
 
       setCorsHeaders(request, response);
       response.setStatus(200);

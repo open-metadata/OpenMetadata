@@ -1,16 +1,24 @@
 package org.openmetadata.mcp.server.auth.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.auth.RefreshToken;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAccessTokenRecord;
 
 /**
  * Unit tests for OAuthTokenRepository - token storage, retrieval, revocation, and encryption.
@@ -28,6 +36,31 @@ public class OAuthTokenRepositoryTest {
   @Mock private Fernet fernet;
 
   private OAuthTokenRepository tokenRepository;
+
+  /** A client may revoke only its own tokens (RFC 7009 section 2.1). */
+  @Test
+  void accessTokenIsRevokedOnlyForTheClientItWasIssuedTo() {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.OAuthAccessTokenDAO accessTokens = mock(CollectionDAO.OAuthAccessTokenDAO.class);
+    when(dao.oauthAccessTokenDAO()).thenReturn(accessTokens);
+    String hash = OAuthTokenRepository.hashToken("access-jwt");
+    when(accessTokens.findByTokenHash(hash))
+        .thenReturn(
+            new OAuthAccessTokenRecord(
+                UUID.randomUUID(), hash, "encrypted", "owner-client", "alice", List.of(), 1L));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<Fernet> fernets = mockStatic(Fernet.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(dao);
+      fernets.when(Fernet::getInstance).thenReturn(fernet);
+      tokenRepository = new OAuthTokenRepository();
+
+      assertThat(tokenRepository.revokeAccessTokenIssuedTo("access-jwt", "other-client")).isFalse();
+      verify(accessTokens, never()).delete(hash);
+      assertThat(tokenRepository.revokeAccessTokenIssuedTo("access-jwt", "owner-client")).isTrue();
+      verify(accessTokens).delete(hash);
+    }
+  }
 
   @Test
   void testRefreshTokenDataModel() {
