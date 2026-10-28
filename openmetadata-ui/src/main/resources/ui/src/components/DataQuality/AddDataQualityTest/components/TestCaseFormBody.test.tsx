@@ -458,6 +458,44 @@ describe('TestCaseFormBody', () => {
     expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
   });
 
+  it('keeps a test type picked before the selected table details finish loading', async () => {
+    // A table missing from the search cache loads through getTableDetailsByFQN.
+    mockSearchQuery.mockResolvedValue({
+      hits: { total: { value: 0 }, hits: [] },
+    } as never);
+    let resolveTable: (table: Table) => void = jest.fn();
+    mockGetTableDetailsByFQN.mockReturnValue(
+      new Promise((resolve) => {
+        resolveTable = resolve;
+      }) as never
+    );
+
+    await act(async () => {
+      renderBody();
+    });
+
+    await act(async () => {
+      formRef?.setValue('selectedTable', TABLE_FQN);
+    });
+    await act(async () => {
+      formRef?.setValue('testTypeId', {
+        id: TEST_DEFINITION_FQN,
+        label: 'Column Values To Be Between',
+      } as never);
+    });
+
+    expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveTable(SELECTED_TABLE);
+    });
+
+    expect(screen.getByTestId('parameter-minValue')).toBeInTheDocument();
+    expect(formRef?.getValues('testTypeId')).toEqual(
+      expect.objectContaining({ id: TEST_DEFINITION_FQN })
+    );
+  });
+
   it('defaults the data quality dimension to the selected test definition one', async () => {
     mockGetListTestDefinitions.mockResolvedValue({
       data: [{ ...TEST_DEFINITION, dataQualityDimension: 'Accuracy' }],
