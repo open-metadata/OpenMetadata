@@ -17,6 +17,8 @@ import DomainTags from './DomainTags';
 jest.mock('@openmetadata/ui-core-components', () => ({
   DomainTag: ({
     label,
+    color,
+    icon,
     href,
     inherited,
     inheritedLabel,
@@ -25,6 +27,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     closeButtonTestId,
   }: {
     label: string;
+    color?: string;
+    icon?: string;
     href?: string;
     inherited?: boolean;
     inheritedLabel?: string;
@@ -33,7 +37,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     closeButtonTestId?: string;
   }) => (
     <div
+      data-color={color ?? ''}
       data-href={href ?? ''}
+      data-icon={icon ?? ''}
       data-inherited={String(Boolean(inherited))}
       data-inherited-label={inheritedLabel ?? ''}
       data-testid={dataTestId}>
@@ -99,6 +105,34 @@ describe('DomainTags', () => {
 
     expect(chip).toHaveTextContent('Finance');
     expect(chip).toHaveAttribute('data-href', '/domain/Finance');
+  });
+
+  // The chip used to ignore the domain's custom colour and icon and always
+  // draw the default.
+  it("should draw each chip in its domain's own colour and icon", () => {
+    render(
+      <DomainTags
+        domains={[
+          makeDomain('Sales', {
+            style: { color: '#F14C75', iconURL: 'Database01' },
+          }),
+          makeDomain('Plain'),
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('domain-tag-Sales')).toHaveAttribute(
+      'data-color',
+      '#F14C75'
+    );
+    expect(screen.getByTestId('domain-tag-Sales')).toHaveAttribute(
+      'data-icon',
+      'Database01'
+    );
+    expect(screen.getByTestId('domain-tag-Plain')).toHaveAttribute(
+      'data-color',
+      ''
+    );
   });
 
   it('should mark inherited domains and pass the translated inherited label', () => {

@@ -4362,7 +4362,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     entity.setOwners(fields.contains(FIELD_OWNERS) ? entity.getOwners() : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? entity.getTags() : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? entity.getExtension() : null);
-    entity.setDomains(fields.contains(FIELD_DOMAINS) ? entity.getDomains() : null);
+    // Every read path ends here, whichever loader filled the domains, so this is where their
+    // style is guaranteed.
+    entity.setDomains(
+        fields.contains(FIELD_DOMAINS) ? withDomainStyles(entity.getDomains()) : null);
     entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? entity.getDataProducts() : null);
     entity.setDataContract(fields.contains(FIELD_DATA_CONTRACT) ? entity.getDataContract() : null);
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? entity.getFollowers() : null);
@@ -9290,7 +9293,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     Optional<List<EntityReference>> bundleDomains =
         getRelationsFromReadBundle(entity, FIELD_DOMAINS, include);
     if (bundleDomains.isPresent()) {
-      return bundleDomains.get();
+      return withDomainStyles(bundleDomains.get());
     }
 
     if (entity.getId() == null) {
@@ -9307,7 +9310,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       List<EntityReference> cached = cachedRelationshipDao.getDomains(entityType, entity.getId());
       if (cached != null) {
         LOG.debug("CACHE HIT: Retrieved domains from cache for {} {}", entityType, entity.getId());
-        return cached;
+        return withDomainStyles(cached);
       }
     }
 
@@ -9315,13 +9318,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     List<EntityReference> domains =
         getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN, include);
 
-    // Cache the result for next time (only for NON_DELETED)
+    // Cache the result for next time (only for NON_DELETED). Cached before styling, so the style
+    // is always read fresh from the domain and a domain restyle never leaves a stale copy here.
     if (include == NON_DELETED && cachedRelationshipDao != null && domains != null) {
       String domainsJson = JsonUtils.pojoToJson(domains);
       cachedRelationshipDao.putDomains(entityType, entity.getId(), domainsJson);
     }
 
-    return domains;
+    return withDomainStyles(domains);
   }
 
   private List<EntityReference> getDataProducts(T entity) {
@@ -13934,7 +13938,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         records.stream().map(rec -> UUID.fromString(rec.getFromId())).distinct().toList();
 
     // Batch fetch all domain entity references
-    var domainRefs = Entity.getEntityReferencesByIds(DOMAIN, domainIds, ALL);
+    var domainRefs = withDomainStyles(Entity.getEntityReferencesByIds(DOMAIN, domainIds, ALL));
     var domainRefMap =
         domainRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
 
@@ -13946,6 +13950,35 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     return domainsMap;
+  }
+
+  /**
+   * Copies each domain's colour and icon onto its references, as tag labels carry their tag's
+   * style, so a client can draw a domain without fetching it. Read from the cached domain, so a
+   * restyle shows on the next read. Only colour and icon: a reference has no use for the cover
+   * image. ADR:2026-10-28-domain-references-carry-the-domain-style
+   */
+  static List<EntityReference> withDomainStyles(List<EntityReference> domains) {
+    if (nullOrEmpty(domains)) {
+      return domains;
+    }
+    EntityRepository<? extends EntityInterface<?>> domainRepository =
+        Entity.getEntityRepository(DOMAIN);
+    for (EntityReference domain : domains) {
+      if (domain == null || domain.getId() == null) {
+        continue;
+      }
+      try {
+        Style style = domainRepository.find(domain.getId(), ALL).getStyle();
+        domain.setStyle(
+            style == null || (style.getColor() == null && style.getIconURL() == null)
+                ? null
+                : new Style().withColor(style.getColor()).withIconURL(style.getIconURL()));
+      } catch (EntityNotFoundException e) {
+        domain.setStyle(null);
+      }
+    }
+    return domains;
   }
 
   private Map<UUID, List<EntityReference>> batchFetchReviewers(List<T> entities) {

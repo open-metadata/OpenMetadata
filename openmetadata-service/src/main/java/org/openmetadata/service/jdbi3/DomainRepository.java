@@ -128,9 +128,19 @@ public class DomainRepository extends EntityRepository<Domain> {
     fieldFetchers.put(FIELD_CHILDREN_COUNT, this::fetchAndSetChildrenCount);
   }
 
+  /**
+   * Domain references in asset documents also carry the domain's colour and icon, so a restyle
+   * opens the propagation pass too; SearchRepository relabels those copies by id.
+   * ADR:2026-10-28-domain-references-carry-the-domain-style
+   */
   @Override
   public List<PropagationDescriptor> getSearchPropagationDescriptors() {
-    return relabeledByReference(super.getSearchPropagationDescriptors());
+    List<PropagationDescriptor> descriptors =
+        new ArrayList<>(relabeledByReference(super.getSearchPropagationDescriptors()));
+    descriptors.add(
+        new PropagationDescriptor(
+            Entity.FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
+    return descriptors;
   }
 
   @Override

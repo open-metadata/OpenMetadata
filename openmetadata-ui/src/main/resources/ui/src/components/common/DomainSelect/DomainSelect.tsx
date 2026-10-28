@@ -354,11 +354,13 @@ const DomainSelect: FC<DomainSelectProps> = ({
 
       return (
         <DomainTag
+          color={domain?.style?.color}
           data-testid={`domain-tag-${node.value}`}
           disabled={isLocked}
           href={
             isClearable || !node.value ? undefined : getDomainPath(node.value)
           }
+          icon={domain?.style?.iconURL}
           inherited={domain?.inherited}
           label={domain ? getEntityName(domain) : node.label}
           size="sm"

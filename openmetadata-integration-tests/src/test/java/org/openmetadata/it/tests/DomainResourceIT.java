@@ -48,6 +48,8 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.CoverImage;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -1589,6 +1591,81 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
     // ...and the prefix-sharing sibling must stay exactly as it was (no double / no spillover).
     verifyDomainInSearch(siblingFqn, sibling.getId().toString());
+  }
+
+  // Asset domain references carried no style, so every domain chip fell back to the default colour
+  // and icon. ADR:2026-10-28-domain-references-carry-the-domain-style
+  @Test
+  void test_domainReferencesCarryTheDomainStyle(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    Domain domain =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("styled_domain"))
+                .withDomainType(DomainType.AGGREGATE)
+                .withDescription("Domain whose style its references carry")
+                .withStyle(
+                    new Style()
+                        .withColor("#F14C75")
+                        .withIconURL("Database01")
+                        .withCoverImage(
+                            new CoverImage().withUrl("https://example.com/cover.png"))));
+    Table asset = createTableInDomain(ns, "style", domain.getFullyQualifiedName());
+
+    Style style =
+        client.tables().get(asset.getId().toString(), "domains").getDomains().get(0).getStyle();
+    assertNotNull(style, "a single read carries the domain style");
+    assertEquals("#F14C75", style.getColor());
+    assertEquals("Database01", style.getIconURL());
+    assertEquals(null, style.getCoverImage(), "a reference carries colour and icon only");
+
+    Table listed =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setFields("domains")
+                    .setDatabaseSchema(asset.getDatabaseSchema().getFullyQualifiedName()))
+            .getData()
+            .get(0);
+    assertEquals("#F14C75", listed.getDomains().get(0).getStyle().getColor(), "a list read too");
+
+    domain.setStyle(new Style().withColor("#1470EF").withIconURL("Globe01"));
+    patchEntity(domain.getId().toString(), domain);
+
+    Style restyled =
+        client.tables().get(asset.getId().toString(), "domains").getDomains().get(0).getStyle();
+    assertEquals("#1470EF", restyled.getColor(), "a restyle shows on the next read");
+    assertEquals("Globe01", restyled.getIconURL());
+
+    String tableId = asset.getId().toString();
+    Awaitility.await("asset " + tableId + " search doc carries the new domain style")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode domainRef =
+                  mapper
+                      .readTree(response)
+                      .path("hits")
+                      .path("hits")
+                      .get(0)
+                      .path("_source")
+                      .path("domains")
+                      .get(0);
+              assertEquals("#1470EF", domainRef.path("style").path("color").asText());
+              assertEquals("Globe01", domainRef.path("style").path("iconURL").asText());
+            });
   }
 
   private Table createTableInDomain(TestNamespace ns, String suffix, String domainFqn) {
