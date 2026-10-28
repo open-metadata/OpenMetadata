@@ -84,6 +84,25 @@ export const getNormalDiffElement = (text: string) => {
   );
 };
 
+const HTML_TAG_PATTERN = /<[a-z][\s\S]*?>/i;
+const BLOCK_END_PATTERN = /<\/(p|li|h[1-6]|div|pre|blockquote)>|<br\s*\/?>/gi;
+
+/**
+ * Rich-text descriptions are stored as HTML. Diffing that markup word by word splits tags, and each
+ * fragment is rendered as escaped text, so the version view showed literal `<p>` and `&#61;`.
+ * Diff what the reader sees instead: the text content, one line per block.
+ */
+const toDiffableText = (text: string) => {
+  if (!HTML_TAG_PATTERN.test(text)) {
+    return text;
+  }
+  const html = text.replace(BLOCK_END_PATTERN, (tag) => `${tag}\n`);
+
+  return (
+    new DOMParser().parseFromString(html, 'text/html').body.textContent ?? ''
+  ).trim();
+};
+
 export const getTextDiff = (
   oldText: string,
   newText: string,
@@ -101,7 +120,13 @@ export const getTextDiff = (
     return newText;
   }
 
-  const diffArr = diffWords(toString(oldText), toString(newText));
+  const isHtml = [oldText, newText].some((text) =>
+    HTML_TAG_PATTERN.test(toString(text))
+  );
+  const diffArr = diffWords(
+    isHtml ? toDiffableText(toString(oldText)) : toString(oldText),
+    isHtml ? toDiffableText(toString(newText)) : toString(newText)
+  );
 
   const result = diffArr.map((diff) => {
     if (diff.added) {
@@ -157,7 +182,13 @@ export const getTextDiffElements = (
   oldText: string,
   newText: string
 ): ReactNode[] => {
-  const diffArr = diffWords(toString(oldText), toString(newText));
+  const isHtml = [oldText, newText].some((text) =>
+    HTML_TAG_PATTERN.test(toString(text))
+  );
+  const diffArr = diffWords(
+    isHtml ? toDiffableText(toString(oldText)) : toString(oldText),
+    isHtml ? toDiffableText(toString(newText)) : toString(newText)
+  );
 
   return diffArr.map((diff) => {
     if (diff.added) {

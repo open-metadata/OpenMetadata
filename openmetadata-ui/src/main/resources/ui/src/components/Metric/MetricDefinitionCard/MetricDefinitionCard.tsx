@@ -446,8 +446,10 @@ const MetricDefinitionCard = ({
       <Card.Content>
         <Box direction="col" gap={5}>
           <MetricExpression isEmbedded metric={metric} />
+          {/* Columns follow the card's width, not the viewport's: the card is often narrow (version
+              view, beside a panel), where viewport breakpoints let one-word labels overlap. */}
           <Box
-            className="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:lg:grid-cols-3"
+            className="tw:grid tw:grid-cols-[repeat(auto-fit,minmax(--spacing(40),1fr))] tw:gap-4"
             data-testid="metric-definition-fields">
             <DefinitionField
               label={t('label.metric-type')}

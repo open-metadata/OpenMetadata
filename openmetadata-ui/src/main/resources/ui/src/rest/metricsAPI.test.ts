@@ -20,8 +20,14 @@ import {
   getMetricHierarchy,
   getMetricHierarchyContext,
   getMetricObservability,
+  getMetricSearchPaths,
   removeAssetsFromMetric,
 } from './metricsAPI';
+import { searchQuery } from './searchAPI';
+
+jest.mock('./searchAPI', () => ({
+  searchQuery: jest.fn(),
+}));
 
 jest.mock('./axiosClient', () => ({
   get: jest.fn(),
@@ -169,5 +175,24 @@ describe('Metric hierarchy, assets, and observability API contracts', () => {
     expect(APIClient.delete).toHaveBeenCalledWith('/metrics/async/metric-id', {
       params: { recursive: true },
     });
+  });
+
+  it('collects search matches and walks their parents up to the root', async () => {
+    const hits = (docs: object[]) => ({
+      hits: { hits: docs.map((doc) => ({ _source: doc })) },
+    });
+    (searchQuery as jest.Mock)
+      .mockResolvedValueOnce(hits([{ id: 'canada', parent: { id: 'na' } }]))
+      .mockResolvedValueOnce(hits([{ id: 'na', parent: { id: 'total' } }]))
+      .mockResolvedValueOnce(hits([{ id: 'total' }]));
+
+    const { matchIds, ancestorIds } = await getMetricSearchPaths('canada');
+
+    expect([...matchIds]).toEqual(['canada']);
+    expect([...ancestorIds]).toEqual(['na', 'total']);
+    expect(searchQuery).toHaveBeenCalledTimes(3);
+    expect(
+      JSON.stringify((searchQuery as jest.Mock).mock.calls[1][0].queryFilter)
+    ).toContain('"id.keyword":"na"');
   });
 });

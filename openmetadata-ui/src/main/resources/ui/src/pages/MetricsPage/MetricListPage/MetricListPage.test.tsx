@@ -26,6 +26,7 @@ import {
   MetricGranularity,
   MetricType,
 } from '../../../generated/entity/data/metric';
+import { TagSource } from '../../../generated/type/tagLabel';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
   deleteMetricAsync,
@@ -562,6 +563,10 @@ const buildSearchResponse = (metrics: Metric[], total = metrics.length) => ({
     total: { value: total },
   },
 });
+
+jest.mock('../../../utils/ownerUtils', () => ({
+  getOwnerPath: ({ name }: { name?: string }) => `/users/${name}`,
+}));
 
 let mockAsyncDeleteJob: { jobId?: string; status?: string } | undefined;
 
@@ -1324,6 +1329,48 @@ describe('MetricListPage', () => {
     );
 
     mockAsyncDeleteJob = undefined;
+  });
+
+  it('links glossary terms and owners to their own pages without opening the metric', async () => {
+    const taggedMetric = {
+      ...rootMetric,
+      tags: [
+        {
+          tagFQN: 'Finance.Revenue',
+          name: 'Revenue',
+          source: TagSource.Glossary,
+        },
+      ],
+    };
+    mockUseMetricHierarchy.mockReturnValue({
+      topLevelNodes: [{ row: taggedMetric }],
+      buildRows: () => [taggedMetric],
+      paging: { total: 1, offset: 0, limit: 20 },
+      isPending: false,
+      isFetching: false,
+      expandedRowKeys: [],
+      collapsedGroupIds: [],
+      loadingParentIds: [],
+      loadingGroupIds: [],
+      ...hierarchyActions,
+    });
+    renderPage();
+
+    const glossaryLink = await screen.findByTestId(
+      'metric-tag-link-Finance.Revenue'
+    );
+
+    expect(glossaryLink).toHaveAttribute('href', '/glossary/Finance.Revenue');
+    expect(screen.getByTestId('metric-owner-link-owner-1')).toHaveAttribute(
+      'href',
+      '/users/alice'
+    );
+
+    fireEvent.click(glossaryLink);
+
+    expect(mockNavigate).not.toHaveBeenCalledWith(
+      expect.stringContaining('/metric/')
+    );
   });
 
   it('exports metrics from the core action menu', async () => {

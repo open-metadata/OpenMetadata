@@ -19,7 +19,11 @@ import { Kind } from '../generated/api/data/metricHierarchyItem';
 import type { MetricGroup } from '../generated/entity/data/metricGroup';
 import type { Paging } from '../generated/type/paging';
 import { getMetricGroupMetrics } from '../rest/metricGroupsAPI';
-import { getMetricHierarchy, getMetrics } from '../rest/metricsAPI';
+import {
+  getMetricHierarchy,
+  getMetrics,
+  getMetricSearchPaths,
+} from '../rest/metricsAPI';
 import {
   createGroupLoadMoreRow,
   createGroupRow,
@@ -140,7 +144,17 @@ export const useMetricHierarchy = ({
     enabled,
   });
 
+  // While searching, children are cut down to the branches that lead to a match, and those
+  // branches open on their own; otherwise the match sits unfiltered several levels down.
+  const { data: searchPaths } = useQuery({
+    queryKey: ['metric-search-paths', normalizedQuery],
+    queryFn: () => getMetricSearchPaths(normalizedQuery ?? ''),
+    enabled: enabled && Boolean(normalizedQuery),
+  });
+  const autoExpandedIds = useRef(new Set<string>());
+
   useEffect(() => {
+    autoExpandedIds.current = new Set();
     requestGeneration.current += 1;
     setExpandedRowKeys([]);
     setExpandedGroupRowIds([]);
@@ -357,7 +371,13 @@ export const useMetricHierarchy = ({
         if (!childPage || !expandedRowKeys.includes(node.id)) {
           return { ...node, children: undefined };
         }
-        const childRows: MetricTableRow[] = childPage.rows.map(hydrateNode);
+        const visibleChildren = searchPaths
+          ? childPage.rows.filter(
+              ({ id }) =>
+                searchPaths.matchIds.has(id) || searchPaths.ancestorIds.has(id)
+            )
+          : childPage.rows;
+        const childRows: MetricTableRow[] = visibleChildren.map(hydrateNode);
         if (childPage.after) {
           childRows.push(
             createLoadMoreRow({
@@ -374,7 +394,7 @@ export const useMetricHierarchy = ({
 
       return hydrateNode(metric);
     },
-    [childrenByParentId, expandedRowKeys]
+    [childrenByParentId, expandedRowKeys, searchPaths]
   );
 
   const topLevelNodes = useMemo(
@@ -395,6 +415,27 @@ export const useMetricHierarchy = ({
       }),
     [groupPageOverrides, initialNodes]
   );
+
+  useEffect(() => {
+    if (!searchPaths?.ancestorIds.size) {
+      return;
+    }
+    const loadedMetrics = [
+      ...topLevelNodes.flatMap(({ row, groupId, members }) =>
+        groupId ? members ?? [] : [row as MetricTreeNode]
+      ),
+      ...Object.values(childrenByParentId).flatMap(({ rows }) => rows),
+    ];
+    loadedMetrics
+      .filter(
+        ({ id }) =>
+          searchPaths.ancestorIds.has(id) && !autoExpandedIds.current.has(id)
+      )
+      .forEach((metric) => {
+        autoExpandedIds.current.add(metric.id);
+        toggleExpand(true, metric);
+      });
+  }, [childrenByParentId, searchPaths, toggleExpand, topLevelNodes]);
 
   const buildRows = useCallback(
     (nodes: MetricHierarchyNode[]): MetricTableRow[] => {

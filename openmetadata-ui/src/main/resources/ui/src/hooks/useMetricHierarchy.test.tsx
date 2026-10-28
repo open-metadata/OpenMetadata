@@ -15,7 +15,11 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Kind } from '../generated/api/data/metricHierarchyItem';
 import { getMetricGroupMetrics } from '../rest/metricGroupsAPI';
-import { getMetricHierarchy, getMetrics } from '../rest/metricsAPI';
+import {
+  getMetricHierarchy,
+  getMetrics,
+  getMetricSearchPaths,
+} from '../rest/metricsAPI';
 import type { MetricTreeNode } from '../utils/MetricEntityUtils/MetricHierarchyUtils';
 import {
   isGroupRow,
@@ -30,6 +34,7 @@ jest.mock('../rest/metricGroupsAPI', () => ({
 jest.mock('../rest/metricsAPI', () => ({
   getMetricHierarchy: jest.fn(),
   getMetrics: jest.fn(),
+  getMetricSearchPaths: jest.fn(),
 }));
 
 jest.mock('../utils/ToastUtils', () => ({
@@ -455,5 +460,59 @@ describe('useMetricHierarchy', () => {
       expect(ids).toEqual(['root-id', 'child-id', 'grandchild-id']);
       expect(new Set(ids).size).toBe(3);
     });
+  });
+
+  it('opens the branch that leads to a search match and hides siblings off that path', async () => {
+    (getMetricHierarchy as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          kind: Kind.Metric,
+          metric: {
+            id: 'root-id',
+            name: 'revenue',
+            fullyQualifiedName: 'revenue',
+            childrenCount: 2,
+          },
+        },
+      ],
+      paging: { offset: 0, limit: 20, total: 1 },
+    });
+    (getMetricSearchPaths as jest.Mock).mockResolvedValue({
+      matchIds: new Set(['canada-id']),
+      ancestorIds: new Set(['root-id']),
+    });
+    (getMetrics as jest.Mock).mockResolvedValue({
+      data: [
+        { id: 'canada-id', name: 'canada' },
+        { id: 'usa-id', name: 'usa' },
+      ],
+      paging: { total: 2 },
+    });
+
+    const { result } = renderHook(
+      () =>
+        useMetricHierarchy({
+          enabled: true,
+          page: 1,
+          pageSize: 20,
+          query: 'canada',
+        }),
+      { wrapper }
+    );
+
+    await waitFor(() =>
+      expect(result.current.expandedRowKeys).toContain('root-id')
+    );
+    await waitFor(() =>
+      expect(
+        result.current.buildRows(result.current.topLevelNodes)[0]
+      ).toMatchObject({
+        children: [expect.objectContaining({ id: 'canada-id' })],
+      })
+    );
+
+    const [root] = result.current.buildRows(result.current.topLevelNodes);
+
+    expect((root as { children?: unknown[] }).children).toHaveLength(1);
   });
 });

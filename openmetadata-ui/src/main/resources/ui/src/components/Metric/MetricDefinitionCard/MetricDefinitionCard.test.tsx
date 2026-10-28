@@ -97,9 +97,10 @@ describe('MetricDefinitionCard', () => {
     expect(screen.getByTestId('metric-expression-code')).toHaveClass(
       'tw:bg-secondary'
     );
+    // Columns follow the card's width (auto-fit), not viewport breakpoints.
     expect(screen.getByTestId('metric-definition-fields')).toHaveClass(
       'tw:grid',
-      'tw:lg:grid-cols-3'
+      'tw:grid-cols-[repeat(auto-fit,minmax(--spacing(40),1fr))]'
     );
     expect(screen.getByTestId('metric-definition-type')).toHaveTextContent(
       'label.ratio'

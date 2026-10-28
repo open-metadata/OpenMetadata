@@ -14,6 +14,7 @@ import { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
+import { SearchIndex } from '../enums/search.enum';
 import { CreateMetric } from '../generated/api/data/createMetric';
 import { MetricHierarchyContext } from '../generated/api/data/metricHierarchyContext';
 import { MetricHierarchyItem } from '../generated/api/data/metricHierarchyItem';
@@ -30,8 +31,10 @@ import { Include } from '../generated/type/include';
 import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
 import type { AsyncDeleteJob } from '../interface/entity/asyncDelete.interface';
 import type { QueryVote as VoteType } from '../interface/entity/vote.interface';
+import { getTermQuery } from '../utils/SearchPureUtils';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
+import { searchQuery } from './searchAPI';
 
 /**
  * `parent` selects a slice of the hierarchy: omit it for every metric, pass the literal string
@@ -275,4 +278,59 @@ export const getMetricObservability = async (id: string) => {
   );
 
   return response.data;
+};
+
+const METRIC_SEARCH_PATH_PAGE_SIZE = 100;
+const METRIC_SEARCH_PATH_MAX_DEPTH = 6;
+
+type MetricSearchDoc = { id: string; parent?: { id?: string } };
+
+const searchMetricDocs = async (
+  query: string,
+  queryFilter?: Record<string, unknown>
+) => {
+  const response = await searchQuery({
+    query,
+    pageNumber: 1,
+    pageSize: METRIC_SEARCH_PATH_PAGE_SIZE,
+    searchIndex: SearchIndex.METRIC,
+    queryFilter,
+  });
+
+  return response.hits.hits.map(
+    ({ _source }) => _source as unknown as MetricSearchDoc
+  );
+};
+
+/**
+ * The hierarchy search keeps a root when any descendant matches, but listing a parent's children
+ * has no search. These ids let the tree show only the branches that lead to a match: the matches
+ * themselves, and every metric on their parent chains (walked a bounded number of levels).
+ */
+export const getMetricSearchPaths = async (query: string) => {
+  const matches = await searchMetricDocs(query);
+  const matchIds = new Set(matches.map(({ id }) => id));
+  const ancestorIds = new Set<string>();
+  let level = matches;
+
+  for (
+    let depth = 0;
+    level.length && depth < METRIC_SEARCH_PATH_MAX_DEPTH;
+    depth += 1
+  ) {
+    const parentIds = [
+      ...new Set(
+        level.flatMap(({ parent }) => (parent?.id ? [parent.id] : []))
+      ),
+    ].filter((id) => !ancestorIds.has(id));
+    parentIds.forEach((id) => ancestorIds.add(id));
+    level = parentIds.length
+      ? await searchMetricDocs(
+          '',
+          getTermQuery({ 'id.keyword': parentIds }, 'should', 1)
+        )
+      : [];
+  }
+
+  return { matchIds, ancestorIds };
 };

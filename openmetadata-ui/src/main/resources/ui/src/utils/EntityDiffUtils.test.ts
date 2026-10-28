@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { getRichTextDiff } from './EntityDiffUtils';
+import { getRichTextDiff, getTextDiff } from './EntityDiffUtils';
 
 const IMAGE_A =
   '<div data-type="file-attachment" data-url="/api/v1/files/abc" data-filename="a.png" data-mimetype="image/png" data-is-image="true"></div>';
@@ -132,5 +132,27 @@ describe('getRichTextDiff', () => {
       expect(result).toContain('data-testid="diff-removed"');
       expect(result).toContain('data-testid="diff-added"');
     });
+  });
+});
+
+describe('getTextDiff', () => {
+  it('diffs the readable text of HTML descriptions instead of their markup', () => {
+    const result = getTextDiff(
+      'Seed metric',
+      '<p>Seed metric <strong>updated</strong> &#61; x</p>'
+    );
+
+    expect(result).not.toContain('&lt;p&gt;');
+    expect(result).not.toContain('&amp;#61;');
+    expect(result).toContain('Seed metric');
+    expect(result).toMatch(/data-testid="diff-added"[^>]*>[^<]*updated/);
+    expect(result).toContain('=');
+  });
+
+  it('keeps plain-text diffs unchanged', () => {
+    const result = getTextDiff('net sales', 'gross sales');
+
+    expect(result).toContain('data-testid="diff-removed"');
+    expect(result).toContain('data-testid="diff-added"');
   });
 });

@@ -57,7 +57,7 @@ import {
 import type { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
-import type { ChangeEvent, Key } from 'react';
+import type { ChangeEvent, Key, SyntheticEvent } from 'react';
 import {
   ReactNode,
   useCallback,
@@ -126,9 +126,14 @@ import {
   MetricTreeNode,
   VisibleMetricTableRow,
 } from '../../../utils/MetricEntityUtils/MetricHierarchyUtils';
+import { getOwnerPath } from '../../../utils/ownerUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import {
+  getClassificationTagPath,
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
+} from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -238,6 +243,17 @@ const getIsPlaceholderState = ({
 }) => hasError || (!isMetricsPending && !isSearchPending && rowCount === 0);
 
 const MAX_VISIBLE_BADGES = 2;
+
+// The row is pressable (opens the metric), and react-aria starts that press on pointerdown, so a
+// link inside a cell must stop these events or the row navigates instead (TableV2 does the same
+// for its filter trigger).
+const stopRowAction = (event: SyntheticEvent) => event.stopPropagation();
+const ROW_ACTION_GUARD = {
+  onClick: stopRowAction,
+  onKeyDown: stopRowAction,
+  onMouseDown: stopRowAction,
+  onPointerDown: stopRowAction,
+};
 
 const hasExpandableMetric = (rows: MetricTableRow[]) =>
   rows.some(
@@ -651,20 +667,26 @@ const MetricListPage = () => {
   );
 
   // Table cells stay on one line; narrow cards must wrap or the overflow is clipped.
+  // Each badge links to its own page; a plain badge let the click fall through to the row,
+  // which opened the metric instead.
   const renderTagBadges = (
     tags: Array<Pick<TagLabel, 'name' | 'tagFQN'>>,
+    getTagPath: (tagFqn: string) => string,
     wrap: BoxWrap = 'nowrap'
   ) =>
     tags.length ? (
       <Box align="center" gap={1} wrap={wrap}>
         {tags.slice(0, MAX_VISIBLE_BADGES).map((tag) => (
-          <Badge
-            color="blue"
+          <Link
+            {...ROW_ACTION_GUARD}
+            className="tw:no-underline"
+            data-testid={`metric-tag-link-${tag.tagFQN}`}
             key={tag.tagFQN}
-            size="sm"
-            tooltip={tag.name ?? tag.tagFQN}>
-            {tag.name ?? tag.tagFQN}
-          </Badge>
+            to={getTagPath(tag.tagFQN)}>
+            <Badge color="blue" size="sm" tooltip={tag.name ?? tag.tagFQN}>
+              {tag.name ?? tag.tagFQN}
+            </Badge>
+          </Link>
         ))}
         {tags.length > MAX_VISIBLE_BADGES && (
           <Tooltip
@@ -686,13 +708,19 @@ const MetricListPage = () => {
     owners?.length ? (
       <Box align="center" gap={1}>
         {owners.slice(0, 3).map((owner) => (
-          <ProfilePicture
-            displayName={owner.displayName}
-            isTeam={owner.type === EntityType.TEAM}
+          <Link
+            {...ROW_ACTION_GUARD}
+            aria-label={getEntityName(owner)}
+            data-testid={`metric-owner-link-${owner.id}`}
             key={owner.id}
-            name={owner.name ?? ''}
-            size="xs"
-          />
+            to={getOwnerPath(owner)}>
+            <ProfilePicture
+              displayName={owner.displayName}
+              isTeam={owner.type === EntityType.TEAM}
+              name={owner.name ?? ''}
+              size="xs"
+            />
+          </Link>
         ))}
         {owners.length > 3 && (
           <Typography as="span" className="tw:text-tertiary" size="text-xs">
@@ -947,7 +975,10 @@ const MetricListPage = () => {
       title: t(METRIC_COLUMN_LABEL_KEYS.glossary),
       width: 220,
       render: (_, { row }) =>
-        renderTagBadges(getGlossaryTerms((row as MetricTreeNode).tags)),
+        renderTagBadges(
+          getGlossaryTerms((row as MetricTreeNode).tags),
+          getGlossaryTermDetailsPath
+        ),
     },
     {
       key: 'entityStatus',
@@ -974,7 +1005,10 @@ const MetricListPage = () => {
       title: t(METRIC_COLUMN_LABEL_KEYS.tags),
       width: 200,
       render: (_, { row }) =>
-        renderTagBadges(getTags((row as MetricTreeNode).tags)),
+        renderTagBadges(
+          getTags((row as MetricTreeNode).tags),
+          getClassificationTagPath
+        ),
     },
     {
       key: 'domains',
@@ -1050,9 +1084,13 @@ const MetricListPage = () => {
         {visibleColumns.includes('owners') && renderOwners(metric.owners)}
       </Box>
       {visibleColumns.includes('glossary') &&
-        renderTagBadges(getGlossaryTerms(metric.tags), 'wrap')}
+        renderTagBadges(
+          getGlossaryTerms(metric.tags),
+          getGlossaryTermDetailsPath,
+          'wrap'
+        )}
       {visibleColumns.includes('tags') &&
-        renderTagBadges(getTags(metric.tags), 'wrap')}
+        renderTagBadges(getTags(metric.tags), getClassificationTagPath, 'wrap')}
       {visibleColumns.includes('updatedAt') && (
         <span className="tw:text-xs tw:text-tertiary">
           {metric.updatedAt
