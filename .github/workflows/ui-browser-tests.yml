@@ -1,9 +1,22 @@
 # UI integration tests (Vitest Browser Mode + MSW). No backend; every
 # /api call is mocked, so the only network use is installing deps and Chromium.
+#
+# A pull request runs only the test files that execute the code it changes
+# (scripts/select-browser-tests.mjs). The map of what each test file executes
+# comes from the full run on main, kept in the Actions cache; a missing map,
+# or a change to test setup, configs, dependencies or core components, runs
+# everything.
 name: UI Browser Tests
 
 on:
   pull_request:
+    paths:
+      - "openmetadata-ui/src/main/resources/ui/**"
+      - "openmetadata-ui-core-components/src/main/resources/ui/**"
+      - ".github/workflows/ui-browser-tests.yml"
+      - ".github/actions/ui-browser-setup/**"
+  push:
+    branches: [main]
     paths:
       - "openmetadata-ui/src/main/resources/ui/**"
       - "openmetadata-ui-core-components/src/main/resources/ui/**"
@@ -15,44 +28,143 @@ permissions:
   contents: read
 
 concurrency:
-  group: ui-browser-tests-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  group: ui-browser-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   UI_DIR: openmetadata-ui/src/main/resources/ui
-  # The suite is split across this many runners; with ~1,070 tests three
-  # shards ran past 10 min each.
+  # At most this many runners; with ~1,070 tests three ran past 10 min each.
   SHARDS: 5
+  # Test files per runner when only some run (130 files over 5 runners).
+  FILES_PER_SHARD: 26
 
 jobs:
+  select:
+    name: select browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      mode: ${{ steps.plan.outputs.mode }}
+      summary: ${{ steps.plan.outputs.summary }}
+      shards: ${{ steps.plan.outputs.shards }}
+      shard-count: ${{ steps.plan.outputs.shard-count }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          # A pull request checks out its merge commit: HEAD^1 is the base.
+          fetch-depth: 2
+      - uses: actions/setup-node@v5
+        if: github.event_name == 'pull_request'
+        with:
+          node-version-file: ${{ env.UI_DIR }}/.nvmrc
+      # Only esbuild is needed to read the import graph; the full UI install
+      # builds core components first.
+      - name: Install esbuild
+        if: github.event_name == 'pull_request'
+        run: |
+          version=$(awk '/^"?esbuild@/ {found=1} found && /^  version / {gsub(/"/, "", $2); print $2; exit}' "$UI_DIR/yarn.lock")
+          mkdir -p "$RUNNER_TEMP/esbuild"
+          cd "$RUNNER_TEMP/esbuild"
+          echo '{"private": true}' > package.json
+          yarn add --silent "esbuild@$version"
+          echo "ESBUILD_PATH=$RUNNER_TEMP/esbuild/node_modules/esbuild/lib/main.js" >> "$GITHUB_ENV"
+      - name: Restore the impact map from main
+        if: github.event_name == 'pull_request'
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.UI_DIR }}/impact-map.json
+          key: browser-impact-map-${{ github.event.pull_request.base.sha }}
+          restore-keys: browser-impact-map-
+      - name: Test the selection script
+        if: github.event_name == 'pull_request'
+        working-directory: ${{ env.UI_DIR }}
+        run: node --test scripts/select-browser-tests.test.mjs
+      - name: Select tests
+        id: plan
+        working-directory: ${{ env.UI_DIR }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            node scripts/select-browser-tests.mjs --map impact-map.json --base HEAD^1 --out selection.json \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo '{"mode": "all", "reason": "full run on ${{ github.event_name }}", "tests": [], "uncovered": []}' > selection.json
+          fi
+          mode=$(jq -r .mode selection.json)
+          count=$(jq '.tests | length' selection.json)
+          shard_count=0
+          if [ "$mode" = "all" ]; then
+            shard_count=$SHARDS
+            summary="all test files ($(jq -r .reason selection.json))"
+          elif [ "$mode" = "selected" ]; then
+            shard_count=$(( (count + FILES_PER_SHARD - 1) / FILES_PER_SHARD ))
+            shard_count=$(( shard_count > SHARDS ? SHARDS : shard_count ))
+            summary="$(jq -r .reason selection.json)"
+          else
+            summary="$(jq -r .reason selection.json)"
+          fi
+          {
+            echo "mode=$mode"
+            echo "summary=$summary"
+            echo "shard-count=$shard_count"
+            echo "shards=$(jq -cn --argjson n "$shard_count" '[range(1; $n + 1)]')"
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: browser-selection
+          path: ${{ env.UI_DIR }}/selection.json
+          retention-days: 1
+
   browser-tests:
     name: browser tests + coverage (shard ${{ matrix.shard }})
+    needs: select
+    if: needs.select.outputs.mode != 'none'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5] # keep in step with env.SHARDS
+        shard: ${{ fromJSON(needs.select.outputs.shards) }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ./.github/actions/ui-browser-setup
+      - uses: actions/download-artifact@v7
+        with:
+          name: browser-selection
+          path: ${{ env.UI_DIR }}
       - name: Run browser tests with coverage
         id: tests
         working-directory: ${{ env.UI_DIR }}
         continue-on-error: true
+        env:
+          # Full runs on main (and manual ones) record what each test file
+          # executes, for the impact map.
+          BROWSER_IMPACT_DIR: ${{ github.event_name != 'pull_request' && format('{0}/{1}/.impact', github.workspace, env.UI_DIR) || '' }}
         # The blob report carries this shard's results and coverage for the
         # merge in browser-tests-report.
         run: |
-          yarn test:ui:coverage --shard=${{ matrix.shard }}/${{ env.SHARDS }} \
-            --reporter=default --reporter=blob
+          files=()
+          if [ "${{ needs.select.outputs.mode }}" = "selected" ]; then
+            mapfile -t files < <(jq -r '.tests[]' selection.json)
+          fi
+          yarn test:ui:coverage --shard=${{ matrix.shard }}/${{ needs.select.outputs.shard-count }} \
+            --passWithNoTests --reporter=default --reporter=blob "${files[@]}"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: browser-blob-${{ matrix.shard }}
           path: ${{ env.UI_DIR }}/.vitest-reports/*
           include-hidden-files: true
+          retention-days: 1
+      - uses: actions/upload-artifact@v7
+        if: always() && github.event_name != 'pull_request'
+        with:
+          name: browser-impact-${{ matrix.shard }}
+          path: ${{ env.UI_DIR }}/.impact/*.jsonl
+          include-hidden-files: true
+          if-no-files-found: ignore
           retention-days: 1
       - name: Upload failure screenshots
         if: always() && steps.tests.outcome == 'failure'
@@ -68,11 +180,11 @@ jobs:
         run: exit 1
 
   # Merges the shards back into one coverage summary and one JUnit file, so the
-  # PR gets a single coverage comment as before.
+  # PR gets a single coverage comment. On main it also stores the impact map.
   browser-tests-report:
     name: browser tests + coverage
-    needs: browser-tests
-    if: always()
+    needs: [select, browser-tests]
+    if: always() && needs.select.outputs.mode != 'none' && needs.select.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -102,11 +214,36 @@ jobs:
         with:
           coverage-summary-path: ${{ env.UI_DIR }}/src/test/browser/coverage/coverage-summary.json
           junitxml-path: ${{ env.UI_DIR }}/src/test/browser/junit.xml
-          junitxml-title: UI browser tests (Vitest)
+          junitxml-title: "UI browser tests (Vitest): ${{ needs.select.outputs.summary }}"
           title: UI browser test coverage
-          summary-title: UI browser tests summary
+          summary-title: "UI browser tests summary (coverage of the test files that ran)"
           badge-title: Browser coverage
           unique-id-for-comment: ui-browser-tests
+      - uses: actions/download-artifact@v7
+        if: github.event_name != 'pull_request'
+        with:
+          pattern: browser-impact-*
+          merge-multiple: true
+          path: impact
+      # Only a fully passing run is trusted as the map: a failed test may have
+      # stopped before reaching the code it covers.
+      - name: Build the impact map
+        if: github.event_name != 'pull_request' && needs.browser-tests.result == 'success'
+        run: |
+          cat impact/*.jsonl | jq -s 'map({(.test): .used}) | add' > "$UI_DIR/impact-map.json"
+          echo "Impact map: $(jq length "$UI_DIR/impact-map.json") test files" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: github.event_name != 'pull_request' && needs.browser-tests.result == 'success'
+        with:
+          name: browser-impact-map
+          path: ${{ env.UI_DIR }}/impact-map.json
+      # Only main's map is shared with pull requests.
+      - name: Save the impact map
+        if: github.event_name == 'push' && needs.browser-tests.result == 'success'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ env.UI_DIR }}/impact-map.json
+          key: browser-impact-map-${{ github.sha }}
       - name: Fail if any shard failed
         if: always() && needs.browser-tests.result != 'success'
         run: exit 1

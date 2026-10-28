@@ -16,9 +16,15 @@ import { cleanup } from 'vitest-browser-react';
 import { useExploreCache } from '../../hooks/useExploreCache';
 import '../../styles/globalStyles';
 import i18next from '../../utils/i18next/LocalUtil';
+import { recordImpact } from './impact';
 import { worker } from './msw';
 
 initCoreI18n(i18next);
+
+declare const __BROWSER_IMPACT__: boolean;
+if (__BROWSER_IMPACT__) {
+  recordImpact();
+}
 
 const runnerUrl = globalThis.location.href;
 const unhandledApiCalls: string[] = [];

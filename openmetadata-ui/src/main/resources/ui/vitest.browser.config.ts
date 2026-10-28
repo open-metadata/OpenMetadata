@@ -24,7 +24,9 @@
  *   yarn test:ui:coverage   # istanbul coverage, merged with Jest's in CI
  */
 import { playwright } from '@vitest/browser-playwright';
-import { readFileSync } from 'fs';
+import { appendFileSync, mkdirSync, readFileSync } from 'fs';
+import { join, relative } from 'path';
+import type { BrowserCommand } from 'vitest/node';
 import { defineConfig, mergeConfig, type Plugin } from 'vitest/config';
 import appViteConfig from './vite.config';
 
@@ -47,6 +49,24 @@ const mswServiceWorker = (): Plugin => {
 
 const headless = process.env.HEADED !== 'true';
 
+// Set on main's full run: each test file records the source files it executed
+// (src/test/browser/impact.ts). PRs select tests from the merged map
+// (scripts/select-browser-tests.mjs).
+const impactDir = process.env.BROWSER_IMPACT_DIR;
+
+const recordImpact: BrowserCommand<[used: string[]]> = (ctx, used) => {
+  if (!impactDir || !ctx.testPath) {
+    return;
+  }
+  mkdirSync(impactDir, { recursive: true });
+  const test = relative(__dirname, ctx.testPath);
+  const files = used.map((path) => relative(__dirname, path));
+  appendFileSync(
+    join(impactDir, `${process.pid}.jsonl`),
+    `${JSON.stringify({ test, used: files })}\n`
+  );
+};
+
 export default defineConfig(async (env) => {
   const base =
     typeof appViteConfig === 'function'
@@ -68,6 +88,7 @@ export default defineConfig(async (env) => {
         __BROWSER_TEST_TIME_SCALE__: JSON.stringify(
           process.argv.includes('--coverage') ? 2 : 1
         ),
+        __BROWSER_IMPACT__: JSON.stringify(Boolean(impactDir)),
       },
       optimizeDeps: {
         include: [
@@ -109,6 +130,7 @@ export default defineConfig(async (env) => {
               : {},
           }),
           instances: [{ browser: 'chromium' }],
+          commands: { recordImpact },
           viewport: { width: 1440, height: 900 },
           screenshotFailures: true,
           // Visual regression: baselines live next to the test file.
