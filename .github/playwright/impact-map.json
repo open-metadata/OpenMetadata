@@ -1518,6 +1518,14 @@
       ],
       "projects": [],
       "specs": []
+    },
+    {
+      "_comment": "Jest files beside the audit-log components. The generated map routes only the components (by testId), so a test-only change would otherwise escalate the PR to the full suite.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/AuditLog/*.test.tsx"
+      ],
+      "projects": ["Basic"],
+      "specs": ["playwright/e2e/Pages/AuditLogs.spec.ts"]
     }
   ]
 }

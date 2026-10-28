@@ -370,11 +370,6 @@
       "count": 2
     }
   },
-  "playwright/e2e/Flow/IngestionBot.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Flow/ObservabilityAlerts.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
@@ -757,7 +752,7 @@
   },
   "playwright/utils/task.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 1
     }
   },
   "playwright/utils/taskWorkflow.ts": {
