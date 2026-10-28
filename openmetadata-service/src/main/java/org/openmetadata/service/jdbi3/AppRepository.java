@@ -6,7 +6,6 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
@@ -214,11 +213,10 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  protected String serializeForVersionHistory(App entity) {
-    ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
-    node.remove(RUNTIME_SECRET_FIELDS);
-    node.remove(EVENT_SUBSCRIPTIONS);
-    return node.toString();
+  protected List<String> getFieldsHiddenFromHistory() {
+    final List<String> hiddenFields = new ArrayList<>(RUNTIME_SECRET_FIELDS);
+    hiddenFields.add(EVENT_SUBSCRIPTIONS);
+    return hiddenFields;
   }
 
   @Override

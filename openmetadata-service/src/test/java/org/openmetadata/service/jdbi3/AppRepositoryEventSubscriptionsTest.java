@@ -28,7 +28,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
 /**
@@ -67,11 +66,7 @@ class AppRepositoryEventSubscriptionsTest {
 
   @Test
   void versionHistoryLeavesOutTheAlertList() {
-    final ObjectNode snapshot =
-        (ObjectNode) JsonUtils.readTree(repository().serializeForVersionHistory(appWithAlert()));
-
-    assertFalse(snapshot.has("eventSubscriptions"));
-    assertTrue(snapshot.has("name"));
+    assertTrue(repository().getFieldsHiddenFromHistory().contains("eventSubscriptions"));
   }
 
   @Test
