@@ -13,8 +13,8 @@
 import { initCoreI18n } from '@openmetadata/ui-core-components';
 import { afterAll, afterEach, beforeAll, expect } from 'vitest';
 import { cleanup } from 'vitest-browser-react';
-import '../../styles/globalStyles';
 import { useExploreCache } from '../../hooks/useExploreCache';
+import '../../styles/globalStyles';
 import i18next from '../../utils/i18next/LocalUtil';
 import { worker } from './msw';
 
@@ -59,19 +59,24 @@ afterEach(async () => {
   // assertion; give it one tick to reach MSW, then let it finish.
   await new Promise((resolve) => setTimeout(resolve, 100));
 
-  await expect.poll(() => inFlight.size, { timeout: 5000 }).toBe(0);
+  try {
+    await expect.poll(() => inFlight.size, { timeout: 5000 }).toBe(0);
+  } finally {
+    // Reset even when a request never settled, so one hung request fails only
+    // its own test instead of leaking handlers, URL and storage into the next.
+    // Every API call a page makes must be mocked on purpose, so a test can
+    // never pass because a request silently failed.
+    const unhandled = [...new Set(unhandledApiCalls.splice(0))];
+    inFlight.clear();
+    worker.resetHandlers();
+    globalThis.history.replaceState(null, '', runnerUrl);
+    localStorage.clear();
+    // Explore keeps search results for 30 s across mounts (as across a user's
+    // tab switches); a later test would render this test's results first.
+    useExploreCache.getState().clearCache();
 
-  // Every API call a page makes must be mocked on purpose, so a test can never
-  // pass because a request silently failed.
-  const unhandled = [...new Set(unhandledApiCalls.splice(0))];
-  worker.resetHandlers();
-  globalThis.history.replaceState(null, '', runnerUrl);
-  localStorage.clear();
-  // Explore keeps search results for 30 s across mounts (as across a user's
-  // tab switches); a later test would render this test's results first.
-  useExploreCache.getState().clearCache();
-
-  expect(unhandled, 'API calls without an MSW handler').toEqual([]);
+    expect(unhandled, 'API calls without an MSW handler').toEqual([]);
+  }
 });
 
 afterAll(() => worker.stop());
