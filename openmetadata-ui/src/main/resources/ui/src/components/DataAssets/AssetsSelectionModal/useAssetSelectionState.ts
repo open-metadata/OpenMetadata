@@ -271,7 +271,7 @@ export const useAssetSelectionState = ({
 
   useEffect(() => {
     if (open) {
-      fetchCurrentEntity();
+      fetchCurrentEntity().catch((err) => showErrorToast(err as AxiosError));
     }
   }, [open, fetchCurrentEntity]);
 
