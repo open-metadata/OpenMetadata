@@ -41,7 +41,7 @@ from metadata.ingestion.source.dashboard.hex.cell_lineage import (
     node_count,
     parse_cell_sql,
 )
-from metadata.ingestion.source.dashboard.hex.client import HexApiClient
+from metadata.ingestion.source.dashboard.hex.client import HexAccessDeniedError, HexApiClient
 from metadata.ingestion.source.dashboard.hex.metadata import HexSource
 from metadata.ingestion.source.dashboard.hex.models import Cell, CellContents, DataConnection, Project, SqlCellContents
 from metadata.ingestion.source.dashboard.hex.query_fetcher import HexProjectLineage
@@ -156,6 +156,14 @@ class TestCellSqlParsing:
 
     def test_unparseable_sql_is_skipped(self):
         assert parse_cell_sql("select * from where", "snowflake") is None
+
+    def test_a_quoted_column_name_with_a_dot_is_one_name(self):
+        schema = {"prod": {"sales": {"orders": {"customer.id": "unknown", "id": "unknown"}}}}
+
+        assert outputs('select o."customer.id" as cid, o.id from prod.sales.orders o', schema) == {
+            "cid": {(ORDERS, "customer.id")},
+            "id": {(ORDERS, "id")},
+        }
 
     def test_quoted_identifiers_resolve_whatever_their_case(self):
         users = ("prod", "public", "users")
@@ -349,6 +357,7 @@ def make_source():
         source.hex_project_lineage = {}
         source._cell_lineage = None
         source._data_connections = None
+        source._data_connections_denied = False
         return source
 
     return _make
@@ -946,6 +955,91 @@ class TestHexCellLineage:
             ("snowflake_prod.prod.sales.orders", "dashboardDataModel"),
         ]
 
+    def test_without_data_connections_an_existing_data_model_is_kept(self, make_source):
+        first_run = make_source([REVENUE_CELL])
+        run(first_run)
+        source = make_source([REVENUE_CELL])
+        source.metadata.entities.update(first_run.metadata.entities)
+        source.client.get_data_connections.side_effect = HexAccessDeniedError("403")
+
+        data_models, _ = run(source)
+
+        assert data_models == []
+        assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
+
+    def test_without_data_connections_a_new_project_still_gets_a_data_model(self, make_source):
+        source = make_source([REVENUE_CELL])
+        source.client.get_data_connections.side_effect = HexAccessDeniedError("403")
+
+        (request,), _ = run(source)
+        run(source)
+
+        assert [child.name.root for child in request.columns[0].children] == ["region", "revenue", "segment"]
+        # Denied once is denied for the run
+        source.client.get_data_connections.assert_called_once()
+
+    def test_a_cell_that_stops_parsing_keeps_its_group(self, make_source):
+        first_run = make_source([REVENUE_CELL, CUSTOMERS_CELL])
+        run(first_run)
+        broken = CUSTOMERS_CELL.model_copy(
+            update={"contents": CellContents(sqlCell=SqlCellContents(source="select * from where"))}
+        )
+        source = make_source([REVENUE_CELL, broken])
+        source.metadata.entities.update(first_run.metadata.entities)
+
+        (request,), _ = run(source)
+
+        assert [column.name.root for column in request.columns] == ["c1", "c2"]
+        assert [child.name.root for child in request.columns[1].children] == ["id", "segment"]
+        assert request.columns[1].fullyQualifiedName is None
+
+    def test_a_cell_that_never_parsed_adds_no_group(self, make_source):
+        broken = CUSTOMERS_CELL.model_copy(
+            update={"contents": CellContents(sqlCell=SqlCellContents(source="select * from where"))}
+        )
+        source = make_source([REVENUE_CELL, broken])
+
+        (request,), _ = run(source)
+
+        assert [column.name.root for column in request.columns] == ["c1"]
+
+    def test_a_column_passed_through_keeps_its_nested_type(self, make_source):
+        events = Table(
+            id=uuid.uuid4(),
+            name="events",
+            fullyQualifiedName="snowflake_prod.prod.sales.events",
+            columns=[
+                Column(
+                    name="tags",
+                    dataType=DataType.ARRAY,
+                    arrayDataType=DataType.VARCHAR,
+                    fullyQualifiedName="snowflake_prod.prod.sales.events.tags",
+                ),
+                Column(
+                    name="payload",
+                    dataType=DataType.STRUCT,
+                    fullyQualifiedName="snowflake_prod.prod.sales.events.payload",
+                    children=[
+                        Column(
+                            name="kind",
+                            dataType=DataType.VARCHAR,
+                            fullyQualifiedName="snowflake_prod.prod.sales.events.payload.kind",
+                        )
+                    ],
+                ),
+            ],
+        )
+        cell = REVENUE_CELL.model_copy(
+            update={"contents": CellContents(sqlCell=SqlCellContents(source="select tags, payload from sales.events"))}
+        )
+        source = make_source([cell], tables=(events,))
+
+        (request,), _ = run(source)
+
+        tags, payload = request.columns[0].children
+        assert (tags.dataType, tags.arrayDataType) == (DataType.ARRAY, DataType.VARCHAR)
+        assert [(child.name.root, child.fullyQualifiedName) for child in payload.children] == [("kind", None)]
+
 
 class TestHexApiClientCells:
     @pytest.fixture
@@ -1035,11 +1129,12 @@ cells:
 
         assert client.get_data_connections() is None
 
-    def test_data_connections_the_token_cant_read_are_none_known(self, client):
-        """Unread would keep every data model as it is forever: it can't be read on a retry either"""
+    def test_data_connections_the_token_cant_read_are_told_apart(self, client):
+        """A 403 won't change on a retry, unlike a failure that only returns None"""
         client.client.get.side_effect = HTTPError(response=SimpleNamespace(status_code=403))
 
-        assert client.get_data_connections() == {}
+        with pytest.raises(HexAccessDeniedError):
+            client.get_data_connections()
 
     def test_rate_limited_requests_are_retried(self):
         client = HexApiClient(HexConnection(hostPort="https://app.hex.tech", token="token"))
