@@ -86,6 +86,7 @@ public class SearchMetadataTool implements McpTool {
           "testPlatforms",
           "basic",
           "lastResultTimestamp",
+          // ADR:2026-10-29-search-metadata-hits-show-their-place-in-a-hierarchy
           "parent",
           "childrenCount",
           "metricGroup");

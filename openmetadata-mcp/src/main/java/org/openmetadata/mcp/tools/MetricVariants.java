@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.data.Metric;
@@ -17,6 +18,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.MetricRepository;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -28,6 +30,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
  *
  * <p>ADR:2026-10-29-parent-metric-reads-carry-up-to-25-variant-expressions
  */
+@Slf4j
 final class MetricVariants {
   private static final int MAX_VARIANTS_WITH_EXPRESSION = 25;
   private static final String TRUNCATED_KEY = "childrenExpressionsTruncated";
@@ -52,10 +55,10 @@ final class MetricVariants {
   }
 
   /**
-   * The same check get_entity_details applies before it returns a metric. Broad on purpose, as in
-   * ViewPermissionFilter: this is fail-closed, so a child whose check throws for any reason, such
-   * as a dangling owner or a policy condition that errors, is left without its expression rather
-   * than failing the parent read.
+   * The same check get_entity_details applies before it returns a metric. A denial is expected and
+   * stays quiet. Any other failure, such as a dangling owner or a policy condition that errors, is
+   * broad on purpose as in ViewPermissionFilter: it is logged and the child is left without its
+   * expression rather than failing the parent read.
    */
   static Predicate<EntityReference> viewableBy(
       Authorizer authorizer, SecurityContext securityContext) {
@@ -66,7 +69,13 @@ final class MetricVariants {
             securityContext,
             new OperationContext(Entity.METRIC, VIEW_ALL),
             new ResourceContext<>(Entity.METRIC, child.getId(), null));
+      } catch (AuthorizationException e) {
+        visible = false;
       } catch (RuntimeException e) {
+        LOG.warn(
+            "Withholding the expression of metric variant {}: view check failed: {}",
+            child.getId(),
+            e.getMessage());
         visible = false;
       }
       return visible;
