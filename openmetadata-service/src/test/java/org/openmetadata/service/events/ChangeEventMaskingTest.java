@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
@@ -25,8 +26,11 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -38,6 +42,9 @@ class ChangeEventMaskingTest {
   static void knowTheEntityTypes() {
     EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.putIfAbsent(Entity.USER, User.class);
     EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.putIfAbsent(Entity.TABLE, Table.class);
+    // The map is keyed by the lower-cased entity type.
+    EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.putIfAbsent(
+        Entity.INGESTION_PIPELINE.toLowerCase(Locale.ROOT), IngestionPipeline.class);
   }
 
   @Test
@@ -57,6 +64,31 @@ class ChangeEventMaskingTest {
     final JsonNode entity = storedEntity(stored);
     assertFalse(entity.has("authenticationMechanism"));
     assertEquals("ingestion-bot", entity.path("name").asText());
+  }
+
+  @Test
+  void aPipelinesServerTokenLeavesItsEvent() {
+    final IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withId(UUID.randomUUID())
+            .withName("metadata")
+            .withOpenMetadataServerConnection(
+                new OpenMetadataConnection()
+                    .withHostPort("http://localhost:8585/api")
+                    .withSecurityConfig(
+                        new OpenMetadataJWTClientConfig().withJwtToken("eyJ.secret.token")));
+    final String event =
+        JsonUtils.pojoToJson(
+            new ChangeEvent()
+                .withId(UUID.randomUUID())
+                .withEventType(EventType.ENTITY_UPDATED)
+                .withEntityType(Entity.INGESTION_PIPELINE)
+                .withEntity(pipeline));
+
+    final JsonNode connection =
+        storedEntity(ChangeEventMasking.masked(event)).path("openMetadataServerConnection");
+    assertFalse(connection.has("securityConfig"));
+    assertEquals("http://localhost:8585/api", connection.path("hostPort").asText());
   }
 
   @Test

@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 class MaskedFieldsTest {
 
@@ -35,6 +36,11 @@ class MaskedFieldsTest {
   void aServiceConnectionOnlyHoldsSecretsInside() {
     assertEquals(List.of(), MaskedFields.wholeFieldsOf(DatabaseService.class));
     assertTrue(MaskedFields.anyIn(DatabaseService.class));
+  }
+
+  @Test
+  void theTokenAServerConnectionSignsInWithIsSecretAsAWhole() {
+    assertTrue(MaskedFields.wholeFieldsOf(OpenMetadataConnection.class).contains("securityConfig"));
   }
 
   @Test
