@@ -225,34 +225,12 @@ public interface RdfStorageInterface extends AutoCloseable {
   void clearGraph(String graphUri);
 
   /**
-   * Compact the underlying storage to reclaim disk space after large deletes.
+   * Compacts this handle's dataset, waiting up to {@code maxWait}, and reports the outcome.
    *
-   * <p>Apache Jena TDB2 (the Fuseki backend) marks deleted triples as free space
-   * in its B+Tree indexes but never returns blocks to the OS, and its write-ahead
-   * journal grows monotonically until compaction is invoked. Without an explicit
-   * compaction call after {@code CLEAR ALL} / {@code DELETE WHERE}, the on-disk
-   * dataset keeps growing across re-index runs even though the live triple count
-   * stays bounded.
-   *
-   * <p>Implementations should run compaction synchronously (block until the task
-   * finishes on the server) so callers can safely resume writes against a fresh
-   * dataset directory. Failures should be logged and swallowed — a missing
-   * compaction degrades disk usage, not correctness, so it must not fail the
-   * caller's higher-level operation (e.g. the re-index run).
-   *
-   * <p>Best-effort: the outcome is logged and measured by {@link #compact(Duration)}, never thrown,
-   * because a missing compaction costs disk, not correctness.
-   */
-  default void compactStorage() {
-    compact(DEFAULT_COMPACTION_WAIT);
-  }
-
-  /** Longest a caller waits for a compaction by default; TDB2 copies only the live data. */
-  Duration DEFAULT_COMPACTION_WAIT = Duration.ofHours(4);
-
-  /**
-   * Compacts this handle's dataset and reports the outcome. Backends without compaction report
-   * {@link CompactionResult.Outcome#UNSUPPORTED}.
+   * <p>Apache Jena TDB2 (the Fuseki backend) copies every index page a write touches and never
+   * reuses the old ones, so the dataset grows with every write, deletes included, until it is
+   * compacted. The outcome is reported, never thrown: a missing compaction costs disk, not
+   * correctness. Backends without compaction report {@link CompactionResult.Outcome#UNSUPPORTED}.
    */
   default CompactionResult compact(Duration maxWait) {
     return CompactionResult.unsupported();

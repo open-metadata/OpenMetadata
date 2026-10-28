@@ -46,7 +46,6 @@ import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
-import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.quartz.JobExecutionContext;
@@ -428,7 +427,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     // TDB2 copies index pages on every write transaction, including append-only rebuilds.
     // Failure to reclaim obsolete pages does not invalidate the indexed graph.
     try {
-      repository.compactStorage();
+      repository.compact(repository.maintenanceBudget());
     } catch (RuntimeException compactFailure) {
       LOG.warn(
           "RDF index compaction failed; disk reclamation skipped. Reason: {}",
@@ -577,7 +576,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private void prepareBuildDataset(RdfRepository indexingRepository, String targetDataset) {
     LOG.info("Preparing blue/green build dataset '{}'", targetDataset);
     indexingRepository.clearAll();
-    indexingRepository.compactStorage();
+    indexingRepository.compact(indexingRepository.maintenanceBudget());
     indexingRepository.reloadOntologies();
     indexingRepository.rebuildOntologyGraphs();
     LOG.info("Build dataset '{}' is empty and ontology-seeded", targetDataset);
@@ -711,37 +710,18 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
   /**
    * CLEAR ALL is a logical delete on TDB2: it writes new pages and frees nothing, so the dataset is
-   * compacted while it is empty, before the reload, whether or not the clear reported success. A
-   * clear that timed out keeps running in Fuseki and the compaction waits for it, so only the
-   * store's own answer afterwards says whether the clear happened. CLEAR ALL also wipes the ontology
-   * and shapes graphs, which are reloaded before indexing starts.
+   * compacted next, while it is empty and even when the clear failed. CLEAR ALL also wipes the
+   * ontology and shapes graphs, which are reloaded before indexing starts.
    */
   private void resetServingDataset() {
-    RuntimeException clearFailure = null;
     try {
       rdf().clearAllAsMaintenance(rdf().maintenanceBudget());
-    } catch (RuntimeException exception) {
-      clearFailure = exception;
+    } finally {
+      rdf().compact(rdf().maintenanceBudget());
     }
-    rdf().compact(rdf().maintenanceBudget());
-    requireCleared(clearFailure);
     LOG.info("Cleared all RDF data");
     rdf().reloadOntologies();
     rdf().rebuildOntologyGraphs();
-  }
-
-  private void requireCleared(final RuntimeException clearFailure) {
-    final boolean cleared =
-        clearFailure == null
-            || (RdfWriteOutcomeUnknownException.isPresent(clearFailure) && rdf().isStoreEmpty());
-    if (!cleared) {
-      throw clearFailure != null
-          ? clearFailure
-          : new IllegalStateException("The RDF store still holds data after CLEAR ALL");
-    }
-    if (clearFailure != null) {
-      LOG.warn("The RDF clear outlived its budget but completed in Fuseki", clearFailure);
-    }
   }
 
   private void reindex(final RdfRepository indexingRepository) throws InterruptedException {

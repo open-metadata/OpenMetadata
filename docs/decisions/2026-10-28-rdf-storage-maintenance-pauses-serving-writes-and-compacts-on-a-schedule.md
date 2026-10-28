@@ -36,8 +36,8 @@ dead-lettered, marking the projection degraded until a full rebuild.
   `storageMaintenance.maxDurationMinutes` (240), not the per-request timeout, and do not consult or
   feed the circuit breaker. A `CLEAR` cannot be cancelled in Fuseki, so a shorter budget only
   abandons a clear that still completes.
-- An in-place rebuild clears, then always compacts, then checks that the store is empty, then
-  reloads the ontologies. A clear that timed out but emptied the store lets the run continue.
+- An in-place rebuild clears, then always compacts, then reloads the ontologies. A clear that fails
+  is still followed by the compaction, and then fails the run.
 - A compaction counts as succeeded only when Fuseki's task reports `success: true`. A task Fuseki no
   longer reports, or that is not a compaction, is `UNKNOWN`, never success.
 
