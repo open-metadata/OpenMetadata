@@ -28,9 +28,9 @@ import {
   getAllTracedEdges,
   getColumnLineageData,
   getLineageDetailsObject,
-  getNewLineageConnectionDetails,
   getLineageEdge,
   getLineageEdgeForAPI,
+  getNewLineageConnectionDetails,
   getUpdatedColumnsFromEdge,
 } from './EntityLineageEdgeUtils';
 import {
@@ -46,6 +46,7 @@ import {
 import {
   addLineageHandler,
   applyTempTableVisibility,
+  dropUnreachableNodes,
   getColumnFunctionValue,
   parseLineageData,
   pruneTempLineage,
@@ -128,7 +129,7 @@ describe('Test EntityLineageUtils utility', () => {
     });
   });
 
-  it('keeps an edge\'s temp tables in the details saved for it', () => {
+  it("keeps an edge's temp tables in the details saved for it", () => {
     const tempLineageTables = [
       { fromEntity: 'svc.db.s.a', toEntity: 'tmp_staging' },
       { fromEntity: 'tmp_staging', toEntity: 'svc.db.s.b' },
@@ -2328,6 +2329,16 @@ describe('extractTempLineageNodes (via parseLineageData)', () => {
         expect((pruned.nodes ?? []).map((n) => n.fullyQualifiedName)).toEqual([
           'db.tableA',
         ]);
+      });
+
+      it('drops a table reached only through a deleted direct edge', () => {
+        const lineage = dropUnreachableNodes(
+          withoutEdge(throughTemp(), 'db.tableA', 'db.tableB'),
+          'db.tableA'
+        );
+
+        expect((lineage.nodes ?? []).map((n) => n.id)).not.toContain('id-b');
+        expect(lineage.edges).toEqual([]);
       });
 
       it('returns the same object when everything is consistent', () => {

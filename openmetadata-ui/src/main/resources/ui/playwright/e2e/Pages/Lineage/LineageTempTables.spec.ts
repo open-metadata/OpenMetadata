@@ -77,6 +77,9 @@ test.describe('Lineage temporary tables', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const targetNode = page.getByTestId(
       `lineage-node-${target.entityResponseData.fullyQualifiedName}`
     );
+    const directEdge = page.getByTestId(
+      `edge-${source.entityResponseData.fullyQualifiedName}-${target.entityResponseData.fullyQualifiedName}`
+    );
 
     await source.visitEntityPage(page);
     await visitLineageTab(page);
@@ -88,6 +91,7 @@ test.describe('Lineage temporary tables', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await expect(tempNode).toBeHidden();
       await expect(targetNode).toBeVisible();
+      await expect(directEdge).toBeVisible();
     });
 
     await test.step('stay hidden on the next visit', async () => {
@@ -95,6 +99,7 @@ test.describe('Lineage temporary tables', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await visitLineageTab(page);
 
       await expect(targetNode).toBeVisible();
+      await expect(directEdge).toBeVisible();
       await expect(tempNode).toBeHidden();
     });
 
@@ -102,6 +107,7 @@ test.describe('Lineage temporary tables', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await setShowTempTables(page, true);
 
       await expect(tempNode).toBeVisible();
+      await expect(directEdge).toBeHidden();
     });
   });
 });

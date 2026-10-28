@@ -44,7 +44,10 @@ import type {
   LineageNodeType,
 } from '../interface/lineage.interface';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
-import { getNodeLineageData } from './EntityLineageNodeUtils';
+import {
+  getNodeLineageData,
+  getUpstreamDownstreamNodesEdges,
+} from './EntityLineageNodeUtils';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { jsonToCSV } from './StringUtils';
@@ -471,7 +474,7 @@ const getOrCreateTempNode = (
 };
 
 /** Links a temp hop to the stored edge it was expanded from. */
-const getTempHopSourceKey = (edge: EdgeDetails) =>
+const getEdgeEndpointsKey = (edge: EdgeDetails) =>
   `${edge.fromEntity.id}-${edge.toEntity.id}`;
 
 const extractTempLineageNodes = (
@@ -493,7 +496,7 @@ const extractTempLineageNodes = (
     if (!edge.tempLineageTables?.length) {
       return;
     }
-    const tempHopOf = getTempHopSourceKey(edge);
+    const tempHopOf = getEdgeEndpointsKey(edge);
     edge.tempLineageTables.forEach((hop: TempLineageTable) => {
       const fromNode = getOrCreateTempNode(
         hop.fromEntity,
@@ -611,7 +614,7 @@ export const applyTempTableVisibility = <T extends EntityLineageResponse>(
           if (!edge.tempHopOf) {
             return true;
           }
-          const hop = getTempHopSourceKey(edge);
+          const hop = getEdgeEndpointsKey(edge);
           if (drawnHops.has(hop)) {
             return false;
           }
@@ -654,7 +657,7 @@ export const pruneTempLineage = (
   const storedKeys = new Set(
     keptStored
       .filter((edge) => edge.tempLineageTables?.length)
-      .map(getTempHopSourceKey)
+      .map(getEdgeEndpointsKey)
   );
   const keptEdges = keptStored.filter(
     (edge) => !edge.tempHopOf || storedKeys.has(edge.tempHopOf)
@@ -678,3 +681,29 @@ export const getLineageConfigFormValues = (
   downstreamDepth: String(config.downstreamDepth ?? ''),
   nodesPerLayer: String(config.nodesPerLayer ?? ''),
 });
+
+/**
+ * Drops the nodes no remaining edge reaches from the entity. Temp hops whose
+ * stored edge is gone are pruned first: left behind, they would keep the far
+ * end of a removed edge reachable.
+ */
+export const dropUnreachableNodes = (
+  lineage: EntityLineageResponse,
+  entityFqn: string
+): EntityLineageResponse => {
+  const pruned = pruneTempLineage(lineage);
+  const { downstreamEdges, upstreamEdges } = getUpstreamDownstreamNodesEdges(
+    pruned.edges ?? [],
+    pruned.nodes ?? [],
+    entityFqn
+  );
+
+  return {
+    ...pruned,
+    nodes: (pruned.nodes ?? []).filter(
+      (node) =>
+        downstreamEdges?.some((edge) => edge.toEntity.id === node.id) ||
+        upstreamEdges?.some((edge) => edge.fromEntity.id === node.id)
+    ),
+  };
+};

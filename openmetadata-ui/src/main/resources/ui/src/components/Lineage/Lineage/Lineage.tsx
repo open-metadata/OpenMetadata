@@ -114,12 +114,12 @@ import {
 import {
   createNodes,
   getConnectedNodesEdges,
-  getUpstreamDownstreamNodesEdges,
   removeUnconnectedNodes,
 } from '../../../utils/EntityLineageNodeUtils';
 import {
   addLineageHandler,
   applyTempTableVisibility,
+  dropUnreachableNodes,
   parseLineageData,
   pruneTempLineage,
   removeLineageHandler,
@@ -2149,26 +2149,7 @@ export const Lineage = ({
 
   useEffect(() => {
     if (updatedEntityLineage !== null) {
-      const { downstreamEdges, upstreamEdges } =
-        getUpstreamDownstreamNodesEdges(
-          updatedEntityLineage.edges ?? [],
-          updatedEntityLineage.nodes ?? [],
-          entityFqn
-        );
-
-      const updatedNodes =
-        updatedEntityLineage.nodes?.filter(
-          (n) =>
-            !isUndefined(
-              downstreamEdges?.find((d) => d.toEntity.id === n.id)
-            ) ||
-            !isUndefined(upstreamEdges?.find((u) => u.fromEntity.id === n.id))
-        ) ?? [];
-
-      setEntityLineage({
-        ...updatedEntityLineage,
-        nodes: updatedNodes,
-      });
+      setEntityLineage(dropUnreachableNodes(updatedEntityLineage, entityFqn));
     }
   }, [setEntityLineage, updatedEntityLineage, entityFqn]);
 

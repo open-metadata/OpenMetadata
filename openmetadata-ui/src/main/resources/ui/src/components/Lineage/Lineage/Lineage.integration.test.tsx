@@ -201,6 +201,15 @@ const ReactFlowInitConsumer = () => {
   return null;
 };
 
+let latestOnConnect: ReturnType<typeof useLineageHandlers>['onConnect'] =
+  jest.fn();
+
+const ConnectConsumer = () => {
+  latestOnConnect = useLineageHandlers().onConnect;
+
+  return null;
+};
+
 // tableA -> tableB through one temp table.
 const TEMP_LINEAGE_RESPONSE = {
   nodes: {
@@ -534,12 +543,6 @@ describe('Lineage integration', () => {
       currentUser: { id: 'u-admin', name: 'admin' } as User,
     });
     (getLineageDataByFQN as jest.Mock).mockResolvedValue(TEMP_LINEAGE_RESPONSE);
-    let connect: ReturnType<typeof useLineageHandlers>['onConnect'] = jest.fn();
-    const ConnectConsumer = () => {
-      connect = useLineageHandlers().onConnect;
-
-      return null;
-    };
     const drawsDirectEdge = () =>
       useLineageStore
         .getState()
@@ -567,7 +570,7 @@ describe('Lineage integration', () => {
     expect(drawsDirectEdge()).toBe(false);
 
     await act(async () => {
-      connect({
+      latestOnConnect({
         source: 'id-b',
         target: 'id-a',
         sourceHandle: 'id-b',
@@ -595,12 +598,6 @@ describe('Lineage integration', () => {
       .getState()
       .setUserPreference('admin', { showLineageTempTables: false });
     (getLineageDataByFQN as jest.Mock).mockResolvedValue(TEMP_LINEAGE_RESPONSE);
-    let connect: ReturnType<typeof useLineageHandlers>['onConnect'] = jest.fn();
-    const ConnectConsumer = () => {
-      connect = useLineageHandlers().onConnect;
-
-      return null;
-    };
 
     render(
       <MemoryRouter>
@@ -616,13 +613,13 @@ describe('Lineage integration', () => {
     );
 
     await waitFor(() =>
-      expect(
-        useLineageStore.getState().nodes.map((node) => node.id)
-      ).toContain('id-b')
+      expect(useLineageStore.getState().nodes.map((node) => node.id)).toContain(
+        'id-b'
+      )
     );
 
     await act(async () => {
-      connect({
+      latestOnConnect({
         source: 'id-a',
         target: 'id-b',
         sourceHandle: 'svc.db.s.t1.c1',
