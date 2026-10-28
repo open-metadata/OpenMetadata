@@ -101,7 +101,10 @@ class HexApiClient:
         Hex app URLs are scoped by the workspace (org) UUID, which no project endpoint returns
         """
         try:
-            return self.client.get("/users/me")["org"]["id"]
+            response = self.client.get("/users/me")
+            if not isinstance(response, dict):
+                raise TypeError(f"Unexpected /users/me response: {response!r}")  # noqa: TRY301
+            return response["org"]["id"]
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Could not fetch the Hex workspace id, dashboard URLs will be skipped: %s", exc)
