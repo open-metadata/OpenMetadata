@@ -87,6 +87,7 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
           onClose={onCancel}>
           <Dialog.Content>
             <HookForm<LineageConfigFormValues>
+              className="tw:flex tw:flex-col tw:gap-4"
               form={form}
               onSubmit={form.handleSubmit(onSubmit)}>
               {LINEAGE_CONFIG_FIELDS.map(
