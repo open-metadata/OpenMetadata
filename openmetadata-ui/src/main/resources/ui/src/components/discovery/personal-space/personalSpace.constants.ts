@@ -38,6 +38,7 @@ export const INBOX_TASK_ID_PARAM = 'taskId';
  * Query parameter that opens the inbox's Activity tab on one of its sub-tabs:
  * `/inbox/activity?filter=my-assets`. The landing page's Team Activity card
  * uses it, since that card shows the My Assets feed.
+ * ADR:2026-10-28-inbox-activity-opens-on-the-filter-a-link-names
  */
 export const INBOX_ACTIVITY_FILTER_PARAM = 'filter';
 

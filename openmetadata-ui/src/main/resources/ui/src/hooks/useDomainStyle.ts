@@ -12,14 +12,21 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { EntityType } from '../enums/entity.enum';
 import { Style } from '../generated/entity/domains/domain';
 import { queryClient } from '../queryClient';
 import { getDomainByName } from '../rest/domainAPI';
 
-export const DOMAIN_STYLE_QUERY_KEY = ['domain', 'style'] as const;
+/**
+ * Shaped `[EntityType, FQN, ...]` like the entity detail keys, so a refresh of
+ * a domain also refreshes its chips. Every writer of a domain's `style` must
+ * invalidate it. ADR:2026-10-28-domain-chips-cache-style-per-domain-fqn
+ */
+export const domainStyleQueryKey = (fqn?: string) =>
+  [EntityType.DOMAIN, fqn, 'style'] as const;
 
 // A chip appears on every asset header and Explore card; a domain's colour and
-// icon change rarely, and saving them invalidates this key.
+// icon change rarely, and saving them invalidates the key.
 const DOMAIN_STYLE_STALE_TIME = 5 * 60 * 1000;
 
 /**
@@ -35,7 +42,7 @@ export const useDomainStyle = (fqn?: string): Style | undefined => {
     {
       enabled: Boolean(fqn),
       queryFn: async () => (await getDomainByName(fqn ?? '')).style ?? null,
-      queryKey: [...DOMAIN_STYLE_QUERY_KEY, fqn],
+      queryKey: domainStyleQueryKey(fqn),
       // A domain the viewer cannot read keeps the default chip.
       retry: false,
       staleTime: DOMAIN_STYLE_STALE_TIME,
