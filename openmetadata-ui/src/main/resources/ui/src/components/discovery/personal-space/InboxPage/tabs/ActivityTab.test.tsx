@@ -210,6 +210,42 @@ describe('ActivityTab', () => {
     expect(screen.getByText('label.no-activity-in-period')).toBeInTheDocument();
   });
 
+  it('shows the filter empty state with a clear action when a type filter empties the feed', () => {
+    activityState = {
+      items: [{ activity: { id: 'created', eventType: 'EntityCreated' } }],
+      total: 1,
+      isLoading: false,
+    };
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('tags-only'));
+
+    expect(screen.getByTestId('inbox-activity-no-results')).toBeInTheDocument();
+    expect(
+      screen.getByText('label.no-result-for-these-filter-plural')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.no-activity-in-period')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.clear-filter-plural'));
+
+    expect(
+      screen.getAllByTestId('feed-item').map((el) => el.textContent)
+    ).toEqual(['created']);
+  });
+
+  it('keeps the feed empty state when the feed itself is empty under a type filter', () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('tags-only'));
+
+    expect(
+      screen.getByText('label.activity-feed-starts-here')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.no-result-for-these-filter-plural')
+    ).not.toBeInTheDocument();
+  });
+
   // A failed feed must not read as an empty one.
   it('shows an error with a retry, not the empty state, when the feed fails', () => {
     activityState = { ...activityState, error: { response: { status: 500 } } };
