@@ -24,8 +24,8 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickUntilVisible,
-  waitForOverlayToOpen,
   waitForAriaOverlayToSettle,
+  waitForOverlayToOpen,
 } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 

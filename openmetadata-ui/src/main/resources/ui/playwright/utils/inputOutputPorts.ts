@@ -21,10 +21,7 @@ import {
   toDrawerAsset,
 } from './assetDrawerQuickFilter';
 import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
-import {
-  waitForOverlayToOpen,
-  waitForResponseWithStatus,
-} from './waitHelpers';
+import { waitForOverlayToOpen, waitForResponseWithStatus } from './waitHelpers';
 
 type PortAssetType = 'table' | 'topic' | 'dashboard';
 
