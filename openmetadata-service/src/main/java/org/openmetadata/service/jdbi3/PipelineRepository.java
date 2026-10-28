@@ -731,26 +731,16 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               .collect(java.util.stream.Collectors.toList());
     }
 
-    // Apply limit only if provided
-    List<PipelineStatus> paginatedResults;
-    if (limit != null && limit > 0 && pipelineStatuses.size() > limit) {
-      paginatedResults = pipelineStatuses.subList(0, limit);
-    } else {
-      paginatedResults = pipelineStatuses;
-    }
-
     // Build cursors for pagination - only when limit is provided
     String beforeCursor = null;
     String afterCursor = null;
 
-    // Only generate cursors if pagination is active (limit was provided)
-    if (limit != null && !paginatedResults.isEmpty()) {
-      beforeCursor = String.valueOf(paginatedResults.get(0).getTimestamp());
-      afterCursor =
-          String.valueOf(paginatedResults.get(paginatedResults.size() - 1).getTimestamp());
+    if (limit != null && !pipelineStatuses.isEmpty()) {
+      beforeCursor = String.valueOf(pipelineStatuses.getFirst().getTimestamp());
+      afterCursor = String.valueOf(pipelineStatuses.getLast().getTimestamp());
     }
 
-    return new ResultList<>(paginatedResults, beforeCursor, afterCursor, total);
+    return new ResultList<>(pipelineStatuses, beforeCursor, afterCursor, total);
   }
 
   private ResultList<PipelineStatus> getPipelineStatusPage(

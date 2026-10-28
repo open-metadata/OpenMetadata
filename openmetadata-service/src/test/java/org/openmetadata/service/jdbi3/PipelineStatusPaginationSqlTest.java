@@ -8,7 +8,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -79,8 +88,14 @@ class PipelineStatusPaginationSqlTest {
   }
 
   private void checkPages(String url, boolean mysql) {
+    AtomicInteger jsonRowsRead = new AtomicInteger();
     Jdbi jdbi =
-        Jdbi.create(url, mysql ? "root" : "postgres", PASSWORD)
+        Jdbi.create(
+                () ->
+                    trackJsonRows(
+                        Connection.class,
+                        DriverManager.getConnection(url, mysql ? "root" : "postgres", PASSWORD),
+                        jsonRowsRead))
             .installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
     jdbi.getConfig(SqlObjects.class)
@@ -167,11 +182,27 @@ class PipelineStatusPaginationSqlTest {
       }
       assertEquals(9, page(repository, 0, null, null, null, null, null, null).getData().size());
       assertEquals(9, page(repository, -1, null, null, null, null, null, null).getData().size());
-      checkLargeHistory(handle, repository, mysql);
+      for (Integer limit : new Integer[] {null, 0, -1}) {
+        ResultList<PipelineStatus> older =
+            page(repository, limit, null, cursor(600), null, null, null, null);
+        assertEquals(
+            List.of(500L, 400L, 300L, 200L, 100L),
+            older.getData().stream().map(PipelineStatus::getTimestamp).toList());
+        assertEquals(9, older.getPaging().getTotal());
+        if (limit == null) {
+          assertNull(older.getPaging().getBefore());
+          assertNull(older.getPaging().getAfter());
+        } else {
+          assertEquals(cursor(500), older.getPaging().getBefore());
+          assertEquals(cursor(100), older.getPaging().getAfter());
+        }
+      }
+      checkLargeHistory(handle, repository, mysql, jsonRowsRead);
     }
   }
 
-  private void checkLargeHistory(Handle handle, PipelineRepository repository, boolean mysql) {
+  private void checkLargeHistory(
+      Handle handle, PipelineRepository repository, boolean mysql, AtomicInteger jsonRowsRead) {
     List<Status> tasks =
         IntStream.range(0, 12)
             .mapToObj(i -> task(i == 0 ? "target" : "other_" + i, 10L, 50L))
@@ -190,17 +221,63 @@ class PipelineStatusPaginationSqlTest {
           .add();
     }
     batch.execute();
+    jsonRowsRead.set(0);
     ResultList<PipelineStatus> full =
         repository.getPipelineStatuses(
             FQN, 2000L, 6999L, null, null, null, null, "target", 40L, 40L);
+    assertEquals(
+        5000, jsonRowsRead.get(), "The counter must observe the complete-range JSON reads");
+    jsonRowsRead.set(0);
     ResultList<PipelineStatus> page =
         repository.getPipelineStatuses(FQN, 2000L, 6999L, 20, null, null, null, "target", 40L, 40L);
+    assertEquals(
+        20, jsonRowsRead.get(), "Limited requests must consume only the selected JSON rows");
     assertEquals(5000, full.getData().size());
     assertEquals(5000, page.getPaging().getTotal());
     assertEquals(20, page.getData().size());
     assertEquals(6999L, page.getData().getFirst().getTimestamp());
     assertEquals(6980L, page.getData().getLast().getTimestamp());
     assertEquals(full.getData().subList(0, 20), page.getData());
+  }
+
+  private static <T> T trackJsonRows(Class<T> type, T target, AtomicInteger jsonRowsRead) {
+    AtomicBoolean rowCounted = new AtomicBoolean();
+    return type.cast(
+        Proxy.newProxyInstance(
+            type.getClassLoader(),
+            new Class<?>[] {type},
+            (proxy, method, arguments) -> {
+              Object result;
+              try {
+                result = method.invoke(target, arguments);
+              } catch (InvocationTargetException e) {
+                throw e.getCause();
+              }
+              if (result instanceof PreparedStatement statement) {
+                return trackJsonRows(PreparedStatement.class, statement, jsonRowsRead);
+              }
+              if (result instanceof ResultSet resultSet) {
+                return trackJsonRows(ResultSet.class, resultSet, jsonRowsRead);
+              }
+              if (target instanceof ResultSet resultSet) {
+                if ("next".equals(method.getName())) {
+                  rowCounted.set(false);
+                } else if ("getString".equals(method.getName())
+                    && isJsonColumn(resultSet, arguments[0])
+                    && rowCounted.compareAndSet(false, true)) {
+                  jsonRowsRead.incrementAndGet();
+                }
+              }
+              return result;
+            }));
+  }
+
+  private static boolean isJsonColumn(ResultSet resultSet, Object column) throws SQLException {
+    String label =
+        column instanceof Integer index
+            ? resultSet.getMetaData().getColumnLabel(index)
+            : (String) column;
+    return "json".equalsIgnoreCase(label);
   }
 
   private void seed(Handle handle, boolean mysql) {
