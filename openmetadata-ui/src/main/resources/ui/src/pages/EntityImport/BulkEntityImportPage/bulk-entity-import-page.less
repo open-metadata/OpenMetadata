@@ -21,11 +21,6 @@
   }
 }
 
-.react-grid-select-dropdown {
-  width: 100%;
-  min-width: 12rem;
-}
-
 .csv-import-page-stack {
   display: flex;
   flex-direction: column;
@@ -630,10 +625,11 @@
     text-overflow: ellipsis;
   }
 
+  // Centred like every other cell: the preview is clamped to one line, so there is nothing to
+  // top-align.
   .rdg-cell-description {
-    align-items: flex-start;
+    align-items: center;
     overflow-wrap: anywhere;
-    padding-top: var(--om-space-8);
     white-space: normal;
     word-break: break-word;
 
@@ -1552,6 +1548,9 @@
 }
 
 .bulk-edit-description-editor-textarea {
+  // Matches the grid's body text rather than the larger form-field default.
+  font-size: var(--tw-text-sm);
+  line-height: var(--tw-text-sm--line-height);
   background: transparent;
   border: 0;
   box-shadow: none;

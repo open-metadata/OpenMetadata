@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { Column } from 'react-data-grid';
+import DataGrid, { Column } from 'react-data-grid';
 import { MemoryRouter } from 'react-router-dom';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
 import { EntityType } from '../../enums/entity.enum';
@@ -264,6 +264,37 @@ describe('BulkEditEntity', () => {
       renderComponent();
 
       expect(screen.getByTestId('data-grid')).toBeInTheDocument();
+    });
+  });
+
+  describe('Search and editing', () => {
+    it('shows the no-results placeholder instead of an empty grid when search matches nothing', () => {
+      renderComponent({ searchText: 'zzz', visibleRows: [] });
+
+      expect(
+        screen.getByTestId('bulk-edit-no-search-results')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('data-grid')).not.toBeInTheDocument();
+    });
+
+    it('grows the row whose editor reports a taller height', async () => {
+      const rows = [
+        { id: 'row-a', col1: 'a' },
+        { id: 'row-b', col1: 'b' },
+      ];
+      renderComponent({
+        dataSource: rows,
+        visibleRows: rows,
+        editingRowHeight: { rowIdx: 1, height: 140 },
+      });
+      await screen.findByTestId('data-grid');
+
+      const { rowHeight } = (DataGrid as unknown as jest.Mock).mock.calls.at(
+        -1
+      )[0];
+
+      expect(rowHeight({ ...rows[0] })).toBe(52);
+      expect(rowHeight({ ...rows[1] })).toBe(140);
     });
   });
 
