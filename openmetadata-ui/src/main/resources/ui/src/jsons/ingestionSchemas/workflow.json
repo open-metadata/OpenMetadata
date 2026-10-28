@@ -7991,13 +7991,13 @@
                         },
                         "verifySSL": {
                           "title": "Verify SSL",
-                          "description": "Validate HTTPS certificates using system trust or the configured CA certificate by default. Use 'ignore' to explicitly skip certificate validation. The legacy 'no-ssl' setting also validates HTTPS certificates; use an http:// URL for plain HTTP.",
+                          "description": "Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate validation, 'validate' to verify against a CA certificate.",
                           "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/verifySSL",
-                          "default": "validate"
+                          "default": "no-ssl"
                         },
                         "sslConfig": {
                           "title": "SSL Config",
-                          "description": "Optional CA certificate, client certificate, and private key for SSL validation. System trust is used when no CA certificate is supplied.",
+                          "description": "CA certificate, client certificate, and private key for SSL validation. Required when verifySSL is 'validate'.",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
                         },
                         "dashboardFilterPattern": {

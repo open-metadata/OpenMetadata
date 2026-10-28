@@ -40,8 +40,8 @@ export interface SapS4HanaConnection {
      */
     hostPort: string;
     /**
-     * Optional CA certificate, client certificate, and private key for SSL validation. System
-     * trust is used when no CA certificate is supplied.
+     * CA certificate, client certificate, and private key for SSL validation. Required when
+     * verifySSL is 'validate'.
      */
     sslConfig?:                  Config;
     supportsLineageExtraction?:  boolean;
@@ -51,9 +51,8 @@ export interface SapS4HanaConnection {
      */
     type?: SapS4HanaType;
     /**
-     * Validate HTTPS certificates using system trust or the configured CA certificate by
-     * default. Use 'ignore' to explicitly skip certificate validation. The legacy 'no-ssl'
-     * setting also validates HTTPS certificates; use an http:// URL for plain HTTP.
+     * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+     * validation, 'validate' to verify against a CA certificate.
      */
     verifySSL?: VerifySSL;
 }
@@ -122,8 +121,8 @@ export interface FilterPattern {
 }
 
 /**
- * Optional CA certificate, client certificate, and private key for SSL validation. System
- * trust is used when no CA certificate is supplied.
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
  *
  * Client SSL configuration
  *
@@ -154,9 +153,8 @@ export enum SapS4HanaType {
 }
 
 /**
- * Validate HTTPS certificates using system trust or the configured CA certificate by
- * default. Use 'ignore' to explicitly skip certificate validation. The legacy 'no-ssl'
- * setting also validates HTTPS certificates; use an http:// URL for plain HTTP.
+ * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+ * validation, 'validate' to verify against a CA certificate.
  *
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  */

@@ -329,8 +329,8 @@ export interface Connection {
     /**
      * SSL Configuration details.
      *
-     * Optional CA certificate, client certificate, and private key for SSL validation. System
-     * trust is used when no CA certificate is supplied.
+     * CA certificate, client certificate, and private key for SSL validation. Required when
+     * verifySSL is 'validate'.
      */
     sslConfig?: CertificatesSSLConfig;
     /**
@@ -340,9 +340,8 @@ export interface Connection {
      *
      * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
      *
-     * Validate HTTPS certificates using system trust or the configured CA certificate by
-     * default. Use 'ignore' to explicitly skip certificate validation. The legacy 'no-ssl'
-     * setting also validates HTTPS certificates; use an http:// URL for plain HTTP.
+     * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+     * validation, 'validate' to verify against a CA certificate.
      */
     verifySSL?: boolean | VerifySSL;
     /**
@@ -635,8 +634,8 @@ export interface QlikCertificatesBy {
  *
  * SSL Configuration details.
  *
- * Optional CA certificate, client certificate, and private key for SSL validation. System
- * trust is used when no CA certificate is supplied.
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -1026,8 +1025,8 @@ export enum Scheme {
  *
  * SSL Configuration details.
  *
- * Optional CA certificate, client certificate, and private key for SSL validation. System
- * trust is used when no CA certificate is supplied.
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
  */
 export interface SupersetConnectionSSLConfig {
     /**
@@ -1071,9 +1070,8 @@ export enum SupersetConnectionType {
  *
  * Client SSL verification.
  *
- * Validate HTTPS certificates using system trust or the configured CA certificate by
- * default. Use 'ignore' to explicitly skip certificate validation. The legacy 'no-ssl'
- * setting also validates HTTPS certificates; use an http:// URL for plain HTTP.
+ * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+ * validation, 'validate' to verify against a CA certificate.
  */
 export enum VerifySSL {
     Ignore = "ignore",
