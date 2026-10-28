@@ -255,11 +255,7 @@ const DialogBase = ({
           <div
             className={cx(
               'tw:relative tw:w-full tw:bg-overlay-surface',
-              // The shadow disappears against the dark scrim, so in dark mode the panel needs an edge
-              // to stand apart from the blurred page behind it.
-              fullscreen
-                ? 'tw:h-full'
-                : 'tw:rounded-2xl tw:shadow-overlay tw:dark:outline-1 tw:dark:-outline-offset-1 tw:dark:outline-primary',
+              fullscreen ? 'tw:h-full' : 'tw:rounded-2xl tw:shadow-overlay',
               panelClassName
             )}
             style={fullscreen ? undefined : { maxWidth: width }}>

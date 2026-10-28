@@ -21,8 +21,6 @@ describe('Modal theme roles', () => {
     expect(panel).toHaveClass('tw:bg-overlay-surface', 'tw:shadow-overlay');
     // The page background would leave the modal flush with the scrim behind it.
     expect(panel).not.toHaveClass('tw:bg-primary');
-    // Dark mode: the shadow vanishes on the dark scrim, so the panel draws an edge.
-    expect(panel).toHaveClass('tw:dark:outline-1', 'tw:dark:outline-primary');
   });
 
   it('divides the footer with the subtle border role', () => {
