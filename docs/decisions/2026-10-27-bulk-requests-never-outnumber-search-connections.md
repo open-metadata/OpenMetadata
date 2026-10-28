@@ -25,11 +25,15 @@ pool size added failures, not throughput.
 - Every bulk processor (reindex, live indexing, the retry worker, column indexing) holds a permit
   from its search client's `BulkConnectionBudget` while a request is outstanding. Permits are the pool
   capacity minus a search reserve of max(2, 20% of capacity), and never fewer than 1. Capacity is
-  min(`maxConnTotal`, hosts × `maxConnPerRoute`) for the HC5 transports, using HC5's defaults when a
-  limit is unset, and the AWS SDK's `MAX_CONNECTIONS` (50) for the IAM transport.
+  min(`maxConnTotal`, `maxConnPerRoute`) for the HC5 transports, using HC5's defaults when a limit is
+  unset, and the AWS SDK's `MAX_CONNECTIONS` (50) for the IAM transport. It is one host's worth even
+  with several hosts configured: the transport sends to the hosts that are up and limits each one
+  separately, so a budget summed over hosts would let bulks queue on the survivors when one goes down.
 - `maxConcurrentRequests` and Auto Tune stay per-sink ceilings; the budget is the server-wide one.
-- A flush waiting for permits fails its batch only after a 60 s stall window in which no bulk
-  attempt completed (the leaked-future case), never merely because bulks are slow.
+- A flush waiting for permits fails its batch only after no bulk attempt has completed for a stall
+  window (the leaked-future case), never merely because bulks are slow. The window is 60 s plus the
+  bulk lifetime below, because a bulk parked in a retry backoff or behind an open circuit completes no
+  attempt for up to that long.
 - The bulk circuit breaker ignores pool-wait timeouts and counts each bulk once: its first attempt,
   or its probe. When half-open it admits one probe at a time, claimed with a single compare-and-set,
   and a probe silent for three probe intervals is replaced. Bulks the open circuit rejects are

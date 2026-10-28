@@ -84,7 +84,12 @@ class OpenSearchBulkSinkSimpleTest {
    */
   @Test
   void semaphoreTimeoutRecordsPermanentFailureWithoutIncrementingActiveRequests() throws Exception {
-    OpenSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(openSearchBulkSink);
+    // A zero bulk lifetime gives no parked-bulk allowance, so the stall window is the timeout
+    // alone.
+    OpenSearchBulkSink sink =
+        new OpenSearchBulkSink(
+            searchRepository, 10, 2, 1000000L, new BulkRetryPolicy(3, 100, 10_000, 0));
+    OpenSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
 
     // Shorten the wait so the test doesn't sleep a minute. 0 = immediate fail-fast on no-permit.
     processor.setSemaphoreAcquireTimeoutSecondsForTesting(0L);
@@ -98,7 +103,7 @@ class OpenSearchBulkSinkSimpleTest {
 
     AtomicInteger activeBulkRequests =
         getField(processor, "activeBulkRequests", AtomicInteger.class);
-    AtomicLong totalFailed = getField(openSearchBulkSink, "totalFailed", AtomicLong.class);
+    AtomicLong totalFailed = getField(sink, "totalFailed", AtomicLong.class);
     long failedBefore = totalFailed.get();
     int activeBefore = activeBulkRequests.get();
 

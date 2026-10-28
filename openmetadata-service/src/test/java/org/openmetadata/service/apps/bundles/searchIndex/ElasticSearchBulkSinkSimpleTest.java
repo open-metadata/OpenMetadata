@@ -110,8 +110,12 @@ class ElasticSearchBulkSinkSimpleTest {
    */
   @Test
   void semaphoreTimeoutRecordsPermanentFailureWithoutIncrementingActiveRequests() throws Exception {
-    ElasticSearchBulkSink.CustomBulkProcessor processor =
-        getCustomBulkProcessor(elasticSearchBulkSink);
+    // A zero bulk lifetime gives no parked-bulk allowance, so the stall window is the timeout
+    // alone.
+    ElasticSearchBulkSink sink =
+        new ElasticSearchBulkSink(
+            searchRepository, 10, 2, 1000000L, new BulkRetryPolicy(3, 100, 10_000, 0));
+    ElasticSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
 
     processor.setSemaphoreAcquireTimeoutSecondsForTesting(0L);
 
@@ -122,7 +126,7 @@ class ElasticSearchBulkSinkSimpleTest {
 
     AtomicInteger activeBulkRequests =
         getField(processor, "activeBulkRequests", AtomicInteger.class);
-    AtomicLong totalFailed = getField(elasticSearchBulkSink, "totalFailed", AtomicLong.class);
+    AtomicLong totalFailed = getField(sink, "totalFailed", AtomicLong.class);
     long failedBefore = totalFailed.get();
     int activeBefore = activeBulkRequests.get();
 

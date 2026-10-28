@@ -23,8 +23,8 @@ class BulkSendPermitsTest {
   @Test
   void aWaitingFlushOutlastsTheStallWindowWhileBulksKeepCompleting() throws Exception {
     BulkConnectionBudget budget = BulkConnectionBudget.forPoolCapacity(3);
-    BulkSendPermits holder = new BulkSendPermits(1, budget);
-    BulkSendPermits waiter = new BulkSendPermits(1, budget);
+    BulkSendPermits holder = new BulkSendPermits(1, budget, 0);
+    BulkSendPermits waiter = new BulkSendPermits(1, budget, 0);
     waiter.setStallTimeoutMillisForTesting(1_000);
     assertTrue(holder.acquire());
 
@@ -35,10 +35,24 @@ class BulkSendPermitsTest {
   }
 
   @Test
+  void aFlushWaitsOutBulksParkedInBackoffWithoutCallingItALeak() throws Exception {
+    BulkConnectionBudget budget = BulkConnectionBudget.forPoolCapacity(3);
+    BulkSendPermits holder = new BulkSendPermits(1, budget, 1_000);
+    BulkSendPermits waiter = new BulkSendPermits(1, budget, 1_000);
+    waiter.setStallTimeoutMillisForTesting(300);
+    assertTrue(holder.acquire());
+
+    // The holder completes nothing while its bulk sits in a backoff shorter than its lifetime.
+    background.schedule(holder::release, 1_000, TimeUnit.MILLISECONDS);
+
+    assertTrue(waiter.acquire(), "a bulk parked within its lifetime is not a leaked future");
+  }
+
+  @Test
   void aWaitingFlushGivesUpWhenNothingCompletesAndKeepsItsOwnSlotFree() throws Exception {
     BulkConnectionBudget budget = BulkConnectionBudget.forPoolCapacity(3);
-    BulkSendPermits holder = new BulkSendPermits(1, budget);
-    BulkSendPermits waiter = new BulkSendPermits(1, budget);
+    BulkSendPermits holder = new BulkSendPermits(1, budget, 0);
+    BulkSendPermits waiter = new BulkSendPermits(1, budget, 0);
     waiter.setStallTimeoutMillisForTesting(200);
     assertTrue(holder.acquire());
 
@@ -50,7 +64,7 @@ class BulkSendPermitsTest {
 
   @Test
   void aProcessorWaitsForItsOwnSlotEvenWhileTheSharedBudgetHasRoom() throws Exception {
-    BulkSendPermits permits = new BulkSendPermits(1, BulkConnectionBudget.forPoolCapacity(100));
+    BulkSendPermits permits = new BulkSendPermits(1, BulkConnectionBudget.forPoolCapacity(100), 0);
     assertTrue(permits.acquire());
 
     CompletableFuture<Boolean> second =

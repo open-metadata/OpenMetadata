@@ -10,9 +10,10 @@ import java.util.function.LongSupplier;
  * share of the search client's {@link BulkConnectionBudget}.
  *
  * <p>Waiting for them gives up only after a stall window in which no bulk attempt completed — the
- * signature of a leaked future whose callback never fires, as when the HC5 I/O reactor dies. Slow
- * bulks still finish and an open circuit's probes still report back, so a slow or recovering
- * cluster slows the producers down instead of failing their batches.
+ * signature of a leaked future whose callback never fires, as when the HC5 I/O reactor dies. A bulk
+ * waiting out a retry backoff or an open circuit completes no attempt for up to its lifetime, so the
+ * window is the stall timeout plus that lifetime. A slow or recovering cluster then slows the
+ * producers down instead of failing their batches.
  */
 final class BulkSendPermits {
   static final long DEFAULT_STALL_TIMEOUT_MILLIS = 60_000;
@@ -29,11 +30,18 @@ final class BulkSendPermits {
   private final Semaphore processorSlots;
   private final BulkConnectionBudget connectionBudget;
   private final AtomicLong completedAttempts = new AtomicLong();
+  private final long maxParkMillis;
   private volatile long stallTimeoutMillis = DEFAULT_STALL_TIMEOUT_MILLIS;
 
-  BulkSendPermits(int concurrentRequests, BulkConnectionBudget connectionBudget) {
+  /**
+   * @param maxParkMillis the longest a permit holder may wait without sending, which is the bulk
+   *     lifetime of the processor's retry policy
+   */
+  BulkSendPermits(
+      int concurrentRequests, BulkConnectionBudget connectionBudget, long maxParkMillis) {
     this.processorSlots = new Semaphore(Math.max(1, concurrentRequests));
     this.connectionBudget = connectionBudget;
+    this.maxParkMillis = Math.max(0, maxParkMillis);
   }
 
   /** True once both permits are held; false if nothing completed for a whole stall window. */
@@ -53,7 +61,7 @@ final class BulkSendPermits {
   }
 
   long stallTimeoutSeconds() {
-    return TimeUnit.MILLISECONDS.toSeconds(stallTimeoutMillis);
+    return TimeUnit.MILLISECONDS.toSeconds(stallWindowMillis());
   }
 
   void setStallTimeoutMillisForTesting(long millis) {
@@ -73,12 +81,16 @@ final class BulkSendPermits {
   }
 
   private boolean awaitPermit(PermitPoll poll, LongSupplier progress) throws InterruptedException {
-    StallWatch stallWatch = new StallWatch(progress, stallTimeoutMillis);
+    StallWatch stallWatch = new StallWatch(progress, stallWindowMillis());
     boolean acquired = poll.tryAcquire();
     while (!acquired && !stallWatch.isStalled()) {
       acquired = poll.tryAcquire();
     }
     return acquired;
+  }
+
+  private long stallWindowMillis() {
+    return stallTimeoutMillis + maxParkMillis;
   }
 
   private boolean tryAcquireSlot() throws InterruptedException {

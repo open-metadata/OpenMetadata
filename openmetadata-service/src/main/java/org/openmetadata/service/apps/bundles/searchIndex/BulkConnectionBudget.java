@@ -18,6 +18,10 @@ import software.amazon.awssdk.http.SdkHttpConfigurationOption;
  * DeadlineTimeoutException} even though the cluster is healthy, and those failures used to open the
  * bulk circuit breaker and drop whole batches. Part of the pool is left to searches.
  *
+ * <p>The budget is sized for one host's connections even when several hosts are configured: the
+ * transport sends to the hosts that are up and limits each one separately, so a down or slow host
+ * would leave bulks budgeted for it queueing on the others.
+ *
  * <p>ADR:2026-10-27-bulk-requests-never-outnumber-search-connections
  */
 public final class BulkConnectionBudget {
@@ -30,7 +34,6 @@ public final class BulkConnectionBudget {
   static final double SEARCH_RESERVE_SHARE = 0.2;
 
   private static final int MAX_CAUSE_DEPTH = 16;
-  private static final String HOST_SEPARATOR = ",";
 
   private final int poolCapacity;
   private final int permits;
@@ -76,7 +79,7 @@ public final class BulkConnectionBudget {
         positiveOr(
             settings.getMaxConnTotal(),
             PoolingAsyncClientConnectionManager.DEFAULT_MAX_TOTAL_CONNECTIONS);
-    return Math.min(total, hostCount(settings) * perRoute);
+    return Math.min(total, perRoute);
   }
 
   static int bulkPermits(int poolCapacity) {
@@ -107,11 +110,6 @@ public final class BulkConnectionBudget {
 
   long completedAttempts() {
     return completedAttempts.get();
-  }
-
-  private static int hostCount(ElasticSearchConfiguration settings) {
-    String hosts = settings.getHost();
-    return hosts == null || hosts.isBlank() ? 1 : hosts.split(HOST_SEPARATOR).length;
   }
 
   private static int positiveOr(Integer value, int fallback) {

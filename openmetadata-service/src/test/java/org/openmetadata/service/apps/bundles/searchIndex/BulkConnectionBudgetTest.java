@@ -23,12 +23,20 @@ class BulkConnectionBudgetTest {
   }
 
   @Test
-  void eachConfiguredHostAddsItsRouteLimitUpToTheTotal() {
-    assertEquals(30, BulkConnectionBudget.forHttpClientPool(pool("a,b,c", 10, 30)).poolCapacity());
-    assertEquals(24, BulkConnectionBudget.forHttpClientPool(pool("a,b,c", 10, 30)).permits());
-    assertEquals(
-        100, BulkConnectionBudget.forHttpClientPool(pool("a,b,c", 50, 100)).poolCapacity());
-    assertEquals(80, BulkConnectionBudget.forHttpClientPool(pool("a,b,c", 50, 100)).permits());
+  void bulksAreBudgetedForOneHostSoADeadHostCannotOverbookTheOthers() {
+    BulkConnectionBudget threeHosts = BulkConnectionBudget.forHttpClientPool(pool("a,b,c", 10, 30));
+    assertEquals(10, threeHosts.poolCapacity());
+    assertEquals(8, threeHosts.permits());
+
+    BulkConnectionBudget mainDefaults =
+        BulkConnectionBudget.forHttpClientPool(pool("a,b", 50, 100));
+    assertEquals(50, mainDefaults.poolCapacity());
+    assertEquals(40, mainDefaults.permits());
+  }
+
+  @Test
+  void aTotalBelowTheRouteLimitCapsTheBudget() {
+    assertEquals(30, BulkConnectionBudget.forHttpClientPool(pool("search", 50, 30)).poolCapacity());
   }
 
   @Test

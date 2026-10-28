@@ -1328,7 +1328,10 @@ public class OpenSearchBulkSink implements BulkSink {
       this.bulkActions = settings.bulkActions();
       this.maxPayloadSizeBytes = settings.maxPayloadSizeBytes();
       this.sendPermits =
-          new BulkSendPermits(settings.concurrentRequests(), client.getBulkConnectionBudget());
+          new BulkSendPermits(
+              settings.concurrentRequests(),
+              client.getBulkConnectionBudget(),
+              settings.retryPolicy().maxLifetimeMillis());
       this.retryPolicy = settings.retryPolicy();
       this.totalSubmitted = counters.submitted();
       this.totalSuccess = counters.success();
