@@ -80,6 +80,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.seeding.EssentialSeeds;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.ClasspathScanIndex;
@@ -113,6 +114,10 @@ public final class Entity {
   @Getter @Setter private static AuditLogRepository auditLogRepository;
   @Getter @Setter private static TypeRepository typeRepository;
   @Getter @Setter private static EntityRelationshipRepository entityRelationshipRepository;
+
+  /** The configured authorizer, for checks that run where a write is stored. Null outside the server. */
+  @Getter @Setter private static Authorizer authorizer;
+
   // List of all the entities
   private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
@@ -455,6 +460,7 @@ public final class Entity {
     jobDAO = null;
     searchRepository = null;
     entityRelationshipRepository = null;
+    authorizer = null;
     ENTITY_REPOSITORY_MAP.clear();
     SeedDataGate.getInstance().reset();
     EssentialSeeds.getInstance().reset();

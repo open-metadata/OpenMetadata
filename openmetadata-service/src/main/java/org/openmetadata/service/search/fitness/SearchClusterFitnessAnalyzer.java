@@ -425,7 +425,7 @@ public class SearchClusterFitnessAnalyzer {
    * if the suffix is not all digits — so an index that merely contains {@code _rebuild_} in its
    * name is not collapsed onto a different canonical index.
    */
-  private String stripRebuildSuffix(String name) {
+  public static String stripRebuildSuffix(String name) {
     if (name == null) {
       return null;
     }

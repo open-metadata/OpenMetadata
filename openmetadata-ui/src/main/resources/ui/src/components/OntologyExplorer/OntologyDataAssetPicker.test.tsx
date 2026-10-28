@@ -65,6 +65,28 @@ describe('OntologyDataAssetPicker', () => {
     } as BulkOperationResult);
   });
 
+  it('saves native associations without glossary tagging and excludes linked assets from select all', async () => {
+    const saveAssets = jest.fn().mockResolvedValue({ failedRequest: [] });
+    render(
+      <OntologyDataAssetPicker
+        native={{ assetTypes: ['table'], linkedIds: ['t-1'], saveAssets }}
+        onCancel={jest.fn()}
+        onPartialSave={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+    await screen.findByText('customers');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
+    await waitFor(() =>
+      expect(saveAssets).toHaveBeenCalledWith([
+        expect.objectContaining({ id: 't-2', type: 'table' }),
+      ])
+    );
+
+    expect(mockAddAssets).not.toHaveBeenCalled();
+  });
+
   it('searches every data asset, then narrows to columns', async () => {
     render(
       <OntologyDataAssetPicker

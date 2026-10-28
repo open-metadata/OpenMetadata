@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import {
   ActivityEvent,
   ActivityEventType,
@@ -168,6 +168,20 @@ describe('TeamActivityWidget', () => {
     expect(screen.getByTestId('team-activity-evt-0')).toContainElement(
       screen.getAllByTestId('sentence-evt-0')[1]
     );
+  });
+
+  // Avatar and sentence share a centre line, and only the dividers space the
+  // rows: the first row gets no extra top padding over the body's own.
+  it('centres each sentence on its avatar and spaces rows evenly', async () => {
+    mockFeed.mockResolvedValue({ data: events(2) } as never);
+    renderWidget();
+
+    const [firstRow] = within(
+      await screen.findByTestId('team-activity-rows')
+    ).getAllByRole('listitem');
+
+    expect(firstRow).toHaveClass('tw:items-center', 'tw:py-3', 'tw:first:pt-0');
+    expect(firstRow).not.toHaveClass('tw:items-start');
   });
 
   it('shows the empty state when nothing happened', async () => {

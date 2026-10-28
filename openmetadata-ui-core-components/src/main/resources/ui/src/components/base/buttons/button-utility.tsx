@@ -35,6 +35,12 @@ export const styles = {
   'tertiary-destructive': buttonStyles.colors['tertiary-destructive'].root,
 };
 
+// A toggle that is on (the panel it opens is showing) reads in brand, over
+// whichever colour it rests in, hovered too: secondary's dark hover is its
+// own variant, so it is overridden by name.
+const selectedStyles =
+  'tw:bg-brand-primary tw:hover:bg-brand-primary tw:dark:hover:bg-brand-primary tw:text-brand-secondary tw:hover:text-brand-secondary tw:*:data-icon:text-current';
+
 // Icon-only sizes from the Figma "Icons in buttons" spec: box size, icon frame,
 // padding, radius. The svg padding keeps the glyph at frame − 4px (see the note
 // in button.tsx); `before:` matches the primary variant's inner border to the radius.
@@ -56,7 +62,7 @@ const borderless: Partial<Record<keyof typeof styles, keyof typeof styles>> = {
 /**
  * Common props shared between button and anchor variants
  */
-export interface CommonProps {
+export interface CommonProps extends Pick<AriaButtonProps, 'onPress'> {
   /** Disables the button and shows a disabled state */
   isDisabled?: boolean;
   /** The size variant of the button */
@@ -69,6 +75,12 @@ export interface CommonProps {
   tooltip?: string;
   /** The placement of the tooltip */
   tooltipPlacement?: Placement;
+  /**
+   * Makes the button a toggle and shows whether it is on, e.g. while the
+   * panel it opens is showing. Sets `aria-pressed`; leave it unset for a
+   * plain action.
+   */
+  isSelected?: boolean;
 }
 
 /**
@@ -108,6 +120,7 @@ export const ButtonUtility = ({
   size = 'sm',
   color = 'secondary',
   tooltipPlacement = 'top',
+  isSelected,
   ...otherProps
 }: Props) => {
   const href = 'href' in otherProps ? otherProps.href : undefined;
@@ -132,6 +145,7 @@ export const ButtonUtility = ({
 
       type: otherProps.type || 'button',
       isDisabled,
+      ...(isSelected === undefined ? {} : { 'aria-pressed': isSelected }),
     };
   }
 
@@ -143,6 +157,7 @@ export const ButtonUtility = ({
         'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled_subtle tw:disabled:*:data-icon:text-fg-disabled_subtle',
         sizes[size],
         styles[(size === 'xs' && borderless[color]) || color],
+        isSelected && selectedStyles,
 
         // Icon styles
         'tw:*:data-icon:pointer-events-none tw:*:data-icon:shrink-0 tw:*:data-icon:transition-inherit-all',

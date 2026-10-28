@@ -16,7 +16,6 @@ import pytest
 from looker_sdk.sdk.api40.models import LookmlModel, LookmlModelExplore, LookmlModelExploreFieldset
 
 from metadata.generated.schema.api.services.createDashboardService import CreateDashboardServiceRequest
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
@@ -28,7 +27,6 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.sink.metadata_rest import MetadataRestSink
-from metadata.ingestion.source.dashboard.grafana.metadata import GrafanaSource
 from metadata.ingestion.source.dashboard.looker.measures import MeasureCandidate
 from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
 from metadata.ingestion.source.dashboard.looker.models import LookMlView
@@ -122,31 +120,58 @@ def assert_tags(metadata, entity_type, entity_fqn, expected):
     assert sorted(label.tagFQN.root for label in asset.tags or []) == sorted(expected)
 
 
-def test_grafana_persists_existing_labels_without_creating_missing_tags(metadata, request, monkeypatch):
-    with _tag_catalog(metadata, request, "existing", DashboardService) as (config, classification):
-        monkeypatch.setattr("metadata.ingestion.source.dashboard.grafana.metadata.GRAFANA_TAG_CATEGORY", classification)
-        service = config["source"]["serviceName"]
-        metadata.create_or_update(CreateDashboardServiceRequest(name=service, serviceType="Grafana"))
-        source = stage_source(GrafanaSource, metadata, service)
-        source.service_connection = SimpleNamespace(hostPort="http://localhost:3000")
-        details = SimpleNamespace(
-            dashboard=SimpleNamespace(
-                uid="my_dashboard", title="My dashboard", description=None, tags=["Shared", "Missing"]
-            ),
-            meta=SimpleNamespace(url="/d/my_dashboard", createdBy=None),
+@pytest.mark.parametrize("case", ["fresh", "existing", "denied"])
+def test_grafana_native_tags_persist_through_workflow(metadata, request, monkeypatch, case):
+    dashboards = {
+        name: SimpleNamespace(
+            dashboard=SimpleNamespace(uid=name, title=name, description=None, tags=tags, panels=[]),
+            meta=SimpleNamespace(url=f"/d/{name}", createdBy=None),
         )
-        assert list(source.yield_tags(details) or []) == []
-        sink = MetadataRestSink.create({"bulk_sink_batch_size": 1}, metadata)
-        try:
-            consume(sink, source.yield_dashboard(details))
-            sink.close()
-            assert sink.get_status().failures == []
-            assert_tags(metadata, Dashboard, f"{service}.my_dashboard", [f"{classification}.Shared"])
-            assert metadata.get_by_name(entity=Tag, fqn=f"{classification}.Missing") is None
-            assert source.tags_registry.stats()["pending"] == 0
-            assert source.tags_registry.stats()["live_entities"] == 0
-        finally:
-            sink.close()
+        for name, tags in (("first", ["Shared"]), ("second", ["Shared", "New"]))
+    }
+    native_client = SimpleNamespace(
+        get_datasources=list,
+        search_dashboards=lambda: [SimpleNamespace(uid=name, title=name) for name in dashboards],
+        get_dashboard=lambda uid: dashboards[uid],
+        test_connection=lambda: True,
+    )
+    monkeypatch.setattr(
+        "metadata.ingestion.source.dashboard.grafana.connection.GrafanaApiClient", lambda **_: native_client
+    )
+    with _tag_catalog(metadata, request, case, DashboardService) as (config, classification):
+        monkeypatch.setattr("metadata.ingestion.source.dashboard.grafana.metadata.GRAFANA_TAG_CATEGORY", classification)
+        config["source"].update(
+            {
+                "type": "grafana",
+                "serviceConnection": {
+                    "config": {"type": "Grafana", "hostPort": "http://localhost:3000", "apiKey": "testing"}
+                },
+                "sourceConfig": {
+                    "config": {
+                        "type": "DashboardMetadata",
+                        "includeTags": True,
+                        "includeOwners": False,
+                        "includeDataModels": False,
+                        "includeUsage": False,
+                        "markDeletedDashboards": False,
+                        "markDeletedCharts": False,
+                        "markDeletedDataModels": False,
+                    }
+                },
+            }
+        )
+        service = config["source"]["serviceName"]
+        _assert_workflow(
+            metadata,
+            config,
+            Dashboard,
+            {
+                f"{service}.first": [f"{classification}.Shared"],
+                f"{service}.second": [f"{classification}.Shared"]
+                + ([] if case == "denied" else [f"{classification}.New"]),
+            },
+            expected_failures=2 if case == "denied" else 0,
+        )
 
 
 def test_tableau_dashboard_chart_and_model_labels_do_not_bleed_into_each_other(metadata, request, monkeypatch):

@@ -31,6 +31,11 @@ export interface FivetranConnection {
      */
     limit?: number;
     /**
+     * Destination schema holding the Fivetran Platform Connector log table, used to extract
+     * per-phase run status. Leave empty to read the schema name from the Fivetran API.
+     */
+    logSchema?: string;
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?:      FilterPattern;

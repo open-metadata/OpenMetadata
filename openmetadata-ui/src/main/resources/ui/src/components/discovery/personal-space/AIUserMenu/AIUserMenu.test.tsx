@@ -123,8 +123,16 @@ jest.mock(
   '../../../../components/common/ProfilePicture/ProfilePicture',
   () => ({
     __esModule: true,
-    default: ({ displayName }: { displayName?: string }) => (
-      <span data-testid="profile-picture">{displayName}</span>
+    default: ({
+      displayName,
+      name,
+    }: {
+      displayName?: string;
+      name: string;
+    }) => (
+      <span data-name={name} data-testid="profile-picture">
+        {displayName}
+      </span>
     ),
   })
 );
@@ -239,6 +247,18 @@ describe('AIUserMenu', () => {
     expect(trigger).toHaveTextContent('Banking');
   });
 
+  it('looks up every avatar by username, not email', () => {
+    renderMenu();
+
+    const avatars = screen.getAllByTestId('profile-picture');
+
+    expect(avatars.length).toBeGreaterThan(0);
+
+    avatars.forEach((avatar) =>
+      expect(avatar).toHaveAttribute('data-name', 'test-user')
+    );
+  });
+
   it('shows only the avatar in the collapsed rail, with name and domain in a tooltip', () => {
     renderMenu(true);
 
@@ -276,12 +296,12 @@ describe('AIUserMenu', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('routes to #profile/<username> when the profile item is clicked', () => {
+  it('routes to #profile without a username when the profile item is clicked', () => {
     renderMenu();
 
     fireEvent.click(screen.getByTestId('ai-user-menu-profile'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('profile', 'test-user');
+    expect(mockSetHash).toHaveBeenCalledWith('profile');
   });
 
   it('opens My Data in the personal-space modal', () => {

@@ -12,6 +12,7 @@
  */
 
 import { expect } from '@playwright/test';
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -52,6 +53,7 @@ import {
   verifyArticleSearch,
   waitForArticleInFollows,
   waitForArticleSearchResponse,
+  waitForArticleSettled,
   waitForDraftPersisted,
   waitForDraftSyncedIntoEditor,
   waitForRecentlyViewed,
@@ -118,6 +120,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Context Center Articles', () => {
   test.beforeAll(async ({ browser }) => {
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const { apiContext, afterAction } = await createNewPage(browser);
     DRAFT_ARTICLE_A_DISPLAY_NAME = `Draft Persist A ${uuid()}`;
     DRAFT_ARTICLE_B_DISPLAY_NAME = `Draft Persist B ${uuid()}`;
@@ -228,6 +231,8 @@ test.describe('Context Center Articles', () => {
         draftArticleB.fullyQualifiedName,
         'page'
       ),
+      waitForArticleSettled(apiContext, draftArticleA.id),
+      waitForArticleSettled(apiContext, draftArticleB.id),
     ]);
 
     await afterAction();
@@ -462,6 +467,24 @@ test.describe('Context Center Articles', () => {
     page,
   }) => {
     test.slow();
+    // Our own tag, indexed before use: the seeded KnowledgeCenter.QuickLink is
+    // only searchable if the CI fixture's tag index is complete, and a fixture
+    // snapshotted mid-reindex (Oct 25) dropped it, failing every attempt.
+    const quickLinkTag = new TagClass({
+      classification: articleTagClassification.data.name,
+    });
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      await quickLinkTag.create(apiContext);
+      await waitForSearchIndexed(
+        apiContext,
+        quickLinkTag.responseData.fullyQualifiedName,
+        'tag'
+      );
+    } finally {
+      await afterAction();
+    }
+
     const testQuickLink = {
       displayName: `CC QL Test ${uuid()}`,
       updatedDisplayName: `CC QL Test Updated ${uuid()}`,
@@ -469,8 +492,8 @@ test.describe('Context Center Articles', () => {
       updatedDescription: 'Quick link updated from Playwright modal',
       url: RELATED_QUICK_LINK_URL,
       updatedUrl: UPDATED_QUICK_LINK_URL,
-      tag: 'QuickLink',
-      tagFqn: 'KnowledgeCenter.QuickLink',
+      tag: quickLinkTag.data.displayName,
+      tagFqn: quickLinkTag.responseData.fullyQualifiedName,
     };
 
     await navigateToArticles(page);
@@ -919,89 +942,95 @@ test.describe('Context Center Articles', () => {
       targetArticle
     );
 
-    const parent = listKnowledgeCenter.knowledgePages[0];
     const { apiContext, afterAction } = await getApiContext(page);
-    const child = await createArticleViaApi(apiContext, {
-      displayName: `CC Hierarchy Child ${uuid()}`,
-      name: `cc_hierarchy_child_${uuid()}`,
+    // A fresh parent sorts first (hierarchy is updatedAt desc); a beforeAll
+    // article can fall past the first 100-row page once other workers add
+    // articles.
+    const parent = await createArticleViaApi(apiContext, {
+      displayName: `CC Hierarchy Parent ${uuid()}`,
+      name: `cc_hierarchy_parent_${uuid()}`,
     });
+    try {
+      const child = await createArticleViaApi(apiContext, {
+        displayName: `CC Hierarchy Child ${uuid()}`,
+        name: `cc_hierarchy_child_${uuid()}`,
+      });
 
-    await apiContext.patch(`/api/v1/contextCenter/pages/${child.id}`, {
-      data: [
-        {
-          op: 'add',
-          path: '/parent',
-          value: {
-            id: parent.id,
-            type: 'page',
-            fullyQualifiedName: parent.fullyQualifiedName,
-            displayName: parent.displayName,
+      await apiContext.patch(`/api/v1/contextCenter/pages/${child.id}`, {
+        data: [
+          {
+            op: 'add',
+            path: '/parent',
+            value: {
+              id: parent.id,
+              type: 'page',
+              fullyQualifiedName: parent.fullyQualifiedName,
+              displayName: parent.displayName,
 
-            name: parent.name,
+              name: parent.name,
+            },
           },
-        },
-      ],
-      headers: { 'Content-Type': 'application/json-patch+json' },
-    });
-    await afterAction();
+        ],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      });
+      await afterAction();
 
-    await navigateToArticles(page);
-    await scrollHierarchyToNode(page, parent.displayName);
-    const ExpandIcon = page.getByRole('button', {
-      name: `Expand ${parent.displayName}`,
-    });
-    await expect(ExpandIcon).toBeVisible();
-    // Expanding lazy-loads the parent's children via a separate
-    // /search/hierarchy fetch; the child node only enters the DOM once it
-    // resolves. Hoist the listener before the click so scrollHierarchyToNode
-    // below does not race (and conclude end-of-list against) an empty tree.
-    const childrenLoaded = page.waitForResponse(
-      (resp) =>
-        resp.url().includes('/search/hierarchy') &&
-        resp
-          .url()
-          .includes(
-            `parent=${encodeURIComponent(parent.fullyQualifiedName)}`
-          ) &&
-        resp.request().method() === 'GET'
-    );
-    await ExpandIcon.click();
-    const childrenResponse = await childrenLoaded;
+      await navigateToArticles(page);
+      await scrollHierarchyToNode(page, parent.displayName);
+      const ExpandIcon = page.getByRole('button', {
+        name: `Expand ${parent.displayName}`,
+      });
+      await expect(ExpandIcon).toBeVisible();
+      // Expanding lazy-loads the parent's children via a separate
+      // /search/hierarchy fetch; the child node only enters the DOM once it
+      // resolves. Hoist the listener before the click so scrollHierarchyToNode
+      // below does not race (and conclude end-of-list against) an empty tree.
+      const childrenLoaded = page.waitForResponse(
+        (resp) =>
+          resp.url().includes('/search/hierarchy') &&
+          resp
+            .url()
+            .includes(
+              `parent=${encodeURIComponent(parent.fullyQualifiedName)}`
+            ) &&
+          resp.request().method() === 'GET'
+      );
+      await ExpandIcon.click();
+      const childrenResponse = await childrenLoaded;
 
-    expect(childrenResponse.status()).toBe(200);
-    // Scroll to the child as well, not just the parent. The hierarchy is an
-    // infinite-scroll list, so expanding a node does not guarantee its child
-    // is inside the rendered window -- and the more articles the Context
-    // Center holds, the further down it lands.
-    await scrollHierarchyToNode(page, child.displayName);
-    await expect(
-      page.getByTestId(`page-node-${child.displayName}`)
-    ).toBeVisible();
-    const collapseIcon = page.getByRole('button', {
-      name: `Collapse ${parent.displayName}`,
-    });
-    await collapseIcon.click();
-    await expect(
-      page.getByTestId(`page-node-${child.displayName}`)
-    ).not.toBeVisible();
+      expect(childrenResponse.status()).toBe(200);
+      // Scroll to the child as well, not just the parent. The hierarchy is an
+      // infinite-scroll list, so expanding a node does not guarantee its child
+      // is inside the rendered window -- and the more articles the Context
+      // Center holds, the further down it lands.
+      await scrollHierarchyToNode(page, child.displayName);
+      await expect(
+        page.getByTestId(`page-node-${child.displayName}`)
+      ).toBeVisible();
+      const collapseIcon = page.getByRole('button', {
+        name: `Collapse ${parent.displayName}`,
+      });
+      await collapseIcon.click();
+      await expect(
+        page.getByTestId(`page-node-${child.displayName}`)
+      ).not.toBeVisible();
 
-    await page.getByLabel('Expand All').click();
-    await expect(page.getByLabel('Collapse All')).toBeVisible();
-    await expect(
-      page.getByTestId(`page-node-${child.displayName}`)
-    ).toBeVisible();
-    await page.getByLabel('Collapse All').click();
-    await expect(
-      page.getByTestId(`page-node-${child.displayName}`)
-    ).not.toBeVisible();
-
-    const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
-      await getApiContext(page);
-    await deleteArticleByFqn(
-      cleanupContext,
-      `${parent.fullyQualifiedName}.${child.name}`
-    );
-    await cleanupAfterAction();
+      await page.getByLabel('Expand All').click();
+      await expect(page.getByLabel('Collapse All')).toBeVisible();
+      await expect(
+        page.getByTestId(`page-node-${child.displayName}`)
+      ).toBeVisible();
+      await page.getByLabel('Collapse All').click();
+      await expect(
+        page.getByTestId(`page-node-${child.displayName}`)
+      ).not.toBeVisible();
+    } finally {
+      const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+        await getApiContext(page);
+      // Recursive delete also removes the child.
+      await deleteArticleByFqn(cleanupContext, parent.fullyQualifiedName);
+      await cleanupAfterAction();
+    }
   });
 
   test('Expanding a multi-level hierarchy does not throw and renders no duplicate nodes', async ({
@@ -1422,41 +1451,37 @@ test.describe('Context Center Articles', () => {
         page.getByTestId('popover-content').filter({ hasText: /admin/i }).last()
       ).toContainText(/admin/i);
 
-      await mainMessage.hover();
-      const resolveResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(`/api/v1/conversations/${createdConversation.id}`) &&
-          response.request().method() === 'PATCH'
-      );
-      await mainMessage.getByTestId('toggle-resolved').click();
-      await resolveResponse;
-      await mainMessage.hover();
-      await expect(mainMessage.getByTestId('toggle-resolved')).toHaveAttribute(
-        'aria-label',
-        'Open'
-      );
+      // The reply count opens the conversation inside the drawer. That view
+      // already lists the replies, so it shows no reply count of its own.
+      await mainMessage.getByTestId('reply-button').click();
+      await expect(page.getByTestId('thread-panel-comments')).toBeVisible();
+      await expect(mainMessage.getByTestId('reply-button')).toHaveCount(0);
+      await page.getByTestId('thread-back').click();
+      await expect(mainMessage.getByTestId('reply-button')).toBeVisible();
 
-      await mainMessage.hover();
-      await mainMessage.getByTestId('edit-message').click();
+      // In the drawer a conversation's Edit / Delete sit in its menu, which
+      // renders in a popover outside the card.
+      await mainMessage.getByTestId('conversation-actions').click();
+      await page.getByRole('menuitem', { name: 'Edit' }).click();
 
       const updatedMessage = `Updated Thread Message ${uuid()}`;
-      await editor.click();
-      await editor.clear();
-      await editor.fill(updatedMessage);
+      const editForm = mainMessage.getByTestId('edit-message-editor');
+      const editEditor = editForm.locator('[contenteditable="true"]');
+      await editEditor.click();
+      await editEditor.clear();
+      await editEditor.fill(updatedMessage);
 
       const updateThreadPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/conversations') &&
           response.request().method() === 'PATCH'
       );
-      await page.locator('[data-testid="save-button"]').click();
+      await editForm.getByTestId('send-button').click();
       await updateThreadPromise;
       await expect(page.getByText(updatedMessage)).toBeVisible();
 
-      await mainMessage.hover();
-      await mainMessage.getByTestId('delete-message').click();
+      await mainMessage.getByTestId('conversation-actions').click();
+      await page.getByRole('menuitem', { name: 'Delete' }).click();
       const deletePostPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/conversations') &&

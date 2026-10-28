@@ -12,50 +12,74 @@
  */
 
 import { Button } from '@openmetadata/ui-core-components';
-import { Download01 } from '@openmetadata/ui-core-components/icons';
-import { useState } from 'react';
+import { SwitchVertical01 } from '@openmetadata/ui-core-components/icons';
+import { ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { Ontology } from '../../generated/entity/data/ontology';
+import OntologyReleaseExportModal from '../governance/ontology/OntologyReleaseExportModal/OntologyReleaseExportModal';
 import OntologyImportExportModal from './OntologyImportExportModal';
 
-interface OntologyImportExportMenuProps {
+interface ImportExportCounts {
+  readonly relationCount: string;
+  readonly termCount: string;
+}
+
+interface GlossaryImportExportProps extends ImportExportCounts {
+  readonly kind: 'glossary';
   readonly glossary?: Glossary;
   readonly glossaries: Glossary[];
   readonly isAdminUser: boolean;
-  readonly termCount: string;
-  readonly relationCount: string;
 }
 
-const OntologyImportExportMenu = ({
-  glossary,
-  glossaries,
-  isAdminUser,
-  termCount,
-  relationCount,
-}: OntologyImportExportMenuProps) => {
+interface NativeOntologyExportProps {
+  readonly kind: 'ontology';
+  readonly ontology: Ontology;
+  readonly canImport: boolean;
+  readonly onApplied: () => void;
+}
+
+type OntologyImportExportMenuProps =
+  | GlossaryImportExportProps
+  | NativeOntologyExportProps;
+
+const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  let modal: ReactNode = null;
+  if (isOpen) {
+    modal =
+      props.kind === 'ontology' ? (
+        <OntologyReleaseExportModal
+          canImport={props.canImport}
+          ontology={props.ontology}
+          onApplied={props.onApplied}
+          onClose={() => setIsOpen(false)}
+        />
+      ) : (
+        <OntologyImportExportModal
+          glossaries={props.glossaries}
+          glossary={props.glossary}
+          isAdminUser={props.isAdminUser}
+          relationCount={props.relationCount}
+          termCount={props.termCount}
+          onClose={() => setIsOpen(false)}
+        />
+      );
+  }
 
   return (
     <>
       <Button
+        aria-label={t('label.import-export')}
         color="secondary"
         data-testid="ontology-import-export-trigger"
-        iconLeading={Download01}
-        size="xs"
-        onPress={() => setIsOpen(true)}>
-        {t('label.import-export')}
-      </Button>
-      {isOpen ? (
-        <OntologyImportExportModal
-          glossaries={glossaries}
-          glossary={glossary}
-          isAdminUser={isAdminUser}
-          relationCount={relationCount}
-          termCount={termCount}
-          onClose={() => setIsOpen(false)}
-        />
-      ) : null}
+        iconLeading={SwitchVertical01}
+        size="sm"
+        tooltip={t('label.import-export')}
+        onPress={() => setIsOpen(true)}
+      />
+      {modal}
     </>
   );
 };

@@ -20,6 +20,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,7 @@ import org.openmetadata.mcp.server.auth.validators.IdTokenValidator.IdTokenValid
  */
 public class IdTokenValidatorTest {
 
+  private final AtomicInteger jwksRequests = new AtomicInteger();
   private HttpServer jwksServer;
   private String jwksUrl;
   private IdTokenValidator validator;
@@ -64,6 +67,7 @@ public class IdTokenValidatorTest {
     jwksServer.createContext(
         "/jwks",
         exchange -> {
+          jwksRequests.incrementAndGet();
           try (exchange) {
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, body.length);
@@ -197,6 +201,22 @@ public class IdTokenValidatorTest {
     assertThat(claims).isNotNull();
   }
 
+  @Test
+  void madeUpKeyIdsCannotFetchTheKeySetBeyondItsBudget() {
+    long started = System.nanoTime();
+
+    for (int attempt = 0; attempt < 15; attempt++) {
+      String token = createIdTokenNamingKey("made-up-" + attempt);
+      assertThatThrownBy(() -> validator.validateAndDecode(token))
+          .isInstanceOf(IdTokenValidationException.class)
+          .hasMessageContaining("Failed to fetch public key");
+    }
+
+    // The default budget: a burst of 10 fetches, then one every 6 seconds.
+    long refills = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - started) / 6;
+    assertThat(jwksRequests.get()).isLessThanOrEqualTo(10 + (int) refills);
+  }
+
   private String createValidIdToken(String issuer, String audience, String email) {
     long now = System.currentTimeMillis();
     long expiresAt = now + 3600000;
@@ -228,6 +248,18 @@ public class IdTokenValidatorTest {
         .withExpiresAt(new Date(expiresAt))
         .withKeyId(keyId)
         .sign(algorithm);
+  }
+
+  private String createIdTokenNamingKey(String namedKeyId) {
+    return JWT.create()
+        .withIssuer(expectedIssuer)
+        .withAudience(expectedAudience)
+        .withSubject("test-user-123")
+        .withClaim("email", "test@example.com")
+        .withIssuedAt(new Date(System.currentTimeMillis()))
+        .withExpiresAt(new Date(System.currentTimeMillis() + 3600000))
+        .withKeyId(namedKeyId)
+        .sign(Algorithm.RSA256(null, privateKey));
   }
 
   private String createIdTokenWithoutKid(String issuer, String audience, String email) {

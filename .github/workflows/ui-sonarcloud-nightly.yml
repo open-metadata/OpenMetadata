@@ -74,7 +74,18 @@ jobs:
 
       - name: Install Yarn Packages
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: yarn install
+        run: |
+          # Retry transient registry failures (5xx on tarball fetches) —
+          # yarn v1 does not retry HTTP errors on its own.
+          for attempt in 1 2 3; do
+            yarn install --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
       - name: Run Coverage
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}

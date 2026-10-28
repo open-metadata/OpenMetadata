@@ -19,6 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Database01,
   SortAscending,
   SortDescending,
 } from '@openmetadata/ui-core-components/icons';
@@ -44,7 +45,7 @@ import {
 } from '../../../constants/Query.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
+import { SORT_ORDER } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -71,7 +72,8 @@ import {
 import { getAddQueryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DateRangeFilter from '../../common/DateRangeFilter/DateRangeFilter';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -500,28 +502,39 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
   if (isError.page) {
     return (
-      <ErrorPlaceHolder
-        buttonId="add-query-btn"
-        doc={USAGE_DOCS}
-        heading={t('label.query-lowercase-plural')}
-        permission={permissions?.query.Create}
-        permissionValue={t('label.create-entity', {
-          entity: t('label.query'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        onClick={handleAddQueryClick}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <CreatePlaceholder
+          buttonId="add-query-btn"
+          data-testid={`create-error-placeholder-${t(
+            'label.query-lowercase-plural'
+          )}`}
+          doc={USAGE_DOCS}
+          heading={t('label.query-lowercase-plural')}
+          permission={permissions?.query.Create}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.query'),
+          })}
+          onCreate={handleAddQueryClick}
+        />
+      </div>
     );
   }
 
   if (isTableDeleted) {
     return (
       <div data-testid="no-queries">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          {t('message.field-data-is-not-available-for-deleted-entities', {
-            field: t('label.query-plural'),
-          })}
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={t(
+              'message.field-data-is-not-available-for-deleted-entities',
+              {
+                field: t('label.query-plural'),
+              }
+            )}
+            icon={<Database01 />}
+          />
+        </div>
       </div>
     );
   }
@@ -531,13 +544,17 @@ const TableQueries: FC<TableQueriesProp> = ({
       className="layout-column flex-center font-medium mt-24 p-b-md"
       data-testid="no-queries"
       span={24}>
-      <ErrorPlaceHolder>
-        <Typography as="p">
-          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-            entity: t('label.query-lowercase-plural'),
-          })}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={t(
+            'message.adding-new-entity-is-easy-just-give-it-a-spin',
+            {
+              entity: t('label.query-lowercase-plural'),
+            }
+          )}
+        />
+      </div>
     </Grid.Item>
   ) : (
     tableQueries.map((query) => (

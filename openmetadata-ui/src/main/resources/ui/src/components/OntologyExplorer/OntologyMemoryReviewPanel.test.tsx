@@ -53,7 +53,7 @@ jest.mock('../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('./hooks/useOntologyEditLease', () => ({
+jest.mock('../../hooks/governance/ontology/useOntologyEditLease', () => ({
   useOntologyEditLease: () => ({
     isOwned: true,
     lock: { sessionId: 'session-1', version: 2 },

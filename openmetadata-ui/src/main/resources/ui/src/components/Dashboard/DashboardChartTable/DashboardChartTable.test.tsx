@@ -57,10 +57,6 @@ jest.mock('../../common/Table/TableV2', () =>
     })
 );
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div />)
-);
-
 const mockChart = {
   id: 'chart-1',
   name: 'chart-1',

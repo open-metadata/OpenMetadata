@@ -188,7 +188,7 @@ const KnowledgeGraphGroupInspector = ({
           })}
         </InspectorSection>
       </Box>
-      <Box className="kg-inspector-actions" gap={2}>
+      <Box className="kg-inspector-actions" gap={2} justify="end">
         <Button color="secondary" size="md" onPress={onViewRelationships}>
           {t('label.kg-view-in-list')}
         </Button>

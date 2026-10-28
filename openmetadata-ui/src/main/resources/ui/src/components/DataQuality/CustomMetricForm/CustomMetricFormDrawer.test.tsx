@@ -251,6 +251,47 @@ describe('CustomMetricFormDrawer', () => {
     expect(screen.getByTestId('custom-metric-form')).toBeInTheDocument();
   });
 
+  it('hides the profile preview and narrows the drawer with the Show Hint toggle', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(
+      <CustomMetricFormDrawer
+        open
+        isColumnMetric={false}
+        table={TABLE}
+        onClose={jest.fn()}
+        onSuccess={jest.fn()}
+      />
+    );
+
+    const toggle = await screen.findByTestId('show-hint-toggle');
+    // The drawer caps its panel at the given width; the form sits in a Grid column.
+    const drawerPanel = () => screen.getByRole('dialog').parentElement;
+    const formColumn = () =>
+      screen.getByTestId('custom-metric-form').parentElement;
+
+    expect(
+      screen.getByTestId('custom-metric-profile-preview')
+    ).toBeInTheDocument();
+    expect(drawerPanel()).toHaveStyle({ maxWidth: '80vw' });
+    expect(formColumn()).toHaveStyle({ gridColumn: 'span 14' });
+
+    await user.click(toggle);
+
+    expect(
+      screen.queryByTestId('custom-metric-profile-preview')
+    ).not.toBeInTheDocument();
+    expect(drawerPanel()).toHaveStyle({ maxWidth: '60vw' });
+    expect(formColumn()).toHaveStyle({ gridColumn: 'span 24' });
+
+    await user.click(toggle);
+
+    expect(
+      screen.getByTestId('custom-metric-profile-preview')
+    ).toBeInTheDocument();
+    expect(drawerPanel()).toHaveStyle({ maxWidth: '80vw' });
+    expect(formColumn()).toHaveStyle({ gridColumn: 'span 14' });
+  });
+
   it('rejects a name already used by a table metric', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(

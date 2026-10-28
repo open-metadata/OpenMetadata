@@ -193,6 +193,11 @@ jobs:
     outputs:
       e2e: ${{ steps.filter.outputs.e2e }}
       docker-compose: ${{ steps.filter.outputs.docker-compose }}
+      # The visual and RDF lanes run whole projects, switched on by these
+      # filters rather than by spec impact; manual and nightly runs take both.
+      # Neither runs on h2: both start plain-HTTP Docker servers.
+      visual: ${{ inputs.protocol != 'h2' && (contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.visual) || 'false' }}
+      rdf: ${{ inputs.protocol != 'h2' && (contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.rdf) || 'false' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -237,8 +242,10 @@ jobs:
               - '.github/scripts/classify_playwright_outcome.py'
               - '.github/scripts/create_playwright_fixture.sh'
               - '.github/scripts/playwright_cache_fingerprint.py'
+              - '.github/scripts/pack_playwright_ingestion_image.sh'
               - '.github/scripts/playwright_distribution_cache.sh'
               - '.github/scripts/rotate_playwright_auth_state.py'
+              - '.github/scripts/serve_playwright_ui.cjs'
               - '.github/scripts/evaluate_playwright_performance.py'
               - '.github/scripts/import_playwright_json_timings.py'
               - '.github/scripts/merge_playwright_timings.py'
@@ -259,6 +266,67 @@ jobs:
             docker-compose:
               - 'docker/development/docker-compose.yml'
               - 'docker/development/docker-compose-postgres.yml'
+            visual:
+              - 'openmetadata-ui/pom.xml'
+              - 'openmetadata-ui/src/main/resources/ui/src/**'
+              - 'openmetadata-ui/src/main/resources/ui/public/**'
+              - 'openmetadata-ui/src/main/resources/ui/index.html'
+              - 'openmetadata-ui/src/main/resources/ui/package.json'
+              - 'openmetadata-ui/src/main/resources/ui/yarn.lock'
+              - 'openmetadata-ui/src/main/resources/ui/vite.config.ts'
+              - 'openmetadata-ui/src/main/resources/ui/vite/**'
+              - 'openmetadata-ui/src/main/resources/ui/postcss.config.js'
+              - 'openmetadata-ui/src/main/resources/ui/babel.config.json'
+              - 'openmetadata-ui/src/main/resources/ui/tsconfig.json'
+              - 'openmetadata-ui/src/main/resources/ui/.npmrc'
+              - 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+              - 'openmetadata-ui/src/main/resources/ui/playwright.config.ts'
+              - 'openmetadata-ui-core-components/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/VisualRegression/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/entity-data.setup.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/support/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/utils/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/constant/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/fixtures/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/test-data/**'
+              - '.github/workflows/playwright-e2e-reusable.yml'
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
+              - '.github/actions/cache-ui-dist/action.yml'
+              - '.github/scripts/serve_playwright_ui.cjs'
+            rdf:
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
+              - '.github/workflows/playwright-e2e-reusable.yml'
+              - 'docker/run_local_docker.sh'
+              - 'docker/run_local_docker_common.sh'
+              - 'docker/run_local_docker_rdf.sh'
+              - 'docker/validate_compose.py'
+              - 'docker/development/docker-compose-fuseki.yml'
+              - 'docker/development/docker-compose-postgres-fuseki.yml'
+              - 'docs/rdf-local-development.md'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/rdf/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**'
+              - 'openmetadata-service/src/test/java/org/openmetadata/service/apps/bundles/rdf/**'
+              - 'openmetadata-service/src/test/java/org/openmetadata/service/rdf/**'
+              - 'openmetadata-service/src/test/java/org/openmetadata/service/resources/rdf/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/api/data/createGlossaryTerm.json'
+              - 'openmetadata-spec/src/main/resources/json/schema/configuration/glossaryTermRelationSettings.json'
+              - 'openmetadata-spec/src/main/resources/json/schema/entity/data/glossary.json'
+              - 'openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json'
+              - 'openmetadata-spec/src/main/resources/rdf/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/KnowledgeGraph.spec.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Ontology*Rdf.spec.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright.config.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryHeader/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/Glossary/ImportOntologyModal/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph3D/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/types/knowledgeGraph.types.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/utils/TableUtils.tsx'
 
   cache-keys:
     needs: check-changes
@@ -509,6 +577,70 @@ jobs:
           compression-level: 0
           retention-days: 1
 
+  # The visual baselines are captured on the regular UI bundle, but the shared
+  # distribution may carry the coarse one, whose CSS order differs from
+  # production. The visual shard serves this regular build in front of the
+  # shared server instead (ADR:2026-10-23-playwright-visual-and-rdf-are-blocking-lanes-on-the-regular-bundle).
+  build-visual-ui:
+    needs: [check-changes]
+    runs-on: ubuntu-latest
+    if: |
+      needs.check-changes.outputs.visual == 'true' &&
+      !inputs.warm_caches_only &&
+      !github.event.pull_request.draft &&
+      (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
+          # Same opt-in and reasoning as the build job's checkout.
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
+
+      - name: Restore openmetadata-ui dist cache
+        # Same fork guard as the build job's cache step.
+        if: >-
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
+        uses: ./.github/actions/cache-ui-dist
+        with:
+          variant: pw-e2e-build
+
+      - name: Setup JDK 21
+        if: ${{ env.SKIP_UI_BUILD != 'true' }}
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Restore Maven Dependencies
+        if: ${{ env.SKIP_UI_BUILD != 'true' }}
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install antlr cli
+        if: ${{ env.SKIP_UI_BUILD != 'true' }}
+        run: sudo make install_antlr_cli
+
+      - name: Build the regular UI bundle
+        if: ${{ env.SKIP_UI_BUILD != 'true' }}
+        env:
+          PW_E2E_BUILD: "true"
+        run: mvn -DskipTests package -pl openmetadata-ui -am
+
+      - name: Upload the regular UI bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-visual-ui
+          overwrite: true
+          path: openmetadata-ui/src/main/resources/ui/dist
+          retention-days: 1
+
   detect-changes:
     needs: check-changes
     runs-on: ubuntu-latest
@@ -562,7 +694,9 @@ jobs:
           retention-days: 1
 
   plan-playwright:
-    needs: [build, detect-changes]
+    # Planning reads no build output, so it runs alongside `build` instead of
+    # adding its ~4 min after it on the path to the shards.
+    needs: [check-changes, detect-changes]
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
@@ -705,7 +839,7 @@ jobs:
             --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
             --workdir /workspace/openmetadata-ui/src/main/resources/ui \
             --env CI=true \
-            node:22.22.2-bookworm-slim \
+            "node:$(sed 's/^v//' "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/.nvmrc")-bookworm-slim" \
             ./node_modules/.bin/playwright test \
             --config=playwright/helper-tests.config.ts --output=/tmp/helper-test-results
 
@@ -719,15 +853,25 @@ jobs:
           mkdir -p "$core_output/node_modules" "$core_output/dist" "$core_output/vite-temp"
           # Dependency installation can execute repository-controlled package-manager
           # configuration even with lifecycle scripts disabled. Keep it off the runner.
-          docker run --rm --read-only \
-            --cap-drop ALL --security-opt no-new-privileges \
-            --user "$(id -u):$(id -g)" \
-            --tmpfs /tmp:rw,nosuid,size=4g \
-            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
-            --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules" \
-            --workdir "/workspace/$core_dir" \
-            node:22.22.2-bookworm-slim \
-            yarn --ignore-scripts --frozen-lockfile --cache-folder /tmp/yarn-cache
+          # Retry transient registry failures — yarn v1 does not retry HTTP errors.
+          for attempt in 1 2 3; do
+            docker run --rm --read-only \
+              --cap-drop ALL --security-opt no-new-privileges \
+              --user "$(id -u):$(id -g)" \
+              --tmpfs /tmp:rw,nosuid,size=4g \
+              --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+              --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules" \
+              --workdir "/workspace/$core_dir" \
+              "node:$(sed 's/^v//' "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/.nvmrc")-bookworm-slim" \
+              yarn --ignore-scripts --frozen-lockfile --cache-folder /tmp/yarn-cache \
+                --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
           # Only temporary build output is writable; dependencies and source stay read-only.
           mkdir -p "$core_output/node_modules/.vite-temp"
@@ -740,7 +884,7 @@ jobs:
             --mount "type=bind,source=$core_output/dist,target=/workspace/$core_dir/dist" \
             --mount "type=bind,source=$core_output/vite-temp,target=/workspace/$core_dir/node_modules/.vite-temp" \
             --workdir "/workspace/$core_dir" \
-            node:22.22.2-bookworm-slim \
+            "node:$(sed 's/^v//' "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/.nvmrc")-bookworm-slim" \
             ./node_modules/.bin/vite build
 
       - name: Verify browser helper behavior
@@ -754,6 +898,11 @@ jobs:
           # container, so anything written to either dies with the container.
           # Give the run one writable mount and point Playwright's output at it,
           # otherwise a failure here is a single line of `list` output.
+          # Chromium sets DBUS_SESSION_BUS_ADDRESS (main thread) and FC_FONTATIONS
+          # (fontconfig thread) at startup. In this container's minimal env both
+          # are new, so each setenv reallocates `environ` while another thread is
+          # in getenv -- a use-after-free that SIGSEGVs the browser at launch.
+          # Preset, the first is a no-op and the second overwrites in place.
           mkdir -p "$RUNNER_TEMP/browser-helper-results"
           docker run --rm --network none --read-only --shm-size=1g \
             --cap-drop ALL --security-opt no-new-privileges \
@@ -766,6 +915,8 @@ jobs:
             --workdir /workspace/openmetadata-ui/src/main/resources/ui \
             --env CI=true \
             --env PW_BROWSER_HELPER_OUTPUT=/artifacts \
+            --env DBUS_SESSION_BUS_ADDRESS=disabled: \
+            --env FC_FONTATIONS=1 \
             mcr.microsoft.com/playwright:v1.57.0-jammy \
             ./node_modules/.bin/playwright test \
             --config=playwright/browser-helper-tests.config.ts
@@ -808,6 +959,9 @@ jobs:
             --project=IntakeForm \
             --project=AdvancedSearch \
             --project=search-nightly \
+            --project=visual-regression \
+            --project="Knowledge Graph" \
+            --project="Ontology RDF" \
             > "$RUNNER_TEMP/playwright-test-list.json"
 
       - name: Fetch auto-refreshed timing baseline
@@ -829,6 +983,9 @@ jobs:
 
       - name: Build duration-aware shard plans
         id: plan
+        env:
+          VISUAL_LANE: ${{ needs.check-changes.outputs.visual }}
+          RDF_LANE: ${{ needs.check-changes.outputs.rdf }}
         run: |
           history_args=()
           while IFS= read -r history_file; do
@@ -840,10 +997,15 @@ jobs:
             history_args=(--history .github/playwright/timing-baseline.json)
           fi
 
+          lane_args=()
+          [[ "$VISUAL_LANE" == "true" ]] && lane_args+=(--enable-lane visual)
+          [[ "$RDF_LANE" == "true" ]] && lane_args+=(--enable-lane rdf)
+
           python3 .github/scripts/build_playwright_shards.py \
             --test-list "$RUNNER_TEMP/playwright-test-list.json" \
             --selection "$RUNNER_TEMP/playwright-selection/selection.json" \
             "${history_args[@]}" \
+            ${lane_args[@]+"${lane_args[@]}"} \
             --output-dir "$RUNNER_TEMP/playwright-plans" \
             --github-output "$GITHUB_OUTPUT"
           jq '{shards: (.include | length), lanes: (.include | group_by(.lane) | map({lane: .[0].lane, count: length}))}' \
@@ -861,7 +1023,7 @@ jobs:
             --env CI=true --env PLAYWRIGHT_IS_OSS=true \
             --env PLAYWRIGHT_RUN_QUARANTINED=true \
             --env PW_DEDICATED_INGESTION=true --env PW_DEDICATED_IMPORT_EXPORT=true \
-            node:22.22.2-bookworm-slim \
+            "node:$(sed 's/^v//' "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/.nvmrc")-bookworm-slim" \
             ./node_modules/.bin/playwright test --list --reporter=json --pass-with-no-tests \
             --project=chromium --project=Basic --project="Data Insight" \
             --project=Ingestion --project=ImportExport \
@@ -883,7 +1045,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       fixture_cache_hit: ${{ steps.validate-fixture.outputs.usable }}
-      ingestion_cache_hit: ${{ steps.validate-ingestion.outputs.usable }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -902,7 +1063,6 @@ jobs:
       - name: Initialize fixture cache paths
         run: |
           echo "FIXTURE_CACHE_DIR=$RUNNER_TEMP/playwright-fixture-cache" >> "$GITHUB_ENV"
-          echo "INGESTION_CACHE_DIR=$RUNNER_TEMP/playwright-ingestion-cache" >> "$GITHUB_ENV"
 
       - name: Restore golden fixture cache
         id: restore-fixture
@@ -928,45 +1088,12 @@ jobs:
           fi
           echo "usable=$usable" >> "$GITHUB_OUTPUT"
 
-      - name: Restore ingestion image cache
-        id: restore-ingestion
-        if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' }}
-        uses: actions/cache/restore@v6
-        with:
-          path: ${{ env.INGESTION_CACHE_DIR }}
-          key: playwright-ingestion-image-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.ingestion }}
-
-      - name: Validate restored ingestion image
-        id: validate-ingestion
-        if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' }}
-        env:
-          EXPECTED_FINGERPRINT: ${{ needs.cache-keys.outputs.ingestion }}
-        run: |
-          usable=false
-          image="$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst"
-          if [[ "${{ steps.restore-ingestion.outputs.cache-hit }}" == "true" && -s "$image" ]] && \
-            .github/scripts/validate_playwright_ingestion_image.sh "$image" "$EXPECTED_FINGERPRINT"; then
-            usable=true
-          else
-            rm -rf "$INGESTION_CACHE_DIR"
-          fi
-          echo "usable=$usable" >> "$GITHUB_OUTPUT"
-
       - name: Upload restored seeded fixture
         if: ${{ steps.validate-fixture.outputs.usable == 'true' }}
         uses: actions/upload-artifact@v6
         with:
           name: playwright-seeded-fixture
           path: ${{ env.FIXTURE_CACHE_DIR }}/playwright-fixture.tar.zst
-          compression-level: 0
-          retention-days: 1
-
-      - name: Upload restored ingestion image
-        if: ${{ steps.validate-ingestion.outputs.usable == 'true' }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: playwright-ingestion-image
-          path: ${{ env.INGESTION_CACHE_DIR }}
           compression-level: 0
           retention-days: 1
 
@@ -978,14 +1105,17 @@ jobs:
         detect-changes,
         plan-playwright,
         restore-playwright-fixture,
+        prepare-ingestion-image,
       ]
+    # The ingestion image only matters when the fixture is rebuilt.
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.cache-keys.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.restore-playwright-fixture.result == 'success' && (needs.restore-playwright-fixture.outputs.fixture_cache_hit == 'true' || needs.prepare-ingestion-image.result == 'success') }}
     runs-on: ubuntu-latest
     env:
       ELASTICSEARCH_CLUSTER_ALIAS: openmetadata
     steps:
       - name: Reuse cached Playwright assets
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit == 'true' && (needs.plan-playwright.outputs.requires_airflow != 'true' || needs.restore-playwright-fixture.outputs.ingestion_cache_hit == 'true') }}
-        run: echo "The golden fixture and optional ingestion image were restored while the distribution was prepared."
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit == 'true' }}
+        run: echo "The golden fixture was restored while the distribution was prepared."
 
       # Reclaim ~30 GB of runner disk (dotnet, android, haskell, swap) BEFORE
       # any docker work runs. `create_playwright_fixture.sh` does a
@@ -1000,7 +1130,7 @@ jobs:
       # docker-images:false is deliberate — the OM images are exactly what
       # this job needs to snapshot, so we can't prune them here.
       - name: Free Disk Space (Ubuntu)
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
         with:
           tool-cache: false
@@ -1012,7 +1142,7 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
@@ -1027,20 +1157,45 @@ jobs:
           persist-credentials: false
 
       - name: Initialize generated fixture paths
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         run: |
           echo "FIXTURE_CACHE_DIR=$RUNNER_TEMP/playwright-fixture-cache" >> "$GITHUB_ENV"
           echo "INGESTION_CACHE_DIR=$RUNNER_TEMP/playwright-ingestion-cache" >> "$GITHUB_ENV"
 
       - name: Download OpenMetadata distribution
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: actions/download-artifact@v7
         with:
           name: openmetadata-distribution
           path: openmetadata-dist/target
 
+      - name: Download ingestion image
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
+        uses: actions/download-artifact@v7
+        with:
+          name: playwright-ingestion-image
+          path: ${{ runner.temp }}/playwright-ingestion-image
+
+      # Seeding still runs from scratch; only the image build is skipped, and
+      # the shards load this same image.
+      - name: Load ingestion image
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
+        env:
+          COMPOSE_FILE: docker/development/docker-compose-postgres.yml
+        run: |
+          archive=$(find "$RUNNER_TEMP/playwright-ingestion-image" -maxdepth 2 -type f -name 'playwright-ingestion-image.tar.zst' -print -quit)
+          manifest="${archive%.tar.zst}.manifest.json"
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y zstd
+          fi
+          zstd -dc "$archive" | docker load
+          compose_image=$(docker compose -f "$COMPOSE_FILE" config --format json | jq -r '.services.ingestion.image // (.name + "-ingestion")')
+          docker image tag "$(jq -r .image "$manifest")" "$compose_image"
+          echo "OM_INGESTION_IMAGE_PRELOADED=true" >> "$GITHUB_ENV"
+
       - name: Prepare seeded environment
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: ./.github/actions/setup-openmetadata-test-environment
         env:
           STRICT_DAG_VALIDATION: "true"
@@ -1052,7 +1207,7 @@ jobs:
           lightweight-ingestion: "true"
 
       - name: Setup Node.js for fixture state
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: actions/setup-node@v5
         with:
           node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
@@ -1060,7 +1215,7 @@ jobs:
       # restore-keys fallback + retry — see the rationale on the
       # plan-playwright job's yarn cache step.
       - name: Restore yarn package cache
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: actions/cache/restore@v6
         with:
           path: ~/.cache/yarn
@@ -1069,7 +1224,7 @@ jobs:
             yarn-pkg-cache-${{ runner.os }}-
 
       - name: Install fixture-state dependencies
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
           corepack enable
@@ -1087,7 +1242,7 @@ jobs:
       # main-scoped copy is saved by populate-playwright-caches.yml; the
       # plan job additionally seeds a run-scoped copy on lockfile changes.
       - name: Restore Playwright browser cache
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
@@ -1105,7 +1260,7 @@ jobs:
       # bump that adds a new dep does not silently miss it.
       - name: Cache Playwright system deps
         id: apt-deps-cache
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         continue-on-error: true
         timeout-minutes: 10
@@ -1161,7 +1316,7 @@ jobs:
       # ceilings back to 5 min and drop `environmentAtMostFiveMinutes`'s
       # threshold from 480 → 300 in evaluate_playwright_performance.py.
       - name: Install fixture-state browser
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           APT_DEPS_CACHE_HIT: ${{ steps.apt-deps-cache.outputs.cache-hit }}
@@ -1199,7 +1354,7 @@ jobs:
           npx playwright install chromium
 
       - name: Seed reusable Playwright auth and entity state
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PLAYWRIGHT_IS_OSS: "true"
@@ -1212,7 +1367,7 @@ jobs:
           test -s playwright/output/entity-response-data.json
 
       - name: Verify the authenticated application bundle
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PLAYWRIGHT_IS_OSS: "true"
@@ -1221,7 +1376,7 @@ jobs:
         run: npx playwright test --project=bundle-smoke --reporter=line
 
       - name: Upload fixture-state failure diagnostics
-        if: ${{ failure() && (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true')) }}
+        if: ${{ failure() && needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         continue-on-error: true
         uses: actions/upload-artifact@v6
         with:
@@ -1233,20 +1388,14 @@ jobs:
           retention-days: 7
 
       - name: Snapshot database and OpenSearch
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        env:
-          CREATE_INGESTION_IMAGE: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         run: |
           if ! command -v zstd >/dev/null 2>&1; then
             sudo apt-get update
             sudo apt-get install -y zstd
           fi
-          mkdir -p "$FIXTURE_CACHE_DIR" "$INGESTION_CACHE_DIR"
-          fixture_args=("$FIXTURE_CACHE_DIR/playwright-fixture.tar.zst")
-          if [[ "$CREATE_INGESTION_IMAGE" == "true" ]]; then
-            fixture_args+=("$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst")
-          fi
-          ./.github/scripts/create_playwright_fixture.sh "${fixture_args[@]}"
+          mkdir -p "$FIXTURE_CACHE_DIR"
+          ./.github/scripts/create_playwright_fixture.sh "$FIXTURE_CACHE_DIR/playwright-fixture.tar.zst"
 
       - name: Validate generated golden fixture
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
@@ -1255,15 +1404,8 @@ jobs:
             "$FIXTURE_CACHE_DIR/playwright-fixture.tar.zst" \
             "${{ needs.cache-keys.outputs.fixture }}"
 
-      - name: Validate generated ingestion image
-        if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
-        run: |
-          .github/scripts/validate_playwright_ingestion_image.sh \
-            "$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst" \
-            "${{ needs.cache-keys.outputs.ingestion }}"
-
-      # Fork PRs under pull_request_target skip both saves — actions/cache-poisoning.
-      # merge_group skips them too — see the dist-cache step for why an
+      # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
+      # merge_group skips it too — see the dist-cache step for why an
       # ephemeral queue ref must never write the cache.
       - name: Save golden fixture cache
         if: >-
@@ -1278,10 +1420,89 @@ jobs:
           path: ${{ env.FIXTURE_CACHE_DIR }}
           key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
 
+      - name: Upload seeded fixture
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-seeded-fixture
+          path: ${{ env.FIXTURE_CACHE_DIR }}/playwright-fixture.tar.zst
+          compression-level: 0
+          retention-days: 1
+
+      - name: Clean fixture builder
+        if: ${{ always() && needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
+        run: |
+          docker compose -f "$DB_COMPOSE_FILE" down --remove-orphans || true
+          sudo rm -rf "$GITHUB_WORKSPACE/docker/development/docker-volume"
+
+  # Restores or builds the Airflow ingestion image on its own runner, starting
+  # right after cache-keys so it finishes alongside `build`. Both consumers load
+  # this one image: the fixture rebuild (which still seeds from scratch) and the
+  # Airflow shards. Neither builds it again.
+  prepare-ingestion-image:
+    needs: [cache-keys]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
+          # Same fork-PR rationale as the build job: the tree is only consumed
+          # by `docker build`, never executed in the workflow context.
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
+
+      - name: Initialize ingestion cache path
+        run: echo "INGESTION_CACHE_DIR=$RUNNER_TEMP/playwright-ingestion-cache" >> "$GITHUB_ENV"
+
+      - name: Restore ingestion image cache
+        id: restore-ingestion
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.INGESTION_CACHE_DIR }}
+          key: playwright-ingestion-image-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.ingestion }}
+
+      - name: Validate restored ingestion image
+        id: validate-ingestion
+        env:
+          EXPECTED_FINGERPRINT: ${{ needs.cache-keys.outputs.ingestion }}
+        run: |
+          usable=false
+          image="$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst"
+          if [[ "${{ steps.restore-ingestion.outputs.cache-hit }}" == "true" && -s "$image" ]] && \
+            .github/scripts/validate_playwright_ingestion_image.sh "$image" "$EXPECTED_FINGERPRINT"; then
+            usable=true
+          else
+            rm -rf "$INGESTION_CACHE_DIR"
+          fi
+          echo "usable=$usable" >> "$GITHUB_OUTPUT"
+
+      - name: Build ingestion image
+        id: build-image
+        if: ${{ steps.validate-ingestion.outputs.usable != 'true' }}
+        env:
+          COMPOSE_FILE: docker/development/docker-compose-postgres.yml
+        run: |
+          docker compose -f "$COMPOSE_FILE" build --build-arg INGESTION_DEPENDENCY=playwright ingestion
+          # `config --images <service>` also lists the service's dependencies.
+          image=$(docker compose -f "$COMPOSE_FILE" config --format json | jq -r '.services.ingestion.image // (.name + "-ingestion")')
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Pack ingestion image
+        if: ${{ steps.validate-ingestion.outputs.usable != 'true' }}
+        run: |
+          .github/scripts/pack_playwright_ingestion_image.sh \
+            "${{ steps.build-image.outputs.image }}" \
+            "$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst"
+          .github/scripts/validate_playwright_ingestion_image.sh \
+            "$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst" \
+            "${{ needs.cache-keys.outputs.ingestion }}"
+
+      # Same guards as the fixture save: never from an ephemeral merge-queue
+      # ref, a pull_request run, or a fork PR.
       - name: Save ingestion image cache
         if: >-
-          needs.plan-playwright.outputs.requires_airflow == 'true' &&
-          needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' &&
+          steps.validate-ingestion.outputs.usable != 'true' &&
           github.event_name != 'merge_group' &&
           github.event_name != 'pull_request' &&
           !(github.event_name == 'pull_request_target' &&
@@ -1292,17 +1513,7 @@ jobs:
           path: ${{ env.INGESTION_CACHE_DIR }}
           key: playwright-ingestion-image-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.ingestion }}
 
-      - name: Upload seeded fixture
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: playwright-seeded-fixture
-          path: ${{ env.FIXTURE_CACHE_DIR }}/playwright-fixture.tar.zst
-          compression-level: 0
-          retention-days: 1
-
       - name: Upload ingestion image
-        if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
         uses: actions/upload-artifact@v6
         with:
           name: playwright-ingestion-image
@@ -1310,15 +1521,17 @@ jobs:
           compression-level: 0
           retention-days: 1
 
-      - name: Clean fixture builder
-        if: ${{ always() && (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true')) }}
-        run: |
-          docker compose -f "$DB_COMPOSE_FILE" down --remove-orphans || true
-          sudo rm -rf "$GITHUB_WORKSPACE/docker/development/docker-volume"
-
   playwright-ci:
     needs:
-      [build, cache-keys, detect-changes, plan-playwright, prepare-playwright-fixture]
+      [
+        build,
+        build-visual-ui,
+        cache-keys,
+        detect-changes,
+        plan-playwright,
+        prepare-playwright-fixture,
+        prepare-ingestion-image,
+      ]
     runs-on: ubuntu-latest
     # Budget breakdown: up to 60 min playwright hang-protection wrapper on
     # the test step + ~5-8 min for setup (env, node, browser, bundle verify)
@@ -1336,7 +1549,7 @@ jobs:
     # `warm_caches_only` runs the pipeline for its cache side effects alone;
     # the shards are what makes it expensive and they prove nothing on a commit
     # the merge queue already tested.
-    if: ${{ !cancelled() && !inputs.warm_caches_only && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
+    if: ${{ !cancelled() && !inputs.warm_caches_only && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' && (needs.plan-playwright.outputs.requires_airflow != 'true' || needs.prepare-ingestion-image.result == 'success') }}
     environment: test
     permissions:
       contents: read
@@ -1351,7 +1564,11 @@ jobs:
       PW_DIRECT_CHANGED_SPECS: ${{ needs.detect-changes.outputs.direct_changed_specs }}
       PW_PROTOCOL: ${{ matrix.requiresAirflow && 'http' || inputs.protocol }}
       PW_SHARD_ID: ${{ matrix.shardId }}
-      PW_PRESEEDED_STATE: "true"
+      PW_SHARD_LANE: ${{ matrix.lane }}
+      # The visual and RDF lanes seed their own environments (visual: the
+      # MySQL setup its baselines were captured on; RDF:
+      # Fuseki with RDF enabled), so their setup projects run for real.
+      PW_PRESEEDED_STATE: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan-playwright.outputs.matrix) }}
@@ -1383,6 +1600,7 @@ jobs:
 
       - name: Download seeded fixture
         id: download-fixture
+        if: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         uses: actions/download-artifact@v7
         with:
           name: playwright-seeded-fixture
@@ -1390,7 +1608,7 @@ jobs:
 
       - name: Download ingestion image
         id: download-ingestion-image
-        if: ${{ matrix.requiresAirflow }}
+        if: ${{ matrix.requiresAirflow || contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         uses: actions/download-artifact@v7
         with:
           name: playwright-ingestion-image
@@ -1407,17 +1625,20 @@ jobs:
         id: fast-inputs
         env:
           PLAN_NAME: ${{ matrix.plan }}
-          REQUIRES_AIRFLOW: ${{ matrix.requiresAirflow }}
+          REQUIRES_AIRFLOW: ${{ matrix.requiresAirflow || contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
+          NEEDS_FIXTURE: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         run: |
           distribution=$(find "$RUNNER_TEMP/openmetadata-distribution" -maxdepth 2 -type f -name 'openmetadata-*.tar.gz' -print -quit)
-          fixture=$(find "$RUNNER_TEMP/playwright-fixture" -maxdepth 2 -type f -name 'playwright-fixture.tar.zst' -print -quit)
+          fixture=$(find "$RUNNER_TEMP/playwright-fixture" -maxdepth 2 -type f -name 'playwright-fixture.tar.zst' -print -quit 2>/dev/null || true)
           plan="$RUNNER_TEMP/playwright-plans/$PLAN_NAME"
           ingestion_image=""
           if [[ "$REQUIRES_AIRFLOW" == "true" ]]; then
             ingestion_image=$(find "$RUNNER_TEMP/playwright-ingestion-image" -maxdepth 2 -type f -name 'playwright-ingestion-image.tar.zst' -print -quit)
           fi
 
-          for input in "$distribution" "$fixture" "$plan"; do
+          required=("$distribution" "$plan")
+          [[ "$NEEDS_FIXTURE" == "true" ]] && required+=("$fixture")
+          for input in "${required[@]}"; do
             if [[ -z "$input" || ! -f "$input" ]]; then
               echo "Missing fast-environment input: $input" >&2
               exit 1
@@ -1430,7 +1651,7 @@ jobs:
 
           {
             echo "distribution=$(realpath "$distribution")"
-            echo "fixture=$(realpath "$fixture")"
+            echo "fixture=${fixture:+$(realpath "$fixture")}"
             echo "plan=$(realpath "$plan")"
             echo "ingestion_image=${ingestion_image:+$(realpath "$ingestion_image")}"
           } >> "$GITHUB_OUTPUT"
@@ -1440,6 +1661,7 @@ jobs:
 
       - name: Setup Openmetadata Test Environment
         id: setup-environment
+        if: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
@@ -1448,6 +1670,73 @@ jobs:
           distribution-path: ${{ steps.fast-inputs.outputs.distribution }}
           ingestion-image-path: ${{ steps.fast-inputs.outputs.ingestion_image }}
           install-test-dependencies: "false"
+
+      # The visual and RDF lanes cannot use the shared fixture (see
+      # PW_PRESEEDED_STATE above), so each seeds its own environment from
+      # scratch. Both load the shared ingestion image and distribution instead
+      # of building them.
+      - name: Free Disk Space (Ubuntu)
+        if: ${{ contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
+      - name: Prepare the own-environment inputs
+        if: ${{ contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
+        env:
+          COMPOSE_FILE: docker/development/docker-compose-postgres.yml
+          DISTRIBUTION: ${{ steps.fast-inputs.outputs.distribution }}
+          INGESTION_IMAGE: ${{ steps.fast-inputs.outputs.ingestion_image }}
+        run: |
+          mkdir -p openmetadata-dist/target
+          cp "$DISTRIBUTION" openmetadata-dist/target/
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y zstd
+          fi
+          zstd -dc "$INGESTION_IMAGE" | docker load
+          compose_image=$(docker compose -f "$COMPOSE_FILE" config --format json | jq -r '.services.ingestion.image // (.name + "-ingestion")')
+          docker image tag "$(jq -r .image "${INGESTION_IMAGE%.tar.zst}.manifest.json")" "$compose_image"
+          echo "OM_INGESTION_IMAGE_PRELOADED=true" >> "$GITHUB_ENV"
+
+      - name: Setup the visual environment
+        id: setup-visual-environment
+        if: ${{ matrix.lane == 'visual' }}
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: "3.10"
+          args: "-d mysql -s true"
+          ingestion_dependency: "playwright"
+          install-test-dependencies: "false"
+
+      - name: Setup the RDF environment
+        id: setup-rdf-environment
+        if: ${{ matrix.lane == 'rdf' }}
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: "3.10"
+          args: "-d postgresql -s true"
+          startup-script: "./docker/run_local_docker_rdf.sh"
+          ingestion_dependency: "playwright"
+          install-test-dependencies: "false"
+
+      - name: Wait for Fuseki to be healthy
+        if: ${{ matrix.lane == 'rdf' }}
+        run: |
+          for _ in $(seq 1 30); do
+            if curl -sf "http://localhost:3030/\$/ping" >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 10
+          done
+          docker logs openmetadata-fuseki --tail 100
+          exit 1
 
       - name: Setup Node.js
         id: setup-node
@@ -1492,6 +1781,8 @@ jobs:
       # Restore-only — same churn rationale as the yarn cache above.
       - name: Restore Playwright browser cache
         id: restore-browser
+        # Visual renders inside the Playwright image, which ships its browser.
+        if: ${{ matrix.lane != 'visual' }}
         uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
@@ -1503,6 +1794,7 @@ jobs:
       # on a bad-mirror day, see runs 30788758311 / 32157314266 / 32166970973).
       - name: Cache Playwright system deps
         id: apt-deps-cache
+        if: ${{ matrix.lane != 'visual' }}
         uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         continue-on-error: true
         timeout-minutes: 10
@@ -1550,6 +1842,7 @@ jobs:
       # evaluate_playwright_performance.py from 480 → 300 in the same PR.
       - name: Install Playwright Browsers
         id: install-browsers
+        if: ${{ matrix.lane != 'visual' }}
         working-directory: openmetadata-ui/src/main/resources/ui/
         env:
           APT_DEPS_CACHE_HIT: ${{ steps.apt-deps-cache.outputs.cache-hit }}
@@ -1583,6 +1876,7 @@ jobs:
 
       - name: Verify the restored authenticated application bundle
         id: verify-bundle
+        if: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         working-directory: openmetadata-ui/src/main/resources/ui/
         env:
           PLAYWRIGHT_IS_OSS: "true"
@@ -1595,6 +1889,29 @@ jobs:
       # ran right after "Setup Openmetadata Test Environment", so a 10-min
       # `install-deps` blowup was invisible to the env gate and only surfaced
       # as a runner-clock cancellation.
+      - name: Download the regular UI bundle
+        if: ${{ matrix.lane == 'visual' }}
+        uses: actions/download-artifact@v7
+        with:
+          name: playwright-visual-ui
+          path: ${{ runner.temp }}/playwright-visual-ui
+
+      - name: Serve the regular UI in front of the visual server
+        if: ${{ matrix.lane == 'visual' }}
+        run: |
+          nohup node .github/scripts/serve_playwright_ui.cjs \
+            "$RUNNER_TEMP/playwright-visual-ui" 3300 8585 > "$RUNNER_TEMP/visual-ui-server.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3300/signin >/dev/null &&
+              curl -sf http://127.0.0.1:3300/api/v1/system/version >/dev/null; then
+              echo "PLAYWRIGHT_TEST_BASE_URL=http://127.0.0.1:3300" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/visual-ui-server.log" >&2
+          exit 1
+
       - name: Record environment setup duration
         run: |
           finished_at=$(date +%s)
@@ -1657,8 +1974,30 @@ jobs:
           # over time budget" via the `Signal Playwright budget breaches`
           # step. Alert there, do not kill here.
           set +e
+          runner=(npx)
+          if [[ "$PW_SHARD_LANE" == "visual" ]]; then
+            # Baselines were captured in this image; host fonts render
+            # differently. Workspace, plans and /dev/shm (seeded state links)
+            # are mounted at their own paths so every absolute path resolves.
+            env_args=()
+            while IFS= read -r name; do
+              env_args+=(-e "$name")
+            done < <(compgen -e | grep -E '^(PLAYWRIGHT_|PW_)')
+            runner=(docker run --rm --network host --ipc host
+              --user "$(id -u):$(id -g)" -e CI=true -e HOME=/tmp
+              "${env_args[@]}"
+              -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -v "$RUNNER_TEMP:$RUNNER_TEMP"
+              -w "$PWD" mcr.microsoft.com/playwright:v1.57.0-jammy npx)
+            # Only a shard restoring the shared fixture has auth state before its
+            # setup projects run; an own-environment lane creates it in the run.
+            if [[ "$PW_PRESEEDED_STATE" == "true" ]] &&
+              ! "${runner[@]:0:${#runner[@]}-1}" test -r playwright/.auth/admin.json; then
+              echo "The seeded auth state is not readable inside the visual container" >&2
+              exit 1
+            fi
+          fi
           timeout --signal=TERM --kill-after=30s 60m \
-            npx playwright test "${project_args[@]}" "${files[@]}"
+            "${runner[@]}" playwright test "${project_args[@]}" "${files[@]}"
           test_exit=$?
           set -e
           finished_at=$(date +%s)
@@ -1815,7 +2154,7 @@ jobs:
           DOWNLOAD_INGESTION_IMAGE_OUTCOME: ${{ steps.download-ingestion-image.outcome }}
           DOWNLOAD_PLANS_OUTCOME: ${{ steps.download-plans.outcome }}
           FAST_INPUTS_OUTCOME: ${{ steps.fast-inputs.outcome }}
-          SETUP_ENVIRONMENT_OUTCOME: ${{ steps.setup-environment.outcome }}
+          SETUP_ENVIRONMENT_OUTCOME: ${{ steps.setup-environment.outcome != 'skipped' && steps.setup-environment.outcome || (steps.setup-visual-environment.outcome != 'skipped' && steps.setup-visual-environment.outcome || steps.setup-rdf-environment.outcome) }}
           SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
           INSTALL_DEPENDENCIES_OUTCOME: ${{ steps.install-dependencies.outcome }}
           RESTORE_BROWSER_OUTCOME: ${{ steps.restore-browser.outcome }}

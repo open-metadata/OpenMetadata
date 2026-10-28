@@ -9,6 +9,16 @@ public interface CacheProvider extends AutoCloseable {
 
   void set(String key, String value, Duration ttl);
 
+  /**
+   * {@link #set} that reports whether the value reached the cache, for callers that log the
+   * outcome. The default cannot tell a failed write from a good one and reports {@link
+   * #available()}.
+   */
+  default boolean trySet(String key, String value, Duration ttl) {
+    set(key, value, ttl);
+    return available();
+  }
+
   boolean setIfAbsent(String key, String value, Duration ttl);
 
   void del(String... keys);
@@ -26,6 +36,12 @@ public interface CacheProvider extends AutoCloseable {
   Optional<String> hget(String key, String field);
 
   void hset(String key, Map<String, String> fields, Duration ttl);
+
+  /** {@link #hset(String, Map, Duration)} that reports whether the fields reached the cache. */
+  default boolean tryHset(String key, Map<String, String> fields, Duration ttl) {
+    hset(key, fields, ttl);
+    return available();
+  }
 
   /**
    * HSET without an EXPIRE. Use when the caller manages the key's TTL separately (e.g.,

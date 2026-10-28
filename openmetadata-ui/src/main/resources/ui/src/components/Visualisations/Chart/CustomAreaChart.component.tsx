@@ -75,6 +75,17 @@ const CustomAreaChart = ({
     [valueFormatter]
   );
 
+  // A single point draws a lone dot, not a trend; keep the card height instead.
+  if (rows.length < 2) {
+    return (
+      <div
+        className="tw:w-full"
+        id={`${name}-area-chart`}
+        style={{ height: height ?? 150 }}
+      />
+    );
+  }
+
   return (
     <div className="tw:w-full" id={`${name}-area-chart`}>
       <AreaChart

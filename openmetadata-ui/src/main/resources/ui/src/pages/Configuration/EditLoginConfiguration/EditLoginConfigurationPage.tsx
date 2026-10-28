@@ -194,10 +194,10 @@ const EditLoginConfiguration = () => {
           form={form}
           onSubmit={form.handleSubmit(handleSubmit)}>
           <FormFields fields={formFields} />
-          <Box className="layout-row" justify="end" wrap="wrap">
+          <Box className="layout-row" gap={3} justify="end" wrap="wrap">
             <Box className="layout-column tw:block">
               <Button
-                color="link-color"
+                color="secondary"
                 data-testid="cancel-button"
                 onClick={handleGoBack}>
                 {t('label.cancel')}

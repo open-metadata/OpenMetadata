@@ -18,7 +18,6 @@ import {
 import {
   getSelectionSupport,
   SelectionSupport,
-  SourceOfTheCatalog,
 } from '../utils/Alerts/AlertSelectionUtil';
 import {
   AlertSourceSearch,
@@ -33,9 +32,6 @@ export interface UseAlertSelectionProps {
   alertType: AlertType;
   sources?: string[];
   input?: AlertFilteringInput;
-  /** What the form already knows about each source, used until the server answers. */
-  catalog?: SourceOfTheCatalog[];
-  quiet?: boolean;
 }
 
 export interface AlertSelection {
@@ -43,11 +39,15 @@ export interface AlertSelection {
   support: SelectionSupport;
   capabilities: UseAlertCapabilitiesReturn;
   loading: boolean;
+  /**
+   * The server has answered the first question, or it failed. A form or view waits for this
+   * before it shows anything, and does not go back to waiting afterwards.
+   */
+  ready: boolean;
   search: AlertSourceSearch;
 }
 
 const NO_SOURCES: string[] = [];
-const NO_CATALOG: SourceOfTheCatalog[] = [];
 
 const splitKey = (key: string): string[] => (key ? key.split('|') : []);
 
@@ -60,18 +60,20 @@ export const useAlertSelection = ({
   alertType,
   sources = NO_SOURCES,
   input,
-  catalog = NO_CATALOG,
-  quiet,
 }: UseAlertSelectionProps): AlertSelection => {
   const capabilities = useAlertCapabilities({
     alertType,
     sources,
     input,
-    quiet,
   });
   const support = useMemo(
-    () => getSelectionSupport(catalog, sources, capabilities.selection),
-    [catalog, sources, capabilities.selection]
+    () =>
+      getSelectionSupport(
+        sources,
+        capabilities.selection,
+        capabilities.answeredFor
+      ),
+    [sources, capabilities.selection, capabilities.answeredFor]
   );
   // Every capabilities answer is a new object, even when it says the same thing. The fields that
   // search re-run their initial fetch and cancel a pending typed search whenever `search` changes,
@@ -93,6 +95,7 @@ export const useAlertSelection = ({
       support,
       capabilities,
       loading: capabilities.loading,
+      ready: capabilities.settled,
       search,
     }),
     [sources, support, capabilities, search]
@@ -102,8 +105,14 @@ export const useAlertSelection = ({
 const NOTHING_SELECTED: AlertSelection = {
   sources: NO_SOURCES,
   support: {},
-  capabilities: { loading: false },
+  capabilities: {
+    knownSources: [],
+    loading: false,
+    settled: true,
+    retry: () => undefined,
+  },
   loading: false,
+  ready: true,
   search: {
     indexes: [],
     containerEntities: [],

@@ -117,8 +117,10 @@ export interface FieldPropsMap {
   options?: FormSelectItem[];
   coverImageLabels?: CoverImageUploadLabels;
   maxDimensions?: { width: number; height: number };
-  /** Autocomplete: selected tags drawn before collapsing the rest into a +N badge. */
+  /** Autocomplete: chips drawn before the rest collapse into a +N button that opens the list with them checked. */
   maxVisibleItems?: number;
+  /** Autocomplete: wrap the chips onto more lines; a capped field otherwise stays on one line. */
+  wrapSelectedItems?: boolean;
   maxSizeMB?: number;
   onValidationError?: (message: string) => void;
   previewClassName?: string;

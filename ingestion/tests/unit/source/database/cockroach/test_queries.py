@@ -23,7 +23,11 @@ that ``(objoid, classoid, objsubid)`` *together* uniquely identify a described
 object; using ``objoid`` alone is incorrect by the catalog's own contract.
 """
 
+import re
+
 from metadata.ingestion.source.database.cockroach.queries import (
+    COCKROACH_GET_TABLE_NAMES,
+    COCKROACH_GET_VIEW_NAMES,
     COCKROACH_SCHEMA_COMMENTS,
 )
 
@@ -113,3 +117,76 @@ def test_schema_comments_remains_a_left_join():
     assert "LEFT JOIN" in COCKROACH_SCHEMA_COMMENTS
     # No INNER JOIN should have crept in as a "fix".
     assert "INNER JOIN" not in COCKROACH_SCHEMA_COMMENTS
+
+
+# ── materialized view (relkind 'm') regression tests ──────────────────────────
+
+
+def _relkinds(query: str) -> set[str]:
+    """Extract the set of single-quoted relkind literals from the ``c.relkind
+    IN (...)`` filter of a Cockroach catalog query.
+
+    Parsing the relkind filter — rather than substring-matching the raw SQL —
+    means a stray ``'m'`` inside a comment cannot mask a real regression, and
+    also lets us assert inclusion **and** exclusion precisely.
+    """
+    match = re.search(r"relkind\s+in\s*\(([^)]*)\)", query, re.IGNORECASE)
+    assert match, f"query must filter on relkind IN (...):\n{query}"
+    return {kind.strip().strip("'\"").lower() for kind in match.group(1).split(",")}
+
+
+def test_view_names_query_includes_materialized_view_relkind():
+    """``COCKROACH_GET_VIEW_NAMES`` must include relkind ``'m'`` so that
+    CockroachDB materialized views — which CockroachDB reports with
+    ``pg_class.relkind = 'm'`` — are returned by the view-listing query.
+
+    Regression for the bug where the filter was ``IN ('v')`` only, silently
+    excluding every materialized view from the catalog (no table, no view,
+    no lineage/ownership/usage/profiling — with no error or warning).
+
+    Materialized views are routed through the view path so that the
+    ``includeViews`` config flag governs them, matching the PostgreSQL and
+    Greenplum connectors (``POSTGRES_GET_VIEW_NAMES`` / Greenplum use
+    ``relkind IN ('v', 'm')``).
+    """
+    kinds = _relkinds(COCKROACH_GET_VIEW_NAMES)
+    assert "m" in kinds, (
+        f"COCKROACH_GET_VIEW_NAMES must include relkind 'm' for materialized views; found {sorted(kinds)}"
+    )
+
+
+def test_view_names_query_still_includes_regular_view_relkind():
+    """Regular views (relkind ``'v'``) must still be returned — the fix adds
+    ``'m'`` alongside ``'v'`` rather than replacing it."""
+    kinds = _relkinds(COCKROACH_GET_VIEW_NAMES)
+    assert "v" in kinds, (
+        f"COCKROACH_GET_VIEW_NAMES must still include relkind 'v' for regular views; found {sorted(kinds)}"
+    )
+
+
+def test_table_names_query_excludes_materialized_view_relkind():
+    """``COCKROACH_GET_TABLE_NAMES`` must NOT include relkind ``'m'``.
+
+    Materialized views must stay off the table path; otherwise
+    ``includeTables`` — rather than ``includeViews`` — would control their
+    ingestion, diverging from the PostgreSQL/Greenplum behaviour where
+    matviews are governed by ``includeViews``.
+    """
+    kinds = _relkinds(COCKROACH_GET_TABLE_NAMES)
+    assert "m" not in kinds, (
+        "COCKROACH_GET_TABLE_NAMES must NOT include relkind 'm'; matviews "
+        f"belong on the view path. Found {sorted(kinds)}"
+    )
+
+
+def test_view_names_query_still_scoped_by_schema():
+    """The fix must not accidentally drop the ``n.nspname = :schema`` scope —
+    without it the query would list views from every schema in the database."""
+    assert "n.nspname = :schema" in COCKROACH_GET_VIEW_NAMES
+
+
+def test_view_names_query_still_selects_relkind():
+    """The consumer maps each row's ``relkind`` through ``RELKIND_MAP``; the
+    query must keep selecting ``c.relkind`` so that ``'m'`` rows are typed as
+    ``MaterializedView`` rather than falling back to ``Regular``."""
+    assert "c.relkind AS relkind" in COCKROACH_GET_VIEW_NAMES

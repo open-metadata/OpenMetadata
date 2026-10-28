@@ -438,6 +438,7 @@ export const getFeedCounts = async (
     const [conversations, activityRes, taskCounts] = await Promise.all([
       listConversations({
         entityLink: getEntityFeedLink(entityType, entityFQN),
+        includeFields: true,
         limit: 1,
       }),
       getEntityActivityByFqn(entityType, entityFQN, {
@@ -520,6 +521,7 @@ export const fetchEntityActivityCountInto = async (
       }),
       listConversations({
         entityLink: getEntityFeedLink(entityType, entityFqn),
+        includeFields: true,
         limit: 1,
       }),
     ]);

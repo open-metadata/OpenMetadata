@@ -11,15 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  EmptyPlaceholder,
-  FeaturedIcon,
-  PageLayout,
-} from '@openmetadata/ui-core-components';
+import { FeaturedIcon, PageLayout } from '@openmetadata/ui-core-components';
 import React, { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as InboxIcon } from '../../../../assets/svg/ask-collate-nav-bar/inbox-header.svg';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 export interface InboxPageProps {
   /** The Activity / Triage tab strip, drawn along the header's bottom edge. */
@@ -65,10 +62,9 @@ const InboxPage: React.FC<InboxPageProps> = ({ tabs, content }) => {
           edges line up with the header card's, and a gap below the header. */}
       <PageLayout.Content className="tw:flex tw:min-h-0 tw:flex-col tw:overflow-hidden! tw:px-0! tw:pt-2! tw:pb-0!">
         {content ?? (
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="inbox-empty"
             title={t('label.no-data')}
-            variant="blank"
           />
         )}
       </PageLayout.Content>

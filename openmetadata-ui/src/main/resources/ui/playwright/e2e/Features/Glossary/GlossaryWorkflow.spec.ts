@@ -17,6 +17,7 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { okJson } from '../../../utils/apiResponse';
 import {
   descriptionBox,
   getApiContext,
@@ -153,9 +154,9 @@ test.describe('Term Status Transitions', { tag: ['@workflow'] }, () => {
 
     await expect(termRow).toBeVisible();
 
-    const statusBadge = termRow.locator('.status-badge');
-
-    await expect(statusBadge).toHaveText(/^(Draft|In Review)$/);
+    await expect(termRow.getByTestId('proposal-status-badge')).toContainText(
+      'Proposed by'
+    );
   });
 
   // T-C18: Create term - inherits glossary reviewers
@@ -219,8 +220,8 @@ test(
       const termRow = reviewer2Page.locator(`[data-row-key*="${termName}"]`);
 
       await expect(termRow).toBeVisible();
-      await expect(termRow.locator('.status-badge')).toHaveText(
-        /^(Draft|In Review)$/
+      await expect(termRow.getByTestId('proposal-status-badge')).toContainText(
+        'Proposed by'
       );
 
       const approveBtn = reviewer2Page.getByTestId(`${termName}-approve-btn`);
@@ -236,7 +237,7 @@ test(
 );
 
 test(
-  'should display correct status badge color and icon',
+  'should show a human proposal badge and source icon',
   { tag: ['@workflow'] },
   async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
@@ -263,24 +264,48 @@ test(
       await selectActiveGlossary(page, glossary.data.displayName);
 
       const termName = `StatusBadgeTerm${Date.now()}`;
-      await createGlossaryTermFromForm(page, {
+      const createdResponse = await createGlossaryTermFromForm(page, {
         name: termName,
         description: 'Test term for status badge',
       });
+      const created = await okJson<{ id: string }>(
+        createdResponse,
+        'createdGlossaryTerm'
+      );
+
+      await expect
+        .poll(
+          async () => {
+            const term = await okJson<{ entityStatus: string }>(
+              await apiContext.get(`/api/v1/glossaryTerms/${created.id}`),
+              'pendingGlossaryTerm'
+            );
+
+            return term.entityStatus;
+          },
+          { timeout: 30000 }
+        )
+        .toBe('In Review');
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       const termRow = page.locator(`[data-row-key*="${termName}"]`);
 
       await expect(termRow).toBeVisible();
 
-      const statusBadge = termRow.locator('.status-badge');
-
-      await expect(async () => {
-        await page.reload({ waitUntil: 'domcontentloaded' });
-        await expect(statusBadge).toHaveText('In Review', { timeout: 5000 });
-      }).toPass({ timeout: 30000 });
-
-      await expect(statusBadge).toHaveClass(/inReview/);
-      await expect(statusBadge).toBeVisible();
+      const statusBadge = termRow.getByTestId('proposal-status-badge');
+      await expect(statusBadge).toContainText('Proposed by');
+      await expect(statusBadge.getByText(/^Proposed by/)).toHaveCSS(
+        'border-style',
+        'dashed'
+      );
+      await expect(termRow.getByTestId('proposal-source-person')).toBeVisible();
+      await statusBadge.hover();
+      await expect(page.getByTestId('workflow-history-popover')).toBeVisible();
+      await expect(
+        page
+          .getByTestId('workflow-history-popover')
+          .getByTestId('workflow-history-widget')
+      ).toBeVisible();
     } finally {
       await glossary.delete(apiContext);
       await afterAction();

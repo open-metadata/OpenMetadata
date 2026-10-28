@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { createRef } from 'react';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { MembersHeaderPatch } from './Members.types';
 import { UseMembersTeamHeaderParams } from './MembersTeamDetail.types';
@@ -164,5 +165,78 @@ describe('useMembersTeamHeader', () => {
     fireEvent.click(screen.getByRole('button', { name: /open menu/i }));
 
     expect(screen.queryByTestId('restore-team')).not.toBeInTheDocument();
+  });
+
+  const openMenu = (params: UseMembersTeamHeaderParams) => {
+    render(<Harness {...params} />);
+    render(<>{lastPatch(params.onSetHeader).actions}</>);
+    fireEvent.click(screen.getByRole('button', { name: /open menu/i }));
+  };
+
+  it('anchors team confirmations to the menu trigger and opens delete from the menu', () => {
+    const menuTriggerRef = createRef<HTMLButtonElement>();
+    const params = buildParams({ menuTriggerRef });
+    openMenu(params);
+
+    // The open menu hides the rest of the page from assistive tech.
+    expect(menuTriggerRef.current).toBe(
+      screen.getByRole('button', { hidden: true, name: /open menu/i })
+    );
+
+    fireEvent.click(screen.getByTestId('delete-team'));
+
+    expect(params.onDelete).toHaveBeenCalled();
+  });
+
+  it('offers export and import on a team the viewer can edit', () => {
+    openMenu(buildParams({ isGroupType: false }));
+
+    expect(screen.getByTestId('export-team')).toBeInTheDocument();
+    expect(screen.getByTestId('import-team')).toBeInTheDocument();
+  });
+
+  it('offers export but not import without permission to create teams', () => {
+    openMenu(buildParams({ isGroupType: false, canCreateTeam: false }));
+
+    expect(screen.getByTestId('export-team')).toBeInTheDocument();
+    expect(screen.queryByTestId('import-team')).not.toBeInTheDocument();
+  });
+
+  it('offers export on the Organization even without EditAll on it', () => {
+    openMenu(
+      buildParams({
+        isGroupType: false,
+        isOrgType: true,
+        canEditAll: false,
+        canCreateTeam: false,
+      })
+    );
+
+    expect(screen.getByTestId('export-team')).toBeInTheDocument();
+    expect(screen.queryByTestId('delete-team')).not.toBeInTheDocument();
+  });
+
+  it('offers no export on a team the viewer cannot edit', () => {
+    openMenu(
+      buildParams({ isGroupType: false, canEditAll: false, canDelete: true })
+    );
+
+    expect(screen.queryByTestId('export-team')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('import-team')).not.toBeInTheDocument();
+    expect(screen.getByTestId('delete-team')).toBeInTheDocument();
+  });
+
+  it('hides the menu trigger when no item is left', () => {
+    const params = buildParams({
+      isGroupType: false,
+      canEditAll: false,
+      canDelete: false,
+    });
+    render(<Harness {...params} />);
+    render(<>{lastPatch(params.onSetHeader).actions}</>);
+
+    expect(
+      screen.queryByRole('button', { name: /open menu/i })
+    ).not.toBeInTheDocument();
   });
 });

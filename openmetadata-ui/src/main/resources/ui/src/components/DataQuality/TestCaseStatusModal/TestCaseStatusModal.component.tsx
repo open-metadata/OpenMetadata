@@ -44,7 +44,10 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
-import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../constants/TestSuite.constant';
+import {
+  INCIDENT_STATUS_MENU_OPTIONS,
+  TEST_CASE_RESOLUTION_STATUS_LABELS,
+} from '../../../constants/TestSuite.constant';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { getUsers } from '../../../rest/userAPI';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
@@ -102,14 +105,9 @@ export const TestCaseStatusModal = ({
     t('message.field-text-is-required', { fieldText });
 
   const statusOptions = useMemo(() => {
-    const status =
-      data?.testCaseResolutionStatusType ===
-      TestCaseResolutionStatusTypes.Assigned
-        ? [
-            TestCaseResolutionStatusTypes.Assigned,
-            TestCaseResolutionStatusTypes.Resolved,
-          ]
-        : Object.values(TestCaseResolutionStatusTypes);
+    const status = data?.testCaseResolutionStatusType
+      ? INCIDENT_STATUS_MENU_OPTIONS[data.testCaseResolutionStatusType]
+      : Object.values(TestCaseResolutionStatusTypes);
 
     return status.map((value) => ({
       id: value,

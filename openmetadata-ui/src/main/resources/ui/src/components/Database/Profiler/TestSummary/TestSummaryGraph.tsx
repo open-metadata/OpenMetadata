@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import type {
   ChartLegendProps,
   ChartPixel,
@@ -68,6 +64,7 @@ import {
   DATE_TIME_12_HOUR_FORMAT,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import { useTestCaseStore } from '../../../DataQuality/IncidentManager/useTestCase.store';
 import { TestCaseChartDataType } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
@@ -78,8 +75,11 @@ import TestSummaryStatusKey from './TestSummaryStatusKey';
 
 type PlottedPoint = TestCaseChartDataType['data'][number];
 
+// The tooltip and the selection ring are the hover feedback. ECharts' own
+// hover state animated every dot and line and re-ordered the series on each
+// pass of the pointer, and Safari lost lines in that re-ordering.
+const NO_HOVER_STATE = { emphasis: { disabled: true } };
 // The tooltip is the app's own React component, so ECharts draws none.
-const MULTI_SERIES_EMPHASIS = { emphasis: { focus: 'series' as const } };
 const TOOLTIP_OFF = { show: false };
 
 // Aborted is drawn as a ring, matching the status key: a run that produced no
@@ -91,6 +91,7 @@ const hasArea = ({ height, width }: TooltipSize) => height > 0 && width > 0;
 // Room past the newest and oldest runs, so their dots and the selection ring
 // are not cut at the plot edge.
 const X_AXIS_EDGE_GAP: [string, string] = ['2%', '2%'];
+const AXIS_RUN_TIME_FORMAT = 'MMM dd, yyyy\nhh:mm a';
 // Runs at a single instant have no span, and ECharts stretches the time axis
 // to two years around them; a day centred on them keeps the axis readable.
 const SINGLE_INSTANT_X_PADDING = 12 * 60 * 60 * 1000;
@@ -420,17 +421,14 @@ function TestSummaryGraph({
         // The line bridges the runs placed off it, so it joins measured
         // runs only.
         connectNulls: true,
-        // Focusing the hovered series fades the others, and with them the
-        // band and the expectation label; only worth it when there are others.
-        ...(isSingleSeries
-          ? {
-              areaStyle: {
-                // The palette's first series colour is its brand blue.
-                color: hexToRgba(palette.series[0], SINGLE_SERIES_WASH),
-              },
-              lineStyle: { width: SINGLE_SERIES_LINE_WIDTH },
-            }
-          : MULTI_SERIES_EMPHASIS),
+        ...NO_HOVER_STATE,
+        ...(isSingleSeries && {
+          areaStyle: {
+            // The palette's first series colour is its brand blue.
+            color: hexToRgba(palette.series[0], SINGLE_SERIES_WASH),
+          },
+          lineStyle: { width: SINGLE_SERIES_LINE_WIDTH },
+        }),
       },
     }));
     // Aborted and queued runs as dots alone, after the lines so no line's
@@ -445,7 +443,7 @@ function TestSummaryGraph({
           name: label,
           type: 'line',
           pointStyle: pointStyleOf(key),
-          seriesOption: { lineStyle: { opacity: 0 } },
+          seriesOption: { ...NO_HOVER_STATE, lineStyle: { opacity: 0 } },
         });
       }
 
@@ -512,9 +510,12 @@ function TestSummaryGraph({
 
     return {
       type: 'time',
-      formatter: (value) => formatRunTime(Number(value)),
+      // Two horizontal lines: a 45° label at the first tick ran past the
+      // chart's left edge, which ECharts' outer-bounds layout does not reserve.
+      formatter: (value) =>
+        formatDateTimeLong(Number(value), AXIS_RUN_TIME_FORMAT),
       axisLabel: {
-        rotate: 45,
+        hideOverlap: true,
         customValues: tickValues,
       },
       // ECharts' own axis grey does not follow the theme.
@@ -572,13 +573,12 @@ function TestSummaryGraph({
   if (isEmpty(testCaseResults)) {
     return (
       <Box className="tw:relative tw:min-h-80 tw:w-full">
-        <EmptyPlaceholder
+        <NoFilteredResultsPlaceholder
           description={t('message.try-extending-time-frame')}
-          icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
+          icon={<FilterOffIcon />}
           title={t('message.no-test-result-for-days', {
             days: selectedTimeRange,
           })}
-          variant="blank"
         />
       </Box>
     );

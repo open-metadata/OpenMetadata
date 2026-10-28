@@ -16,12 +16,11 @@ import { Box, Card, Grid } from '@openmetadata/ui-core-components';
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import { ENTITIES_CHARTS } from '../../constants/DataInsight.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
@@ -121,13 +120,14 @@ const DataInsightPage = () => {
 
   if (!viewDataInsightChartPermission && !viewKPIPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none h-min-80"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.data-insight'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.data-insight'),
+          })}
+        />
+      </div>
     );
   }
 
@@ -141,13 +141,14 @@ const DataInsightPage = () => {
         <Box
           className="layout-column tw:block"
           style={{ maxWidth: '100%', flex: '0 0 100%' }}>
-          <ErrorPlaceHolder
-            className="border-none"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.data-insight'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <PermissionPlaceholder
+              data-testid="permission-error-placeholder"
+              permissionValue={t('label.view-entity', {
+                entity: t('label.data-insight'),
+              })}
+            />
+          </div>
         </Box>
       </Box>
     );

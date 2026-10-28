@@ -30,7 +30,9 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.cockroach.metadata import CockroachSource
 from metadata.ingestion.source.database.cockroach.queries import (
     COCKROACH_GET_PARTITION_DETAILS,
+    COCKROACH_GET_VIEW_NAMES,
 )
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.common_pg_mappings import (
     GEOMETRY,
     POINT,
@@ -833,3 +835,132 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         self.assertIn("d.classoid = 'pg_namespace'::regclass", rendered)
         self.assertIn("d.objsubid = 0", rendered)
         self.assertNotIn("WHERE", rendered.upper())
+
+    # ── materialized view (relkind 'm') ingestion ──────────────────────────────
+
+    def test_query_view_names_and_types_includes_materialized_views(self):
+        """``query_view_names_and_types`` must emit materialized views as
+        ``MaterializedView`` alongside regular views.
+
+        Regression for the bug where ``COCKROACH_GET_VIEW_NAMES`` filtered on
+        ``relkind IN ('v')`` only, so CockroachDB materialized views (relkind
+        ``'m'``) matched neither the view query nor the table query and were
+        silently excluded from the catalog.
+
+        The consumer maps each row's ``relkind`` through the shared
+        ``RELKIND_MAP``, which already contains ``"m": MaterializedView``;
+        this test verifies the mapping is reachable now that the SQL filter
+        includes ``'m'``.
+        """
+        mock_connection = MagicMock()
+        mock_connection.execute.return_value = [
+            ("plain_view", "v"),
+            ("my_matview", "m"),
+        ]
+
+        with patch.object(CockroachSource, "connection", mock_connection):
+            results = list(self.cockroach_source.query_view_names_and_types("public"))
+
+        self.assertEqual(
+            {r.name: r.type_ for r in results},
+            {
+                "plain_view": TableType.View,
+                "my_matview": TableType.MaterializedView,
+            },
+        )
+
+    def test_query_view_names_and_types_executes_view_names_query_with_schema(self):
+        """``query_view_names_and_types`` must execute ``COCKROACH_GET_VIEW_NAMES``
+        (the fixed query) and bind the ``:schema`` parameter, so the matview
+        rows come from the correct schema only."""
+        mock_connection = MagicMock()
+        mock_connection.execute.return_value = [("my_matview", "m")]
+
+        with patch.object(CockroachSource, "connection", mock_connection):
+            list(self.cockroach_source.query_view_names_and_types("public"))
+
+        self.assertEqual(mock_connection.execute.call_count, 1)
+        executed_stmt = mock_connection.execute.call_args.args[0]
+        self.assertIn(COCKROACH_GET_VIEW_NAMES, str(executed_stmt))
+        params = mock_connection.execute.call_args.args[1]
+        self.assertEqual(params, {"schema": "public"})
+
+    def test_query_table_names_and_types_still_returns_regular_tables(self):
+        """The table-listing path must keep working for regular tables after
+        the view-query fix — no regression in ``query_table_names_and_types``
+        which remains scoped to ``relkind IN ('r', 'p', 'f')``."""
+        mock_connection = MagicMock()
+        mock_connection.execute.return_value = [
+            ("base_table", "r"),
+            ("part_table", "p"),
+        ]
+
+        with patch.object(CockroachSource, "connection", mock_connection):
+            results = list(self.cockroach_source.query_table_names_and_types("public"))
+
+        self.assertEqual(
+            {r.name: r.type_ for r in results},
+            {
+                "base_table": TableType.Regular,
+                "part_table": TableType.Partitioned,
+            },
+        )
+
+    def test_view_path_is_skipped_when_include_views_false(self):
+        """``includeViews=False`` must not consult the view path at all, so
+        materialized views are not ingested when the user disables views.
+
+        This confirms the fix routes matviews through ``includeViews`` (not
+        ``includeTables``): a user who sets ``includeViews: False`` must not
+        see materialized views, even though they are now returned by the
+        view-listing query.
+        """
+        self.cockroach_source.source_config.includeTables = True
+        self.cockroach_source.source_config.includeViews = False
+
+        with (
+            patch.object(CockroachSource, "query_view_names_and_types") as mock_view_query,
+            patch.object(
+                CockroachSource,
+                "query_table_names_and_types",
+                return_value=[TableNameAndType(name="base_table", type_=TableType.Regular)],
+            ),
+        ):
+            emitted = [name for name, _ in self.cockroach_source.get_tables_name_and_type()]
+
+        self.assertEqual(emitted, ["base_table"])
+        mock_view_query.assert_not_called()
+
+    def test_materialized_views_ingested_when_include_tables_false(self):
+        """Materialized views must be ingested via the view path even when
+        ``includeTables=False``, because they are views (relkind ``'m``),
+        not tables.
+
+        This is the positive counterpart to
+        ``test_view_path_is_skipped_when_include_views_false``: it confirms
+        matviews are governed by ``includeViews`` alone, so a user who
+        ingests only views (``includeTables: False, includeViews: True``)
+        still gets their materialized views.
+
+        ``search_table_from_es`` is patched to return ``None`` — the same
+        "no ElasticSearch match, build FQN from names" path that runs in
+        production — because the unit-test ``self.metadata`` is a bare
+        ``OpenMetadataConnection`` without the ``es_search_from_fqn`` method
+        the live ``OpenMetadata`` client provides.
+        """
+        self.cockroach_source.source_config.includeTables = False
+        self.cockroach_source.source_config.includeViews = True
+
+        mock_connection = MagicMock()
+        mock_connection.execute.return_value = [("plain_view", "v"), ("my_matview", "m")]
+
+        with (
+            patch.object(CockroachSource, "connection", mock_connection),
+            patch("metadata.utils.fqn.search_table_from_es", return_value=None),
+        ):
+            emitted = dict(self.cockroach_source.get_tables_name_and_type())
+
+        self.assertIn("my_matview", emitted)
+        self.assertEqual(emitted["my_matview"], TableType.MaterializedView)
+        self.assertIn("plain_view", emitted)
+        self.assertEqual(emitted["plain_view"], TableType.View)

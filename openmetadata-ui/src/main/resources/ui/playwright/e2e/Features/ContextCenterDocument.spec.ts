@@ -17,6 +17,7 @@ import {
   expect,
   Response,
 } from '@playwright/test';
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { test as base } from '../../support/fixtures/base';
 import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
 import { UserClass } from '../../support/user/UserClass';
@@ -132,6 +133,7 @@ test.describe('Context Center - Documents Page', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
   test.beforeAll(async ({ documentSession }) => {
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     contextFileIdsToCleanup.clear();
     contextFolderIdsToCleanup.clear();
     const { apiContext } = documentSession;
@@ -329,6 +331,7 @@ test.describe('Context Center - Documents Page', () => {
       res.request().method() === 'GET';
 
     test.beforeAll(async ({ documentSession }) => {
+      test.setTimeout(EXTENDED_TEST_TIMEOUT);
       const { apiContext } = documentSession;
       const suffix = uuid();
 
@@ -1247,6 +1250,19 @@ test.describe('Context Center - Documents Page', () => {
     await page
       .getByTestId('context-center-archive-page')
       .waitFor({ state: 'visible' });
+    await waitForAllLoadersToDisappear(page);
+
+    // "All" is one newest-first page of 15 across every worker, so another
+    // worker archiving its pagination docs at the same moment pushes these two
+    // off it. Each worker signs in as its own user, so "Created by me" holds
+    // only this worker's archive.
+    const mineResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/contextCenter/drive/files?') &&
+        response.url().includes('updatedBy=')
+    );
+    await page.getByRole('tab', { name: 'Created by me' }).click();
+    await mineResponse;
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId(`archive-row-${doc1.id}`)).toBeVisible();

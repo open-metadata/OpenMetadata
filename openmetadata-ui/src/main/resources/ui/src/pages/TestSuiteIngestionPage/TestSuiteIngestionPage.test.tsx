@@ -73,9 +73,6 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>)
-);
 jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader.component</div>)
 );
@@ -147,7 +144,9 @@ describe('TestSuiteIngestionPage', () => {
     });
 
     expect(
-      await screen.findByText('ErrorPlaceHolder.component')
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
     ).toBeInTheDocument();
   });
 

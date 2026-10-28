@@ -12,6 +12,7 @@
  */
 
 import { PageType } from '../../../../../../generated/system/ui/page';
+import { safeDecodeURIComponent } from '../../../../../../utils/SettingsHashUtils';
 import type { PersonaView } from './Personas.types';
 
 const PATH_ADD = 'add';
@@ -25,9 +26,9 @@ const PATH_CUSTOMIZE = 'customize';
  *   '<fqn>'                     → detail
  *   '<fqn>/customize/<category>'→ customize
  *
- * ponytail: persona FQNs are simple names (no `/`), so the `/customize/`
- * marker is an unambiguous split point — revisit only if persona FQNs ever
- * gain separators.
+ * The FQN is URL-encoded in the hash (`viewToSubPath`), so it never contains
+ * a `/` and the `/customize/` marker is an unambiguous split point; it is
+ * decoded once here.
  */
 export function hashSubPathToView(subPath: string): PersonaView {
   if (!subPath) {
@@ -42,13 +43,15 @@ export function hashSubPathToView(subPath: string): PersonaView {
   const markerIndex = subPath.indexOf(marker);
 
   if (markerIndex > -1) {
-    const fqn = subPath.slice(0, markerIndex);
+    const fqn = safeDecodeURIComponent(subPath.slice(0, markerIndex));
     const category = subPath.slice(markerIndex + marker.length);
 
     return { type: 'customize', fqn, name: fqn, category };
   }
 
-  return { type: 'detail', fqn: subPath, name: subPath };
+  const fqn = safeDecodeURIComponent(subPath);
+
+  return { type: 'detail', fqn, name: fqn };
 }
 
 /** Inverse of {@link hashSubPathToView}; `undefined` for the landing view. */
@@ -59,9 +62,11 @@ export function viewToSubPath(view: PersonaView): string | undefined {
     case 'add':
       return PATH_ADD;
     case 'detail':
-      return view.fqn;
+      return encodeURIComponent(view.fqn);
     case 'customize':
-      return `${view.fqn}/${PATH_CUSTOMIZE}/${view.category}`;
+      return `${encodeURIComponent(view.fqn)}/${PATH_CUSTOMIZE}/${
+        view.category
+      }`;
     default:
       return undefined;
   }

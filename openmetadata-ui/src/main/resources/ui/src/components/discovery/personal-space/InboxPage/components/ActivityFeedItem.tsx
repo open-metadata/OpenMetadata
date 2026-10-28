@@ -40,6 +40,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import Reactions from '../../../../../components/ActivityFeed/Reactions/Reactions';
+import FeedFieldPath from '../../../../../components/ActivityFeed/Shared/FeedFieldPath/FeedFieldPath';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
@@ -62,7 +63,6 @@ import {
   formatDateTime,
   formatDateTimeLong,
 } from '../../../../../utils/date-time/DateTimeUtils';
-import EntityLink from '../../../../../utils/EntityLink';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
@@ -90,17 +90,12 @@ import {
 import { createThreadReply, useActivityReplies } from '../useActivityReplies';
 import { writeInboxReactions } from '../useInboxActivity';
 import ActivityChangePanel from './ActivityChangePanel';
+import {
+  ACTIVITY_CARD_CLASS,
+  ACTIVITY_CARD_MESSAGE_HOVER_CLASS,
+} from './ActivityFeedItem.constants';
 import ActivityThread from './ActivityThread';
 import AuthorPopover from './AuthorPopover';
-
-// The core Card's surface and hover. Its hover tint is translucent in dark,
-// so it is laid over the surface, not swapped in for it: swapped, the page
-// shows through and the card darkens instead of lifting.
-const CARD_CLASS = classNames(
-  'tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:pb-4 tw:shadow-xs',
-  'tw:transition-colors tw:hover:border-primary',
-  'tw:hover:bg-[linear-gradient(var(--om-color-bg-primary-hover),var(--om-color-bg-primary-hover))]'
-);
 
 // Repliers shown on the collapsed thread toggle.
 const MAX_REPLY_FACES = 3;
@@ -113,6 +108,8 @@ export interface ActivityFeedItemProps {
   timeFormat?: string;
   // The item, or a reply under it, names the viewer or one of their teams.
   isMentioned?: boolean;
+  // Who the mention badge names when the feed is another user's; "you" if unset.
+  mentionedName?: string;
 }
 
 const getActorName = (
@@ -177,30 +174,10 @@ const getActivityBadge = (activity?: ActivityEvent): ActivityBadge =>
       ACTIVITY_EVENT_BADGE[ActivityEventType.EntityUpdated]
     : CONVERSATION_BADGE;
 
-/**
- * Where the asset line points. A column-level change reads "table.column" and
- * links to the column; anything else names and links to the entity itself.
- */
-const getEntityTarget = (
-  entity: EntityReference | undefined,
-  entityName: string | undefined,
-  about: string | undefined
-) => {
-  const isColumn = about ? EntityLink.split(about)[2] === 'columns' : false;
-  const fqn =
-    isColumn && about
-      ? EntityLink.getEntityColumnFqn(about)
-      : entity?.fullyQualifiedName;
-
-  return {
-    parent: isColumn ? `${entityName}.` : '',
-    leaf: isColumn && about ? EntityLink.getTableColumnName(about) : entityName,
-    path:
-      entity?.type && fqn
-        ? entityUtilClassBase.getEntityLink(entity.type, fqn)
-        : undefined,
-  };
-};
+const getEntityPath = (entity: EntityReference | undefined) =>
+  entity?.type && entity.fullyQualifiedName
+    ? entityUtilClassBase.getEntityLink(entity.type, entity.fullyQualifiedName)
+    : undefined;
 
 // "Hide replies" while open; otherwise how many there are, or "Reply" while
 // there are none.
@@ -373,10 +350,12 @@ const UNDO_REACTION: Record<ReactionOperation, ReactionOperation> = {
 // The header's right side: whether it names the viewer, and when it happened.
 const CardMeta = ({
   isMentioned,
+  mentionedName,
   timeFormat,
   timestamp,
 }: {
   isMentioned: boolean;
+  mentionedName?: string;
   timeFormat: string;
   timestamp?: number;
 }) => {
@@ -391,7 +370,9 @@ const CardMeta = ({
           data-testid="activity-mentioned-you"
           size="sm"
           type="color">
-          {t('label.mentioned-you')}
+          {mentionedName
+            ? t('label.mentioned-name', { name: mentionedName })
+            : t('label.mentioned-you')}
         </Badge>
       )}
       <Tooltip
@@ -413,6 +394,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   feed,
   timeFormat = ACTIVITY_DATE_FORMAT,
   isMentioned = false,
+  mentionedName,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -444,7 +426,8 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   const cardTimeFormat = getCardTimeFormat(timeFormat, timestamp, feed);
   const { icon: KindIcon, badgeClassName: kindClassName } =
     getActivityBadge(activity);
-  const target = getEntityTarget(entity, entityName, activity?.about);
+  const entityPath = getEntityPath(entity);
+  const about = activity?.about ?? feed?.about;
   const change = useMemo(
     () => (activity ? getActivityChange(activity) : undefined),
     [activity]
@@ -530,7 +513,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
   return (
     <Box
-      className={CARD_CLASS}
+      className={ACTIVITY_CARD_CLASS}
       data-testid="activity-feed-item"
       direction="col"
       gap={4}>
@@ -571,11 +554,12 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
               </Typography>
               <CardMeta
                 isMentioned={isMentioned}
+                mentionedName={mentionedName}
                 timeFormat={cardTimeFormat}
                 timestamp={timestamp}
               />
             </Box>
-            {target.leaf && (
+            {entityName && (
               <Box align="center" className="tw:min-w-0 tw:gap-1.5">
                 {entity?.type && (
                   <span className={INBOX_ENTITY_ICON_CLASS}>
@@ -586,21 +570,25 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                   className="tw:truncate tw:text-quaternary"
                   size="text-sm"
                   weight="medium">
-                  {target.parent}
-                  {target.path ? (
+                  {entityPath ? (
                     <Link
                       // `!`: the Typography's prose styles color its links.
                       className="tw:font-normal tw:text-brand-secondary! tw:no-underline! tw:hover:underline!"
                       data-testid="activity-entity-link"
-                      to={target.path}>
-                      {target.leaf}
+                      to={entityPath}>
+                      {entityName}
                     </Link>
                   ) : (
                     <span className="tw:font-semibold tw:text-primary">
-                      {target.leaf}
+                      {entityName}
                     </span>
                   )}
                 </Typography>
+                <FeedFieldPath
+                  about={about}
+                  entityType={entity?.type}
+                  showField={!isActivity}
+                />
               </Box>
             )}
           </Box>
@@ -615,7 +603,8 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
               className={classNames(
                 INBOX_MESSAGE_CLASS,
                 INBOX_RECESSED_SURFACE_CLASS,
-                'tw:rounded-lg tw:px-3.5 tw:py-3 tw:text-sm'
+                ACTIVITY_CARD_MESSAGE_HOVER_CLASS,
+                'tw:rounded-lg tw:px-3.5 tw:py-3 tw:text-sm tw:transition-colors'
               )}
               markdown={message}
             />

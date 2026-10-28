@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { RefObject } from 'react';
+import { Node } from 'reactflow';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { EdgeFromToData } from '../../../interface/lineage.interface';
 
@@ -31,6 +32,8 @@ export interface AddLineagePopoverProps {
   /** Display name of the node the lineage is added to. */
   nodeName?: string;
   excludeEntityId?: string;
+  /** Nodes on the canvas; a column edit picks its counterpart among these. */
+  canvasNodes?: Node[];
   onClose: () => void;
   onSubmit: (selection: AddLineageSelection) => Promise<boolean>;
 }

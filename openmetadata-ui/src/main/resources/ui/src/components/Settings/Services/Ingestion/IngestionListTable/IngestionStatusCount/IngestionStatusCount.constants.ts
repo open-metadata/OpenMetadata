@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { BadgeColors } from '@openmetadata/ui-core-components';
-
-export const STATUS_BADGE_COLOR: Record<string, BadgeColors> = {
-  success: 'success',
-  failed: 'error',
-  warning: 'warning',
+// Badge pill palette (utility 50 fill + 700 text) so the tiles keep contrast in both themes.
+export const STATUS_TILE_CLASS: Record<string, string> = {
+  success: 'tw:bg-utility-success-50 tw:text-utility-success-700',
+  failed: 'tw:bg-utility-error-50 tw:text-utility-error-700',
+  warning: 'tw:bg-utility-warning-50 tw:text-utility-warning-700',
 };

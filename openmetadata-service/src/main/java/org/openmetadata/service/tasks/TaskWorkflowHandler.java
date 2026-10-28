@@ -13,14 +13,21 @@
 
 package org.openmetadata.service.tasks;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.REJECTED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.REJECTION_COMMENT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonPatch;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -43,6 +50,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskComment;
+import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
@@ -308,6 +316,18 @@ public class TaskWorkflowHandler {
           taskId, "taskAssignees", serializeWorkflowVariable(payloadAssignees));
     }
 
+    if (isRejection(resolutionType, selectedTransition)) {
+      final String reason =
+          nullOrEmpty(comment)
+              ? latestCommentBy(
+                  user,
+                  taskRepository
+                      .get(null, taskId, taskRepository.getFields("comments"))
+                      .getComments())
+              : comment;
+      recordRejection(workflowHandler, taskId, reason, user);
+    }
+
     // Resolve in Flowable workflow. A null namespace map means the runtime user task never
     // materialised (async advance timed out) — completing with no variables would drop the
     // transition result and mis-evaluate the outgoing gateway, so treat it as a failed resolve.
@@ -415,6 +435,40 @@ public class TaskWorkflowHandler {
     }
     return applyTaskResolution(
         task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
+  }
+
+  private static boolean isRejection(
+      final TaskResolutionType resolutionType, final TaskAvailableTransition selectedTransition) {
+    return resolutionType == TaskResolutionType.Rejected
+        || (selectedTransition != null
+            && selectedTransition.getTargetTaskStatus() == TaskEntityStatus.Rejected);
+  }
+
+  /**
+   * The user's latest comment on the task: a reviewer can explain in the task thread and then
+   * reject without a comment of their own.
+   */
+  static String latestCommentBy(final String user, final List<TaskComment> comments) {
+    return listOrEmpty(comments).stream()
+        .filter(posted -> posted.getAuthor() != null && user.equals(posted.getAuthor().getName()))
+        .max(
+            Comparator.comparing(
+                TaskComment::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder())))
+        .map(TaskComment::getMessage)
+        .orElse(null);
+  }
+
+  // The steps after a rejected approval read why it was rejected and by whom, e.g. to ask the
+  // asset's owners for a revision. A rejection without a reason clears an earlier one.
+  private static void recordRejection(
+      final WorkflowHandler workflowHandler,
+      final UUID taskId,
+      final String comment,
+      final String user) {
+    workflowHandler.setProcessVariable(
+        taskId, getNamespacedVariableName(GLOBAL_NAMESPACE, REJECTION_COMMENT_VARIABLE), comment);
+    workflowHandler.setProcessVariable(
+        taskId, getNamespacedVariableName(GLOBAL_NAMESPACE, REJECTED_BY_VARIABLE), user);
   }
 
   private boolean awaitActiveRuntimeTask(WorkflowHandler workflowHandler, UUID taskId) {

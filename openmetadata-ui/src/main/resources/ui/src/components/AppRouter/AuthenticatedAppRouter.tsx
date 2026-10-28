@@ -25,6 +25,7 @@ import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
 import AdminProtectedRoute from './AdminProtectedRoute';
+import ClassicObservabilityRedirect from './ClassicObservabilityRedirect';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
 // Previously statically imported — lazify so they stay out of the main chunk
@@ -128,8 +129,10 @@ const SwaggerPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/SwaggerPage/SwaggerPage'))
 );
 
-const TourPageComponent = withPageSuspenseFallback(
-  React.lazy(() => import('../../pages/TourPage/TourPage.component'))
+const ProductTourPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/product-tour/ProductTourPage/ProductTourPage')
+  )
 );
 
 const UserPage = withPageSuspenseFallback(
@@ -366,7 +369,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.FORBIDDEN}
       />
       <Route element={<MyDataPage />} path={ROUTES.MY_DATA} />
-      <Route element={<TourPageComponent />} path={ROUTES.TOUR} />
+      <Route element={<ProductTourPage />} path={ROUTES.TOUR} />
       <Route
         element={<ExplorePageV1 pageTitle={t('label.explore')} />}
         path={ROUTES.EXPLORE}
@@ -643,6 +646,20 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         }
         path={ROUTES.TEST_LIBRARY}
       />
+      {[
+        ROUTES.OBSERVABILITY,
+        `${ROUTES.OBSERVABILITY}${ROUTES.DATA_QUALITY}/*`,
+        `${ROUTES.OBSERVABILITY}${ROUTES.INCIDENT_MANAGER}`,
+        `${ROUTES.OBSERVABILITY}${ROUTES.TEST_LIBRARY}`,
+        `${ROUTES.OBSERVABILITY}/test-suites/*`,
+        `${ROUTES.OBSERVABILITY}/test-case/*`,
+      ].map((path) => (
+        <Route
+          element={<ClassicObservabilityRedirect />}
+          key={path}
+          path={path}
+        />
+      ))}
 
       {[
         ROUTES.TEST_CASE_DETAILS,

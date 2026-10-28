@@ -19,6 +19,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -40,11 +41,18 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.time.Clock;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
+import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntology;
+import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.data.OntologyWorkingDiff;
+import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
+import org.openmetadata.schema.api.data.PreviewNativeOntologyPack;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -64,9 +72,15 @@ import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.ontology.OntologyPackCatalog;
+import org.openmetadata.service.ontology.OntologyPackContentLoader;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseCapture;
+import org.openmetadata.service.ontology.OntologyReleaseComparison;
+import org.openmetadata.service.ontology.OntologyReleaseHistory;
 import org.openmetadata.service.ontology.OntologyReleaseQuery;
+import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
+import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
@@ -88,9 +102,15 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
   private final OntologyMapper mapper = new OntologyMapper();
   private final OntologyReleaseCapture releaseCapture;
   private final OntologyReleaseActivation releaseActivation;
+  private final OntologyReleaseHistory releaseHistory;
+  private final OntologyPackCatalog packCatalog;
+  private final OntologyPackContentLoader packContentLoader;
 
   public OntologyResource(final Authorizer authorizer, final Limits limits) {
     super(Entity.ONTOLOGY, authorizer, limits);
+    packCatalog = new OntologyPackCatalog(getClass().getClassLoader());
+    packContentLoader = new OntologyPackContentLoader(getClass().getClassLoader());
+    releaseHistory = new OntologyReleaseHistory(repository.getDaoCollection().ontologyReleaseDAO());
     releaseActivation =
         new OntologyReleaseActivation(
             repository,
@@ -201,6 +221,83 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
   }
 
   @GET
+  @Path("/{id}/working/diff")
+  @Operation(
+      operationId = "getOntologyWorkingDiff",
+      summary = "Preview working ontology changes against the active release")
+  public OntologyWorkingDiff workingDiff(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @QueryParam("limit") @DefaultValue("25") @Min(1) @Max(1000) final int limit,
+      @QueryParam("after") final String after) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    final var releases =
+        (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE);
+    final Consumer<List<? extends OntologyDefinition>> authorize =
+        definitions -> OntologyResourceAccess.requireView(authorizer, securityContext, definitions);
+    return releaseCapture
+        .snapshot()
+        .read(
+            id,
+            authorize,
+            working ->
+                new OntologyReleaseComparison(releases)
+                    .compareWorking(working, limit, after, authorize));
+  }
+
+  @POST
+  @Path("/{id}/library/{packId}/preview")
+  @Operation(
+      operationId = "previewNativeOntologyPack",
+      summary = "Preview verified library modules as native ontology draft operations")
+  public CreateOntologyChangeSet previewLibraryPack(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @PathParam("packId") final String packId,
+      @NotNull @Valid final PreviewNativeOntologyPack request) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    final var selected =
+        packContentLoader.loadSelected(packCatalog, packId, request.getModuleIds());
+    return previewImport(
+        uriInfo,
+        securityContext,
+        id,
+        new PreviewNativeOntologyImport()
+            .withFormat(PreviewNativeOntologyImport.Format.fromValue(selected.format()))
+            .withData(selected.body()));
+  }
+
+  @POST
+  @Path("/{id}/imports/preview")
+  @Operation(
+      operationId = "previewNativeOntologyImport",
+      summary = "Preview local RDF as native ontology draft operations")
+  public CreateOntologyChangeSet previewImport(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @NotNull @Valid final PreviewNativeOntologyImport request) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    final NativeOntologyRdfImporter importer = new NativeOntologyRdfImporter();
+    final var model =
+        importer.parse(
+            request.getData(), RdfSerializationFormat.parse(request.getFormat().value()));
+    try {
+      return releaseCapture
+          .snapshot()
+          .read(
+              id,
+              definitions ->
+                  OntologyResourceAccess.requireView(authorizer, securityContext, definitions),
+              working -> importer.reconcile(model, working));
+    } finally {
+      model.close();
+    }
+  }
+
+  @GET
   @Path("/{id}/references")
   @Operation(
       operationId = "listOntologyReferences",
@@ -226,6 +323,23 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       reference.setSource(context.getEntity().getEntityReference());
     }
     return references;
+  }
+
+  @GET
+  @Path("/{id}/releases")
+  @Operation(
+      operationId = "listOntologyReleaseHistory",
+      summary = "List this ontology's sealed releases, newest first")
+  public ResultList<OntologyRelease> listReleaseHistory(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @QueryParam("limit") @DefaultValue("50") @Min(1) @Max(100) final int limit,
+      @QueryParam("after") final String after) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    final ResultList<OntologyRelease> page = releaseHistory.list(id, limit, after);
+    OntologyResourceAccess.requireView(authorizer, securityContext, page.getData());
+    return page;
   }
 
   @POST

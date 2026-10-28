@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
@@ -106,6 +107,7 @@ import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.api.services.CreateApiService;
@@ -133,6 +135,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -157,16 +160,21 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.APIRequestMethod;
 import org.openmetadata.schema.type.ApiConnection;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.MetadataCompletionPayload;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -7465,6 +7473,49 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
+  void test_approvalWithOnlyTheRequesterToAskGoesToAdmins(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    // Owned only by the requester and without reviewers; the workflow runs after the edit is
+    // published, so it is not reviewing a change request.
+    Glossary glossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("ownerOnlyApproval"))
+                    .withDescription(PUBLISHED_DESCRIPTION)
+                    .withOwners(List.of(SharedEntities.get().USER2_REF)));
+    String workflowName = "ownerOnly" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    workflowName,
+                    "glossary",
+                    glossary.getFullyQualifiedName(),
+                    List.of("description")));
+    ((ObjectNode) workflow.at("/trigger/config")).put("approvalMode", "Default");
+    ((ObjectNode) workflow.at("/nodes/1/config/assignees"))
+        .put("emptyAssigneeStrategy", "assignAdmins");
+    createWorkflow(workflow, workflowName);
+
+    SdkClients.user2Client()
+        .glossaries()
+        .patch(
+            glossary.getId().toString(),
+            MAPPER.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"edited by its owner\"}]"));
+
+    UUID adminId = admin.users().getByName("admin").getId();
+    Task task = awaitOpenApprovalTaskAssignedTo(admin, glossary.getFullyQualifiedName(), adminId);
+    Set<String> assignees =
+        task.getAssignees().stream().map(EntityReference::getName).collect(Collectors.toSet());
+    assertFalse(
+        assignees.contains(SharedEntities.get().USER2.getName()),
+        "never its requester: " + assignees);
+  }
+
+  @Test
   void test_previewIsRefusedExactlyWhenThePatchWouldBe(TestNamespace ns) throws Exception {
     SharedEntities shared = SharedEntities.get();
     // Owned by USER2 only, so USER3 is an ordinary non-owner here.
@@ -7585,6 +7636,389 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(result.getImportResultsCsv().contains(requests.get(0).get("id").asText()));
   }
 
+  @Test
+  void test_dataProductPortAddIsHeldUntilApproved(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portAdd");
+    Table table = portTable(admin, ns, "portAdd");
+    deployHookWorkflow(admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of(INPUT_PORTS));
+
+    BulkOperationResult held = admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+
+    assertEquals(1, held.getNumberOfRowsPendingApproval());
+    assertTrue(
+        held.getSuccessRequest().get(0).getMessage().startsWith("Pending approval: change request"),
+        held.getSuccessRequest().get(0).getMessage());
+    assertTrue(inputPortIds(admin, product).isEmpty(), "The port must be held, not added");
+    JsonNode request = onlyChangeRequest(admin, product.getId());
+    JsonNode op = request.get("activeRevision").get("ops").get(0);
+    assertEquals(INPUT_PORTS, op.get("field").asText());
+    assertEquals("add", op.get("op").asText());
+    assertEquals(table.getId().toString(), op.get("key").asText());
+
+    approveAs(
+        SdkClients.user1Client(),
+        awaitOpenApprovalTaskAssignedTo(
+            admin, product.getFullyQualifiedName(), SharedEntities.get().USER1.getId()));
+
+    awaitRequestStatus(request.get("id").asText(), "Applied");
+    assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+  }
+
+  @Test
+  void test_dataProductPortRemovalIsHeldAndARejectionKeepsThePort(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portRemove");
+    Table table = portTable(admin, ns, "portRemove");
+    admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+    deployHookWorkflow(admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of(INPUT_PORTS));
+
+    BulkOperationResult held =
+        admin.dataProducts().inputPorts(product.getId()).remove(portsOf(table));
+
+    assertEquals(1, held.getNumberOfRowsPendingApproval());
+    JsonNode request = onlyChangeRequest(admin, product.getId());
+    assertEquals("remove", request.get("activeRevision").get("ops").get(0).get("op").asText());
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(
+            awaitOpenApprovalTaskAssignedTo(
+                    admin, product.getFullyQualifiedName(), SharedEntities.get().USER1.getId())
+                .getId()
+                .toString(),
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Rejected)
+                .withComment("keep this port"));
+
+    awaitRequestStatus(request.get("id").asText(), "Rejected");
+    assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+  }
+
+  @Test
+  void test_heldDescriptionAndPortChangesApplyTogether(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portMixed");
+    Table table = portTable(admin, ns, "portMixed");
+    deployHookWorkflow(
+        admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of("description", INPUT_PORTS));
+
+    admin
+        .dataProducts()
+        .patch(
+            product.getId().toString(),
+            MAPPER.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"held together\"}]"));
+    admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+
+    JsonNode request = onlyChangeRequest(admin, product.getId());
+    List<String> fields = new ArrayList<>();
+    request.get("activeRevision").get("ops").forEach(op -> fields.add(op.get("field").asText()));
+    assertEquals(List.of("description", INPUT_PORTS), fields.stream().sorted().toList());
+    // The port joined the description's request as its second revision, which supersedes the first
+    // and gets a review task of its own.
+    approveAs(
+        SdkClients.user1Client(), awaitReviewTaskOfRevision(admin, request.get("id").asText(), 2));
+
+    awaitRequestStatus(request.get("id").asText(), "Applied");
+    DataProduct applied = admin.dataProducts().get(product.getId().toString(), "");
+    assertEquals("held together", applied.getDescription());
+    assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+    assertEquals(
+        List.of("description", INPUT_PORTS), changedFields(applied.getChangeDescription()));
+  }
+
+  // The open review task of a change request once its active revision is {@code revisionNumber}.
+  private Task awaitReviewTaskOfRevision(
+      OpenMetadataClient client, String changeRequestId, int revisionNumber) {
+    String[] taskId = new String[1];
+    await("review task of revision " + revisionNumber + " of " + changeRequestId)
+        .atMost(Duration.ofMinutes(4))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              JsonNode request =
+                  MAPPER.readTree(
+                      client
+                          .getHttpClient()
+                          .executeForString(
+                              HttpMethod.GET,
+                              "/v1/changeRequests/" + changeRequestId,
+                              null,
+                              RequestOptions.builder().build()));
+              assertEquals(revisionNumber, request.path("activeRevisionNumber").asInt());
+              Task task = client.tasks().get(request.get("taskId").asText());
+              assertEquals(TaskEntityStatus.Open, task.getStatus());
+              taskId[0] = task.getId().toString();
+            });
+    return client.tasks().get(taskId[0]);
+  }
+
+  private static List<String> changedFields(ChangeDescription change) {
+    return Stream.of(change.getFieldsAdded(), change.getFieldsUpdated(), change.getFieldsDeleted())
+        .flatMap(List::stream)
+        .map(FieldChange::getName)
+        .distinct()
+        .sorted()
+        .toList();
+  }
+
+  @Test
+  void test_dataProductPortCannotBecomeBothKindsThroughOneRequest(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portBothKinds");
+    Table table = portTable(admin, ns, "portBothKinds");
+    addAsAsset(admin, product, table);
+    deployHookWorkflow(
+        admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of(INPUT_PORTS, OUTPUT_PORTS));
+
+    // Neither port is published yet, so each is checked alone at submission and both are held.
+    admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+    admin.dataProducts().outputPorts(product.getId()).add(portsOf(table));
+    JsonNode request = onlyChangeRequest(admin, product.getId());
+    Task task =
+        awaitOpenApprovalTaskAssignedTo(
+            admin, product.getFullyQualifiedName(), SharedEntities.get().USER1.getId());
+
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> approveAs(SdkClients.user1Client(), task));
+    assertTrue(refused.getMessage().contains("is already part of"), refused.getMessage());
+    assertEquals("Pending", changeRequest(request.get("id").asText()).get("status").asText());
+    assertTrue(inputPortIds(admin, product).isEmpty(), "No input port is added");
+    assertTrue(
+        admin.dataProducts().outputPorts(product.getId()).list().getData().isEmpty(),
+        "No output port is added");
+  }
+
+  @Test
+  void test_heldPortToAnAssetDeletedBeforeApprovalIsNotAdded(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portDeleted");
+    Table table = portTable(admin, ns, "portDeleted");
+    deployHookWorkflow(admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of(INPUT_PORTS));
+
+    admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+    JsonNode request = onlyChangeRequest(admin, product.getId());
+    Task task =
+        awaitOpenApprovalTaskAssignedTo(
+            admin, product.getFullyQualifiedName(), SharedEntities.get().USER1.getId());
+    admin
+        .tables()
+        .delete(table.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> approveAs(SdkClients.user1Client(), task));
+    assertTrue(refused.getMessage().contains("no longer exists"), refused.getMessage());
+    assertEquals("Pending", changeRequest(request.get("id").asText()).get("status").asText());
+    assertTrue(inputPortIds(admin, product).isEmpty(), "No port to the deleted asset is added");
+  }
+
+  @Test
+  void test_botPortEditIsNotHeld(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portBot");
+    Table table = portTable(admin, ns, "portBot");
+    deployHookWorkflow(admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of(INPUT_PORTS));
+
+    BulkOperationResult written =
+        SdkClients.ingestionBotClient()
+            .dataProducts()
+            .inputPorts(product.getId())
+            .add(portsOf(table));
+
+    assertEquals(0, written.getNumberOfRowsPendingApproval());
+    assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+  }
+
+  // Reviewed by USER1, in its own domain.
+  @Test
+  void test_portEditOutsideTheTriggersIncludedFieldsIsNotHeld(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portInclude");
+    Table table = portTable(admin, ns, "portInclude");
+    deployHookWorkflow(
+        admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of("description"));
+
+    BulkOperationResult written =
+        admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+    patchDescription(admin, product, "held description");
+
+    assertEquals(0, written.getNumberOfRowsPendingApproval());
+    assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+    assertEquals(
+        "Data product whose ports are gated",
+        admin.dataProducts().get(product.getId().toString(), "").getDescription());
+    assertEquals(List.of("description"), heldFields(onlyChangeRequest(admin, product.getId())));
+  }
+
+  @Test
+  void test_portEditOnTheTriggersExcludedFieldsIsNotHeld(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portExclude");
+    Table inputTable = portTable(admin, ns, "portExcludeIn");
+    Table outputTable = portTable(admin, ns, "portExcludeOut");
+    // An output port must be one of the data product's own assets.
+    addAsAsset(admin, product, outputTable);
+    deployHookWorkflow(
+        admin,
+        DATA_PRODUCT,
+        product.getFullyQualifiedName(),
+        List.of(),
+        List.of(INPUT_PORTS),
+        null);
+
+    BulkOperationResult written =
+        admin.dataProducts().inputPorts(product.getId()).add(portsOf(inputTable));
+    BulkOperationResult held =
+        admin.dataProducts().outputPorts(product.getId()).add(portsOf(outputTable));
+
+    assertEquals(0, written.getNumberOfRowsPendingApproval());
+    assertEquals(List.of(inputTable.getId().toString()), inputPortIds(admin, product));
+    assertEquals(1, held.getNumberOfRowsPendingApproval());
+    assertTrue(outputPortIds(admin, product).isEmpty(), "The output port must be held");
+    assertEquals(List.of(OUTPUT_PORTS), heldFields(onlyChangeRequest(admin, product.getId())));
+  }
+
+  @Test
+  void test_portEditOnADataProductTheTriggerFilterExcludesIsNotHeld(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portFiltered");
+    Table table = portTable(admin, ns, "portFiltered");
+    patchDescription(admin, product, "Experimental product, no-approval");
+    deployHookWorkflow(
+        admin,
+        DATA_PRODUCT,
+        product.getFullyQualifiedName(),
+        List.of(),
+        List.of(),
+        NO_APPROVAL_MARKER_RULE);
+
+    BulkOperationResult written =
+        admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+
+    assertEquals(0, written.getNumberOfRowsPendingApproval());
+    assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+    assertEquals(0, changeRequestsOf(admin, product.getId()).size());
+  }
+
+  private static final String NO_APPROVAL_MARKER_RULE =
+      "{\"in\":[\"no-approval\",{\"var\":\"description\"}]}";
+
+  private static void patchDescription(
+      OpenMetadataClient client, DataProduct product, String description) throws Exception {
+    client
+        .dataProducts()
+        .patch(
+            product.getId().toString(),
+            MAPPER.valueToTree(
+                List.of(Map.of("op", "replace", "path", "/description", "value", description))));
+  }
+
+  private static List<String> heldFields(JsonNode request) {
+    List<String> fields = new ArrayList<>();
+    request.get("activeRevision").get("ops").forEach(op -> fields.add(op.get("field").asText()));
+    return fields.stream().distinct().sorted().toList();
+  }
+
+  private JsonNode changeRequestsOf(OpenMetadataClient client, UUID entityId) throws Exception {
+    return MAPPER
+        .readTree(
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/changeRequests?entityId=" + entityId,
+                    null,
+                    RequestOptions.builder().build()))
+        .get("data");
+  }
+
+  // A data product takes assets of its own domain only.
+  private static void addAsAsset(OpenMetadataClient admin, DataProduct product, Table table) {
+    admin
+        .tables()
+        .patch(
+            table.getId().toString(),
+            MAPPER.valueToTree(
+                List.of(
+                    Map.of(
+                        "op",
+                        "add",
+                        "path",
+                        "/domains",
+                        "value",
+                        List.of(
+                            Map.of(
+                                "id", product.getDomains().get(0).getId(), "type", "domain"))))));
+    admin.dataProducts().bulkAddAssets(product.getFullyQualifiedName(), portsOf(table));
+  }
+
+  private static List<String> outputPortIds(OpenMetadataClient client, DataProduct product) {
+    return client.dataProducts().outputPorts(product.getId()).list().getData().stream()
+        .map(port -> JsonUtils.valueToTree(port).get("id").asText())
+        .toList();
+  }
+
+  private static DataProduct reviewedDataProduct(
+      OpenMetadataClient admin, TestNamespace ns, String tag) {
+    Domain domain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix(tag + "Domain"))
+                    .withDescription("Domain of a data product whose ports are gated")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    return admin
+        .dataProducts()
+        .create(
+            new CreateDataProduct()
+                .withName(ns.prefix(tag + "Product"))
+                .withDescription("Data product whose ports are gated")
+                .withDomains(List.of(domain.getFullyQualifiedName()))
+                .withReviewers(List.of(SharedEntities.get().USER1_REF)));
+  }
+
+  private Table portTable(OpenMetadataClient admin, TestNamespace ns, String tag) {
+    DatabaseService service =
+        admin.databaseServices().create(createDatabaseServiceRequest(ns.prefix(tag + "_svc")));
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(tag + "_db")
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(tag + "_schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    return admin
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(tag + "_table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(new Column().withName("id").withDataType(ColumnDataType.INT))));
+  }
+
+  private static BulkAssets portsOf(Table table) {
+    return new BulkAssets().withAssets(List.of(table.getEntityReference()));
+  }
+
+  private static List<String> inputPortIds(OpenMetadataClient client, DataProduct product) {
+    return client.dataProducts().inputPorts(product.getId()).list().getData().stream()
+        .map(port -> JsonUtils.valueToTree(port).get("id").asText())
+        .toList();
+  }
+
   @RetryingTest(2)
   void test_bulkGlossaryTermAssignmentHoldsGatedAssetsAsChangeRequests(TestNamespace ns)
       throws Exception {
@@ -7671,6 +8105,9 @@ public class WorkflowDefinitionResourceIT {
   }
 
   private static final String PUBLISHED_DESCRIPTION = "published description";
+  private static final String DATA_PRODUCT = "dataProduct";
+  private static final String INPUT_PORTS = "inputPorts";
+  private static final String OUTPUT_PORTS = "outputPorts";
 
   // Owned by USER2 (requester) and USER3 (another editor), reviewed by USER1.
   private Glossary createReviewedGlossary(TestNamespace ns, String tag) {
@@ -8058,10 +8495,23 @@ public class WorkflowDefinitionResourceIT {
   private String deployHookWorkflow(
       OpenMetadataClient client, String entityType, String entityFqn, List<String> include)
       throws Exception {
+    return deployHookWorkflow(client, entityType, entityFqn, include, List.of(), null);
+  }
+
+  private String deployHookWorkflow(
+      OpenMetadataClient client,
+      String entityType,
+      String entityFqn,
+      List<String> include,
+      List<String> exclude,
+      String extraExclusion)
+      throws Exception {
     String workflowName = "hookGate" + UUID.randomUUID().toString().substring(0, 8);
     ObjectNode workflow =
         (ObjectNode)
-            MAPPER.readTree(hookWorkflowJson(workflowName, entityType, entityFqn, include));
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    workflowName, entityType, entityFqn, include, exclude, extraExclusion));
     String createResponse =
         client
             .getHttpClient()
@@ -8078,11 +8528,27 @@ public class WorkflowDefinitionResourceIT {
 
   private static String hookWorkflowJson(
       String workflowName, String entityType, String entityFqn, List<String> include) {
+    return hookWorkflowJson(workflowName, entityType, entityFqn, include, List.of(), null);
+  }
+
+  // The filter leaves every entity but entityFqn ungated, and also any entity extraExclusion (a
+  // JsonLogic rule) matches.
+  private static String hookWorkflowJson(
+      String workflowName,
+      String entityType,
+      String entityFqn,
+      List<String> include,
+      List<String> exclude,
+      String extraExclusion) {
+    String onlyThisEntity =
+        "{\"!=\":[{\"var\":\"fullyQualifiedName\"},\"%s\"]}".formatted(entityFqn);
     String filter =
         JsonUtils.pojoToJson(
             Map.of(
                 entityType,
-                "{\"!=\":[{\"var\":\"fullyQualifiedName\"},\"%s\"]}".formatted(entityFqn)));
+                extraExclusion == null
+                    ? onlyThisEntity
+                    : "{\"or\":[%s,%s]}".formatted(onlyThisEntity, extraExclusion)));
     return """
         {
           "name": "%s",
@@ -8096,7 +8562,7 @@ public class WorkflowDefinitionResourceIT {
               "entityTypes": ["%s"],
               "events": ["Updated"],
               "include": %s,
-              "exclude": [],
+              "exclude": %s,
               "filter": %s
             },
             "output": ["relatedEntity", "updatedBy"]
@@ -8117,7 +8583,12 @@ public class WorkflowDefinitionResourceIT {
           ]
         }
         """
-        .formatted(workflowName, entityType, JsonUtils.pojoToJson(include), filter);
+        .formatted(
+            workflowName,
+            entityType,
+            JsonUtils.pojoToJson(include),
+            JsonUtils.pojoToJson(exclude),
+            filter);
   }
 
   private JsonNode onlyChangeRequest(OpenMetadataClient client, UUID entityId) throws Exception {
@@ -8148,6 +8619,16 @@ public class WorkflowDefinitionResourceIT {
                     openApprovalTaskAssignedTo(client, entityFqn, assigneeId),
                     "Expected an open approval task assigned to " + assigneeId));
     return openApprovalTaskAssignedTo(client, entityFqn, assigneeId);
+  }
+
+  private Task openApprovalTaskOfWorkflow(
+      OpenMetadataClient client, String entityFqn, UUID assigneeId, UUID workflowDefinitionId)
+      throws Exception {
+    return listOpenApprovalTasks(client, entityFqn).getData().stream()
+        .filter(task -> workflowDefinitionId.equals(task.getWorkflowDefinitionId()))
+        .filter(task -> assigneeIds(task).contains(assigneeId))
+        .findFirst()
+        .orElse(null);
   }
 
   private Task openApprovalTaskAssignedTo(
@@ -10048,7 +10529,9 @@ public class WorkflowDefinitionResourceIT {
             .executeForString(
                 HttpMethod.POST, BASE_PATH, unifiedWorkflow, RequestOptions.builder().build());
     assertNotNull(response);
-    trackWorkflowFromJson(MAPPER.readTree(response));
+    JsonNode unifiedWorkflowJson = MAPPER.readTree(response);
+    trackWorkflowFromJson(unifiedWorkflowJson);
+    UUID unifiedWorkflowId = UUID.fromString(unifiedWorkflowJson.get("id").asText());
     LOG.debug("Created unified approval workflow for dataContract, tag, and dataProduct entities");
     // Entities below are created after deployment, so their creation events start runs
     waitForWorkflowDeployment(client, "UnifiedApprovalWorkflow_" + suffix);
@@ -10212,9 +10695,12 @@ public class WorkflowDefinitionResourceIT {
                 .ignoreExceptions()
                 .untilAsserted(
                     () -> {
+                      // A seeded approval workflow on the same entity type (metrics) opens its
+                      // own task for the reviewer, so the unified workflow's task is the one
+                      // resolved here.
                       Task task =
-                          openApprovalTaskAssignedTo(
-                              reviewerClient, entityFqn, reviewerUser.getId());
+                          openApprovalTaskOfWorkflow(
+                              reviewerClient, entityFqn, reviewerUser.getId(), unifiedWorkflowId);
                       assertNotNull(task, "Expected an open approval task for " + entityType);
                       reviewerClient.tasks().resolve(task.getId().toString(), resolveTask);
                     });
@@ -15970,6 +16456,184 @@ public class WorkflowDefinitionResourceIT {
               return !found.isEmpty();
             });
     return found.getFirst();
+  }
+
+  @Test
+  void test_rejectedApprovalAsksForARevisionAndTheNextEditResubmitsIt(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    User approver =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName("revision_approver_" + suffix)
+                    .withEmail("revision_approver_" + suffix + "@example.com"));
+    String domainName = "RevisionDomain_" + suffix;
+    String workflowJson =
+        """
+            {
+              "name": "%s",
+              "displayName": "Revise and resubmit workflow",
+              "description": "A rejected approval asks the owners to revise the domain",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["domain"],
+                  "events": ["Created", "Updated"],
+                  "exclude": ["entityStatus"],
+                  "filter": {"domain": "{\\"!\\":{\\"in\\":[\\"%s\\",{\\"var\\":\\"name\\"}]}}"}
+                },
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"name": "start", "type": "startEvent", "subType": "startEvent"},
+                {
+                  "name": "Resubmit",
+                  "type": "automatedTask",
+                  "subType": "collectMetadataTask",
+                  "config": {"stage": "Unprocessed", "taskAssignees": "owners", "revision": "resubmit"},
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {"relatedEntity": "global"}
+                },
+                {
+                  "name": "Approve",
+                  "type": "userTask",
+                  "subType": "userApprovalTask",
+                  "config": {
+                    "assignees": {
+                      "addReviewers": false,
+                      "addOwners": false,
+                      "candidates": [
+                        {"id": "%s", "type": "user", "fullyQualifiedName": "%s", "name": "%s"}
+                      ]
+                    },
+                    "approvalThreshold": 1,
+                    "rejectionThreshold": 1
+                  },
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {"relatedEntity": "global"},
+                  "output": ["updatedBy"],
+                  "branches": ["true", "false"]
+                },
+                {
+                  "name": "Revise",
+                  "type": "automatedTask",
+                  "subType": "collectMetadataTask",
+                  "config": {"stage": "Unprocessed", "taskAssignees": "owners", "revision": "request"},
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {"relatedEntity": "global"}
+                },
+                {"name": "end", "type": "endEvent", "subType": "endEvent"}
+              ],
+              "edges": [
+                {"from": "start", "to": "Resubmit"},
+                {"from": "Resubmit", "to": "Approve"},
+                {"from": "Approve", "to": "end", "condition": "approve"},
+                {"from": "Approve", "to": "Revise", "condition": "reject"},
+                {"from": "Revise", "to": "end"}
+              ],
+              "config": {"storeStageStatus": true}
+            }
+            """
+            .formatted(
+                "wf_reviseAndResubmit_" + suffix,
+                domainName,
+                approver.getId(),
+                approver.getFullyQualifiedName(),
+                approver.getName());
+    WorkflowDefinition workflow =
+        client
+            .workflowDefinitions()
+            .create(JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class));
+    trackWorkflow(workflow.getName(), workflow.getId().toString());
+    waitForWorkflowDeployment(client, workflow.getName());
+    OpenMetadataClient approverClient =
+        SdkClients.createClient(approver.getName(), approver.getEmail(), new String[] {});
+
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(domainName)
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("A domain whose approval is rejected")
+                    .withOwners(List.of(SharedEntities.get().USER2_REF)));
+    String fqn = domain.getFullyQualifiedName();
+    Task first = awaitOpenApprovalTaskAssignedTo(client, fqn, approver.getId());
+    approverClient
+        .tasks()
+        .resolve(
+            first.getId().toString(),
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Rejected)
+                .withComment("Name a business owner first"));
+
+    Task revision = awaitRevisionTask(client, fqn, TaskEntityStatus.Open);
+    MetadataCompletionPayload asked =
+        JsonUtils.convertValue(revision.getPayload(), MetadataCompletionPayload.class);
+    assertEquals("Revise and resubmit", revision.getDisplayName());
+    assertEquals("Name a business owner first", asked.getRevision().getComment());
+    assertEquals(approver.getName(), asked.getRevision().getRequestedBy());
+    assertEquals(
+        List.of(SharedEntities.get().USER2.getId()),
+        revision.getAssignees().stream().map(EntityReference::getId).toList());
+    assertTrue(listOrEmpty(revision.getAvailableTransitions()).isEmpty());
+
+    client
+        .domains()
+        .patch(
+            domain.getId().toString(),
+            JsonUtils.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Owned by sales\"}]"));
+    Task second = awaitOpenApprovalTaskAssignedTo(client, fqn, approver.getId());
+    assertNotEquals(first.getId(), second.getId());
+    Task resubmitted = awaitRevisionTask(client, fqn, TaskEntityStatus.Completed);
+    assertEquals(revision.getId(), resubmitted.getId());
+    assertEquals("Resubmitted for approval", resubmitted.getResolution().getComment());
+
+    approverClient
+        .tasks()
+        .resolve(
+            second.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Rejected));
+    Task reopened = awaitRevisionTask(client, fqn, TaskEntityStatus.Open);
+    MetadataCompletionPayload askedAgain =
+        JsonUtils.convertValue(reopened.getPayload(), MetadataCompletionPayload.class);
+    assertEquals(revision.getId(), reopened.getId());
+    assertNull(askedAgain.getRevision().getComment());
+    assertEquals(approver.getName(), askedAgain.getRevision().getRequestedBy());
+  }
+
+  /** The asset's Revise and resubmit task once it reaches the status. */
+  private Task awaitRevisionTask(OpenMetadataClient client, String fqn, TaskEntityStatus status) {
+    return await("revise and resubmit task of %s to be %s".formatted(fqn, status))
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () ->
+                client
+                    .tasks()
+                    .listWithFilters(
+                        Map.of(
+                            "limit",
+                            "50",
+                            "aboutEntity",
+                            fqn,
+                            "status",
+                            status.value(),
+                            "fields",
+                            "assignees,payload,resolution"))
+                    .getData()
+                    .stream()
+                    .filter(task -> task.getType() == TaskEntityType.MetadataCompletion)
+                    .filter(task -> "Revise and resubmit".equals(task.getDisplayName()))
+                    .findFirst()
+                    .orElse(null),
+            Objects::nonNull);
   }
 
   @Test

@@ -42,7 +42,10 @@ import { formatTeamsResponse } from '../../../utils/APIUtils';
 import { getRandomColor } from '../../../utils/ColorUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
-import { getMetricEnumLabel } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
+import {
+  getMetricEnumLabel,
+  getMetricLanguageLabel,
+} from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import Loader from '../../common/Loader/Loader';
 import { DomainFormValues } from '../../Domain/AddDomainForm/AddDomainForm.interface';
@@ -156,7 +159,7 @@ const AddMetricForm = ({
     () =>
       Object.values(Language).map((value) => ({
         id: value,
-        label: getMetricEnumLabel(t, value),
+        label: getMetricLanguageLabel(t, value),
         value,
       })),
     [t]

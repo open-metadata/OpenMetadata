@@ -293,7 +293,7 @@ const ChartDetails = ({
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(chartDetails)}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(chartDetails)}>
       <Box direction="col" gap={3}>
         <div>
           <DataAssetsHeader

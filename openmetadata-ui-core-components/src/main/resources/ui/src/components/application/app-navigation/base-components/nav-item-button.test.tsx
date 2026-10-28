@@ -17,28 +17,28 @@ import { NavItemButton } from './nav-item-button';
 
 const Icon = () => <svg />;
 
-const renderButton = (navigate = vi.fn(), onClick = vi.fn()) => {
+const renderButton = (navigate = vi.fn(), onPress = vi.fn()) => {
   render(
     <RouterProvider navigate={navigate}>
       <NavItemButton
         href="/settings"
         icon={Icon}
         label="Settings"
-        onClick={onClick}
+        onPress={onPress}
       />
     </RouterProvider>
   );
 
-  return { navigate, onClick, link: screen.getByRole('link') };
+  return { navigate, onPress, link: screen.getByRole('link') };
 };
 
 describe('NavItemButton', () => {
   it('navigates through the client router instead of reloading the page', () => {
-    const { navigate, onClick, link } = renderButton();
+    const { navigate, onPress, link } = renderButton();
 
     const notPrevented = fireEvent.click(link);
 
-    expect(onClick).toHaveBeenCalled();
+    expect(onPress).toHaveBeenCalled();
     expect(navigate).toHaveBeenCalledWith('/settings', undefined);
     expect(notPrevented).toBe(false);
   });
@@ -49,5 +49,27 @@ describe('NavItemButton', () => {
     fireEvent.click(link, { metaKey: true });
 
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('fires the same onPress handler when it renders as a button', () => {
+    const onPress = vi.fn();
+    render(<NavItemButton icon={Icon} label="Menu" onPress={onPress} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Menu' }));
+
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('xl matches the 56px row, 28px icon and 12px radius of NavItemBase lg', () => {
+    const SizedIcon = ({ className }: { className?: string }) => (
+      <svg className={className} />
+    );
+    render(<NavItemButton icon={SizedIcon} label="Home" size="xl" />);
+
+    const button = screen.getByRole('button', { name: 'Home' });
+
+    expect(button).toHaveClass('tw:size-14', 'tw:rounded-xl');
+    expect(button).not.toHaveClass('tw:rounded-md');
+    expect(button.querySelector('svg')).toHaveClass('tw:size-7');
   });
 });

@@ -39,7 +39,13 @@ const selection: AlertSelection = {
       },
     ],
   },
-  capabilities: { loading: false },
+  capabilities: {
+    knownSources: [],
+    loading: false,
+    settled: true,
+    retry: jest.fn(),
+  },
+  ready: true,
   loading: false,
   search: {
     indexes: [],

@@ -47,7 +47,6 @@ function TotalDataAssetsWidget({
         height: variant === 'embedded' ? 72 : 140,
         width: variant === 'embedded' ? 72 : 140,
         chartType: ServiceInsightsWidgetType.TOTAL_DATA_ASSETS,
-        placeholderClassName: 'border-none',
         theme,
       }),
     [theme, variant]

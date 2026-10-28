@@ -37,7 +37,9 @@ export class SchemaPageObject extends RightPanelBase {
       '.schema-field-cards-container'
     );
     this.schemaFields = this.schemaFieldsContainer.locator('.field-card ');
-    this.noDataContainer = this.getSummaryPanel().locator('.no-data-container');
+    this.noDataContainer = this.getSummaryPanel().getByTestId(
+      'no-data-placeholder'
+    );
     this.expandIcon = this.schemaFieldsContainer
       .getByTestId('expand-icon')
       .first();

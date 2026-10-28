@@ -61,6 +61,7 @@ export interface UseAlertDetailsDataOptions {
 
 export interface UseAlertDetailsDataReturn extends AlertDetailsPermissions {
   alertDetails?: EventSubscription;
+  alertDetailsError?: AxiosError;
   alertEventCounts?: EventsRecord;
   alertEventCountsLoading: boolean;
   breadcrumb: {
@@ -99,6 +100,7 @@ export function useAlertDetailsData({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
+  const [alertDetailsError, setAlertDetailsError] = useState<AxiosError>();
   const [alertEventCounts, setAlertEventCounts] = useState<EventsRecord>();
   const [loadingCount, setLoadingCount] = useState(0);
   const [ownerLoading, setOwnerLoading] = useState(false);
@@ -118,13 +120,14 @@ export function useAlertDetailsData({
   const fetchAlertDetails = useCallback(async () => {
     try {
       setLoadingCount((count) => count + 1);
+      setAlertDetailsError(undefined);
       const observabilityAlert = await getObservabilityAlertByFQN(fqn, {
         fields: 'owners',
       });
 
       setAlertDetails(observabilityAlert);
-    } catch {
-      // Error handling
+    } catch (error) {
+      setAlertDetailsError(error as AxiosError);
     } finally {
       setLoadingCount((count) => count - 1);
     }
@@ -166,7 +169,7 @@ export function useAlertDetailsData({
               ),
             },
             {
-              name: getEntityName(alertDetails),
+              name: getEntityName(alertDetails) || fqn,
               url: '',
             },
           ]
@@ -180,11 +183,11 @@ export function useAlertDetailsData({
               url: observabilityRouterClassBase.getObservabilityAlertsListPath(),
             },
             {
-              name: getEntityName(alertDetails),
+              name: getEntityName(alertDetails) || fqn,
               url: '',
             },
           ],
-    [alertDetails, isNotificationAlert, t]
+    [alertDetails, fqn, isNotificationAlert, t]
   );
 
   const handleAlertDelete = useCallback(async () => {
@@ -302,6 +305,7 @@ export function useAlertDetailsData({
 
   return {
     alertDetails,
+    alertDetailsError,
     alertEventCounts,
     alertEventCountsLoading,
     breadcrumb,

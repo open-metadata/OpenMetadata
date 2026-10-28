@@ -60,6 +60,8 @@ export const getStoredTheme = (storageKey: string): ThemePreference | null => {
   return null;
 };
 
+const THEME_SWITCHING_CLASS = 'theme-switching';
+
 export const applyThemeToRoot = (theme: Theme, darkModeClass: string) => {
   if (globalThis.document === undefined) {
     return;
@@ -69,7 +71,20 @@ export const applyThemeToRoot = (theme: Theme, darkModeClass: string) => {
   const shouldUseDarkMode = theme === 'dark';
 
   if (root.classList.contains(darkModeClass) !== shouldUseDarkMode) {
+    // Every token flips at once, but elements with `transition` would animate
+    // their colours from the old theme (light text briefly on a light
+    // background). `.theme-switching` (tailwind.css) turns transitions off
+    // while the class changes.
+    root.classList.add(THEME_SWITCHING_CLASS);
     root.classList.toggle(darkModeClass, shouldUseDarkMode);
+    // Force a style recalc so the new colours apply while transitions are off,
+    // then re-enable them after the frame (a timeout, as next-themes does — a
+    // single rAF can fire before Safari has painted).
+    globalThis.getComputedStyle(root).getPropertyValue('color');
+    globalThis.setTimeout(
+      () => root.classList.remove(THEME_SWITCHING_CLASS),
+      1
+    );
   }
   if (root.style.colorScheme !== theme) {
     root.style.colorScheme = theme;

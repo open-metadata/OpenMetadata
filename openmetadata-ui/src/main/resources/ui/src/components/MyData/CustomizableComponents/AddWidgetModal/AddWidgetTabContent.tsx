@@ -95,7 +95,7 @@ function AddWidgetTabContent({
         justify="center">
         <img
           alt={widget.name}
-          className="tw:py-4"
+          className="tw:py-4 tw:filter-(--widget-preview-filter)"
           data-testid="widget-image"
           src={widgetImage}
         />

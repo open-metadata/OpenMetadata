@@ -42,16 +42,10 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () =>
-    jest.fn().mockImplementation(() => <div>testFilterTablePlaceHolder</div>)
-);
-
-jest.mock(
   '../../../components/Customization/GenericProvider/GenericContext',
   () => ({
     ...jest.requireActual(
-      '../../../components/Customization/GenericProvider/GenericProvider'
+      '../../../components/Customization/GenericProvider/GenericContext'
     ),
     useGenericContext: jest.fn().mockReturnValue({
       type: 'searchIndex',

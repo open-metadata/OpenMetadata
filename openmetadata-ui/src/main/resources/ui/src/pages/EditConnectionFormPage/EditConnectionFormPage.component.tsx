@@ -14,7 +14,6 @@
 import {
   Breadcrumbs,
   Button,
-  EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
@@ -33,6 +32,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import FormPanelBody, {
   getFormFirstPanelProps,
 } from '../../components/common/FormPanelBody/FormPanelBody.component';
@@ -143,8 +143,12 @@ function EditConnectionFormPage() {
       ...serviceConfig,
       connection: {
         config: {
-          ...serviceDetails?.connection?.config,
-          ...serviceConfig?.connection?.config,
+          ...(typeof serviceDetails.connection?.config === 'object'
+            ? serviceDetails.connection.config
+            : {}),
+          ...(typeof serviceConfig?.connection?.config === 'object'
+            ? serviceConfig.connection.config
+            : {}),
           ...updatedData,
         },
       },
@@ -274,9 +278,9 @@ function EditConnectionFormPage() {
   if (isError && !isLoading) {
     return (
       <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
-        <EmptyPlaceholder
+        <SomethingWentWrongPlaceholder
           description={getEntityMissingError(serviceCategory, serviceFQN)}
-          icon={<AlertTriangle className="tw:text-secondary" />}
+          icon={<AlertTriangle />}
           title={t('message.something-went-wrong')}
         />
       </div>

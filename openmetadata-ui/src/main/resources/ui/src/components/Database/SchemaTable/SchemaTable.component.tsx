@@ -13,12 +13,10 @@
 
 import {
   Button,
-  ButtonUtility,
   Dropdown,
   Grid,
   Label,
   Select,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -28,7 +26,6 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
 import {
@@ -98,8 +95,8 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import {
   ColumnsType,
@@ -108,6 +105,7 @@ import {
 } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
+import { WidgetEditButton } from '../../common/WidgetActionButton/WidgetActionButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -717,18 +715,15 @@ const SchemaTable = () => {
                 {renderHighlightedText(highlightSearchText(name, searchText))}
               </Typography>
             </div>
-            <div className="d-flex items-center">
+            <div className="d-flex items-center gap-2">
               {editDisplayNamePermission && (
-                <Tooltip arrow placement="top" title={t('label.edit')}>
-                  <ButtonUtility
-                    className="hover-cell-icon"
-                    color="tertiary"
-                    data-testid="edit-displayName-button"
-                    icon={IconEdit}
-                    size="xs"
-                    onClick={() => handleEditDisplayNameClick(record)}
-                  />
-                </Tooltip>
+                <WidgetEditButton
+                  compact
+                  className="hover-cell-icon"
+                  data-testid="edit-displayName-button"
+                  title={t('label.edit')}
+                  onClick={() => handleEditDisplayNameClick(record)}
+                />
               )}
               {record.fullyQualifiedName && (
                 <CopyLinkButton
@@ -1047,7 +1042,11 @@ const SchemaTable = () => {
           }
           loading={columnsLoading}
           locale={{
-            emptyText: <FilterTablePlaceHolder />,
+            emptyText: (
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+              </div>
+            ),
           }}
           pagination={false}
           rowClassName={getRowClassName}

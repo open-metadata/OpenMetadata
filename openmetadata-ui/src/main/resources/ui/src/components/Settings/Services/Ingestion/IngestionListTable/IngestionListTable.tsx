@@ -476,6 +476,9 @@ function IngestionListTable({
         className={classNames('ingestion-list-table', tableContainerClassName)}
         data-testid="ingestion-table">
         <Table
+          // The 48px run-count tiles set the row height; centring every cell keeps
+          // the name, type, schedule and checkbox on the same line as them.
+          cellClassName="tw:p-2 tw:align-middle"
           columns={tableColumn}
           containerClassName={tableClassName}
           {...(!isUndefined(ingestionPagingInfo) &&

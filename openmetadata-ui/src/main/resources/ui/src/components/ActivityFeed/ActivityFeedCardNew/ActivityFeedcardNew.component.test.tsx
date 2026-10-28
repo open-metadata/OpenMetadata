@@ -109,6 +109,14 @@ jest.mock('../Reactions/Reactions', () =>
   ))
 );
 
+jest.mock('../../common/CommentComposer/CommentComposer', () =>
+  jest.fn(({ onSave, placeHolder }) => (
+    <button data-testid="thread-composer" onClick={() => onSave('hi')}>
+      {placeHolder}
+    </button>
+  ))
+);
+
 jest.mock('../../Modals/ConfirmationModal/ConfirmationModal', () =>
   jest.fn(({ visible, onConfirm }) =>
     visible ? (
@@ -245,6 +253,59 @@ describe('ActivityFeedCardNew', () => {
     expect(body?.parentElement).toHaveClass('activity-feed-card-new');
   });
 
+  it('names the field a conversation was started on after the entity', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          showThread
+          feed={{
+            ...conversation,
+            about: '<#E::table::service.table::columns::category::description>',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('entity-link')).toHaveTextContent('table');
+    expect(screen.getByTestId('feed-field-path-column')).toHaveAttribute(
+      'href',
+      '/table/service.table.category'
+    );
+    expect(screen.getByTestId('feed-field-path-field')).toHaveTextContent(
+      'label.description'
+    );
+  });
+
+  it('names the column, not the field again, for a column-level activity event', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          activity={{
+            ...activity,
+            about: '<#E::table::service.table::columns::category::description>',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('feed-field-path-column')).toHaveTextContent(
+      'category'
+    );
+    expect(
+      screen.queryByTestId('feed-field-path-field')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no field path for a conversation on the entity itself', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew showThread feed={conversation} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId('feed-field-path')).not.toBeInTheDocument();
+  });
+
   it('falls back to the activity entity when the event carries no about link', () => {
     // `about` is optional on an activity event, and the EntityLink accessors
     // answer '' for a missing link rather than undefined. Reading them with
@@ -260,6 +321,66 @@ describe('ActivityFeedCardNew', () => {
       'href',
       '/table/service.table'
     );
+  });
+
+  it('reads an activity event entity from its reference without an ANTLR error', () => {
+    // The server appends whatever field changed to `about`; `entityStatus` is
+    // not in the EntityLink grammar, so parsing it logged an ANTLR error
+    // ("no viable alternative at input '::entityStatus'") on every render.
+    const errorSpy = jest.spyOn(console, 'error');
+
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          isOpenInDrawer
+          activity={{
+            ...activity,
+            about: '<#E::table::service.table::entityStatus>',
+            fieldName: 'entityStatus',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('no viable alternative')
+    );
+    expect(screen.getByTestId('entity-link')).toHaveAttribute(
+      'href',
+      '/table/service.table'
+    );
+
+    errorSpy.mockRestore();
+  });
+
+  it('reads an activity-sourced conversation entity from its reference without an ANTLR error', () => {
+    // The server copies the activity's `about` (with the changed field) into
+    // the conversation it creates from it.
+    const errorSpy = jest.spyOn(console, 'error');
+
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          isOpenInDrawer
+          showThread
+          feed={{
+            ...conversation,
+            about: '<#E::table::service.table::entityStatus>',
+            source: ConversationSource.Activity,
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('no viable alternative')
+    );
+    expect(screen.getByTestId('entity-link')).toHaveAttribute(
+      'href',
+      '/table/service.table'
+    );
+
+    errorSpy.mockRestore();
   });
 
   it('renders activity replies in the open side panel', () => {
@@ -349,5 +470,88 @@ describe('ActivityFeedCardNew', () => {
         );
       });
     });
+  });
+
+  it('puts only Edit and Delete in a menu in the activity thread panel', async () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew isThreadPanel feed={conversation} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId('feed-actions')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('conversation-actions'));
+
+    expect(
+      (await screen.findAllByRole('menuitem')).map((item) => item.textContent)
+    ).toEqual(['label.edit', 'label.delete']);
+    expect(screen.queryByTestId('add-reply')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('toggle-resolved')).not.toBeInTheDocument();
+  });
+
+  it('drops the "conversation" label only in the activity thread panel', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <ActivityFeedCardNew feed={conversation} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('headerText')).toHaveTextContent(
+      'label.conversation-lowercase'
+    );
+
+    rerender(
+      <MemoryRouter>
+        <ActivityFeedCardNew isThreadPanel feed={conversation} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId('headerText')).not.toBeInTheDocument();
+    expect(screen.getByTestId('entity-link')).toBeInTheDocument();
+  });
+
+  it('shows the replies above an open composer in the activity thread panel', async () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          isOpenInDrawer
+          isThreadPanel
+          showThread
+          feed={{
+            ...conversation,
+            replies: [
+              {
+                ...activityReply,
+                id: 'newer',
+                createdAt: 20,
+                message: 'Newer',
+              },
+              {
+                ...activityReply,
+                id: 'older',
+                createdAt: 10,
+                message: 'Older',
+              },
+            ],
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    const composer = await screen.findByTestId('thread-composer');
+
+    expect(composer).toHaveTextContent('label.reply-in-conversation');
+    expect(
+      screen.queryByTestId('comments-input-field')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByTestId('reply-message').map((reply) => reply.textContent)
+    ).toEqual(['Older', 'Newer']);
+
+    mockProviderValue.postFeed.mockResolvedValueOnce(undefined);
+    fireEvent.click(composer);
+
+    expect(mockProviderValue.postFeed).toHaveBeenCalledWith('hi', '');
   });
 });

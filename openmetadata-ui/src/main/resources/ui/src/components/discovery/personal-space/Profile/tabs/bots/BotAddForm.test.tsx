@@ -116,6 +116,14 @@ describe('BotAddForm', () => {
     expect(screen.getByTestId('cancel-btn')).toBeInTheDocument();
   });
 
+  it('should center the half-width form body in the panel', () => {
+    renderForm();
+
+    const body = screen.getByTestId('email').parentElement;
+
+    expect(body).toHaveClass('tw:max-w-[50%]', 'tw:mx-auto');
+  });
+
   it('should navigate to the list on cancel', () => {
     renderForm();
 

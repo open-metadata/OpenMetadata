@@ -155,6 +155,7 @@ public class AppRepository extends EntityRepository<App> {
           new Bot()
               .withId(UUID.randomUUID())
               .withName(botName)
+              .withDisplayName(application.getDisplayName())
               .withUpdatedBy("admin")
               .withUpdatedAt(System.currentTimeMillis())
               .withBotUser(botUser.getEntityReference())

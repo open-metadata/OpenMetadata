@@ -132,6 +132,19 @@ describe('AddGlossaryTermForm', () => {
     expect(screen.getByText('label.reviewer-plural')).toBeInTheDocument();
   });
 
+  it('places references after reviewers, just above mutually exclusive', () => {
+    renderWithQueryClient(<Harness />);
+
+    const follows = (a: HTMLElement, b: HTMLElement) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const reviewers = screen.getByText('label.reviewer-plural');
+    const references = screen.getByText('label.reference-plural');
+    const mutuallyExclusive = screen.getByText('label.mutually-exclusive');
+
+    expect(follows(reviewers, references)).toBe(true);
+    expect(follows(references, mutuallyExclusive)).toBe(true);
+  });
+
   it('seeds the description editor from the form defaults', () => {
     renderWithQueryClient(
       <Harness

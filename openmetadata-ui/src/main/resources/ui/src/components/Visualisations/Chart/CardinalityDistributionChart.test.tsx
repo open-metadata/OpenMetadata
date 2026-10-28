@@ -22,6 +22,8 @@ import CardinalityDistributionChart, {
 } from './CardinalityDistributionChart.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+    .EmptyPlaceholder,
   Badge: ({
     children,
     ...props
@@ -51,16 +53,6 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
     return 'Unknown Date';
   }),
 }));
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return function MockErrorPlaceHolder({
-    placeholderText,
-  }: {
-    placeholderText: string | React.ReactNode;
-  }) {
-    return <div data-testid="error-placeholder">{placeholderText}</div>;
-  };
-});
 
 const mockColumnProfileWithCardinality: ColumnProfile = {
   name: 'test_column',
@@ -195,7 +187,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
       expect(
         await screen.findByText('No cardinality data available')
@@ -214,7 +208,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
       expect(screen.queryByTestId('chart-container')).not.toBeInTheDocument();
     });
@@ -380,7 +376,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
       expect(screen.queryByTestId('chart-container')).not.toBeInTheDocument();
     });
@@ -402,7 +400,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
       expect(screen.queryByTestId('chart-container')).not.toBeInTheDocument();
     });
@@ -440,7 +440,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
       expect(
         await screen.findByText('Custom No Data Message')
@@ -458,7 +460,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
       expect(screen.queryByTestId('chart-container')).not.toBeInTheDocument();
     });
@@ -496,7 +500,9 @@ describe('CardinalityDistributionChart', () => {
       render(<CardinalityDistributionChart {...props} />);
 
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
     });
   });
@@ -512,7 +518,9 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+      const errorPlaceholder = await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      );
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveTextContent(
@@ -533,7 +541,9 @@ describe('CardinalityDistributionChart', () => {
 
       const { container } = render(<CardinalityDistributionChart {...props} />);
 
-      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+      const errorPlaceholder = await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      );
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveTextContent(
@@ -562,7 +572,9 @@ describe('CardinalityDistributionChart', () => {
 
       const { container } = render(<CardinalityDistributionChart {...props} />);
 
-      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+      const errorPlaceholder = await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      );
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveTextContent(
@@ -609,7 +621,11 @@ describe('CardinalityDistributionChart', () => {
       expect(
         queryByAttribute('id', container, 'currentDayData-cardinality')
       ).toBeInTheDocument();
-      expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).not.toBeInTheDocument();
     });
 
     it('should render charts normally when allValuesUnique is undefined', async () => {
@@ -631,7 +647,11 @@ describe('CardinalityDistributionChart', () => {
       expect(
         queryByAttribute('id', container, 'currentDayData-cardinality')
       ).toBeInTheDocument();
-      expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).not.toBeInTheDocument();
     });
 
     it('should handle allValuesUnique with empty categories array', async () => {
@@ -656,7 +676,9 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+      const errorPlaceholder = await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      );
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveTextContent(
@@ -686,7 +708,9 @@ describe('CardinalityDistributionChart', () => {
 
       // Error placeholder should exist for second chart
       expect(
-        await screen.findByTestId('error-placeholder')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
     });
   });

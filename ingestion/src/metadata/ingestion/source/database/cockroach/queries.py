@@ -37,7 +37,7 @@ COCKROACH_GET_VIEW_NAMES = """
         pg_namespace n ON n.oid = c.relnamespace
     WHERE 
         n.nspname = :schema 
-        AND c.relkind IN ('v')
+        AND c.relkind IN ('v', 'm')
     ORDER BY 
         c.relname
 """  # noqa: W291

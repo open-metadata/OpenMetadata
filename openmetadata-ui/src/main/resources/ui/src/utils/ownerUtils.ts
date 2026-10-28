@@ -14,6 +14,7 @@ import type { OwnerEntityReference } from '@openmetadata/ui-core-components';
 import { OwnerType } from '../enums/user.enum';
 import { EntityReference } from '../generated/entity/data/table';
 import { getTeamAndUserDetailsPath, getUserPath } from './RouterPaths';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 
 /**
  * Returns the appropriate path for an owner link based on owner type
@@ -23,8 +24,10 @@ export const getOwnerPath = (owner: EntityReference): string => {
   // fullyQualifiedName, so fall back to name to avoid linking every team to
   // the Organization page.
   return owner.type === OwnerType.TEAM
-    ? getTeamAndUserDetailsPath(owner.fullyQualifiedName ?? owner.name ?? '')
-    : getUserPath(owner.name ?? '');
+    ? getSettingsLink(
+        getTeamAndUserDetailsPath(owner.fullyQualifiedName ?? owner.name ?? '')
+      )
+    : getSettingsLink(getUserPath(owner.name ?? ''));
 };
 
 /**

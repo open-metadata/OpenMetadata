@@ -31,7 +31,9 @@ let activityState: {
   items: MockInboxItem[];
   total: number;
   isLoading: boolean;
+  error?: unknown;
 };
+const mockRefetch = jest.fn();
 const mockUseInboxActivity = jest.fn();
 // What the Mentions feed returns, read separately to mark mentioned cards.
 let mockMentionItems: MockInboxItem[] = [];
@@ -50,6 +52,8 @@ jest.mock('../useInboxActivity', () => ({
       items: activityState.items,
       total: activityState.total,
       isLoading: activityState.isLoading,
+      error: activityState.error ?? null,
+      refetch: mockRefetch,
     };
   },
   useInboxActivityCounts: () => ({}),
@@ -59,15 +63,22 @@ jest.mock('../useInboxActivity', () => ({
 jest.mock('../components/ActivityToolbar', () => ({
   __esModule: true,
   default: ({
+    datePreset,
+    onDatePresetChange,
     onFilterChange,
     onGroupingChange,
     onTypeKeysChange,
   }: {
+    datePreset: string;
+    onDatePresetChange: (key: string) => void;
     onFilterChange: (value: string) => void;
     onGroupingChange: (value: string) => void;
     onTypeKeysChange: (value: string[]) => void;
   }) => (
-    <div>
+    <div data-preset={datePreset} data-testid="toolbar">
+      <button onClick={() => onDatePresetChange('last7days')}>
+        last-7-days
+      </button>
       <button onClick={() => onFilterChange('following')}>following</button>
       <button onClick={() => onGroupingChange('user')}>by-user</button>
       <button onClick={() => onGroupingChange('asset')}>by-asset</button>
@@ -84,15 +95,18 @@ jest.mock('../components/ActivityFeedItem', () => ({
     activity,
     feed,
     isMentioned,
+    mentionedName,
     timeFormat,
   }: {
     activity?: MockItem;
     feed?: MockItem;
     isMentioned?: boolean;
+    mentionedName?: string;
     timeFormat?: string;
   }) => (
     <div
       data-mentioned={isMentioned}
+      data-mentioned-name={mentionedName}
       data-testid="feed-item"
       data-time-format={timeFormat}>
       {activity?.id ?? feed?.id}
@@ -135,15 +149,22 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   EmptyPlaceholder: ({
     title,
     description,
+    actions,
     ...props
   }: {
     title?: ReactNode;
     description?: ReactNode;
+    actions?: { key: string; label: ReactNode; onPress?: () => void }[];
     'data-testid'?: string;
   }) => (
     <div data-testid={props['data-testid']}>
       <span>{title}</span>
       <span>{description}</span>
+      {actions?.map(({ key, label, onPress }) => (
+        <button key={key} onClick={onPress}>
+          {label}
+        </button>
+      ))}
     </div>
   ),
 }));
@@ -155,7 +176,15 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+import { User } from '../../../../../generated/entity/teams/user';
+import { getInboxDateRange } from '../inbox.utils';
 import ActivityTab from './ActivityTab';
+
+const alice = {
+  id: 'alice-id',
+  name: 'alice.johnson',
+  displayName: 'Alice Johnson',
+} as User;
 
 describe('ActivityTab', () => {
   beforeEach(() => {
@@ -179,6 +208,33 @@ describe('ActivityTab', () => {
     render(<ActivityTab isFiltered />);
 
     expect(screen.getByText('label.no-activity-in-period')).toBeInTheDocument();
+  });
+
+  // A failed feed must not read as an empty one.
+  it('shows an error with a retry, not the empty state, when the feed fails', () => {
+    activityState = { ...activityState, error: { response: { status: 500 } } };
+    render(<ActivityTab />);
+
+    expect(
+      screen.getByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.activity-feed-starts-here')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+    expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it('shows a permission placeholder when the feed is forbidden', () => {
+    activityState = { ...activityState, error: { response: { status: 403 } } };
+    render(<ActivityTab />);
+
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.reload' })
+    ).not.toBeInTheDocument();
   });
 
   it('shows the skeleton while loading', () => {
@@ -239,13 +295,94 @@ describe('ActivityTab', () => {
   it('fetches the sub-tab the toolbar selects', () => {
     render(<ActivityTab />);
 
-    expect(mockUseInboxActivity).toHaveBeenLastCalledWith('all', undefined);
+    // Uncontrolled, the tab keeps its own window at the default preset.
+    const defaultWindow = expect.objectContaining({ key: 'last30days' });
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      defaultWindow,
+      undefined
+    );
 
     fireEvent.click(screen.getByText('following'));
 
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'following',
+      defaultWindow,
       undefined
+    );
+  });
+
+  // Without a window from the parent, the tab keeps and narrows its own.
+  it('narrows its own window when a preset is picked without a parent window', () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('last-7-days'));
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      { ...getInboxDateRange(7), key: 'last7days' },
+      undefined
+    );
+    expect(screen.getByTestId('toolbar')).toHaveAttribute(
+      'data-preset',
+      'last7days'
+    );
+    // A narrowed window empties to "no activity in period", not first-run.
+    expect(screen.getByText('label.no-activity-in-period')).toBeInTheDocument();
+  });
+
+  it("uses the parent's window and hands it the preset when given one", () => {
+    const dateRange = { startTs: 100, endTs: 200, key: 'last30days' };
+    const onDatePresetChange = jest.fn();
+
+    render(
+      <ActivityTab
+        dateRange={dateRange}
+        onDatePresetChange={onDatePresetChange}
+      />
+    );
+    fireEvent.click(screen.getByText('last-7-days'));
+
+    expect(onDatePresetChange).toHaveBeenCalledWith('last7days');
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      dateRange,
+      undefined
+    );
+    expect(
+      screen.getByText('label.activity-feed-starts-here')
+    ).toBeInTheDocument();
+  });
+
+  it("fetches another user's feeds when given a user", () => {
+    render(<ActivityTab user={alice} />);
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      expect.anything(),
+      'alice-id'
+    );
+  });
+
+  it('names the viewed user, not "you", on mentions and the empty state', () => {
+    render(<ActivityTab user={alice} />);
+
+    expect(screen.getByText('label.no-activity-yet')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.user-activity-empty-description')
+    ).toBeInTheDocument();
+
+    activityState = {
+      items: [{ feed: { id: 't1' } }],
+      total: 1,
+      isLoading: false,
+    };
+    mockMentionItems = [{ feed: { id: 't1' } }];
+    render(<ActivityTab user={alice} />);
+
+    expect(screen.getByTestId('feed-item')).toHaveAttribute(
+      'data-mentioned-name',
+      'Alice'
     );
   });
 

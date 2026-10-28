@@ -198,7 +198,11 @@ const AppModeSwitcher: React.FC<{
             {t('label.switch-interface')}
           </p>
 
-          <HoverCard content={<ClassicDeprecationCard />} placement="right">
+          <HoverCard
+            arrow
+            content={<ClassicDeprecationCard />}
+            offset={28}
+            placement="right">
             <button
               className={classNames(
                 'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-surface tw:border tw:text-left',

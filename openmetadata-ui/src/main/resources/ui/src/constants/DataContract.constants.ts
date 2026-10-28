@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import type { BadgeColors } from '@openmetadata/ui-core-components';
 import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -122,12 +121,16 @@ export const MAX_LATENCY_UNITS = ['minute', 'hour', 'day'];
 export const REFRESH_FREQUENCY_UNITS = ['hour', 'day', 'week', 'month', 'year'];
 export const RETENTION_UNITS = ['day', 'week', 'month', 'year'];
 
-// Header pill for the latest contract run, drawn with the core Badge palette
-// (utility-*-50 fill, -700 text, -200 outline) so it meets contrast in both themes.
-export const CONTRACT_RESULT_BADGE_COLOR: Partial<
-  Record<ContractExecutionStatus, BadgeColors>
+// Latest-result button tints, taken from the core Badge palette (utility-*-50 fill,
+// -700 text, -200 border) so the label meets contrast in both themes. `!` beats the
+// secondary core Button's own bg/text/border utilities.
+export const CONTRACT_RESULT_BUTTON_CLASS: Partial<
+  Record<ContractExecutionStatus, string>
 > = {
-  [ContractExecutionStatus.Failed]: 'error',
-  [ContractExecutionStatus.Aborted]: 'orange',
-  [ContractExecutionStatus.Running]: 'brand',
+  [ContractExecutionStatus.Failed]:
+    'tw:bg-utility-error-50! tw:text-utility-error-700! tw:after:outline-utility-error-200!',
+  [ContractExecutionStatus.Aborted]:
+    'tw:bg-utility-orange-50! tw:text-utility-orange-700! tw:after:outline-utility-orange-200!',
+  [ContractExecutionStatus.Running]:
+    'tw:bg-utility-brand-50! tw:text-utility-brand-700! tw:after:outline-utility-brand-200!',
 };

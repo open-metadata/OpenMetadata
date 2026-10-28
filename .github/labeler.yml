@@ -1,7 +1,7 @@
 # Label when source files are for UI team
 ui:
   - "openmetadata-ui/**/*"
-  - "package.json"
+  - "openmetadata-ui-core-components/**/*"
 
 # Label for Devops when source files is in docker or github
 devops:

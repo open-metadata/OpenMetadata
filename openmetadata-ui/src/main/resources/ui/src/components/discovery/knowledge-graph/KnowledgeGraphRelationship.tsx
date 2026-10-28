@@ -283,7 +283,7 @@ const RelationshipBody = ({
         )}
       </Box>
       {onViewInList && (
-        <Box className="kg-inspector-actions" gap={2}>
+        <Box className="kg-inspector-actions" gap={2} justify="end">
           <Button color="secondary" size="md" onPress={onViewInList}>
             {t('label.kg-view-in-list')}
           </Button>

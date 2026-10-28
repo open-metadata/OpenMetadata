@@ -1,14 +1,12 @@
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
 from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.workflow.metadata import MetadataWorkflow
 
 
 @pytest.fixture(scope="module")
-def prepare_cockroach(cockroach_container):
-    engine = create_engine(cockroach_container.get_connection_url())
-
+def prepare_cockroach(cockroach_engine, user_profiles):
     sql = [
         """
         CREATE TABLE test_table (
@@ -24,12 +22,13 @@ def prepare_cockroach(cockroach_container):
             ('Jane Smith', 30);
         """,  # noqa: W291
     ]
-    with engine.connect() as conn:
+    with cockroach_engine.connect() as conn:
         for stmt in sql:
             conn.execute(text(stmt))
         conn.commit()
 
 
+@pytest.mark.metadata
 @pytest.mark.parametrize(
     "table_fqn,expected_columns",
     [

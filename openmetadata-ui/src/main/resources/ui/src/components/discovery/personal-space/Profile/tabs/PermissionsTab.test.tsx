@@ -21,8 +21,10 @@ const mockGetMyPermissionDebugInfo = jest.fn();
 const mockGetPermissionDebugInfo = jest.fn();
 
 jest.mock('rest/permissionAPI', () => ({
-  getMyPermissionDebugInfo: mockGetMyPermissionDebugInfo,
-  getPermissionDebugInfo: mockGetPermissionDebugInfo,
+  getMyPermissionDebugInfo: (...args: unknown[]) =>
+    mockGetMyPermissionDebugInfo(...args),
+  getPermissionDebugInfo: (...args: unknown[]) =>
+    mockGetPermissionDebugInfo(...args),
 }));
 
 jest.mock('hooks/useApplicationStore', () => ({

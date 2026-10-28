@@ -26,11 +26,13 @@ import OntologyDefinitionList from './OntologyDefinitionList';
 interface OntologyAuthoringWorkspaceProps {
   ontology: Ontology;
   definitionType?: 'concept' | 'property';
+  onWorkingChange?: () => void;
 }
 
 const OntologyAuthoringWorkspace = ({
   ontology,
   definitionType = 'concept',
+  onWorkingChange,
 }: OntologyAuthoringWorkspaceProps) => {
   const { permissions } = usePermissionProvider();
   const { canCreate: canCreateDefinition } = getDerivedPermissionFlags(
@@ -49,7 +51,8 @@ const OntologyAuthoringWorkspace = ({
         definitionType="concept"
         key={ontology.id + ':concept'}
         load={listOntologyConcepts}
-        ontology={ontology}>
+        ontology={ontology}
+        onWorkingChange={onWorkingChange}>
         {(concept, canEdit, onSaved) => (
           <OntologyConceptEditor
             canEdit={canEdit}
@@ -68,7 +71,8 @@ const OntologyAuthoringWorkspace = ({
       definitionType="property"
       key={ontology.id + ':property'}
       load={listOntologyProperties}
-      ontology={ontology}>
+      ontology={ontology}
+      onWorkingChange={onWorkingChange}>
       {(property, canEdit, onSaved) => (
         <OntologyPropertyEditor
           canEdit={canEdit}

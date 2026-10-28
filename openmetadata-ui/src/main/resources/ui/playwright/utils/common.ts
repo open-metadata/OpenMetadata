@@ -842,7 +842,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await waitForAllLoadersToDisappear(page);
   await page
     .getByTestId('glossary-left-panel')
-    .getByRole('link', { name: glossaryName, exact: true })
+    .getByRole('link')
+    .filter({ has: page.getByText(glossaryName, { exact: true }) })
     .click({ timeout: ACTION_TIMEOUT });
   await waitForAllLoadersToDisappear(page);
 };
@@ -1797,6 +1798,29 @@ export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
     await expect(option).toBeVisible({ timeout: 5_000 });
     await option.click({ timeout: 2_000 });
   }).toPass({ timeout: 30_000 });
+};
+
+/**
+ * Picks a React Aria Select option with the keyboard: focuses it and presses Enter, retrying until
+ * `selected` (visible only once the pick took) shows. Use it when the option list can jump into
+ * place after opening: a mouse pick selects on release over whichever row is then under the
+ * pointer, so it can pick the next row or nothing. A repeat after the pick took is a no-op.
+ */
+export const pickSelectOption = async (
+  trigger: Locator,
+  option: Locator,
+  selected: Locator
+) => {
+  await expect(async () => {
+    if (await selected.isVisible()) {
+      return;
+    }
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.press('Enter', { timeout: 2_000 });
+    }
+    await option.press('Enter', { timeout: 2_000 });
+    await expect(selected).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
 };
 
 export const dismissHoverPopovers = async (page: Page) => {

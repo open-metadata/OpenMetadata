@@ -22,7 +22,38 @@ import type {
   MembersLandingCard,
   StageState,
   TimeWindowOption,
+  UserDetailTab,
 } from './Members.types';
+
+// Order is the tab-strip order in the user-detail header.
+export const USER_DETAIL_TABS: UserDetailTab[] = [
+  'overview',
+  'access',
+  'activity',
+  'tasks',
+  'owned-assets',
+  'following',
+  'custom-properties',
+];
+
+// User-detail tabs whose list scrolls inside a bounded body; the rest grow so
+// the panel scrolls and the bottom padding stays below the content.
+export const USER_DETAIL_TAB_LABEL_KEYS: Record<UserDetailTab, string> = {
+  overview: 'label.overview',
+  access: 'label.access',
+  activity: 'label.activity',
+  tasks: 'label.task-plural',
+  'owned-assets': 'label.owned-asset-plural',
+  following: 'label.following',
+  'custom-properties': 'label.custom-property-plural',
+};
+
+export const SCROLLING_USER_DETAIL_TABS: ReadonlySet<UserDetailTab> = new Set([
+  'activity',
+  'tasks',
+  'owned-assets',
+  'following',
+]);
 
 export const LANDING_CARDS: MembersLandingCard[] = [
   {

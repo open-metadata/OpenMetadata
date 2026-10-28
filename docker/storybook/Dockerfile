@@ -12,8 +12,11 @@
 # ── Stage 1: build Storybook static assets ──────────────────────────────────
 # Build context must be the repo root so both the source tree and this config
 # file are reachable.  The nightly workflow calls:
-#   docker build -f docker/storybook/Dockerfile .
-FROM node:22.17-alpine AS builder
+#   docker build -f docker/storybook/Dockerfile \
+#     --build-arg NODE_VERSION="$(sed 's/^v//' openmetadata-ui/src/main/resources/ui/.nvmrc)" .
+# CI passes the exact .nvmrc version; the bare-major default only keeps a plain local build working.
+ARG NODE_VERSION=22
+FROM node:${NODE_VERSION}-alpine AS builder
 
 WORKDIR /app
 
@@ -31,7 +34,7 @@ COPY openmetadata-ui-core-components/src/main/resources/ui/ ./
 RUN yarn build-storybook
 
 # ── Stage 2: serve with Node ─────────────────────────────────────────────────
-FROM node:22.17-alpine AS server
+FROM node:${NODE_VERSION}-alpine AS server
 
 # `serve` is the static file server Storybook recommends; pin the major so the
 # CLI flags stay stable across nightly rebuilds.

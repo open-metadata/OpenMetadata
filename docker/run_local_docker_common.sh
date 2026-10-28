@@ -219,6 +219,26 @@ PY
   return 1
 }
 
+disable_app_schedule() {
+  local app_name=$1
+  local response
+  local http_code
+
+  response=$(curl -s -w "\n%{http_code}" --request PATCH "http://localhost:8585/api/v1/apps/name/${app_name}" \
+    --header "Authorization: Bearer $authorizationToken" \
+    --header 'Content-Type: application/json-patch+json' \
+    --data-raw '[{"op": "replace", "path": "/appSchedule", "value": {"scheduleTimeline": "None"}}]')
+  http_code=$(echo "$response" | tail -n1)
+
+  if [ "$http_code" != "200" ]; then
+    echo "✗ Failed to disable the ${app_name} schedule (HTTP ${http_code})"
+    echo "  Response: $(echo "$response" | sed '$d')"
+    return 1
+  fi
+
+  echo "✓ ${app_name} schedule disabled"
+}
+
 wait_for_app_run_completion() {
   local app_name=$1
   local trigger_timestamp_ms=$2
@@ -462,8 +482,18 @@ run_local_docker_main() {
   fi
 
   if [[ $includeIngestion == "true" ]]; then
-    echo "Building all services including ingestion (dependency: ${INGESTION_DEPENDENCY:-all})"
-    docker compose "${COMPOSE_ARGS[@]}" build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && \
+    # CI builds the ingestion image on its own runner and loads it here, so
+    # building it again would only repeat that work; `up` runs the loaded image.
+    build_services=()
+    if [[ "${OM_INGESTION_IMAGE_PRELOADED:-false}" == "true" ]]; then
+      while IFS= read -r service; do
+        [[ "$service" == "ingestion" ]] || build_services+=("$service")
+      done < <(docker compose "${COMPOSE_ARGS[@]}" config --services)
+      echo "Building all services except the preloaded ingestion image"
+    else
+      echo "Building all services including ingestion (dependency: ${INGESTION_DEPENDENCY:-all})"
+    fi
+    docker compose "${COMPOSE_ARGS[@]}" build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" ${build_services[@]+"${build_services[@]}"} && \
       docker compose "${COMPOSE_ARGS[@]}" up -d
   else
     echo "Building services without ingestion"
@@ -535,6 +565,15 @@ run_local_docker_main() {
     echo 'Checking if OM Server is reachable...\n'
     sleep 5
   done
+
+  # A scheduled recreate-reindex that overlaps later writes swaps in indexes
+  # rebuilt from an earlier read, so those writes vanish from search. Reindex
+  # only through the explicit trigger below.
+  # ADR:2026-10-26-local-docker-stacks-reindex-on-demand-only
+  ensure_app_installed "SearchIndexingApplication"
+  if ! disable_app_schedule "SearchIndexingApplication"; then
+    exit 1
+  fi
 
   if [[ $includeIngestion == "true" ]]; then
     unpause_dag() {
@@ -676,7 +715,6 @@ run_local_docker_main() {
   fi
 
   echo "✔running reindexing"
-  ensure_app_installed "SearchIndexingApplication"
   if ! trigger_app_and_wait "SearchIndexingApplication" "" "$APP_RUN_WAIT_TIMEOUT_SECONDS"; then
     exit 1
   fi

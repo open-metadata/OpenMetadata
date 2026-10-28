@@ -247,14 +247,6 @@ jest.mock(
   }
 );
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>ErrorPlaceHolder.component</div>);
-  }
-);
-jest.mock(
   '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
   () => {
     return jest
@@ -650,7 +642,9 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       expect(
-        await screen.findByText('ErrorPlaceHolder.component')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
     });
 
@@ -1089,7 +1083,9 @@ describe('TestSuiteDetailsPage component', () => {
       // When the suite fetch resolves to no data, the page should fall back to
       // the error placeholder rather than rendering a degraded empty header.
       expect(
-        await screen.findByText('ErrorPlaceHolder.component')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
     });
 

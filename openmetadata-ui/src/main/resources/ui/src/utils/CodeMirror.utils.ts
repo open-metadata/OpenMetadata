@@ -171,6 +171,25 @@ const THEMED_HIGHLIGHT_STYLE = HighlightStyle.define([
 ]);
 
 /**
+ * Dark-mode surface tweaks. The gutter takes the editor's own background, so the
+ * line numbers no longer sit in a darker band, and the active line uses the
+ * hover tint instead of a darker stripe. `.dark-mode &` resolves to
+ * `.dark-mode .<editor> …`, one class deeper than the LESS dark rules, so these
+ * win without `!important`.
+ */
+const DARK_EDITOR_THEME = EditorView.theme({
+  '.dark-mode & .cm-gutters': {
+    backgroundColor: 'transparent',
+  },
+  '.dark-mode & .cm-activeLine': {
+    backgroundColor: 'var(--tw-background-color-primary_hover)',
+  },
+  '.dark-mode & .cm-activeLineGutter': {
+    backgroundColor: 'var(--tw-background-color-primary_hover)',
+  },
+});
+
+/**
  * The editor behaviour that is not driven by an option: undo history, the
  * default key bindings, selection and drop cursors, and syntax colouring.
  *
@@ -192,5 +211,6 @@ export const getCodeMirrorBaseExtensions = (): Extension[] => [
   // defaultHighlightStyle stays underneath for tags this style does not name.
   syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
   syntaxHighlighting(THEMED_HIGHLIGHT_STYLE),
+  DARK_EDITOR_THEME,
   keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap]),
 ];

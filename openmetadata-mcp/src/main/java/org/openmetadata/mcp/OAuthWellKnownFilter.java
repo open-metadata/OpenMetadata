@@ -1,5 +1,7 @@
 package org.openmetadata.mcp;
 
+import static org.openmetadata.mcp.server.transport.HttpServletStatelessServerTransport.pathInContext;
+
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -32,7 +34,7 @@ public class OAuthWellKnownFilter implements Filter {
 
     HttpServletRequest request = (HttpServletRequest) servletRequest;
     HttpServletResponse response = (HttpServletResponse) servletResponse;
-    String path = request.getRequestURI();
+    String path = pathInContext(request);
 
     if (path.equals("/.well-known/oauth-authorization-server")
         || path.equals("/.well-known/oauth-authorization-server/mcp")

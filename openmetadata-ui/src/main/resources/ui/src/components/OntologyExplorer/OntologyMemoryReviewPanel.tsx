@@ -26,6 +26,7 @@ import {
   OntologyChangeSetState,
   OperationType,
 } from '../../generated/entity/data/ontologyChangeSet';
+import { useOntologyEditLease } from '../../hooks/governance/ontology/useOntologyEditLease';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { getContextMemoryById } from '../../rest/contextMemoryAPI';
 import {
@@ -37,7 +38,6 @@ import {
 } from '../../rest/ontologyAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { useOntologyEditLease } from './hooks/useOntologyEditLease';
 
 interface OntologyMemoryReviewPanelProps {
   canApply: boolean;

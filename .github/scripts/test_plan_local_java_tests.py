@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -277,6 +278,42 @@ def test_lane_membership_is_read_from_the_it_pom() -> None:
     assert planner.lane_for(by_name["RdfResourceIT"]) == "rdf"
     assert planner.lane_for(by_name["ReindexStatsIT"]) == "search-it"
     assert planner.lane_for(by_name["TableResourceIT"]) == "parallel"
+
+
+def test_global_state_tests_run_only_in_the_isolated_fork_of_every_engine() -> None:
+    root = ET.fromstring(REPO.pom)
+    ns = {"m": "http://maven.apache.org/POM/4.0.0"}
+    patterns = root.findtext(
+        "m:properties/m:integrationTests.globalStateTests", namespaces=ns
+    )
+    assert patterns
+    paths = [
+        path
+        for path, name in REPO.it_classes.items()
+        if any(fnmatch.fnmatchcase(name, pattern) for pattern in patterns.split(","))
+    ]
+    assert paths
+    checked = []
+    for profile in root.findall("m:profiles/m:profile", ns):
+        executions = {
+            execution.findtext("m:id", namespaces=ns): execution
+            for execution in profile.findall(".//m:execution", ns)
+        }
+        if not {"isolated-tests", "parallel-tests"} <= executions.keys():
+            continue
+        checked.append(profile.findtext("m:id", namespaces=ns))
+        for execution, selector in (
+            ("isolated-tests", "include"),
+            ("parallel-tests", "exclude"),
+        ):
+            selected = [
+                PLANNER.ant_to_fnmatch(element.text)
+                for element in executions[execution].findall(f".//m:{selector}", ns)
+                if element.text
+            ]
+            missing = [path for path in paths if not PLANNER.matches(path, selected)]
+            assert not missing, (checked[-1], execution, selector, missing)
+    assert checked
 
 
 def test_classes_no_lane_runs_are_read_from_the_code_and_the_pom() -> None:

@@ -37,7 +37,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
@@ -94,10 +93,11 @@ import {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../../common/EntityDescription/Description';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import { ManageMenuItem as ItemType } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
@@ -110,6 +110,7 @@ import { LearningIcon } from '../../../Learning/LearningIcon/LearningIcon.compon
 import { useApplicationsProvider } from '../../Applications/ApplicationsProvider/ApplicationsProvider';
 import ListEntities from './RolesAndPoliciesList';
 import { TeamsPageTab } from './team.interface';
+import { TEAM_TAB_EMPTY_STATE_CLASS } from './TeamDetailsV1.constants';
 import {
   AddAttribute,
   PlaceholderProps,
@@ -311,25 +312,28 @@ const TeamDetailsV1 = ({
       children,
       type = ERROR_PLACEHOLDER_TYPE.CREATE,
     }: PlaceholderProps) => (
-      <ErrorPlaceHolder
-        button={button}
-        className="mt-0-important border-none p-lg"
-        doc={doc}
-        heading={heading}
-        permission={permission}
-        permissionValue={
-          type === ERROR_PLACEHOLDER_TYPE.CREATE
-            ? t('label.create-entity', {
-                entity: heading,
-              })
-            : t('label.edit-entity', {
-                entity: heading,
-              })
-        }
-        type={type}
-        onClick={onClick}>
-        {children}
-      </ErrorPlaceHolder>
+      <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
+        <CreatePlaceholder
+          data-testid={`${
+            type === ERROR_PLACEHOLDER_TYPE.CREATE ? 'create' : 'assign'
+          }-error-placeholder-${heading}`}
+          description={children}
+          doc={doc}
+          footer={button}
+          heading={heading}
+          permission={permission}
+          permissionValue={
+            type === ERROR_PLACEHOLDER_TYPE.CREATE
+              ? t('label.create-entity', {
+                  entity: heading,
+                })
+              : t('label.edit-entity', {
+                  entity: heading,
+                })
+          }
+          onCreate={onClick}
+        />
+      </div>
     ),
     []
   );
@@ -725,43 +729,48 @@ const TeamDetailsV1 = ({
       !isTeamBasicDataLoading;
 
     return showEmptyTeamPlaceholder ? (
-      <ErrorPlaceHolder
-        className="border-none"
-        icon={<AddPlaceHolderIcon className="h-32 w-32" />}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography as="p" style={{ marginBottom: '0' }}>
-          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-            entity: t('label.team'),
-          })}
-        </Typography>
-        <Typography as="p">
-          <Transi18next
-            i18nKey="message.refer-to-our-doc"
-            renderElement={
-              <a
-                aria-label={t('label.doc-plural-lowercase')}
-                href={GLOSSARIES_DOCS}
-                rel="noreferrer"
-                target="_blank"
-              />
+      <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={t(
+            'message.adding-new-entity-is-easy-just-give-it-a-spin',
+            {
+              entity: t('label.team'),
             }
-            values={{
-              doc: t('label.doc-plural-lowercase'),
-            }}
-          />
-        </Typography>
-        <Tooltip arrow placement="top" title={addTeamButtonTitle}>
-          <Button
-            color="secondary"
-            data-testid="add-placeholder-button"
-            iconLeading={Plus}
-            isDisabled={!entityPermissions.Create || isTeamDeleted}
-            size="sm"
-            onPress={handleAddTeamButtonClick}>
-            {t('label.add')}
-          </Button>
-        </Tooltip>
-      </ErrorPlaceHolder>
+          )}
+          footer={
+            <>
+              <Typography as="p">
+                <Transi18next
+                  i18nKey="message.refer-to-our-doc"
+                  renderElement={
+                    <a
+                      aria-label={t('label.doc-plural-lowercase')}
+                      href={GLOSSARIES_DOCS}
+                      rel="noreferrer"
+                      target="_blank"
+                    />
+                  }
+                  values={{
+                    doc: t('label.doc-plural-lowercase'),
+                  }}
+                />
+              </Typography>
+              <Tooltip arrow placement="top" title={addTeamButtonTitle}>
+                <Button
+                  color="primary"
+                  data-testid="add-placeholder-button"
+                  iconLeading={Plus}
+                  isDisabled={!entityPermissions.Create || isTeamDeleted}
+                  size="sm"
+                  onPress={handleAddTeamButtonClick}>
+                  {t('label.add')}
+                </Button>
+              </Tooltip>
+            </>
+          }
+        />
+      </div>
     ) : (
       <TeamHierarchy
         createTeamPermission={entityPermissions.Create}
@@ -868,7 +877,7 @@ const TeamDetailsV1 = ({
                   : t('label.add-entity', { entity: t('label.role') })
               }>
               <Button
-                color="secondary"
+                color="primary"
                 data-testid="add-placeholder-button"
                 iconLeading={Plus}
                 isDisabled={isTeamDeleted}
@@ -940,7 +949,7 @@ const TeamDetailsV1 = ({
                   : t('label.add-entity', { entity: t('label.policy') })
               }>
               <Button
-                color="secondary"
+                color="primary"
                 data-testid="add-placeholder-button"
                 iconLeading={Plus}
                 isDisabled={isTeamDeleted}

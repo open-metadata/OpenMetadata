@@ -78,6 +78,21 @@ const EXTERNAL_PACK: OntologyPackManifest = {
   id: 'isa-95',
   name: 'ISA-95',
 };
+const FIBO_PACK: OntologyPackManifest = {
+  ...FHIR_PACK,
+  abbreviation: 'FIBO',
+  description: 'A compact starter subset of financial concepts',
+  id: 'fibo',
+  name: 'FIBO Starter',
+  standard: 'Financial Industry Business Ontology',
+};
+const UNKNOWN_PACK: OntologyPackManifest = {
+  ...FHIR_PACK,
+  abbreviation: 'NEW',
+  id: 'new-pack',
+  name: 'New standard pack',
+  standard: 'New standard',
+};
 
 const installResult = (dryRun: boolean) => ({
   conceptCount: 5,
@@ -106,6 +121,57 @@ describe('OntologyLibrary', () => {
       'href',
       EXTERNAL_PACK.sourceUrl
     );
+  });
+
+  it('orders available standards, filters by domain, and keeps manifest facts visible', async () => {
+    mockListPacks.mockResolvedValue({
+      packs: [UNKNOWN_PACK, EXTERNAL_PACK, FHIR_PACK, FIBO_PACK],
+    });
+    render(<OntologyLibrary />);
+
+    await screen.findByTestId('ontology-pack-fibo');
+
+    expect(
+      screen
+        .getAllByTestId(/^ontology-pack-(fibo|fhir|isa-95|new-pack)$/)
+        .map((card) => card.getAttribute('data-testid'))
+    ).toEqual([
+      'ontology-pack-fibo',
+      'ontology-pack-fhir',
+      'ontology-pack-isa-95',
+      'ontology-pack-new-pack',
+    ]);
+    expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
+      'label.ontology-library-financial-services'
+    );
+    expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
+      FIBO_PACK.description
+    );
+    expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
+      FIBO_PACK.standard
+    );
+    expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
+      '5 label.concept-plural · 3 label.relation-plural'
+    );
+    expect(screen.getByTestId('ontology-pack-new-pack')).toHaveTextContent(
+      UNKNOWN_PACK.name
+    );
+    expect(
+      screen.getByTestId('ontology-pack-abbreviation-new-pack')
+    ).toHaveTextContent(UNKNOWN_PACK.abbreviation);
+
+    fireEvent.click(screen.getByTestId('ontology-library-filter-fhir'));
+
+    expect(screen.getByTestId('ontology-pack-fhir')).toBeVisible();
+    expect(screen.queryByTestId('ontology-pack-fibo')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-pack-isa-95')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-library-filter-new-pack'));
+
+    expect(screen.getByTestId('ontology-pack-new-pack')).toBeVisible();
+    expect(screen.queryByTestId('ontology-pack-fhir')).not.toBeInTheDocument();
   });
 
   it('shows the vocabulary catalogue without glossary installation metadata', async () => {
