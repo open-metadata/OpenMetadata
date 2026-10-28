@@ -94,8 +94,11 @@ export const getAlertSourceSearch = (
     });
 
     return response.hits.hits.map((hit) => ({
-      id: hit._source.id ?? '',
-      fullyQualifiedName: hit._source.fullyQualifiedName ?? '',
+      id: 'id' in hit._source ? hit._source.id ?? '' : '',
+      fullyQualifiedName:
+        'fullyQualifiedName' in hit._source
+          ? hit._source.fullyQualifiedName ?? ''
+          : '',
     }));
   };
 

@@ -14,9 +14,13 @@
 import {
   AvatarStack,
   Box,
+  Button,
   ButtonUtility,
 } from '@openmetadata/ui-core-components';
-import { Comment } from '@openmetadata/ui-core-components/icons';
+import {
+  Comment,
+  MessageDotsCircle,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -33,8 +37,50 @@ import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
 import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
+import { LABELLED_REPLY_CLASS } from './FeedCardFooterNew.constants';
+import {
+  getReactionsVariant,
+  getReplyCountLabel,
+  isReplyButtonShown,
+} from './FeedCardFooterNew.utils';
 
 const MAX_VISIBLE_AVATARS = 3;
+
+interface ReplyButtonProps {
+  count: number;
+  showCount: boolean;
+  pressProps: Pick<AriaButtonProps, 'onPress'>;
+}
+
+const ReplyButton = ({ count, showCount, pressProps }: ReplyButtonProps) => {
+  const { t } = useTranslation();
+
+  // The labelled one (activity thread panels) is the Inbox's footer button.
+  if (showCount) {
+    return (
+      <Button
+        className={LABELLED_REPLY_CLASS}
+        color="tertiary"
+        data-testid="reply-button"
+        iconLeading={<MessageDotsCircle data-icon data-testid="reply-count" />}
+        size="sm"
+        {...pressProps}>
+        {getReplyCountLabel(count, t)}
+      </Button>
+    );
+  }
+
+  return (
+    <ButtonUtility
+      aria-label={t('label.reply')}
+      color="tertiary"
+      data-testid="reply-button"
+      icon={Comment}
+      size="sm"
+      {...pressProps}
+    />
+  );
+};
 
 function FeedCardFooterNew({
   conversation,
@@ -42,6 +88,9 @@ function FeedCardFooterNew({
   reply,
   isReply = false,
   isForFeedTab = false,
+  componentsVisibility,
+  onReplyPress,
+  showReplyCount = false,
 }: Readonly<FeedCardFooterProps>) {
   const { t } = useTranslation();
   const { showDrawer, updateReactions } = useActivityFeedProvider();
@@ -91,11 +140,13 @@ function FeedCardFooterNew({
   const handleRepliesPress = useCallback(
     (event: PressEvent) => {
       event.continuePropagation();
-      if (isForFeedTab) {
+      if (onReplyPress) {
+        onReplyPress();
+      } else if (isForFeedTab) {
         showReplies();
       }
     },
-    [isForFeedTab, showReplies]
+    [isForFeedTab, onReplyPress, showReplies]
   );
   // ButtonUtility forwards its props to a react-aria Button but does not declare
   // onPress, and onClick would not let the click bubble, so the press handler is
@@ -107,12 +158,14 @@ function FeedCardFooterNew({
   return (
     <Box align="start" className={classNames({ 'm-y-md': isReply })}>
       <Box
-        className="footer-container tw:w-full"
+        // footer-container pins the row to 24px, which the labelled reply
+        // button's 40px hover outgrows.
+        className={showReplyCount ? 'tw:w-full' : 'footer-container tw:w-full'}
         data-testid="feed-card-footer"
         direction="col">
         <div>
           <Box align="center" className="w-full rounded-8" gap={1}>
-            {postLength > 0 && !isReply && (
+            {postLength > 0 && !isReply && !showReplyCount && (
               <AvatarStack
                 avatarSize={FEED_FOOTER_AVATAR_SIZE}
                 // The avatar fills its button while the icons sit inside padding, so the
@@ -138,18 +191,16 @@ function FeedCardFooterNew({
               />
             )}
 
-            {!isReply && (
-              <ButtonUtility
-                aria-label={t('label.reply')}
-                color="tertiary"
-                data-testid="reply-button"
-                icon={Comment}
-                size="sm"
-                {...repliesPressProps}
+            {isReplyButtonShown(isReply, componentsVisibility) && (
+              <ReplyButton
+                count={postLength}
+                pressProps={repliesPressProps}
+                showCount={showReplyCount}
               />
             )}
             <Reactions
               reactions={(reply ?? conversation)?.reactions ?? []}
+              variant={getReactionsVariant(showReplyCount)}
               onReactionSelect={onReactionUpdate ?? noop}
             />
           </Box>
