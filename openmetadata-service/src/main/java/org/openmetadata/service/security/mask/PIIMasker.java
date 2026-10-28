@@ -193,8 +193,8 @@ public class PIIMasker {
    * A single-column GET serialises one column, so the {@link #getTableProfile} walk cannot see a
    * {@code PII.Sensitive} tag sitting on a column above it in the tree. The caller hands the
    * ancestor chain resolved from the table's own columns, and a direct tag on any of them masks
-   * this column the way the full-tree walk masks the subtree beneath it — while the regular walk
-   * below still covers the column's own subtree, as {@link #getTableProfile} would.
+   * this column and the subtree beneath it the way the full-tree walk would — the walk then still
+   * covers the column's own tag set, as {@link #getTableProfile} does.
    */
   public static List<Column> getSingleColumnProfile(
       List<EntityReference> owners,
@@ -206,12 +206,10 @@ public class PIIMasker {
     if (authorizePII) {
       return new ArrayList<>(List.of(column));
     }
-    if (listOrEmpty(ancestors).stream().anyMatch(PIIMasker::hasDirectPiiSensitiveTag)) {
-      column.setProfile(null);
-      column.setName(flagMaskedName(column.getName()));
-    }
+    boolean ancestorSensitive =
+        listOrEmpty(ancestors).stream().anyMatch(PIIMasker::hasDirectPiiSensitiveTag);
     List<Column> columns = new ArrayList<>(List.of(column));
-    maskColumnProfiles(columns);
+    maskNestedColumnProfiles(columns, ancestorSensitive);
     return columns;
   }
 

@@ -471,6 +471,58 @@ class PIIMaskerTest {
     return column(tableFqn + ".address", "city", false).withProfile(profile("city"));
   }
 
+  @Test
+  void singleColumnProfileMaskingUnderAncestorCoversRequestedSubtree() {
+    String tableFqn = "service.db.schema.orders";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // address (tagged ancestor) > zip (requested struct, untagged) > code (profiled grandchild)
+    // zip carries no tag itself; only the ancestor's tag covers its own nested child
+    Column address =
+        column(tableFqn, "address", true)
+            .withChildren(
+                List.of(
+                    column(tableFqn + ".address", "zip", false)
+                        .withProfile(profile("zip"))
+                        .withChildren(
+                            List.of(
+                                column(tableFqn + ".address.zip", "code", false)
+                                    .withProfile(profile("code"))))));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, true);
+
+    List<Column> masked =
+        PIIMasker.getSingleColumnProfile(
+            List.of(owner),
+            List.of(address),
+            profiledZipColumn(tableFqn),
+            authorizer,
+            securityContext);
+    assertNull(masked.getFirst().getProfile());
+    assertEquals("zip [MASKED]", masked.getFirst().getName());
+    assertNull(masked.getFirst().getChildren().getFirst().getProfile());
+    assertEquals("code [MASKED]", masked.getFirst().getChildren().getFirst().getName());
+
+    List<Column> untouched =
+        PIIMasker.getSingleColumnProfile(
+            List.of(owner),
+            List.of(address),
+            profiledZipColumn(tableFqn),
+            authorizer,
+            securityContext);
+    assertNotNull(untouched.getFirst().getProfile());
+    assertEquals("zip", untouched.getFirst().getName());
+    assertNotNull(untouched.getFirst().getChildren().getFirst().getProfile());
+    assertEquals("code", untouched.getFirst().getChildren().getFirst().getName());
+  }
+
+  private static Column profiledZipColumn(String tableFqn) {
+    return column(tableFqn + ".address", "zip", false)
+        .withProfile(profile("zip"))
+        .withChildren(
+            List.of(column(tableFqn + ".address.zip", "code", false).withProfile(profile("code"))));
+  }
+
   private static ColumnProfile profile(String name) {
     return new ColumnProfile().withName(name).withNullCount(1.0);
   }
