@@ -85,14 +85,19 @@ export const getNormalDiffElement = (text: string) => {
 };
 
 const BLOCK_END_PATTERN = /<\/(p|li|h[1-6]|div|pre|blockquote)>|<br\s*\/?>/gi;
+// The rich-text editor always wraps content in a block element. Anything else (column types like
+// `array<string>`, markdown such as `Map<K, V>`) is plain text and must keep its angle brackets.
+const EDITOR_HTML_PATTERN = /^\s*<(p|h[1-6]|ul|ol|pre|blockquote|div|table)\b/i;
 
 /**
  * Rich-text descriptions are stored as HTML. Diffing that markup word by word splits tags, and each
  * fragment is rendered as escaped text, so the version view showed literal `<p>` and `&#61;`.
- * Diff what the reader sees instead: the text content, one line per block. Only for rich text —
- * plain values such as `array<string>` would lose their angle-bracket parts.
+ * Diff what the reader sees instead: the text content, one line per block.
  */
 const toDiffableText = (text: string) => {
+  if (!EDITOR_HTML_PATTERN.test(text)) {
+    return text;
+  }
   const html = text.replace(BLOCK_END_PATTERN, (tag) => `${tag}\n`);
 
   return (
@@ -103,8 +108,7 @@ const toDiffableText = (text: string) => {
 export const getTextDiff = (
   oldText: string,
   newText: string,
-  latestText?: string,
-  { isRichText = false }: { isRichText?: boolean } = {}
+  latestText?: string
 ) => {
   const imagePlaceholder = 'data:image';
   if (isEmpty(oldText) && isEmpty(newText)) {
@@ -119,8 +123,8 @@ export const getTextDiff = (
   }
 
   const diffArr = diffWords(
-    isRichText ? toDiffableText(toString(oldText)) : toString(oldText),
-    isRichText ? toDiffableText(toString(newText)) : toString(newText)
+    toDiffableText(toString(oldText)),
+    toDiffableText(toString(newText))
   );
 
   const result = diffArr.map((diff) => {

@@ -47,6 +47,8 @@ interface ChildPage {
   after?: string;
   total: number;
   parentFqn: string;
+  /** Request generation that loaded this page; pages from a previous query are stale. */
+  generation: number;
 }
 
 interface GroupPage {
@@ -193,6 +195,7 @@ export const useMetricHierarchy = ({
               after: response.paging?.after,
               total: response.paging?.total ?? response.data.length,
               parentFqn,
+              generation,
             },
           };
         });
@@ -377,7 +380,7 @@ export const useMetricHierarchy = ({
         }
         const isMatchOrBelow =
           isBelowMatch || Boolean(searchPaths?.matchIds.has(node.id));
-        const visibleChildren =
+        const pathChildren =
           searchPaths?.complete && !isMatchOrBelow
             ? childPage.rows.filter(
                 ({ id }) =>
@@ -385,6 +388,11 @@ export const useMetricHierarchy = ({
                   searchPaths.ancestorIds.has(id)
               )
             : childPage.rows;
+        // The search index can lag the hierarchy endpoint (a just-renamed metric); never leave
+        // an expanded parent empty because of that.
+        const visibleChildren = pathChildren.length
+          ? pathChildren
+          : childPage.rows;
         const childRows: MetricTableRow[] = visibleChildren.map((child) =>
           hydrateNode(child, isMatchOrBelow)
         );
@@ -447,8 +455,14 @@ export const useMetricHierarchy = ({
           keys.includes(metric.id) ? keys : [...keys, metric.id]
         );
         // Fetched directly, not via toggleExpand: right after a query change its closure still
-        // holds the previous query's children, so it would skip the fetch.
-        fetchChildren(metric).catch(() => undefined);
+        // holds the previous query's children. A page from this query is kept, so a "Load more"
+        // the user already clicked is not reset.
+        if (
+          childrenByParentId[metric.id]?.generation !==
+          requestGeneration.current
+        ) {
+          fetchChildren(metric).catch(() => undefined);
+        }
       });
   }, [childrenByParentId, fetchChildren, searchPaths, topLevelNodes]);
 

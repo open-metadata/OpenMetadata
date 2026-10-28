@@ -569,6 +569,28 @@ describe('useMetricHierarchy', () => {
       });
     });
 
+    it('falls back to all children when the index has none of them yet', async () => {
+      (getMetricSearchPaths as jest.Mock).mockResolvedValue({
+        matchIds: new Set(['renamed-elsewhere']),
+        ancestorIds: new Set(['root-id']),
+        complete: true,
+      });
+      (getMetrics as jest.Mock).mockResolvedValue({
+        data: [
+          { id: 'canada-id', name: 'canada' },
+          { id: 'usa-id', name: 'usa' },
+        ],
+        paging: { total: 2 },
+      });
+      const { result } = renderSearch('canada');
+
+      await waitFor(() => {
+        const [root] = result.current.buildRows(result.current.topLevelNodes);
+
+        expect((root as MetricTreeNode).children).toHaveLength(2);
+      });
+    });
+
     it('shows every child of a metric that is itself a match', async () => {
       (getMetricSearchPaths as jest.Mock).mockResolvedValue({
         matchIds: new Set(['root-id']),

@@ -278,10 +278,8 @@ describe('BulkEditEntity', () => {
     });
 
     it('grows the row whose editor reports a taller height', async () => {
-      const rows = [
-        { id: 'row-a', col1: 'a' },
-        { id: 'row-b', col1: 'b' },
-      ];
+      // No ids, like rows added in bulk edit: the lookup must key on the row, not row.id.
+      const rows = [{ col1: 'a' }, { col1: 'b' }];
       renderComponent({
         dataSource: rows,
         visibleRows: rows,

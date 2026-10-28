@@ -139,9 +139,7 @@ describe('getTextDiff', () => {
   it('diffs the readable text of rich-text descriptions instead of their markup', () => {
     const result = getTextDiff(
       'Seed metric',
-      '<p>Seed metric <strong>updated</strong> &#61; x</p>',
-      undefined,
-      { isRichText: true }
+      '<p>Seed metric <strong>updated</strong> &#61; x</p>'
     );
 
     expect(result).not.toContain('&lt;p&gt;');
@@ -156,6 +154,22 @@ describe('getTextDiff', () => {
 
     expect(result).toContain('array&lt;string&gt;');
     expect(result).toMatch(/data-testid="diff-added"[^>]*>[^<]*nullable/);
+  });
+
+  it('keeps angle-bracket text in markdown descriptions', () => {
+    const result = getTextDiff(
+      'Returns Map<String, Long> per <region>',
+      'Returns Map<String, Long> per <region> daily'
+    );
+
+    expect(result).toContain('Map&lt;String, Long&gt; per &lt;region&gt;');
+  });
+
+  it('diffs column and field descriptions stored as editor HTML too', () => {
+    const result = getTextDiff('', '<p>Customer id</p>');
+
+    expect(result).not.toContain('&lt;p&gt;');
+    expect(result).toContain('Customer id');
   });
 
   it('keeps plain-text diffs unchanged', () => {
