@@ -173,13 +173,31 @@ public class PIIMasker {
       SecurityContext securityContext) {
     boolean authorizePII = authorizer.authorizePII(securityContext, owners);
     if (authorizePII) return columns;
-    for (Column c : listOrEmpty(columns)) {
-      if (hasPiiSensitiveTag(c)) {
-        c.setProfile(null);
-        c.setName(flagMaskedName(c.getName()));
-      }
-    }
+    maskColumnProfiles(columns);
     return columns;
+  }
+
+  private static void maskColumnProfiles(List<Column> columns) {
+    maskNestedColumnProfiles(columns, false);
+  }
+
+  /**
+   * The masking rule for a column and its children mirrors the resolved-path walk: a direct
+   * {@code PII.Sensitive} tag on any ancestor covers the nested fields beneath it, while the
+   * column's own tag set ({@code getAllTags}) additionally covers its whole subtree. Every nested
+   * child carries a profile of its own once the repository flattens the column tree, so the walk
+   * must not stop at the top level.
+   */
+  private static void maskNestedColumnProfiles(List<Column> columns, boolean ancestorSensitive) {
+    for (Column column : listOrEmpty(columns)) {
+      boolean masked = ancestorSensitive || hasPiiSensitiveTag(column);
+      if (masked) {
+        column.setProfile(null);
+        column.setName(flagMaskedName(column.getName()));
+      }
+      maskNestedColumnProfiles(
+          column.getChildren(), ancestorSensitive || hasDirectPiiSensitiveTag(column));
+    }
   }
 
   public static List<ColumnProfile> getColumnProfile(
@@ -441,7 +459,15 @@ public class PIIMasker {
     return row;
   }
 
+  /**
+   * Idempotency matters: column profiles masking can visit a nested column twice when the caller
+   * passes the repository's flattened column list, where a node is both a child of its parent and
+   * its own entry.
+   */
   private static String flagMaskedName(String name) {
+    if (name.endsWith(MASKED_NAME)) {
+      return name;
+    }
     return String.format("%s %s", name, MASKED_NAME);
   }
 

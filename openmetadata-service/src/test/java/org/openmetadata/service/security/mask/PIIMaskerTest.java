@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.mask;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
@@ -349,6 +350,78 @@ class PIIMaskerTest {
           PIIMasker.getColumnProfile(columnFqn, columnProfiles, authorizer, securityContext);
       assertSame(columnProfiles, authorizedProfiles);
     }
+  }
+
+  @Test
+  void tableProfileMaskingReachesNestedColumnChildren() {
+    String tableFqn = "service.db.schema.orders";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // The leaf city carries the tag; the contact struct carries it above email; zip is untouched
+    Column address =
+        column(tableFqn, "address", false)
+            .withChildren(
+                List.of(
+                    column(tableFqn + ".address", "city", true).withProfile(profile("city")),
+                    column(tableFqn + ".address", "zip", false)
+                        .withProfile(profile("zip"))
+                        .withChildren(
+                            List.of(
+                                column(tableFqn + ".address.zip", "code", false)
+                                    .withProfile(profile("code"))))));
+    Column contact =
+        column(tableFqn, "contact", true)
+            .withChildren(
+                List.of(
+                    column(tableFqn + ".contact", "email", false).withProfile(profile("email"))));
+    Column id = column(tableFqn, "id", false);
+    List<Column> columns =
+        new ArrayList<>(
+            List.of(
+                address.withProfile(profile("address")),
+                contact.withProfile(profile("contact")),
+                id.withProfile(profile("id"))));
+    Table table = table(tableFqn, columns, false, List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, true);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.TABLE, tableFqn, "owners", Include.ALL))
+          .thenReturn(table);
+
+      List<Column> masked =
+          PIIMasker.getTableProfile(tableFqn, columns, authorizer, securityContext);
+
+      // The tagged leaf and the struct whose subtree holds it lose their profiles
+      assertNull(masked.getFirst().getProfile());
+      assertEquals("address [MASKED]", masked.getFirst().getName());
+      assertNull(masked.getFirst().getChildren().getFirst().getProfile());
+      assertEquals("city [MASKED]", masked.getFirst().getChildren().getFirst().getName());
+
+      // A sibling leaf under the same struct keeps its profile: no direct tag covers it
+      Column zip = masked.getFirst().getChildren().get(1);
+      assertNotNull(zip.getProfile());
+      assertEquals("zip", zip.getName());
+
+      // The direct tag on the contact struct covers the untagged email field beneath it
+      assertNull(masked.get(1).getProfile());
+      assertEquals("contact [MASKED]", masked.get(1).getName());
+      assertNull(masked.get(1).getChildren().getFirst().getProfile());
+      assertEquals("email [MASKED]", masked.get(1).getChildren().getFirst().getName());
+
+      // Columns with no PII anywhere along their path stay fully intact
+      assertNotNull(masked.get(2).getProfile());
+      assertEquals("id", masked.get(2).getName());
+
+      // An authorized caller gets the columns back untouched
+      assertSame(
+          columns, PIIMasker.getTableProfile(tableFqn, columns, authorizer, securityContext));
+    }
+  }
+
+  private static ColumnProfile profile(String name) {
+    return new ColumnProfile().withName(name).withNullCount(1.0);
   }
 
   @Test
