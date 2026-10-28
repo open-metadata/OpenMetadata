@@ -24,7 +24,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { isAxiosError } from 'axios';
 import { keyBy } from 'lodash';
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
@@ -90,6 +90,13 @@ const OntologyPropertyEditor = ({
   const kind = form.watch('kind').id;
   const [isSaving, setIsSaving] = useState(false);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const { errors, submitCount } = form.formState;
+  // Reopen only on a new save attempt, so the user can still collapse it.
+  useEffect(() => {
+    if (ADVANCED_FIELDS.some((name) => name in errors)) {
+      setIsAdvancedOpen(true);
+    }
+  }, [submitCount]); // eslint-disable-line react-hooks/exhaustive-deps
   const disabled = !canEdit || isSaving;
   const save = async (values: OntologyPropertyFormValues) => {
     if (!canEdit) {
@@ -206,9 +213,6 @@ const OntologyPropertyEditor = ({
           <Fragment key={name}>{getField(fields[name])}</Fragment>
         ) : null
       );
-    const advancedInvalid = ADVANCED_FIELDS.some(
-      (name) => name in form.formState.errors
-    );
 
     return (
       <HookForm
@@ -235,7 +239,7 @@ const OntologyPropertyEditor = ({
           {renderFields(['unit', 'isIdentifier', 'description'])}
           <details
             className="tw:border-t tw:border-secondary tw:pt-4"
-            open={isAdvancedOpen || advancedInvalid}
+            open={isAdvancedOpen}
             onToggle={(event) => setIsAdvancedOpen(event.currentTarget.open)}>
             <summary className="tw:cursor-pointer">
               <Typography as="span" size="text-sm" weight="semibold">

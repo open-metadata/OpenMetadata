@@ -327,6 +327,40 @@ describe('OntologyPropertyEditor', () => {
       );
     });
 
+    it('reopens the advanced section on every save that leaves an advanced field invalid', async () => {
+      render(
+        <OntologyPropertyEditor
+          canEdit
+          ontology={ontology}
+          onSaved={jest.fn()}
+        />
+      );
+      const advanced = screen
+        .getByText('label.advanced')
+        .closest('details') as HTMLDetailsElement;
+      fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
+        target: { value: 'manages' },
+      });
+      fireEvent.change(screen.getByRole('textbox', { name: 'label.inverse' }), {
+        target: { value: 'not an iri' },
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
+      await waitFor(() => expect(advanced.open).toBe(true));
+
+      advanced.open = false;
+      fireEvent(advanced, new Event('toggle'));
+
+      expect(advanced.open).toBe(false);
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
+      await waitFor(() => expect(advanced.open).toBe(true));
+
+      expect(post).not.toHaveBeenCalled();
+    });
+
     it('keeps data-property values, unit and identifier editable and gated', () => {
       render(
         <OntologyPropertyEditor

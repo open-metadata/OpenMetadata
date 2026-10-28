@@ -73,6 +73,12 @@ interface AllOntologiesGraphViewProps {
   readonly onSelectedConceptChange: (conceptId?: string) => void;
 }
 
+// In AI mode the tree header names the ontology, but only above connected concepts.
+const hasTreeOwnHeading = (
+  isAiMode: boolean,
+  group: { rows: { isIsolated?: boolean }[] }
+) => isAiMode && group.rows.some((row) => !row.isIsolated);
+
 const AllOntologiesGraphView = ({
   graph,
   models,
@@ -178,7 +184,7 @@ const AllOntologiesGraphView = ({
           ) : null}
           {groups.map((group) => (
             <Box direction="col" key={group.glossaryId}>
-              {isAiMode ? null : (
+              {hasTreeOwnHeading(isAiMode, group) ? null : (
                 <Typography
                   className="tw:px-6 tw:pt-4"
                   role="heading"
