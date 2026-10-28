@@ -22,7 +22,6 @@
 import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import {
@@ -33,6 +32,7 @@ import {
 } from '../../../test/browser/fixtures/table';
 import { worker } from '../../../test/browser/msw';
 import { currentUrl, renderWithApp } from '../../../test/browser/renderWithApp';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import SchemaTable from './SchemaTable.component';
 

@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Paging } from '../../../generated/type/paging';
 import {
   Column,
   DataType,
   Table,
   TableType,
 } from '../../../generated/entity/data/table';
+import { Paging } from '../../../generated/type/paging';
 
 export const TABLE_FQN = 'sample_data.ecommerce_db.shopify.orders';
 
