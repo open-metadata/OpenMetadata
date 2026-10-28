@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-27T03:35:55Z",
+  "generatedAt": "2026-10-28T03:10:53Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "39091104477",
-      "sourceSha": "38286a8af62e39573727bf879248f413ddca1b10",
-      "recordedAt": "2026-10-18T03:18:25Z"
-    },
     {
       "runId": "39191651889",
       "sourceSha": "1fe0f038adb7a005571de9879af2ad56833f43e3",
@@ -53,6 +48,11 @@
       "runId": "40440462393",
       "sourceSha": "c226e1fa0129852bdbfa62568459efd107d56bb3",
       "recordedAt": "2026-10-27T03:35:55Z"
+    },
+    {
+      "runId": "40622038880",
+      "sourceSha": "3e14a88747128ecb043e28f981530cb415f55b51",
+      "recordedAt": "2026-10-28T03:10:53Z"
     }
   ],
   "entries": {
@@ -98,24 +98,14 @@
       "lastSeenSha": "5cbc32a8c916ac86f7f343fd99c73bbcd5398dd0",
       "hardFailure": false
     },
-    "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database Schema": {
+    "chromium :: Features/AIMode/AiObservabilityAlerts.spec.ts :: AI mode \u2014 observability alert form keeps every classic option \u203a saves every destination kind with its receivers and authentication": {
       "observations": [
-        "39091104477"
+        "40622038880"
       ],
-      "project": "ImportExport",
-      "file": "Features/BulkImport.spec.ts",
-      "title": "Bulk Import Export \u203a Database Schema",
-      "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
-      "hardFailure": false
-    },
-    "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database service": {
-      "observations": [
-        "39091104477"
-      ],
-      "project": "ImportExport",
-      "file": "Features/BulkImport.spec.ts",
-      "title": "Bulk Import Export \u203a Database service",
-      "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
+      "project": "chromium",
+      "file": "Features/AIMode/AiObservabilityAlerts.spec.ts",
+      "title": "AI mode \u2014 observability alert form keeps every classic option \u203a saves every destination kind with its receivers and authentication",
+      "lastSeenSha": "3e14a88747128ecb043e28f981530cb415f55b51",
       "hardFailure": false
     },
     "chromium :: Features/AIMode/InboxTasks.spec.ts :: Inbox \u2014 Triage \u203a filters the queue across the Open, All and Closed statuses": {
@@ -161,7 +151,6 @@
     },
     "chromium :: Features/DataQuality/TestLibrary.spec.ts :: Test Library \u203a should display test platform badges correctly": {
       "observations": [
-        "39091104477",
         "39713219915",
         "40155676742"
       ],
@@ -233,26 +222,6 @@
       "title": "Large Table Column Search & Copy Link \u203a Opening and closing a column detail panel on page 2 keeps the columns list on page 2",
       "lastSeenSha": "adb1d317f68e6e4c87e06ff6bc6fe3f6b9b55a47",
       "hardFailure": false
-    },
-    "chromium :: Features/Topic.spec.ts :: Topic entity specific tests \u203a Copy nested field link should include full hierarchical path": {
-      "observations": [
-        "39091104477"
-      ],
-      "project": "chromium",
-      "file": "Features/Topic.spec.ts",
-      "title": "Topic entity specific tests \u203a Copy nested field link should include full hierarchical path",
-      "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
-      "hardFailure": false
-    },
-    "chromium :: Flow/NotificationAlerts.spec.ts :: Multiple Filters Alert": {
-      "observations": [
-        "39091104477"
-      ],
-      "project": "chromium",
-      "file": "Flow/NotificationAlerts.spec.ts",
-      "title": "Multiple Filters Alert",
-      "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
-      "hardFailure": true
     },
     "chromium :: Pages/Entity.spec.ts :: Api Endpoint \u203a Inactive Announcement create & delete": {
       "observations": [
@@ -413,16 +382,6 @@
       "title": "Worksheet \u203a Inactive Announcement create & delete",
       "lastSeenSha": "adb1d317f68e6e4c87e06ff6bc6fe3f6b9b55a47",
       "hardFailure": true
-    },
-    "chromium :: Pages/ExplorePageRightPanel.spec.ts :: Right Panel Test Suite \u203a Explore page right panel tests \u203a Data Steward User - Permission Verification \u203a Should allow Data Steward to edit owners for topic": {
-      "observations": [
-        "39091104477"
-      ],
-      "project": "chromium",
-      "file": "Pages/ExplorePageRightPanel.spec.ts",
-      "title": "Right Panel Test Suite \u203a Explore page right panel tests \u203a Data Steward User - Permission Verification \u203a Should allow Data Steward to edit owners for topic",
-      "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
-      "hardFailure": false
     },
     "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for dashboard -> dashboard": {
       "observations": [
