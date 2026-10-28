@@ -10,9 +10,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -97,6 +99,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -2820,35 +2823,104 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
   @Test
   void testListDataContractResults(TestNamespace ns) {
-    Table table = createTestTable(ns);
-
-    CreateDataContract request =
-        new CreateDataContract()
-            .withName(ns.prefix("list_results"))
-            .withEntity(table.getEntityReference());
-
-    DataContract contract = SdkClients.adminClient().dataContracts().create(request);
-
-    // Create multiple contract results
-    for (int i = 1; i <= 3; i++) {
-      DataContractResult createResult =
-          new DataContractResult()
-              .withDataContractFQN(contract.getFullyQualifiedName())
-              .withTimestamp(System.currentTimeMillis() + (i * 1000))
-              .withContractExecutionStatus(
-                  i % 2 == 0 ? ContractExecutionStatus.Success : ContractExecutionStatus.Failed)
-              .withResult("Result " + i)
-              .withExecutionTime(1000L + i);
-
-      SdkClients.adminClient().dataContracts().addResult(contract.getId(), createResult);
+    final DataContract contract =
+        SdkClients.adminClient().dataContracts().create(createMinimalRequest(ns));
+    final long start = System.currentTimeMillis() - 10_000;
+    for (long offset : List.of(0L, 3L, 1L, 4L, 2L, 11L, 10L, 9L, 8L, 7L, 6L, 5L)) {
+      addExecutionResult(contract, start + offset, ContractExecutionStatus.Success);
     }
 
-    // List results - verify at least 3 were created
-    // Note: The SDK may not expose a direct list results method, so we verify via latest
-    DataContractResult latest =
-        SdkClients.adminClient().dataContracts().getLatestResult(contract.getId());
-    assertNotNull(latest);
+    final ContractExecutionResultList newest =
+        listExecutionResults(contract, 2, start + 1, start + 3);
+    assertEquals(
+        List.of(start + 3, start + 2),
+        newest.getData().stream().map(DataContractResult::getTimestamp).toList());
+    assertEquals(2, newest.getPaging().getTotal());
+    assertEquals(
+        String.valueOf(start + 1),
+        new String(
+            Base64.getUrlDecoder().decode(newest.getPaging().getBefore()), StandardCharsets.UTF_8));
+    assertEquals(
+        String.valueOf(start + 3),
+        new String(
+            Base64.getUrlDecoder().decode(newest.getPaging().getAfter()), StandardCharsets.UTF_8));
+
+    final ContractExecutionResultList fewer =
+        listExecutionResults(contract, 10_000, start + 1, start + 3);
+    assertEquals(
+        List.of(start + 3, start + 2, start + 1),
+        fewer.getData().stream().map(DataContractResult::getTimestamp).toList());
+    assertEquals(3, fewer.getPaging().getTotal());
+
+    final ContractExecutionResultList unlimited =
+        listExecutionResults(contract, 0, start, start + 11);
+    assertEquals(
+        List.of(
+            start + 11,
+            start + 10,
+            start + 9,
+            start + 8,
+            start + 7,
+            start + 6,
+            start + 5,
+            start + 4,
+            start + 3,
+            start + 2,
+            start + 1,
+            start),
+        unlimited.getData().stream().map(DataContractResult::getTimestamp).toList());
+    assertEquals(12, unlimited.getPaging().getTotal());
   }
+
+  @Test
+  void testListDataContractResultsLimitsBeforeDeserialization(TestNamespace ns) {
+    final DataContract contract =
+        SdkClients.adminClient().dataContracts().create(createMinimalRequest(ns));
+    final long start = System.currentTimeMillis() - 10_000;
+    addExecutionResult(contract, start + 1, ContractExecutionStatus.Success);
+    // An older invalid payload exposes reads that deserialize beyond the requested SQL page.
+    final var dao = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    dao.insert(
+        contract.getFullyQualifiedName(),
+        DataContractRepository.RESULT_EXTENSION,
+        DataContractRepository.RESULT_SCHEMA,
+        "{\"timestamp\":" + start + ",\"executionTime\":\"invalid\"}");
+    try {
+      final ContractExecutionResultList result =
+          listExecutionResults(contract, 1, start, start + 1);
+      assertEquals(
+          List.of(start + 1),
+          result.getData().stream().map(DataContractResult::getTimestamp).toList());
+      assertEquals(1, result.getPaging().getTotal());
+      assertEquals(
+          500,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () -> listExecutionResults(contract, 0, start, start + 1))
+              .getStatusCode());
+    } finally {
+      dao.deleteAtTimestamp(
+          contract.getFullyQualifiedName(), DataContractRepository.RESULT_EXTENSION, start);
+    }
+  }
+
+  private ContractExecutionResultList listExecutionResults(
+      DataContract contract, int limit, long start, long end) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/dataContracts/" + contract.getId() + "/results",
+            null,
+            ContractExecutionResultList.class,
+            RequestOptions.builder()
+                .queryParam("limit", String.valueOf(limit))
+                .queryParam("startTs", String.valueOf(start))
+                .queryParam("endTs", String.valueOf(end))
+                .build());
+  }
+
+  private static class ContractExecutionResultList extends ResultList<DataContractResult> {}
 
   @Test
   void testGetContractResultUsesRequestedExecution(TestNamespace ns) {
