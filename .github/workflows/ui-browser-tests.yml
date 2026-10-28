@@ -1,0 +1,67 @@
+# UI integration tests (Vitest Browser Mode + MSW). No backend; every
+# /api call is mocked, so the only network use is installing deps and Chromium.
+name: UI Browser Tests
+
+on:
+  pull_request:
+    paths:
+      - "openmetadata-ui/src/main/resources/ui/**"
+      - "openmetadata-ui-core-components/src/main/resources/ui/**"
+      - ".github/workflows/ui-browser-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-browser-tests-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  UI_DIR: openmetadata-ui/src/main/resources/ui
+
+jobs:
+  browser-tests:
+    name: browser tests + coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/ui-browser-setup
+      - name: Run browser tests with coverage
+        id: tests
+        working-directory: ${{ env.UI_DIR }}
+        continue-on-error: true
+        run: |
+          yarn test:ui:coverage --reporter=default --reporter=junit \
+            --outputFile.junit=src/test/browser/junit.xml
+      # A fork PR's token cannot comment; its results stay in the job log.
+      - name: Coverage comment
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: MishaKav/jest-coverage-comment@v1.0.34
+        with:
+          coverage-summary-path: ${{ env.UI_DIR }}/src/test/browser/coverage/coverage-summary.json
+          junitxml-path: ${{ env.UI_DIR }}/src/test/browser/junit.xml
+          junitxml-title: UI browser tests (Vitest)
+          title: UI browser test coverage
+          summary-title: UI browser tests summary
+          badge-title: Browser coverage
+          unique-id-for-comment: ui-browser-tests
+      - name: Upload failure screenshots
+        if: always() && steps.tests.outcome == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-browser-failures
+          path: |
+            ${{ env.UI_DIR }}/src/**/__screenshots__/**
+            ${{ env.UI_DIR }}/.vitest-attachments/**
+          if-no-files-found: ignore
+      - name: Fail if tests failed
+        if: always() && steps.tests.outcome == 'failure'
+        run: exit 1

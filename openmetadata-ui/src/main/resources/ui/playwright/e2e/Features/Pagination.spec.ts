@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { migratedTo } from '../../constant/migration';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { BotClass } from '../../support/bot/BotClass';
@@ -66,10 +67,16 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test pagination on Users page', async ({ page }) => {
-      await page.goto('/settings/members/users');
-      await testPaginationNavigation(page, '/api/v1/users', 'table');
-    });
+    test(
+      'should test pagination on Users page',
+      migratedTo.browser(
+        'src/pages/UserListPage/UserListPageV1.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto('/settings/members/users');
+        await testPaginationNavigation(page, '/api/v1/users', 'table');
+      }
+    );
 
     test('should test Users complete flow with search', async ({ page }) => {
       test.slow(true);
@@ -124,32 +131,40 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test Database Schema Tables normal pagination', async ({
-      page,
-    }) => {
-      await page.goto(`/databaseSchema/${schemaFqn}?pageSize=15`);
-      await testPaginationNavigation(
-        page,
-        '/api/v1/tables',
-        '[data-testid="databaseSchema-tables"]'
-      );
-    });
+    test(
+      'should test Database Schema Tables normal pagination',
+      migratedTo.browser(
+        'src/pages/DatabaseSchemaPage/SchemaTablesTab.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(`/databaseSchema/${schemaFqn}?pageSize=15`);
+        await testPaginationNavigation(
+          page,
+          '/api/v1/tables',
+          '[data-testid="databaseSchema-tables"]'
+        );
+      }
+    );
 
-    test('should test Database Schema Tables complete flow with search', async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(
+      'should test Database Schema Tables complete flow with search',
+      migratedTo.browser(
+        'src/pages/DatabaseSchemaPage/SchemaTablesTab.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      await testCompletePaginationWithSearch({
-        page,
-        baseUrl: `/databaseSchema/${schemaFqn}?showDeletedTables=false`,
-        normalApiPattern: '/api/v1/tables',
-        searchApiPattern: '/api/v1/search/query',
-        searchTestTerm: 'pw',
-        searchParamName: 'schema',
-        waitForLoadSelector: '[data-testid="databaseSchema-tables"]',
-      });
-    });
+        await testCompletePaginationWithSearch({
+          page,
+          baseUrl: `/databaseSchema/${schemaFqn}?showDeletedTables=false`,
+          normalApiPattern: '/api/v1/tables',
+          searchApiPattern: '/api/v1/search/query',
+          searchTestTerm: 'pw',
+          searchParamName: 'schema',
+          waitForLoadSelector: '[data-testid="databaseSchema-tables"]',
+        });
+      }
+    );
   });
 
   test.describe('Table columns page pagination', () => {
@@ -199,21 +214,25 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         false
       );
     });
-    test('should test Table columns complete flow with search', async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(
+      'should test Table columns complete flow with search',
+      migratedTo.browser(
+        'src/components/Database/SchemaTable/SchemaTable.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      await testCompletePaginationWithSearch({
-        page,
-        baseUrl: `/table/${tableFqn}?pageSize=15`,
-        normalApiPattern: '/columns',
-        searchApiPattern: '/columns/search',
-        searchTestTerm: 'pw',
-        searchParamName: 'columnSearch',
-        waitForLoadSelector: '[data-testid="entity-table"]',
-      });
-    });
+        await testCompletePaginationWithSearch({
+          page,
+          baseUrl: `/table/${tableFqn}?pageSize=15`,
+          normalApiPattern: '/columns',
+          searchApiPattern: '/columns/search',
+          searchTestTerm: 'pw',
+          searchParamName: 'columnSearch',
+          waitForLoadSelector: '[data-testid="entity-table"]',
+        });
+      }
+    );
   });
 
   test.describe('Service Databases page pagination', () => {
@@ -247,67 +266,75 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test pagination on Service Databases page', async ({
-      page,
-    }) => {
-      await page.goto(`/service/databaseServices/${databaseFqn}/databases`);
-      await testPaginationNavigation(
-        page,
-        '/api/v1/databases',
-        '[data-testid="service-children-table"]'
-      );
+    test(
+      'should test pagination on Service Databases page',
+      migratedTo.browser(
+        'src/pages/ServiceDetailsPage/ServiceDatabases.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(`/service/databaseServices/${databaseFqn}/databases`);
+        await testPaginationNavigation(
+          page,
+          '/api/v1/databases',
+          '[data-testid="service-children-table"]'
+        );
 
-      const responsePromise = page.waitForResponse((response) =>
-        response
-          .url()
-          .includes(
-            '/api/v1/analytics/dataInsights/system/charts/listChartData'
-          )
-      );
-      await page.getByTestId('insights').click();
-      const response = await responsePromise;
-      expect(response.status()).toBe(200);
-      await expect(
-        page
-          .getByTestId('total-data-assets-widget')
-          .locator('.total-data-assets-loader')
-      ).toHaveCount(0);
+        const responsePromise = page.waitForResponse((response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/analytics/dataInsights/system/charts/listChartData'
+            )
+        );
+        await page.getByTestId('insights').click();
+        const response = await responsePromise;
+        expect(response.status()).toBe(200);
+        await expect(
+          page
+            .getByTestId('total-data-assets-widget')
+            .locator('.total-data-assets-loader')
+        ).toHaveCount(0);
 
-      const databaseResponsePromise = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/databases')
-      );
-      await page.getByTestId('databases').click();
-      const response2 = await databaseResponsePromise;
-      expect(response2.status()).toBe(200);
-      await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('table-container').waitFor({
-        state: 'visible',
-      });
+        const databaseResponsePromise = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/databases')
+        );
+        await page.getByTestId('databases').click();
+        const response2 = await databaseResponsePromise;
+        expect(response2.status()).toBe(200);
+        await waitForAllLoadersToDisappear(page);
+        await page.getByTestId('table-container').waitFor({
+          state: 'visible',
+        });
 
-      const paginationText = page
-        .getByRole('tabpanel')
-        .getByTestId('pagination')
-        .getByTestId('page-indicator');
-      await expect(paginationText).toBeVisible();
+        const paginationText = page
+          .getByRole('tabpanel')
+          .getByTestId('pagination')
+          .getByTestId('page-indicator');
+        await expect(paginationText).toBeVisible();
 
-      const paginationTextContent = await paginationText.textContent();
-      expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
-    });
-    test('should test Service Database Tables complete flow with search', async ({
-      page,
-    }) => {
-      test.slow(true);
+        const paginationTextContent = await paginationText.textContent();
+        expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
+      }
+    );
+    test(
+      'should test Service Database Tables complete flow with search',
+      migratedTo.browser(
+        'src/pages/ServiceDetailsPage/ServiceDatabases.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      await testCompletePaginationWithSearch({
-        page,
-        baseUrl: `/service/databaseServices/${databaseFqn}/databases`,
-        normalApiPattern: '/api/v1/databases',
-        searchApiPattern: '/api/v1/search/query',
-        searchTestTerm: 'pw',
-        searchParamName: 'schema',
-        waitForLoadSelector: '[data-testid="service-children-table"]',
-      });
-    });
+        await testCompletePaginationWithSearch({
+          page,
+          baseUrl: `/service/databaseServices/${databaseFqn}/databases`,
+          normalApiPattern: '/api/v1/databases',
+          searchApiPattern: '/api/v1/search/query',
+          searchTestTerm: 'pw',
+          searchParamName: 'schema',
+          waitForLoadSelector: '[data-testid="service-children-table"]',
+        });
+      }
+    );
   });
 
   test.describe('Pagination tests for Classification Tags page', () => {
@@ -337,16 +364,18 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test pagination on Classification Tags page', async ({
-      page,
-    }) => {
-      await page.goto(`/tags/${classification.responseData.name}`);
-      await testPaginationNavigation(
-        page,
-        '/api/v1/tags',
-        '[data-testid="table"]'
-      );
-    });
+    test(
+      'should test pagination on Classification Tags page',
+      migratedTo.browser('src/pages/TagsPage/TagsPage.browser.test.tsx'),
+      async ({ page }) => {
+        await page.goto(`/tags/${classification.responseData.name}`);
+        await testPaginationNavigation(
+          page,
+          '/api/v1/tags',
+          '[data-testid="table"]'
+        );
+      }
+    );
   });
 
   test.describe('Pagination tests for Metrics page', () => {
@@ -372,9 +401,15 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test pagination on Metrics page', async ({ page }) => {
-      await testMetricsPaginationNavigation(page);
-    });
+    test(
+      'should test pagination on Metrics page',
+      migratedTo.browser(
+        'src/pages/MetricsPage/MetricListPage/MetricListPage.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await testMetricsPaginationNavigation(page);
+      }
+    );
   });
 
   test.describe('Pagination tests for Notification Alerts page', () => {
@@ -418,19 +453,23 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test pagination on Notification Alerts page', async ({
-      page,
-    }) => {
-      await page.goto('/settings/notifications/alerts');
-      // Skip row count validation because ActivityFeedAlert system alert is added on page 1
-      await testPaginationNavigation(
-        page,
-        '/api/v1/events/subscriptions',
-        'table',
-        true,
-        false
-      );
-    });
+    test(
+      'should test pagination on Notification Alerts page',
+      migratedTo.browser(
+        'src/pages/NotificationListPage/NotificationListPage.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto('/settings/notifications/alerts');
+        // Skip row count validation because ActivityFeedAlert system alert is added on page 1
+        await testPaginationNavigation(
+          page,
+          '/api/v1/events/subscriptions',
+          'table',
+          true,
+          false
+        );
+      }
+    );
   });
 
   test.describe('Pagination tests for Observability Alerts page', () => {
@@ -474,17 +513,21 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test pagination on Observability Alerts page', async ({
-      page,
-    }) => {
-      await page.goto('/observability/alerts?pageSize=15');
+    test(
+      'should test pagination on Observability Alerts page',
+      migratedTo.browser(
+        'src/pages/ObservabilityAlertsPage/ObservabilityAlertsPage.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto('/observability/alerts?pageSize=15');
 
-      await testPaginationNavigation(
-        page,
-        '/api/v1/events/subscriptions',
-        'table'
-      );
-    });
+        await testPaginationNavigation(
+          page,
+          '/api/v1/events/subscriptions',
+          'table'
+        );
+      }
+    );
   });
 
   test.describe('Pagination tests for API Collection Endpoints page', () => {
@@ -519,29 +562,39 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test API Collection normal pagination', async ({ page }) => {
-      await page.goto(`/apiCollection/${apiCollectionFqn}?pageSize=15`);
-      await testPaginationNavigation(
-        page,
-        '/api/v1/apiEndpoints',
-        '[data-testid="databaseSchema-tables"]'
-      );
-    });
+    test(
+      'should test API Collection normal pagination',
+      migratedTo.browser(
+        'src/pages/APICollectionPage/APIEndpointsTab.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(`/apiCollection/${apiCollectionFqn}?pageSize=15`);
+        await testPaginationNavigation(
+          page,
+          '/api/v1/apiEndpoints',
+          '[data-testid="databaseSchema-tables"]'
+        );
+      }
+    );
 
-    test('should test API Collection complete flow with search', async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(
+      'should test API Collection complete flow with search',
+      migratedTo.browser(
+        'src/pages/APICollectionPage/APIEndpointsTab.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      await testCompletePaginationWithSearch({
-        page,
-        baseUrl: `/apiCollection/${apiCollectionFqn}?showDeletedEndpoints=false`,
-        normalApiPattern: '/api/v1/apiEndpoints',
-        searchApiPattern: '/api/v1/search/query',
-        searchTestTerm: 'pw',
-        waitForLoadSelector: '[data-testid="databaseSchema-tables"]',
-      });
-    });
+        await testCompletePaginationWithSearch({
+          page,
+          baseUrl: `/apiCollection/${apiCollectionFqn}?showDeletedEndpoints=false`,
+          normalApiPattern: '/api/v1/apiEndpoints',
+          searchApiPattern: '/api/v1/search/query',
+          searchTestTerm: 'pw',
+          waitForLoadSelector: '[data-testid="databaseSchema-tables"]',
+        });
+      }
+    );
   });
 
   test.describe('Pagination tests for Stored Procedures page', () => {
@@ -577,52 +630,60 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test Stored Procedures normal pagination', async ({
-      page,
-    }) => {
-      await page.goto(
-        `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`
-      );
-      await testPaginationNavigation(
-        page,
-        '/api/v1/storedProcedures',
-        '[data-testid="stored-procedure-table"]'
-      );
-      const responsePromise = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/tables')
-      );
-      await page.getByTestId('table').click();
-      const response = await responsePromise;
-      expect(response.status()).toBe(200);
-      await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('stored_procedure').click();
-      await page.waitForLoadState('domcontentloaded');
-      const paginationText = page
-        .getByRole('tabpanel')
-        .getByTestId('pagination')
-        .getByTestId('page-indicator');
-      await expect(paginationText).toBeVisible();
+    test(
+      'should test Stored Procedures normal pagination',
+      migratedTo.browser(
+        'src/pages/StoredProcedure/StoredProcedureTab.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(
+          `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`
+        );
+        await testPaginationNavigation(
+          page,
+          '/api/v1/storedProcedures',
+          '[data-testid="stored-procedure-table"]'
+        );
+        const responsePromise = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/tables')
+        );
+        await page.getByTestId('table').click();
+        const response = await responsePromise;
+        expect(response.status()).toBe(200);
+        await waitForAllLoadersToDisappear(page);
+        await page.getByTestId('stored_procedure').click();
+        await page.waitForLoadState('domcontentloaded');
+        const paginationText = page
+          .getByRole('tabpanel')
+          .getByTestId('pagination')
+          .getByTestId('page-indicator');
+        await expect(paginationText).toBeVisible();
 
-      const paginationTextContent = await paginationText.textContent();
-      expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
-    });
+        const paginationTextContent = await paginationText.textContent();
+        expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
+      }
+    );
 
-    test('should test Stored Procedures complete flow with search', async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(
+      'should test Stored Procedures complete flow with search',
+      migratedTo.browser(
+        'src/pages/StoredProcedure/StoredProcedureTab.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      await testCompletePaginationWithSearch({
-        page,
-        baseUrl: `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`,
-        normalApiPattern: '/api/v1/storedProcedures',
-        searchApiPattern: '/api/v1/search/query',
-        searchTestTerm: 'pw',
-        searchParamName: 'schema',
-        waitForLoadSelector: '[data-testid="stored-procedure-table"]',
-        deleteBtnTestId: 'show-deleted-stored-procedure',
-      });
-    });
+        await testCompletePaginationWithSearch({
+          page,
+          baseUrl: `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`,
+          normalApiPattern: '/api/v1/storedProcedures',
+          searchApiPattern: '/api/v1/search/query',
+          searchTestTerm: 'pw',
+          searchParamName: 'schema',
+          waitForLoadSelector: '[data-testid="stored-procedure-table"]',
+          deleteBtnTestId: 'show-deleted-stored-procedure',
+        });
+      }
+    );
   });
 
   test.describe('Pagination tests for Database Schemas page', () => {
@@ -655,30 +716,40 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test Database Schemas normal pagination', async ({ page }) => {
-      await page.goto(`/database/${databaseFqn}?pageSize=15`);
-      await testPaginationNavigation(
-        page,
-        '/api/v1/databaseSchemas',
-        '[data-testid="database-databaseSchemas"]'
-      );
-    });
+    test(
+      'should test Database Schemas normal pagination',
+      migratedTo.browser(
+        'src/pages/DatabaseDetailsPage/DatabaseSchemaTable.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(`/database/${databaseFqn}?pageSize=15`);
+        await testPaginationNavigation(
+          page,
+          '/api/v1/databaseSchemas',
+          '[data-testid="database-databaseSchemas"]'
+        );
+      }
+    );
 
-    test('should test Database Schemas complete flow with search', async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(
+      'should test Database Schemas complete flow with search',
+      migratedTo.browser(
+        'src/pages/DatabaseDetailsPage/DatabaseSchemaTable.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      await testCompletePaginationWithSearch({
-        page,
-        baseUrl: `/database/${databaseFqn}?showDeletedTables=false`,
-        normalApiPattern: '/api/v1/databaseSchemas',
-        searchApiPattern: '/api/v1/search/query',
-        searchTestTerm: 'pw',
-        searchParamName: 'schema',
-        waitForLoadSelector: '[data-testid="database-databaseSchemas"]',
-      });
-    });
+        await testCompletePaginationWithSearch({
+          page,
+          baseUrl: `/database/${databaseFqn}?showDeletedTables=false`,
+          normalApiPattern: '/api/v1/databaseSchemas',
+          searchApiPattern: '/api/v1/search/query',
+          searchTestTerm: 'pw',
+          searchParamName: 'schema',
+          waitForLoadSelector: '[data-testid="database-databaseSchemas"]',
+        });
+      }
+    );
   });
 
   test.describe('Pagination tests for Dashboard Data Models page', () => {
@@ -721,49 +792,59 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test Data Models normal pagination', async ({ page }) => {
-      await page.goto(
-        `/service/dashboardServices/${serviceFqn}/data-model?pageSize=15`
-      );
-      await testPaginationNavigation(
-        page,
-        '/api/v1/dashboard/datamodels',
-        '[data-testid="data-models-table"]'
-      );
-      const responsePromise = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/dashboard/datamodels')
-      );
-      await page.getByTestId('dashboards').click();
-      const response = await responsePromise;
-      expect(response.status()).toBe(200);
-      await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('data-model').click();
-      await page.waitForLoadState('domcontentloaded');
-      const paginationText = page
-        .getByRole('tabpanel')
-        .getByTestId('pagination')
-        .getByTestId('page-indicator');
-      await expect(paginationText).toBeVisible();
+    test(
+      'should test Data Models normal pagination',
+      migratedTo.browser(
+        'src/pages/ServiceDetailsPage/ServiceDataModels.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(
+          `/service/dashboardServices/${serviceFqn}/data-model?pageSize=15`
+        );
+        await testPaginationNavigation(
+          page,
+          '/api/v1/dashboard/datamodels',
+          '[data-testid="data-models-table"]'
+        );
+        const responsePromise = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/dashboard/datamodels')
+        );
+        await page.getByTestId('dashboards').click();
+        const response = await responsePromise;
+        expect(response.status()).toBe(200);
+        await waitForAllLoadersToDisappear(page);
+        await page.getByTestId('data-model').click();
+        await page.waitForLoadState('domcontentloaded');
+        const paginationText = page
+          .getByRole('tabpanel')
+          .getByTestId('pagination')
+          .getByTestId('page-indicator');
+        await expect(paginationText).toBeVisible();
 
-      const paginationTextContent = await paginationText.textContent();
-      expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
-    });
+        const paginationTextContent = await paginationText.textContent();
+        expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
+      }
+    );
 
-    test('should test Data Models complete flow with search', async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(
+      'should test Data Models complete flow with search',
+      migratedTo.browser(
+        'src/pages/ServiceDetailsPage/ServiceDataModels.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      await testCompletePaginationWithSearch({
-        page,
-        baseUrl: `/service/dashboardServices/${serviceFqn}/data-model?pageSize=15`,
-        normalApiPattern: '/api/v1/dashboard/datamodels',
-        searchApiPattern: '/api/v1/search/query',
-        searchTestTerm: 'pw',
-        searchParamName: 'dataModel',
-        waitForLoadSelector: '[data-testid="data-models-table"]',
-      });
-    });
+        await testCompletePaginationWithSearch({
+          page,
+          baseUrl: `/service/dashboardServices/${serviceFqn}/data-model?pageSize=15`,
+          normalApiPattern: '/api/v1/dashboard/datamodels',
+          searchApiPattern: '/api/v1/search/query',
+          searchTestTerm: 'pw',
+          searchParamName: 'dataModel',
+          waitForLoadSelector: '[data-testid="data-models-table"]',
+        });
+      }
+    );
   });
 
   test.describe('Pagination tests for Drive Service Directories page', () => {
@@ -796,32 +877,42 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test Directories normal pagination', async ({ page }) => {
-      await page.goto(
-        `/service/driveServices/${serviceFqn}/directories?pageSize=15`
-      );
-      await testPaginationNavigation(
-        page,
-        '/api/v1/drives/directories',
-        '[data-testid="service-children-table"]'
-      );
-    });
+    test(
+      'should test Directories normal pagination',
+      migratedTo.browser(
+        'src/pages/ServiceDetailsPage/DriveServiceDirectories.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(
+          `/service/driveServices/${serviceFqn}/directories?pageSize=15`
+        );
+        await testPaginationNavigation(
+          page,
+          '/api/v1/drives/directories',
+          '[data-testid="service-children-table"]'
+        );
+      }
+    );
 
-    test('should test Directories complete flow with search', async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(
+      'should test Directories complete flow with search',
+      migratedTo.browser(
+        'src/pages/ServiceDetailsPage/DriveServiceDirectories.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      await testCompletePaginationWithSearch({
-        page,
-        baseUrl: `/service/driveServices/${serviceFqn}/directories?showDeletedTables=false`,
-        normalApiPattern: '/api/v1/drives/directories',
-        searchApiPattern: '/api/v1/search/query',
-        searchTestTerm: 'pw',
-        searchParamName: 'schema',
-        waitForLoadSelector: '[data-testid="service-children-table"]',
-      });
-    });
+        await testCompletePaginationWithSearch({
+          page,
+          baseUrl: `/service/driveServices/${serviceFqn}/directories?showDeletedTables=false`,
+          normalApiPattern: '/api/v1/drives/directories',
+          searchApiPattern: '/api/v1/search/query',
+          searchTestTerm: 'pw',
+          searchParamName: 'schema',
+          waitForLoadSelector: '[data-testid="service-children-table"]',
+        });
+      }
+    );
   });
 
   test.describe('Pagination tests for Drive Service Files page', () => {
@@ -862,133 +953,153 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test Files normal pagination', async ({ page }) => {
-      await page.goto(`/service/driveServices/${serviceFqn}/files?pageSize=15`);
-      await testPaginationNavigation(page, '/api/v1/drives/files', 'table');
-    });
+    test(
+      'should test Files normal pagination',
+      migratedTo.browser(
+        'src/pages/ServiceDetailsPage/DriveServiceFiles.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(
+          `/service/driveServices/${serviceFqn}/files?pageSize=15`
+        );
+        await testPaginationNavigation(page, '/api/v1/drives/files', 'table');
+      }
+    );
 
-    test('should test Files complete flow with search', async ({ page }) => {
-      test.slow(true);
+    test(
+      'should test Files complete flow with search',
+      migratedTo.browser(
+        'src/pages/ServiceDetailsPage/DriveServiceFiles.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      await testCompletePaginationWithSearch({
-        page,
-        baseUrl: `/service/driveServices/${serviceFqn}/files?showDeletedTables=false`,
-        normalApiPattern: '/api/v1/drives/files',
-        searchApiPattern: '/api/v1/search/query',
-        searchTestTerm: 'pw',
-        searchParamName: 'file',
-        waitForLoadSelector: 'table',
-      });
-    });
+        await testCompletePaginationWithSearch({
+          page,
+          baseUrl: `/service/driveServices/${serviceFqn}/files?showDeletedTables=false`,
+          normalApiPattern: '/api/v1/drives/files',
+          searchApiPattern: '/api/v1/search/query',
+          searchTestTerm: 'pw',
+          searchParamName: 'file',
+          waitForLoadSelector: 'table',
+        });
+      }
+    );
 
-    test('should reset pagination when switching between Files and Spreadsheets tabs and also verify the api is called with correct payload', async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(
+      'should reset pagination when switching between Files and Spreadsheets tabs and also verify the api is called with correct payload',
+      migratedTo.browser(
+        'src/pages/ServiceDetailsPage/DriveServiceFiles.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      await page.goto(`/service/driveServices/${serviceFqn}/files?pageSize=15`);
-      await page.locator('table').first().waitFor({ state: 'visible' });
+        await page.goto(
+          `/service/driveServices/${serviceFqn}/files?pageSize=15`
+        );
+        await page.locator('table').first().waitFor({ state: 'visible' });
 
-      let paginationText = page
-        .getByRole('tabpanel')
-        .getByTestId('pagination')
-        .getByTestId('page-indicator');
-      await expect(paginationText).toBeVisible();
+        let paginationText = page
+          .getByRole('tabpanel')
+          .getByTestId('pagination')
+          .getByTestId('page-indicator');
+        await expect(paginationText).toBeVisible();
 
-      let paginationTextContent = await paginationText.textContent();
-      expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
+        let paginationTextContent = await paginationText.textContent();
+        expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
 
-      const nextButton = page
-        .getByRole('tabpanel')
-        .getByTestId('pagination')
-        .getByTestId('next');
-      await expect(nextButton).toBeEnabled();
+        const nextButton = page
+          .getByRole('tabpanel')
+          .getByTestId('pagination')
+          .getByTestId('next');
+        await expect(nextButton).toBeEnabled();
 
-      const filesResponsePromise = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/drives/files')
-      );
-      await nextButton.click();
-      await filesResponsePromise;
-      await page.locator('table').first().waitFor({ state: 'visible' });
+        const filesResponsePromise = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/drives/files')
+        );
+        await nextButton.click();
+        await filesResponsePromise;
+        await page.locator('table').first().waitFor({ state: 'visible' });
 
-      paginationTextContent = await paginationText.textContent();
-      expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
+        paginationTextContent = await paginationText.textContent();
+        expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
 
-      const spreadsheetsResponsePromise = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/drives/spreadsheets')
-      );
-      await page.getByTestId('spreadsheets').click();
-      const spreadsheetsResponse = await spreadsheetsResponsePromise;
+        const spreadsheetsResponsePromise = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/drives/spreadsheets')
+        );
+        await page.getByTestId('spreadsheets').click();
+        const spreadsheetsResponse = await spreadsheetsResponsePromise;
 
-      expect(spreadsheetsResponse.status()).toBe(200);
-      const spreadsheetsUrl = spreadsheetsResponse.url();
-      expect(spreadsheetsUrl).not.toContain('before=');
-      expect(spreadsheetsUrl).not.toContain('after=');
+        expect(spreadsheetsResponse.status()).toBe(200);
+        const spreadsheetsUrl = spreadsheetsResponse.url();
+        expect(spreadsheetsUrl).not.toContain('before=');
+        expect(spreadsheetsUrl).not.toContain('after=');
 
-      await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page);
 
-      const filesTabResponsePromise = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/drives/files')
-      );
-      await page.getByTestId('files').click();
-      const filesTabResponse = await filesTabResponsePromise;
-      expect(filesTabResponse.status()).toBe(200);
-      await page.locator('table').first().waitFor({ state: 'visible' });
+        const filesTabResponsePromise = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/drives/files')
+        );
+        await page.getByTestId('files').click();
+        const filesTabResponse = await filesTabResponsePromise;
+        expect(filesTabResponse.status()).toBe(200);
+        await page.locator('table').first().waitFor({ state: 'visible' });
 
-      paginationText = page
-        .getByRole('tabpanel')
-        .getByTestId('pagination')
-        .getByTestId('page-indicator');
-      await expect(paginationText).toBeVisible();
+        paginationText = page
+          .getByRole('tabpanel')
+          .getByTestId('pagination')
+          .getByTestId('page-indicator');
+        await expect(paginationText).toBeVisible();
 
-      paginationTextContent = await paginationText.textContent();
-      expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
+        paginationTextContent = await paginationText.textContent();
+        expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
 
-      const filesPage2Promise = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/drives/files')
-      );
-      await nextButton.click();
-      const filesPage2Response = await filesPage2Promise;
-      expect(filesPage2Response.status()).toBe(200);
-      await page.locator('table').first().waitFor({ state: 'visible' });
+        const filesPage2Promise = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/drives/files')
+        );
+        await nextButton.click();
+        const filesPage2Response = await filesPage2Promise;
+        expect(filesPage2Response.status()).toBe(200);
+        await page.locator('table').first().waitFor({ state: 'visible' });
 
-      paginationTextContent = await paginationText.textContent();
-      expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
+        paginationTextContent = await paginationText.textContent();
+        expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
 
-      const directoriesResponsePromise = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/drives/directories')
-      );
-      const reloadSpreadsheetsResponsePromise = page.waitForResponse(
-        (response) => response.url().includes('/api/v1/drives/spreadsheets')
-      );
+        const directoriesResponsePromise = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/drives/directories')
+        );
+        const reloadSpreadsheetsResponsePromise = page.waitForResponse(
+          (response) => response.url().includes('/api/v1/drives/spreadsheets')
+        );
 
-      await page.reload();
+        await page.reload();
 
-      const directoriesResponse = await directoriesResponsePromise;
-      const reloadSpreadsheetsResponse =
-        await reloadSpreadsheetsResponsePromise;
+        const directoriesResponse = await directoriesResponsePromise;
+        const reloadSpreadsheetsResponse =
+          await reloadSpreadsheetsResponsePromise;
 
-      expect(directoriesResponse.status()).toBe(200);
-      const directoriesUrl = directoriesResponse.url();
-      expect(directoriesUrl).not.toContain('before=');
-      expect(directoriesUrl).not.toContain('after=');
+        expect(directoriesResponse.status()).toBe(200);
+        const directoriesUrl = directoriesResponse.url();
+        expect(directoriesUrl).not.toContain('before=');
+        expect(directoriesUrl).not.toContain('after=');
 
-      expect(reloadSpreadsheetsResponse.status()).toBe(200);
-      const reloadSpreadsheetsUrl = reloadSpreadsheetsResponse.url();
-      expect(reloadSpreadsheetsUrl).not.toContain('before=');
-      expect(reloadSpreadsheetsUrl).not.toContain('after=');
+        expect(reloadSpreadsheetsResponse.status()).toBe(200);
+        const reloadSpreadsheetsUrl = reloadSpreadsheetsResponse.url();
+        expect(reloadSpreadsheetsUrl).not.toContain('before=');
+        expect(reloadSpreadsheetsUrl).not.toContain('after=');
 
-      await page.locator('table').first().waitFor({ state: 'visible' });
+        await page.locator('table').first().waitFor({ state: 'visible' });
 
-      paginationText = page
-        .getByRole('tabpanel')
-        .getByTestId('pagination')
-        .getByTestId('page-indicator');
-      await expect(paginationText).toBeVisible();
+        paginationText = page
+          .getByRole('tabpanel')
+          .getByTestId('pagination')
+          .getByTestId('page-indicator');
+        await expect(paginationText).toBeVisible();
 
-      paginationTextContent = await paginationText.textContent();
-      expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
-    });
+        paginationTextContent = await paginationText.textContent();
+        expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
+      }
+    );
   });
 
   test.describe('Pagination tests for Drive Service Spreadsheets page', () => {
@@ -1021,32 +1132,42 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test Spreadsheets normal pagination', async ({ page }) => {
-      await page.goto(
-        `/service/driveServices/${serviceFqn}/spreadsheets?pageSize=15`
-      );
-      await testPaginationNavigation(
-        page,
-        '/api/v1/drives/spreadsheets',
-        'table'
-      );
-    });
+    test(
+      'should test Spreadsheets normal pagination',
+      migratedTo.browser(
+        'src/pages/ServiceDetailsPage/DriveServiceSpreadsheets.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(
+          `/service/driveServices/${serviceFqn}/spreadsheets?pageSize=15`
+        );
+        await testPaginationNavigation(
+          page,
+          '/api/v1/drives/spreadsheets',
+          'table'
+        );
+      }
+    );
 
-    test('should test Spreadsheets complete flow with search', async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(
+      'should test Spreadsheets complete flow with search',
+      migratedTo.browser(
+        'src/pages/ServiceDetailsPage/DriveServiceSpreadsheets.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      await testCompletePaginationWithSearch({
-        page,
-        baseUrl: `/service/driveServices/${serviceFqn}/spreadsheets?showDeletedTables=false`,
-        normalApiPattern: '/api/v1/drives/spreadsheets',
-        searchApiPattern: '/api/v1/search/query',
-        searchTestTerm: 'pw',
-        searchParamName: 'spreadsheet',
-        waitForLoadSelector: 'table',
-      });
-    });
+        await testCompletePaginationWithSearch({
+          page,
+          baseUrl: `/service/driveServices/${serviceFqn}/spreadsheets?showDeletedTables=false`,
+          normalApiPattern: '/api/v1/drives/spreadsheets',
+          searchApiPattern: '/api/v1/search/query',
+          searchTestTerm: 'pw',
+          searchParamName: 'spreadsheet',
+          waitForLoadSelector: 'table',
+        });
+      }
+    );
   });
 
   test.describe('Pagination tests for Roles page', () => {
@@ -1087,10 +1208,16 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test pagination on Roles page', async ({ page }) => {
-      await page.goto('/settings/access/roles?pageSize=15');
-      await testPaginationNavigation(page, '/api/v1/roles', 'table');
-    });
+    test(
+      'should test pagination on Roles page',
+      migratedTo.browser(
+        'src/pages/RolesPage/RolesListPage/RolesListPage.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto('/settings/access/roles?pageSize=15');
+        await testPaginationNavigation(page, '/api/v1/roles', 'table');
+      }
+    );
   });
 
   test.describe('Pagination tests for Policies page', () => {
@@ -1124,10 +1251,16 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test pagination on Policies page', async ({ page }) => {
-      await page.goto('/settings/access/policies?pageSize=15');
-      await testPaginationNavigation(page, '/api/v1/policies', 'table');
-    });
+    test(
+      'should test pagination on Policies page',
+      migratedTo.browser(
+        'src/pages/PoliciesPage/PoliciesListPage/PoliciesListPage.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto('/settings/access/policies?pageSize=15');
+        await testPaginationNavigation(page, '/api/v1/policies', 'table');
+      }
+    );
   });
 
   test.describe('Pagination tests for Bots page', () => {
@@ -1154,10 +1287,14 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test pagination on Bots page', async ({ page }) => {
-      await page.goto('/settings/bots?pageSize=15');
-      await testPaginationNavigation(page, '/api/v1/bots', 'table');
-    });
+    test(
+      'should test pagination on Bots page',
+      migratedTo.browser('src/pages/BotsPageV1/BotsPageV1.browser.test.tsx'),
+      async ({ page }) => {
+        await page.goto('/settings/bots?pageSize=15');
+        await testPaginationNavigation(page, '/api/v1/bots', 'table');
+      }
+    );
   });
 
   test.describe('Pipeline Tasks page pagination', () => {
@@ -1192,37 +1329,47 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test Pipeline Tasks normal pagination', async ({ page }) => {
-      await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`);
-      await testClientSidePaginationNavigation(
-        page,
-        '[data-testid="task-table"]'
-      );
-    });
+    test(
+      'should test Pipeline Tasks normal pagination',
+      migratedTo.browser(
+        'src/pages/PipelineDetails/PipelineTasks.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`);
+        await testClientSidePaginationNavigation(
+          page,
+          '[data-testid="task-table"]'
+        );
+      }
+    );
 
-    test('should display at most pageSize rows on each page and total matches task count', async ({
-      page,
-    }) => {
-      await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`);
-      await page.locator('[data-testid="task-table"]').waitFor({
-        state: 'visible',
-      });
-      await waitForAllLoadersToDisappear(page);
+    test(
+      'should display at most pageSize rows on each page and total matches task count',
+      migratedTo.browser(
+        'src/pages/PipelineDetails/PipelineTasks.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`);
+        await page.locator('[data-testid="task-table"]').waitFor({
+          state: 'visible',
+        });
+        await waitForAllLoadersToDisappear(page);
 
-      const page1RowCount = await page
-        .locator('tbody > tr[data-row-key]:visible')
-        .count();
-      expect(page1RowCount).toBeLessThanOrEqual(15);
+        const page1RowCount = await page
+          .locator('tbody > tr[data-row-key]:visible')
+          .count();
+        expect(page1RowCount).toBeLessThanOrEqual(15);
 
-      await page.getByTestId('next').click();
-      await waitForAllLoadersToDisappear(page);
+        await page.getByTestId('next').click();
+        await waitForAllLoadersToDisappear(page);
 
-      const page2RowCount = await page
-        .locator('tbody > tr[data-row-key]:visible')
-        .count();
-      expect(page2RowCount).toBeLessThanOrEqual(15);
-      expect(page1RowCount + page2RowCount).toBe(20);
-    });
+        const page2RowCount = await page
+          .locator('tbody > tr[data-row-key]:visible')
+          .count();
+        expect(page2RowCount).toBeLessThanOrEqual(15);
+        expect(page1RowCount + page2RowCount).toBe(20);
+      }
+    );
   });
 
   test.describe('Table version page column pagination', () => {
@@ -1260,35 +1407,43 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test pagination on Table version page columns', async ({
-      page,
-    }) => {
-      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`);
-      await testClientSidePaginationNavigation(
-        page,
-        '[data-testid="entity-table"]'
-      );
-    });
+    test(
+      'should test pagination on Table version page columns',
+      migratedTo.browser(
+        'src/pages/EntityVersionPage/TableVersionColumns.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`);
+        await testClientSidePaginationNavigation(
+          page,
+          '[data-testid="entity-table"]'
+        );
+      }
+    );
 
-    test('should test search on Table version page columns', async ({
-      page,
-    }) => {
-      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`);
-      await page.locator('[data-testid="entity-table"]').waitFor({
-        state: 'visible',
-      });
-      await waitForAllLoadersToDisappear(page);
+    test(
+      'should test search on Table version page columns',
+      migratedTo.browser(
+        'src/pages/EntityVersionPage/TableVersionColumns.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`);
+        await page.locator('[data-testid="entity-table"]').waitFor({
+          state: 'visible',
+        });
+        await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('searchbar').fill('version_col_01');
+        await page.getByTestId('searchbar').fill('version_col_01');
 
-      // Search is client-side with a 500ms debounce — wait for the DOM to reflect
-      await expect(
-        page.getByTestId('entity-table').getByRole('row')
-      ).toHaveCount(2, { timeout: 3000 });
-      await expect(
-        page.getByTestId('entity-table').getByText('version_col_01')
-      ).toBeVisible();
-    });
+        // Search is client-side with a 500ms debounce — wait for the DOM to reflect
+        await expect(
+          page.getByTestId('entity-table').getByRole('row')
+        ).toHaveCount(2, { timeout: 3000 });
+        await expect(
+          page.getByTestId('entity-table').getByText('version_col_01')
+        ).toBeVisible();
+      }
+    );
   });
 
   test.describe('Pagination tests for Service version page', () => {
@@ -1320,13 +1475,19 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test pagination on Service version page', async ({ page }) => {
-      // Go to version 0.1 of the dashboard service
-      await page.goto(
-        `/service/dashboardServices/${serviceFqn}/versions/0.1?pageSize=15`
-      );
-      await testPaginationNavigation(page, '/api/v1/dashboards', 'table');
-    });
+    test(
+      'should test pagination on Service version page',
+      migratedTo.browser(
+        'src/pages/ServiceVersionPage/ServiceVersionPage.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        // Go to version 0.1 of the dashboard service
+        await page.goto(
+          `/service/dashboardServices/${serviceFqn}/versions/0.1?pageSize=15`
+        );
+        await testPaginationNavigation(page, '/api/v1/dashboards', 'table');
+      }
+    );
   });
 
   test.describe('Pagination tests for Impact Analysis page', () => {
@@ -1373,116 +1534,126 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should reset Impact Analysis table pagination to page 1 on search change', async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(
+      'should reset Impact Analysis table pagination to page 1 on search change',
+      migratedTo.browser(
+        'src/components/LineageTable/ImpactAnalysisPagination.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      // ?pageSize=15 makes showPagination=true (16 nodes > 15) and allows
-      // navigating to page 2 before applying the search.
-      const impactAnalysisUrl = `/table/${encodeURIComponent(
-        sourceFqn
-      )}/lineage?mode=impact_analysis&dir=Downstream&depth=1&pageSize=15`;
+        // ?pageSize=15 makes showPagination=true (16 nodes > 15) and allows
+        // navigating to page 2 before applying the search.
+        const impactAnalysisUrl = `/table/${encodeURIComponent(
+          sourceFqn
+        )}/lineage?mode=impact_analysis&dir=Downstream&depth=1&pageSize=15`;
 
-      await page.goto(impactAnalysisUrl);
-      await page
-        .locator('[data-testid="lineage-card-table"]')
-        .waitFor({ state: 'visible' });
-      await waitForAllLoadersToDisappear(page);
+        await page.goto(impactAnalysisUrl);
+        await page
+          .locator('[data-testid="lineage-card-table"]')
+          .waitFor({ state: 'visible' });
+        await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByTestId('previous')).toBeDisabled();
-      await expect(
-        page.locator('[data-testid="page-indicator"]')
-      ).toContainText('1');
+        await expect(page.getByTestId('previous')).toBeDisabled();
+        await expect(
+          page.locator('[data-testid="page-indicator"]')
+        ).toContainText('1');
 
-      // Navigate to page 2
-      const page2Response = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/lineage/getLineageByEntityCount')
-      );
-      await page.getByTestId('next').click();
-      await page2Response;
-      await waitForAllLoadersToDisappear(page);
+        // Navigate to page 2
+        const page2Response = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/lineage/getLineageByEntityCount')
+        );
+        await page.getByTestId('next').click();
+        await page2Response;
+        await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByTestId('previous')).toBeEnabled();
-      await expect(
-        page.locator('[data-testid="page-indicator"]')
-      ).toContainText('2');
+        await expect(page.getByTestId('previous')).toBeEnabled();
+        await expect(
+          page.locator('[data-testid="page-indicator"]')
+        ).toContainText('2');
 
-      // Type in the search box — fix #32632: handleSearchValueChange calls
-      // handlePageChange(1) before setSearchValue so the fetch uses from=0.
-      const searchResetResponse = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/lineage/getLineageByEntityCount')
-      );
-      await page.getByTestId('searchbar').fill('pw-table');
-      await searchResetResponse;
-      await waitForAllLoadersToDisappear(page);
+        // Type in the search box — fix #32632: handleSearchValueChange calls
+        // handlePageChange(1) before setSearchValue so the fetch uses from=0.
+        const searchResetResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/lineage/getLineageByEntityCount')
+        );
+        await page.getByTestId('searchbar').fill('pw-table');
+        await searchResetResponse;
+        await waitForAllLoadersToDisappear(page);
 
-      // Pagination must have reset to page 1.
-      await expect(page.getByTestId('previous')).toBeDisabled();
-      await expect(
-        page.locator('[data-testid="page-indicator"]')
-      ).toContainText('1');
-    });
+        // Pagination must have reset to page 1.
+        await expect(page.getByTestId('previous')).toBeDisabled();
+        await expect(
+          page.locator('[data-testid="page-indicator"]')
+        ).toContainText('1');
+      }
+    );
 
-    test('should reset Impact Analysis table pagination to page 1 on quick filter change', async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(
+      'should reset Impact Analysis table pagination to page 1 on quick filter change',
+      migratedTo.browser(
+        'src/components/LineageTable/ImpactAnalysisPagination.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      const impactAnalysisUrl = `/table/${encodeURIComponent(
-        sourceFqn
-      )}/lineage?mode=impact_analysis&dir=Downstream&depth=1&pageSize=15`;
+        const impactAnalysisUrl = `/table/${encodeURIComponent(
+          sourceFqn
+        )}/lineage?mode=impact_analysis&dir=Downstream&depth=1&pageSize=15`;
 
-      await page.goto(impactAnalysisUrl);
-      await page
-        .locator('[data-testid="lineage-card-table"]')
-        .waitFor({ state: 'visible' });
-      await waitForAllLoadersToDisappear(page);
+        await page.goto(impactAnalysisUrl);
+        await page
+          .locator('[data-testid="lineage-card-table"]')
+          .waitFor({ state: 'visible' });
+        await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByTestId('previous')).toBeDisabled();
+        await expect(page.getByTestId('previous')).toBeDisabled();
 
-      // Navigate to page 2
-      const page2Response = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/lineage/getLineageByEntityCount')
-      );
-      await page.getByTestId('next').click();
-      await page2Response;
-      await waitForAllLoadersToDisappear(page);
+        // Navigate to page 2
+        const page2Response = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/lineage/getLineageByEntityCount')
+        );
+        await page.getByTestId('next').click();
+        await page2Response;
+        await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page.locator('[data-testid="page-indicator"]')
-      ).toContainText('2');
+        await expect(
+          page.locator('[data-testid="page-indicator"]')
+        ).toContainText('2');
 
-      // Open quick filters and pick a service type — all 16 downstream tables
-      // share the same Mysql service, so results stay ≥15 after filtering.
-      // Fix #32632: handleQuickFiltersValueSelect calls onPageReset() which
-      // resets currentPage to 1 before the narrowed fetch is issued.
-      await page.getByTestId('filters-button').click();
-      await page.getByTestId('search-dropdown-Service Type').click();
+        // Open quick filters and pick a service type — all 16 downstream tables
+        // share the same Mysql service, so results stay ≥15 after filtering.
+        // Fix #32632: handleQuickFiltersValueSelect calls onPageReset() which
+        // resets currentPage to 1 before the narrowed fetch is issued.
+        await page.getByTestId('filters-button').click();
+        await page.getByTestId('search-dropdown-Service Type').click();
 
-      // The option row's data-testid is the lowercased service-type key
-      // ('mysql'); the visible label is source-cased ('Mysql'), so match the
-      // stable testid rather than the label.
-      const mysqlOption = page
-        .getByTestId('drop-down-menu')
-        .getByTestId('mysql');
-      await expect(mysqlOption).toBeVisible();
-      await mysqlOption.click();
+        // The option row's data-testid is the lowercased service-type key
+        // ('mysql'); the visible label is source-cased ('Mysql'), so match the
+        // stable testid rather than the label.
+        const mysqlOption = page
+          .getByTestId('drop-down-menu')
+          .getByTestId('mysql');
+        await expect(mysqlOption).toBeVisible();
+        await mysqlOption.click();
 
-      const filterResetResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
-          response.request().method() === 'GET'
-      );
-      await page.getByTestId('update-btn').click();
-      await filterResetResponse;
-      await waitForAllLoadersToDisappear(page);
+        const filterResetResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes('/api/v1/lineage/getLineageByEntityCount') &&
+            response.request().method() === 'GET'
+        );
+        await page.getByTestId('update-btn').click();
+        await filterResetResponse;
+        await waitForAllLoadersToDisappear(page);
 
-      // Pagination must have reset to page 1.
-      await expect(page.getByTestId('previous')).toBeDisabled();
-      await expect(
-        page.locator('[data-testid="page-indicator"]')
-      ).toContainText('1');
-    });
+        // Pagination must have reset to page 1.
+        await expect(page.getByTestId('previous')).toBeDisabled();
+        await expect(
+          page.locator('[data-testid="page-indicator"]')
+        ).toContainText('1');
+      }
+    );
   });
 });
