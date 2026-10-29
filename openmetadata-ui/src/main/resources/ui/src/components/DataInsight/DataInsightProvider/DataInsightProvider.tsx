@@ -13,8 +13,6 @@
 import { isEmpty, isEqual, uniqBy } from 'lodash';
 import { DateRangeObject } from 'Models';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import Loader from '../../common/Loader/Loader';
-import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { INITIAL_CHART_FILTER } from '../../../constants/DataInsight.constants';
@@ -35,6 +33,8 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
 import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import Loader from '../../common/Loader/Loader';
+import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import {
   DataInsightContextType,
   DataInsightProviderProps,
