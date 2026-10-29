@@ -484,6 +484,37 @@ class TestDbtCloudMultipleJobs:
         assert dbt_files.dbt_manifest["nodes"]["model.p.orders"]["name"] == "orders_new"
 
     @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_jobs_of_one_environment_on_different_dbt_versions_fail_naming_both(self, tracked_rest):
+        """A job-level dbt version override: one manifest schema cannot validate the other's nodes."""
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={"70": {"id": 1, "job_definition_id": 70}, "71": {"id": 2, "job_definition_id": 71}},
+            artifacts_by_run={
+                1: {"manifest": {"metadata": {"dbt_schema_version": "v12"}, "nodes": {}}},
+                2: {"manifest": {"metadata": {"dbt_schema_version": "v8"}, "nodes": {}}},
+            },
+        )
+        _serve(tracked_rest, get)
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_cloud_config(job_ids="70,71")))
+
+        message = str(exc_info.value)
+        assert "[70]" in message and "[71]" in message and "v12" in message and "v8" in message
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_missing_manifest_in_a_merge_names_the_job_and_run(self, tracked_rest):
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={"70": {"id": 1, "job_definition_id": 70}, "71": {"id": 2, "job_definition_id": 71}},
+            artifacts_by_run={2: {"manifest": None}},
+        )
+        _serve(tracked_rest, get)
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_cloud_config(job_ids="70,71")))
+
+        assert "run [2] of job [71]" in str(exc_info.value)
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_an_environment_is_yielded_before_the_next_is_downloaded(self, tracked_rest):
         get, requested = _dbt_cloud_jobs_api(
             runs_by_job={"70": {"id": 1, "environment_id": 5}, "71": {"id": 2, "environment_id": 6}}

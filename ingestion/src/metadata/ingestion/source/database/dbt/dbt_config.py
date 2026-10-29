@@ -361,8 +361,8 @@ def _get_dbt_cloud_merged_files(client, config: DbtCloudConfig, job_ids: list[st
     Every job's manifest lists the whole project, but only the nodes that job compiled carry
     their SQL, and only a job running `docs generate` has a catalog. Processed one by one, a
     partial job would blank out what a full one wrote, so the artifacts are merged into one
-    set per dbt Cloud environment. Environments stay apart: they build into different schemas
-    and may pin different dbt versions. ADR:2026-10-29-dbt-cloud-multi-job-artifacts-merge-per-environment
+    set per dbt Cloud environment. Environments stay apart: they build into different schemas.
+    ADR:2026-10-29-dbt-cloud-multi-job-artifacts-merge-per-environment
 
     Only a job that never completed a run is skipped. Any other failure stops the run, since
     merging without that job's artifacts would blank the models only it compiled.
@@ -386,8 +386,25 @@ def _get_dbt_cloud_merged_files(client, config: DbtCloudConfig, job_ids: list[st
         runs.sort(key=lambda run: run.get("finished_at") or "", reverse=True)
         merged = _get_dbt_cloud_run_files(client, config, runs[0], strict=True)
         for run in runs[1:]:
-            _merge_dbt_files(merged, _get_dbt_cloud_run_files(client, config, run, strict=True))
+            dbt_files = _get_dbt_cloud_run_files(client, config, run, strict=True)
+            _check_same_manifest_schema(merged, runs[0], dbt_files, run)
+            _merge_dbt_files(merged, dbt_files)
         yield merged
+
+
+def _check_same_manifest_schema(merged: DbtFiles, merged_run: dict, dbt_files: DbtFiles, run: dict) -> None:
+    """
+    A job can override its environment's dbt version, and the manifest parser validates every
+    node against the one schema version the merged manifest declares
+    """
+    merged_version = (merged.dbt_manifest.get("metadata") or {}).get("dbt_schema_version")
+    version = (dbt_files.dbt_manifest.get("metadata") or {}).get("dbt_schema_version")
+    if merged_version != version:
+        raise DBTConfigException(
+            f"dbt Cloud jobs [{merged_run.get('job_definition_id')}] and [{run.get('job_definition_id')}] share "
+            f"an environment but wrote different manifest versions ({merged_version} and {version}), so their "
+            "artifacts cannot be merged. List the jobs of one dbt version in the dbt Cloud Job Ids."
+        )
 
 
 def _merge_dbt_files(target: DbtFiles, source: DbtFiles) -> None:
@@ -474,6 +491,8 @@ def _get_dbt_cloud_run_files(client, config: DbtCloudConfig, run: dict, strict: 
         except Exception as exc:
             logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog: {exc}")
             logger.debug(traceback.format_exc())
+        if dbt_catalog is None:
+            logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog")
         try:
             logger.debug("Requesting [dbt_manifest]")
             dbt_manifest = client.get(f"{artifacts_path}/{DBT_MANIFEST_FILE_NAME}")
@@ -481,6 +500,11 @@ def _get_dbt_cloud_run_files(client, config: DbtCloudConfig, run: dict, strict: 
             raise DBTConfigException(
                 f"Manifest artifact not found for run {run_id}. Please ensure the dbt job generates artifacts."
             ) from exc
+    if not dbt_manifest and strict:
+        raise DBTConfigException(
+            f"Manifest file not found in dbt Cloud for run [{run_id}] of job [{run.get('job_definition_id')}]. "
+            "Please ensure the dbt job generates artifacts."
+        )
     if not dbt_manifest:
         raise DBTConfigException(
             "Manifest file not found in dbt Cloud. Please ensure your dbt job generates artifacts."

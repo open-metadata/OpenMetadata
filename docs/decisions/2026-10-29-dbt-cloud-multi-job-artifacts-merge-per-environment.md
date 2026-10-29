@@ -25,8 +25,10 @@ model's data model written by a full one, with no SQL and no catalog columns.
   `unique_id`, and an entry with `compiled_code` beats one without it. Runs are merged newest
   first, so between two compiled entries, and between catalog entries, the newest run wins. The
   `run_results` files are concatenated (the source keeps the newest result per test).
-- Environments are never merged: they build into different schemas and may pin different dbt
-  versions.
+- Environments are never merged: they build into different schemas. A job can still override its
+  environment's dbt version; when two jobs of one environment wrote different manifest schema
+  versions, the run fails naming both jobs, since one manifest schema cannot validate the other's
+  nodes and processing them apart would bring back the overwrite above.
 - Only a job with no completed run is skipped. Any other failure on a job (auth, an exhausted
   retry, a missing manifest) fails the whole run: merging without that job's artifacts would
   overwrite the models only it compiled with no SQL. When merging, the catalog and `run_results`
