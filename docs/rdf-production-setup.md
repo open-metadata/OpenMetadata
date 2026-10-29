@@ -432,8 +432,8 @@ OpenMetadata compacts the serving dataset itself:
   `GET /$/openmetadata/storage`. When free space falls below `RDF_URGENT_COMPACTION_FREE_PERCENT`,
   or the image's write guard is refusing writes, the next check (every 15 minutes) compacts without
   waiting for the interval. If a compaction cannot bring the store back above that threshold, the
-  live graph or other datasets fill the volume: urgent compactions then wait for the next scheduled
-  compaction, and the server logs that the volume needs expanding.
+  live graph or other datasets fill the volume: urgent compactions then stop for one interval,
+  while the scheduled compaction still runs, and the server logs that the volume needs expanding.
 - **During indexing.** A recreate run clears the dataset, compacts it while it is empty, and
   compacts again after loading. When the image's write guard refuses the clear, the run compacts
   to free the old pages and clears again once, so a reindex also recovers a full volume. Blue/green
