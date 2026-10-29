@@ -18,7 +18,6 @@ import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
@@ -71,10 +70,8 @@ public sealed interface RdfLiveWrite {
           JsonUtils.readValue(relationshipJson, EntityRelationship.class);
       if (remove) {
         repository.removeRelationship(relationship);
-      } else if (relationship.getRelationshipType() == Relationship.UPSTREAM) {
-        repository.refreshLineage(relationship);
       } else {
-        repository.addRelationship(relationship);
+        repository.refreshRelationship(relationship);
       }
     }
   }
@@ -86,7 +83,7 @@ public sealed interface RdfLiveWrite {
       if (remove) {
         repository.removeGlossaryTermRelation(fromId, toId, relationType);
       } else {
-        repository.addGlossaryTermRelation(fromId, toId, relationType);
+        repository.refreshGlossaryTermRelation(fromId, toId, relationType);
       }
     }
   }

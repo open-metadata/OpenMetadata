@@ -2,9 +2,14 @@ package org.openmetadata.service.socket;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,10 +36,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
@@ -58,7 +66,6 @@ class SocketAddressFilterTest {
   @BeforeEach
   void setUp() throws Exception {
     initializeJwtTokenGenerator();
-    when(authorizerConfig.getEnableSecureSocketConnection()).thenReturn(true);
     when(authConfig.getPublicKeyUrls()).thenReturn(List.of());
     when(authConfig.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
     when(authConfig.getJwtPrincipalClaimsMapping()).thenReturn(List.of());
@@ -86,6 +93,68 @@ class SocketAddressFilterTest {
     verify(response)
         .sendError(HttpServletResponse.SC_FORBIDDEN, "Socket user does not match token");
     verify(chain, never()).doFilter(any(), any());
+  }
+
+  /**
+   * The WebSocket upgrade creator calls {@link SocketAddressFilter#authenticate} with the upgrade's
+   * servlet request: the servlet filter chain never sees an upgrade. The returned identity is what
+   * the handler stamps into the socket's connection headers, and a rejection must carry the status
+   * the upgrade is answered with.
+   */
+  @Test
+  void upgradeAuthenticationReturnsValidatedIdentity() throws Exception {
+    UUID tokenUserId = UUID.randomUUID();
+    when(request.getQueryString()).thenReturn("userId=" + tokenUserId);
+    when(request.getHeader("Authorization")).thenReturn("Bearer token");
+    mockTokenClaims("sam", "session-1");
+    when(sessionService.getFreshSessionById("session-1"))
+        .thenReturn(Optional.of(activeSession("session-1", "sam")));
+
+    HandshakeIdentity identity;
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      identity = filter.authenticate(request);
+    }
+
+    org.junit.jupiter.api.Assertions.assertEquals(tokenUserId.toString(), identity.userId());
+    org.junit.jupiter.api.Assertions.assertEquals("session-1", identity.sessionId());
+  }
+
+  @Test
+  void upgradeAuthenticationRejectsCredentiallessHandshakeWithUnauthorized() {
+    when(request.getQueryString()).thenReturn("userId=" + UUID.randomUUID());
+    when(request.getHeader("Authorization")).thenReturn(null);
+
+    HandshakeRejectedException rejected =
+        org.junit.jupiter.api.Assertions.assertThrows(
+            HandshakeRejectedException.class, () -> filter.authenticate(request));
+
+    org.junit.jupiter.api.Assertions.assertEquals(
+        HttpServletResponse.SC_UNAUTHORIZED, rejected.getStatus());
+  }
+
+  @Test
+  void upgradeAuthenticationRejectsUserIdMismatchWithForbidden() throws Exception {
+    when(request.getQueryString()).thenReturn("userId=" + UUID.randomUUID() + "&token=token");
+    when(request.getHeader("Authorization")).thenReturn(null);
+    mockTokenClaims("sam", "session-1");
+
+    HandshakeRejectedException rejected;
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(UUID.randomUUID()));
+
+      rejected =
+          org.junit.jupiter.api.Assertions.assertThrows(
+              HandshakeRejectedException.class, () -> filter.authenticate(request));
+    }
+
+    org.junit.jupiter.api.Assertions.assertEquals(
+        HttpServletResponse.SC_FORBIDDEN, rejected.getStatus());
   }
 
   @Test
@@ -169,23 +238,320 @@ class SocketAddressFilterTest {
     verify(chain, never()).doFilter(any(), any());
   }
 
+  /**
+   * Regression test: a handshake carrying neither a token nor a session cookie used to be accepted
+   * under the default socket configuration, and the caller-supplied {@code userId} query param was
+   * adopted as the socket identity — keying the socket under an arbitrary user's feed channels.
+   */
   @Test
-  void insecureSocketWithoutUserIdDoesNotAddUserIdHeader() throws Exception {
-    SocketAddressFilter insecureFilter = insecureFilter();
-    when(request.getQueryString()).thenReturn(null);
+  void credentiallessHandshakeIsRejectedAndNeverAdoptsRequestedUserId() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    UUID requestedUserId = UUID.randomUUID();
+    when(request.getQueryString()).thenReturn("userId=" + requestedUserId);
     when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    // No Authorization header and no cookies.
 
-    insecureFilter.doFilter(request, response, chain);
+    defaultFilter.doFilter(request, response, chain);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  /**
+   * Public-client SSO: the browser holds an IdP token and no session cookie, so the handshake
+   * passes the bearer token as a query param. The default configuration must authenticate it.
+   */
+  @Test
+  void queryTokenHandshakeWithoutSessionCookieIsAuthenticated() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    injectJwtFilter(defaultFilter);
+    UUID tokenUserId = UUID.randomUUID();
+    when(request.getQueryString()).thenReturn("userId=" + tokenUserId + "&token=token");
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    mockTokenClaims("sam", "session-1");
+    when(sessionService.getFreshSessionById("session-1"))
+        .thenReturn(Optional.of(activeSession("session-1", "sam")));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      defaultFilter.doFilter(request, response, chain);
+    }
 
     ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
     verify(chain).doFilter(requestCaptor.capture(), eq(response));
     HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
-    org.junit.jupiter.api.Assertions.assertNull(wrappedRequest.getHeader("UserId"));
+    org.junit.jupiter.api.Assertions.assertEquals(
+        tokenUserId.toString(), wrappedRequest.getHeader("UserId"));
   }
 
   @Test
-  void insecureSocketUsesActiveSessionUserIdWhenQueryUserIdIsMissing() throws Exception {
-    SocketAddressFilter insecureFilter = insecureFilter();
+  void queryTokenWithMismatchedUserIdIsRejected() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    injectJwtFilter(defaultFilter);
+    mockRequest("userId=" + UUID.randomUUID() + "&token=token", null);
+    mockTokenClaims("sam", "session-1");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(UUID.randomUUID()));
+
+      defaultFilter.doFilter(request, response, chain);
+    }
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_FORBIDDEN, "Socket user does not match token");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  /** A presented token must validate even when a session cookie rides along. */
+  @Test
+  void invalidQueryTokenIsRejectedEvenWithValidSessionCookie() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    injectJwtFilter(defaultFilter);
+    when(request.getQueryString()).thenReturn("token=bad-token");
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    // Lenient: the failure happens at token validation, before the cookie is consulted — a valid
+    // cookie alone must not rescue an invalid token.
+    lenient()
+        .when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, validSessionId('s'))});
+    when(jwtFilter.validateJwtAndGetClaims("bad-token"))
+        .thenThrow(new AuthenticationException("invalid token"));
+
+    defaultFilter.doFilter(request, response, chain);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  /**
+   * Regression guard for the configuration gate this change removed: the real {@link JwtFilter}
+   * the production constructor builds must reject a garbage token even with the deprecated flag
+   * explicitly off and a valid session cookie alongside. No validator is injected here.
+   */
+  @Test
+  void realValidatorRejectsInvalidTokenWithSecureSocketFlagOff() throws Exception {
+    lenient().when(authorizerConfig.getEnableSecureSocketConnection()).thenReturn(false);
+    SocketAddressFilter productionFilter =
+        new SocketAddressFilter(authConfig, authorizerConfig, sessionService);
+    when(request.getQueryString()).thenReturn("token=not-a-jwt");
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    String sessionId = validSessionId('s');
+    lenient()
+        .when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+    lenient()
+        .when(sessionService.getFreshSessionById(sessionId))
+        .thenReturn(Optional.of(activeSession(sessionId, "sam", UUID.randomUUID().toString())));
+
+    productionFilter.doFilter(request, response, chain);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(chain, never()).doFilter(any(), any());
+    verify(jwtFilter, never()).validateJwtAndGetClaims(any());
+  }
+
+  /**
+   * A field the handshake did not establish must leave the header absent on the polling path too:
+   * an external token carries no session, so a client-sent SessionId must not reach the servlet.
+   */
+  @Test
+  void clientSessionIdHeaderIsDroppedWhenTokenCarriesNoSession() throws Exception {
+    UUID tokenUserId = UUID.randomUUID();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    when(jwtFilter.validateJwtAndGetClaims("token")).thenReturn(Map.of("sub", mock(Claim.class)));
+    when(jwtFilter.resolveUserName(any())).thenReturn("sam");
+    // Lenient: with the fix the wrapper never consults the client's SessionId at all.
+    lenient().when(request.getHeader("SessionId")).thenReturn("attacker-session");
+    lenient()
+        .when(request.getHeaders("SessionId"))
+        .thenReturn(java.util.Collections.enumeration(List.of("attacker-session")));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      filter.doFilter(request, response, chain);
+    }
+
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
+    org.junit.jupiter.api.Assertions.assertNull(wrappedRequest.getHeader("SessionId"));
+    org.junit.jupiter.api.Assertions.assertEquals(
+        List.of(), java.util.Collections.list(wrappedRequest.getHeaders("SessionId")));
+    org.junit.jupiter.api.Assertions.assertEquals(
+        tokenUserId.toString(), wrappedRequest.getHeader("UserId"));
+  }
+
+  /** A cookie session keys the socket under the session's user, never a client-sent UserId. */
+  @Test
+  void clientUserIdHeaderIsReplacedBySessionUserId() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    UUID sessionUserId = UUID.randomUUID();
+    String sessionId = validSessionId('s');
+    when(request.getQueryString()).thenReturn(null);
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    lenient()
+        .when(request.getHeaders("UserId"))
+        .thenReturn(java.util.Collections.enumeration(List.of("attacker-uuid")));
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+    when(sessionService.getFreshSessionById(sessionId))
+        .thenReturn(Optional.of(activeSession(sessionId, "sam", sessionUserId.toString())));
+
+    defaultFilter.doFilter(request, response, chain);
+
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
+    org.junit.jupiter.api.Assertions.assertEquals(
+        List.of(sessionUserId.toString()),
+        java.util.Collections.list(wrappedRequest.getHeaders("UserId")));
+  }
+
+  /**
+   * A session row without a user id and no requested user id leaves nothing to key the socket
+   * under; WebSocketManager would accept and never register it, so the handshake is rejected.
+   */
+  @Test
+  void cookieSessionWithoutUserIdIsRejected() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    String sessionId = validSessionId('n');
+    when(request.getQueryString()).thenReturn(null);
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+    when(sessionService.getFreshSessionById(sessionId))
+        .thenReturn(Optional.of(activeSession(sessionId, "sam")));
+
+    defaultFilter.doFilter(request, response, chain);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  /** Externally-issued tokens carry no session claim and are accepted on token validity alone. */
+  @Test
+  void externalTokenWithoutSessionClaimIsAcceptedWithoutStoreValidation() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    injectJwtFilter(defaultFilter);
+    UUID tokenUserId = UUID.randomUUID();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    when(jwtFilter.validateJwtAndGetClaims("token")).thenReturn(Map.of("sub", mock(Claim.class)));
+    when(jwtFilter.resolveUserName(any())).thenReturn("sam");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      defaultFilter.doFilter(request, response, chain);
+    }
+
+    verify(chain).doFilter(any(), eq(response));
+    verify(sessionService, never()).getFreshSessionById(any(String.class));
+  }
+
+  /**
+   * With {@code emailClaim} configured, HTTP requests resolve the stored username from the email
+   * claim; the token carries no legacy principal claim. The handshake must bind the socket to that
+   * same identity instead of failing on the missing legacy claim.
+   */
+  @Test
+  void emailFirstTokenBindsSocketToStoredUsername() throws Exception {
+    when(authConfig.getEmailClaim()).thenReturn("email");
+    JwtFilter emailFirstJwtFilter = spy(new JwtFilter(authConfig, authorizerConfig));
+    Claim emailClaim = mock(Claim.class);
+    when(emailClaim.asString()).thenReturn("socket.user@company.com");
+    doReturn(Map.of("email", emailClaim))
+        .when(emailFirstJwtFilter)
+        .validateJwtAndGetClaims("token");
+    doNothing().when(emailFirstJwtFilter).checkValidationsForToken(any(), any(), any(), isNull());
+    SocketAddressFilter emailFirstFilter = defaultConfigFilter();
+    Field jwtFilterField = SocketAddressFilter.class.getDeclaredField("jwtFilter");
+    jwtFilterField.setAccessible(true);
+    jwtFilterField.set(emailFirstFilter, emailFirstJwtFilter);
+
+    UUID storedUserId = UUID.randomUUID();
+    UserRepository userRepository = mock(UserRepository.class);
+    when(userRepository.getActiveUserByEmailForAuth(eq("socket.user@company.com"), any()))
+        .thenReturn(new User().withName("socket.user_x7k2"));
+    mockRequest("userId=" + storedUserId + "&token=token", null);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getUserRepository).thenReturn(userRepository);
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      Entity.USER, "socket.user_x7k2", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(storedUserId));
+
+      emailFirstFilter.doFilter(request, response, chain);
+    }
+
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
+    org.junit.jupiter.api.Assertions.assertEquals(
+        storedUserId.toString(), wrappedRequest.getHeader("UserId"));
+  }
+
+  @Test
+  void sessionCookieWithoutSessionStoreIsRejected() throws Exception {
+    // Session store not yet wired (early startup): a cookie cannot be validated, fail closed.
+    SocketAddressFilter storelessFilter = new SocketAddressFilter(authConfig, authorizerConfig);
+    when(request.getQueryString()).thenReturn(null);
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, validSessionId('s'))});
+
+    storelessFilter.doFilter(request, response, chain);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  @Test
+  void tokenOnlyHandshakeWithoutSessionStoreIsAccepted() throws Exception {
+    // Session store not yet wired: the validated token principal is accepted on its own.
+    SocketAddressFilter storelessFilter = new SocketAddressFilter(authConfig, authorizerConfig);
+    Field jwtFilterField = SocketAddressFilter.class.getDeclaredField("jwtFilter");
+    jwtFilterField.setAccessible(true);
+    jwtFilterField.set(storelessFilter, jwtFilter);
+    UUID tokenUserId = UUID.randomUUID();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    mockTokenClaims("sam", "session-1");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      storelessFilter.doFilter(request, response, chain);
+    }
+
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
+    org.junit.jupiter.api.Assertions.assertEquals(
+        tokenUserId.toString(), wrappedRequest.getHeader("UserId"));
+  }
+
+  @Test
+  void defaultSocketUsesActiveSessionUserIdWhenQueryUserIdIsMissing() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
     UUID sessionUserId = UUID.randomUUID();
     String sessionId = validSessionId('s');
     when(request.getQueryString()).thenReturn(null);
@@ -195,7 +561,7 @@ class SocketAddressFilterTest {
     when(sessionService.getFreshSessionById(sessionId))
         .thenReturn(Optional.of(activeSession(sessionId, "sam", sessionUserId.toString())));
 
-    insecureFilter.doFilter(request, response, chain);
+    defaultFilter.doFilter(request, response, chain);
 
     ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
     verify(chain).doFilter(requestCaptor.capture(), eq(response));
@@ -206,8 +572,8 @@ class SocketAddressFilterTest {
   }
 
   @Test
-  void insecureSocketRejectsUserIdThatDoesNotMatchActiveSession() throws Exception {
-    SocketAddressFilter insecureFilter = insecureFilter();
+  void defaultSocketRejectsUserIdThatDoesNotMatchActiveSession() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
     UUID requestedUserId = UUID.randomUUID();
     UUID sessionUserId = UUID.randomUUID();
     String sessionId = validSessionId('m');
@@ -218,7 +584,7 @@ class SocketAddressFilterTest {
     when(sessionService.getFreshSessionById(sessionId))
         .thenReturn(Optional.of(activeSession(sessionId, "sam", sessionUserId.toString())));
 
-    insecureFilter.doFilter(request, response, chain);
+    defaultFilter.doFilter(request, response, chain);
 
     verify(response)
         .sendError(HttpServletResponse.SC_FORBIDDEN, "Socket user does not match session");
@@ -232,13 +598,11 @@ class SocketAddressFilterTest {
   }
 
   private void mockTokenClaims(String username, String sessionId) {
-    Claim usernameClaim = mock(Claim.class);
     Claim sessionClaim = mock(Claim.class);
-    when(usernameClaim.asString()).thenReturn(username);
     when(sessionClaim.asString()).thenReturn(sessionId);
     when(jwtFilter.validateJwtAndGetClaims("token"))
-        .thenReturn(Map.of("sub", usernameClaim, JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
-    when(jwtFilter.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
+        .thenReturn(Map.of(JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
+    when(jwtFilter.resolveUserName(any())).thenReturn(username);
   }
 
   private UserSession activeSession(String sessionId, String username) {
@@ -257,9 +621,14 @@ class SocketAddressFilterTest {
         .build();
   }
 
-  private SocketAddressFilter insecureFilter() {
-    when(authorizerConfig.getEnableSecureSocketConnection()).thenReturn(false);
+  private SocketAddressFilter defaultConfigFilter() {
     return new SocketAddressFilter(authConfig, authorizerConfig, sessionService);
+  }
+
+  private void injectJwtFilter(SocketAddressFilter filter) throws Exception {
+    Field jwtFilterField = SocketAddressFilter.class.getDeclaredField("jwtFilter");
+    jwtFilterField.setAccessible(true);
+    jwtFilterField.set(filter, jwtFilter);
   }
 
   private String validSessionId(char value) {
