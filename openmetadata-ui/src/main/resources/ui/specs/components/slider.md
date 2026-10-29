@@ -7,8 +7,7 @@
 | **Name** | Slider |
 | **Category** | Base / input |
 | **Status** | Stable |
-| **Styles** | [`src/styles/components/slider.less`](../../src/styles/components/slider.less) |
-| **Component** | `@openmetadata/ui-core-components` → `Slider` (new work); Ant Design `Slider` (legacy) |
+| **Component** | `@openmetadata/ui-core-components` → `Slider` |
 
 ## Overview
 
