@@ -99,6 +99,40 @@ describe('TreeSelect', () => {
     expect(fetchData).not.toHaveBeenCalled();
   });
 
+  it('focuses the search box and keeps its keys from the host when opened', async () => {
+    const onHostKeyDown = vi.fn();
+    render(
+      <div onKeyDown={onHostKeyDown}>
+        <TreeSelect
+          isOpen
+          searchable
+          data-testid="picker"
+          fetchData={fetchNodes()}
+          renderTrigger={() => <span>trigger</span>}
+        />
+      </div>
+    );
+
+    const search = await screen.findByTestId('picker-search');
+    await waitFor(() => expect(search).toHaveFocus());
+
+    fireEvent.keyDown(search, { key: 'ArrowDown' });
+
+    expect(onHostKeyDown).not.toHaveBeenCalled();
+  });
+
+  it('shows the empty state when nothing matches', async () => {
+    render(
+      <TreeSelect
+        isOpen
+        fetchData={vi.fn().mockResolvedValue({ nodes: [] })}
+        renderTrigger={() => <span>trigger</span>}
+      />
+    );
+
+    expect(await screen.findByTestId('tree-select-empty')).toBeInTheDocument();
+  });
+
   it('fetches the root when the picker first opens', async () => {
     const fetchData = fetchNodes();
     const { rerender } = renderCustomTrigger(fetchData, false);
