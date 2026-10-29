@@ -306,6 +306,7 @@ class SearchRepositoryTest {
 
     // Create a real SearchRepository instance with mocked dependencies
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     BulkSink mockBulkSink = mock(BulkSink.class);
 
     // Setup the mock to call the real method for updateEntitiesBulk
@@ -387,6 +388,7 @@ class SearchRepositoryTest {
     // Test when all entities are of the same type - should only call write once
 
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     BulkSink mockBulkSink = mock(BulkSink.class);
 
     when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
@@ -617,6 +619,7 @@ class SearchRepositoryTest {
   @Test
   void testUpdateEntitiesBulkQueuesRetryWhenBulkWriteOutcomeIsUnknown() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     BulkSink mockBulkSink = mock(BulkSink.class);
     doCallRealMethod().when(realSearchRepository).updateEntitiesBulk(any());
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
@@ -648,6 +651,7 @@ class SearchRepositoryTest {
   @Test
   void testUpdateEntitiesBulkFallsBackBeforeAnyBulkWriteIsAttempted() {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
     when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
         .thenThrow(new IllegalStateException("sink creation failed"));
@@ -664,6 +668,7 @@ class SearchRepositoryTest {
   @Test
   void testRelationshipUpdateRetainsRevisionInPreWriteFallback() {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any(), any());
     when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
         .thenThrow(new IllegalStateException("sink creation failed"));
@@ -681,6 +686,7 @@ class SearchRepositoryTest {
   @Test
   void testUpdateEntitiesBulkDoesNotReplayWritesThatCompleteDuringClose() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     BulkSink mockBulkSink = mock(BulkSink.class);
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
     when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
@@ -700,6 +706,7 @@ class SearchRepositoryTest {
   @Test
   void testUpdateEntitiesBulkDoesNotReplayPartiallyFailedBulk() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     BulkSink mockBulkSink = mock(BulkSink.class);
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
     when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))

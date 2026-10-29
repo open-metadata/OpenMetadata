@@ -168,6 +168,19 @@ public interface SearchIndex {
   }
 
   /**
+   * Fields computed on read that this index writes but that the entity reaching a live write never
+   * carries. A create, an update or a CSV import holds only what that operation loaded, so a count
+   * such as {@code childrenCount} arrives as null or as a placeholder and would be indexed as 0.
+   * {@code SearchRepository} loads these onto a copy before each such write. Each one must also be
+   * in {@link #getRequiredReindexFields()}. Safe to call on a probe instance whose entity is null.
+   *
+   * <p>ADR:2026-10-29-search-documents-load-computed-counts-on-every-write
+   */
+  default Set<String> getFieldsLoadedOnWrite() {
+    return Collections.emptySet();
+  }
+
+  /**
    * Populates common entity fields into the search index document. Called automatically by {@link
    * #buildSearchIndexDoc()} for all EntityInterface-based entities. Individual index classes should
    * NOT call this — it is handled by the framework.

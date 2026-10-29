@@ -2832,6 +2832,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     setFieldsInBulk(fields, entities);
   }
 
+  /**
+   * Loads {@code fieldNames} onto {@code entities} with the field fetchers and leaves every other
+   * field as it is, unlike {@link #setFieldsInBulk}, which clears what it was not asked for. For
+   * search documents built from entities that never carried those computed fields.
+   */
+  @SuppressWarnings("unchecked")
+  public final void loadFieldsForSearchIndex(
+      List<? extends EntityInterface<?>> entities, Set<String> fieldNames) {
+    fetchAndSetFields((List<T>) entities, getFields(String.join(",", fieldNames)));
+  }
+
   public void setFieldsInBulk(Fields fields, List<T> entities) {
     if (entities == null || entities.isEmpty()) {
       return;

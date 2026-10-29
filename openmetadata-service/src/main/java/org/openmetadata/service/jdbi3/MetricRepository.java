@@ -1738,9 +1738,6 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   public void postUpdate(Metric original, Metric updated) {
-    // childrenCount is computed on read and the update never loads it, so without this the
-    // search document re-indexes it as 0.
-    updated.setChildrenCount(getChildrenCount(updated));
     super.postUpdate(original, updated);
     refreshSearchDocument(original.getMetricGroup());
     if (!sameReferenceById(original.getMetricGroup(), updated.getMetricGroup())) {
