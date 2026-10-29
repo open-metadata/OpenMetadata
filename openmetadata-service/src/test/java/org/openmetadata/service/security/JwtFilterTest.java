@@ -463,7 +463,8 @@ class JwtFilterTest {
             false,
             null,
             null,
-            List.of("openmetadata.org"));
+            List.of("openmetadata.org"),
+            VERIFIER);
 
     // A token that carries an email outside the allowed domains is rejected.
     ContainerRequestContext outsider =
@@ -494,7 +495,8 @@ class JwtFilterTest {
             false,
             null,
             null,
-            List.of("openmetadata.org"));
+            List.of("openmetadata.org"),
+            VERIFIER);
     String subjectOnly =
         JWT.create()
             .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
