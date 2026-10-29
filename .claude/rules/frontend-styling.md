@@ -65,7 +65,7 @@ borders; `transition-shadow` won't animate them) in [`colors.md` §2.3.1](../../
   `specs/untitled/*.md` page for the component you touch.
 - **Run the audits before committing — zero errors required** (from `openmetadata-ui/src/main/resources/ui`):
   `yarn tw-audit` (TSX: hardcoded values; `tw:dark:*` is a warning), `yarn token-audit` (LESS/CSS:
-  colours and resolvable spacing fail CI) and `yarn tw-guard` (new antd imports, raw-SVG assets, `.less` files).
+  colours and resolvable spacing fail CI) and `yarn tw-guard` (raw-SVG assets, `.less` files).
   **Legacy tool caveat:** `token-audit:report` / `token-migrate` still suggest/write `--om-color-*`;
   replace colour suggestions with semantic `--tw-*` bridge vars before accepting their edits.
 
