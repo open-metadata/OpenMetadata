@@ -194,8 +194,8 @@ test.describe(
         const sql = liveData.getByTestId('ontology-live-data-sql');
 
         await test.step('Show the bound columns, the badge and no preview in OSS', async () => {
-          await expect(sql).toContainText('SELECT transfer_id, amount_usd');
-          await expect(sql).toContainText('transfers');
+          await expect(sql).toContainText('SELECT `transfer_id`, `amount_usd`');
+          await expect(sql).toContainText('`transfers`');
           await expect(sql).toContainText('LIMIT 50');
           await expect(
             liveData.getByTestId('ontology-live-data-not-stored')
@@ -221,9 +221,9 @@ test.describe(
             )
             .click();
           expect((await generated).ok()).toBe(true);
-          await expect(sql).toContainText('SELECT t1.customer_name');
+          await expect(sql).toContainText('SELECT t1.`customer_name`');
           await expect(sql).toContainText(
-            't0.customer_id = t1.customer_id -- part of'
+            't0.`customer_id` = t1.`customer_id` -- part of'
           );
           await expect(
             liveData.getByTestId('ontology-live-data-hops')

@@ -94,6 +94,9 @@ interface SearchAroundHop extends SearchAroundStep {
   readonly path: string;
 }
 
+/** The server accepts at most this many hops per query. */
+const MAX_HOPS = 5;
+
 const conceptName = (concept: OntologyConcept) =>
   concept.displayName ?? concept.name;
 
@@ -166,6 +169,9 @@ const OntologyConceptLiveData = ({
   };
 
   const renderSearchAround = () => {
+    if (hops.length >= MAX_HOPS) {
+      return null;
+    }
     if (!isPicking) {
       return (
         <Button
@@ -244,6 +250,12 @@ const OntologyConceptLiveData = ({
           }
           onClick={() => onCopyToClipBoard(sql)}
         />
+        <span
+          aria-live="polite"
+          className="tw:sr-only"
+          data-testid="ontology-live-data-copy-status">
+          {hasCopied ? t('label.copied') : ''}
+        </span>
       </Box>
       {hops.length > 0 ? (
         <Box
