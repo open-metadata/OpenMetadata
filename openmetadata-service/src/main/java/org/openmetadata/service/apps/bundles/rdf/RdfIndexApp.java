@@ -46,6 +46,7 @@ import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.rdf.storage.CompactionResult;
+import org.openmetadata.service.rdf.storage.RdfStorageLowDiskException;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.quartz.JobExecutionContext;
@@ -718,12 +719,27 @@ public class RdfIndexApp extends AbstractNativeApplication {
    */
   private static void resetServingDataset(final RdfRepository holder) {
     try {
-      holder.clearAllAsMaintenance(holder.maintenanceBudget());
+      clearMakingRoom(holder);
     } finally {
       holder.compact(holder.maintenanceBudget());
     }
     LOG.info("Cleared all RDF data");
     holder.reloadOntologies();
+  }
+
+  /**
+   * A reindex is how a store is recovered, so it has to work on a full volume too: when Fuseki's
+   * disk guard refuses the clear, a compaction frees the space old pages hold and the clear runs
+   * again once. A second refusal means the live data itself fills the volume.
+   */
+  private static void clearMakingRoom(final RdfRepository holder) {
+    try {
+      holder.clearAllAsMaintenance(holder.maintenanceBudget());
+    } catch (RdfStorageLowDiskException lowDisk) {
+      LOG.warn("The RDF store refused the reindex clear for low disk; compacting, then retrying");
+      holder.compact(holder.maintenanceBudget());
+      holder.clearAllAsMaintenance(holder.maintenanceBudget());
+    }
   }
 
   private void reindex(final RdfRepository indexingRepository) throws InterruptedException {
