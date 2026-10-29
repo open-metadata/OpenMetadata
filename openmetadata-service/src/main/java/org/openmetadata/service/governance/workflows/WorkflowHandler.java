@@ -513,10 +513,10 @@ public class WorkflowHandler {
       }
     }
 
-    // The new versions are deployed before the old ones are drained. Deploying a version moves the
-    // trigger's start-signal subscription onto it; draining first deleted the version that held the
-    // subscription before its replacement existed, so an entity event handled in between started
-    // no workflow at all.
+    // The new versions are deployed before the old ones are drained. Deploying a version replaces
+    // the trigger's start-signal subscription with one on the new version; draining first deleted
+    // the version that held the subscription before its replacement existed, so an entity event
+    // handled in between started no workflow at all.
     // Deploy Main Workflow
     byte[] bpmnMainWorkflowBytes =
         bpmnXMLConverter.convertToXML(workflow.getMainWorkflow().getModel());
@@ -542,6 +542,8 @@ public class WorkflowHandler {
                 bpmnTriggerWorkflowBytes)
             .name(workflow.getTriggerWorkflow().getWorkflowName())
             .deploy();
+    // Before the drain, which can be long: a suspended workflow must not take signals meanwhile.
+    keepSuspended(workflow.getWorkflowDefinition());
 
     // Cleanup path is skipped in migration context. `redeployGovernanceWorkflows` in v1131 calls
     // deploy() for every workflow_definition in a tight loop; combined with a large ACT_RE_PROCDEF
@@ -550,25 +552,39 @@ public class WorkflowHandler {
     // user-CRUD deploys still trigger the drain below, so the backlog is not orphaned — it is
     // just deferred out of the migration critical path.
     if (!isMigrationContext) {
-      Set<String> justDeployed = Set.of(mainDeployment.getId(), triggerDeployment.getId());
+      // Spared by version, not by deployment: a deploy of the same workflow that overlaps this one
+      // may already have deployed a newer version, which this drain must not delete.
+      Map<String, Integer> deployedVersions =
+          deployedVersionsByKey(
+              repositoryService, Set.of(mainDeployment.getId(), triggerDeployment.getId()));
       try {
         drainOldDeploymentsForKey(
-            repositoryService, managementService, triggerWorkflowKey, true, justDeployed);
+            repositoryService, managementService, triggerWorkflowKey, true, deployedVersions);
         drainOldDeploymentsForKey(
-            repositoryService, managementService, workflowName, false, justDeployed);
+            repositoryService, managementService, workflowName, false, deployedVersions);
       } catch (Exception e) {
         LOG.warn(
             "Error draining old deployments for workflow {}: {}", workflowName, e.getMessage());
       }
     }
-
-    keepSuspended(workflow.getWorkflowDefinition());
   }
 
   /**
    * Flowable deploys every new process-definition version active. A workflow stored as suspended
    * has its new trigger versions suspended too, so neither their timers nor a trigger start it.
    */
+  private static Map<String, Integer> deployedVersionsByKey(
+      RepositoryService repositoryService, Set<String> deploymentIds) {
+    Map<String, Integer> versions = new HashMap<>();
+    for (String deploymentId : deploymentIds) {
+      for (ProcessDefinition pd :
+          repositoryService.createProcessDefinitionQuery().deploymentId(deploymentId).list()) {
+        versions.put(pd.getKey(), pd.getVersion());
+      }
+    }
+    return versions;
+  }
+
   private void keepSuspended(WorkflowDefinition workflowDefinition) {
     if (Boolean.TRUE.equals(workflowDefinition.getSuspended())) {
       suspendWorkflow(workflowDefinition.getName());
@@ -691,7 +707,7 @@ public class WorkflowHandler {
       ManagementService managementService,
       String key,
       boolean useKeyLike,
-      Set<String> keepDeploymentIds) {
+      Map<String, Integer> deployedVersions) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     int offset = 0;
     while (true) {
@@ -704,8 +720,7 @@ public class WorkflowHandler {
         break;
       }
       DeploymentCleanupResult cleanupResult =
-          drainBatch(
-              batch, repositoryService, runtimeService, managementService, keepDeploymentIds);
+          drainBatch(batch, repositoryService, runtimeService, managementService, deployedVersions);
       if (cleanupResult.deleted() == 0) {
         offset += batch.size();
       } else {
@@ -725,11 +740,12 @@ public class WorkflowHandler {
       RepositoryService repositoryService,
       RuntimeService runtimeService,
       ManagementService managementService,
-      Set<String> keepDeploymentIds) {
+      Map<String, Integer> deployedVersions) {
     int deleted = 0;
     int preserved = 0;
     for (ProcessDefinition pd : batch) {
-      if (keepDeploymentIds.contains(pd.getDeploymentId())) {
+      Integer deployedVersion = deployedVersions.get(pd.getKey());
+      if (deployedVersion != null && pd.getVersion() >= deployedVersion) {
         preserved++;
         continue;
       }

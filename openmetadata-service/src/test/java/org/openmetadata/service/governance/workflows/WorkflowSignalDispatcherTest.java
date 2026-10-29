@@ -76,9 +76,9 @@ class WorkflowSignalDispatcherTest {
 
   @Test
   void signalOwedToADeletedVersionStartsTheVersionThatReplacedIt() {
-    EventSubscription deleted = startSubscription("sub-v1", "trigger:1");
-    EventSubscription replacement = startSubscription("sub-v2", "trigger:2");
-    subscriptionsRead(List.of(deleted), List.of(replacement));
+    subscriptionsRead(
+        List.of(startSubscription("sub-v1", "trigger:1", "trigger-start")),
+        List.of(startSubscription("sub-v2", "trigger:2", "trigger-start")));
     definition("trigger:1", null);
     definition("trigger:2", active("trigger:2"));
 
@@ -90,7 +90,7 @@ class WorkflowSignalDispatcherTest {
 
   @Test
   void suspendedWorkflowTakesNoSignalAndIsNotReadAgain() {
-    subscriptionsRead(List.of(startSubscription("sub-v1", "trigger:1")));
+    subscriptionsRead(List.of(startSubscription("sub-v1", "trigger:1", "trigger-start")));
     ProcessDefinition suspended = active("trigger:1");
     when(suspended.isSuspended()).thenReturn(true);
     definition("trigger:1", suspended);
@@ -103,7 +103,8 @@ class WorkflowSignalDispatcherTest {
 
   @Test
   void deletedWorkflowWithoutReplacementStartsNothingAndDoesNotFail() {
-    subscriptionsRead(List.of(startSubscription("sub-v1", "trigger:1")), List.of());
+    subscriptionsRead(
+        List.of(startSubscription("sub-v1", "trigger:1", "trigger-start")), List.of());
     definition("trigger:1", null);
 
     dispatcher().dispatch(SIGNAL, VARIABLES);
@@ -111,21 +112,51 @@ class WorkflowSignalDispatcherTest {
     verify(builder, never()).start();
   }
 
+  /**
+   * Two workflows listen on the same signal and both redeploy during delivery. The one that already
+   * started on its old version must not start again on its new one.
+   */
   @Test
-  void eachSubscriptionIsDeliveredOnceAcrossReads() {
-    EventSubscription other = startSubscription("sub-other", "other:1");
-    EventSubscription deleted = startSubscription("sub-v1", "trigger:1");
-    EventSubscription replacement = startSubscription("sub-v2", "trigger:2");
-    subscriptionsRead(List.of(other, deleted), List.of(other, replacement));
+  void onlyTheReplacementOfADeletedVersionGetsTheSignalOnReRead() {
+    subscriptionsRead(
+        List.of(
+            startSubscription("sub-other-v1", "other:1", "other-start"),
+            startSubscription("sub-trigger-v1", "trigger:1", "trigger-start")),
+        List.of(
+            startSubscription("sub-other-v2", "other:2", "other-start"),
+            startSubscription("sub-trigger-v2", "trigger:2", "trigger-start")));
     definition("other:1", active("other:1"));
+    definition("other:2", active("other:2"));
     definition("trigger:1", null);
     definition("trigger:2", active("trigger:2"));
 
     dispatcher().dispatch(SIGNAL, VARIABLES);
 
     verify(builder).processDefinitionId("other:1");
+    verify(builder, never()).processDefinitionId("other:2");
     verify(builder).processDefinitionId("trigger:2");
     verify(builder, times(2)).start();
+  }
+
+  @Test
+  void stopsAfterThreeReReads() {
+    EventSubscription[] versions = new EventSubscription[5];
+    for (int v = 0; v < versions.length; v++) {
+      versions[v] = startSubscription("sub-v" + v, "trigger:" + v, "trigger-start");
+      definition("trigger:" + v, null);
+    }
+    subscriptionsRead(
+        List.of(versions[0]),
+        List.of(versions[1]),
+        List.of(versions[2]),
+        List.of(versions[3]),
+        List.of(versions[4]));
+
+    dispatcher().dispatch(SIGNAL, VARIABLES);
+
+    verify(builder, never()).start();
+    verify(runtime.createEventSubscriptionQuery().eventType("signal").eventName(SIGNAL), times(4))
+        .list();
   }
 
   private WorkflowSignalDispatcher dispatcher() {
@@ -149,11 +180,12 @@ class WorkflowSignalDispatcherTest {
     return definition;
   }
 
-  private static EventSubscription startSubscription(String id, String processDefinitionId) {
+  private static EventSubscription startSubscription(
+      String id, String processDefinitionId, String activityId) {
     EventSubscription subscription = mock(EventSubscription.class);
     when(subscription.getId()).thenReturn(id);
     when(subscription.getProcessDefinitionId()).thenReturn(processDefinitionId);
-    when(subscription.getActivityId()).thenReturn("start");
+    when(subscription.getActivityId()).thenReturn(activityId);
     return subscription;
   }
 }

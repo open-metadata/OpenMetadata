@@ -44,30 +44,41 @@ import org.openmetadata.service.Entity;
 public class WorkflowRedeploySignalIT {
   private static final String WORKFLOWS_PATH = "/v1/governance/workflowDefinitions";
   private static final String MARKER = "redeployed";
-  private static final int DOMAINS_CREATED_DURING_REDEPLOYS = 20;
+  private static final int DOMAINS_CREATED_DURING_REDEPLOYS = 30;
+  private static final Duration CREATE_INTERVAL = Duration.ofMillis(300);
+  private static final Duration REDEPLOYING_AFTER_CREATES = Duration.ofSeconds(15);
   private static final Duration STATUS_TIMEOUT = Duration.ofMinutes(3);
 
   @Test
-  void entityCreatedWhileItsWorkflowRedeploysStillStartsTheWorkflow(TestNamespace ns) {
-    ObjectNode request = stageWorkflowRequest(ns);
+  void entityCreatedWhileItsWorkflowRedeploysStillStartsTheWorkflow(TestNamespace ns)
+      throws Exception {
+    String marker = ns.prefix(MARKER);
+    ObjectNode request = stageWorkflowRequest(ns, marker);
     JsonNode workflow = JsonUtils.readTree(execute(HttpMethod.POST, WORKFLOWS_PATH, request));
-    AtomicBoolean creating = new AtomicBoolean(true);
-    AtomicInteger redeploys = new AtomicInteger();
-    CompletableFuture<Void> redeploying =
-        CompletableFuture.runAsync(
-            () -> {
-              while (creating.get()) {
-                request.put("description", "Redeploy " + redeploys.incrementAndGet());
-                execute(HttpMethod.PUT, WORKFLOWS_PATH, request);
-              }
-            });
     try {
+      AtomicBoolean redeploy = new AtomicBoolean(true);
+      AtomicInteger redeploys = new AtomicInteger();
+      CompletableFuture<Void> redeploying =
+          CompletableFuture.runAsync(
+              () -> {
+                while (redeploy.get()) {
+                  request.put("description", "Redeploy " + redeploys.incrementAndGet());
+                  execute(HttpMethod.PUT, WORKFLOWS_PATH, request);
+                }
+              });
       List<Domain> domains = new ArrayList<>();
-      for (int i = 0; i < DOMAINS_CREATED_DURING_REDEPLOYS; i++) {
-        domains.add(createDomain(ns, ns.prefix(MARKER + i)));
+      try {
+        for (int i = 0; i < DOMAINS_CREATED_DURING_REDEPLOYS; i++) {
+          domains.add(createDomain(ns, marker + i));
+          Thread.sleep(CREATE_INTERVAL.toMillis());
+        }
+        // The workflow consumer handles the events after they are created: keep redeploying while
+        // it does.
+        Thread.sleep(REDEPLOYING_AFTER_CREATES.toMillis());
+      } finally {
+        redeploy.set(false);
       }
-      creating.set(false);
-      redeploying.join();
+      redeploying.get();
       assertTrue(redeploys.get() > 1, "the workflow must redeploy while the domains are created");
       assertTrue(
           domains.stream().noneMatch(domain -> domain.getEntityStatus() == EntityStatus.DRAFT),
@@ -75,8 +86,6 @@ public class WorkflowRedeploySignalIT {
 
       awaitWorkflowSetDraft(domains);
     } finally {
-      creating.set(false);
-      redeploying.join();
       execute(
           HttpMethod.DELETE,
           WORKFLOWS_PATH + "/" + workflow.get("id").asText() + "?hardDelete=true&recursive=true",
@@ -105,7 +114,7 @@ public class WorkflowRedeploySignalIT {
   }
 
   /** Sets every marked domain to Draft; its trigger filter excludes all other domains. */
-  private static ObjectNode stageWorkflowRequest(TestNamespace ns) {
+  private static ObjectNode stageWorkflowRequest(TestNamespace ns, String marker) {
     JsonNodeFactory json = JsonNodeFactory.instance;
     ObjectNode trigger = json.objectNode().put("type", "eventBasedEntity");
     ObjectNode config = trigger.putObject("config");
@@ -114,7 +123,7 @@ public class WorkflowRedeploySignalIT {
     config.putArray("exclude").add(Entity.FIELD_ENTITY_STATUS);
     config
         .putObject("filter")
-        .put(Entity.DOMAIN, "{\"!\":[{\"in\":[\"" + MARKER + "\",{\"var\":\"name\"}]}]}");
+        .put(Entity.DOMAIN, "{\"!\":[{\"in\":[\"" + marker + "\",{\"var\":\"name\"}]}]}");
     trigger.putArray("output").add("relatedEntity").add("updatedBy");
 
     ArrayNode nodes = json.arrayNode();
