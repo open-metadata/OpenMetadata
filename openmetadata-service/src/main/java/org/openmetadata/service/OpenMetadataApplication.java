@@ -1416,10 +1416,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             // Register endpoint using Jetty 12 WebSocket API
             wsContainer.addMapping(
                 pathSpec,
-                (upgradeRequest, upgradeResponse) ->
-                    new Jetty12WebSocketHandler(
-                        WebSocketManager.getInstance().getEngineIoServer(),
-                        authenticateUpgrade(websocketFilter, upgradeRequest, upgradeResponse)));
+                (upgradeRequest, upgradeResponse) -> {
+                  HandshakeIdentity identity =
+                      authenticateUpgrade(websocketFilter, upgradeRequest, upgradeResponse);
+                  // A rejected upgrade already answered with 401/403; a null creator result
+                  // stops the negotiation instead of surfacing it as a creator failure.
+                  return identity == null
+                      ? null
+                      : new Jetty12WebSocketHandler(
+                          WebSocketManager.getInstance().getEngineIoServer(), identity);
+                });
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
