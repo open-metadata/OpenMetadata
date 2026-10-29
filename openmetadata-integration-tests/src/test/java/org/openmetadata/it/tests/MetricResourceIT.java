@@ -1289,8 +1289,33 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     SdkClients.adminClient().metrics().delete(parent.getId().toString(), params);
 
     // The list endpoint, not GET /{id}: only the list's batch parent hydration used to 404 here.
-    // The `parent` filter rejects deleted parents, so page through every metric to find the child.
-    JsonNode row = null;
+    JsonNode row = findListedMetric("fields=parent&include=all", child.getId());
+
+    assertNotNull(row, "A child whose parent was soft-deleted must be listed with include=all");
+    assertEquals(parent.getId().toString(), row.get("parent").get("id").asText());
+    assertTrue(row.get("parent").get("deleted").asBoolean());
+  }
+
+  @Test
+  void list_childrenOmitsASoftDeletedChild(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("live_children_parent"), ns));
+    Metric liveChild = createChild(ns, "live_child", parent);
+    Metric deletedChild = createChild(ns, "deleted_child", parent);
+    deleteEntity(deletedChild.getId().toString());
+
+    JsonNode row = findListedMetric("fields=children", parent.getId());
+
+    assertNotNull(row, "A parent with a soft-deleted child must still be listed");
+    JsonNode children = row.get("children");
+    assertEquals(1, children.size(), "Only the live child is returned");
+    assertEquals(liveChild.getId().toString(), children.get(0).get("id").asText());
+  }
+
+  /**
+   * Pages through GET /v1/metrics, which runs the batch field hydration that GET /{id} skips. The
+   * `parent` filter can't narrow it: it rejects deleted parents.
+   */
+  private static JsonNode findListedMetric(String query, UUID id) {
     String after = null;
     do {
       JsonNode page =
@@ -1299,23 +1324,21 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
                   .getHttpClient()
                   .execute(
                       HttpMethod.GET,
-                      "/v1/metrics?fields=parent&include=all&limit=1000"
+                      "/v1/metrics?limit=1000&"
+                          + query
                           + (after == null
                               ? ""
                               : "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8)),
                       null,
                       Object.class));
       for (JsonNode metric : page.get("data")) {
-        if (child.getId().toString().equals(metric.get("id").asText())) {
-          row = metric;
+        if (id.toString().equals(metric.get("id").asText())) {
+          return metric;
         }
       }
       after = page.get("paging").path("after").asText(null);
-    } while (row == null && after != null);
-
-    assertNotNull(row, "A child whose parent was soft-deleted must be listed with include=all");
-    assertEquals(parent.getId().toString(), row.get("parent").get("id").asText());
-    assertTrue(row.get("parent").get("deleted").asBoolean());
+    } while (after != null);
+    return null;
   }
 
   @Test
