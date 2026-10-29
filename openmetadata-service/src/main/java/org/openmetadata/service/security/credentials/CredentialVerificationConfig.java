@@ -149,7 +149,7 @@ public record CredentialVerificationConfig(
     long bound = maxStaleness.toNanoseconds();
     require(
         sweepInterval.toNanoseconds() * 2 <= bound,
-        "sweepInterval must be at most half of maxStaleness, so one missed sweep is absorbed");
+        "sweepInterval must be at most half of maxStaleness");
     require(
         missRefreshMinAge.toNanoseconds() < bound,
         "missRefreshMinAge must be less than maxStaleness");

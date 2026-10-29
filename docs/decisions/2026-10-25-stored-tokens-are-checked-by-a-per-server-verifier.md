@@ -78,18 +78,21 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   503 until a read converts it, and no sweep confirms it by fingerprint. A deep pass covers the
   principals cached when it begins, at most 10 to a read (`DEEP_CHUNK_SIZE`, a constant, not a
   setting), fewer when `batchSize` is smaller. Each sweep pass drains the queued nudges and
-  reconfirms every batch first, then makes at least one of these reads. It starts another only while
-  the pass has run less than the deep budget, `maxStaleness` minus twice `sweepInterval` (1 s by
-  default), and the rest of the deep pass carries over to later passes. The budget leaves one
-  `sweepInterval` for the read that overruns it and one for the wait before the next pass. So
-  however many principals the deep pass covers, entries stay within `maxStaleness` between passes
-  while one of these reads takes less than `sweepInterval`, and draining and reconfirming fit in the
-  budget and take about as long in each pass. Otherwise entries can age past `maxStaleness`, and
-  their checks then read the database. A burst of nudges for bots whose decrypts are slow can do
-  that, because a nudge re-read decrypts a changed secret and a drain that holds the sweep thread
-  delays the next pass. The next deep pass begins with the first sweep pass that starts after this
-  one has ended and once `deepVerifyInterval` has passed since this one began, or
-  `min(deepVerifyInterval, 1 min)` when one of its reads threw. A read that throws changes no entry.
+  reconfirms every batch first. While a deep pass has principals left, the sweep pass then makes at
+  least one of these reads, and starts another only while it has run less than the deep budget,
+  `maxStaleness` minus twice `sweepInterval` (1 s by default). The rest of the deep pass carries
+  over to later passes. When the next sweep pass reconfirms an entry, the entry is as old as the
+  rest of this pass from its batch on, plus the `sweepInterval` wait, plus any time nudge drains
+  hold the sweep thread past the next pass's due time, plus the next pass's drain and
+  reconfirmations through the entry's batch. The budget leaves one `sweepInterval` for the read that
+  overruns it and one for the wait. So when draining and reconfirming take no time, the deep reads
+  keep every entry within `maxStaleness` while one read takes less than `sweepInterval`, however
+  many principals the deep pass covers. A nudge re-read decrypts a changed secret, so draining
+  nudges for bots whose decrypts are slow can age entries past `maxStaleness`. An entry older than
+  `maxStaleness` is stale, and its next check reads it again. The next deep pass begins with the
+  first sweep pass that starts after this one has ended and once `deepVerifyInterval` has passed
+  since this one began, or `min(deepVerifyInterval, 1 min)` when one of its reads threw. A read that
+  throws changes no entry.
 - When the verifier cannot confirm within `loadTimeout` (2 s), the request gets 503 with
   `Retry-After` (the sweep interval, rounded up), and an MCP tool or prompt call gets JSON-RPC
   error -32003. It never gets 401, and it is never accepted unconfirmed. A check whose thread is
