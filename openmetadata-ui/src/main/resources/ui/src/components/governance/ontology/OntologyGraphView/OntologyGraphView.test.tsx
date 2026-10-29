@@ -756,7 +756,7 @@ describe('OntologyGraphView', () => {
       })
     );
     expect(refetch).toHaveBeenCalledTimes(3);
-    expect(onWorkingChange).toHaveBeenCalledTimes(5);
+    expect(onWorkingChange).toHaveBeenCalledTimes(3);
 
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-add-property'));
@@ -780,7 +780,7 @@ describe('OntologyGraphView', () => {
       )
     );
 
-    expect(onWorkingChange).toHaveBeenCalledTimes(6);
+    expect(onWorkingChange).toHaveBeenCalledTimes(4);
 
     fireEvent.click(screen.getByTestId('ontology-concept-edit'));
 

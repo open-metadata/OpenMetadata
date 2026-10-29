@@ -512,7 +512,6 @@ const OntologyGraphView = ({
         for (const step of planNativeRelation({ from, model, to, type })) {
           written = true;
           await writeStep(step);
-          noteWorkingChange();
         }
 
         return true;
@@ -522,6 +521,7 @@ const OntologyGraphView = ({
         return false;
       } finally {
         if (written) {
+          noteWorkingChange();
           await refetch();
         }
       }

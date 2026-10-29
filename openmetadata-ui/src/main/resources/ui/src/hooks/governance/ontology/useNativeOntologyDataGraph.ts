@@ -82,6 +82,13 @@ interface SelectionPlan {
   followedBy?: (page: NativeOntologyDataGraphPage) => SelectionPlan | undefined;
 }
 
+interface RestoreTargets {
+  clusterCount: number;
+  rowCounts: ReadonlyMap<string, number>;
+}
+
+const NO_RESTORE: RestoreTargets = { clusterCount: 0, rowCounts: new Map() };
+
 const RELOAD: NativeDataGraphRetry = { kind: 'reload' };
 const CLUSTERS: NativeDataGraphRetry = { kind: 'clusters' };
 
@@ -128,6 +135,29 @@ const findCluster = (graph: NativeDataGraph, conceptId: string) =>
 const hasEmptyBindingsTail = (page: NativeOntologyDataGraphPage) =>
   Boolean(page.bindings?.after) && page.bindings?.assets.length === 0;
 
+// A reload can supersede another before it restores anything, so the targets
+// grow to cover what every superseded reload meant to bring back.
+const mergeRestoreTargets = (
+  targets: RestoreTargets,
+  graph: NativeDataGraph,
+  pagedConceptIds: ReadonlySet<string>
+): RestoreTargets => {
+  const rowCounts = new Map(targets.rowCounts);
+  graph.clusters
+    .filter((item) => pagedConceptIds.has(item.concept.id))
+    .forEach((item) =>
+      rowCounts.set(
+        item.concept.id,
+        Math.max(rowCounts.get(item.concept.id) ?? 0, item.assets.length)
+      )
+    );
+
+  return {
+    clusterCount: Math.max(targets.clusterCount, graph.clusters.length),
+    rowCounts,
+  };
+};
+
 /**
  * Loads the native Data mode graph one page at a time and keeps the loaded
  * context the server needs on every request. Requests run one at a time,
@@ -148,6 +178,7 @@ export const useNativeOntologyDataGraph = (
   const isLoadingClustersRef = useRef(false);
   const loadingConceptIdsRef = useRef<ReadonlySet<string>>(new Set());
   const pagedConceptIdsRef = useRef(new Set<string>());
+  const restoreTargetsRef = useRef(NO_RESTORE);
   const failureRef = useRef<NativeDataGraphFailure>();
   const generationRef = useRef<Generation>(newGeneration());
   const queueRef = useRef<Promise<void>>(Promise.resolve());
@@ -398,6 +429,33 @@ export const useNativeOntologyDataGraph = (
     return generation;
   }, []);
 
+  const restoreClusters = useCallback(
+    async (generation: Generation, clusterCount: number) => {
+      let offset: number | undefined;
+      for (;;) {
+        const { clusters, contextFull, loaded, nextClusterOffset } =
+          graphRef.current;
+        if (
+          clusters.length >= clusterCount ||
+          contextFull ||
+          nextClusterOffset === undefined ||
+          nextClusterOffset === offset
+        ) {
+          return true;
+        }
+        offset = nextClusterOffset;
+        const settled = await runSelection(
+          generation,
+          clustersPlan(loaded, offset, CLUSTERS)
+        );
+        if (settled !== 'ok') {
+          return false;
+        }
+      }
+    },
+    [runSelection]
+  );
+
   const restoreRows = useCallback(
     async (generation: Generation, conceptId: string, rowCount: number) => {
       for (;;) {
@@ -423,11 +481,13 @@ export const useNativeOntologyDataGraph = (
   const reload = useCallback(
     (generation: Generation, keepGraph = false) =>
       enqueue(generation, async () => {
-        const pagedRowCounts = keepGraph
-          ? graphRef.current.clusters
-              .filter((item) => pagedConceptIdsRef.current.has(item.concept.id))
-              .map((item) => [item.concept.id, item.assets.length] as const)
-          : [];
+        restoreTargetsRef.current = keepGraph
+          ? mergeRestoreTargets(
+              restoreTargetsRef.current,
+              graphRef.current,
+              pagedConceptIdsRef.current
+            )
+          : NO_RESTORE;
         pagedConceptIdsRef.current = new Set();
         if (!keepGraph) {
           graphRef.current = EMPTY_NATIVE_DATA_GRAPH;
@@ -439,11 +499,18 @@ export const useNativeOntologyDataGraph = (
         if ((await runSelection(generation, reloadPlan())) !== 'ok') {
           return;
         }
-        for (const [conceptId, rowCount] of pagedRowCounts) {
+        const { clusterCount, rowCounts } = restoreTargetsRef.current;
+        if (!(await restoreClusters(generation, clusterCount))) {
+          return;
+        }
+        for (const [conceptId, rowCount] of rowCounts) {
           await restoreRows(generation, conceptId, rowCount);
         }
+        if (isCurrent(generation) && !failureRef.current) {
+          restoreTargetsRef.current = NO_RESTORE;
+        }
       }),
-    [enqueue, publish, restoreRows, runSelection]
+    [enqueue, isCurrent, publish, restoreClusters, restoreRows, runSelection]
   );
 
   useEffect(() => {
