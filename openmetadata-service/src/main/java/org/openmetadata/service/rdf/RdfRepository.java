@@ -27,7 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.rdf.model.Model;
@@ -61,6 +61,7 @@ import org.openmetadata.service.rdf.rebuild.RdfDatasetManager;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.rdf.rebuild.RdfLiveWritePause;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
+import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
 import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.RdfStorageFactory;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
@@ -151,6 +152,7 @@ public class RdfRepository {
   private final AtomicLong appendBudgetOverrideBytes = new AtomicLong(0);
   private final JsonLdTranslator translator;
   private final BiFunction<String, UUID, EntityInterface> projectionEntityLoader;
+  private final RdfWriteDelivery delivery;
   private final Cache<String, String> entityGraphCache =
       Caffeine.newBuilder()
           .maximumSize(GRAPH_CACHE_MAX_SIZE)
@@ -190,7 +192,8 @@ public class RdfRepository {
               name -> RdfStorageFactory.createStorage(config, name),
               Duration.ofMillis(RdfStorageInterface.resolveRequestTimeoutMs(config)));
       datasetManager.registerConfiguredStorage(configuredStorage);
-      this.storageService = datasetManager.routedStorage();
+      this.delivery = RdfWriteDelivery.DIRECT;
+      this.storageService = datasetManager.routedStorage(delivery);
       this.translator =
           new JsonLdTranslator(JsonUtils.getObjectMapper(), config.getBaseUri().toString());
       LOG.info("RDF Repository initialized with {} storage", config.getStorageType());
@@ -198,9 +201,42 @@ public class RdfRepository {
       loadOntologies();
     } else {
       this.datasetManager = null;
+      this.delivery = RdfWriteDelivery.DIRECT;
       this.storageService = null;
       this.translator = null;
       LOG.info("RDF Repository disabled");
+    }
+  }
+
+  /** A view of {@code base} whose serving writes are made for {@code delivery}. */
+  private RdfRepository(final RdfRepository base, final RdfWriteDelivery delivery) {
+    this.config = base.config;
+    this.datasetNames = base.datasetNames;
+    this.datasetManager = base.datasetManager;
+    this.translator = base.translator;
+    this.projectionEntityLoader = base.projectionEntityLoader;
+    this.delivery = delivery;
+    // Without dataset routing there is no pause to meet; only who owns a failure changes.
+    this.storageService =
+        datasetManager == null ? base.storageService : datasetManager.routedStorage(delivery);
+  }
+
+  /**
+   * This repository with its serving writes made for {@code delivery}: the live-write queue and the
+   * holder of the maintenance pause each write through their own view. See {@link
+   * RdfWriteDelivery}.
+   */
+  public RdfRepository forDelivery(final RdfWriteDelivery delivery) {
+    return delivery.equals(this.delivery) ? this : new RdfRepository(this, delivery);
+  }
+
+  /**
+   * A failure the live-write queue retries belongs to the queue; any other caller's write is lost,
+   * so it marks the projection degraded.
+   */
+  private void recordFailure(final Exception failure) {
+    if (!delivery.retriedByQueue()) {
+      RdfProjectionHealth.markDegraded(failure);
     }
   }
 
@@ -217,6 +253,7 @@ public class RdfRepository {
     this.config = config;
     this.datasetNames = RdfDatasetNames.from(config);
     this.datasetManager = null;
+    this.delivery = RdfWriteDelivery.DIRECT;
     this.storageService = storageService;
     this.translator = translator;
     this.projectionEntityLoader = projectionEntityLoader;
@@ -480,9 +517,10 @@ public class RdfRepository {
       storageService.storeEntity(entityType, entity.getId(), rdfModel);
       LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
     } catch (RdfStorageMaintenanceException heldBack) {
+      recordFailure(heldBack);
       throw heldBack;
     } catch (Exception e) {
-      RdfProjectionHealth.markDegraded(e);
+      recordFailure(e);
       LOG.error(
           "Failed to create/update entity {} in RDF - Type: {}, FQN: {}",
           entity.getId(),
@@ -662,7 +700,7 @@ public class RdfRepository {
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Deleted entity {} from RDF store", entityReference.getId());
     } catch (RuntimeException e) {
-      RdfProjectionHealth.markDegraded(e);
+      recordFailure(e);
       LOG.error("Failed to delete entity {} from RDF", entityReference.getId(), e);
       throw new IllegalStateException("Failed to delete entity from RDF", e);
     }
@@ -704,7 +742,7 @@ public class RdfRepository {
       storageService.executeSparqlUpdate(insertQuery);
       LOG.debug("Added relationship {} to RDF store", relationship);
     } catch (Exception e) {
-      RdfProjectionHealth.markDegraded(e);
+      recordFailure(e);
       LOG.error("Failed to add relationship to RDF", e);
       throw new RuntimeException("Failed to add relationship to RDF", e);
     }
@@ -1497,7 +1535,7 @@ public class RdfRepository {
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Removed relationship {} from RDF store", relationship);
     } catch (RuntimeException e) {
-      RdfProjectionHealth.markDegraded(e);
+      recordFailure(e);
       LOG.error("Failed to remove relationship from RDF", e);
       throw new IllegalStateException("Failed to remove relationship from RDF", e);
     }
@@ -3967,7 +4005,7 @@ public class RdfRepository {
         LOG.debug("Added glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
       }
     } catch (RuntimeException e) {
-      RdfProjectionHealth.markDegraded(e);
+      recordFailure(e);
       LOG.error(
           "Failed to add glossary term relation {} -> {} ({})",
           fromTermId,
@@ -4005,7 +4043,7 @@ public class RdfRepository {
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Removed glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
     } catch (RuntimeException e) {
-      RdfProjectionHealth.markDegraded(e);
+      recordFailure(e);
       LOG.error(
           "Failed to remove glossary term relation {} -> {} ({})",
           fromTermId,
@@ -4060,7 +4098,7 @@ public class RdfRepository {
       storageService.executeSparqlUpdate(buildGlossaryTermRelationDeleteUpdate());
       LOG.info("Cleared all glossary term relations from RDF store");
     } catch (RuntimeException exception) {
-      RdfProjectionHealth.markDegraded(exception);
+      recordFailure(exception);
       LOG.error("Failed to clear glossary term relations from RDF", exception);
       throw new IllegalStateException(
           "Failed to clear glossary term relations from RDF", exception);
@@ -4719,20 +4757,21 @@ public class RdfRepository {
 
   /**
    * Runs {@code work} while every other writer of the serving dataset, on every server, is held
-   * back. Use it around anything that blocks Fuseki's writer, such as a compaction or a clear.
+   * back, handing it the view of this repository whose writes pass the pause. Use it around
+   * anything that blocks Fuseki's writer, such as a compaction or a clear.
    */
-  public <T> T withServingWritesPaused(final String jobId, final Supplier<T> work) {
+  public <T> T withServingWritesPaused(final String jobId, final Function<RdfRepository, T> work) {
     final RdfLiveWritePause pause =
         new RdfLiveWritePause(
             Entity.getCollectionDAO().rdfReindexLockDAO(),
             requireDatasetManager(),
             ServerIdentityResolver.getInstance().getServerId());
-    return pause.during(jobId, work);
+    return pause.during(jobId, holder -> work.apply(forDelivery(holder)));
   }
 
   /**
    * Empties the store as maintenance, within {@code timeout} instead of the request budget. Call it
-   * inside {@link #withServingWritesPaused}. A timeout throws {@link
+   * on the view {@link #withServingWritesPaused} hands out. A timeout throws {@link
    * RdfWriteOutcomeUnknownException}: Fuseki keeps clearing after the client gives up.
    */
   public void clearAllAsMaintenance(final Duration timeout) {

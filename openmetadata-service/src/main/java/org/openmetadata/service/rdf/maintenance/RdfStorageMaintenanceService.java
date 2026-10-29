@@ -169,7 +169,7 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
                 TimeUnit.SECONDS);
     try {
       final RdfRepository rdf = repository.get();
-      return rdf.withServingWritesPaused(jobId, () -> rdf.compact(maxDuration()));
+      return rdf.withServingWritesPaused(jobId, holder -> holder.compact(maxDuration()));
     } finally {
       heartbeat.cancel(false);
       reindexLock.release();

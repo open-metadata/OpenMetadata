@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,7 +57,7 @@ class RdfStorageMaintenanceServiceTest {
 
   @BeforeEach
   void setUp() {
-    doAnswer(invocation -> invocation.<Supplier<?>>getArgument(1).get())
+    doAnswer(invocation -> invocation.<Function<RdfRepository, ?>>getArgument(1).apply(repository))
         .when(repository)
         .withServingWritesPaused(anyString(), any());
     when(repository.compact(any())).thenReturn(SUCCEEDED);

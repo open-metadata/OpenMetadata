@@ -108,6 +108,13 @@ public final class RdfRebuildStore {
     return jdbi.withHandle(handle -> RdfLiveWritePause.isPaused(handle, clock.millis()));
   }
 
+  /** Whether {@code delivery} comes from the maintenance job holding the pause right now. */
+  boolean isPauseHolder(final RdfWriteDelivery delivery) {
+    return jdbi.withHandle(
+            handle -> RdfLiveWritePause.holder(handle, clock.millis()).filter(delivery::holds))
+        .isPresent();
+  }
+
   public <T> T withActiveLock(final Function<Session, T> action) {
     try (Handle handle = jdbi.open()) {
       return handle.inTransaction(
@@ -223,9 +230,12 @@ public final class RdfRebuildStore {
       return activeDataset;
     }
 
-    /** Refuses the write when storage maintenance has paused writes to the serving dataset. */
-    void requireLiveWritesAllowed() {
-      RdfLiveWritePause.requireWritable(handle, clock.millis());
+    /**
+     * Refuses the write when storage maintenance has paused writes to the serving dataset, unless
+     * it comes from the job holding the pause.
+     */
+    void requireLiveWritesAllowed(final RdfWriteDelivery delivery) {
+      RdfLiveWritePause.requireWritable(handle, clock.millis(), delivery);
     }
 
     public State state() {

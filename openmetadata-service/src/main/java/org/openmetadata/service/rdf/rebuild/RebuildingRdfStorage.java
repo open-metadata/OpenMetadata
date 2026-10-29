@@ -32,11 +32,15 @@ final class RebuildingRdfStorage extends ForwardingRdfStorage {
   private static final int MAX_TURTLE_BYTES = 64 * 1024 * 1024;
   private final RdfDatasetManager manager;
   private final RdfDatasetManager.BuildTarget target;
+  private final RdfWriteDelivery delivery;
 
   RebuildingRdfStorage(
-      final RdfDatasetManager manager, final RdfDatasetManager.BuildTarget target) {
+      final RdfDatasetManager manager,
+      final RdfDatasetManager.BuildTarget target,
+      final RdfWriteDelivery delivery) {
     this.manager = manager;
     this.target = target;
+    this.delivery = delivery;
   }
 
   @Override
@@ -47,7 +51,7 @@ final class RebuildingRdfStorage extends ForwardingRdfStorage {
   private void mutate(
       final Consumer<RdfStorageInterface> mutation, final Supplier<RdfMutation> captured) {
     if (target == null) {
-      manager.writeActive(mutation, captured);
+      manager.writeActive(delivery, mutation, captured);
     } else {
       manager.writeBuild(target, mutation);
     }
@@ -125,7 +129,8 @@ final class RebuildingRdfStorage extends ForwardingRdfStorage {
   @Override
   public void executeMaintenanceUpdate(final String statement, final Duration timeout) {
     if (target == null) {
-      manager.maintainServing(storage -> storage.executeMaintenanceUpdate(statement, timeout));
+      manager.maintainServing(
+          delivery, storage -> storage.executeMaintenanceUpdate(statement, timeout));
     } else {
       manager.writeBuild(target, storage -> storage.executeMaintenanceUpdate(statement, timeout));
     }
