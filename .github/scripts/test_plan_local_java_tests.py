@@ -330,6 +330,81 @@ def test_classes_no_lane_runs_are_read_from_the_code_and_the_pom() -> None:
     assert by_name["TableResourceIT"] not in REPO.never_run
 
 
+@pytest.mark.parametrize("ref", [None, "HEAD"])
+def test_discovery_skips_placeholders_and_keeps_inherited_test_classes(
+    tmp_path: Path, ref: str | None
+) -> None:
+    def git(*args: str) -> None:
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                *args,
+            ],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+        )
+
+    sources = {
+        "Empty": "",
+        "PackageOnly": "package example;\n",
+        "TodoOnly": "package example;\n// TODO: Implement {name} extending BaseTest.\n",
+        "LineComment": "package example;\n// class {name} extends BaseTest {{}}\n",
+        "BlockComment": "package example;\n/* class {name} extends BaseTest {{}} */\n",
+        "Inherited": "package example;\nclass {name} extends BaseTest {{}}\n",
+    }
+    for prefix, suffix in (
+        ("it/src/test/java/example", "IT"),
+        ("service/src/test/java/example", "Test"),
+    ):
+        directory = tmp_path / prefix
+        directory.mkdir(parents=True)
+        for stem, source in sources.items():
+            name = stem + suffix
+            (directory / f"{name}.java").write_text(
+                source.format(name=name), encoding="utf-8"
+            )
+    (tmp_path / "it/pom.xml").write_text("<project/>", encoding="utf-8")
+    git("init", "-q")
+    git("add", ".")
+    git("commit", "-qm", "test sources")
+
+    repo = PLANNER.Repo(
+        tmp_path,
+        {
+            "maven": {
+                "integrationTestModule": "it",
+                "integrationTestSourceRoot": "it/src/test/java",
+                "unitTestModules": ["service"],
+                "lanes": {},
+            }
+        },
+        ref=ref,
+    )
+
+    assert repo.it_classes == {"example/InheritedIT.java": "InheritedIT"}
+    assert repo.unit_test_classes == {
+        "service": {"InheritedTest": "service/src/test/java/example/InheritedTest.java"}
+    }
+
+
+def test_ai_context_plan_excludes_the_empty_mcp_service_placeholder() -> None:
+    _, plan = plan_for(f"{SERVICE}/aicontext/AIContextMarkdown.java")
+
+    selected = its(plan)
+    assert "McpServiceResourceIT" not in selected
+    assert "McpServerResourceIT" in selected
+    assert "LLMServiceResourceIT" in selected
+
+
 def test_an_abstract_unit_test_runs_through_the_classes_that_extend_it() -> None:
     # Surefire runs SessionStoreContractTest's tests only inside RedisSessionStoreTest and writes
     # no report under its name, so selecting it by name failed a step whose tests all passed.
