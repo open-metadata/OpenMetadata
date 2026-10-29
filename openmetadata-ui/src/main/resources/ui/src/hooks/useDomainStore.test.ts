@@ -64,4 +64,18 @@ describe('reloadOnPickFromOtherTab', () => {
 
     expect(mockReload).not.toHaveBeenCalled();
   });
+
+  it('ignores a rewrite that keeps the same pick', () => {
+    reloadOnPickFromOtherTab(
+      new StorageEvent('storage', {
+        key: DOMAIN_STORAGE_KEY,
+        oldValue:
+          '{"state":{"activeDomain":"Alpha","activeDomainEntityRef":{"id":"1"}}}',
+        newValue:
+          '{"state":{"activeDomain":"Alpha","activeDomainEntityRef":{"id":"1","name":"Alpha"}}}',
+      })
+    );
+
+    expect(mockReload).not.toHaveBeenCalled();
+  });
 });

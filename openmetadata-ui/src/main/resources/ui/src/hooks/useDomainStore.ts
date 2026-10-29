@@ -57,8 +57,19 @@ export const useDomainStore = create<DomainStore>()(
 
 // Another tab's pick is persisted here and changes what the server lists for every tab, so a tab
 // reloads to match it, as the tab that picked does (else it shows its old label over new lists).
+const storedPick = (raw: string | null) => {
+  try {
+    return raw ? JSON.parse(raw)?.state?.activeDomain : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 export const reloadOnPickFromOtherTab = (event: StorageEvent) => {
-  if (event.key === DOMAIN_STORAGE_KEY && event.newValue !== event.oldValue) {
+  if (
+    event.key === DOMAIN_STORAGE_KEY &&
+    storedPick(event.newValue) !== storedPick(event.oldValue)
+  ) {
     window.location.reload();
   }
 };
