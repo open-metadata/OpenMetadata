@@ -606,22 +606,27 @@ function routesBetweenUnmovedCards(
   );
 }
 
-function buildDataEdgeLayout(
-  clusterEdges: KeyedClusterEdge[],
+function buildDataEdgeLayout<T extends KeyedClusterEdge>(
+  clusterEdges: T[],
   boxes: Map<string, CardBox>,
   routes: Map<string, Point[]>
-): DataEdgeLayout[] {
+): Array<T & DataEdgeLayout> {
   const geometry = buildClusterEdgeGeometry(
     clusterEdges.map(toClusterLink),
     boxes,
     routes
   );
 
-  return clusterEdges.flatMap(({ edge, renderKey }) => {
-    const route = geometry.get(renderKey);
+  return clusterEdges.flatMap((keyed) => {
+    const route = geometry.get(keyed.renderKey);
 
-    return route ? [{ edge, renderKey, ...route }] : [];
+    return route ? [{ ...keyed, ...route }] : [];
   });
+}
+
+interface AnchoredClusterEdge extends KeyedClusterEdge {
+  anchor?: EdgeAnchor;
+  labelText: string;
 }
 
 interface StyledDataEdge extends DataEdgeLayout {
@@ -632,78 +637,85 @@ interface StyledDataEdge extends DataEdgeLayout {
 }
 
 // A lineage edge joins its two rows while both are in view. Otherwise it joins
-// the cards, and its chip names the two tables the rows would have shown.
+// the cards, and all lineage between two cards shares one edge, so the chips
+// never stack and the absorbed edges take no slot on the card sides. Its chip
+// names the first pair of tables and counts the rest.
+function anchorNativeEdges(
+  clusterEdges: KeyedClusterEdge[],
+  rowsInView: Map<string, CardBox>,
+  t: TFunction
+): AnchoredClusterEdge[] {
+  const isCardBound = ({ edge }: KeyedClusterEdge) =>
+    edge.lineage !== undefined &&
+    !(
+      rowsInView.has(edge.lineage.from.nodeId) &&
+      rowsInView.has(edge.lineage.to.nodeId)
+    );
+  const pairKey = ({ edge }: KeyedClusterEdge) => `${edge.from}|${edge.to}`;
+  const byCardPair = new Map<string, KeyedClusterEdge[]>();
+  clusterEdges
+    .filter(isCardBound)
+    .forEach((keyed) =>
+      byCardPair.set(pairKey(keyed), [
+        ...(byCardPair.get(pairKey(keyed)) ?? []),
+        keyed,
+      ])
+    );
+
+  return clusterEdges.flatMap((keyed): AnchoredClusterEdge[] => {
+    const ends = keyed.edge.lineage;
+    if (!ends || !isCardBound(keyed)) {
+      return [
+        {
+          ...keyed,
+          anchor: ends ? 'rows' : undefined,
+          labelText: keyed.edge.label,
+        },
+      ];
+    }
+    const pairs = byCardPair.get(pairKey(keyed)) ?? [keyed];
+    if (pairs[0] !== keyed) {
+      return [];
+    }
+    const pairLabel = `${ends.from.label} → ${ends.to.label}`;
+
+    return [
+      {
+        ...keyed,
+        anchor: 'cards',
+        labelText:
+          pairs.length === 1
+            ? pairLabel
+            : t('message.text-and-count-more', {
+                count: pairs.length - 1,
+                text: pairLabel,
+              }),
+      },
+    ];
+  });
+}
+
 function styleNativeEdge(
-  layout: DataEdgeLayout,
+  layout: AnchoredClusterEdge & DataEdgeLayout,
   rowsInView: Map<string, CardBox>
 ): StyledDataEdge {
   const ends = layout.edge.lineage;
   if (!ends) {
-    return {
-      ...layout,
-      color: INFERRED_EDGE_COLOR,
-      isSolid: false,
-      labelText: layout.edge.label,
-    };
+    return { ...layout, color: INFERRED_EDGE_COLOR, isSolid: false };
   }
   const fromRow = rowsInView.get(ends.from.nodeId);
   const toRow = rowsInView.get(ends.to.nodeId);
-  const style = { color: LINEAGE_EDGE_COLOR, isSolid: true };
+  const rowGeometry =
+    layout.anchor === 'rows' && fromRow && toRow
+      ? buildRowLinkGeometry(fromRow, toRow)
+      : {};
 
-  return fromRow && toRow
-    ? {
-        ...layout,
-        ...buildRowLinkGeometry(fromRow, toRow),
-        ...style,
-        anchor: 'rows',
-        labelText: layout.edge.label,
-      }
-    : {
-        ...layout,
-        ...style,
-        anchor: 'cards',
-        labelText: `${ends.from.label} → ${ends.to.label}`,
-      };
-}
-
-// Lineage that falls back to the cards shares one edge per card pair, so the
-// chips never stack; the chip names the first pair and counts the rest.
-function mergeCardLineage(
-  edges: StyledDataEdge[],
-  t: TFunction
-): StyledDataEdge[] {
-  const pairKey = ({ edge }: StyledDataEdge) => `${edge.from}|${edge.to}`;
-  const byCardPair = new Map<string, StyledDataEdge[]>();
-  edges
-    .filter((edge) => edge.anchor === 'cards')
-    .forEach((edge) =>
-      byCardPair.set(pairKey(edge), [
-        ...(byCardPair.get(pairKey(edge)) ?? []),
-        edge,
-      ])
-    );
-
-  return edges.flatMap((edge) => {
-    if (edge.anchor !== 'cards') {
-      return [edge];
-    }
-    const pairs = byCardPair.get(pairKey(edge)) ?? [edge];
-    if (pairs[0] !== edge) {
-      return [];
-    }
-
-    return [
-      pairs.length === 1
-        ? edge
-        : {
-            ...edge,
-            labelText: t('message.text-and-count-more', {
-              count: pairs.length - 1,
-              text: edge.labelText,
-            }),
-          },
-    ];
-  });
+  return {
+    ...layout,
+    ...rowGeometry,
+    color: LINEAGE_EDGE_COLOR,
+    isSolid: true,
+  };
 }
 
 const OntologyDataGraph = ({
@@ -789,18 +801,14 @@ const OntologyDataGraph = ({
 
     return boxes;
   }, [cardHeightOf, cardPositions, clusterLayout, visibleTerms]);
-  const dataEdges = useMemo(
+  const edgeRoutes = useMemo(
     () =>
-      buildDataEdgeLayout(
+      routesBetweenUnmovedCards(
         clusterEdges,
-        cardBoxes,
-        routesBetweenUnmovedCards(
-          clusterEdges,
-          clusterLayout.routes,
-          cardPositions
-        )
+        clusterLayout.routes,
+        cardPositions
       ),
-    [cardBoxes, cardPositions, clusterEdges, clusterLayout]
+    [cardPositions, clusterEdges, clusterLayout]
   );
   const rowsInView = useMemo(() => {
     const rows = new Map<string, CardBox>();
@@ -855,32 +863,45 @@ const OntologyDataGraph = ({
   );
   const renderedSemanticEdges = useMemo(() => {
     if (isNative) {
-      return mergeCardLineage(
-        dataEdges.map((layout) => styleNativeEdge(layout, rowsInView)),
-        t
-      );
+      return buildDataEdgeLayout(
+        anchorNativeEdges(clusterEdges, rowsInView, t),
+        cardBoxes,
+        edgeRoutes
+      ).map((layout) => styleNativeEdge(layout, rowsInView));
     }
 
-    return dataEdges.map((layout): StyledDataEdge => {
-      const relationshipType = relationshipTypeByName.get(
-        layout.edge.relationType
-      );
-      // DOM/SVG resolves theme variables after a theme switch; a stored palette
-      // hex would discard the built-in relation's active foreground.
-      const color =
-        getEffectiveRelationColor(layout.edge.relationType, relationshipType) ??
-        INFERRED_EDGE_COLOR;
-
-      return {
-        ...layout,
-        color,
-        isSolid: HIERARCHY_RELATION_TYPES.has(layout.edge.relationType),
-        labelText: formatRelationLabel(
+    return buildDataEdgeLayout(clusterEdges, cardBoxes, edgeRoutes).map(
+      (layout): StyledDataEdge => {
+        const relationshipType = relationshipTypeByName.get(
           layout.edge.relationType
-        ).toLocaleLowerCase(),
-      };
-    });
-  }, [dataEdges, isNative, relationshipTypeByName, rowsInView, t]);
+        );
+        // DOM/SVG resolves theme variables after a theme switch; a stored
+        // palette hex would discard the built-in relation's active foreground.
+        const color =
+          getEffectiveRelationColor(
+            layout.edge.relationType,
+            relationshipType
+          ) ?? INFERRED_EDGE_COLOR;
+
+        return {
+          ...layout,
+          color,
+          isSolid: HIERARCHY_RELATION_TYPES.has(layout.edge.relationType),
+          labelText: formatRelationLabel(
+            layout.edge.relationType
+          ).toLocaleLowerCase(),
+        };
+      }
+    );
+  }, [
+    cardBoxes,
+    clusterEdges,
+    edgeRoutes,
+    isNative,
+    relationshipTypeByName,
+    rowsInView,
+    t,
+  ]);
   const legendEntries = useMemo((): LegendEntry[] => {
     if (isNative) {
       return [
