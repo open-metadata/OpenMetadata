@@ -66,18 +66,19 @@ import org.openmetadata.service.security.credentials.VerifiedCredentials.ReadOrd
  * This server's view of which OpenMetadata-signed credentials are current.
  *
  * <p>{@link #require} never accepts a token on the strength of a database read that began more than
- * {@code maxStaleness} ago, so a revocation committed at T is honored by every server for every check
- * that begins at or after T + maxStaleness, whatever happens to sweeps, peers or the writer. A
- * background sweep re-confirms every cached principal each {@code sweepInterval} with one fingerprint
- * query per {@code batchSize} principals and re-reads only the ones whose fingerprint moved, so in
- * steady state a check is a lock-free cache read, a clock read and a set lookup. When the sweep falls
- * behind, the next check starts or joins one single-flight read of its principal on a small read
- * pool and waits for it within {@code loadTimeout}; when that read fails, does not finish in time
- * or gets no slot, the check throws {@link CredentialUnavailableException} ("cannot confirm"),
- * which is not {@link AuthenticationException} ("confirmed not current"). For missRefreshMinAge
- * after a check's read of a principal produced no record, such a check answers the same without a
- * read. So does a check of a token that an entry read within missRefreshMinAge lacks without
- * showing it withdrawn, since the token may be newer than that read.
+ * {@code maxStaleness} ago, so a revocation committed at T is honored by every server for every
+ * check that begins at or after T + maxStaleness, whatever happens to sweeps, peers or the writer.
+ * A background sweep, which starts {@code sweepInterval} after the previous one ends, re-confirms
+ * every cached principal with one fingerprint query per {@code batchSize} principals and re-reads
+ * only the ones whose fingerprint moved, so in steady state a check is a lock-free cache read, a
+ * clock read and a set lookup. When the sweep falls behind, the next check starts or joins one
+ * single-flight read of its principal on a small read pool and waits for it within
+ * {@code loadTimeout}; when that read fails, does not finish in time or gets no slot, the check
+ * throws {@link CredentialUnavailableException} ("cannot confirm"), which is not
+ * {@link AuthenticationException} ("confirmed not current"). For missRefreshMinAge after a check's
+ * read of a principal produced no record, such a check answers the same without a read. So does a
+ * check of a token that an entry read within missRefreshMinAge lacks without showing it withdrawn,
+ * since the token may be newer than that read.
  *
  * <p>All state is per instance. Every stamp is a {@link Ticker} reading compared by difference.
  */
@@ -93,8 +94,9 @@ public final class CredentialVerifier implements Managed {
   private static final int QUEUED_READS_PER_THREAD = 16;
 
   /**
-   * Subjects per deep read, so the pass's deep budget is overrun by at most this many decrypts. A
-   * constant, not a setting.
+   * Subjects per deep read. A pass's deep reads end at most one read of this many subjects after
+   * the deep budget runs out, or after the pass's drain and reconfirmations when those take longer
+   * than the budget. A constant, not a setting.
    */
   private static final int DEEP_CHUNK_SIZE = 10;
 
@@ -410,18 +412,18 @@ public final class CredentialVerifier implements Managed {
   /**
    * One pass: drain nudges, re-confirm every cached subject in batches, then continue the deep
    * verify. The stamp is read before each query. A batch failure of any kind, an {@link Error}
-   * included, leaves its entries to age out and does not stop the others; the sweep-age gauge
-   * restarts only when every batch was reconfirmed.
+   * included, leaves the entries it did not reconfirm to age out and does not stop the others; the
+   * sweep-age gauge restarts only when every batch was reconfirmed.
    *
    * <p>When the deep verify is due, a cycle begins over the subjects cached then. While it has
    * subjects left, each pass reads the next of them in full with every decrypt forced, a chunk at a
    * time, and starts another chunk only while the pass has run for less than the deep budget,
-   * maxStaleness minus twice sweepInterval. When the next pass reconfirms an entry this pass
-   * reconfirmed, the entry is at most as old as the rest of this pass from its batch on, plus
-   * sweepInterval, plus any time nudge drains hold this thread past the next pass's due time, plus
-   * the next pass's drain and reconfirmations through the entry's batch. The budget leaves one
-   * sweepInterval for the chunk that overruns it and one for the wait, so when draining and
-   * reconfirming take no time, the cycle keeps every entry this pass reconfirmed within
+   * maxStaleness minus twice sweepInterval. When the next pass reconfirms an entry that still holds
+   * the stamp its batch took in this pass, the entry is at most as old as the rest of this pass
+   * from its batch on, plus sweepInterval, plus any time nudge drains hold this thread past the
+   * next pass's due time, plus the next pass's drain and reconfirmations through the entry's batch.
+   * The budget leaves one sweepInterval for the chunk that overruns it and one for the wait, so
+   * when draining and reconfirming take no time, the cycle keeps every such entry within
    * maxStaleness while a chunk takes less than sweepInterval, however many subjects it covers. A
    * subject the deep read leaves out is unconfirmed, so its next check reads it again, and it does
    * not fail the cycle. A deep read that throws, on a statement failure or on an {@link Error} for

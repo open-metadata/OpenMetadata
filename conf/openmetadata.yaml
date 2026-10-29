@@ -1035,11 +1035,11 @@ cache:
 # Alert on the gauge om_credential_sweep_last_complete_age_seconds (Prometheus name) when it exceeds
 # maxStaleness. It is the age of the last sweep that re-confirmed every batch. A batch fails when
 # one of its statements fails, or when converting one of its principals throws an Error. Past
-# maxStaleness the entries of the batches that failed are too old to answer from, so their checks
-# read the database on the request-read pool, wait for it up to loadTimeout, and answer 503 when
-# that read fails or does not finish. Also watch om_credential_unavailable_total. Its
-# cause="subject_read_failed" series counts checks of a principal whose stored credentials could
-# not be converted, which the gauge does not show.
+# maxStaleness the entries that the failed batches did not reconfirm are too old to answer from, so
+# their checks read the database on the request-read pool, wait for it up to loadTimeout, and answer
+# 503 when that read fails or does not finish. Also watch om_credential_unavailable_total. Its
+# cause="subject_read_failed" series counts checks of a principal whose stored credentials could not
+# be converted, which the gauge does not show.
 # waitForPropagation on the token revoke endpoints waits out the receiving server's maxStaleness,
 # so it covers every server only when all of them run the same credentialVerification settings.
 # While a change to maxStaleness rolls out, it covers only the servers whose maxStaleness is no
