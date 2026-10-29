@@ -602,7 +602,10 @@ const OntologyExplorerPage: React.FC = () => {
   const [loadedOntology, setLoadedOntology] = useState<Ontology>();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEmptyImportOpen, setIsEmptyImportOpen] = useState(false);
-  const [pendingFirstClassFor, setPendingFirstClassFor] = useState<string>();
+  const [pendingFirstClass, setPendingFirstClass] = useState<{
+    ontologyId: string;
+    isUrlReached: boolean;
+  }>();
   const [isGlossaryScopeMenuOpen, setIsGlossaryScopeMenuOpen] = useState(false);
   const [mode, setMode] = useState<StudioMode>(() =>
     studioModeFor(initialDraftId)
@@ -860,21 +863,23 @@ const OntologyExplorerPage: React.FC = () => {
     });
   };
   useEffect(() => {
-    if (!pendingFirstClassFor) {
+    if (!pendingFirstClass) {
       return;
     }
-    if (selectedOntology && selectedOntology.id !== pendingFirstClassFor) {
-      setPendingFirstClassFor(undefined);
-    } else if (
-      selectedOntology?.id === pendingFirstClassFor &&
-      mode === 'edit'
-    ) {
-      setPendingFirstClassFor(undefined);
+    const pendingId = pendingFirstClass.ontologyId;
+    if (ontologyId !== pendingId) {
+      if (pendingFirstClass.isUrlReached) {
+        setPendingFirstClass(undefined);
+      }
+    } else if (selectedOntology?.id === pendingId && mode === 'edit') {
+      setPendingFirstClass(undefined);
       setNativeConceptRequest((current) =>
-        nextConceptRequest(current, pendingFirstClassFor)
+        nextConceptRequest(current, pendingId)
       );
+    } else if (!pendingFirstClass.isUrlReached) {
+      setPendingFirstClass({ ontologyId: pendingId, isUrlReached: true });
     }
-  }, [mode, pendingFirstClassFor, selectedOntology]);
+  }, [mode, ontologyId, pendingFirstClass, selectedOntology?.id]);
   const handleStatsChange = useCallback((newStats: string[]) => {
     setStats(newStats);
   }, []);
@@ -2039,7 +2044,7 @@ const OntologyExplorerPage: React.FC = () => {
   const handleOntologyCreated = (ontology: Ontology) => {
     setIsCreateDialogOpen(false);
     setEditSurface('graph');
-    setPendingFirstClassFor(ontology.id);
+    setPendingFirstClass({ ontologyId: ontology.id, isUrlReached: false });
     void queryClient.invalidateQueries({
       queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
     });
