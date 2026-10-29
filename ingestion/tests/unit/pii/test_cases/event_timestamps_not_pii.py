@@ -8,6 +8,7 @@ Expected outcome:
   - event_timestamp_text (STRING type, ISO-8601 strings) → no PII tag
   - birth_date        (DATE type, date objects)          → PII.NonSensitive  (control)
 """
+
 import datetime
 import uuid
 
@@ -44,9 +45,7 @@ table = Table(
             dataLength=1,
             precision=1,
             dataTypeDisplay="timestamp",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.events.event_timestamp"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.events.event_timestamp"),
         ),
         Column(
             name=ColumnName(root="event_timestamp_text"),
@@ -54,9 +53,7 @@ table = Table(
             dataLength=1,
             precision=1,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.events.event_timestamp_text"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.events.event_timestamp_text"),
         ),
         Column(
             name=ColumnName(root="birth_date"),
@@ -64,9 +61,7 @@ table = Table(
             dataLength=1,
             precision=1,
             dataTypeDisplay="date",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.events.birth_date"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.events.birth_date"),
         ),
     ],
 )

@@ -16,14 +16,6 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     Uuid,
 )
-from metadata.generated.schema.type.tagLabel import (
-    LabelType,
-    State,
-    TagFQN,
-    TagLabel,
-    TagSource,
-)
-from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.sampler.models import SampleData
 
 table = Table(
