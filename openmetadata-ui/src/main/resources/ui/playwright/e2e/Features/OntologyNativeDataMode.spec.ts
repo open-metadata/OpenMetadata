@@ -16,9 +16,11 @@ import {
   CreateOntologyAxiom,
   ExpressionKind,
   Provenance,
+  RestrictionKind,
 } from '../../../src/generated/api/data/createOntologyAxiom';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
+import { OntologyProperty } from '../../../src/generated/entity/data/ontologyProperty';
 import { OntologyConceptBindingsResponse } from '../../../src/generated/type/ontologyConceptBindingsResponse';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/isolatedUser';
@@ -26,6 +28,10 @@ import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
 
 const TABLES_ON_CUSTOMER = 150;
+// The asset ServiceIconUtils maps the fixture's Mysql service to, and the
+// generic database logo a row falls back to without a service type.
+const MYSQL_LOGO = /service-icon-sql/;
+const DEFAULT_DATABASE_LOGO = /ic-custom-database/;
 const COLLAPSED_ROWS = 4;
 const CREATE_BATCH = 10;
 
@@ -106,21 +112,38 @@ test.describe(
         const customer = await createConcept(api, ontology, 'Customer');
         const party = await createConcept(api, ontology, 'Party');
         const unrelated = await createConcept(api, ontology, 'Unrelated');
+        const partOf = await okJson<OntologyProperty>(
+          await api.post('/api/v1/ontologyProperties', {
+            data: {
+              name: 'partOf',
+              displayName: 'part of',
+              ontology: ontology.fullyQualifiedName,
+              iri: `${ontology.namespace}partOf`,
+              kind: 'OBJECT',
+            },
+          }),
+          'Create the part of property'
+        );
         const axiom: CreateOntologyAxiom = {
-          name: 'CustomerParents',
-          displayName: 'Customer parents',
-          description: 'Data mode fixture hierarchy',
+          name: 'CustomerPartOfParty',
+          displayName: 'Customer part of Party',
+          description: 'Data mode fixture relation',
           ontology: ontology.fullyQualifiedName,
           axiomType: AxiomType.SubclassOf,
           subjectIri: customer.iri,
           expressions: [
-            { kind: ExpressionKind.NamedClass, classIri: party.iri },
+            {
+              kind: ExpressionKind.Restriction,
+              propertyIri: partOf.iri,
+              restrictionKind: RestrictionKind.Some,
+              filler: { kind: ExpressionKind.NamedClass, classIri: party.iri },
+            },
           ],
           provenance: Provenance.Manual,
         };
         await okJson(
           await api.post('/api/v1/ontologyAxioms', { data: axiom }),
-          'Relate Customer to Party'
+          'Relate Customer to Party through part of'
         );
 
         const customerTables = await createTables(api, TABLES_ON_CUSTOMER);
@@ -173,19 +196,25 @@ test.describe(
           await expect(customerRows).not.toHaveCount(TABLES_ON_CUSTOMER);
         });
 
-        await test.step('Draw a real service logo on every loaded row', async () => {
+        await test.step('Draw the Mysql logo, not the default logo, on every loaded row', async () => {
           const rowCount = await customerRows.count();
-          await expect(customerRows.locator('img')).toHaveCount(rowCount);
-          const loaded = await customerRows
-            .locator('img')
-            .evaluateAll((images) =>
-              images.every(
-                (image) =>
-                  image instanceof HTMLImageElement &&
-                  image.complete &&
-                  image.naturalWidth > 0
-              )
+          const logos = customerRows.locator('img');
+          await expect(logos).toHaveCount(rowCount);
+          for (const logo of await logos.all()) {
+            await expect(logo).toHaveAttribute('src', MYSQL_LOGO);
+            await expect(logo).not.toHaveAttribute(
+              'src',
+              DEFAULT_DATABASE_LOGO
             );
+          }
+          const loaded = await logos.evaluateAll((images) =>
+            images.every(
+              (image) =>
+                image instanceof HTMLImageElement &&
+                image.complete &&
+                image.naturalWidth > 0
+            )
+          );
           expect(loaded).toBe(true);
         });
 
@@ -194,12 +223,16 @@ test.describe(
             '[data-testid="ontology-data-semantic-edge"][data-edge-kind="semanticProjection"]'
           );
           await expect(inferred).toHaveCount(1);
+          await expect(inferred).toHaveAttribute('stroke-dasharray', '4 3');
+          await expect(
+            graph.getByTestId('ontology-data-semantic-edge-label')
+          ).toHaveText(['part of']);
+          await expect(
+            graph.getByTestId('ontology-data-semantic-edge')
+          ).toHaveCount(1);
           await expect(
             graph.getByTestId('ontology-data-legend-inferred')
           ).toBeVisible();
-          await expect(
-            graph.getByTestId('ontology-data-semantic-edge-label')
-          ).toHaveCount(1);
         });
       } finally {
         await deleteFixtureEntity(
