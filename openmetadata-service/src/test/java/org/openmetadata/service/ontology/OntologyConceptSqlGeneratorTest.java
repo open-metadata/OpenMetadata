@@ -31,7 +31,8 @@ class OntologyConceptSqlGeneratorTest {
             List.of());
 
     assertEquals(
-        "SELECT transfer_id, amount_usd\nFROM payments.transfers\nLIMIT 50", generated.sql());
+        "SELECT \"transfer_id\", \"amount_usd\"\nFROM \"payments\".\"transfers\"\nLIMIT 50",
+        generated.sql());
     assertEquals(OntologyConceptQueryDialect.SNOWFLAKE, generated.dialect());
     assertEquals("finance", generated.service());
     assertEquals("Snowflake", generated.serviceType());
@@ -152,7 +153,7 @@ class OntologyConceptSqlGeneratorTest {
     final String table = "finance.warehouse.\"Payments Core\".transfers";
 
     assertEquals(
-        "SELECT \"Amount USD\", \"order\", transfer_id\nFROM \"Payments Core\".transfers\nLIMIT 50",
+        "SELECT \"Amount USD\", \"order\", \"transfer_id\"\nFROM \"Payments Core\".\"transfers\"\nLIMIT 50",
         sqlFor(table, "Snowflake"));
     assertEquals(
         "SELECT `Amount USD`, `order`, `transfer_id`\nFROM `Payments Core`.`transfers`\nLIMIT 50",
@@ -172,6 +173,16 @@ class OntologyConceptSqlGeneratorTest {
   }
 
   @Test
+  void snowflakeQuotesEachNameExactlyAsStored() {
+    assertEquals(
+        "SELECT \"TRANSFER_ID\", \"AMOUNT_USD\"\nFROM \"PAYMENTS\".\"TRANSFERS\"\nLIMIT 50",
+        sqlFor("FINANCE.WAREHOUSE.PAYMENTS.TRANSFERS", "Snowflake", "TRANSFER_ID", "AMOUNT_USD"));
+    assertEquals(
+        "SELECT \"transfer_id\", \"amount_usd\"\nFROM \"payments\".\"transfers\"\nLIMIT 50",
+        sqlFor("finance.warehouse.payments.transfers", "Snowflake", "transfer_id", "amount_usd"));
+  }
+
+  @Test
   void eachDialectQuotesItsOwnReservedWords() {
     assertEquals(
         "SELECT `rank`, `index`, `groups`\nFROM `payments`.`transfers`\nLIMIT 50",
@@ -183,7 +194,7 @@ class OntologyConceptSqlGeneratorTest {
         "SELECT `hash`, `qualify`, `except`, `over`\nFROM `payments`.`transfers`\nLIMIT 50",
         sqlFor(TRANSFERS, "BigQuery", "hash", "qualify", "except", "over"));
     assertEquals(
-        "SELECT \"start\", \"sample\", \"qualify\", \"account\"\nFROM payments.transfers\nLIMIT 50",
+        "SELECT \"start\", \"sample\", \"qualify\", \"account\"\nFROM \"payments\".\"transfers\"\nLIMIT 50",
         sqlFor(TRANSFERS, "Snowflake", "start", "sample", "qualify", "account"));
     assertEquals(
         "SELECT TOP 50 [top], [file], [public]\nFROM [payments].[transfers]",
