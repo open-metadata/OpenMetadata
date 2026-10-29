@@ -24,6 +24,16 @@ import {
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 
+// A user's tasks and approvals are their work queue: the pick never hides them, so these lists
+// only carry a domain their caller asked for (e.g. a domain page's tasks).
+const UNSCOPED_LIST_PATHS = ['/tasks'];
+
+const isUnscopedList = (url?: string) =>
+  UNSCOPED_LIST_PATHS.some(
+    (path) =>
+      url === path || url?.startsWith(`${path}/`) || url?.startsWith(`${path}?`)
+  );
+
 const parseExistingFilter = (queryFilter?: string): QueryFilterInterface => {
   if (!queryFilter) {
     return { query: { bool: {} } };
@@ -108,6 +118,10 @@ export const withDomainFilter = (
   }, false);
 
   if (shouldNotIntercept) {
+    return config;
+  }
+
+  if (isUnscopedList(config.url)) {
     return config;
   }
 

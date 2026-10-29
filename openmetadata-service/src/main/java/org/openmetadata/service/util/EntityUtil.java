@@ -1176,6 +1176,41 @@ public final class EntityUtil {
     }
   }
 
+  /**
+   * The caller's navbar domain and its sub-domains as ids, or empty when the pick does not narrow
+   * {@code entityType}; for lists that build their own query (e.g. a search aggregation).
+   */
+  public static List<String> navbarDomainIds(SecurityContext securityContext, String entityType) {
+    if (getSubjectContext(securityContext).isBot()) {
+      return List.of();
+    }
+    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+    boolean applies =
+        selected != null
+            && DomainNavFilter.shouldApply(
+                entityType, supportsDomains(entityType), false, selected.getId().toString());
+    return applies ? List.of(domainAndSubDomainIds(selected).split(",")) : List.of();
+  }
+
+  /**
+   * Ids of the {@code entityType} entities in the caller's navbar domain or its sub-domains, or
+   * empty when the pick does not narrow that type; for lists that page their own rows.
+   */
+  public static Optional<Set<UUID>> navbarDomainMemberIds(
+      SecurityContext securityContext, String entityType) {
+    List<String> domainIds = navbarDomainIds(securityContext, entityType);
+    if (domainIds.isEmpty()) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findToBatch(domainIds, Relationship.HAS.ordinal(), Entity.DOMAIN, entityType)
+            .stream()
+            .map(row -> UUID.fromString(row.getToId()))
+            .collect(Collectors.toSet()));
+  }
+
   // Resolved up front so list queries bind plain ids: planners estimate an id list well, but not a
   // fqnHash LIKE inside the query (e.g. Postgres generic plans then probe every domain asset).
   private static String domainAndSubDomainIds(EntityReference domain) {

@@ -47,7 +47,10 @@ public final class DomainFilterExclusions {
           // condition would always empty those lists rather than narrow them.
           Entity.TEST_CASE,
           Entity.TEST_SUITE,
-          Entity.QUERY);
+          Entity.QUERY,
+          // A user's tasks and approvals are their work queue (e.g. a reviewer's approval on
+          // another domain's glossary term), so a pick must never hide them.
+          Entity.TASK);
 
   // Mostly global content (e.g. the built-in AI governance frameworks, Context Center articles):
   // under a pick these lists keep items with no domain and drop other domains' items.

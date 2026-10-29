@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -38,8 +39,10 @@ import java.lang.reflect.Method;
 import java.security.Principal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -70,6 +73,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.EntityUtil;
 
 class MetricResourceTest {
 
@@ -273,6 +277,41 @@ class MetricResourceTest {
       assertEquals(expected, actual);
       verify(fixture.repository()).listHierarchy(eq(25), eq(50), eq("margin"), any(), any());
       verify(fixture.authorizer()).authorize(any(), any(), any());
+    }
+  }
+
+  @Test
+  void hierarchyListKeepsOnlyPickedDomainMetricsUnderANavbarPick() {
+    UUID pickedMetric = UUID.randomUUID();
+    ResultList<MetricHierarchyItem> expected =
+        new ResultList<>(List.of(), new Paging().withLimit(25).withOffset(0).withTotal(0));
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      fixture
+          .entityUtil()
+          .when(() -> EntityUtil.navbarDomainMemberIds(securityContext, Entity.METRIC))
+          .thenReturn(Optional.of(Set.of(pickedMetric)));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(viewPermission(Entity.METRIC, Permission.Access.ALLOW));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.ALLOW));
+      when(fixture.repository().groupInDomainPick(any(), any())).thenReturn(group -> false);
+      ArgumentCaptor<Predicate<EntityReference>> canViewMetric =
+          ArgumentCaptor.forClass(Predicate.class);
+      when(fixture
+              .repository()
+              .listHierarchy(eq(25), eq(0), eq(null), canViewMetric.capture(), any()))
+          .thenReturn(expected);
+
+      fixture.resource().listHierarchy(securityContext, null, 25, 0);
+
+      // A pick filters even a caller who could list every metric unfiltered.
+      verify(fixture.repository(), never()).listHierarchy(25, 0, null);
+      EntityReference picked = new EntityReference().withId(pickedMetric).withType(Entity.METRIC);
+      EntityReference other =
+          new EntityReference().withId(UUID.randomUUID()).withType(Entity.METRIC);
+      assertTrue(canViewMetric.getValue().test(picked));
+      assertFalse(canViewMetric.getValue().test(other));
     }
   }
 
@@ -485,11 +524,20 @@ class MetricResourceTest {
         .thenReturn(org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS);
     entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
     entity.when(() -> Entity.getEntityClassFromType(Entity.METRIC)).thenReturn(Metric.class);
+    MockedStatic<EntityUtil> entityUtil = mockStatic(EntityUtil.class, CALLS_REAL_METHODS);
+    entityUtil
+        .when(() -> EntityUtil.navbarDomainMemberIds(any(), anyString()))
+        .thenReturn(Optional.empty());
     try {
       return new ResourceFixture(
-          new MetricResource(authorizer, mock(Limits.class)), repository, authorizer, entity);
+          new MetricResource(authorizer, mock(Limits.class)),
+          repository,
+          authorizer,
+          entity,
+          entityUtil);
     } catch (RuntimeException exception) {
       entity.close();
+      entityUtil.close();
       throw exception;
     }
   }
@@ -498,11 +546,13 @@ class MetricResourceTest {
       MetricResource resource,
       MetricRepository repository,
       Authorizer authorizer,
-      MockedStatic<Entity> entity)
+      MockedStatic<Entity> entity,
+      MockedStatic<EntityUtil> entityUtil)
       implements AutoCloseable {
     @Override
     public void close() {
       entity.close();
+      entityUtil.close();
     }
   }
 }

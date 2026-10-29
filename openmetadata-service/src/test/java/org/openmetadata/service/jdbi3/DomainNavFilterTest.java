@@ -27,6 +27,8 @@ class DomainNavFilterTest {
     // Basic test suites and queries inherit their table's domain, like test cases.
     assertFalse(DomainNavFilter.shouldApply(Entity.TEST_SUITE, true, false, DOMAIN_ID));
     assertFalse(DomainNavFilter.shouldApply(Entity.QUERY, true, false, DOMAIN_ID));
+    // Tasks and approvals are the user's work queue, whatever domain they are about.
+    assertFalse(DomainNavFilter.shouldApply(Entity.TASK, true, false, DOMAIN_ID));
   }
 
   @Test

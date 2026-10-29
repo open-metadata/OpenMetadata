@@ -166,6 +166,21 @@ describe('withDomainFilter', () => {
         domain: 'engineering',
       });
     });
+
+    it('should leave task lists unfiltered and keep a domain their caller set', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValue('/explore');
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const assigned = withDomainFilter(
+        createMockConfig('get', '/tasks/assigned', { limit: 10 })
+      );
+      const domainPage = withDomainFilter(
+        createMockConfig('get', '/tasks/count', { domain: 'sales' })
+      );
+
+      expect(assigned.params).toEqual({ limit: 10 });
+      expect(domainPage.params).toEqual({ domain: 'sales' });
+    });
   });
 
   describe('search query requests', () => {

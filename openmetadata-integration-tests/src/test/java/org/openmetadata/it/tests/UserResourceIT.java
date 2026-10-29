@@ -34,6 +34,8 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -41,9 +43,12 @@ import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.ai.CreateAIGovernancePolicy;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreatePage;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -54,23 +59,31 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
 import org.openmetadata.schema.entity.ai.PolicyType;
 import org.openmetadata.schema.entity.data.Article;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageType;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -887,6 +900,98 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(articles.contains(pickedPage.getId().toString()));
     assertTrue(articles.contains(globalPage.getId().toString()));
     assertFalse(articles.contains(otherPage.getId().toString()));
+  }
+
+  @Test
+  void test_pickNarrowsMetricHierarchy(TestNamespace ns) {
+    // The Metrics page lists from the hierarchy endpoint, which pages its own rows.
+    Domain picked = createAggregateDomain(ns.prefix("navMetric"));
+    Domain other = createAggregateDomain(ns.prefix("navMetricOther"));
+    Metric pickedMetric = createMetric(ns.prefix("pickedMetric"), picked);
+    Metric otherMetric = createMetric(ns.prefix("otherMetric"), other);
+    Metric metricWithNoDomain = createMetric(ns.prefix("noDomainMetric"), null);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    String hierarchy = getAs(user, "/v1/metrics/hierarchy?limit=1000&q=" + ns.prefix(""));
+    assertTrue(hierarchy.contains(pickedMetric.getId().toString()));
+    assertFalse(hierarchy.contains(otherMetric.getId().toString()));
+    assertFalse(hierarchy.contains(metricWithNoDomain.getId().toString()));
+  }
+
+  @Test
+  void test_pickDoesNotHideAssignedTasks(TestNamespace ns) {
+    // A reviewer must see work assigned to them whatever domain it is about.
+    Domain picked = createAggregateDomain(ns.prefix("navTask"));
+    Domain other = createAggregateDomain(ns.prefix("navTaskOther"));
+    User user = createEntity(selfLoginUserRequest());
+    Table otherTable = createTableInDomain(ns, "navTaskTable", "id", other);
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("navTaskOther"))
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
+                    .withAbout(String.format("<#E::table::%s>", otherTable.getFullyQualifiedName()))
+                    .withAssignees(List.of(user.getFullyQualifiedName())));
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    assertTrue(getAs(user, "/v1/tasks/assigned?limit=100").contains(task.getId().toString()));
+  }
+
+  @Test
+  void test_pickNarrowsColumnGrid(TestNamespace ns) {
+    // Column Bulk Operations edits the occurrences its grid lists, so the grid must follow the
+    // pick.
+    Domain picked = createAggregateDomain(ns.prefix("navColumn"));
+    Domain other = createAggregateDomain(ns.prefix("navColumnOther"));
+    String column = "navcol_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    Table pickedTable = createTableInDomain(ns, "navColPicked", column, picked);
+    Table otherTable = createTableInDomain(ns, "navColOther", column, other);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+    String grid = "/v1/columns/grid?entityTypes=table&columnNamePattern=" + column;
+    Awaitility.await("both tables indexed")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> getAsAdmin(grid).contains(otherTable.getFullyQualifiedName()));
+
+    String scoped = getAs(user, grid);
+    assertTrue(scoped.contains(pickedTable.getFullyQualifiedName()));
+    assertFalse(scoped.contains(otherTable.getFullyQualifiedName()));
+  }
+
+  private static Metric createMetric(String name, Domain domain) {
+    return SdkClients.adminClient()
+        .metrics()
+        .create(
+            new CreateMetric()
+                .withName(name)
+                .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName())));
+  }
+
+  private static Table createTableInDomain(
+      TestNamespace ns, String name, String column, Domain domain) {
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    return SdkClients.adminClient()
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(ns.prefix(name))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(new Column().withName(column).withDataType(ColumnDataType.INT)))
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+  }
+
+  private static String getAsAdmin(String path) {
+    return SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, path, null);
   }
 
   private static Domain createAggregateDomain(String name) {
