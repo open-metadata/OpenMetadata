@@ -347,18 +347,20 @@ const OntologyReleasePanel = ({
       </Box>
     );
   };
+  const renderStageStatus = () =>
+    panelView.kind === 'loading' ? (
+      <Typography role="status">{t('label.loading')}</Typography>
+    ) : (
+      <Alert variant="error">
+        {t('message.ontology-review-unavailable')}
+        <Button color="secondary" size="sm" onPress={() => void refresh()}>
+          {t('label.retry')}
+        </Button>
+      </Alert>
+    );
   const renderFooter = () => {
     if (!currentStage) {
-      return panelView.kind === 'loading' ? (
-        <Typography role="status">{t('label.loading')}</Typography>
-      ) : (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-          <Button color="secondary" size="sm" onPress={() => void refresh()}>
-            {t('label.retry')}
-          </Button>
-        </Alert>
-      );
+      return renderStageStatus();
     }
 
     return (
@@ -672,6 +674,7 @@ const OntologyReleasePanel = ({
         {renderRelease()}
         {renderStorageStatus()}
         {renderRecovery()}
+        {currentStage || state.isError ? null : renderStageStatus()}
         {isChanges ? renderAiFooter() : null}
       </Box>
     );

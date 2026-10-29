@@ -848,6 +848,7 @@ const OntologyGraphView = ({
       </Box>
     );
   };
+
   const renderTypeDialog = () =>
     typeDraft ? (
       <RelationshipTypeDialog
