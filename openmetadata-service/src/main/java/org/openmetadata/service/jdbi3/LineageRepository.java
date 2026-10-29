@@ -95,6 +95,7 @@ import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
+import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -833,15 +834,18 @@ public class LineageRepository {
     CsvDocumentation documentation = getCsvDocumentation("lineage", false);
     List<CsvHeader> headers = documentation.getHeaders();
     SearchLineageResult result =
-        Entity.getSearchRepository()
-            .searchLineageForExport(
-                fqn,
-                upstreamDepth,
-                downstreamDepth,
-                queryFilter,
-                deleted,
-                entityType,
-                subjectContext);
+        SearchLineagePermissionFilter.filterFor(
+            subjectContext,
+            Entity.getSearchRepository()
+                .searchLineageForExport(
+                    fqn,
+                    upstreamDepth,
+                    downstreamDepth,
+                    queryFilter,
+                    deleted,
+                    entityType,
+                    subjectContext),
+            fqn);
     CsvFile csvFile = new CsvFile().withHeaders(headers);
 
     addRecords(csvFile, result.getUpstreamEdges().values().stream().toList());
@@ -917,6 +921,7 @@ public class LineageRepository {
                       .withEndTime(endTime)
                       .withDirection(null),
                   subjectContext);
+      response = SearchLineagePermissionFilter.filterFor(subjectContext, response, fqn);
       String jsonResponse = JsonUtils.pojoToJson(response);
       JsonNode rootNode = JsonUtils.readTree(jsonResponse);
 
@@ -1971,6 +1976,7 @@ public class LineageRepository {
                           org.openmetadata.service.search.SearchUtils.getRequiredLineageFields(
                               includeSourceFields)),
                   subjectContext);
+      response = SearchLineagePermissionFilter.filterFor(subjectContext, response, fqn);
       String jsonResponse = JsonUtils.pojoToJson(response);
       JsonNode rootNode = JsonUtils.readTree(jsonResponse);
 

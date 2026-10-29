@@ -89,6 +89,7 @@ import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
+import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
@@ -1052,6 +1053,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     Set<Map<String, Object>> nodes = new HashSet<>();
     searchDataQualityLineageInternal(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
     LineageDomainFilter.pruneDataQualityLineage(nodes, edges, subjectContext);
+    SearchLineagePermissionFilter.filterDataQualityLineageFor(subjectContext, nodes, edges);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return Response.status(OK).entity(responseMap).build();

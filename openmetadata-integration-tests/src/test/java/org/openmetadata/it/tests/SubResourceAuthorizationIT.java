@@ -580,6 +580,60 @@ public class SubResourceAuthorizationIT {
     }
   }
 
+  /**
+   * Search lineage checks the root, and must also leave out the neighbours the caller cannot view:
+   * their documents, the edges to them, and their entries in a kept node's upstream lineage.
+   */
+  @Test
+  void lineageSearch_leavesOutNeighboursTheCallerCannotView(TestNamespace ns) {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table open = createTable(ns, schema, "nb_open", List.of());
+    Table sensitive = createTable(ns, schema, "nb_sensitive", List.of(piiSensitiveTag()));
+    addLineage(sensitive, open);
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("neighbours"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('" + PII_SENSITIVE + "')");
+    String fqn = encodeURIComponent(open.getFullyQualifiedName());
+    List<String> paths =
+        List.of(
+            "/v1/lineage/getLineage?type=table&upstreamDepth=1&downstreamDepth=1&fqn=" + fqn,
+            "/v1/lineage/getLineage/Upstream?type=table&upstreamDepth=1&downstreamDepth=0&fqn="
+                + fqn,
+            "/v1/lineage/getLineageByEntityCount?entityType=table&direction=Upstream&nodeDepth=1&fqn="
+                + fqn,
+            "/v1/lineage/export?type=table&upstreamDepth=1&downstreamDepth=1&fqn=" + fqn);
+    Awaitility.await("the admin finds the upstream neighbour on every path")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              for (String path : paths) {
+                assertTrue(adminGet(path).contains(sensitive.getFullyQualifiedName()), path);
+              }
+            });
+
+    for (String path : paths) {
+      String view = denied.getHttpClient().executeForString(HttpMethod.GET, path, null);
+      assertFalse(view.contains(sensitive.getFullyQualifiedName()), path + " -> " + view);
+      assertFalse(view.contains(sensitive.getId().toString()), path + " -> " + view);
+    }
+    String graph = denied.getHttpClient().executeForString(HttpMethod.GET, paths.getFirst(), null);
+    assertTrue(graph.contains(open.getFullyQualifiedName()), graph);
+  }
+
+  /** Platform lineage is every asset's lineage at once, unfiltered, so it is admin only. */
+  @Test
+  void platformLineage_isAdminOnly() {
+    String path = "/v1/lineage/getPlatformLineage?view=service";
+
+    assertHttpStatusFor(SdkClients.dataConsumerClient(), 403, HttpMethod.GET, path, null);
+    assertNotNull(adminGet(path));
+  }
+
   /** Column search walks every table, so it must leave out the tables the caller cannot view. */
   @Test
   void columnSearch_leavesOutTablesTheCallerCannotView(TestNamespace ns) {
