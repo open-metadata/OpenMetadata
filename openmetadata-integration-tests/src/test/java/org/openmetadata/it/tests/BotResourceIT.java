@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
@@ -266,6 +268,37 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
 
     assertThrows(
         Exception.class, () -> createEntity(request), "Creating bot with non-bot user should fail");
+  }
+
+  /** A deleted person's account is still not a bot account, and restoring the bot would revive it. */
+  @Test
+  void test_botUserIsBot_requiredForSoftDeletedUser(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String uniqueId = UUID.randomUUID().toString().substring(0, 8);
+    User person =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(ns.prefix("deletedperson_" + uniqueId))
+                    .withEmail("deletedperson" + uniqueId + "@test.com")
+                    .withDescription("Person whose account was deleted")
+                    .withIsBot(false));
+    client.users().delete(person.getId().toString());
+
+    CreateBot request =
+        new CreateBot()
+            .withName(ns.prefix("bot_deleted_person"))
+            .withDescription("Bot pointing at a deleted person")
+            .withBotUser(person.getName());
+
+    OpenMetadataException exception =
+        assertThrows(OpenMetadataException.class, () -> createEntity(request));
+    assertEquals(400, exception.getStatusCode(), exception.getMessage());
+    assertTrue(
+        Boolean.TRUE.equals(
+            client.users().get(person.getId().toString(), null, "deleted").getDeleted()),
+        "The person's account must stay deleted");
   }
 
   @Test

@@ -1757,7 +1757,7 @@ const TableV2 = <T extends object>(
   return (
     <div
       className={twMerge(
-        'table-container',
+        'table-container tw:rounded-xl',
         rest.variant === 'muted'
           ? MUTED_CONTAINER_CLASSES
           : 'tw:border tw:border-utility-gray-200 tw:[&_tbody_tr:hover_td]:bg-secondary',
