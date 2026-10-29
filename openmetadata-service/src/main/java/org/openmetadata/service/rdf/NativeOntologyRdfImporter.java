@@ -583,7 +583,23 @@ public final class NativeOntologyRdfImporter {
           parsed.add(property);
         }
       }
+      linkInverses(parsed);
       return parsed;
+    }
+
+    /** {@code owl:inverseOf} is symmetric: a file that states it once still declares both sides. */
+    private static void linkInverses(final List<OntologyProperty> parsed) {
+      final Map<String, OntologyProperty> byIri = new HashMap<>();
+      parsed.forEach(property -> byIri.putIfAbsent(property.getIri().toString(), property));
+      for (final OntologyProperty property : parsed) {
+        final OntologyProperty partner =
+            property.getInverse() == null ? null : byIri.get(property.getInverse().toString());
+        if (partner != null
+            && partner.getInverse() == null
+            && partner.getKind() == OntologyPropertyKind.OBJECT) {
+          partner.setInverse(property.getIri());
+        }
+      }
     }
 
     private List<OntologyAxiom> axioms(final List<OntologyProperty> properties) {
