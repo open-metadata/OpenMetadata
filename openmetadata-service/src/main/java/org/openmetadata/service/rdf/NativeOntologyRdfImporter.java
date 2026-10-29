@@ -53,7 +53,7 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.NativeOntologyCsvCodec;
 import org.openmetadata.service.ontology.NativeOntologyDocument;
 import org.openmetadata.service.ontology.OntologyFormatDetector;
-import org.openmetadata.service.ontology.OntologyPropertyLists;
+import org.openmetadata.service.ontology.OntologyPropertyRules;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -111,7 +111,7 @@ public final class NativeOntologyRdfImporter {
   public NativeOntologyImportPreview preview(
       final Source source, final OntologyWorkingSnapshot.Snapshot working) {
     final Stored stored = Stored.index(working);
-    requireUsableLists(source.document(), stored, source.propertyRows());
+    requireApplicable(source.document(), stored, source.propertyRows());
     final Outcomes outcomes = classify(source.document(), stored);
     return new NativeOntologyImportPreview()
         .withSummary(summary(source.format(), source.document().header(), outcomes))
@@ -119,7 +119,7 @@ public final class NativeOntologyRdfImporter {
   }
 
   public NativeOntologyImportSummary summarize(final Source source) {
-    requireUsableLists(source.document(), Stored.EMPTY, source.propertyRows());
+    requireApplicable(source.document(), Stored.EMPTY, source.propertyRows());
     return summary(
         source.format(), source.document().header(), classify(source.document(), Stored.EMPTY));
   }
@@ -128,20 +128,20 @@ public final class NativeOntologyRdfImporter {
       final Model model, final OntologyWorkingSnapshot.Snapshot working) {
     final Stored stored = Stored.index(working);
     final NativeOntologyDocument document = read(model);
-    requireUsableLists(document, stored, Map.of());
+    requireApplicable(document, stored, Map.of());
     return plan(classify(document, stored), stored, working, SourceFamily.RDF);
   }
 
   /** Applying a draft refuses these properties, so a preview must not count them as importable. */
-  private static void requireUsableLists(
+  private static void requireApplicable(
       final NativeOntologyDocument document,
       final Stored stored,
       final Map<String, Integer> propertyRows) {
     for (final OntologyProperty parsed : document.properties()) {
       final String iri = parsed.getIri().toString();
       final OntologyProperty current = stored.properties().get(iri);
-      final OntologyPropertyLists.Violation violation =
-          OntologyPropertyLists.firstViolation(
+      final OntologyPropertyRules.Violation violation =
+          OntologyPropertyRules.firstViolation(
               parsed,
               () ->
                   current != null
@@ -150,8 +150,13 @@ public final class NativeOntologyRdfImporter {
       if (violation != null) {
         final Integer row = propertyRows.get(iri);
         final String where =
-            row == null ? "Property " + iri + ", " : "CSV row " + row + ", column ";
-        throw new BadRequestException(where + violation.field() + ": " + violation.message());
+            row == null
+                ? "Property " + iri + ", " + violation.field()
+                : "CSV row "
+                    + row
+                    + ", column "
+                    + NativeOntologyCsvCodec.propertyColumn(violation.field());
+        throw new BadRequestException(where + ": " + violation.message());
       }
     }
   }
