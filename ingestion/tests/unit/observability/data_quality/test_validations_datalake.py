@@ -560,6 +560,13 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(  # noqa: E73
             None,
         ),
         (
+            "test_case_column_to_match_set_ordered_false",
+            "tableColumnToMatchSet",
+            "TABLE",
+            (TestCaseResult, "1", None, TestCaseStatus.Success, None, None, None, None),
+            None,
+        ),
+        (
             "test_case_table_custom_sql_query_failed_dl",
             "tableCustomSQLQuery",
             "TABLE",
