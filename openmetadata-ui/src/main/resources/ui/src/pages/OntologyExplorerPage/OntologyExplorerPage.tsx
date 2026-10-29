@@ -1326,13 +1326,13 @@ const OntologyExplorerPage: React.FC = () => {
       <>
         {selectedOntology && (
           <Button
-            aria-label={t('label.release-history')}
             color="secondary"
             data-testid="ontology-release-history-trigger"
             isDisabled={
               studioScopes.isOntologyLoading || studioScopes.isOntologyError
             }
             size={headerActionSize}
+            tooltip={t('label.release-history')}
             onPress={() => {
               setPublicationTab('releases');
               setIsPublicationOpen(true);
