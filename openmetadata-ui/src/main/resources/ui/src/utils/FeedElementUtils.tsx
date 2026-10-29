@@ -12,8 +12,8 @@
  */
 
 import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { MessageChatSquare } from '@openmetadata/ui-core-components/icons';
 import { MouseEvent } from 'react';
-import { ReactComponent as ListConversationIcon } from '../assets/svg/action-icons/list-conversation.svg';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityPureUtils';
@@ -37,7 +37,7 @@ export const getFieldThreadElement = (
     <ButtonUtility
       className="hover-cell-icon"
       data-testid="field-thread"
-      icon={ListConversationIcon}
+      icon={MessageChatSquare}
       size="xs"
       tooltip={t('label.list-entity', {
         entity: t('label.conversation'),

@@ -1,7 +1,7 @@
 # Icon-only actions are a tertiary ButtonUtility, and editing has one icon
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned) · v3 2026-10-19 (primary actions stay primary; menu icons and text keep their colours; `isLoading`)
+- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned) · v3 2026-10-19 (primary actions stay primary; menu icons and text keep their colours; `isLoading`) · v4 2026-10-29 (compact table-cell actions are `xs`; activity-feed footer actions are `sm`)
 - **Deciders:** Rohit Jain
 - **Guard:** `openmetadata-ui-core-components/.../components/base/buttons/button.test.tsx` (tertiary default, ref, disabled tooltip); `reviewer`
 - **Related:** ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec, open-metadata/OpenMetadata#35348
@@ -62,3 +62,14 @@ their own sizes; this record does not cover them.
   `utility-brand-600` for blue.
 - `ButtonUtility` takes `isLoading`, which swaps the icon for `Button`'s spinner and disables the
   button, so a save action that showed a spinner as a `Button` still does.
+
+## Amendment: compact cell and feed actions (v4, 2026-10-29)
+This replaces "arrow and navigation actions only" in the v2 `xs` clause.
+- `hover-cell-icon` table-cell actions are `xs`: display-name and description edit, the entity task
+  request and the field conversation. So are `TagsContainerV2`'s add/edit when shown under a
+  table cell, and the Settings custom-property row edit. These keep the 20px box the table rows
+  were designed around.
+- Activity-feed footer actions sit on a 24px row, so the task reply and the add-reaction button are
+  `sm`; the pill variant of add-reaction keeps its round 26px pill.
+- The activity footer's comment action is a boxed `link-gray` `Button`, not a `ButtonUtility`: it has
+  no hover background, matching the reaction pills beside it.
