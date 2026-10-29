@@ -16,7 +16,7 @@ import {
   disableEtagConditionalReads,
   getWorkerAdminAPIContext,
 } from '../../utils/common';
-import { registerStorageState } from '../../utils/storageStateRecovery';
+import { captureRecoverableStorageState } from '../../utils/storageStateRecovery';
 import { test as base } from './base';
 import { installServerLoadReducers } from './serverLoad';
 
@@ -127,19 +127,16 @@ export const test = base.extend<
       await user.create(apiContext);
 
       const loginPage = await browser.newPage();
-      let unregisterState: (() => void) | undefined;
 
       try {
         await installServerLoadReducers(loginPage.context());
         await user.signIn(loginPage);
-        const storageState = await loginPage
-          .context()
-          .storageState({ indexedDB: true });
-        unregisterState = registerStorageState(storageState);
+        const storageState = await captureRecoverableStorageState(
+          loginPage.context()
+        );
 
         await use({ user, storageState });
       } finally {
-        unregisterState?.();
         await loginPage.close();
         await user.delete(apiContext);
       }

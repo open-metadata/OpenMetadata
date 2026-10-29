@@ -144,19 +144,21 @@ const tokenForSession = (state: StorageStateFile, session: string) =>
     ? tokenFromStateFile(state)
     : undefined;
 
-const registeredStates = new Set<StorageStateFile>();
+// ponytail: kept for the worker's life, no eviction; a worker captures a handful.
+const capturedStates = new Set<StorageStateFile>();
 
 /**
- * Makes a storage state that lives only in memory (a worker fixture's own
- * sign-in) recoverable like the `playwright/.auth` files. Returns the
- * unregister call for the fixture's teardown.
+ * Captures a context's storage state, IndexedDB included, for contexts restored
+ * from memory rather than from a `playwright/.auth` file — and lets the guard
+ * recover those contexts the same way.
  */
-export const registerStorageState = (state: StorageStateFile) => {
-  registeredStates.add(state);
+export const captureRecoverableStorageState = async (
+  context: BrowserContext
+) => {
+  const state = await context.storageState({ indexedDB: true });
+  capturedStates.add(state);
 
-  return () => {
-    registeredStates.delete(state);
-  };
+  return state;
 };
 
 /**
@@ -176,7 +178,7 @@ const findStateTokenForSession = async (
     return undefined;
   }
 
-  for (const state of registeredStates) {
+  for (const state of capturedStates) {
     const token = tokenForSession(state, session);
 
     if (token) {
