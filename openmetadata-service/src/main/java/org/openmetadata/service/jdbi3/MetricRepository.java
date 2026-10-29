@@ -493,48 +493,35 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   public List<Metric> updateManyEntitiesForImport(
       List<Metric> originals, List<Metric> updates, String updatedBy, String impersonatedBy) {
-    // Read before the batch replaces the CONTAINS edges: the originals are loaded without them.
-    Map<UUID, UUID> previousParentIds = parentIdsOf(originals);
+    // Load before the batch replaces the CONTAINS edges: the originals are read without them.
+    fetchAndSetParents(originals, getFields(FIELD_PARENT));
     List<Metric> updated =
         super.updateManyEntitiesForImport(originals, updates, updatedBy, impersonatedBy);
     reconcileImportedHierarchyGroups(updated);
-    refreshParentsOfMovedMetrics(previousParentIds, updated);
+    refreshParentsOfMovedMetrics(originals, updated);
     return updated;
-  }
-
-  private Map<UUID, UUID> parentIdsOf(List<Metric> metrics) {
-    return daoCollection
-        .relationshipDAO()
-        .findFromBatch(
-            entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, NON_DELETED)
-        .stream()
-        .collect(
-            Collectors.toMap(
-                record -> UUID.fromString(record.getToId()),
-                record -> UUID.fromString(record.getFromId()),
-                (first, ignored) -> first));
   }
 
   /**
    * The batch import path never runs MetricUpdater.updateParent, so a parent changed in a CSV
-   * refreshed neither parent's search document. This does the same for each moved metric.
+   * refreshed neither parent's search document. This does the same for each moved metric. The
+   * batch keeps the order of its inputs, so originals and updates pair up by position.
    */
-  private void refreshParentsOfMovedMetrics(
-      Map<UUID, UUID> previousParentIds, List<Metric> metrics) {
+  private void refreshParentsOfMovedMetrics(List<Metric> originals, List<Metric> updated) {
     Set<UUID> refreshed = new HashSet<>();
-    for (Metric metric : listOrEmpty(metrics)) {
-      UUID previousParentId = previousParentIds.get(metric.getId());
-      UUID currentParentId = metric.getParent() == null ? null : metric.getParent().getId();
-      if (!Objects.equals(previousParentId, currentParentId)) {
-        refreshParentOnce(previousParentId, refreshed);
-        refreshParentOnce(currentParentId, refreshed);
+    for (int i = 0; i < listOrEmpty(updated).size(); i++) {
+      EntityReference previousParent = originals.get(i).getParent();
+      EntityReference currentParent = updated.get(i).getParent();
+      if (!sameReferenceById(previousParent, currentParent)) {
+        refreshParentOnce(previousParent, refreshed);
+        refreshParentOnce(currentParent, refreshed);
       }
     }
   }
 
-  private void refreshParentOnce(UUID parentId, Set<UUID> refreshed) {
-    if (parentId != null && refreshed.add(parentId)) {
-      refreshSearchDocument(new EntityReference().withId(parentId).withType(METRIC));
+  private void refreshParentOnce(EntityReference parent, Set<UUID> refreshed) {
+    if (parent != null && refreshed.add(parent.getId())) {
+      refreshSearchDocument(parent);
     }
   }
 
