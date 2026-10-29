@@ -80,7 +80,7 @@ const INPUT_CONTAINER_CLASS = classNames(
 );
 
 const SUGGESTIONS_CONTAINER_CLASS =
-  'tw:max-h-[calc(24rem-2rem)] tw:w-full tw:overflow-y-auto tw:[&>.ant-typography]:px-6!';
+  'tw:max-h-[calc(24rem-2rem)] tw:w-full tw:overflow-y-auto';
 
 const SEARCH_POPOVER_CLASS = classNames(
   'tw:max-h-96! tw:w-(--trigger-width) tw:origin-(--trigger-anchor-point)',

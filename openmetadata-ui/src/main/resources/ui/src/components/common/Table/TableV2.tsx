@@ -174,7 +174,7 @@ const EXPANDER_GUTTER_PX = 16;
  * the app, not just the ones being migrated. `compact` is available to a call
  * site that opts into it deliberately.
  */
-const CORE_SIZE_BY_ANTD_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
+const CORE_SIZE_BY_TABLE_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
   compact: 'compact',
   small: 'sm',
   middle: 'md',
@@ -182,7 +182,7 @@ const CORE_SIZE_BY_ANTD_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
 };
 
 const toCoreSize = (size: TableComponentProps<never>['size']) =>
-  CORE_SIZE_BY_ANTD_SIZE[size ?? 'middle'] ?? 'md';
+  CORE_SIZE_BY_TABLE_SIZE[size ?? 'middle'] ?? 'md';
 
 /**
  * The core `Table` root's `size` prop only accepts `'sm' | 'md'` today — the
@@ -240,7 +240,7 @@ const pingShadowClass = (
   return '';
 };
 
-const CELL_PADDING_BY_ANTD_SIZE: Record<string, string> = {
+const CELL_PADDING_BY_TABLE_SIZE: Record<string, string> = {
   compact: 'tw:py-1.5 tw:pl-3 tw:pr-2',
   small: 'tw:p-2',
   middle: 'tw:py-2 tw:pl-4 tw:pr-2',
@@ -248,8 +248,8 @@ const CELL_PADDING_BY_ANTD_SIZE: Record<string, string> = {
 };
 
 const toCellPaddingClass = (size: TableComponentProps<never>['size']) =>
-  CELL_PADDING_BY_ANTD_SIZE[size ?? 'middle'] ??
-  CELL_PADDING_BY_ANTD_SIZE.middle;
+  CELL_PADDING_BY_TABLE_SIZE[size ?? 'middle'] ??
+  CELL_PADDING_BY_TABLE_SIZE.middle;
 
 const resolvePageSize = (
   pageSizeOverride: number | null,
@@ -1966,22 +1966,17 @@ const TableV2 = <T extends object>(
                               setOpenFilterKey(isOpen ? colKey : null)
                             }>
                             <div
-                              // AntD's filter dropdown caps at ~264px and
-                              // scrolls, with 32px rows; a bare antd Menu
-                              // outside a Dropdown falls back to its roomy
-                              // vertical-nav metrics, so compress it here.
+                              // Caps at ~264px and scrolls, like the filter
+                              // dropdown it replaced.
                               className={classNames(
                                 'tw:bg-overlay-surface tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg',
-                                'tw:[&_.ant-menu]:bg-transparent',
-                                'tw:max-h-[264px] tw:max-w-80 tw:overflow-auto',
-                                'tw:[&_.ant-menu-vertical]:border-r-0 tw:[&_.ant-menu-item]:h-8',
-                                'tw:[&_.ant-menu-item]:leading-8 tw:[&_.ant-menu-item]:my-0'
+                                'tw:max-h-[264px] tw:max-w-80 tw:overflow-auto'
                               )}
                               data-testid="filter-dropdown"
                               style={{ minWidth: '200px' }}>
                               {typeof colType.filterDropdown === 'function'
                                 ? colType.filterDropdown({
-                                    prefixCls: 'ant-table-filter-dropdown',
+                                    prefixCls: '',
                                     setSelectedKeys: (keys) => {
                                       filterDraftRef.current = {
                                         ...filterDraftRef.current,

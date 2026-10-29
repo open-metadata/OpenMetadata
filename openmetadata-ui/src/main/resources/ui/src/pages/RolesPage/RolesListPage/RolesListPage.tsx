@@ -68,7 +68,6 @@ import {
 } from '../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './roles-list.less';
 
 const RolesListPage = () => {
   const navigate = useNavigate();

@@ -11,18 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Box,
-  ButtonUtility,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Check, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Check, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isString } from 'lodash';
-import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React from 'react';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -41,8 +32,6 @@ import {
 } from '../rest/tagAPI';
 import { getEntityName } from './EntityNameUtils';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryPureUtils';
-import { t } from './i18next/LocalUtil';
-import { getTagDisplay } from './TagsPureUtils';
 
 export const getClassifications = async (
   fields?: Array<string> | string,
@@ -160,47 +149,6 @@ export const getDeleteIcon = (arg: {
   }
 
   return <Trash01 data-icon data-testid="delete-icon" name="Delete" />;
-};
-
-export const tagRender = (customTagProps: CustomTagProps) => {
-  const { label, onClose } = customTagProps;
-  const tagLabel = isString(label) ? getTagDisplay(label) : label;
-
-  const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-  };
-
-  return (
-    <Badge
-      className="tw:gap-1 text-sm m-r-xss m-y-2"
-      color="gray"
-      data-testid={`selected-tag-${tagLabel}`}
-      size="sm"
-      type="color"
-      onMouseDown={onPreventMouseDown}>
-      <Tooltip
-        arrow
-        excludeTriggerFromTabOrder
-        delay={1500}
-        placement="top left"
-        title={getTagTooltip(label as string)}
-        triggerClassName="tw:inline-flex cursor-pointer">
-        <Typography
-          as="p"
-          className="m-0 d-inline-block break-all whitespace-normal">
-          {tagLabel}
-        </Typography>
-      </Tooltip>
-      <ButtonUtility
-        aria-label={t('label.remove')}
-        data-testid="remove-tags"
-        icon={XClose}
-        size="xs"
-        onClick={onClose}
-      />
-    </Badge>
-  );
 };
 
 export const fetchGlossaryList = async (
