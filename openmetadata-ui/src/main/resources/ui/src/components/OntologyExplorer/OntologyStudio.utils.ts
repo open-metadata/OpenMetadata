@@ -84,6 +84,7 @@ SELECT ?conceptFqn WHERE {
 }
 LIMIT 100`;
 
+// ADR:2026-10-26-native-query-console-hides-only-unchanged-bundled-templates
 export const isCanonicalGlossaryQueryTemplate = (
   template: SavedSparqlQuery
 ): boolean =>
