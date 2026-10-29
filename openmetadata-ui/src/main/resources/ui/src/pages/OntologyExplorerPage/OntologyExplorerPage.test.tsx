@@ -453,7 +453,10 @@ describe('OntologyExplorerPage', () => {
     );
   };
 
-  const renderNativeStudio = (search: string) => {
+  const renderNativeStudio = (
+    search: string,
+    ontology: Ontology = nativeOntology
+  ) => {
     (usePermissionProvider as jest.Mock).mockReturnValue({
       permissions: {
         ontologyConcept: { Create: true },
@@ -462,7 +465,7 @@ describe('OntologyExplorerPage', () => {
       },
     });
     mockUseRealRouter = true;
-    (getOntology as jest.Mock).mockResolvedValue(nativeOntology);
+    (getOntology as jest.Mock).mockResolvedValue(ontology);
     (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
       state: {
         ontologyId: nativeOntology.id,
@@ -474,7 +477,7 @@ describe('OntologyExplorerPage', () => {
       paging: { total: 0 },
     });
     (listOntologies as jest.Mock).mockResolvedValue({
-      data: [nativeOntology],
+      data: [ontology],
       paging: { total: 1 },
     });
     mockUseOntologyStudioScopes.mockReturnValue({
@@ -484,7 +487,7 @@ describe('OntologyExplorerPage', () => {
       isOntologyError: false,
       isOntologyLoading: false,
       refetchOntologies: jest.fn(),
-      ontologies: [nativeOntology],
+      ontologies: [ontology],
       refetch: jest.fn(),
     });
     (listOntologyConcepts as jest.Mock).mockResolvedValue({
@@ -671,6 +674,40 @@ describe('OntologyExplorerPage', () => {
 
     expect(
       screen.getByTestId('ontology-publication-tab-changes')
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('names the version chip by the version it shows', async () => {
+    renderNativeStudio('?ontology=native-sales', {
+      ...nativeOntology,
+      publicationStatus: {
+        unpublishedChanges: 0,
+        active: {
+          releaseId: 'release-2',
+          releaseRevision: 2,
+          semanticVersion: '1.2.0',
+        },
+      },
+    });
+
+    const chip = await screen.findByRole('button', { name: '1.2.0' });
+
+    expect(chip).toHaveAttribute(
+      'data-testid',
+      'ontology-release-history-trigger'
+    );
+
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    act(() => chip.focus());
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'label.release-history'
+    );
+
+    fireEvent.click(chip);
+
+    expect(
+      screen.getByTestId('ontology-publication-tab-releases')
     ).toHaveAttribute('aria-selected', 'true');
   });
 
