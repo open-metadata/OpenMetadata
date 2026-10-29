@@ -520,3 +520,22 @@ test('live feed sockets cannot subscribe to the shared backend', async ({
   );
   expect(upgrades).toBe(0);
 });
+
+test('table incident badges receive a scalar count rather than test-case status rows', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const reports = await page.evaluate(async () =>
+    Promise.all(
+      ['New', 'Resolved'].map(async (status) =>
+        (
+          await fetch(
+            `/api/v1/dataQuality/testSuites/dataQualityReport?index=testCaseResolutionStatus&q=${status}&aggregationQuery=aggType=cardinality:field=stateId`
+          )
+        ).json()
+      )
+    )
+  );
+  expect(reports[0].data).toEqual([{ stateId: '1' }]);
+  expect(reports[1].data).toEqual([{ stateId: '0' }]);
+});

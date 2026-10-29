@@ -797,6 +797,24 @@ export const installVisualData = async (
     }
 
     if (path === 'dataQuality/testSuites/dataQualityReport') {
+      if (url.searchParams.get('index') === 'testCaseResolutionStatus') {
+        await route.fulfill({
+          json: {
+            metadata: { keys: [], dimensions: [], metrics: ['stateId'] },
+            data: [
+              {
+                stateId:
+                  state === 'empty' ||
+                  (url.searchParams.get('q') ?? '').includes('Resolved')
+                    ? '0'
+                    : '1',
+              },
+            ],
+          },
+        });
+
+        return;
+      }
       await route.fulfill({
         json: {
           metadata: {
