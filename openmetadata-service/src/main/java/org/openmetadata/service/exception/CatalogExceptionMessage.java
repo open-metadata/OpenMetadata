@@ -175,6 +175,10 @@ public final class CatalogExceptionMessage {
     return String.format("User '%s' is already part of the team '%s'", userName, teamName);
   }
 
+  public static String invalidFQN(final String fqn) {
+    return String.format("Invalid fully qualified name %s", fqn);
+  }
+
   public static String invalidColumnFQN(String fqn) {
     return String.format("Invalid fully qualified column name %s", fqn);
   }
