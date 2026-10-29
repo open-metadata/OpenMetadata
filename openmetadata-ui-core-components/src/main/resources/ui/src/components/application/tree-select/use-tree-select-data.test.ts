@@ -111,6 +111,47 @@ describe('useTreeSelectData', () => {
     );
   });
 
+  it('keeps loaded branches when a cleared search reloads the root', async () => {
+    const root: TreeSelectNode[] = [
+      { id: 'root', label: 'root', value: 'root', isLeaf: false },
+    ];
+    const fetchData = vi
+      .fn()
+      .mockImplementation(
+        async ({
+          parentId,
+          searchTerm,
+        }: {
+          parentId?: string;
+          searchTerm?: string;
+        }) => {
+          if (parentId) {
+            return { nodes: [child('c1')] };
+          }
+
+          return { nodes: searchTerm ? [child('hit')] : root };
+        }
+      );
+    const { result, rerender } = renderHook(
+      ({ searchTerm }: { searchTerm: string }) =>
+        useTreeSelectData({ fetchData, searchTerm }),
+      { initialProps: { searchTerm: '' } }
+    );
+
+    await waitFor(() => expect(result.current.treeData).toHaveLength(1));
+    await act(() => result.current.loadChildren('root'));
+
+    rerender({ searchTerm: 'hit' });
+    await waitFor(() => expect(result.current.treeData[0].id).toBe('hit'));
+
+    rerender({ searchTerm: '' });
+    await waitFor(() =>
+      expect(result.current.treeData[0].children).toEqual([child('c1')])
+    );
+
+    expect(fetchData).toHaveBeenCalledTimes(4);
+  });
+
   it('records what a truncated branch needs to ask for its next page', async () => {
     const { result } = renderPagedBranch();
 

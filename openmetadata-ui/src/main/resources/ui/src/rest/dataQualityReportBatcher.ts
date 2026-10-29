@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
+import { getRequestDomain } from '../hoc/withDomainFilter';
 import { DataQualityReportRequest } from '../generated/tests/dataQualityReportBatchRequest';
 import {
   DataQualityReportParamsType,
@@ -87,8 +88,15 @@ const flushReports = (): void => {
  * keeping each caller's promise (and error handling) independent.
  */
 export const batchedDataQualityReport = (
-  params: DataQualityReportParamsType
+  reportParams: DataQualityReportParamsType
 ): Promise<DataQualityReport> => {
+  // A POST body is out of the domain interceptor's reach, so each item takes
+  // the navbar domain here unless the page scoped it to a domain itself.
+  const params = {
+    ...reportParams,
+    domain: reportParams.domain || getRequestDomain(),
+  };
+
   return new Promise<DataQualityReport>((resolve, reject) => {
     // Identical requests in the same microtask share one batch entry while each
     // caller still receives an independently settled promise.

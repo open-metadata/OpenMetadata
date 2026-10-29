@@ -37,7 +37,16 @@ import {
   User01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import React, { FC, ReactNode, useCallback, useEffect, useMemo } from 'react';
+import React, {
+  FC,
+  ReactNode,
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Button, SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -104,6 +113,9 @@ interface MenuRowProps {
   isDanger?: boolean;
 }
 
+const isTextTruncated = (element: HTMLElement | null) =>
+  Boolean(element && element.scrollWidth > element.clientWidth);
+
 const MenuRow = ({
   icon: Icon,
   label,
@@ -157,7 +169,10 @@ const ContextRow = ({
       <Typography className="tw:leading-4 tw:text-tertiary" size="text-xs">
         {caption}
       </Typography>
-      <Typography className="tw:truncate tw:text-primary" weight="medium">
+      <Typography
+        className="tw:text-primary"
+        ellipsis={{ excludeTriggerFromTabOrder: true, tooltip: true }}
+        weight="medium">
         {value}
       </Typography>
     </Box>
@@ -197,6 +212,7 @@ interface TriggerContentProps {
   name: string;
   userName: string;
   domainName?: string;
+  domainRef: RefObject<HTMLElement>;
   isDomainScoped: boolean;
 }
 
@@ -206,6 +222,7 @@ const TriggerContent = ({
   name,
   userName,
   domainName,
+  domainRef,
   isDomainScoped,
 }: TriggerContentProps) => (
   <>
@@ -249,6 +266,7 @@ const TriggerContent = ({
                 isDomainScoped ? 'tw:text-brand-secondary' : 'tw:text-tertiary'
               )}
               data-testid="ask-ai-user-menu-domain"
+              ref={domainRef}
               size="text-xs"
               weight="medium">
               {domainName}
@@ -294,6 +312,8 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
     activeDomain
   );
   const isDomainScoped = activeDomain !== DEFAULT_DOMAIN_VALUE;
+  const domainRef = useRef<HTMLElement>(null);
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
   const selectedPersonaName = selectedPersona
     ? getEntityName(selectedPersona)
     : t('label.default');
@@ -336,19 +356,26 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
     <Dropdown.Root>
       <Tooltip
         arrow
-        isDisabled={!collapsed}
+        isOpen={isTooltipOpen}
         placement="right"
         title={
-          <span className="tw:flex tw:items-center tw:gap-2 tw:leading-5">
-            <Typography className="tw:truncate tw:text-[13px]" weight="medium">
+          // Wraps rather than truncates: this is where a long name is read in full.
+          <span className="tw:flex tw:flex-wrap tw:items-center tw:gap-x-2 tw:leading-5 tw:break-normal">
+            <Typography className="tw:text-[13px]" weight="medium">
               {displayName}
             </Typography>
             <Typography
-              className="tw:truncate tw:text-tooltip-supporting-text"
+              className="tw:text-tooltip-supporting-text"
               weight="regular">
               {domainDisplayName}
             </Typography>
           </span>
+        }
+        onOpenChange={(isOpen) =>
+          // Expanded, the card already shows both unless the domain is cut off.
+          setIsTooltipOpen(
+            isOpen && (collapsed || isTextTruncated(domainRef.current))
+          )
         }>
         <Button
           aria-label={displayName}
@@ -362,6 +389,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           <TriggerContent
             collapsed={collapsed}
             domainName={domainDisplayName}
+            domainRef={domainRef}
             isDomainScoped={isDomainScoped}
             name={displayName}
             userName={userName}

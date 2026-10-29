@@ -78,40 +78,39 @@ const isUnscopedSearch = (index?: string | string[]) => {
   );
 };
 
+/**
+ * The navbar domain a request should be scoped to, or `undefined` when none is
+ * selected or scoping is off (product tour, domain pages, auth calls).
+ */
+export const getRequestDomain = (): string | undefined => {
+  const { activeDomain } = useDomainStore.getState();
+  const currentPath = getPathNameFromWindowLocation();
+  // A product tour shows every user the same recorded pages, whatever domain
+  // they have selected. Off while the tour is recorded too, so the recorded
+  // requests are the ones the tour sends.
+  const isUnscopedPage =
+    isProductTourRunning() ||
+    ['/domain', '/auth/logout', '/auth/refresh'].some((path) =>
+      currentPath.startsWith(path)
+    );
+
+  return activeDomain === DEFAULT_DOMAIN_VALUE || isUnscopedPage
+    ? undefined
+    : activeDomain;
+};
+
 export const withDomainFilter = (
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig => {
-  const isGetRequest = config.method === 'get';
-  const activeDomain = useDomainStore.getState().activeDomain;
-  const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
-  const currentPath = getPathNameFromWindowLocation();
-
   if (config.headers?.[SKIP_DOMAIN_FILTER_HEADER]) {
     delete config.headers[SKIP_DOMAIN_FILTER_HEADER];
 
     return config;
   }
 
-  // A product tour shows every user the same recorded pages, whatever domain
-  // they have selected. Off while the tour is recorded too, so the recorded
-  // requests are the ones the tour sends.
-  if (isProductTourRunning()) {
-    return config;
-  }
+  const activeDomain = getRequestDomain();
 
-  const shouldNotIntercept = [
-    '/domain',
-    '/auth/logout',
-    '/auth/refresh',
-  ].reduce((prev, curr) => {
-    return prev || currentPath.startsWith(curr);
-  }, false);
-
-  if (shouldNotIntercept) {
-    return config;
-  }
-
-  if (isGetRequest && hasActiveDomain) {
+  if (config.method === 'get' && activeDomain) {
     if (config.url?.includes('/search/query')) {
       if (isUnscopedSearch(config.params?.index)) {
         return config;

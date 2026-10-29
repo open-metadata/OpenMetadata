@@ -17,7 +17,9 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import * as miscAPI from '../../../rest/miscAPI';
 import * as searchAPI from '../../../rest/searchAPI';
 import ExploreTree, { getExploreTreeAggregationResponse } from './ExploreTree';
@@ -77,6 +79,33 @@ afterEach(() => {
 });
 
 describe('ExploreTree', () => {
+  it.each([
+    ['shows', DEFAULT_DOMAIN_VALUE, true],
+    ['leaves out', 'Finance', false],
+  ])(
+    '%s the empty-tree placeholder when the domain scope is %s',
+    async (_, activeDomain, hasPlaceholder) => {
+      useDomainStore.setState({ activeDomain });
+      jest
+        .spyOn(searchAPI, 'searchQuery')
+        .mockResolvedValue(buildAggregationResponse([]));
+
+      const { queryByTestId } = render(
+        <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+      );
+
+      await waitFor(() => {
+        expect(queryByTestId('loader')).not.toBeInTheDocument();
+      });
+
+      expect(Boolean(queryByTestId('no-data-placeholder'))).toBe(
+        hasPlaceholder
+      );
+
+      useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
+    }
+  );
+
   it('renders the correct tree nodes', async () => {
     const { getByText, queryByTestId } = render(
       <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />

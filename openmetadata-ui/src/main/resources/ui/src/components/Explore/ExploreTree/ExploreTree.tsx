@@ -32,6 +32,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../../enums/common.enum';
@@ -39,6 +40,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { postAggregateFieldOptions } from '../../../rest/miscAPI';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -341,6 +343,7 @@ const ExploreTree = ({
   // count refresh.
   const treeSelectRef = useRef(false);
   const { t } = useTranslation();
+  const { activeDomain } = useDomainStore();
   const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
   const [treeData, setTreeData] = useState(initTreeData);
@@ -852,6 +855,11 @@ const ExploreTree = ({
     return <Loader />;
   }
 
+  // Scoped to a domain, the results pane already explains why nothing shows.
+  if (treeData.length === 0 && activeDomain !== DEFAULT_DOMAIN_VALUE) {
+    return null;
+  }
+
   if (treeData.length === 0) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
@@ -860,7 +868,7 @@ const ExploreTree = ({
           description={t('message.add-service-and-data-assets')}
           footer={
             <>
-              <Typography as="p">
+              <Typography as="p" className="tw:text-secondary" size="text-xs">
                 <Transi18next
                   i18nKey="message.need-help-message"
                   renderElement={
