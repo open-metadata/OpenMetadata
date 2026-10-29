@@ -318,8 +318,11 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
 
   @Override
   protected void entitySpecificCleanup(ContextFile entityInterface) {
-    // Cleanup removes the edge to the folder before postDelete refreshes the folder's count.
-    entityInterface.setFolder(folderOf(entityInterface));
+    // Cleanup removes the edge to the folder before postDelete refreshes the folder's count. A
+    // hard-delete cascade skips that refresh, so it skips the lookup too.
+    if (!isInHardDeleteCascade()) {
+      entityInterface.setFolder(folderOf(entityInterface));
+    }
     List<ContextFileContent> contents =
         new ArrayList<>(contentRepository.listByContextFileId(entityInterface.getId()));
     if (contents.isEmpty()) {
