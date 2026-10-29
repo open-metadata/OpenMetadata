@@ -200,6 +200,7 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.TestLoginSessionSweeper;
 import org.openmetadata.service.security.auth.UserActivityFilter;
 import org.openmetadata.service.security.auth.UserActivityTracker;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 import org.openmetadata.service.security.credentials.CredentialVerifier;
 import org.openmetadata.service.security.credentials.Credentials;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -1444,7 +1445,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                 (upgradeRequest, upgradeResponse) -> {
                   HandshakeIdentity identity =
                       authenticateUpgrade(websocketFilter, upgradeRequest, upgradeResponse);
-                  // A rejected upgrade already answered with 401/403; a null creator result
+                  // A rejected upgrade already answered with 401, 403 or 503; a null creator result
                   // stops the negotiation instead of surfacing it as a creator failure.
                   return identity == null
                       ? null
@@ -1463,12 +1464,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
    * returned identity is stamped into the socket's connection headers by the handler, mirroring
    * what the servlet filter stamps for the polling transport (ADR:2026-10-26-push-feed-handshakes-always-authenticate).
    */
-  private HandshakeIdentity authenticateUpgrade(
+  static HandshakeIdentity authenticateUpgrade(
       SocketAddressFilter websocketFilter,
       JettyServerUpgradeRequest upgradeRequest,
       JettyServerUpgradeResponse upgradeResponse) {
     try {
       return websocketFilter.authenticate(upgradeRequest.getHttpServletRequest());
+    } catch (CredentialUnavailableException unavailable) {
+      LOG.debug("[WSUpgrade] Push-feed upgrade token could not be confirmed", unavailable);
+      answerRetryLater(upgradeResponse, unavailable.retryAfterSeconds());
     } catch (HandshakeRejectedException reject) {
       LOG.info("[WSUpgrade] Rejected push-feed WebSocket upgrade: {}", reject.getMessage());
       answerFailedUpgrade(upgradeResponse, reject.getStatus(), reject.getMessage());
@@ -1480,7 +1484,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     return null;
   }
 
-  private void answerFailedUpgrade(
+  private static void answerRetryLater(
+      JettyServerUpgradeResponse upgradeResponse, long retryAfterSeconds) {
+    upgradeResponse.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
+    answerFailedUpgrade(
+        upgradeResponse,
+        HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+        CredentialUnavailableException.CLIENT_MESSAGE);
+  }
+
+  private static void answerFailedUpgrade(
       JettyServerUpgradeResponse upgradeResponse, int status, String message) {
     try {
       upgradeResponse.sendError(status, message);

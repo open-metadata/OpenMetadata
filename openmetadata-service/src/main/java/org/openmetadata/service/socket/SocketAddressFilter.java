@@ -127,6 +127,7 @@ public class SocketAddressFilter implements Filter {
    * @throws AuthenticationException the presented token failed validation
    * @throws HandshakeRejectedException the handshake carries no verifiable credential, or its
    *     credentials do not agree
+   * @throws CredentialUnavailableException the stored-credential check could not be confirmed
    */
   public HandshakeIdentity authenticate(HttpServletRequest request) throws AuthenticationException {
     Map<String, String> query = parseQuery(request);
