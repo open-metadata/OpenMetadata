@@ -209,7 +209,7 @@ describe('FilterChip', () => {
     expect(dateFilter).not.toHaveAttribute('data-start');
   });
 
-  it('labels an unset date chip as all time and clears it back to undefined', () => {
+  it('passes the all-time placeholder and a clear handler to the date filter', () => {
     const descriptor = baseDescriptor({
       controlType: 'date',
       label: 'Last Run',

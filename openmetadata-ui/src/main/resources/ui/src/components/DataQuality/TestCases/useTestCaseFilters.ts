@@ -40,8 +40,8 @@ import {
 } from './FilterChip.interface';
 import { FetchedOption } from './useTestCaseFilterOptions';
 
-// Last Run stays visible with no range picked, so the counts read as all-time
-// rather than looking unfiltered by accident (open-metadata/OpenMetadata#36481).
+// Last Run is on by default so the counts visibly read as all-time, matching how the
+// Summary tab always shows the range its counts cover.
 const DEFAULT_SELECTED_FILTERS = [
   TEST_CASE_FILTERS.lastRun,
   TEST_CASE_FILTERS.status,

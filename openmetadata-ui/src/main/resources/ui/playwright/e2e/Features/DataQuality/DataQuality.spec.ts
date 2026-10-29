@@ -1785,8 +1785,6 @@ test.describe(
   }
 );
 
-// Test Cases used to hide Last Run, so its all-time counts read as disagreeing with the
-// date-filtered Summary tab (open-metadata/OpenMetadata#36481).
 test.describe(
   'Test Cases Last Run filter',
   { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`] },
@@ -1808,7 +1806,7 @@ test.describe(
       );
       await lastRun.click();
       await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
-      await filteredList;
+      expect((await filteredList).status()).toBe(200);
 
       await expect(lastRun).toContainText('Last 7 days');
 
@@ -1816,7 +1814,7 @@ test.describe(
         (r) => isTestCaseList(r.url()) && !r.url().includes('startTimestamp')
       );
       await page.getByTestId('clear-date-picker').click();
-      await unfilteredList;
+      expect((await unfilteredList).status()).toBe(200);
 
       await expect(lastRun).toContainText('All time');
     });
@@ -1841,15 +1839,16 @@ test.describe(
         .getByRole('button', { name: 'This week', exact: true })
         .click();
       await page.getByRole('button', { name: 'Apply', exact: true }).click();
-      await filteredList;
+      expect((await filteredList).status()).toBe(200);
 
       await expect(lastRun).not.toHaveText('Last Run: All time');
+      await expect(page.getByTestId('clear-date-filter')).toBeVisible();
 
       const unfilteredList = page.waitForResponse(
         (r) => isTestCaseList(r.url()) && !r.url().includes('startTimestamp')
       );
       await page.getByTestId('clear-date-filter').click();
-      await unfilteredList;
+      expect((await unfilteredList).status()).toBe(200);
 
       await expect(lastRun).toHaveText('Last Run: All time');
     });
