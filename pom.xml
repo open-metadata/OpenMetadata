@@ -75,7 +75,7 @@
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>2.0.4</slf4j.version>
     <!-- 2.18.11 clears CVE-2026-89425 and CVE-2026-91777 (patch over 2.18.10). -->
-    <jackson.version>2.18.11</jackson.version>
+    <jackson.version>2.18.12</jackson.version>
     <!-- Single source for the AWS SDK v2 BOM version, consumed by the root BOM
          import below and by openmetadata-service's BOM import. -->
     <awssdk.version>2.57.2</awssdk.version>
