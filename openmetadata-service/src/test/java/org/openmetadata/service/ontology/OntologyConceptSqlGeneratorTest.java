@@ -289,6 +289,26 @@ class OntologyConceptSqlGeneratorTest {
   }
 
   @Test
+  void aHopBoundOnBothTablesFollowsThePreviousTablesBinding() {
+    final BoundTable customers =
+        new BoundTable(
+            CUSTOMERS,
+            "Postgres",
+            List.of(List.of("customer_id")),
+            Map.of(RECEIVED_BY, List.of("favourite_transfer_id")),
+            List.of("customer_id"),
+            List.of(foreignKey(List.of("favourite_transfer_id"), TRANSFERS, "transfer_id")));
+
+    assertEquals(
+        "SELECT t1.customer_id\nFROM payments.transfers t0\n"
+            + "JOIN payments.customers t1 ON t0.payee_id = t1.customer_id -- received by\nLIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                concept("Funds Transfer", payeeBoundTransfers()),
+                List.of(new Hop(RECEIVED_BY, "received by", concept("Customer", customers))))
+            .sql());
+  }
+
+  @Test
   void identifiersAreQuotedInEachDialectsStyle() {
     final String table = "finance.warehouse.\"Payments Core\".transfers";
 
