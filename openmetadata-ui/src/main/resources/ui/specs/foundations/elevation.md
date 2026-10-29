@@ -37,8 +37,8 @@ offset/blur/spread values are kept verbatim:
 
 ```less
 /* migrated */
-box-shadow: 0px -13px 16px -4px var(--om-legacy-color-10-13-18-0-04),
-  0px -4px 6px -2px var(--om-legacy-color-10-13-18-0-04);
+box-shadow: 0px -13px 16px -4px var(--om-legacy-color-10-13-18-0-05),
+  0px -4px 6px -2px var(--om-legacy-color-10-13-18-0-05);
 ```
 
 When a bespoke shadow matches a scale step, prefer the token

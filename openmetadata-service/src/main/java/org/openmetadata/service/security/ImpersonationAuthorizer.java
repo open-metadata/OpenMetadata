@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -85,10 +84,14 @@ public final class ImpersonationAuthorizer {
     }
   }
 
-  @SuppressWarnings("unchecked")
-  private static ResourceContextInterface targetUserResourceContext(User targetUser) {
-    EntityRepository<User> userRepository =
-        (EntityRepository<User>) Entity.getEntityRepository(Entity.USER);
-    return new ResourceContext<>(Entity.USER, targetUser, userRepository);
+  /**
+   * Resolved from the store rather than wrapping {@code targetUser}: callers load the target with
+   * only the fields they need, and a condition such as {@code hasDomain()} reads an unloaded
+   * attribute as empty, which makes a Deny rule fail open.
+   */
+  static ResourceContextInterface targetUserResourceContext(User targetUser) {
+    return targetUser.getId() != null
+        ? new ResourceContext<>(Entity.USER, targetUser.getId(), null)
+        : new ResourceContext<>(Entity.USER, null, targetUser.getName());
   }
 }

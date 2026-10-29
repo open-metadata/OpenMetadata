@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  DataType,
+  SearchIndexField,
+} from '../generated/entity/data/searchIndex';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
-import { getUpdatedTags } from './TablePureUtils';
+import { getUpdatedTags, searchInFields } from './TablePureUtils';
 
 describe('getUpdatedTags', () => {
   it('keeps a derived label derived, so it is not saved as the field own', () => {
@@ -35,5 +39,51 @@ describe('getUpdatedTags', () => {
     expect(ownTag.labelType).toBe(LabelType.Manual);
     expect(ownTag.state).toBe(State.Confirmed);
     expect(ownTag).not.toHaveProperty('isRemovable');
+  });
+});
+
+describe('searchInFields', () => {
+  const fields: SearchIndexField[] = [
+    { name: 'userName', dataType: DataType.Text },
+    { name: 'userId', dataType: DataType.Keyword, description: 'Primary key' },
+    {
+      name: 'address',
+      dataType: DataType.Object,
+      children: [
+        { name: 'streetName', dataType: DataType.Text },
+        { name: 'zipCode', dataType: DataType.Keyword },
+      ],
+    },
+  ];
+
+  const names = (result: SearchIndexField[]) => result.map(({ name }) => name);
+
+  it.each(['User', 'USER', 'user'])(
+    'matches field names case-insensitively for %s',
+    (query) => {
+      expect(names(searchInFields(fields, query))).toEqual([
+        'userName',
+        'userId',
+      ]);
+    }
+  );
+
+  it('matches descriptions and data types regardless of query case', () => {
+    expect(names(searchInFields(fields, 'PRIMARY'))).toEqual(['userId']);
+    expect(names(searchInFields(fields, 'Keyword'))).toEqual([
+      'userId',
+      'address',
+    ]);
+  });
+
+  it('keeps a parent with only its matching children', () => {
+    const [address] = searchInFields(fields, 'Street');
+
+    expect(address.name).toBe('address');
+    expect(names(address.children ?? [])).toEqual(['streetName']);
+  });
+
+  it('returns no fields when nothing matches', () => {
+    expect(searchInFields(fields, 'Missing')).toEqual([]);
   });
 });
