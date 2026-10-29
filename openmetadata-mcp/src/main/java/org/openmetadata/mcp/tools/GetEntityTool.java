@@ -155,8 +155,8 @@ public class GetEntityTool implements McpTool {
               authorizer,
               securityContext,
               params,
-              (String) params.get("entityType"),
-              (String) params.get("fqn"));
+              CommonUtils.requireNonBlank(params.get("entityType"), "entityType"),
+              CommonUtils.requireNonBlank(params.get("fqn"), "fqn"));
     } else {
       result = readMany(authorizer, securityContext, params, batch);
     }

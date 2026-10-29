@@ -97,6 +97,28 @@ const insertChildrenIntoTree = <T>(
     return node;
   });
 
+// Re-attach previously loaded branches, so a root reload (e.g. clearing a
+// search) does not leave the restored expanded keys pointing at empty parents.
+const withCachedChildren = <T>(
+  nodes: TreeSelectNode<T>[],
+  cache: Map<string, BranchPage<T>>
+): TreeSelectNode<T>[] =>
+  nodes.map((node) => {
+    const page = cache.get(node.id);
+    if (!page || node.children) {
+      return node;
+    }
+
+    return {
+      ...node,
+      children: withCachedChildren(page.nodes, cache),
+      hasMoreChildren: page.hasMore === true,
+      childrenTotal: page.total,
+      childrenCursor: page.cursor,
+      isLeaf: page.nodes.length > 0 ? false : node.isLeaf,
+    };
+  });
+
 const findNode = <T>(
   nodes: TreeSelectNode<T>[],
   id: string
@@ -224,16 +246,27 @@ export const useTreeSelectData = <T = unknown>({
             );
             nextLoadingNodes.delete(params.parentId);
           } else {
-            nextData = append
-              ? [...prev.data, ...response.nodes]
-              : response.nodes;
+            if (params.searchTerm) {
+              nextData = append
+                ? [...prev.data, ...response.nodes]
+                : response.nodes;
+            } else {
+              const page = withCachedChildren(
+                response.nodes,
+                cachedDataRef.current
+              );
+              nextData = append ? [...prev.data, ...page] : page;
+            }
             nextRootPage = {
               hasMore: response.hasMore,
               total: response.total,
               cursor: response.nextCursor,
             };
             if (!params.searchTerm) {
-              nextCachedData = new Map([[ROOT_CACHE_KEY, { nodes: nextData }]]);
+              nextCachedData = new Map(cachedDataRef.current).set(
+                ROOT_CACHE_KEY,
+                { nodes: nextData }
+              );
             }
           }
 
