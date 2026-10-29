@@ -345,7 +345,7 @@ describe('a graph that went stale', () => {
     changeModel(1);
     await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2));
 
-    expect(screen.getByRole('status')).toHaveTextContent('label.loading');
+    expect(screen.getByText('label.loading')).toHaveAttribute('role', 'status');
     expect(clusterCount('transfer')).toHaveTextContent('· 6');
     expect(
       screen.getByTestId('ontology-data-cluster-account').className
@@ -356,7 +356,7 @@ describe('a graph that went stale', () => {
     );
 
     expect(clusterCount('transfer')).toHaveTextContent('· 9');
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.loading')).not.toBeInTheDocument();
   });
 
   it('keeps an expanded cluster expanded through the reload', async () => {

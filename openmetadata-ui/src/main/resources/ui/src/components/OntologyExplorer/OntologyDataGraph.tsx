@@ -927,6 +927,20 @@ const OntologyDataGraph = ({
     }
   };
 
+  if (terms.length === 0 && hasMoreTerms) {
+    return (
+      <div className="tw:relative tw:h-full" data-testid="ontology-data-graph">
+        <DataGraphFootnote
+          hasMoreTerms
+          isLoadingMoreTerms={isLoadingMoreTerms}
+          isRenderCapped={false}
+          top={CLUSTER_LAYOUT_MARGIN}
+          onLoadMoreTerms={onLoadMoreTerms}
+        />
+      </div>
+    );
+  }
+
   if (terms.length === 0) {
     return (
       <Box

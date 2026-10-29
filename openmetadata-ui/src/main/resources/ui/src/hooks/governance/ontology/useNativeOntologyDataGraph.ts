@@ -122,6 +122,9 @@ const newGeneration = (): Generation => ({
   staleReloads: 0,
 });
 
+const findCluster = (graph: NativeDataGraph, conceptId: string) =>
+  graph.clusters.find((item) => item.concept.id === conceptId);
+
 const hasEmptyBindingsTail = (page: NativeOntologyDataGraphPage) =>
   Boolean(page.bindings?.after) && page.bindings?.assets.length === 0;
 
@@ -144,6 +147,7 @@ export const useNativeOntologyDataGraph = (
   const isLoadingRef = useRef(true);
   const isLoadingClustersRef = useRef(false);
   const loadingConceptIdsRef = useRef<ReadonlySet<string>>(new Set());
+  const pagedConceptIdsRef = useRef(new Set<string>());
   const failureRef = useRef<NativeDataGraphFailure>();
   const generationRef = useRef<Generation>(newGeneration());
   const queueRef = useRef<Promise<void>>(Promise.resolve());
@@ -316,12 +320,11 @@ export const useNativeOntologyDataGraph = (
         publish();
       };
       markLoading(true);
+      pagedConceptIdsRef.current.add(conceptId);
       let previousCursor: string | undefined;
       try {
         for (;;) {
-          const cluster = graphRef.current.clusters.find(
-            (item) => item.concept.id === conceptId
-          );
+          const cluster = findCluster(graphRef.current, conceptId);
           if (!cluster?.after || cluster.after === previousCursor) {
             return;
           }
@@ -395,9 +398,37 @@ export const useNativeOntologyDataGraph = (
     return generation;
   }, []);
 
+  const restoreRows = useCallback(
+    async (generation: Generation, conceptId: string, rowCount: number) => {
+      for (;;) {
+        const before = findCluster(graphRef.current, conceptId);
+        if (
+          !isCurrent(generation) ||
+          failureRef.current ||
+          !before?.after ||
+          before.assets.length >= rowCount
+        ) {
+          return;
+        }
+        await runMoreAssets(generation, conceptId);
+        const after = findCluster(graphRef.current, conceptId);
+        if ((after?.assets.length ?? 0) <= before.assets.length) {
+          return;
+        }
+      }
+    },
+    [isCurrent, runMoreAssets]
+  );
+
   const reload = useCallback(
     (generation: Generation, keepGraph = false) =>
       enqueue(generation, async () => {
+        const pagedRowCounts = keepGraph
+          ? graphRef.current.clusters
+              .filter((item) => pagedConceptIdsRef.current.has(item.concept.id))
+              .map((item) => [item.concept.id, item.assets.length] as const)
+          : [];
+        pagedConceptIdsRef.current = new Set();
         if (!keepGraph) {
           graphRef.current = EMPTY_NATIVE_DATA_GRAPH;
         }
@@ -405,9 +436,14 @@ export const useNativeOntologyDataGraph = (
         loadingConceptIdsRef.current = new Set();
         isLoadingClustersRef.current = false;
         publish();
-        await runSelection(generation, reloadPlan());
+        if ((await runSelection(generation, reloadPlan())) !== 'ok') {
+          return;
+        }
+        for (const [conceptId, rowCount] of pagedRowCounts) {
+          await restoreRows(generation, conceptId, rowCount);
+        }
       }),
-    [enqueue, publish, runSelection]
+    [enqueue, publish, restoreRows, runSelection]
   );
 
   useEffect(() => {

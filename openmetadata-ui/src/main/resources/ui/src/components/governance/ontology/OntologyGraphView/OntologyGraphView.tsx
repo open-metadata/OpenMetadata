@@ -307,6 +307,11 @@ const OntologyGraphView = ({
   const [search, setSearch] = useState('');
   const [graphMode, setGraphMode] = useState<'model' | 'data'>('model');
   const [hasOpenedData, setHasOpenedData] = useState(false);
+  const [dataRevision, setDataRevision] = useState(0);
+  const noteWorkingChange = useCallback(() => {
+    setDataRevision((revision) => revision + 1);
+    onWorkingChange?.();
+  }, [onWorkingChange]);
   const changeGraphMode = useCallback((mode: 'model' | 'data') => {
     setGraphMode(mode);
     if (mode === 'data') {
@@ -507,7 +512,7 @@ const OntologyGraphView = ({
         for (const step of planNativeRelation({ from, model, to, type })) {
           written = true;
           await writeStep(step);
-          onWorkingChange?.();
+          noteWorkingChange();
         }
 
         return true;
@@ -526,7 +531,7 @@ const OntologyGraphView = ({
       catalog,
       createType,
       model,
-      onWorkingChange,
+      noteWorkingChange,
       refetch,
       showWriteError,
       t,
@@ -543,7 +548,7 @@ const OntologyGraphView = ({
         await createOntologyProperty(
           buildDataPropertyRequest(model, concept, input)
         );
-        onWorkingChange?.();
+        noteWorkingChange();
         await refetch();
 
         return true;
@@ -553,7 +558,7 @@ const OntologyGraphView = ({
         return false;
       }
     },
-    [canCreateProperty, model, onWorkingChange, refetch, showWriteError]
+    [canCreateProperty, model, noteWorkingChange, refetch, showWriteError]
   );
 
   useEffect(() => {
@@ -652,7 +657,7 @@ const OntologyGraphView = ({
             setNodePositions(positions);
             setSelectedId(created.id);
             setConceptEditor(undefined);
-            onWorkingChange?.();
+            noteWorkingChange();
 
             return true;
           }}
@@ -692,7 +697,7 @@ const OntologyGraphView = ({
             onSaved={(saved) => {
               setSelectedId(saved.id);
               setConceptEditor(undefined);
-              onWorkingChange?.();
+              noteWorkingChange();
               void refetch();
             }}
           />
@@ -764,7 +769,9 @@ const OntologyGraphView = ({
         }
         hidden={graphMode !== 'data'}>
         <OntologyNativeDataMode
+          isActive={graphMode === 'data'}
           ontologyId={ontology.id}
+          revision={dataRevision}
           selectedConceptId={selectedId}
           onSelectConcept={setSelectedId}
         />

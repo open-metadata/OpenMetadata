@@ -32,13 +32,17 @@ const NO_RELATION_TYPES: never[] = [];
 const NO_COLORS: Record<string, never> = {};
 
 interface OntologyNativeDataModeProps {
+  isActive?: boolean;
   ontologyId: string;
+  revision?: number;
   selectedConceptId?: string;
   onSelectConcept: (conceptId: string) => void;
 }
 
 const OntologyNativeDataMode = ({
+  isActive,
   ontologyId,
+  revision,
   selectedConceptId,
   onSelectConcept,
 }: OntologyNativeDataModeProps) => {
@@ -53,7 +57,7 @@ const OntologyNativeDataMode = ({
     loadMoreAssets,
     loadMoreClusters,
     retry,
-  } = useNativeOntologyDataGraph(ontologyId);
+  } = useNativeOntologyDataGraph(ontologyId, { isActive, revision });
   const data = useMemo(
     () => buildNativeDataGraph(graph, loadingConceptIds, t('label.lineage')),
     [graph, loadingConceptIds, t]
@@ -74,6 +78,9 @@ const OntologyNativeDataMode = ({
   );
   const hasMoreClusters =
     graph.nextClusterOffset !== undefined && !graph.contextFull;
+  const hasClusters = graph.clusters.length > 0;
+  // A reload keeps the graph mounted, so the selection and expanded cards stay.
+  const showsGraph = hasClusters || !(isLoading || failure);
 
   return (
     <Box
@@ -101,10 +108,17 @@ const OntologyNativeDataMode = ({
         </Alert>
       ) : null}
       {isLoading ? (
-        <Typography className="tw:relative tw:p-4" role="status">
+        <Typography
+          className={
+            hasClusters
+              ? 'tw:absolute tw:top-3.5 tw:right-4 tw:z-10'
+              : 'tw:relative tw:p-4'
+          }
+          role="status">
           {t('label.loading')}
         </Typography>
-      ) : (
+      ) : null}
+      {showsGraph ? (
         <OntologyDataGraph
           data={data}
           glossaryColorMap={NO_COLORS}
@@ -125,7 +139,7 @@ const OntologyNativeDataMode = ({
           onPaneClick={() => undefined}
           onSelectNode={selectNode}
         />
-      )}
+      ) : null}
     </Box>
   );
 };
