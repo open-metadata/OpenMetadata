@@ -6213,6 +6213,8 @@
     "test-your-connection-to-continue": "Проверьте соединение для продолжения",
     "testing-connection": "Тестирование соединения",
     "testing-your-connection-may-take-two-minutes": "Проверка подключений может занять до 2 минут.",
+    "text-and-count-more_one": "{{text}} и ещё {{count}}",
+    "text-and-count-more_other": "{{text}} и ещё {{count}}",
     "theme-preference-description": "Выберите внешний вид {{brandName}} на этом устройстве.",
     "this-action-is-not-allowed-for-deleted-entities": "Это действие невозможно для удаленных объектов.",
     "this-is-a-bot-account": "Это учётная запись бота.",

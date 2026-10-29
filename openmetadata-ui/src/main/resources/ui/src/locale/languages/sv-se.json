@@ -6213,6 +6213,8 @@
     "test-your-connection-to-continue": "Testa din anslutning för att fortsätta",
     "testing-connection": "Testar anslutning",
     "testing-your-connection-may-take-two-minutes": "Att testa dina anslutningar kan ta upp till 2 minuter",
+    "text-and-count-more_one": "{{text}} och {{count}} till",
+    "text-and-count-more_other": "{{text}} och {{count}} till",
     "theme-preference-description": "Välj hur {{brandName}} ser ut på den här enheten.",
     "this-action-is-not-allowed-for-deleted-entities": "Denna åtgärd är inte tillåten för borttagna entiteter.",
     "this-is-a-bot-account": "Detta är ett botkonto.",

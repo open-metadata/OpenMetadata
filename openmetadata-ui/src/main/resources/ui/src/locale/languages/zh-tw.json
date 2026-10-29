@@ -6213,6 +6213,8 @@
     "test-your-connection-to-continue": "測試您的連線以繼續",
     "testing-connection": "正在測試連線",
     "testing-your-connection-may-take-two-minutes": "測試您的連線最多可能需要 2 分鐘",
+    "text-and-count-more_one": "{{text}} 及另外 {{count}} 項",
+    "text-and-count-more_other": "{{text}} 及另外 {{count}} 項",
     "theme-preference-description": "選擇 {{brandName}} 在此裝置上的外觀。",
     "this-action-is-not-allowed-for-deleted-entities": "此操作不允許用於已刪除的實體。",
     "this-is-a-bot-account": "這是一個機器人帳戶。",

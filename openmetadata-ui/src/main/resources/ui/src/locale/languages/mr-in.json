@@ -6213,6 +6213,8 @@
     "test-your-connection-to-continue": "सुरू राहण्यासाठी तुमचे कनेक्शन तपासा",
     "testing-connection": "कनेक्शन तपासत आहे",
     "testing-your-connection-may-take-two-minutes": "तुमचे कनेक्शन चाचणी करण्यास 2 मिनिटे लागू शकतात",
+    "text-and-count-more_one": "{{text}} आणि आणखी {{count}}",
+    "text-and-count-more_other": "{{text}} आणि आणखी {{count}}",
     "theme-preference-description": "या डिव्हाइसवर {{brandName}} कसे दिसते ते निवडा.",
     "this-action-is-not-allowed-for-deleted-entities": "मिटवलेल्या घटकांसाठी ही क्रिया अनुमत नाही.",
     "this-is-a-bot-account": "हे बॉट खाते आहे.",

@@ -6213,6 +6213,8 @@
     "test-your-connection-to-continue": "ทดสอบการเชื่อมต่อของคุณเพื่อดำเนินการต่อ",
     "testing-connection": "กำลังทดสอบการเชื่อมต่อ",
     "testing-your-connection-may-take-two-minutes": "การทดสอบการเชื่อมต่ออาจใช้เวลาถึง 2 นาที",
+    "text-and-count-more_one": "{{text}} และอีก {{count}} รายการ",
+    "text-and-count-more_other": "{{text}} และอีก {{count}} รายการ",
     "theme-preference-description": "เลือกรูปลักษณ์ของ {{brandName}} บนอุปกรณ์นี้",
     "this-action-is-not-allowed-for-deleted-entities": "การกระทำนี้ไม่อนุญาตสำหรับเอนทิตีที่ถูกลบ",
     "this-is-a-bot-account": "นี่คือบัญชีบอท",

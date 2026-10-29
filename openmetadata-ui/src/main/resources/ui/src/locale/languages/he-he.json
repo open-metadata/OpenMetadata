@@ -6213,6 +6213,8 @@
     "test-your-connection-to-continue": "בדוק את החיבור שלך להמשך",
     "testing-connection": "בודק חיבור",
     "testing-your-connection-may-take-two-minutes": "בדיקת החיבור שלך עשויה לקחת עד 2 דקות",
+    "text-and-count-more_one": "{{text}} ועוד {{count}}",
+    "text-and-count-more_other": "{{text}} ועוד {{count}}",
     "theme-preference-description": "בחר כיצד {{brandName}} ייראה במכשיר זה.",
     "this-action-is-not-allowed-for-deleted-entities": "פעולה זו אינה מותרת עבור ישויות שנמחקו.",
     "this-is-a-bot-account": "זהו חשבון בוט.",

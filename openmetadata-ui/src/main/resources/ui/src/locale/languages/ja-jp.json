@@ -6213,6 +6213,8 @@
     "test-your-connection-to-continue": "続行するには接続をテストしてください",
     "testing-connection": "接続をテスト中",
     "testing-your-connection-may-take-two-minutes": "接続テストには最大で2分かかることがあります。",
+    "text-and-count-more_one": "{{text}} ほか {{count}} 件",
+    "text-and-count-more_other": "{{text}} ほか {{count}} 件",
     "theme-preference-description": "このデバイスでの {{brandName}} の外観を選択します。",
     "this-action-is-not-allowed-for-deleted-entities": "削除されたエンティティにはこの操作を行うことができません。",
     "this-is-a-bot-account": "これはボットアカウントです。",

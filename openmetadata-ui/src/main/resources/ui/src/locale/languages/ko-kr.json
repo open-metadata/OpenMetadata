@@ -6213,6 +6213,8 @@
     "test-your-connection-to-continue": "계속하려면 연결을 테스트하세요",
     "testing-connection": "연결 테스트 중",
     "testing-your-connection-may-take-two-minutes": "연결 테스트는 최대 2분이 소요될 수 있습니다",
+    "text-and-count-more_one": "{{text}} 외 {{count}}개",
+    "text-and-count-more_other": "{{text}} 외 {{count}}개",
     "theme-preference-description": "이 기기에서 {{brandName}}의 모양을 선택합니다.",
     "this-action-is-not-allowed-for-deleted-entities": "이 작업은 삭제된 엔티티에 대해 허용되지 않습니다.",
     "this-is-a-bot-account": "봇 계정입니다.",

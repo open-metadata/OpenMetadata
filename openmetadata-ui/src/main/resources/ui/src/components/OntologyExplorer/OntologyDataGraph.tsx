@@ -27,10 +27,12 @@ import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import {
   Fragment,
+  memo,
   MouseEvent,
   PointerEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -96,6 +98,24 @@ interface DataClusterModel {
 }
 
 type EdgeAnchor = 'rows' | 'cards';
+
+interface RowSlot {
+  height: number;
+  top: number;
+}
+
+interface RowMetrics {
+  rows: RowSlot[];
+  rowsTop: number;
+  viewportHeight: number;
+}
+
+// A native card re-renders the graph only when the first row in view changes,
+// so its edges anchor as if the rows were scrolled to that row's top.
+interface RowWindow {
+  firstRow: number;
+  metrics?: RowMetrics;
+}
 
 interface DataEdgeLayout {
   edge: OntologyEdge;
@@ -171,18 +191,32 @@ function getAssetServiceLabel(node: OntologyNode): string {
   );
 }
 
+function getLineageNotes(node: OntologyNode, t: TFunction): string[] {
+  return (node.lineageNotes ?? []).map(({ direction, label }) =>
+    direction === 'downstream'
+      ? t('message.lineage-to-table', { name: label })
+      : t('message.lineage-from-table', { name: label })
+  );
+}
+
 function getNativeAssetSummary(node: OntologyNode, t: TFunction): string {
   const columns = t('message.native-asset-summary', {
     connector: getAssetServiceLabel(node),
     count: node.columnCount ?? 0,
   });
-  const lineage = (node.lineageNotes ?? []).map(({ direction, label }) =>
-    direction === 'downstream'
-      ? t('message.lineage-to-table', { name: label })
-      : t('message.lineage-from-table', { name: label })
-  );
+  const [firstNote, ...otherNotes] = getLineageNotes(node, t);
+  if (!firstNote) {
+    return columns;
+  }
+  const lineage =
+    otherNotes.length > 0
+      ? t('message.text-and-count-more', {
+          count: otherNotes.length,
+          text: firstNote,
+        })
+      : firstNote;
 
-  return [columns, ...lineage].join(' · ');
+  return `${columns} · ${lineage}`;
 }
 
 function toSentenceCase(label: string): string {
@@ -264,6 +298,139 @@ function AssetTypeBadge({ entityType }: { entityType: string }) {
       {entityUtilClassBase.getFormattedEntityType(entityType)}
     </Badge>
   );
+}
+
+interface AssetRowsProps {
+  assets: OntologyNode[];
+  isNative: boolean;
+  onSelectNode: (node: OntologyNode) => void;
+}
+
+function AssetRowList({ assets, isNative, onSelectNode }: AssetRowsProps) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {assets.map((asset, index) => {
+        const entityType = getAssetEntityType(asset);
+        const lineageNotes = isNative ? getLineageNotes(asset, t) : [];
+        const descriptionId = `ontology-data-asset-lineage-${asset.id}`;
+
+        return (
+          <Button
+            noTextPadding
+            aria-describedby={
+              lineageNotes.length > 0 ? descriptionId : undefined
+            }
+            className={classNames(
+              'tw:flex tw:min-h-16 tw:w-full tw:items-center tw:gap-3 tw:rounded-none tw:px-5 tw:py-3 tw:text-left tw:whitespace-normal',
+              'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3',
+              index > 0 && 'tw:border-t tw:border-secondary'
+            )}
+            color="tertiary"
+            data-testid={`ontology-data-asset-${asset.id}`}
+            key={asset.id}
+            onClick={() => onSelectNode(asset)}>
+            <AssetLogo asset={asset} entityType={entityType} />
+            <Box className="tw:min-w-0 tw:flex-1" direction="col">
+              <Typography
+                ellipsis
+                className="tw:text-primary"
+                data-testid="ontology-data-asset-name"
+                size="text-sm"
+                weight="medium">
+                {asset.originalLabel ?? asset.label}
+              </Typography>
+              <Typography ellipsis className="tw:text-tertiary" size="text-xs">
+                {isNative
+                  ? getNativeAssetSummary(asset, t)
+                  : getAssetPath(asset)}
+              </Typography>
+            </Box>
+            {isNative && entityType === 'table' ? null : (
+              <AssetTypeBadge entityType={entityType} />
+            )}
+            {lineageNotes.length > 0 ? (
+              <span hidden id={descriptionId}>
+                {lineageNotes.join(' · ')}
+              </span>
+            ) : null}
+          </Button>
+        );
+      })}
+    </>
+  );
+}
+
+// Rows keep their render while the graph re-renders for a scroll or a drag.
+const AssetRows = memo(
+  AssetRowList,
+  (previous, next) =>
+    previous.isNative === next.isNative &&
+    previous.onSelectNode === next.onSelectNode &&
+    previous.assets.length === next.assets.length &&
+    previous.assets.every((asset, index) => asset === next.assets[index])
+);
+
+// jsdom and a card that is not laid out read 0, so the CSS sizes stand in.
+function measureRows(container: HTMLElement): RowMetrics | undefined {
+  const rows = [...container.children].filter(
+    (row): row is HTMLElement => row instanceof HTMLElement
+  );
+  if (
+    container.clientHeight === 0 ||
+    rows.some((row) => row.offsetHeight === 0)
+  ) {
+    return undefined;
+  }
+  const cardBorder =
+    container.closest<HTMLElement>('[data-term-id]')?.clientTop ?? 0;
+
+  return {
+    rows: rows.map((row) => ({
+      height: row.offsetHeight,
+      top: row.offsetTop - container.offsetTop,
+    })),
+    rowsTop: container.offsetTop + cardBorder,
+    viewportHeight: container.clientHeight,
+  };
+}
+
+function isSameMetrics(left?: RowMetrics, right?: RowMetrics): boolean {
+  if (!left || !right) {
+    return left === right;
+  }
+
+  return (
+    left.rowsTop === right.rowsTop &&
+    left.viewportHeight === right.viewportHeight &&
+    left.rows.length === right.rows.length &&
+    left.rows.every(
+      (row, index) =>
+        row.top === right.rows[index].top &&
+        row.height === right.rows[index].height
+    )
+  );
+}
+
+function rowSlot(metrics: RowMetrics | undefined, index: number): RowSlot {
+  return (
+    metrics?.rows[index] ?? {
+      height: ASSET_ROW_HEIGHT,
+      top: index * ASSET_ROW_HEIGHT,
+    }
+  );
+}
+
+function firstRowAt(scrollTop: number, metrics?: RowMetrics): number {
+  if (!metrics) {
+    return Math.floor(scrollTop / ASSET_ROW_HEIGHT);
+  }
+  const index = metrics.rows.findIndex(
+    (row) => row.top + row.height > scrollTop
+  );
+
+  return index === -1 ? Math.max(0, metrics.rows.length - 1) : index;
 }
 
 function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
@@ -491,6 +658,44 @@ function styleNativeEdge(
       };
 }
 
+// Lineage that falls back to the cards shares one edge per card pair, so the
+// chips never stack; the chip names the first pair and counts the rest.
+function mergeCardLineage(
+  edges: StyledDataEdge[],
+  t: TFunction
+): StyledDataEdge[] {
+  const pairKey = ({ edge }: StyledDataEdge) => `${edge.from}|${edge.to}`;
+  const byCardPair = new Map<string, StyledDataEdge[]>();
+  edges
+    .filter((edge) => edge.anchor === 'cards')
+    .forEach((edge) =>
+      byCardPair.set(pairKey(edge), [
+        ...(byCardPair.get(pairKey(edge)) ?? []),
+        edge,
+      ])
+    );
+
+  return edges.flatMap((edge) => {
+    const pairs = edge.anchor === 'cards' ? byCardPair.get(pairKey(edge)) : [];
+    if (!pairs || pairs.length <= 1) {
+      return [edge];
+    }
+    if (pairs[0] !== edge) {
+      return [];
+    }
+
+    return [
+      {
+        ...edge,
+        labelText: t('message.text-and-count-more', {
+          count: pairs.length - 1,
+          text: edge.labelText,
+        }),
+      },
+    ];
+  });
+}
+
 const OntologyDataGraph = ({
   data,
   glossaryColorMap,
@@ -528,9 +733,7 @@ const OntologyDataGraph = ({
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(
     () => new Set()
   );
-  const [rowScrollTops, setRowScrollTops] = useState<Record<string, number>>(
-    {}
-  );
+  const [rowWindows, setRowWindows] = useState<Record<string, RowWindow>>({});
   const cardHeightOf = useCallback(
     (term: OntologyNode) =>
       measuredHeights[term.id] ??
@@ -598,19 +801,21 @@ const OntologyDataGraph = ({
       const isExpanded = expandedCardIds.has(term.id);
       const assets = assetsByTerm.get(term.id) ?? [];
       const shownAssets = isExpanded ? assets : assets.slice(0, collapsedCount);
-      const scrollTop = isExpanded ? rowScrollTops[term.id] ?? 0 : 0;
-      const viewportHeight = Math.min(
-        NATIVE_ROWS_MAX_HEIGHT,
-        shownAssets.length * ASSET_ROW_HEIGHT
-      );
+      const { firstRow = 0, metrics } = rowWindows[term.id] ?? {};
+      const scrollTop = isExpanded ? rowSlot(metrics, firstRow).top : 0;
+      const viewportHeight =
+        metrics?.viewportHeight ??
+        Math.min(NATIVE_ROWS_MAX_HEIGHT, shownAssets.length * ASSET_ROW_HEIGHT);
+      const rowsTop = metrics?.rowsTop ?? CARD_HEADER_HEIGHT;
       shownAssets.forEach((asset, index) => {
-        const rowTop = index * ASSET_ROW_HEIGHT - scrollTop;
-        const rowCenter = rowTop + ASSET_ROW_HEIGHT / 2;
+        const slot = rowSlot(metrics, index);
+        const rowTop = slot.top - scrollTop;
+        const rowCenter = rowTop + slot.height / 2;
         if (card && rowCenter >= 0 && rowCenter <= viewportHeight) {
           rows.set(asset.id, {
-            height: ASSET_ROW_HEIGHT,
+            height: slot.height,
             left: card.left,
-            top: card.top + CARD_HEADER_HEIGHT + rowTop,
+            top: card.top + rowsTop + rowTop,
             width: card.width,
           });
         }
@@ -624,41 +829,41 @@ const OntologyDataGraph = ({
     collapsedCount,
     expandedCardIds,
     isNative,
-    rowScrollTops,
+    rowWindows,
     visibleTerms,
   ]);
   const relationshipTypeByName = useMemo(
     () => new Map(relationTypes.map((type) => [type.name, type])),
     [relationTypes]
   );
-  const renderedSemanticEdges = useMemo(
-    () =>
-      dataEdges.map((layout): StyledDataEdge => {
-        if (isNative) {
-          return styleNativeEdge(layout, rowsInView);
-        }
-        const relationshipType = relationshipTypeByName.get(
-          layout.edge.relationType
-        );
-        // DOM/SVG resolves theme variables after a theme switch; a stored palette
-        // hex would discard the built-in relation's active foreground.
-        const color =
-          getEffectiveRelationColor(
-            layout.edge.relationType,
-            relationshipType
-          ) ?? INFERRED_EDGE_COLOR;
+  const renderedSemanticEdges = useMemo(() => {
+    if (isNative) {
+      return mergeCardLineage(
+        dataEdges.map((layout) => styleNativeEdge(layout, rowsInView)),
+        t
+      );
+    }
 
-        return {
-          ...layout,
-          color,
-          isSolid: HIERARCHY_RELATION_TYPES.has(layout.edge.relationType),
-          labelText: formatRelationLabel(
-            layout.edge.relationType
-          ).toLocaleLowerCase(),
-        };
-      }),
-    [dataEdges, isNative, relationshipTypeByName, rowsInView]
-  );
+    return dataEdges.map((layout): StyledDataEdge => {
+      const relationshipType = relationshipTypeByName.get(
+        layout.edge.relationType
+      );
+      // DOM/SVG resolves theme variables after a theme switch; a stored palette
+      // hex would discard the built-in relation's active foreground.
+      const color =
+        getEffectiveRelationColor(layout.edge.relationType, relationshipType) ??
+        INFERRED_EDGE_COLOR;
+
+      return {
+        ...layout,
+        color,
+        isSolid: HIERARCHY_RELATION_TYPES.has(layout.edge.relationType),
+        labelText: formatRelationLabel(
+          layout.edge.relationType
+        ).toLocaleLowerCase(),
+      };
+    });
+  }, [dataEdges, isNative, relationshipTypeByName, rowsInView, t]);
   const legendEntries = useMemo((): LegendEntry[] => {
     if (isNative) {
       return [
@@ -825,6 +1030,35 @@ const OntologyDataGraph = ({
       ?.querySelectorAll('[data-term-id]')
       .forEach((card) => observer?.observe(card));
   }, [visibleTerms]);
+
+  useLayoutEffect(() => {
+    if (!isNative) {
+      return;
+    }
+    const measured = new Map<string, RowMetrics | undefined>();
+    canvasRef.current
+      ?.querySelectorAll<HTMLElement>('[data-rows-id]')
+      .forEach((container) =>
+        measured.set(container.dataset.rowsId ?? '', measureRows(container))
+      );
+    setRowWindows((current) => {
+      const changed = [...measured].filter(
+        ([id, metrics]) => !isSameMetrics(current[id]?.metrics, metrics)
+      );
+
+      return changed.length === 0
+        ? current
+        : {
+            ...current,
+            ...Object.fromEntries(
+              changed.map(([id, metrics]) => [
+                id,
+                { firstRow: current[id]?.firstRow ?? 0, metrics },
+              ])
+            ),
+          };
+    });
+  }, [assetsByTerm, expandedCardIds, isNative, measuredHeights]);
 
   const layoutKey = useMemo(
     () => visibleTerms.map((term) => term.id).join('|'),
@@ -1072,42 +1306,6 @@ const OntologyDataGraph = ({
     });
   };
 
-  const renderAssetRow = (asset: OntologyNode, index: number) => {
-    const entityType = getAssetEntityType(asset);
-
-    return (
-      <Button
-        noTextPadding
-        className={classNames(
-          'tw:flex tw:min-h-16 tw:w-full tw:items-center tw:gap-3 tw:rounded-none tw:px-5 tw:py-3 tw:text-left tw:whitespace-normal',
-          'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3',
-          index > 0 && 'tw:border-t tw:border-secondary'
-        )}
-        color="tertiary"
-        data-testid={`ontology-data-asset-${asset.id}`}
-        key={asset.id}
-        onClick={() => onSelectNode(asset)}>
-        <AssetLogo asset={asset} entityType={entityType} />
-        <Box className="tw:min-w-0 tw:flex-1" direction="col">
-          <Typography
-            ellipsis
-            className="tw:text-primary"
-            data-testid="ontology-data-asset-name"
-            size="text-sm"
-            weight="medium">
-            {asset.originalLabel ?? asset.label}
-          </Typography>
-          <Typography ellipsis className="tw:text-tertiary" size="text-xs">
-            {isNative ? getNativeAssetSummary(asset, t) : getAssetPath(asset)}
-          </Typography>
-        </Box>
-        {isNative && entityType === 'table' ? null : (
-          <AssetTypeBadge entityType={entityType} />
-        )}
-      </Button>
-    );
-  };
-
   const renderGlossaryToggle = (
     term: OntologyNode,
     { hiddenAssetCount, unloadedAssetCount }: CardAssetState
@@ -1251,17 +1449,30 @@ const OntologyDataGraph = ({
             data-testid={`ontology-data-cluster-rows-${term.id}`}
             data-wheel-scroll=""
             onScroll={(event) => {
-              const { scrollTop } = event.currentTarget;
-              setRowScrollTops((current) =>
-                current[term.id] === scrollTop
-                  ? current
-                  : { ...current, [term.id]: scrollTop }
+              const rowWindow = rowWindows[term.id];
+              const firstRow = firstRowAt(
+                event.currentTarget.scrollTop,
+                rowWindow?.metrics
               );
+              if (firstRow !== (rowWindow?.firstRow ?? 0)) {
+                setRowWindows((current) => ({
+                  ...current,
+                  [term.id]: { ...current[term.id], firstRow },
+                }));
+              }
             }}>
-            {assetState.shownAssets.map(renderAssetRow)}
+            <AssetRows
+              isNative
+              assets={assetState.shownAssets}
+              onSelectNode={onSelectNode}
+            />
           </div>
         ) : (
-          assetState.shownAssets.map(renderAssetRow)
+          <AssetRows
+            assets={assetState.shownAssets}
+            isNative={false}
+            onSelectNode={onSelectNode}
+          />
         )}
 
         {isNative

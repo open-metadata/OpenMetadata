@@ -111,7 +111,7 @@ const OntologyNativeDataMode = ({
         <Typography
           className={
             hasClusters
-              ? 'tw:absolute tw:top-3.5 tw:right-4 tw:z-10'
+              ? 'tw:pointer-events-none tw:absolute tw:top-3.5 tw:left-1/2 tw:z-10 tw:-translate-x-1/2'
               : 'tw:relative tw:p-4'
           }
           role="status">

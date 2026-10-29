@@ -6213,6 +6213,8 @@
     "test-your-connection-to-continue": "Devam etmek için bağlantınızı test edin",
     "testing-connection": "Bağlantı test ediliyor",
     "testing-your-connection-may-take-two-minutes": "Bağlantılarınızı test etmek 2 dakika kadar sürebilir",
+    "text-and-count-more_one": "{{text}} ve {{count}} tane daha",
+    "text-and-count-more_other": "{{text}} ve {{count}} tane daha",
     "theme-preference-description": "{{brandName}} uygulamasının bu cihazda nasıl görüneceğini seçin.",
     "this-action-is-not-allowed-for-deleted-entities": "Bu eylem silinmiş varlıklar için izin verilmez.",
     "this-is-a-bot-account": "Bu bir bot hesabıdır.",

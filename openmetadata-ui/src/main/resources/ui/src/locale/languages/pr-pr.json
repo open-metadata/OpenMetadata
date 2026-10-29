@@ -6213,6 +6213,8 @@
     "test-your-connection-to-continue": "برای ادامه اتصال خود را آزمایش کنید",
     "testing-connection": "در حال آزمایش اتصال",
     "testing-your-connection-may-take-two-minutes": "تست اتصالات شما ممکن است تا ۲ دقیقه طول بکشد.",
+    "text-and-count-more_one": "{{text}} و {{count}} مورد دیگر",
+    "text-and-count-more_other": "{{text}} و {{count}} مورد دیگر",
     "theme-preference-description": "انتخاب کنید {{brandName}} در این دستگاه چگونه نمایش داده شود.",
     "this-action-is-not-allowed-for-deleted-entities": "این اقدام برای موجودیت‌های حذف شده مجاز نیست.",
     "this-is-a-bot-account": "این یک حساب ربات است.",

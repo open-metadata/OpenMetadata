@@ -6213,6 +6213,8 @@
     "test-your-connection-to-continue": "Prueba tu conexión para continuar",
     "testing-connection": "Testing connection",
     "testing-your-connection-may-take-two-minutes": "Probar la conexión puede tardar hasta 2 minutos",
+    "text-and-count-more_one": "{{text}} y {{count}} más",
+    "text-and-count-more_other": "{{text}} y {{count}} más",
     "theme-preference-description": "Elige el aspecto de {{brandName}} en este dispositivo.",
     "this-action-is-not-allowed-for-deleted-entities": "Esta acción no está permitida para entidades eliminadas.",
     "this-is-a-bot-account": "Esta es una cuenta de bot.",
