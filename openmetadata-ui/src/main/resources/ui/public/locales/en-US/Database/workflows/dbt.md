@@ -110,15 +110,25 @@ The value entered should be a `numeric` value.
 $$
 
 $$section
-#### dbt Cloud Job ID $(id="dbtCloudJobId")
+#### dbt Cloud Job IDs $(id="dbtCloudJobId")
 
-In case of multiple jobs in a dbt cloud account, specify the job's ID from which you want to extract the dbt run artifacts.
+Comma-separated IDs of the dbt Cloud jobs to extract the dbt run artifacts from, e.g. `553344,553345`. The artifacts of the latest completed run of each job are ingested.
 
-If left empty, the dbt artifacts will be fetched from the most recent run on dbt cloud.
+If left empty, the dbt artifacts will be fetched from the most recent run on dbt cloud, unless **Ingest From All Jobs** is enabled.
 
 After creating a dbt job, take note of the url which will be similar to `https://cloud.getdbt.com/#/accounts/1234/projects/6789/jobs/553344/`. The job ID is `553344`.
 
-The value entered should be a `numeric` value.
+The values entered should be `numeric`.
+$$
+
+$$section
+#### dbt Cloud Ingest From All Jobs $(id="dbtCloudIngestAllJobs")
+
+When no job IDs are set, fetch the dbt artifacts from the latest completed run of every job of the project (or of the whole account, when no project ID is set) instead of only the most recent run.
+
+CI jobs are skipped, since their runs build into temporary pull-request schemas. Each job's manifest covers the whole project, so the dbt models are processed once per job.
+
+This option is ignored when job IDs are set.
 $$
 
 $$section

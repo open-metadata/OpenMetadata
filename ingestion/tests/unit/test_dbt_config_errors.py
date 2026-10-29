@@ -46,6 +46,7 @@ def _dbt_cloud_config():
     config.dbtCloudAccountId = "12345"
     config.dbtCloudProjectId = None
     config.dbtCloudJobId = None
+    config.dbtCloudIngestAllJobs = False
     config.dbtCloudUrl = "https://cloud.getdbt.com"
     config.dbtCloudAuthToken.get_secret_value.return_value = "tok"
     return config
@@ -150,7 +151,18 @@ class TestDbtCloudErrorClassification:
         with pytest.raises(DBTConfigException) as exc_info:
             list(get_dbt_details(_dbt_cloud_config()))
 
-        assert "no completed dbt runs" in str(exc_info.value).lower()
+        assert "no completed dbt runs found for account '12345'" in str(exc_info.value).lower()
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_no_jobs_in_account_reports_no_jobs_found(self, tracked_rest):
+        tracked_rest.return_value.get.return_value = {"data": []}
+        config = _dbt_cloud_config()
+        config.dbtCloudIngestAllJobs = True
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(config))
+
+        assert "no dbt cloud jobs found for account '12345'" in str(exc_info.value).lower()
 
 
 def _dbt_cloud_artifacts(run_steps, run_results_by_step):
@@ -209,6 +221,142 @@ class TestDbtCloudRunResultsSteps:
         (dbt_files,) = get_dbt_details(_dbt_cloud_config())
 
         assert dbt_files.dbt_run_results is None
+
+
+def _dbt_cloud_jobs_api(jobs_pages, runs_by_job):
+    """Stand-in for the dbt Cloud API serving a paginated job list and, per job, its latest
+    run; a job absent from ``runs_by_job`` has no completed run, and a run id below 0 has
+    no manifest."""
+    total_count = sum(len(page) for page in jobs_pages)
+    requested = []
+
+    def get(path, data=None):
+        requested.append((path, dict(data or {})))
+        if path.endswith("/jobs/"):
+            page = jobs_pages[data["offset"] // data["limit"]]
+            return {"data": page, "extra": {"pagination": {"count": len(page), "total_count": total_count}}}
+        if path.endswith("/runs"):
+            run_id = runs_by_job.get(data.get("job_definition_id"))
+            if run_id is None:
+                return {"data": []}
+            return {"data": [{"id": run_id, "finished_at_humanized": "now", "duration_humanized": "1m"}]}
+        if path.endswith("manifest.json"):
+            run_id = int(path.split("/runs/")[1].split("/")[0])
+            return {"nodes": {}, "run": run_id} if run_id > 0 else None
+        if path.endswith("run_results.json"):
+            return None
+        raise _http_error(404)
+
+    return get, requested
+
+
+class TestDbtCloudMultipleJobs:
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_comma_separated_job_ids_yield_each_jobs_latest_run(self, tracked_rest):
+        get, requested = _dbt_cloud_jobs_api(jobs_pages=[], runs_by_job={"70": 1, "71": 2})
+        tracked_rest.return_value.get.side_effect = get
+        config = _dbt_cloud_config()
+        config.dbtCloudJobId = " 70, 71 ,"
+
+        dbt_files = list(get_dbt_details(config))
+
+        assert [files.dbt_manifest["run"] for files in dbt_files] == [1, 2]
+        assert not any(path.endswith("/jobs/") for path, _ in requested)
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_empty_job_id_reads_only_the_latest_run_of_any_job(self, tracked_rest):
+        get, requested = _dbt_cloud_jobs_api(jobs_pages=[], runs_by_job={None: 1})
+        tracked_rest.return_value.get.side_effect = get
+
+        dbt_files = list(get_dbt_details(_dbt_cloud_config()))
+
+        assert [files.dbt_manifest["run"] for files in dbt_files] == [1]
+        assert [path for path, _ in requested if path.endswith(("/jobs/", "/runs"))] == ["/accounts/12345/runs"]
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_existing_config_without_the_flag_keeps_reading_one_run(self, tracked_rest):
+        get, requested = _dbt_cloud_jobs_api(jobs_pages=[], runs_by_job={None: 1})
+        tracked_rest.return_value.get.side_effect = get
+        config = DbtCloudConfig.model_validate(
+            {
+                "dbtConfigType": "cloud",
+                "dbtCloudAuthToken": "tok",
+                "dbtCloudAccountId": "12345",
+                "dbtCloudUrl": "https://cloud.getdbt.com",
+            }
+        )
+
+        assert len(list(get_dbt_details(config))) == 1
+        assert not any(path.endswith("/jobs/") for path, _ in requested)
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_ingest_all_jobs_scans_every_page_of_jobs_except_ci(self, tracked_rest):
+        get, requested = _dbt_cloud_jobs_api(
+            jobs_pages=[
+                [{"id": job_id, "job_type": "scheduled"} for job_id in range(100)],
+                [{"id": 100, "job_type": "ci"}, {"id": 101, "job_type": "other"}],
+            ],
+            runs_by_job={"0": 1, "101": 2},
+        )
+        tracked_rest.return_value.get.side_effect = get
+        config = _dbt_cloud_config()
+        config.dbtCloudProjectId = "9"
+        config.dbtCloudIngestAllJobs = True
+
+        dbt_files = list(get_dbt_details(config))
+
+        assert [files.dbt_manifest["run"] for files in dbt_files] == [1, 2]
+        run_job_ids = [params["job_definition_id"] for path, params in requested if path.endswith("/runs")]
+        assert "100" not in run_job_ids
+        assert len(run_job_ids) == 101
+        assert all(params["project_id"] == "9" for path, params in requested if path.endswith("/jobs/"))
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_job_ids_take_precedence_over_ingest_all_jobs(self, tracked_rest):
+        get, requested = _dbt_cloud_jobs_api(jobs_pages=[], runs_by_job={"70": 1})
+        tracked_rest.return_value.get.side_effect = get
+        config = _dbt_cloud_config()
+        config.dbtCloudJobId = "70"
+        config.dbtCloudIngestAllJobs = True
+
+        dbt_files = list(get_dbt_details(config))
+
+        assert [files.dbt_manifest["run"] for files in dbt_files] == [1]
+        assert not any(path.endswith("/jobs/") for path, _ in requested)
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_job_without_runs_or_manifest_is_skipped_when_others_have_artifacts(self, tracked_rest):
+        get, _ = _dbt_cloud_jobs_api(jobs_pages=[], runs_by_job={"71": -1, "72": 3})
+        tracked_rest.return_value.get.side_effect = get
+        config = _dbt_cloud_config()
+        config.dbtCloudJobId = "70,71,72"
+
+        dbt_files = list(get_dbt_details(config))
+
+        assert [files.dbt_manifest["run"] for files in dbt_files] == [3]
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_no_job_with_artifacts_fails(self, tracked_rest):
+        get, _ = _dbt_cloud_jobs_api(jobs_pages=[], runs_by_job={"71": -1})
+        tracked_rest.return_value.get.side_effect = get
+        config = _dbt_cloud_config()
+        config.dbtCloudJobId = "70,71"
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(config))
+
+        assert "no dbt artifacts found for any of the dbt cloud jobs" in str(exc_info.value).lower()
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_auth_error_on_a_job_is_not_skipped(self, tracked_rest):
+        tracked_rest.return_value.get.side_effect = APIError({"code": 401, "message": "unauthorized"})
+        config = _dbt_cloud_config()
+        config.dbtCloudJobId = "70,71"
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(config))
+
+        assert "auth token" in str(exc_info.value).lower()
 
 
 def _s3_config():
