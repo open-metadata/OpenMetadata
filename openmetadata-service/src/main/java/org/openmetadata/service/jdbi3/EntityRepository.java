@@ -92,6 +92,8 @@ import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -117,6 +119,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -368,6 +371,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * for now, matching the prior behavior.)
    */
   private static final int BULK_HARD_DELETE_TXN_CHUNK_SIZE = 500;
+
+  /**
+   * How often a keyset page re-checks a boundary that keeps changing under it before the read fails;
+   * see ADR:2026-10-26-reindex-partitions-are-key-ranges-fixed-at-job-creation.
+   */
+  private static final int MAX_BOUNDARY_CHECKS = 3;
 
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
@@ -3005,15 +3014,32 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       int cachedTotal,
       boolean skipErrors,
       Fields fields) {
+    return listAfterKeyset(filter, limitParam, after, null, cachedTotal, skipErrors, fields);
+  }
+
+  /**
+   * Reads the page after {@code after}, leaving out rows that sort after the {@code end} cursor; once
+   * the page reaches them it reports no next cursor. The boundary is the first row the DAO lists
+   * after {@code end}, so it follows the DAO's own order and collation. A null {@code end} reads to
+   * the end of the table.
+   */
+  public ResultList<T> listAfterKeyset(
+      ListFilter filter,
+      int limitParam,
+      String after,
+      String end,
+      int cachedTotal,
+      boolean skipErrors,
+      Fields fields) {
     List<T> entities = new ArrayList<>();
     List<EntityError> errors = new ArrayList<>();
     if (limitParam > 0) {
-      Map<String, String> cursorMap =
-          parseCursorMap(after == null || after.isEmpty() ? "" : RestUtil.decodeCursor(after));
+      Map<String, String> cursorMap = decodeKeysetCursor(after);
       String afterName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
       String afterId = cursorMap.get("id");
-      List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
-      boolean hasMoreData = jsons.size() > limitParam;
+      BoundedPage page = readBoundedPage(filter, limitParam + 1, afterName, afterId, end);
+      List<String> jsons = page.rows();
+      boolean hasMoreData = !page.reachedEnd() && jsons.size() > limitParam;
       List<String> jsonsToProcess = hasMoreData ? jsons.subList(0, limitParam) : jsons;
 
       Iterator<Either<T, EntityError>> iterator =
@@ -3041,10 +3067,102 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       String afterCursor = null;
       if (hasMoreData && !entities.isEmpty()) {
         afterCursor = getCursorValue(entities.get(entities.size() - 1), filter);
+      } else if (hasMoreData) {
+        afterCursor = cursorOfStoredRow(jsonsToProcess.getLast(), filter);
       }
       return getResultList(entities, errors, null, afterCursor, cachedTotal);
     } else {
       return getResultList(entities, errors, null, null, cachedTotal);
+    }
+  }
+
+  /**
+   * Continues past a page in which no row could be loaded, so the rows after it are still read.
+   * Returns null when even the stored row cannot be read back.
+   */
+  private String cursorOfStoredRow(String json, ListFilter filter) {
+    try {
+      return getCursorValue(JsonUtils.readValue(json, entityClass), filter);
+    } catch (Exception e) {
+      LOG.warn("Cannot continue past an unreadable {} row", entityType, e);
+      return null;
+    }
+  }
+
+  private Map<String, String> decodeKeysetCursor(String cursor) {
+    return parseCursorMap(cursor == null || cursor.isEmpty() ? "" : RestUtil.decodeCursor(cursor));
+  }
+
+  private record BoundedPage(List<String> rows, boolean reachedEnd) {}
+
+  /**
+   * Reads the page and cuts it at the boundary (the first row after {@code end}). The boundary is
+   * looked up again after the read and the page re-read if it changed, so a boundary row deleted
+   * in between (e.g. a hard delete during a reindex) cannot let the page run past {@code end}. A
+   * boundary that never settles fails the read rather than return a cursor that may be past it.
+   */
+  private BoundedPage readBoundedPage(
+      ListFilter filter, int limit, String afterName, String afterId, String end) {
+    String boundaryId = firstIdAfter(filter, end);
+    List<String> jsons = dao.listAfter(filter, limit, afterName, afterId);
+    int boundary = indexOfId(jsons, boundaryId);
+    boolean settled = end == null || boundary >= 0;
+    for (int check = 0; !settled && check < MAX_BOUNDARY_CHECKS; check++) {
+      String latestId = firstIdAfter(filter, end);
+      settled = Objects.equals(latestId, boundaryId);
+      if (!settled) {
+        boundaryId = latestId;
+        jsons = dao.listAfter(filter, limit, afterName, afterId);
+        boundary = indexOfId(jsons, boundaryId);
+        settled = boundary >= 0;
+      }
+    }
+    if (!settled) {
+      throw new IllegalStateException(
+          String.format(
+              "Keyset boundary after the end cursor of %s kept changing after %d checks",
+              entityType, MAX_BOUNDARY_CHECKS));
+    }
+    return boundary >= 0
+        ? new BoundedPage(jsons.subList(0, boundary), true)
+        : new BoundedPage(jsons, false);
+  }
+
+  private String firstIdAfter(ListFilter filter, String cursor) {
+    if (cursor == null) {
+      return null;
+    }
+    Map<String, String> cursorMap = decodeKeysetCursor(cursor);
+    String name = FullyQualifiedName.unquoteName(cursorMap.get("name"));
+    List<String> next = dao.listAfter(filter, 1, name, cursorMap.get("id"));
+    return next.isEmpty() ? null : idOf(next.getFirst());
+  }
+
+  private static int indexOfId(List<String> jsons, String id) {
+    int index = -1;
+    for (int i = 0; id != null && index < 0 && i < jsons.size(); i++) {
+      if (id.equals(idOf(jsons.get(i)))) {
+        index = i;
+      }
+    }
+    return index;
+  }
+
+  /** Reads only the top-level {@code id} of a stored entity, without parsing the rest of it. */
+  private static String idOf(String json) {
+    try (JsonParser parser = JsonUtils.getObjectMapper().createParser(json)) {
+      parser.nextToken();
+      while (parser.nextToken() == JsonToken.FIELD_NAME) {
+        String field = parser.currentName();
+        parser.nextToken();
+        if ("id".equals(field)) {
+          return parser.getValueAsString();
+        }
+        parser.skipChildren();
+      }
+      return null;
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 
