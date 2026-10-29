@@ -43,8 +43,8 @@ export interface UserSelectDropdownProps {
   /** Classes for the span wrapping a `children` trigger. */
   triggerClassName?: string;
   /**
-   * Only offer the users and teams with these ids, in the lists, their
-   * searches and the tab counts. Unset offers everyone.
+   * Offer only these users and teams: the tabs, their counts and the search
+   * work on this list instead of the user and team search indexes.
    */
-  allowedIds?: string[];
+  options?: EntityReference[];
 }

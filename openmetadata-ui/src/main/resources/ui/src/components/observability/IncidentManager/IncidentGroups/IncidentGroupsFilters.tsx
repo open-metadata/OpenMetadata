@@ -39,7 +39,7 @@ import DateRangeFilter from '../../../common/DateRangeFilter/DateRangeFilter';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { getSeverityLabel } from '../../../DataQuality/IncidentManager/Severity/Severity.utils';
 import {
-  useIncidentAssigneeIds,
+  useIncidentAssignees,
   useIncidentFilterOptions,
 } from '../../../IncidentManager/useIncidentFilterOptions';
 import {
@@ -175,7 +175,7 @@ const IncidentGroupsFilters = ({
       enabled: isTestCasePickerOpened,
       placeholderData: keepPreviousData,
     });
-  const assigneeIds = useIncidentAssigneeIds();
+  const assignees = useIncidentAssignees();
   const { data: selectedAssignee } = useQuery({
     queryKey: assigneeQueryKey(filters.assignee),
     // Only runs with an assignee to read, as `enabled` below says.
@@ -226,8 +226,8 @@ const IncidentGroupsFilters = ({
             lists both, a tab each. */}
         <UserTeamSelectableList
           hasPermission
-          allowedIds={assigneeIds}
           label={t('label.assignee')}
+          options={assignees}
           owner={filters.assignee && selectedAssignee ? [selectedAssignee] : []}
           onUpdate={handleAssigneeUpdate}>
           <TriggerButton

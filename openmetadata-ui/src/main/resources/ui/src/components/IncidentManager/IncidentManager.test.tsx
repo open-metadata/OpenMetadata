@@ -289,7 +289,29 @@ jest.mock('../../rest/miscAPI', () => ({
     data: {
       aggregations: {
         'sterms#testCaseResolutionStatusDetails.assignee.id': {
-          buckets: [{ key: 'user-1' }],
+          buckets: [
+            {
+              'top_hits#top': {
+                hits: {
+                  hits: [
+                    {
+                      _source: {
+                        testCaseResolutionStatusDetails: {
+                          assignee: {
+                            id: 'user-1',
+                            type: 'user',
+                            name: 'user1',
+                            displayName: 'User One',
+                            deleted: false,
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
         },
       },
     },
@@ -553,23 +575,32 @@ describe('IncidentManagerPage', () => {
       fireEvent.click(screen.getByTestId('select-assignee'));
     });
 
-    for (const searchIndex of ['user', 'team']) {
-      expect(mockSearchQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          searchIndex,
-          queryFilter: {
-            query: {
-              bool: {
-                must: [
-                  expect.anything(),
-                  { terms: { 'id.keyword': ['user-1'] } },
-                ],
-              },
-            },
-          },
-        })
-      );
-    }
+    expect(
+      screen.getByRole('tab', { name: /label.team-plural/ })
+    ).toHaveTextContent('0');
+    expect(
+      screen.getByRole('tab', { name: /label.user-plural/ })
+    ).toHaveTextContent('1');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: /label.user-plural/ }));
+    });
+
+    expect(
+      within(screen.getByTestId('owner-select-users-panel')).getAllByTestId(
+        'owner-option'
+      )
+    ).toHaveLength(1);
+    expect(screen.getByTestId('owner-select-users-panel')).toHaveTextContent(
+      'User One'
+    );
+    // The picker lists the assignees it was given, not the user/team indexes.
+    expect(mockSearchQuery).not.toHaveBeenCalledWith(
+      expect.objectContaining({ searchIndex: 'user' })
+    );
+    expect(mockSearchQuery).not.toHaveBeenCalledWith(
+      expect.objectContaining({ searchIndex: 'team' })
+    );
   });
 
   it('clears a URL-selected assignee after reopening the picker without needing a combobox', async () => {

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Popover } from '@openmetadata/ui-core-components';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { Popover, Tabs } from '@openmetadata/ui-core-components';
+import { act, render, screen } from '@testing-library/react';
 import { searchQuery } from '../../../rest/searchAPI';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTeamSelectableList } from './UserTeamSelectableList.component';
@@ -24,25 +24,27 @@ jest.mock('../../../rest/searchAPI', () => ({
     .mockResolvedValue({ hits: { hits: [], total: { value: 0 } } }),
 }));
 
-// Like the real list, each mount reads its first page in its own effect, which
-// React runs before the effects of the picker around it.
-jest.mock('../SelectableList/SelectableList.component', () => ({
-  SelectableList: jest
-    .fn()
-    .mockImplementation(
-      ({ fetchOptions }: { fetchOptions: (text: string) => unknown }) => {
-        const { useEffect } = jest.requireActual('react');
-        useEffect(() => {
-          fetchOptions('');
-        }, []);
+const mockListMounted = jest.fn();
 
-        return <div>SelectableList</div>;
-      }
-    ),
+// The real list reads its first page once, when it mounts.
+jest.mock('../SelectableList/SelectableList.component', () => ({
+  SelectableList: jest.fn().mockImplementation(() => {
+    const { useEffect } = jest.requireActual('react');
+    useEffect(() => {
+      mockListMounted();
+    }, []);
+
+    return <div>SelectableList</div>;
+  }),
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('getEntityName'),
+  getEntityName: jest
+    .fn()
+    .mockImplementation(
+      (entity?: { displayName?: string; name?: string }) =>
+        entity?.displayName ?? entity?.name ?? ''
+    ),
 }));
 
 jest.mock('../../../utils/EntityReferenceUtils', () => ({
@@ -117,134 +119,109 @@ describe('UserTeamSelectableList Component Test', () => {
     );
   });
 
-  it('should search and count only the allowed users and teams', async () => {
-    render(
-      <UserTeamSelectableList
-        hasPermission
-        allowedIds={['user-1', 'team-1']}
-        popoverProps={{ open: true }}
-        onUpdate={mockOnUpdate}>
-        <p>CustomRenderer</p>
-      </UserTeamSelectableList>
-    );
+  describe('with its own options', () => {
+    const options = [
+      { id: 'user-1', type: 'user', name: 'aaron_j', displayName: 'Aaron J' },
+      { id: 'user-2', type: 'user', name: 'ben_k', displayName: 'Ben K' },
+      { id: 'team-1', type: 'team', name: 'finance', displayName: 'Finance' },
+    ];
 
-    const allowedClause = { terms: { 'id.keyword': ['user-1', 'team-1'] } };
-
-    // The tab not shown first is counted up front.
-    await waitFor(() =>
-      expect(searchQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          searchIndex: 'user',
-          pageSize: 0,
-          queryFilter: {
-            query: {
-              bool: {
-                must: [
-                  { bool: { must: [{ term: { isBot: 'false' } }] } },
-                  allowedClause,
-                ],
-              },
-            },
-          },
-        })
-      )
-    );
-
-    const { fetchOptions } = (SelectableList as jest.Mock).mock.calls[0][0];
-    await act(() => fetchOptions('ops'));
-
-    expect(searchQuery).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        searchIndex: 'team',
-        query: 'ops',
-        queryFilter: {
-          query: {
-            bool: {
-              must: [
-                {
-                  bool: { must: [{ match: { teamType: 'Group' } }] },
-                },
-                allowedClause,
-              ],
-            },
-          },
-        },
-      })
-    );
-  });
-
-  it('should search everyone when no ids are given', async () => {
-    render(
-      <UserTeamSelectableList
-        hasPermission
-        popoverProps={{ open: true }}
-        onUpdate={mockOnUpdate}>
-        <p>CustomRenderer</p>
-      </UserTeamSelectableList>
-    );
-
-    await waitFor(() =>
-      expect(searchQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          searchIndex: 'user',
-          queryFilter: {
-            query: { bool: { must: [{ term: { isBot: 'false' } }] } },
-          },
-        })
-      )
-    );
-  });
-
-  it('should re-read the lists and both counts when the ids arrive while open', async () => {
-    const { rerender } = render(
-      <UserTeamSelectableList
-        hasPermission
-        allowedIds={[]}
-        popoverProps={{ open: true }}
-        onUpdate={mockOnUpdate}>
-        <p>CustomRenderer</p>
-      </UserTeamSelectableList>
-    );
-    await waitFor(() => expect(searchQuery).toHaveBeenCalled());
-    (searchQuery as jest.Mock).mockClear();
-
-    rerender(
-      <UserTeamSelectableList
-        hasPermission
-        allowedIds={['user-1']}
-        popoverProps={{ open: true }}
-        onUpdate={mockOnUpdate}>
-        <p>CustomRenderer</p>
-      </UserTeamSelectableList>
-    );
-
-    const allowedClause = { terms: { 'id.keyword': ['user-1'] } };
-    for (const searchIndex of ['user', 'team']) {
-      await waitFor(() =>
-        expect(searchQuery).toHaveBeenCalledWith(
-          expect.objectContaining({
-            searchIndex,
-            pageSize: 0,
-            queryFilter: {
-              query: { bool: { must: [expect.anything(), allowedClause] } },
-            },
-          })
-        )
+    const renderWithOptions = () =>
+      render(
+        <UserTeamSelectableList
+          hasPermission
+          options={options}
+          popoverProps={{ open: true }}
+          onUpdate={mockOnUpdate}>
+          <p>CustomRenderer</p>
+        </UserTeamSelectableList>
       );
-    }
 
-    // Each list mounts again under a new key and reads its first page for the
-    // new ids, not the page cached while there were none.
-    for (const searchIndex of ['user', 'team']) {
-      expect(searchQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          searchIndex,
-          pageSize: 25,
-          queryFilter: {
-            query: { bool: { must: [expect.anything(), allowedClause] } },
-          },
-        })
+    const listProps = (testId: string) =>
+      (SelectableList as jest.Mock).mock.calls
+        .map(([props]) => props)
+        .filter((props) => props.searchBarDataTestId === testId)
+        .at(-1);
+
+    beforeEach(() => jest.clearAllMocks());
+
+    it('should count both tabs from the options, without searching', async () => {
+      await act(async () => {
+        renderWithOptions();
+      });
+
+      const badges = (Tabs.Item as unknown as jest.Mock).mock.calls
+        .slice(-2)
+        .map(([props]) => [props.id, props.badge]);
+
+      expect(badges).toEqual([
+        ['teams', 1],
+        ['users', 2],
+      ]);
+      expect(searchQuery).not.toHaveBeenCalled();
+    });
+
+    it('should list and search each tab within the options', async () => {
+      await act(async () => {
+        renderWithOptions();
+      });
+
+      const users = listProps('owner-select-users-search-bar');
+      const teams = listProps('owner-select-teams-search-bar');
+
+      await expect(users.fetchOptions('')).resolves.toEqual({
+        data: [options[0], options[1]],
+        paging: { total: 2 },
+      });
+      // Display name or login name, any case.
+      await expect(users.fetchOptions('AARON')).resolves.toEqual({
+        data: [options[0]],
+        paging: { total: 1 },
+      });
+      await expect(users.fetchOptions('ben_')).resolves.toEqual({
+        data: [options[1]],
+        paging: { total: 1 },
+      });
+      await expect(teams.fetchOptions('fin')).resolves.toEqual({
+        data: [options[2]],
+        paging: { total: 1 },
+      });
+      expect(searchQuery).not.toHaveBeenCalled();
+    });
+
+    it('should list options that arrive after it opened', async () => {
+      const { rerender } = render(
+        <UserTeamSelectableList
+          hasPermission
+          options={[]}
+          popoverProps={{ open: true }}
+          onUpdate={mockOnUpdate}>
+          <p>CustomRenderer</p>
+        </UserTeamSelectableList>
       );
-    }
+
+      const mountsBefore = mockListMounted.mock.calls.length;
+      await act(async () => {
+        rerender(
+          <UserTeamSelectableList
+            hasPermission
+            options={options}
+            popoverProps={{ open: true }}
+            onUpdate={mockOnUpdate}>
+            <p>CustomRenderer</p>
+          </UserTeamSelectableList>
+        );
+      });
+
+      // The lists mount again under a new key, so they read the new options.
+      expect(mockListMounted.mock.calls.length).toBeGreaterThan(mountsBefore);
+      await expect(
+        listProps('owner-select-users-search-bar').fetchOptions('')
+      ).resolves.toEqual({
+        data: [options[0], options[1]],
+        paging: { total: 2 },
+      });
+      expect(searchQuery).not.toHaveBeenCalled();
+    });
   });
 });

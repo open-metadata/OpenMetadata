@@ -53,19 +53,19 @@ jest.mock(
   '../../../common/UserTeamSelectableList/UserTeamSelectableList.component',
   () => ({
     UserTeamSelectableList: ({
-      allowedIds,
+      options,
       children,
       owner,
       onUpdate,
     }: {
-      allowedIds?: string[];
+      options?: { name?: string }[];
       children: ReactNode;
       owner?: { name?: string }[];
       onUpdate: (owners?: { id: string; type: string; name: string }[]) => void;
     }) => (
       <div data-testid="assignee-picker">
-        <span data-testid="assignee-picker-allowed">
-          {allowedIds?.join(',') ?? 'everyone'}
+        <span data-testid="assignee-picker-options">
+          {options?.map((option) => option.name).join(',') ?? 'everyone'}
         </span>
         <span data-testid="assignee-picker-owner">
           {owner?.map((assignee) => assignee.name).join(',')}
@@ -230,7 +230,71 @@ describe('IncidentGroupsFilters', () => {
       data: {
         aggregations: {
           'sterms#testCaseResolutionStatusDetails.assignee.id': {
-            buckets: [{ key: 'user-1' }, { key: 'team-1' }],
+            buckets: [
+              {
+                'top_hits#top': {
+                  hits: {
+                    hits: [
+                      {
+                        _source: {
+                          testCaseResolutionStatusDetails: {
+                            assignee: {
+                              id: 'user-1',
+                              type: 'user',
+                              name: 'zoe',
+                              displayName: 'Zoe',
+                              deleted: false,
+                            },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+              {
+                'top_hits#top': {
+                  hits: {
+                    hits: [
+                      {
+                        _source: {
+                          testCaseResolutionStatusDetails: {
+                            assignee: {
+                              id: 'team-1',
+                              type: 'team',
+                              name: 'analytics',
+                              displayName: 'Analytics',
+                              deleted: false,
+                            },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+              {
+                'top_hits#top': {
+                  hits: {
+                    hits: [
+                      {
+                        _source: {
+                          testCaseResolutionStatusDetails: {
+                            assignee: {
+                              id: 'user-2',
+                              type: 'user',
+                              name: 'gone',
+                              displayName: 'Gone',
+                              deleted: true,
+                            },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
           },
         },
       },
@@ -241,8 +305,9 @@ describe('IncidentGroupsFilters', () => {
     renderFilters();
 
     await waitFor(() =>
-      expect(screen.getByTestId('assignee-picker-allowed')).toHaveTextContent(
-        'user-1,team-1'
+      expect(screen.getByTestId('assignee-picker-options')).toHaveTextContent(
+        // By display name; a deleted assignee is not offered.
+        /^analytics,zoe$/
       )
     );
 
@@ -251,6 +316,8 @@ describe('IncidentGroupsFilters', () => {
         index: 'testCaseResolutionStatus',
         fieldName: 'testCaseResolutionStatusDetails.assignee.id',
         size: 1000,
+        sourceFields: ['testCaseResolutionStatusDetails.assignee'],
+        topHits: { size: 1, sortField: 'timestamp', sortOrder: 'desc' },
         deleted: null,
         query: undefined,
       })
@@ -261,13 +328,13 @@ describe('IncidentGroupsFilters', () => {
     mockPostAggregateFieldOptions.mockRejectedValue(new Error('down'));
     renderFilters();
 
-    expect(screen.getByTestId('assignee-picker-allowed')).toHaveTextContent('');
+    expect(screen.getByTestId('assignee-picker-options')).toHaveTextContent('');
 
     await waitFor(() =>
       expect(mockPostAggregateFieldOptions).toHaveBeenCalled()
     );
 
-    expect(screen.getByTestId('assignee-picker-allowed')).toHaveTextContent('');
+    expect(screen.getByTestId('assignee-picker-options')).toHaveTextContent('');
   });
 
   it('should read the assignees of the active domain', async () => {

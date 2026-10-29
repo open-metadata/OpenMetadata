@@ -48,6 +48,7 @@ import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
+import { getTabCounts, searchOptions } from './UserTeamSelectableList.utils';
 
 export const TeamListItemRenderer = (props: EntityReference) => {
   return (
@@ -74,7 +75,7 @@ export const UserTeamSelectableList = ({
   overlayClassName,
   triggerDataTestId = 'edit-owner',
   triggerClassName,
-  allowedIds,
+  options,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -98,16 +99,11 @@ export const UserTeamSelectableList = ({
   // switching tabs does not re-hit the search API, matching the legacy antd
   // Tabs. The caches are cleared when the popover closes so a re-open fetches
   // fresh data.
-  // Each cached page keeps the `allowedIds` it was read for: a list remounted
-  // for new ids fetches in its own mount effect, before any parent effect
-  // could clear the cache.
   const initialUserOptionsRef = useRef<{
-    key?: string;
     data: EntityReference[];
     paging: { total: number; after?: string };
   } | null>(null);
   const initialTeamOptionsRef = useRef<{
-    key?: string;
     data: EntityReference[];
     paging: { total: number; after?: string };
   } | null>(null);
@@ -122,31 +118,10 @@ export const UserTeamSelectableList = ({
     return EntityType.TEAM;
   }, [owner]);
 
-  const { userQueryFilter, teamQueryFilter } = useMemo(() => {
-    const scope = (queryFilter: ReturnType<typeof getTermQuery>) =>
-      allowedIds
-        ? {
-            query: {
-              bool: {
-                must: [
-                  queryFilter.query,
-                  { terms: { 'id.keyword': allowedIds } },
-                ],
-              },
-            },
-          }
-        : queryFilter;
+  // Ids that arrive after the picker opened must re-read the open lists.
+  const optionsKey = options?.map((option) => option.id).join(',');
 
-    return {
-      userQueryFilter: scope(getTermQuery({ isBot: 'false' })),
-      teamQueryFilter: scope(
-        getTermQuery({}, 'must', undefined, {
-          matchTerms: { teamType: 'Group' },
-        })
-      ),
-    };
-  }, [allowedIds]);
-  const allowedIdsKey = allowedIds?.join(',');
+  const tabCounts = getTabCounts(count, options);
 
   const isMultiUser = multiple.user;
   const isMultiTeam = multiple.team;
@@ -161,14 +136,13 @@ export const UserTeamSelectableList = ({
   }, [selectedUsers]);
 
   const fetchUserOptions = async (searchText: string, after?: string) => {
+    if (options) {
+      return searchOptions(options, EntityType.USER, searchText);
+    }
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
     const isInitialPage = !searchText && afterPage <= 1;
 
-    if (
-      isInitialPage &&
-      initialUserOptionsRef.current &&
-      initialUserOptionsRef.current.key === allowedIdsKey
-    ) {
+    if (isInitialPage && initialUserOptionsRef.current) {
       return initialUserOptionsRef.current;
     }
 
@@ -177,7 +151,7 @@ export const UserTeamSelectableList = ({
         query: searchText,
         pageNumber: afterPage,
         pageSize: PAGE_SIZE_MEDIUM,
-        queryFilter: userQueryFilter,
+        queryFilter: getTermQuery({ isBot: 'false' }),
         sortField: 'displayName.keyword',
         sortOrder: 'asc',
         searchIndex: SearchIndex.USER,
@@ -198,7 +172,7 @@ export const UserTeamSelectableList = ({
       };
 
       if (isInitialPage) {
-        initialUserOptionsRef.current = { ...result, key: allowedIdsKey };
+        initialUserOptionsRef.current = result;
       }
 
       return result;
@@ -208,14 +182,13 @@ export const UserTeamSelectableList = ({
   };
 
   const fetchTeamOptions = async (searchText: string, after?: string) => {
+    if (options) {
+      return searchOptions(options, EntityType.TEAM, searchText);
+    }
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
     const isInitialPage = !searchText && afterPage <= 1;
 
-    if (
-      isInitialPage &&
-      initialTeamOptionsRef.current &&
-      initialTeamOptionsRef.current.key === allowedIdsKey
-    ) {
+    if (isInitialPage && initialTeamOptionsRef.current) {
       return initialTeamOptionsRef.current;
     }
 
@@ -224,7 +197,9 @@ export const UserTeamSelectableList = ({
         query: searchText || '',
         pageNumber: afterPage,
         pageSize: PAGE_SIZE_MEDIUM,
-        queryFilter: teamQueryFilter,
+        queryFilter: getTermQuery({}, 'must', undefined, {
+          matchTerms: { teamType: 'Group' },
+        }),
         sortField: 'displayName.keyword',
         sortOrder: 'asc',
         searchIndex: SearchIndex.TEAM,
@@ -246,7 +221,7 @@ export const UserTeamSelectableList = ({
       };
 
       if (isInitialPage) {
-        initialTeamOptionsRef.current = { ...result, key: allowedIdsKey };
+        initialTeamOptionsRef.current = result;
       }
 
       return result;
@@ -291,11 +266,14 @@ export const UserTeamSelectableList = ({
   };
 
   const getUserCount = async () => {
+    if (options) {
+      return;
+    }
     const res = await searchQuery({
       query: '',
       pageNumber: 1,
       pageSize: 0,
-      queryFilter: userQueryFilter,
+      queryFilter: getTermQuery({ isBot: 'false' }),
       searchIndex: SearchIndex.USER,
     });
 
@@ -303,11 +281,16 @@ export const UserTeamSelectableList = ({
   };
 
   const getTeamCount = async () => {
+    if (options) {
+      return;
+    }
     const res = await searchQuery({
       query: '',
       pageNumber: 1,
       pageSize: 0,
-      queryFilter: teamQueryFilter,
+      queryFilter: getTermQuery({}, 'must', undefined, {
+        matchTerms: { teamType: 'Group' },
+      }),
       searchIndex: SearchIndex.TEAM,
     });
 
@@ -393,17 +376,6 @@ export const UserTeamSelectableList = ({
       initialTeamOptionsRef.current = null;
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    // Ids that arrive while the picker is open (e.g. still loading when it was
-    // opened) re-read the lists, through their `key`, and both tab counts.
-    if (isOpen) {
-      // A failed count keeps the previous one; nothing else waits on it.
-      void Promise.allSettled([getUserCount(), getTeamCount()]);
-    }
-    // Only a change of ids re-reads; opening the picker already reads in init.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allowedIdsKey]);
 
   const handleOpenChange = (open: boolean) => {
     setPopupVisible(open);
@@ -503,7 +475,7 @@ export const UserTeamSelectableList = ({
     <SelectableList
       fetchOptions={fetchUserOptions}
       height={listHeight}
-      key={allowedIdsKey}
+      key={optionsKey}
       multiSelect={isMultiUser}
       searchBarDataTestId="owner-select-users-search-bar"
       searchPlaceholder={t('label.search-for-type', {
@@ -530,10 +502,10 @@ export const UserTeamSelectableList = ({
           selectedKey={activeTab}
           onSelectionChange={(key) => setActiveTab(key as 'teams' | 'users')}>
           <Tabs.List className="tw:px-2 tw:pt-2" size="sm" type="underline">
-            <Tabs.Item badge={count.team} id="teams">
+            <Tabs.Item badge={tabCounts.team} id="teams">
               {t('label.team-plural')}
             </Tabs.Item>
-            <Tabs.Item badge={count.user} id="users">
+            <Tabs.Item badge={tabCounts.user} id="users">
               {t('label.user-plural')}
             </Tabs.Item>
           </Tabs.List>
@@ -542,7 +514,7 @@ export const UserTeamSelectableList = ({
               customTagRenderer={TeamListItemRenderer}
               fetchOptions={fetchTeamOptions}
               height={listHeight}
-              key={allowedIdsKey}
+              key={optionsKey}
               multiSelect={isMultiTeam}
               searchBarDataTestId="owner-select-teams-search-bar"
               searchPlaceholder={t('label.search-for-type', {
