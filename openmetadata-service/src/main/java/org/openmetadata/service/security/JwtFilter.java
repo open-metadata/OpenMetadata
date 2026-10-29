@@ -449,21 +449,21 @@ public class JwtFilter implements ContainerRequestFilter {
   /**
    * The legacy claim flow names the user after a claim's local part, so a provider token for any
    * address with that local part would resolve to the account of that name. When {@code
-   * allowedEmailDomains} is set, the address the request runs as must be in an allowed domain: the
-   * token's email when it carries one, otherwise {@code userName@principalDomain}, the address the
-   * legacy flow builds. Either way, a provider token never resolves to a bot account.
+   * allowedEmailDomains} is set, the provider must assert an email in an allowed domain. A token
+   * that carries none is refused: the name it signs in under says nothing about a domain, and the
+   * {@code userName@principalDomain} address the legacy flow would build for it is in an allowed
+   * domain by construction. Either way, a provider token never resolves to a bot account.
    */
   private void validateLegacyProviderIdentity(Map<String, Claim> claims, String userName) {
-    String claimedEmail = claimedEmail(claims);
     if (!nullOrEmpty(allowedEmailDomains)) {
-      // With no email claim the legacy flow runs as userName@principalDomain (principalDomain
-      // carries
-      // the allowedEmailDomains fallback), so check that derived address rather than skipping the
-      // allowlist for a bare principal claim.
-      String emailToCheck =
-          claimedEmail != null ? claimedEmail : userName + EMAIL_SEPARATOR + principalDomain;
+      String claimedEmail = claimedEmail(claims);
+      if (claimedEmail == null) {
+        throw new AuthenticationException(
+            "Authentication failed: sign-in is limited to allowed email domains, and the token"
+                + " carries no email");
+      }
       validateConfiguredEmailDomain(
-          emailToCheck,
+          claimedEmail,
           allowedEmailDomains,
           principalDomain,
           allowedDomains,
@@ -502,14 +502,19 @@ public class JwtFilter implements ContainerRequestFilter {
     }
   }
 
-  /** The email the provider asserted, or null when the principal claims carry none. */
+  /**
+   * The email the provider asserted: the mapped email claim, otherwise the first principal claim
+   * that holds an address, which need not be the claim the account is named after. Null when there
+   * is none.
+   */
   private String claimedEmail(Map<String, Claim> claims) {
-    String value =
+    Stream<String> candidates =
         nullOrEmpty(jwtPrincipalClaimsMapping)
-            ? SecurityUtil.getFirstMatchJwtClaim(jwtPrincipalClaims, claims)
-            : SecurityUtil.getClaimOrObject(
-                claims.get(jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY)));
-    return value != null && value.contains(EMAIL_SEPARATOR) ? value : null;
+            ? jwtPrincipalClaims.stream().map(claims::get).map(SecurityUtil::getClaimOrObject)
+            : Stream.of(
+                SecurityUtil.getClaimOrObject(
+                    claims.get(jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY))));
+    return candidates.filter(value -> value.contains(EMAIL_SEPARATOR)).findFirst().orElse(null);
   }
 
   public void checkValidationsForToken(
