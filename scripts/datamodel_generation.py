@@ -16,12 +16,12 @@ from a configured secrets' manager.
 
 import os
 import re
+import subprocess
 import sys
 import warnings
 from pathlib import Path
 
 from datamodel_code_generator import DataModelType, InputFileType, generate
-from datamodel_code_generator.format import Formatter
 from datamodel_code_generator.imports import Import
 
 # `model.pydantic` held the Pydantic v1 models and was removed in datamodel-code-generator 0.60+.
@@ -88,10 +88,19 @@ try:
         base_class="metadata.ingestion.models.custom_pydantic.BaseModel",
         set_default_enum_member=True,
         disable_timestamp=True,
-        formatters=[Formatter.BLACK, Formatter.ISORT],
+        # Formatted below with ruff rather than black, so black stays out of the lock.
+        formatters=[],
     )
 finally:
     os.chdir(current_directory)
+
+# --isolated --no-respect-gitignore: the generated tree is ruff-excluded and gitignored. The post-processing below
+# matches black's layout (88 columns), which ruff's defaults reproduce.
+subprocess.run(
+    ["ruff", "check", "--isolated", "--no-respect-gitignore", "--select", "I", "--fix", "--quiet", str(output_root)],
+    check=True,
+)
+subprocess.run(["ruff", "format", "--isolated", "--no-respect-gitignore", "--quiet", str(output_root)], check=True)
 
 # Replace Unicode regex flags
 for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:
