@@ -3479,6 +3479,7 @@ class TestStorageStreamingBehavior(TestCase):
         config = MagicMock()
         config.dbtPrefixConfig.dbtBucketName = "test-bucket"
         config.dbtPrefixConfig.dbtObjectPrefix = None
+        config.dbtSecurityConfig.gcpImpersonateServiceAccount = None
 
         with patch("google.cloud.storage.Client", return_value=mock_client):
             list(gcs_handler(config))
