@@ -30,7 +30,7 @@ dead-lettered, marking the projection degraded until a full rebuild.
   failed copy also stays allocated until Fuseki restarts, so the error asks for a bigger volume and
   a restart.
 - One rule makes a stopped schedule visible, whatever stopped it (failures, a reindex holding its
-  lock, a store that cannot be reached): each successful compaction is recorded in
+  lock, a store that cannot be reached): each successful maintenance compaction is recorded in
   `rdf_projection_health.lastCompactedAt`, and once none has succeeded for two intervals every
   check logs an error and the RDF projection status reads `DEGRADED` until one does.
 - Maintenance holds the RDF reindex lock while it runs, so it never overlaps an indexing run. The
