@@ -16,7 +16,7 @@ import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.PolicyDeniedException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.SpelNode;
@@ -161,7 +161,7 @@ public class CompiledRule extends Rule {
             policyContext.getPolicyName(),
             getName());
         if (matchExpression(policyContext, subjectContext, resourceContext)) {
-          throw new AuthorizationException(
+          throw new PolicyDeniedException(
               permissionDenied(
                   subjectContext.user().getName(),
                   operation,

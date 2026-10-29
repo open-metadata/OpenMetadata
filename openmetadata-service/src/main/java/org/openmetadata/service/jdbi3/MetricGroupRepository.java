@@ -291,6 +291,9 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
 
   @Override
   protected void postUpdate(MetricGroup original, MetricGroup updated) {
+    // metricCount is computed on read and the update never loads it, so without this the search
+    // document re-indexes it as 0.
+    updated.setMetricCount(getMetricCount(updated));
     super.postUpdate(original, updated);
     if (Boolean.TRUE.equals(original.getDeleted()) && !Boolean.TRUE.equals(updated.getDeleted())) {
       List<EntityReference> restoredMembers = getMetrics(updated);

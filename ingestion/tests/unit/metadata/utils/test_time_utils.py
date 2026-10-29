@@ -3,7 +3,11 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from metadata.generated.schema.type.basic import Timestamp
-from metadata.utils.time_utils import timedelta_to_string, timestamp_to_datetime
+from metadata.utils.time_utils import (
+    convert_timestamp,
+    timedelta_to_string,
+    timestamp_to_datetime,
+)
 
 
 @pytest.mark.parametrize(
@@ -103,3 +107,27 @@ def test_datetime_to_timestamp(datetime_value, milliseconds, expected_timestamp)
 )
 def test_datetime_to_timestamp_honors_fold(datetime_value, timezone_str, expected_timestamp):
     assert datetime_to_timestamp(datetime_value, timezone_str=timezone_str) == expected_timestamp
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("1669852800", datetime(2022, 12, 1, 0, 0, 0)),
+        ("1669852800000", datetime(2022, 12, 1, 0, 0, 0)),
+        ("2022-12-01T00:00:00", datetime(2022, 12, 1, 0, 0, 0)),
+        ("2030-12-31T23:59:59", datetime(2030, 12, 31, 23, 59, 59)),
+        ("2022-08-09 08:08:34.433967", datetime(2022, 8, 9, 8, 8, 34, 433967)),
+        ("2022-12-01T00:00:00Z", datetime(2022, 12, 1, 0, 0, 0)),
+        ("2022-12-01T02:00:00+02:00", datetime(2022, 12, 1, 0, 0, 0)),
+        ("2022-12-01", datetime(2022, 12, 1, 0, 0, 0)),
+        (" 2022-12-01T00:00:00 ", datetime(2022, 12, 1, 0, 0, 0)),
+    ],
+)
+def test_convert_timestamp(value, expected):
+    assert utc_from_timestamp(convert_timestamp(value)) == expected
+
+
+@pytest.mark.parametrize("value", ["not-a-date", "", "2022-13-45T00:00:00"])
+def test_convert_timestamp_invalid(value):
+    with pytest.raises(ValueError, match="Could not convert timestamp"):
+        convert_timestamp(value)
