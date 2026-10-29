@@ -11,15 +11,22 @@
  *  limitations under the License.
  */
 import {
+  act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
 import { AxiosError, AxiosHeaders } from 'axios';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { getNativeOntologyDataGraphPage } from '../../../../rest/ontologyAPI';
+import { NativeOntologyDataGraphPage } from '../../../../generated/api/data/nativeOntologyDataGraphPage';
+import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import {
+  getNativeOntologyDataGraphPage,
+  getOntologyConceptBindings,
+  putOntologyConceptBinding,
+} from '../../../../rest/ontologyAPI';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import {
   pageFixture,
   prefixFixture,
@@ -28,6 +35,8 @@ import OntologyNativeDataMode from './OntologyNativeDataMode';
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
   getNativeOntologyDataGraphPage: jest.fn(),
+  getOntologyConceptBindings: jest.fn(),
+  putOntologyConceptBinding: jest.fn(),
 }));
 
 const fetchPage = getNativeOntologyDataGraphPage as jest.MockedFunction<
@@ -44,48 +53,86 @@ const rejection = (status: number) =>
     config: { headers: new AxiosHeaders() },
   });
 
+const clustersWithTransferTotal = (count: number) => [
+  {
+    id: 'transfer',
+    name: 'Funds Transfer',
+    count,
+    after: 'cursor-4',
+    assets: [1, 2, 3, 4].map((n) => ({
+      id: `a${n}`,
+      name: `table_${n}`,
+      serviceType: 'Snowflake',
+    })),
+  },
+  {
+    id: 'account',
+    name: 'Account',
+    count: 1,
+    assets: [{ id: 'acc', name: 'accounts', serviceType: 'Mysql' }],
+  },
+];
+
 const firstPage = (overrides: Parameters<typeof pageFixture>[0] = {}) =>
   pageFixture({
-    clusters: [
-      {
-        id: 'transfer',
-        name: 'Funds Transfer',
-        count: 6,
-        after: 'cursor-4',
-        assets: [1, 2, 3, 4].map((n) => ({
-          id: `a${n}`,
-          name: `table_${n}`,
-          serviceType: 'Snowflake',
-        })),
-      },
-      {
-        id: 'account',
-        name: 'Account',
-        count: 1,
-        assets: [{ id: 'acc', name: 'accounts', serviceType: 'Mysql' }],
-      },
-    ],
+    clusters: clustersWithTransferTotal(6),
     loaded: LOADED,
     ...overrides,
+  });
+
+const lastTransferRows = () =>
+  pageFixture({
+    bindings: {
+      assets: [
+        { id: 'a5', name: 'table_5', serviceType: 'Snowflake' },
+        { id: 'a6', name: 'table_6', serviceType: 'Snowflake' },
+      ],
+    },
+    loaded: [prefixFixture('transfer', 'a6'), prefixFixture('account')],
   });
 
 const Location = () => (
   <output data-testid="location">{useLocation().pathname}</output>
 );
 
+const BindingWriter = () => {
+  const { readState, replaceAsset } = useOntologyConceptBindings('transfer');
+
+  return (
+    <button
+      disabled={readState !== 'ready'}
+      onClick={() =>
+        void replaceAsset({
+          asset: { id: 'a7', type: 'table' },
+          expectedRevision: 0,
+        })
+      }>
+      bind
+    </button>
+  );
+};
+
 const renderMode = (onSelectConcept = jest.fn()) => {
-  const view = render(
+  const tree = (revision: number) => (
     <MemoryRouter>
       <OntologyNativeDataMode
+        isActive
         ontologyId="ontology-1"
+        revision={revision}
         selectedConceptId="account"
         onSelectConcept={onSelectConcept}
       />
       <Location />
+      <BindingWriter />
     </MemoryRouter>
   );
+  const view = renderWithQueryClient(tree(0));
 
-  return { ...view, onSelectConcept };
+  return {
+    ...view,
+    onSelectConcept,
+    changeModel: (revision: number) => view.rerender(tree(revision)),
+  };
 };
 
 const rows = (clusterId: string) =>
@@ -93,8 +140,19 @@ const rows = (clusterId: string) =>
     .getAllByTestId('ontology-data-asset-name')
     .map((name) => name.textContent);
 
+const clusterCount = (clusterId: string) =>
+  within(screen.getByTestId(`ontology-data-cluster-${clusterId}`)).getByTestId(
+    'ontology-data-cluster-count'
+  );
+
 beforeEach(() => {
   fetchPage.mockReset();
+  (getOntologyConceptBindings as jest.Mock).mockResolvedValue({
+    kind: 'complete',
+    revision: 0,
+    assets: [],
+  });
+  (putOntologyConceptBinding as jest.Mock).mockResolvedValue({});
 });
 
 it('shows every returned cluster with its visible total once the first page arrives', async () => {
@@ -183,7 +241,7 @@ it('selects a concept from its header and opens an asset from its row', async ()
 
 it('says the view holds its maximum and offers no more clusters when the context is full', async () => {
   fetchPage.mockResolvedValueOnce(
-    firstPage({ contextFull: true, nextClusterOffset: undefined })
+    firstPage({ contextFull: true, nextClusterOffset: 12 })
   );
   renderMode();
 
@@ -243,4 +301,111 @@ it('shows the empty state for an ontology with no bound assets', async () => {
   expect(
     await screen.findByTestId('ontology-data-graph-empty')
   ).toHaveTextContent('message.no-data-available');
+});
+
+it('shows only the error, and no empty graph, when the first load fails', async () => {
+  fetchPage.mockRejectedValueOnce(rejection(500));
+  renderMode();
+
+  expect(
+    await screen.findByTestId('ontology-native-data-error')
+  ).toHaveTextContent('message.ontology-data-graph-unavailable');
+  expect(screen.queryByTestId('ontology-data-graph')).not.toBeInTheDocument();
+  expect(
+    screen.queryByTestId('ontology-data-graph-empty')
+  ).not.toBeInTheDocument();
+});
+
+it('offers more clusters instead of the empty state while the server still advertises some', async () => {
+  const emptyPage = () =>
+    pageFixture({ clusters: [], loaded: [], nextClusterOffset: 12 });
+  fetchPage
+    .mockResolvedValueOnce(emptyPage())
+    .mockResolvedValueOnce(emptyPage());
+  renderMode();
+
+  expect(await screen.findByText('label.load-more')).toBeVisible();
+  expect(
+    screen.queryByTestId('ontology-data-graph-empty')
+  ).not.toBeInTheDocument();
+});
+
+describe('a graph that went stale', () => {
+  it('keeps the clusters and the selection on screen while it reloads', async () => {
+    let answerReload!: (page: NativeOntologyDataGraphPage) => void;
+    fetchPage.mockResolvedValueOnce(firstPage()).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answerReload = resolve;
+        })
+    );
+    const { changeModel } = renderMode();
+    await screen.findByTestId('ontology-data-cluster-transfer');
+
+    changeModel(1);
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2));
+
+    expect(screen.getByRole('status')).toHaveTextContent('label.loading');
+    expect(clusterCount('transfer')).toHaveTextContent('· 6');
+    expect(
+      screen.getByTestId('ontology-data-cluster-account').className
+    ).toMatch(/border-brand/);
+
+    await act(async () =>
+      answerReload(firstPage({ clusters: clustersWithTransferTotal(9) }))
+    );
+
+    expect(clusterCount('transfer')).toHaveTextContent('· 9');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('keeps an expanded cluster expanded through the reload', async () => {
+    fetchPage
+      .mockResolvedValueOnce(firstPage())
+      .mockResolvedValueOnce(lastTransferRows())
+      .mockResolvedValueOnce(firstPage())
+      .mockResolvedValueOnce(lastTransferRows());
+    const { changeModel } = renderMode();
+    await screen.findByTestId('ontology-data-cluster-transfer');
+    fireEvent.click(screen.getByTestId('ontology-load-more-assets-transfer'));
+    await waitFor(() => expect(rows('transfer')).toHaveLength(6));
+
+    changeModel(1);
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(4));
+
+    await waitFor(() => expect(rows('transfer')).toHaveLength(6));
+
+    expect(
+      screen.getByTestId('ontology-show-less-assets-transfer')
+    ).toBeVisible();
+    expect(fetchPage.mock.calls.map(([, request]) => request.page)).toEqual([
+      { kind: 'clusters', limit: 12, offset: 0 },
+      { kind: 'bindings', conceptId: 'transfer', after: 'cursor-4', limit: 25 },
+      { kind: 'clusters', limit: 12, offset: 0 },
+      { kind: 'bindings', conceptId: 'transfer', after: 'cursor-4', limit: 25 },
+    ]);
+  });
+
+  it('shows the new total after a binding write', async () => {
+    fetchPage
+      .mockResolvedValueOnce(firstPage())
+      .mockResolvedValueOnce(
+        firstPage({ clusters: clustersWithTransferTotal(7) })
+      );
+    renderMode();
+    await screen.findByTestId('ontology-data-cluster-transfer');
+
+    expect(clusterCount('transfer')).toHaveTextContent('· 6');
+
+    const bind = screen.getByRole('button', { name: 'bind' });
+    await waitFor(() => expect(bind).toBeEnabled());
+    fireEvent.click(bind);
+
+    await waitFor(() =>
+      expect(clusterCount('transfer')).toHaveTextContent('· 7')
+    );
+
+    expect(putOntologyConceptBinding).toHaveBeenCalledTimes(1);
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+  });
 });

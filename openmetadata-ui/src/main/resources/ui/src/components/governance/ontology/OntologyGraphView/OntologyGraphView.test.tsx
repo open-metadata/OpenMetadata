@@ -1723,4 +1723,83 @@ describe('OntologyGraphView', () => {
     ).toBeVisible();
     expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
   });
+
+  it('shows a relation drawn in Model as a dashed edge once Data shows again, with one reload', async () => {
+    const editableModel = {
+      ...model,
+      properties: [...model.properties, objectProperty],
+    };
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      model: editableModel,
+      refetch: jest.fn().mockResolvedValue({ data: editableModel }),
+      relations: getModelRelations(editableModel),
+    });
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    const clusters = [
+      {
+        id: customer.id,
+        name: 'Customer',
+        count: 1,
+        assets: [{ id: 't1', name: 'customers' }],
+      },
+      {
+        id: orphan.id,
+        name: 'Orphan',
+        count: 1,
+        assets: [{ id: 't2', name: 'orphans' }],
+      },
+    ];
+    (getNativeOntologyDataGraphPage as jest.Mock)
+      .mockResolvedValueOnce(pageFixture({ clusters }))
+      .mockResolvedValueOnce(
+        pageFixture({
+          clusters,
+          conceptEdges: [
+            { from: customer.id, to: orphan.id, label: 'served by' },
+          ],
+        })
+      );
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+          onWorkingChange={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+    await screen.findByTestId(`ontology-data-cluster-${customer.id}`);
+
+    expect(screen.queryAllByTestId('ontology-data-semantic-edge')).toHaveLength(
+      0
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
+    await act(() =>
+      latestGraphProps().onCreateRelation(
+        customer.id,
+        orphan.id,
+        objectProperty.iri
+      )
+    );
+
+    expect(createOntologyAxiom).toHaveBeenCalledTimes(1);
+    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+    const edge = await screen.findByTestId('ontology-data-semantic-edge');
+
+    expect(edge).toHaveAttribute('data-edge-kind', 'semanticProjection');
+    expect(edge).toHaveAttribute('stroke-dasharray', '4 3');
+    expect(
+      screen.getByTestId('ontology-data-semantic-edge-label')
+    ).toHaveTextContent('served by');
+    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(2);
+  });
 });
