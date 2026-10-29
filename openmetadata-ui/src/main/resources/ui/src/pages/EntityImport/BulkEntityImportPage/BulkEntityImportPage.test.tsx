@@ -792,7 +792,6 @@ describe('BulkEntityImportPage', () => {
       expect(mockValidateCsvString.mock.calls[0][0]).toBe(
         'name,description\nrow1,desc1\nrow2,desc2\nrow3,desc3\n'
       );
-
     });
 
     it('should disable upload when async job is in progress', async () => {

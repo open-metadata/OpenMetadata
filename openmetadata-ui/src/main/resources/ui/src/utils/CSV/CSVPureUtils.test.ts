@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Column } from 'react-data-grid';
 import { parse } from 'papaparse';
+import type { Column } from 'react-data-grid';
 import {
   getCsvGridRowHeight,
   getFailedImportRowIds,
