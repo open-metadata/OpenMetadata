@@ -1787,4 +1787,107 @@ describe('OntologyReleasePanel', () => {
       screen.queryByTestId('ontology-recovery-action')
     ).not.toBeInTheDocument();
   });
+
+  const failFirstReviewRead = () => {
+    const defaultGet = get.getMockImplementation();
+    let reviewReads = 0;
+    get.mockImplementation(async (url, config) => {
+      if (url.endsWith('/review') && ++reviewReads === 1) {
+        throw new Error('Review read failed');
+      }
+
+      return defaultGet?.(url, config);
+    });
+  };
+
+  it('offers the review state retry in the AI Changes view', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    currentRelease.entityStatus = EntityStatus.InReview;
+    currentRelease.reviewTask = '00000000-0000-4000-8000-000000000044';
+    failFirstReviewRead();
+    await renderPanel(true, 'changes');
+
+    const retry = await screen.findByRole('button', { name: 'label.retry' });
+
+    expect(
+      screen.queryByTestId('ontology-publish-release')
+    ).not.toBeInTheDocument();
+
+    await act(async () => fireEvent.click(retry));
+
+    expect(
+      await screen.findByTestId('ontology-publish-release')
+    ).toHaveTextContent('label.publish 1.2.3');
+  });
+
+  it('offers the review state retry in the AI Releases view', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    currentRelease.entityStatus = EntityStatus.Approved;
+    currentRelease.reviewTask = '00000000-0000-4000-8000-000000000044';
+    failFirstReviewRead();
+    await renderPanel(true, 'releases');
+    await selectRelease();
+
+    const retry = await screen.findByRole('button', { name: 'label.retry' });
+
+    expect(
+      screen.getByRole('button', { name: 'label.activate-release' })
+    ).toBeDisabled();
+
+    await act(async () => fireEvent.click(retry));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'label.activate-release' })
+      ).toBeEnabled()
+    );
+  });
+
+  it('shows one review-unavailable alert in AI mode when the state read fails', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const defaultGet = get.getMockImplementation();
+    get.mockImplementation(async (url, config) => {
+      if (url.endsWith('/state')) {
+        throw new AxiosError('State unavailable', '403');
+      }
+
+      return defaultGet?.(url, config);
+    });
+    await renderPanel(true, 'changes');
+    await screen.findAllByText('message.ontology-review-unavailable');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getAllByText('message.ontology-review-unavailable')
+    ).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'label.retry' })).toHaveLength(
+      1
+    );
+  });
+
+  it('shows the storage-unavailable alert in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const setItem = jest
+      .spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(() => {
+        throw new Error('Storage unavailable');
+      });
+    try {
+      await renderPanel(true, 'changes');
+
+      expect(
+        await screen.findByText(
+          'message.ontology-publication-storage-unavailable'
+        )
+      ).toBeVisible();
+
+      await waitFor(() =>
+        expect(screen.getByTestId('ontology-request-review')).toBeDisabled()
+      );
+    } finally {
+      setItem.mockRestore();
+    }
+  });
 });
