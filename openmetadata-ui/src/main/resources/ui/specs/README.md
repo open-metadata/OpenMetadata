@@ -16,7 +16,8 @@ either stack: use a `tw:` token utility in TSX. In existing `.less`/`.css` and c
 read colours from the Tailwind
 bridge vars the utilities compile to (`var(--tw-background-color-surface)`, `--tw-text-color-*`,
 `--tw-border-color-*`, `--tw-color-fg-*`, `--tw-color-utility-*`, which flip under `.dark-mode`)
-and every other value from `var(--om-*)`. Raw `--color-*` / `--background-color-*` /
+and non-colour values from the Tailwind theme vars (`calc(var(--tw-spacing) * N)`, `--tw-radius-*`,
+`--tw-shadow-*`, `--tw-text-*`). Raw `--color-*` / `--background-color-*` /
 `--text-color-*` / `--border-color-*` variables are invalid in light (transparent). The `--om-*`
 layer below documents the **deprecated** Antd/Less side (still maintained during the migration);
 never add `--om-color-*` tokens or references.
@@ -65,7 +66,7 @@ foundation and component specs below are legacy; translate them to the theme var
 | --- | --- |
 | `yarn tw-audit` | **(go-forward)** Lint `.tsx`/`.ts` for hardcoded values. Explicit `tw:dark:*` and `--ai-*` usage are review warnings; resolvable arbitrary values remain errors. |
 | `yarn tw-audit:report` | Full inventory + which token each raw hex matches + Antd/Less debt count. |
-| `yarn tw-guard` | Fails on NEW `antd` imports / NEW `assets/svg/` raw-SVG files or imports / NEW `.less` files (deprecation). |
+| `yarn tw-guard` | Fails on NEW `assets/svg/` raw-SVG files or imports; reports NEW `.less` files (deprecation). |
 | `yarn token-audit` | _(legacy)_ Lint CSS/LESS for hardcoded values. **Exit 1 on any error.** CI-ready. |
 | `yarn token-audit:report` | Full grouped inventory + legacy token suggestions; convert colour suggestions to semantic `--tw-*` bridge vars. |
 | `yarn token-migrate` | Legacy codemod to `var(--om-*)`; replace colour aliases with semantic `--tw-*` bridge vars before accepting the edits. |

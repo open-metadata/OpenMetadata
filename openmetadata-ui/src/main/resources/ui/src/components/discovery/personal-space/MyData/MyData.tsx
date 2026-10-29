@@ -15,6 +15,7 @@ import { Box, Tabs } from '@openmetadata/ui-core-components';
 import React, { Key, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { UserAssetsKind } from '../UserAssets/UserAssets.utils';
 import UserAssetsView from '../UserAssets/UserAssetsView';
 
@@ -25,7 +26,9 @@ import UserAssetsView from '../UserAssets/UserAssetsView';
 const MyDataPage: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const [kind, setKind] = useState<UserAssetsKind>('owned');
+  // The panel remounts on every open, so the tab it was opened on is read once.
+  const initialKind = usePersonalSpaceStore((state) => state.myDataTab);
+  const [kind, setKind] = useState<UserAssetsKind>(initialKind);
 
   return (
     <Box

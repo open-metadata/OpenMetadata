@@ -12,8 +12,10 @@
  */
 import {
   Alert,
+  Badge,
   Box,
   Button,
+  Card,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +24,7 @@ import {
   EntityStatus,
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import OntologyReviewRelease from '../OntologyReviewPanel/OntologyReviewRelease';
 import OntologyReleaseEvents from './OntologyReleaseEvents';
@@ -45,53 +48,98 @@ const OntologyReleaseDetails = ({
   onActivate,
 }: OntologyReleaseDetailsProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const isApproved = release.entityStatus === EntityStatus.Approved;
   const canRequestReview = release.entityStatus === EntityStatus.Draft;
+  const statusLabel = t(
+    `label.${release.entityStatus.toLowerCase().replaceAll(' ', '-')}`
+  );
 
-  return (
-    <Box data-testid="ontology-release-definition" direction="col" gap={3}>
-      <Typography as="h3" size="text-md" weight="semibold">
-        {getEntityName(release)}
-      </Typography>
-      <Typography>
-        {t(`label.${release.entityStatus.toLowerCase().replaceAll(' ', '-')}`)}
-      </Typography>
-      {isActive && (
-        <Typography data-testid="ontology-active-release">
-          {t('label.active')}
-        </Typography>
+  const actions = (
+    <Box gap={3} wrap="wrap">
+      {showExport && <OntologyReleaseExport releaseId={release.id} />}
+      {release.reviewTask && (
+        <Link to={`/tasks/${encodeURIComponent(release.reviewTask)}`}>
+          {t('label.approval')}
+        </Link>
       )}
-      <Alert variant="warning">
-        {t('message.ontology-consistency-not-run')}
-      </Alert>
-      <Box gap={3} wrap="wrap">
-        {showExport && <OntologyReleaseExport releaseId={release.id} />}
-        {release.reviewTask && (
-          <Link to={`/tasks/${encodeURIComponent(release.reviewTask)}`}>
-            {t('label.approval')}
-          </Link>
-        )}
-        {canRequestReview && (
-          <Button
-            color="secondary"
-            isDisabled={!canPublish}
-            onPress={onRequestApproval}>
-            {t('label.request-approval')}
-          </Button>
-        )}
+      {canRequestReview && (
         <Button
-          color="primary"
-          isDisabled={!canPublish || isActive || !isApproved}
-          onPress={onActivate}>
-          {t('label.activate-release')}
+          color="secondary"
+          isDisabled={!canPublish}
+          onPress={onRequestApproval}>
+          {t('label.request-approval')}
         </Button>
-      </Box>
+      )}
+      <Button
+        color="primary"
+        isDisabled={!canPublish || isActive || !isApproved}
+        onPress={onActivate}>
+        {t('label.activate-release')}
+      </Button>
+    </Box>
+  );
+
+  const consistencyAlert = (
+    <Alert variant="warning">{t('message.ontology-consistency-not-run')}</Alert>
+  );
+
+  const history = (
+    <>
       <OntologyReleaseEvents releaseId={release.id} />
       <OntologyReviewRelease
         baseReleaseId={release.baseReleaseId}
         key={release.id}
         releaseId={release.id}
       />
+    </>
+  );
+
+  if (isAiMode) {
+    return (
+      <Card data-testid="ontology-release-definition" size="md">
+        <Card.Content>
+          <Box direction="col" gap={4}>
+            <Box align="center" gap={2} wrap="wrap">
+              <Typography as="h3" size="text-lg" weight="semibold">
+                {getEntityName(release)}
+              </Typography>
+              <Badge color="gray" size="sm" type="pill-color">
+                {statusLabel}
+              </Badge>
+              {isActive && (
+                <Badge
+                  color="success"
+                  data-testid="ontology-active-release"
+                  size="sm"
+                  type="pill-color">
+                  {t('label.active')}
+                </Badge>
+              )}
+            </Box>
+            {consistencyAlert}
+            {actions}
+            {history}
+          </Box>
+        </Card.Content>
+      </Card>
+    );
+  }
+
+  return (
+    <Box data-testid="ontology-release-definition" direction="col" gap={3}>
+      <Typography as="h3" size="text-md" weight="semibold">
+        {getEntityName(release)}
+      </Typography>
+      <Typography>{statusLabel}</Typography>
+      {isActive && (
+        <Typography data-testid="ontology-active-release">
+          {t('label.active')}
+        </Typography>
+      )}
+      {consistencyAlert}
+      {actions}
+      {history}
     </Box>
   );
 };

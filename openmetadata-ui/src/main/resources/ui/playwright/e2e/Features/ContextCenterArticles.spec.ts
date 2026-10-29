@@ -467,6 +467,24 @@ test.describe('Context Center Articles', () => {
     page,
   }) => {
     test.slow();
+    // Our own tag, indexed before use: the seeded KnowledgeCenter.QuickLink is
+    // only searchable if the CI fixture's tag index is complete, and a fixture
+    // snapshotted mid-reindex (Oct 25) dropped it, failing every attempt.
+    const quickLinkTag = new TagClass({
+      classification: articleTagClassification.data.name,
+    });
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      await quickLinkTag.create(apiContext);
+      await waitForSearchIndexed(
+        apiContext,
+        quickLinkTag.responseData.fullyQualifiedName,
+        'tag'
+      );
+    } finally {
+      await afterAction();
+    }
+
     const testQuickLink = {
       displayName: `CC QL Test ${uuid()}`,
       updatedDisplayName: `CC QL Test Updated ${uuid()}`,
@@ -474,8 +492,8 @@ test.describe('Context Center Articles', () => {
       updatedDescription: 'Quick link updated from Playwright modal',
       url: RELATED_QUICK_LINK_URL,
       updatedUrl: UPDATED_QUICK_LINK_URL,
-      tag: 'QuickLink',
-      tagFqn: 'KnowledgeCenter.QuickLink',
+      tag: quickLinkTag.data.displayName,
+      tagFqn: quickLinkTag.responseData.fullyQualifiedName,
     };
 
     await navigateToArticles(page);
@@ -1436,7 +1454,7 @@ test.describe('Context Center Articles', () => {
       // The reply count opens the conversation inside the drawer. That view
       // already lists the replies, so it shows no reply count of its own.
       await mainMessage.getByTestId('reply-button').click();
-      await expect(page.getByTestId('thread-panel-comments')).toBeVisible();
+      await expect(page.getByTestId('comments-input-field')).toBeVisible();
       await expect(mainMessage.getByTestId('reply-button')).toHaveCount(0);
       await page.getByTestId('thread-back').click();
       await expect(mainMessage.getByTestId('reply-button')).toBeVisible();
