@@ -766,6 +766,28 @@ describe('OntologyExplorerPage', () => {
     ).toHaveAttribute('aria-selected', 'true');
   });
 
+  it.each(['isOntologyLoading', 'isOntologyError'] as const)(
+    'disables the version chip while the ontology list reports %s',
+    async (flag) => {
+      renderNativeStudio('?ontology=native-sales');
+      mockUseOntologyStudioScopes.mockReturnValue({
+        glossaries: [],
+        isError: false,
+        isLoading: false,
+        isOntologyError: false,
+        isOntologyLoading: false,
+        refetchOntologies: jest.fn(),
+        ontologies: [nativeOntology],
+        refetch: jest.fn(),
+        [flag]: true,
+      });
+
+      expect(
+        await screen.findByTestId('ontology-release-history-trigger')
+      ).toBeDisabled();
+    }
+  );
+
   it('shows the feature placeholder for an empty catalog in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     mockSearchParams = new URLSearchParams();
