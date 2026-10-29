@@ -245,7 +245,7 @@ public class TestCaseResolutionStatusResource
 
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter = new ListFilter(null);
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
     filter.addQueryParam("incidentAssignee", assignee);
     filter.addQueryParam("incidentListSeverity", parseIncidentSeverities(severities));

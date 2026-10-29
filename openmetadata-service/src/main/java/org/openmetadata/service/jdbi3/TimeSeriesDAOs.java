@@ -2045,6 +2045,80 @@ public interface TimeSeriesDAOs {
         @BindMap Map<String, ?> outerParams,
         @Define("outerCond") String outerFilter);
 
+    // The same latest listing without a time range: the base partitioned query cannot rank the
+    // incidents' own status fields, and the originEntityFQN predicate reads the
+    // testCaseEntityFQN alias the join introduces, so the join travels with every latest shape.
+    @SqlQuery(
+        "SELECT json FROM "
+            + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "FROM <table> <cond> "
+            + "ORDER BY timestamp DESC) ranked "
+            + "<outerCond> AND ranked.row_num = 1 LIMIT :limit OFFSET :offset")
+    List<String> listWithOffset(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("partition") String partition,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @BindMap Map<String, ?> outerParams,
+        @Define("outerCond") String outerFilter);
+
+    @Override
+    default List<String> listWithOffset(ListFilter filter, int limit, int offset, boolean latest) {
+      if (!latest) {
+        return EntityTimeSeriesDAO.super.listWithOffset(filter, limit, offset, false);
+      }
+      ListFilter outerFilter = latestRecordFilter(filter);
+      LATEST_RECORD_PARAMS.forEach(filter::removeQueryParam);
+      String condition = filter.getCondition();
+      condition = addOriginEntityFQNJoin(filter, condition);
+      return listWithOffset(
+          getTimeSeriesTableName(),
+          filter.getQueryParams(),
+          condition,
+          getPartitionFieldName(),
+          limit,
+          offset,
+          outerFilter.getQueryParams(),
+          outerFilter.getCondition());
+    }
+
+    // The latest count without a time range: partition count over the same origin join and
+    // outer filter the listing reads, minus the timestamp window.
+    @SqlQuery(
+        "SELECT count(*) FROM "
+            + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "FROM <table> <cond>) ranked "
+            + "<outerCond> AND ranked.row_num = 1")
+    int listCount(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("partition") String partition,
+        @BindMap Map<String, ?> outerParams,
+        @Define("outerCond") String outerFilter);
+
+    @Override
+    default int listCount(ListFilter filter, boolean latest) {
+      if (!latest) {
+        return EntityTimeSeriesDAO.super.listCount(filter, false);
+      }
+      // The listing reads the same filter afterwards, so it is copied rather than trimmed.
+      ListFilter innerFilter = new ListFilter(filter.getInclude());
+      filter.getQueryParams().forEach(innerFilter::addQueryParam);
+      LATEST_RECORD_PARAMS.forEach(innerFilter::removeQueryParam);
+      ListFilter outerFilter = latestRecordFilter(filter);
+      String condition = addOriginEntityFQNJoin(innerFilter, innerFilter.getCondition());
+      return listCount(
+          getTimeSeriesTableName(),
+          innerFilter.getQueryParams(),
+          condition,
+          getPartitionFieldName(),
+          outerFilter.getQueryParams(),
+          outerFilter.getCondition());
+    }
+
     // The status, the assignee and the severity describe an incident as it stands, so a latest
     // listing applies them to each incident's latest record rather than to the records it is
     // ranked from — or an incident resolved since would still match through an earlier record.
