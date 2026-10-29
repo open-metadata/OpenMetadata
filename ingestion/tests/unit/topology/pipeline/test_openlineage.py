@@ -195,41 +195,41 @@ EXPECTED_OL_EVENT = OpenLineageEvent(
 )
 
 
+@pytest.fixture(autouse=True)
+def broker_clients():
+    with (
+        patch("metadata.ingestion.source.pipeline.openlineage.connection.KafkaConsumer") as consumer_class,
+        patch("metadata.ingestion.source.pipeline.openlineage.connection.AWSClient.get_kinesis_client"),
+    ):
+        yield consumer_class.return_value
+
+
 class OpenLineageUnitTest(unittest.TestCase):
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
-        test_connection.return_value = False
-
-        # Kafka source
-        config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_CONFIG)
-        self.open_lineage_source = OpenlineageSource.create(
-            MOCK_OL_CONFIG["source"],
-            config.workflowConfig.openMetadataServerConfig,
-        )
-        self.open_lineage_source.context.get().pipeline = MOCK_PIPELINE.name.root
-        self.open_lineage_source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
-        self.open_lineage_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["skun"])
-
-        # Kinesis source
-        kinesis_config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_KINESIS_CONFIG)
-        self.open_lineage_kinesis_source = OpenlineageSource.create(
-            MOCK_OL_KINESIS_CONFIG["source"],
-            kinesis_config.workflowConfig.openMetadataServerConfig,
-        )
-        self.open_lineage_kinesis_source.context.get().pipeline = MOCK_PIPELINE.name.root
-        self.open_lineage_kinesis_source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
-        self.open_lineage_kinesis_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["skun"])
-
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    @patch("confluent_kafka.Consumer")
-    def setUp(self, mock_consumer, mock_test_connection):
-        mock_test_connection.return_value = False
-        self.mock_consumer = mock_consumer
-        # Fresh per-test resolution cache, mirroring what prepare() sets up in
-        # production, so each test starts with no memoized resolutions.
-        for source in (self.open_lineage_source, self.open_lineage_kinesis_source):
-            source._resolution_cache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
+    @pytest.fixture(autouse=True)
+    def setup_sources(self, broker_clients):
+        with contextlib.ExitStack() as resources:
+            resources.enter_context(
+                patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
+            )
+            self.mock_consumer = broker_clients
+            config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_CONFIG)
+            self.open_lineage_source = OpenlineageSource.create(
+                MOCK_OL_CONFIG["source"],
+                config.workflowConfig.openMetadataServerConfig,
+            )
+            resources.enter_context(self.open_lineage_source._connection)
+            kinesis_config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_KINESIS_CONFIG)
+            self.open_lineage_kinesis_source = OpenlineageSource.create(
+                MOCK_OL_KINESIS_CONFIG["source"],
+                kinesis_config.workflowConfig.openMetadataServerConfig,
+            )
+            resources.enter_context(self.open_lineage_kinesis_source._connection)
+            for source in (self.open_lineage_source, self.open_lineage_kinesis_source):
+                source.context.get().pipeline = MOCK_PIPELINE.name.root
+                source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
+                source.source_config.lineageInformation = LineageInformation(dbServiceNames=["demo_db"])
+                source._resolution_cache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
+            yield
 
     def setup_mock_consumer_with_kafka_event(self, event):
         mock_msg = MagicMock()
@@ -294,8 +294,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = OpenlineageSource._render_pipeline_name(event)
         self.assertEqual(result, "test-namespace-test-job")
 
-    @patch("confluent_kafka.Consumer")
-    def test_get_pipelines_list_event_without_parent_facet(self, mock_consumer_class):
+    def test_get_pipelines_list_event_without_parent_facet(self):
         """Test that events without a parent facet are processed successfully."""
         self.setup_mock_consumer_with_kafka_event(EVENT_WITHOUT_PARENT_FACET)
 
@@ -1406,8 +1405,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(str(edge.fromEntity.id.root), src_uuid)
         self.assertEqual(str(edge.toEntity.id.root), dst_uuid)
 
-    @patch("confluent_kafka.Consumer")
-    def test_get_pipelines_list_filters_complete_events(self, mock_consumer_class):
+    def test_get_pipelines_list_filters_complete_events(self):
         """Test that get_pipelines_list returns COMPLETE events"""
         event = copy.deepcopy(VALID_EVENT)
         event["eventType"] = "COMPLETE"
@@ -1420,8 +1418,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertIsInstance(results[0], OpenLineageEvent)
         self.assertEqual(results[0].event_type, "COMPLETE")
 
-    @patch("confluent_kafka.Consumer")
-    def test_get_pipelines_list_filters_running_events(self, mock_consumer_class):
+    def test_get_pipelines_list_filters_running_events(self):
         """Test that get_pipelines_list returns RUNNING events"""
         event = copy.deepcopy(VALID_EVENT)
         event["eventType"] = "RUNNING"
@@ -1434,8 +1431,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertIsInstance(results[0], OpenLineageEvent)
         self.assertEqual(results[0].event_type, "RUNNING")
 
-    @patch("confluent_kafka.Consumer")
-    def test_get_pipelines_list_filters_start_events(self, mock_consumer_class):
+    def test_get_pipelines_list_filters_start_events(self):
         """Test that get_pipelines_list returns START events"""
         event = copy.deepcopy(VALID_EVENT)
         event["eventType"] = "START"
@@ -1448,8 +1444,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertIsInstance(results[0], OpenLineageEvent)
         self.assertEqual(results[0].event_type, "START")
 
-    @patch("confluent_kafka.Consumer")
-    def test_get_pipelines_list_filters_out_fail_events(self, mock_consumer_class):
+    def test_get_pipelines_list_filters_out_fail_events(self):
         """Test that get_pipelines_list filters out FAIL events"""
         event = copy.deepcopy(VALID_EVENT)
         event["eventType"] = "FAIL"
@@ -1460,8 +1455,7 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         self.assertEqual(len(results), 0)
 
-    @patch("confluent_kafka.Consumer")
-    def test_get_pipelines_list_filters_out_abort_events(self, mock_consumer_class):
+    def test_get_pipelines_list_filters_out_abort_events(self):
         """Test that get_pipelines_list filters out ABORT events"""
         event = copy.deepcopy(VALID_EVENT)
         event["eventType"] = "ABORT"
@@ -3222,6 +3216,11 @@ class TestTableResolutionAcrossSameTypeServices:
     PIPELINE_ID = UUID("cccc3333-3333-3333-3333-333333333333")
     TABLE_FQN = "postgres1.postgres.public.source"
 
+    @pytest.fixture(autouse=True)
+    def source_connections(self):
+        with contextlib.ExitStack() as self.connections:
+            yield
+
     @staticmethod
     def _spark_write_event(namespace: str) -> OpenLineageEvent:
         """The Spark JDBC write from the issue: no inputs, one Postgres output."""
@@ -3264,6 +3263,7 @@ class TestTableResolutionAcrossSameTypeServices:
 
         with patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"):
             source = OpenlineageSource.create(MOCK_OL_CONFIG["source"], metadata)
+        self.connections.enter_context(source._connection)
         source.source_config.lineageInformation = LineageInformation(dbServiceNames=db_service_names)
         source.context.get().pipeline = "default-spark_shell"
         source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root

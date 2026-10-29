@@ -316,7 +316,7 @@ export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
   {
     id: 'notification',
     group: 'features',
-    label: 'label.notification',
+    label: 'label.alerts-and-notifications',
     description: 'message.alerts-description',
     icon: Bell01 as FC<{ className?: string }>,
     isVisible: (permissions) =>
