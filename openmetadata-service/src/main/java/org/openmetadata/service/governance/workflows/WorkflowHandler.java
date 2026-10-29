@@ -42,6 +42,7 @@ import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.common.engine.api.FlowableWrongDbException;
 import org.flowable.common.engine.impl.el.DefaultExpressionManager;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
@@ -52,6 +53,9 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
+import org.flowable.engine.impl.cmd.SuspendProcessDefinitionCmd;
+import org.flowable.engine.impl.persistence.entity.DeploymentEntity;
+import org.flowable.engine.impl.persistence.entity.ProcessDefinitionEntity;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.repository.ProcessDefinitionQuery;
@@ -533,22 +537,21 @@ public class WorkflowHandler {
     // Deploy Trigger Workflow
     byte[] bpmnTriggerWorkflowBytes =
         bpmnXMLConverter.convertToXML(workflow.getTriggerWorkflow().getModel());
-    // One transaction: a suspended workflow's new trigger version is never visible as active, so
-    // a signal delivered during the redeploy cannot start it.
     Deployment triggerDeployment =
         managementService.executeCommand(
-            context -> {
-              Deployment deployed =
-                  repositoryService
-                      .createDeployment()
-                      .addBytes(
-                          String.format(
-                              "%s-workflow.bpmn20.xml",
-                              workflow.getTriggerWorkflow().getWorkflowName()),
-                          bpmnTriggerWorkflowBytes)
-                      .name(workflow.getTriggerWorkflow().getWorkflowName())
-                      .deploy();
-              keepSuspended(workflow.getWorkflowDefinition());
+            commandContext -> {
+              DeploymentEntity deployed =
+                  (DeploymentEntity)
+                      repositoryService
+                          .createDeployment()
+                          .addBytes(
+                              String.format(
+                                  "%s-workflow.bpmn20.xml",
+                                  workflow.getTriggerWorkflow().getWorkflowName()),
+                              bpmnTriggerWorkflowBytes)
+                          .name(workflow.getTriggerWorkflow().getWorkflowName())
+                          .deploy();
+              keepSuspended(workflow.getWorkflowDefinition(), deployed, commandContext);
               return deployed;
             });
 
@@ -590,11 +593,22 @@ public class WorkflowHandler {
 
   /**
    * Flowable deploys every new process-definition version active. A workflow stored as suspended
-   * has its new trigger versions suspended too, so neither their timers nor a trigger start it.
+   * has its new trigger versions suspended in the transaction that deploys them, so no signal sees
+   * them active, and neither their timers nor a trigger start it. They are suspended by entity, as
+   * Flowable's own deploy-with-activation-date does: the new rows are not flushed yet, so a query
+   * in this transaction would not find them.
    */
-  private void keepSuspended(WorkflowDefinition workflowDefinition) {
-    if (Boolean.TRUE.equals(workflowDefinition.getSuspended())) {
-      suspendWorkflow(workflowDefinition.getName());
+  private static void keepSuspended(
+      WorkflowDefinition workflowDefinition,
+      DeploymentEntity deployment,
+      CommandContext commandContext) {
+    if (!Boolean.TRUE.equals(workflowDefinition.getSuspended())) {
+      return;
+    }
+    for (ProcessDefinitionEntity definition :
+        deployment.getDeployedArtifacts(ProcessDefinitionEntity.class)) {
+      new SuspendProcessDefinitionCmd(definition, false, null, deployment.getTenantId())
+          .execute(commandContext);
     }
   }
 
