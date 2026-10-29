@@ -9,7 +9,8 @@
   `MetricGroupResourceIT#csvReimportKeepsAParentsChildrenCount`,
   `FolderResourceIT#test_folderKeepsItsChildrenCountInSearchThroughAPlainEdit`,
   `SearchRepositoryTest#testUpdateEntitiesBulkQueuesRetryWhenFieldsLoadedOnWriteFail`,
-  `SearchRepositoryTest#testCreateEntitiesIndexQueuesRetryWhenFieldsLoadedOnWriteFail`
+  `SearchRepositoryTest#testCreateEntitiesIndexQueuesRetryWhenFieldsLoadedOnWriteFail`,
+  `EntityRepositoryBulkFieldsTest#loadFieldsForSearchIndex_rejectsAFieldWithNoFetcher`
 - **Related:** #36494, ADR:2026-10-29-parent-metric-reads-carry-up-to-25-variant-expressions
 
 ## Context
@@ -22,7 +23,7 @@ The bulk updater path already reloads every reindex field before it writes; the 
 ## Decision
 - `SearchIndex#getFieldsLoadedOnWrite()` names the computed fields an index writes that a live
   write never carries. Today: metric `childrenCount`, metric group `metricCount`, team
-  `userCount`, folder `childrenCount`.
+  `userCount`, folder `childrenCount`, glossary term `childrenCount`.
 - `SearchRepository` loads those fields onto a copy of the entity, with the repository's field
   fetchers, before building the document on create, on a full-document update, on bulk create and
   on bulk update (CSV import). The caller's entity, and so the API response, is not changed.
@@ -33,6 +34,8 @@ The bulk updater path already reloads every reindex field before it writes; the 
 - The bulk paths load once per batch. If that load fails, the batch goes to the search retry queue,
   which re-reads every reindex field, instead of being written with zeros or not written at all.
 - Folder reindex also loads `parent`, which `FolderIndex` writes but reindex never loaded.
+- Glossary term documents now carry `childrenCount`, which the mapping declared but no write
+  path or reindex ever loaded.
 
 ## Consequences
 - Each write of a declaring type reads its counts once, batched on the bulk paths. A metric,
