@@ -334,13 +334,7 @@ public class McpServer implements McpServerProvider {
 
   private McpSchema.CallToolResult executeTool(
       McpSchema.Tool tool, McpTransportContext context, McpSchema.CallToolRequest req) {
-    String token = (String) context.get(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER);
-    String activePersona =
-        (String) context.get(AuthEnrichedMcpContextExtractor.ACTIVE_PERSONA_HEADER);
-    CatalogSecurityContext securityContext =
-        activePersona == null
-            ? jwtFilter.getCatalogSecurityContext(token)
-            : jwtFilter.getCatalogSecurityContext(token, activePersona);
+    CatalogSecurityContext securityContext = securityContextFrom(context);
     String userName = securityContext.getUserPrincipal().getName();
     String clientName = (String) context.get(AuthEnrichedMcpContextExtractor.CLIENT_NAME);
     DefaultToolContext.CallToolOutcome outcome = null;
@@ -368,9 +362,21 @@ public class McpServer implements McpServerProvider {
   McpStatelessServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
     return new McpStatelessServerFeatures.SyncPromptSpecification(
         prompt,
-        (exchange, arguments) ->
+        (context, arguments) ->
             runInCleanRequestContext(
-                () -> promptsContext.callPrompt(jwtFilter, prompt.name(), arguments)));
+                () ->
+                    promptsContext.callPrompt(
+                        securityContextFrom(context), prompt.name(), arguments)));
+  }
+
+  /** Tools and prompts both resolve the caller from the request headers, never from the body. */
+  private CatalogSecurityContext securityContextFrom(McpTransportContext context) {
+    String token = (String) context.get(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER);
+    String activePersona =
+        (String) context.get(AuthEnrichedMcpContextExtractor.ACTIVE_PERSONA_HEADER);
+    return activePersona == null
+        ? jwtFilter.getCatalogSecurityContext(token)
+        : jwtFilter.getCatalogSecurityContext(token, activePersona);
   }
 
   /**

@@ -18,11 +18,16 @@ import {
   readCompactSidebarPreference,
   setCompactSidebarPreference,
 } from './sidebarPreference.utils';
-import { useMainCollapse } from './useSidebarState';
+import { useMainCollapse, useSubCollapse } from './useSidebarState';
 
 const renderMain = (inSubMode = false, contextKey: string | null = null) =>
   renderHook(({ sub, key }) => useMainCollapse(sub, key), {
     initialProps: { sub: inSubMode, key: contextKey },
+  });
+
+const renderSub = (contextKey: string | null = 'governance') =>
+  renderHook(({ key }) => useSubCollapse(key), {
+    initialProps: { key: contextKey },
   });
 
 describe('useMainCollapse', () => {
@@ -41,21 +46,25 @@ describe('useMainCollapse', () => {
       expect(renderMain(false).result.current[0]).toBe(true);
     });
 
-    it('persists an explicit toggle', () => {
+    // Only the Preferences toggle writes the compact preference; expanding a
+    // compact main nav must not switch compact off.
+    it('does not persist an explicit toggle', () => {
+      localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
       const { result } = renderMain(false);
 
       act(() => result.current[1]());
 
-      expect(result.current[0]).toBe(true);
+      expect(result.current[0]).toBe(false);
       expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
     });
 
-    it('persists an explicit set', () => {
+    it('does not persist an explicit set', () => {
       const { result } = renderMain(false);
 
       act(() => result.current[2](true));
 
-      expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
+      expect(result.current[0]).toBe(true);
+      expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBeNull();
     });
   });
 
@@ -78,6 +87,20 @@ describe('useMainCollapse', () => {
 
     it('keeps the icon rail inside a sub-context', () => {
       const { result } = renderMain(true, 'governance');
+
+      act(() => setCompactSidebarPreference(false));
+
+      expect(result.current[0]).toBe(true);
+    });
+
+    // The preference drives the submenu there, so a transient main expand is
+    // dropped; keeping it would open both full panels.
+    it('drops a transient main-nav expand inside a sub-context', () => {
+      const { result } = renderMain(true, 'governance');
+
+      act(() => result.current[1]());
+
+      expect(result.current[0]).toBe(false);
 
       act(() => setCompactSidebarPreference(false));
 
@@ -190,5 +213,80 @@ describe('useMainCollapse', () => {
     expect(result.current[0]).toBe(true);
 
     setItem.mockRestore();
+  });
+});
+
+describe('useSubCollapse', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('starts expanded when nothing is persisted', () => {
+    expect(renderSub().result.current[0]).toBe(false);
+  });
+
+  it('starts railed when the compact preference is on', () => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
+
+    expect(renderSub().result.current[0]).toBe(true);
+  });
+
+  it('applies a preference change straight away', () => {
+    const { result } = renderSub();
+
+    act(() => setCompactSidebarPreference(true));
+
+    expect(result.current[0]).toBe(true);
+
+    act(() => setCompactSidebarPreference(false));
+
+    expect(result.current[0]).toBe(false);
+  });
+
+  it('toggles and sets without persisting the preference', () => {
+    const { result } = renderSub();
+
+    act(() => result.current[2]());
+
+    expect(result.current[0]).toBe(true);
+
+    act(() => result.current[1](false));
+
+    expect(result.current[0]).toBe(false);
+    expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBeNull();
+  });
+
+  it('keeps a transient toggle while the sub-context is unchanged', () => {
+    const { result, rerender } = renderSub('governance');
+
+    act(() => result.current[2]());
+    rerender({ key: 'governance' });
+
+    expect(result.current[0]).toBe(true);
+  });
+
+  it('re-derives from the preference when the sub-context changes', () => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
+    const { result, rerender } = renderSub('governance');
+
+    act(() => result.current[2]());
+
+    expect(result.current[0]).toBe(false);
+
+    rerender({ key: 'observability' });
+
+    expect(result.current[0]).toBe(true);
+  });
+
+  it('falls back to expanded when storage reads throw (e.g. private mode)', () => {
+    const getItem = jest
+      .spyOn(Storage.prototype, 'getItem')
+      .mockImplementation(() => {
+        throw new Error('denied');
+      });
+
+    expect(renderSub().result.current[0]).toBe(false);
+
+    getItem.mockRestore();
   });
 });
