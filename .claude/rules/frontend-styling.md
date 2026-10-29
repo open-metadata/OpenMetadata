@@ -5,8 +5,8 @@ paths: "openmetadata-ui/src/main/resources/ui/**/*.{ts,tsx,less,css}"
 
 # Frontend styling & design tokens
 
-Applies to UI `*.{ts,tsx,less,css}`; component choice is in `component-library.md`. Token source of truth: core
-`globals.css` (`@theme`, dark values under `.dark-mode`); the app's `src/styles/tokens.css` holds the legacy `--om-*` tokens.
+Applies to UI `*.{ts,tsx,less,css}`; component choice is in `component-library.md`. Core `globals.css` owns theme tokens.
+Legacy `--om-*` is compatibility only; never add usage. Policy: ADR:2026-10-13-om-tokens-have-one-source-file.
 
 ## Tailwind & tokens (ADR:2026-10-20-less-non-colour-values-read-tailwind-theme-vars)
 
@@ -73,12 +73,6 @@ borders; `transition-shadow` won't animate them) in [`colors.md` §2.3.1](../../
 
 Light mode is frozen: reach dark with tokens that adapt, never by changing light values. Full guide:
 [`docs/colors.md`](../../openmetadata-ui/src/main/resources/ui/docs/colors.md).
-
-- **One file per token layer:** core tokens (`--color-*`, `--tw-*`) are declared only in core
-  `globals.css`; project `--om-*` tokens only in `tokens.css`, light on `:root` and dark on
-  `:root.dark-mode` side by side. Never declare an `--om-*` in `app.less` or a component file —
-  cross-file import order decides the winner. `variables.less` fallbacks equal the `tokens.css`
-  light value. Guard: `theme-contract.test.js` (ADR:2026-10-13-om-tokens-have-one-source-file).
 
 - **Scope:** dark mode is AI mode on core/Tailwind surfaces only. Classic mode gets no dark theme
   and antd-only surfaces (`.ant-*`) are not themed for dark — migrate them to core instead

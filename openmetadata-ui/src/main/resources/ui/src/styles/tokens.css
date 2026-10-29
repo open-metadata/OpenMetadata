@@ -21,10 +21,12 @@
  *                         source of truth: --color-*, --radius-*, --text-*,
  *                         --shadow-*, and the semantic --color-{text,bg,...}.
  *
- *   Layer 2  --om-*       Project aliases defined here. Each references the
+ *   Layer 2  --om-*       Compatibility aliases only; never add definitions or
+ *                         references. Preserve values for remaining consumers.
+ *                         Each references the
  *                         matching globals.css token with a raw fallback, e.g.
  *                         --om-color-text: var(--color-text-primary, #181d27).
- *                         Colour roles in new LESS read the Tailwind bridge
+ *                         Migrated styles read the Tailwind bridge
  *                         vars instead (--tw-background-color-*,
  *                         --tw-text-color-*, --tw-border-color-*,
  *                         --tw-color-fg-*, --tw-color-utility-*), which flip

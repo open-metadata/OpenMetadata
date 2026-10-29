@@ -1,7 +1,7 @@
 # Every --om-* token is declared in tokens.css, light and dark side by side
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-29 (compatibility-only deprecation gates)
 - **Deciders:** Harshit Shah
 - **Guard:** `openmetadata-ui/src/main/resources/ui/scripts/design-tokens/theme-contract.test.js` (run by `yarn token-drift` and the `token-drift` pre-commit hook)
 - **Related:** open-metadata/OpenMetadata#34936, open-metadata/OpenMetadata#35271, ADR:2026-10-12-dark-mode-targets-ai-mode-core-surfaces-only
@@ -38,3 +38,22 @@ custom properties on `<html>` (the `.dark-mode body` brand-accent block in `app.
 core `--tw-*` layer, not `--om-*`, so they are outside this rule. They stay where they are until
 the brand injection stops writing inline vars. Revisit if `tokens.css` is split into per-theme
 files, in which case the guard must check the import order instead.
+
+## Amendment: 2026-10-29 — compatibility only after the Ant Design migration
+
+The ownership rule preserves the remaining consumers; it does not authorize extending the legacy
+layer. New styling uses core Tailwind utilities and `--tw-*` theme variables. Existing `--om-*`
+values and selectors stay unchanged until their consumers migrate.
+
+- ESLint `deprecated-om-tokens` reports existing JS/TS references as warnings, without autofixes:
+  the correct semantic replacement depends on the property and theme.
+- ESLint `no-new-om-tokens` errors on growth above the initial per-file counts in the existing
+  `eslint-suppressions.json` ratchet. This initial snapshot adds only the new rule's counts;
+  existing suppressions are preserved. Counts must shrink after migrations with
+  `yarn lint:src:suppressions`, and must never be increased to admit new usage. The ratchet measures
+  net reference growth per file, rather than tracking individual source locations.
+- `tw-deprecation-guard.js` rejects new stylesheet token names and increased references to existing
+  tokens in staged changes and branch diffs. Existing light/dark declarations remain compatible.
+- `validate-tokens.js`, run by `yarn token-drift`, also checks statically named references in JS/TS,
+  Tailwind shorthand, and CSSOM getters before a token definition may be removed. Dynamic names
+  still require their callers to be checked during migration.

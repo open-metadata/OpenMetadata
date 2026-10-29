@@ -10,6 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import { createRequire } from 'node:module';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, it } from 'node:test';
 import { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';
@@ -142,3 +148,112 @@ ruleTester.run(
     ],
   }
 );
+
+for (const ruleName of ['deprecated-om-tokens', 'no-new-om-tokens']) {
+  ruleTester.run(ruleName, uiPatternsPlugin.rules[ruleName], {
+    valid: [
+      { code: "const color = 'var(--tw-text-color-primary)';" },
+      { code: '<div className="tw:bg-surface tw:p-4" />;' },
+      { code: '// var(--om-space-4)\nconst size = 4;' },
+    ],
+    invalid: [
+      {
+        code: "const color = 'var(--om-color-text-primary)';",
+        errors: [{ messageId: 'deprecatedOmToken' }],
+      },
+      {
+        code: 'const size = `var(--om-space-${size})`;',
+        errors: [{ messageId: 'deprecatedOmToken' }],
+      },
+      {
+        code: '<div className="tw:bg-(--om-grey-15)" />;',
+        errors: [{ messageId: 'deprecatedOmToken' }],
+      },
+      {
+        code: "style.getPropertyValue('--om-color-border-hover');",
+        errors: [{ messageId: 'deprecatedOmToken' }],
+      },
+      {
+        code: "const size = 'var(--om-space-4) var(--om-space-8)';",
+        errors: [
+          { messageId: 'deprecatedOmToken' },
+          { messageId: 'deprecatedOmToken' },
+        ],
+      },
+      {
+        code: "const style = { '--om-new-token': 'red' };",
+        errors: [{ messageId: 'deprecatedOmToken' }],
+      },
+    ],
+  });
+}
+
+it('keeps legacy warnings, blocks increased usage, and prunes migrated references', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'om-eslint-ratchet-'));
+  try {
+    const pluginUrl = new URL('./openmetadata-ui-patterns.mjs', import.meta.url)
+      .href;
+    fs.writeFileSync(
+      path.join(dir, 'eslint.config.mjs'),
+      `
+      import plugin from ${JSON.stringify(pluginUrl)};
+      export default [{
+        plugins: { 'openmetadata-ui-patterns': plugin },
+        rules: {
+          'openmetadata-ui-patterns/deprecated-om-tokens': 'warn',
+          'openmetadata-ui-patterns/no-new-om-tokens': 'error',
+        },
+      }];
+    `
+    );
+    fs.writeFileSync(
+      path.join(dir, 'eslint-suppressions.json'),
+      JSON.stringify({
+        'legacy.js': {
+          'openmetadata-ui-patterns/no-new-om-tokens': { count: 1 },
+        },
+      })
+    );
+    const file = path.join(dir, 'legacy.js');
+    const eslint = path.join(
+      path.dirname(
+        createRequire(import.meta.url).resolve('eslint/package.json')
+      ),
+      'bin/eslint.js'
+    );
+    const lint = (code, ...args) => {
+      fs.writeFileSync(file, code);
+      const result = spawnSync(
+        process.execPath,
+        [eslint, 'legacy.js', '--format', 'json', ...args],
+        {
+          cwd: dir,
+          encoding: 'utf8',
+        }
+      );
+      assert.ok(result.stdout, result.stderr);
+      return { status: result.status, result: JSON.parse(result.stdout)[0] };
+    };
+    const existing = lint("const old = 'var(--om-space-4)';");
+    assert.equal(existing.status, 0);
+    assert.equal(existing.result.warningCount, 1);
+    assert.equal(existing.result.errorCount, 0);
+    const added = lint("const old = 'var(--om-space-4) var(--om-space-4)';");
+    assert.equal(added.status, 1);
+    assert.equal(added.result.errorCount, 2);
+    const migrated = lint(
+      "const size = 'var(--tw-spacing)';",
+      '--prune-suppressions'
+    );
+    assert.equal(migrated.status, 0);
+    assert.equal(migrated.result.warningCount, 0);
+    assert.deepEqual(
+      JSON.parse(
+        fs.readFileSync(path.join(dir, 'eslint-suppressions.json'), 'utf8')
+      ),
+      {}
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
