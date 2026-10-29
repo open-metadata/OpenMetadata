@@ -82,11 +82,13 @@ class ProtobufParserConfig(BaseModel):
     :param schema_name: Name of protobuf schema
     :param schema_text: Protobuf schema definition in text format
     :param base_file_path: Optional parent directory for temporary parser files.
+    :param dependencies: Text of each file the schema imports, by import name.
     """
 
     schema_name: str
     schema_text: str
     base_file_path: str | None = Field(default=None)
+    dependencies: dict[str, str] = Field(default_factory=dict)
 
 
 class ProtobufParser:
@@ -103,8 +105,15 @@ class ProtobufParser:
         """Compile the configured schema into a descriptor set."""
         interface_directory = working_directory / "interfaces"
         interface_directory.mkdir()
-        proto_file = interface_directory / PROTO_FILE_NAME
+        proto_file = interface_directory / self._root_file_name
         proto_file.write_text(self.config.schema_text, encoding="UTF-8")
+        # Each imported file sits at its import name, so it keeps its own package.
+        for import_name, dependency_text in self.config.dependencies.items():
+            dependency_file = (interface_directory / import_name).resolve()
+            if not dependency_file.is_relative_to(interface_directory.resolve()):
+                raise ValueError(f"Invalid Protobuf import name: {import_name}")
+            dependency_file.parent.mkdir(parents=True, exist_ok=True)
+            dependency_file.write_text(dependency_text, encoding="UTF-8")
         descriptor_set_file = working_directory / DESCRIPTOR_SET_FILE_NAME
 
         exit_code = grpc_tools.protoc.main(
@@ -124,8 +133,15 @@ class ProtobufParser:
         descriptor_set.ParseFromString(descriptor_set_file.read_bytes())
         return descriptor_set
 
-    @staticmethod
-    def _get_file_descriptor(descriptor_set: descriptor_pb2.FileDescriptorSet) -> FileDescriptor:
+    @property
+    def _root_file_name(self) -> str:
+        """Name of the topic schema's own file, which must not be one of the files it imports."""
+        root_file_name = PROTO_FILE_NAME
+        while root_file_name in self.config.dependencies:
+            root_file_name = f"_{root_file_name}"
+        return root_file_name
+
+    def _get_file_descriptor(self, descriptor_set: descriptor_pb2.FileDescriptorSet) -> FileDescriptor:
         """Load the compiled schema into an isolated descriptor pool."""
         descriptor_protos = {descriptor.name: descriptor for descriptor in descriptor_set.file}
         descriptor_pool_ = descriptor_pool.DescriptorPool()
@@ -142,10 +158,10 @@ class ProtobufParser:
             descriptor_pool_.Add(descriptor)
             added_descriptors.add(descriptor_name)
 
-        add_descriptor(PROTO_FILE_NAME)
-        return descriptor_pool_.FindFileByName(PROTO_FILE_NAME)
+        add_descriptor(self._root_file_name)
+        return descriptor_pool_.FindFileByName(self._root_file_name)
 
-    def _get_message_descriptor(self, file_descriptor: FileDescriptor) -> Descriptor | None:
+    def get_message_descriptor(self, file_descriptor: FileDescriptor) -> Descriptor | None:
         """Select the root message represented by the topic schema."""
         message_types = file_descriptor.message_types_by_name
         message_descriptor = message_types.get(snake_to_camel(self.config.schema_name))
@@ -159,33 +175,36 @@ class ProtobufParser:
             )
         return message_descriptor
 
+    def compile_file_descriptor(self) -> FileDescriptor:
+        """Compile the configured schema into a file descriptor backed by its own pool."""
+        base_file_path = self.config.base_file_path
+        temporary_parent = Path(base_file_path).expanduser() if base_file_path and base_file_path.strip() else None
+        if temporary_parent:
+            temporary_parent.mkdir(parents=True, exist_ok=True)
+
+        with tempfile.TemporaryDirectory(prefix="protobuf_om_", dir=temporary_parent) as temporary_directory:
+            descriptor_set = self._compile_descriptor_set(Path(temporary_directory))
+        return self._get_file_descriptor(descriptor_set)
+
     def parse_protobuf_schema(self, cls: type[ProtobufField] = FieldModel) -> list[ProtobufField] | None:
         """
         Method to parse the protobuf schema
         """
 
         try:
-            base_file_path = self.config.base_file_path
-            temporary_parent = Path(base_file_path).expanduser() if base_file_path and base_file_path.strip() else None
-            if temporary_parent:
-                temporary_parent.mkdir(parents=True, exist_ok=True)
+            message_descriptor = self.get_message_descriptor(self.compile_file_descriptor())
+            if message_descriptor is None:
+                return None
 
-            with tempfile.TemporaryDirectory(prefix="protobuf_om_", dir=temporary_parent) as temporary_directory:
-                descriptor_set = self._compile_descriptor_set(Path(temporary_directory))
-                file_descriptor = self._get_file_descriptor(descriptor_set)
-                message_descriptor = self._get_message_descriptor(file_descriptor)
-                if message_descriptor is None:
-                    return None
-
-                return [
-                    cls.model_validate(
-                        {
-                            "name": message_descriptor.name,
-                            "dataType": "RECORD",
-                            "children": self.get_protobuf_fields(message_descriptor.fields, cls=cls),
-                        }
-                    )
-                ]
+            return [
+                cls.model_validate(
+                    {
+                        "name": message_descriptor.name,
+                        "dataType": "RECORD",
+                        "children": self.get_protobuf_fields(message_descriptor.fields, cls=cls),
+                    }
+                )
+            ]
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning("Unable to parse protobuf schema for %s: %s", self.config.schema_name, exc)

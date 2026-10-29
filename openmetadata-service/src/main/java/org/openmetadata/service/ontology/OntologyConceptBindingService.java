@@ -414,7 +414,7 @@ public final class OntologyConceptBindingService {
     return new Fields(fieldNames);
   }
 
-  private static UUID decodeCursor(final String after) {
+  static UUID decodeCursor(final String after) {
     if (after == null || after.isEmpty()) {
       return null;
     }

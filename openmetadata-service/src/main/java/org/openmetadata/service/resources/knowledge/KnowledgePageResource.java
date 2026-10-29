@@ -87,7 +87,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
   public static final Set<String> EXCLUDED_ENTITIES = Set.of(USER, BOT, TEST_SUITE, TEST_CASE);
   public static final String COLLECTION_PATH = "v1/contextCenter/pages";
   public static final String FIELDS =
-      "owners,tags,followers,votes,page,parent,childrenCount,relatedEntities,relatedArticles,attachments,domains,dataProducts";
+      "owners,tags,followers,votes,page,parent,childrenCount,relatedEntities,relatedArticles,attachments,domains,dataProducts,extension";
   private final KnowledgePageMapper mapper = new KnowledgePageMapper();
 
   public KnowledgePageResource(Authorizer authorizer, Limits limits) {

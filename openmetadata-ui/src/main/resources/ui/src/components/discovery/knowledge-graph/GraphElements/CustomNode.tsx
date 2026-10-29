@@ -51,7 +51,7 @@ import MemberVisual from './MemberVisual';
 
 export type { CustomNodeProps };
 
-export const NODE_ICONS = {
+export const NODE_ICONS: Partial<Record<string, typeof Table>> = {
   table: Table,
   column: Columns03,
   property: Columns03,
@@ -84,7 +84,7 @@ export const getNodeTypeLabel = (type: string, t: (key: string) => string) => {
   return getEntityNameLabel(type);
 };
 
-export const getNodeIcon = (type: string) =>
+export const getNodeIcon = (type: string): typeof Table =>
   NODE_ICONS[type.toLowerCase() as keyof typeof NODE_ICONS] ?? Database01;
 
 const getNodeView = (nodeData: NodeData) => {

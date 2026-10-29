@@ -16,6 +16,7 @@ import {
   SKIP_DOMAIN_FILTER_HEADER,
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
+import { isProductTourRunning } from '../hooks/product-tour/useProductTourStore';
 import { useDomainStore } from '../hooks/useDomainStore';
 import {
   QueryFieldInterface,
@@ -88,6 +89,13 @@ export const withDomainFilter = (
   if (config.headers?.[SKIP_DOMAIN_FILTER_HEADER]) {
     delete config.headers[SKIP_DOMAIN_FILTER_HEADER];
 
+    return config;
+  }
+
+  // A product tour shows every user the same recorded pages, whatever domain
+  // they have selected. Off while the tour is recorded too, so the recorded
+  // requests are the ones the tour sends.
+  if (isProductTourRunning()) {
     return config;
   }
 

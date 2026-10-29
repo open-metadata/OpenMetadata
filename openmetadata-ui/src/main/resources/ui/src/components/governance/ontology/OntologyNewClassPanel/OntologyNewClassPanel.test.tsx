@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { AxiosError, AxiosResponse } from 'axios';
 import { useState } from 'react';
 import { Layer, Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
@@ -400,12 +401,187 @@ describe('after a failed attempt', () => {
       }
     );
   };
+  const failFirstApplyWith = (status: number) => {
+    const normalPost = post.getMockImplementation();
+    let failed = false;
+    post.mockImplementation(
+      async (url: string, body: Record<string, unknown>) => {
+        if (url.endsWith('/apply') && !failed) {
+          failed = true;
+
+          throw new AxiosError(
+            'Request failed with status code ' + status,
+            status < 500
+              ? AxiosError.ERR_BAD_REQUEST
+              : AxiosError.ERR_BAD_RESPONSE,
+            undefined,
+            undefined,
+            { status } as AxiosResponse
+          );
+        }
+
+        return normalPost?.(url, body);
+      }
+    );
+  };
   const createFundsTransfer = async () => {
     fill('new-class-label', 'Funds Transfer');
     await act(async () => {
       fireEvent.click(screen.getByTestId('new-class-create'));
     });
   };
+  const changeSetCreates = () =>
+    post.mock.calls.filter(([url]) => url === '/ontologyChangeSets');
+
+  it('rebuilds from a fresh working revision after the server refuses the apply with 412', async () => {
+    failFirstApplyWith(412);
+    const lockChanged = jest.fn();
+    setup({ onLockChange: lockChanged });
+    await createFundsTransfer();
+
+    expect(await screen.findByText('server.unexpected-error')).toBeVisible();
+    expect(screen.getByTestId('new-class-label')).toBeEnabled();
+    expect(screen.getByTestId('ontology-new-class-close')).toBeEnabled();
+    expect(
+      screen.queryByRole('button', { name: 'label.retry' })
+    ).not.toBeInTheDocument();
+    expect(lockChanged).toHaveBeenLastCalledWith(false);
+
+    get.mockImplementation(async (url: string) => ({
+      data: url.endsWith('/state') ? { workingRevision: 8 } : readDraft(url),
+    }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+    await waitFor(() =>
+      expect(reconcile).toHaveBeenCalledWith(
+        ontology.namespace + 'FundsTransfer'
+      )
+    );
+
+    expect(
+      changeSetCreates().map(([, body]) => body.baseWorkingRevision)
+    ).toEqual([7, 8]);
+  });
+
+  it('keeps the plan locked after a 504 and lets Retry re-read the same change set', async () => {
+    failFirstApplyWith(504);
+    const lockChanged = jest.fn();
+    setup({ onLockChange: lockChanged });
+    await createFundsTransfer();
+
+    expect(
+      await screen.findByRole('button', { name: 'label.retry' })
+    ).toBeVisible();
+    expect(screen.getByTestId('new-class-label')).toBeDisabled();
+    expect(screen.getByTestId('ontology-new-class-close')).toBeDisabled();
+    expect(screen.queryByTestId('new-class-create')).not.toBeInTheDocument();
+    expect(lockChanged).toHaveBeenLastCalledWith(true);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+    });
+    await waitFor(() =>
+      expect(reconcile).toHaveBeenCalledWith(
+        ontology.namespace + 'FundsTransfer'
+      )
+    );
+
+    expect(changeSetCreates()).toHaveLength(1);
+    expect(
+      post.mock.calls.filter(([url]) => url.endsWith('/apply'))
+    ).toHaveLength(2);
+  });
+
+  it('settles as rejected when a 500 follows an apply the server recorded as failed', async () => {
+    failFirstApplyWith(500);
+    const lockChanged = jest.fn();
+    setup({ onLockChange: lockChanged });
+    get.mockImplementation(async (url: string) => {
+      if (url.endsWith('/state')) {
+        return { data: { workingRevision: 7 } };
+      }
+      const draft = readDraft(url);
+      const applyAttempted = post.mock.calls.some(([postUrl]) =>
+        postUrl.endsWith('/apply')
+      );
+
+      return {
+        data:
+          applyAttempted && url !== '/ontologyChangeSets'
+            ? { ...draft, state: 'APPLY_FAILED' }
+            : draft,
+      };
+    });
+    await createFundsTransfer();
+
+    expect(await screen.findByText('server.unexpected-error')).toBeVisible();
+    expect(screen.getByTestId('new-class-label')).toBeEnabled();
+    expect(screen.getByTestId('ontology-new-class-close')).toBeEnabled();
+    expect(
+      screen.queryByRole('button', { name: 'label.retry' })
+    ).not.toBeInTheDocument();
+    expect(lockChanged).toHaveBeenLastCalledWith(false);
+  });
+
+  it('keeps Retry and the lock when a retried apply loses its response and the re-read still shows the earlier APPLY_FAILED', async () => {
+    const normalPost = post.getMockImplementation();
+    let applyCalls = 0;
+    let serverRecordedFailure = false;
+    post.mockImplementation(
+      async (url: string, body: Record<string, unknown>) => {
+        if (url.endsWith('/apply')) {
+          applyCalls += 1;
+          if (applyCalls === 1) {
+            throw new AxiosError(
+              'Request failed with status code 504',
+              AxiosError.ERR_BAD_RESPONSE,
+              undefined,
+              undefined,
+              { status: 504 } as AxiosResponse
+            );
+          }
+
+          throw new AxiosError('Network Error', AxiosError.ERR_NETWORK);
+        }
+
+        return normalPost?.(url, body);
+      }
+    );
+    get.mockImplementation(async (url: string) => {
+      if (url.endsWith('/state')) {
+        return { data: { workingRevision: 7 } };
+      }
+      const draft = readDraft(url);
+
+      return {
+        data:
+          serverRecordedFailure && url !== '/ontologyChangeSets'
+            ? { ...draft, state: 'APPLY_FAILED' }
+            : draft,
+      };
+    });
+    const lockChanged = jest.fn();
+    setup({ onLockChange: lockChanged });
+    await createFundsTransfer();
+
+    expect(
+      await screen.findByRole('button', { name: 'label.retry' })
+    ).toBeVisible();
+
+    serverRecordedFailure = true;
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+    });
+    await waitFor(() => expect(applyCalls).toBe(2));
+
+    expect(
+      await screen.findByRole('button', { name: 'label.retry' })
+    ).toBeVisible();
+    expect(screen.getByTestId('new-class-label')).toBeDisabled();
+    expect(screen.getByTestId('ontology-new-class-close')).toBeDisabled();
+    expect(lockChanged).toHaveBeenLastCalledWith(true);
+  });
 
   it('unlocks the form and Close when the server rejects the plan', async () => {
     rejectFirstApply();

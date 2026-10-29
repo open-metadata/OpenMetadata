@@ -247,7 +247,7 @@ function NotificationRecentEvents({
               const eventKey = `${changeEventData.id}-${changeEventData.timestamp}`;
 
               return (
-                <AccordionItem id={eventKey} key={eventKey}>
+                <AccordionItem id={eventKey} key={eventKey} variant="muted">
                   <AccordionHeader>
                     <Box
                       align="center"
@@ -327,7 +327,7 @@ function NotificationRecentEvents({
                             })}:`}
                           </Typography>
                           <SchemaEditor
-                            className="border"
+                            className="border tw:dark:[&_.cm-editor]:bg-primary_alt!"
                             mode={{ name: CSMode.JAVASCRIPT }}
                             options={{ readOnly: true }}
                             showCopyButton={false}

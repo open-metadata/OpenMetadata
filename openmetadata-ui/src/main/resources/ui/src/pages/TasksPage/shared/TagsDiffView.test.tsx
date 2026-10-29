@@ -13,64 +13,73 @@
 
 import { render, screen } from '@testing-library/react';
 import { ArrayChange } from 'diff';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../../generated/type/tagLabel';
 import { TagsDiffView } from './TagsDiffView';
 
-const mockDiff = [
+const mockDiff: ArrayChange<TagLabel>[] = [
   {
     count: 2,
+    added: false,
     removed: true,
     value: [
       {
         tagFQN: 'PersonalData.Personal',
         description:
           'Data that can be used to directly or indirectly identify a person.',
-        source: 'Classification',
-        labelType: 'Manual',
-        state: 'Suggested',
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Suggested,
       },
       {
         tagFQN: 'PII.NonSensitive',
         description:
           'PII which is easily accessible from public sources and can include zip code, race, gender, and date of birth.',
-        source: 'Classification',
-        labelType: 'Manual',
-        state: 'Suggested',
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Suggested,
       },
     ],
   },
   {
     count: 3,
+    removed: false,
     added: true,
     value: [
       {
-        labelType: 'Manual',
-        state: 'Suggested',
-        source: 'Classification',
+        labelType: LabelType.Manual,
+        state: State.Suggested,
+        source: TagSource.Classification,
         tagFQN: 'PersonalData.Personal',
       },
       {
-        labelType: 'Manual',
-        state: 'Suggested',
-        source: 'Classification',
+        labelType: LabelType.Manual,
+        state: State.Suggested,
+        source: TagSource.Classification,
         tagFQN: 'PII.NonSensitive',
       },
       {
-        labelType: 'Manual',
-        state: 'Suggested',
-        source: 'Classification',
+        labelType: LabelType.Manual,
+        state: State.Suggested,
+        source: TagSource.Classification,
         tagFQN: 'PersonalData.SpecialCategory',
       },
     ],
   },
-] as ArrayChange<TagLabel>[];
+];
 
-const mockEmptyDiff = [
+const mockEmptyDiff: ArrayChange<TagLabel>[] = [
   {
     count: 0,
+    added: false,
+    removed: false,
     value: [],
   },
-] as ArrayChange<TagLabel>[];
+];
 
 describe('Test DiffView Component', () => {
   it('Should render the component', async () => {
