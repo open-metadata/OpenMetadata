@@ -4568,6 +4568,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // The import records its author as impersonatedBy too; it carries no bot impersonation.
     authorizeImportedDomains(originals, updates, ChangeActor.recorded(updatedBy, null));
 
+    List<T> previousVersions = withStoredRelationships(originals);
     List<T> updatedEntities = new ArrayList<>();
     for (int i = 0; i < originals.size(); i++) {
       T original = originals.get(i);
@@ -4576,6 +4577,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updated.setId(original.getId());
       carryCreationAudit(original, updated);
       updated.setVersion(nextVersion(original.getVersion()));
+      updated.setChangeDescription(importChangeDescription(original));
+      updated.setIncrementalChangeDescription(null);
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       // 2. Set impersonatedBy
@@ -4588,6 +4591,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // round trip runs while the handle is held.
     flushInOneTransaction(
         () -> {
+          storeVersionHistory(previousVersions);
           updateMany(updatedEntities);
           replaceExtensions(originals, updatedEntities);
           clearRelationshipsForUpdateMany(updatedEntities);
@@ -4600,6 +4604,30 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         });
 
     return updatedEntities;
+  }
+
+  /** Copies of the stored entities with the relationships a PUT or PATCH records in history. */
+  private List<T> withStoredRelationships(List<T> storedEntities) {
+    List<T> copies = new ArrayList<>(storedEntities.size());
+    for (T stored : storedEntities) {
+      copies.add(JsonUtils.deepCopy(stored, entityClass));
+    }
+    setFieldsInBulk(putFields, copies);
+    return copies;
+  }
+
+  /**
+   * The change description of an imported entity. It follows the stored version, so an edit in the
+   * same session consolidates against that version, and it keeps the per-field change summary.
+   */
+  private ChangeDescription importChangeDescription(T original) {
+    ChangeSummaryMap changeSummary =
+        Optional.ofNullable(original.getChangeDescription())
+            .map(ChangeDescription::getChangeSummary)
+            .orElse(null);
+    return new ChangeDescription()
+        .withPreviousVersion(original.getVersion())
+        .withChangeSummary(changeSummary);
   }
 
   @SuppressWarnings("unused")
@@ -8669,22 +8697,27 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
     try (var ignored = phase(phasePrefix + "VersionHistory")) {
-      List<UUID> historyIds = new ArrayList<>();
-      List<String> historyExtensions = new ArrayList<>();
-      List<String> historyJsons = new ArrayList<>();
-      for (EntityUpdater u : changed) {
-        if (u.isVersionChanged()) {
-          historyIds.add(u.getOriginal().getId());
-          historyExtensions.add(
-              EntityUtil.getVersionExtension(entityType, u.getOriginal().getVersion()));
-          historyJsons.add(serializeForVersionHistory(u.getOriginal()));
-        }
-      }
-      if (!historyIds.isEmpty()) {
-        daoCollection
-            .entityExtensionDAO()
-            .insertMany(historyIds, historyExtensions, entityType, historyJsons);
-      }
+      storeVersionHistory(
+          changed.stream()
+              .filter(EntityUpdater::isVersionChanged)
+              .map(EntityUpdater::getOriginal)
+              .toList());
+    }
+  }
+
+  private void storeVersionHistory(List<T> previousVersions) {
+    List<UUID> historyIds = new ArrayList<>();
+    List<String> historyExtensions = new ArrayList<>();
+    List<String> historyJsons = new ArrayList<>();
+    for (T previous : previousVersions) {
+      historyIds.add(previous.getId());
+      historyExtensions.add(EntityUtil.getVersionExtension(entityType, previous.getVersion()));
+      historyJsons.add(serializeForVersionHistory(previous));
+    }
+    if (!historyIds.isEmpty()) {
+      daoCollection
+          .entityExtensionDAO()
+          .insertMany(historyIds, historyExtensions, entityType, historyJsons);
     }
   }
 
