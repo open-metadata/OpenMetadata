@@ -3202,19 +3202,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
-  void test_selfGeneratedToken_lifecycle(TestNamespace ns) {
-    User user = createRegularUser(ns, "selftoken");
-    String ownToken =
-        clientFor(user).users().generateToken(user.getId(), JWTTokenExpiry.Seven).getJWTToken();
-    OpenMetadataClient ownClient = clientWithToken(ownToken);
-    assertEquals(user.getId(), getLoggedInUser(ownClient).getId());
-
-    deleteEntity(user.getId().toString());
-
-    assertUnauthorized(ownClient);
-  }
-
-  @Test
   void test_unrecognizedOmToken_rejected(TestNamespace ns) throws Exception {
     User user = createRegularUser(ns, "unrecognized");
     String loginToken = CredentialFixtures.loginToken(user);

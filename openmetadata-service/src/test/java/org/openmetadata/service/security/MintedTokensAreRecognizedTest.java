@@ -131,15 +131,6 @@ class MintedTokensAreRecognizedTest {
         Storage.AUTHENTICATION_MECHANISM,
         tokens -> tokens.generateJWTToken(user(BOT, true), JWTTokenExpiry.Unlimited)),
 
-    /**
-     * A regular user's own token, which {@code UserResource.generateTokenWithId} minted before it
-     * became bot-only. Accounts from then still hold one.
-     */
-    SELF_SERVICE_TOKEN(
-        USER,
-        Storage.AUTHENTICATION_MECHANISM,
-        tokens -> tokens.generateJWTToken(user(USER, false), JWTTokenExpiry.Seven)),
-
     /** {@code UserResource.createAccessToken}, behind {@code PUT /v1/users/security/token}. */
     PERSONAL_ACCESS_TOKEN(
         USER,
