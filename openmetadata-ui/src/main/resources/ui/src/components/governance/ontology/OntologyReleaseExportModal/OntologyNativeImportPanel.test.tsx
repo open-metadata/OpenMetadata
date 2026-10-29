@@ -37,6 +37,7 @@ import {
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyNativeImportPanel from './OntologyNativeImportPanel';
+import { NATIVE_IMPORT_MAX_BYTES } from './OntologyNativeImportPanel.utils';
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
   applyOntologyChangeSet: jest.fn(),
@@ -152,7 +153,7 @@ const renderPanel = (
   return { onApplied };
 };
 
-const dropFile = (name = 'fibo-sample.ttl', text = TURTLE) => {
+const dropFile = (name = 'fibo-sample.ttl', text = TURTLE, size?: number) => {
   const input = document.querySelector('input[type="file"]');
   if (!input) {
     throw new Error('Missing file input');
@@ -161,6 +162,9 @@ const dropFile = (name = 'fibo-sample.ttl', text = TURTLE) => {
   Object.defineProperty(file, 'text', {
     value: jest.fn().mockResolvedValue(text),
   });
+  if (size !== undefined) {
+    Object.defineProperty(file, 'size', { value: size });
+  }
   fireEvent.change(input, { target: { files: [file] } });
 
   return file;
@@ -410,6 +414,19 @@ describe('OntologyNativeImportPanel', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(message);
     expect(createOntology).not.toHaveBeenCalled();
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+  });
+
+  it('drops the parsed preview when a replacement file is too large', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+    dropFile('replacement.ttl', TURTLE, NATIVE_IMPORT_MAX_BYTES + 1);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'message.file-size-exceeded'
+    );
+    expect(screen.queryByTestId('ontology-native-import-result')).toBeNull();
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
   });
 
