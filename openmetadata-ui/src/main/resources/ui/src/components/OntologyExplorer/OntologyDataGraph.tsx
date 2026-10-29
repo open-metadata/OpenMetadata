@@ -111,11 +111,13 @@ interface RowMetrics {
   viewportHeight: number;
 }
 
-// A native card re-renders the graph only when the first row in view changes,
-// so its edges anchor as if the rows were scrolled to that row's top.
+// A native card re-renders the graph when the first row in view changes, and
+// once more when its scroll comes to rest. In between, its edges anchor as if
+// the rows were scrolled to the first row's top.
 interface RowWindow {
   firstRow: number;
   metrics?: RowMetrics;
+  restingScrollTop?: number;
 }
 
 interface DataEdgeLayout {
@@ -140,6 +142,7 @@ const COLLAPSED_ASSET_COUNT = 3;
 const NATIVE_COLLAPSED_ASSET_COUNT = 4;
 // The height of `tw:max-h-64`, the scroll area that holds a native card's rows.
 const NATIVE_ROWS_MAX_HEIGHT = 256;
+const ROW_SCROLL_SETTLE_MS = 100;
 const INFERRED_EDGE_COLOR = 'var(--tw-color-border-brand)';
 const LINEAGE_EDGE_COLOR = 'var(--tw-color-fg-secondary)';
 const HIERARCHY_RELATION_TYPES = new Set(['parentOf', 'childOf']);
@@ -809,8 +812,14 @@ const OntologyDataGraph = ({
       const isExpanded = expandedCardIds.has(term.id);
       const assets = assetsByTerm.get(term.id) ?? [];
       const shownAssets = isExpanded ? assets : assets.slice(0, collapsedCount);
-      const { firstRow = 0, metrics } = rowWindows[term.id] ?? {};
-      const scrollTop = isExpanded ? rowSlot(metrics, firstRow).top : 0;
+      const {
+        firstRow = 0,
+        metrics,
+        restingScrollTop,
+      } = rowWindows[term.id] ?? {};
+      const scrollTop = isExpanded
+        ? restingScrollTop ?? rowSlot(metrics, firstRow).top
+        : 0;
       const viewportHeight =
         metrics?.viewportHeight ??
         Math.min(NATIVE_ROWS_MAX_HEIGHT, shownAssets.length * ASSET_ROW_HEIGHT);
@@ -955,6 +964,9 @@ const OntologyDataGraph = ({
   const cardObserverRef = useRef<ResizeObserver | null>(null);
   const fittedLayoutKeyRef = useRef<string>();
   const wheelCleanupRef = useRef<(() => void) | null>(null);
+  const rowSettleTimersRef = useRef(
+    new Map<string, ReturnType<typeof setTimeout>>()
+  );
   const [view, setView] = useState({ x: 0, y: 0, zoom: 1 });
   const panRef = useRef<{
     capturing: boolean;
@@ -1033,6 +1045,15 @@ const OntologyDataGraph = ({
   }, []);
 
   useEffect(() => {
+    const timers = rowSettleTimersRef.current;
+
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
+    };
+  }, []);
+
+  useEffect(() => {
     const observer = cardObserverRef.current;
     canvasRef.current
       ?.querySelectorAll('[data-term-id]')
@@ -1061,7 +1082,11 @@ const OntologyDataGraph = ({
             ...Object.fromEntries(
               changed.map(([id, metrics]) => [
                 id,
-                { firstRow: current[id]?.firstRow ?? 0, metrics },
+                {
+                  ...current[id],
+                  firstRow: current[id]?.firstRow ?? 0,
+                  metrics,
+                },
               ])
             ),
           };
@@ -1457,17 +1482,39 @@ const OntologyDataGraph = ({
             data-testid={`ontology-data-cluster-rows-${term.id}`}
             data-wheel-scroll=""
             onScroll={(event) => {
+              const { scrollTop } = event.currentTarget;
               const rowWindow = rowWindows[term.id];
-              const firstRow = firstRowAt(
-                event.currentTarget.scrollTop,
-                rowWindow?.metrics
-              );
+              const firstRow = firstRowAt(scrollTop, rowWindow?.metrics);
               if (firstRow !== (rowWindow?.firstRow ?? 0)) {
                 setRowWindows((current) => ({
                   ...current,
-                  [term.id]: { ...current[term.id], firstRow },
+                  [term.id]: {
+                    ...current[term.id],
+                    firstRow,
+                    restingScrollTop: undefined,
+                  },
                 }));
               }
+              const timers = rowSettleTimersRef.current;
+              clearTimeout(timers.get(term.id));
+              timers.set(
+                term.id,
+                setTimeout(() => {
+                  timers.delete(term.id);
+                  setRowWindows((current) =>
+                    current[term.id]?.restingScrollTop === scrollTop
+                      ? current
+                      : {
+                          ...current,
+                          [term.id]: {
+                            ...current[term.id],
+                            firstRow: current[term.id]?.firstRow ?? firstRow,
+                            restingScrollTop: scrollTop,
+                          },
+                        }
+                  );
+                }, ROW_SCROLL_SETTLE_MS)
+              );
             }}>
             <AssetRows
               isNative
