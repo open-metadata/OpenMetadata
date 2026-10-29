@@ -35,8 +35,10 @@ class TestCaseResolutionStatusTimeSeriesDaoLatestTest {
             anyString(), anyMap(), anyString(), anyString(), eq(10), eq(0), anyMap(), anyString()))
         .thenReturn(List.of("latest"));
 
+    // The endpoint's documented include default is non-deleted: the scoping is a tc-qualified
+    // predicate riding the join the originEntityFQN predicate needs anyway.
     ListFilter filter =
-        new ListFilter(Include.ALL)
+        new ListFilter(Include.NON_DELETED)
             .addQueryParam("originEntityFQN", "svc.db.schema.table")
             .addQueryParam("testCaseResolutionStatusType", "New");
     List<String> jsons = dao.listWithOffset(filter, 10, 0, true);
@@ -58,8 +60,8 @@ class TestCaseResolutionStatusTimeSeriesDaoLatestTest {
         "the originEntityFQN predicate depends on the join's testCaseEntityFQN alias");
     assertTrue(
         condition.getValue().contains("tc.deleted = FALSE"),
-        "incidents scope to non-deleted test cases on the join — the include"
-            + " parameter is deprecated and has no effect (ADR:2026-10-29-incident-listing-include-deprecated)");
+        "the non-deleted scope travels qualified on the join, never unqualified"
+            + " (ADR:2026-10-29-incident-listing-test-case-deletion-scoping-is-qualified)");
     assertTrue(
         outerCondition.getValue().contains("testCaseResolutionStatusType"),
         "the record's own status ranks on the outer condition");
@@ -78,7 +80,7 @@ class TestCaseResolutionStatusTimeSeriesDaoLatestTest {
         .thenReturn(3);
 
     ListFilter filter =
-        new ListFilter(Include.ALL)
+        new ListFilter(Include.NON_DELETED)
             .addQueryParam("originEntityFQN", "svc.db.schema.table")
             .addQueryParam("incidentAssignee", "user");
     int count = dao.listCount(filter, true);
@@ -105,7 +107,7 @@ class TestCaseResolutionStatusTimeSeriesDaoLatestTest {
   }
 
   @Test
-  void withoutOriginEntityFqnTheScopingUsesAnExistsInsteadOfTheJoin() {
+  void withoutOriginEntityFqnTheIncludeScopeRidesAnExistsInsteadOfTheJoin() {
     TestCaseResolutionStatusTimeSeriesDAO dao =
         mock(TestCaseResolutionStatusTimeSeriesDAO.class, CALLS_REAL_METHODS);
     when(dao.getTimeSeriesTableName()).thenReturn("test_case_resolution_status_time_series");
@@ -120,25 +122,46 @@ class TestCaseResolutionStatusTimeSeriesDaoLatestTest {
             anyString()))
         .thenReturn(List.of("latest"));
 
+    // No join is needed without originEntityFQN, so the scoping pays an indexed EXISTS instead;
+    // include=all adds neither join nor scope.
+    dao.listWithOffset(
+        new ListFilter(Include.NON_DELETED).addQueryParam("testCaseFQN", "svc.db.schema.tc1"),
+        10,
+        0,
+        true);
+    dao.listWithOffset(
+        new ListFilter(Include.DELETED).addQueryParam("testCaseFQN", "svc.db.schema.tc1"),
+        10,
+        0,
+        true);
     dao.listWithOffset(new ListFilter(Include.ALL), 10, 0, true);
 
-    ArgumentCaptor<String> condition = ArgumentCaptor.forClass(String.class);
-    verify(dao)
+    ArgumentCaptor<String> conditions = ArgumentCaptor.forClass(String.class);
+    verify(dao, org.mockito.Mockito.times(3))
         .listWithOffset(
             eq("test_case_resolution_status_time_series"),
             anyMap(),
-            condition.capture(),
+            conditions.capture(),
             eq("entityFQNHash"),
             eq(10),
             eq(0),
             anyMap(),
             anyString());
+    String nonDeletedCond = conditions.getAllValues().get(0);
+    String deletedCond = conditions.getAllValues().get(1);
+    String allCond = conditions.getAllValues().get(2);
     assertFalse(
-        condition.getValue().contains("INNER JOIN"),
+        nonDeletedCond.contains("INNER JOIN"),
         "no originEntityFQN: the query pays no join no predicate needs");
     assertTrue(
-        condition.getValue().contains("EXISTS (SELECT 1 FROM test_case"),
-        "the non-deleted scoping rides an indexed EXISTS instead of the join");
+        nonDeletedCond.contains("EXISTS (SELECT 1 FROM test_case")
+            && nonDeletedCond.contains("tcScope.deleted = FALSE"),
+        "the non-deleted scope rides an indexed EXISTS instead of the join");
+    assertTrue(
+        deletedCond.contains("tcScope.deleted = TRUE"),
+        "include=deleted keeps working without the join");
+    assertFalse(
+        allCond.contains("EXISTS (SELECT 1 FROM test_case"), "include=all adds no deletion scope");
   }
 
   @Test

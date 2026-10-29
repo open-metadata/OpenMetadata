@@ -41,8 +41,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * catch a listing whose WHERE references a column or join alias the table does not have (the
  * incident listing's testCaseEntityFQN alias, a deleted clause on a table without a deleted
  * column), so every listing shape runs here against a real database — the DAO paths directly, and
- * the incident listing also over REST, which is the contract the
- * ADR:2026-10-29-incident-listing-include-deprecated record changes.
+ * the incident listing also over REST, which pins the deletion-scoping contract of
+ * ADR:2026-10-29-incident-listing-test-case-deletion-scoping-is-qualified.
  */
 @Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
@@ -263,16 +263,32 @@ public class TestCaseResolutionStatusTimeSeriesListingIT {
         getJson(client, INCIDENT_LISTING_PATH + "?testCaseFQN=" + encodedFQN + "&latest=true");
     assertEquals(1, total(defaultListing));
 
-    // The deprecated include parameter has no effect: an explicit include=deleted answers the
-    // same listing (ADR:2026-10-29-incident-listing-include-deprecated).
-    Map<String, Object> includeDeleted =
-        getJson(
-            client,
-            INCIDENT_LISTING_PATH + "?testCaseFQN=" + encodedFQN + "&latest=true&include=deleted");
-    assertEquals(total(defaultListing), total(includeDeleted), "include has no effect here");
+    // include is honored (ADR:2026-10-29-incident-listing-test-case-deletion-scoping-is-qualified):
+    // deleted test cases carry no incidents while they live, all does.
+    assertEquals(
+        0,
+        total(
+            getJson(
+                client,
+                INCIDENT_LISTING_PATH
+                    + "?testCaseFQN="
+                    + encodedFQN
+                    + "&latest=true&include=deleted")),
+        "include=deleted finds no incidents while the test case lives");
+    assertEquals(
+        1,
+        total(
+            getJson(
+                client,
+                INCIDENT_LISTING_PATH
+                    + "?testCaseFQN="
+                    + encodedFQN
+                    + "&latest=true&include=all")));
 
-    // A soft-deleted test case keeps its records, but the join's tc.deleted scoping hides them
-    // by default — the same scoping the incidentGroups summary SQL hardcodes.
+    // A soft-deleted test case keeps its records: the default hides them (the join's tc.deleted
+    // scoping, or the indexed EXISTS without the join), include=deleted and include=all still
+    // list them. The scoping is always a qualified predicate, never the unqualified clause the
+    // old code parked on the implicit join.
     client
         .getHttpClient()
         .executeForString(
@@ -296,6 +312,23 @@ public class TestCaseResolutionStatusTimeSeriesListingIT {
                         .orElse(null));
     assertEquals(Boolean.TRUE, deletedProbe, "the test case is soft-deleted");
     assertEquals(0, total(afterDelete), "incidents of a soft-deleted test case are excluded");
+    assertEquals(
+        1,
+        total(
+            getJson(
+                client,
+                INCIDENT_LISTING_PATH
+                    + "?testCaseFQN="
+                    + encodedFQN
+                    + "&latest=true&include=deleted")),
+        "incidents of a soft-deleted test case are listed under include=deleted");
+    assertEquals(
+        1,
+        total(
+            getJson(
+                client,
+                INCIDENT_LISTING_PATH + "?testCaseFQN=" + encodedFQN + "&latest=true&include=all")),
+        "incidents of a soft-deleted test case are listed under include=all");
   }
 
   @SuppressWarnings("unchecked")

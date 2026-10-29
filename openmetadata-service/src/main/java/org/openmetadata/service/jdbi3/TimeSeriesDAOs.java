@@ -53,6 +53,7 @@ import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -2071,12 +2072,11 @@ public interface TimeSeriesDAOs {
       }
       ListFilter outerFilter = latestRecordFilter(filter);
       LATEST_RECORD_PARAMS.forEach(filter::removeQueryParam);
-      String condition = filter.getCondition();
-      condition = addOriginEntityFQNJoin(filter, condition);
+      IncidentCondition shaped = incidentCondition(filter);
       return listWithOffset(
           getTimeSeriesTableName(),
-          filter.getQueryParams(),
-          condition,
+          shaped.params(),
+          shaped.condition(),
           getPartitionFieldName(),
           limit,
           offset,
@@ -2109,11 +2109,11 @@ public interface TimeSeriesDAOs {
       filter.getQueryParams().forEach(innerFilter::addQueryParam);
       LATEST_RECORD_PARAMS.forEach(innerFilter::removeQueryParam);
       ListFilter outerFilter = latestRecordFilter(filter);
-      String condition = addOriginEntityFQNJoin(innerFilter, innerFilter.getCondition());
+      IncidentCondition shaped = incidentCondition(innerFilter);
       return listCount(
           getTimeSeriesTableName(),
-          innerFilter.getQueryParams(),
-          condition,
+          shaped.params(),
+          shaped.condition(),
           getPartitionFieldName(),
           outerFilter.getQueryParams(),
           outerFilter.getCondition());
@@ -2125,9 +2125,17 @@ public interface TimeSeriesDAOs {
     List<String> LATEST_RECORD_PARAMS =
         List.of("testCaseResolutionStatusType", "incidentAssignee", "incidentListSeverity");
 
-    String NON_DELETED_TEST_CASE_SCOPE =
+    String TEST_CASE_JOIN =
+        "INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted"
+            + " FROM test_case) tc ON entityFQNHash = testCaseHash ";
+
+    String NON_DELETED_TEST_CASE_EXISTS =
         " AND EXISTS (SELECT 1 FROM test_case tcScope"
             + " WHERE tcScope.fqnHash = entityFQNHash AND tcScope.deleted = FALSE)";
+
+    String DELETED_TEST_CASE_EXISTS =
+        " AND EXISTS (SELECT 1 FROM test_case tcScope"
+            + " WHERE tcScope.fqnHash = entityFQNHash AND tcScope.deleted = TRUE)";
 
     static ListFilter latestRecordFilter(ListFilter filter) {
       ListFilter outerFilter = new ListFilter(null);
@@ -2142,14 +2150,13 @@ public interface TimeSeriesDAOs {
       if (latest) {
         ListFilter outerFilter = latestRecordFilter(filter);
         LATEST_RECORD_PARAMS.forEach(filter::removeQueryParam);
-        String condition = filter.getCondition();
-        condition = addOriginEntityFQNJoin(filter, condition);
+        IncidentCondition shaped = incidentCondition(filter);
 
         String outerCondition = outerFilter.getCondition();
         return listWithOffset(
             getTimeSeriesTableName(),
-            filter.getQueryParams(),
-            condition,
+            shaped.params(),
+            shaped.condition(),
             getPartitionFieldName(),
             limit,
             offset,
@@ -2158,12 +2165,11 @@ public interface TimeSeriesDAOs {
             outerFilter.getQueryParams(),
             outerCondition);
       }
-      String condition = filter.getCondition();
-      condition = addOriginEntityFQNJoin(filter, condition);
+      IncidentCondition shaped = incidentCondition(filter);
       return listWithOffset(
           getTimeSeriesTableName(),
-          filter.getQueryParams(),
-          condition,
+          shaped.params(),
+          shaped.condition(),
           limit,
           offset,
           startTs,
@@ -2189,20 +2195,20 @@ public interface TimeSeriesDAOs {
     @Override
     default int listCount(ListFilter filter, Long startTs, Long endTs, boolean latest) {
       if (!latest) {
-        String condition = addOriginEntityFQNJoin(filter, filter.getCondition());
+        IncidentCondition shaped = incidentCondition(filter);
         return listCount(
-            getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
+            getTimeSeriesTableName(), shaped.params(), shaped.condition(), startTs, endTs);
       }
       // The listing reads the same filter afterwards, so it is copied rather than trimmed.
       ListFilter innerFilter = new ListFilter(filter.getInclude());
       filter.getQueryParams().forEach(innerFilter::addQueryParam);
       LATEST_RECORD_PARAMS.forEach(innerFilter::removeQueryParam);
       ListFilter outerFilter = latestRecordFilter(filter);
-      String condition = addOriginEntityFQNJoin(innerFilter, innerFilter.getCondition());
+      IncidentCondition shaped = incidentCondition(innerFilter);
       return listCount(
           getTimeSeriesTableName(),
-          innerFilter.getQueryParams(),
-          condition,
+          shaped.params(),
+          shaped.condition(),
           getPartitionFieldName(),
           startTs,
           endTs,
@@ -2212,17 +2218,15 @@ public interface TimeSeriesDAOs {
 
     @Override
     default List<String> listWithOffset(ListFilter filter, int limit, int offset) {
-      String condition = filter.getCondition();
-      condition = addOriginEntityFQNJoin(filter, condition);
+      IncidentCondition shaped = incidentCondition(filter);
       return listWithOffset(
-          getTimeSeriesTableName(), filter.getQueryParams(), condition, limit, offset);
+          getTimeSeriesTableName(), shaped.params(), shaped.condition(), limit, offset);
     }
 
     @Override
     default int listCount(ListFilter filter) {
-      String condition = filter.getCondition();
-      condition = addOriginEntityFQNJoin(filter, condition);
-      return listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition);
+      IncidentCondition shaped = incidentCondition(filter);
+      return listCount(getTimeSeriesTableName(), shaped.params(), shaped.condition());
     }
 
     // relation = 9 corresponds to Relationship.PARENT_OF (the enum ordinal is stable;
@@ -2353,23 +2357,32 @@ public interface TimeSeriesDAOs {
         @Define("cond") String cond,
         @BindMap Map<String, ?> params);
 
-    // The incident listing always scopes to non-deleted test cases — the time-series table has
-    // no deleted column of its own, and the incidentGroups summary SQL hardcodes tc.deleted =
-    // FALSE. The join exists only to introduce the testCaseEntityFQN alias the originEntityFQN
-    // predicate reads, so it is added only when that parameter is present; otherwise the scoping
-    // pays an indexed EXISTS instead of a join the query does not otherwise need. Requests can
-    // carry an explicit deleted scope no more: the flat listing's include parameter is
-    // deprecated and has no effect (ADR:2026-10-29-incident-listing-include-deprecated).
-    static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
-      if (filter.getQueryParam("originEntityFQN") != null) {
-        String join =
-            """
-                INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted FROM test_case) tc \
-                ON entityFQNHash = testCaseHash
-                """;
-        return join + condition + " AND tc.deleted = FALSE";
+    // The incident listings scope deletion on test_case, and the include parameter names that
+    // scope (the endpoint's documented default is non-deleted): the time-series table has no
+    // deleted column, so getIncludeCondition's unqualified `deleted` clause never rides them.
+    // The scope travels qualified instead — with the test_case join when the originEntityFQN
+    // predicate needs its testCaseEntityFQN alias (tc.deleted), or an indexed EXISTS when the
+    // join is not needed — and the params carry the binds the planted conditions reference
+    // (ADR:2026-10-29-incident-listing-test-case-deletion-scoping-is-qualified).
+    record IncidentCondition(String condition, Map<String, ?> params) {}
+
+    static IncidentCondition incidentCondition(ListFilter filter) {
+      ListFilter conditionSource = new ListFilter(Include.ALL);
+      filter.getQueryParams().forEach(conditionSource::addQueryParam);
+      boolean joinNeeded = filter.getQueryParam("originEntityFQN") != null;
+      String condition = conditionSource.getCondition();
+      if (joinNeeded) {
+        condition = TEST_CASE_JOIN + condition;
       }
-      return condition + NON_DELETED_TEST_CASE_SCOPE;
+      condition =
+          switch (filter.getInclude()) {
+            case NON_DELETED -> condition
+                + (joinNeeded ? " AND tc.deleted = FALSE" : NON_DELETED_TEST_CASE_EXISTS);
+            case DELETED -> condition
+                + (joinNeeded ? " AND tc.deleted = TRUE" : DELETED_TEST_CASE_EXISTS);
+            case ALL -> condition;
+          };
+      return new IncidentCondition(condition, conditionSource.getQueryParams());
     }
 
     default IncidentGroupPage listIncidentGroups(
