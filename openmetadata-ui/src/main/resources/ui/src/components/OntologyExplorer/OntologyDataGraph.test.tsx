@@ -455,6 +455,38 @@ describe('native Data mode lineage', () => {
     getters.forEach((getter) => getter.mockRestore());
   });
 
+  it('keeps the merged lineage edge of 25 pairs one slot apart from the relation edge', () => {
+    renderGraph({
+      data: graphData({
+        loaded: 30,
+        total: 30,
+        lineageEdges: Array.from({ length: 25 }, (_, index) => ({
+          from: `t${index + 5}`,
+          to: 'acc1',
+        })),
+      }),
+    });
+
+    const edges = screen.getAllByTestId('ontology-data-semantic-edge');
+    const [relation, lineage] = edges.map((edge) =>
+      (edge.getAttribute('d') ?? '').split(' ').map(Number)
+    );
+    const [relationChip, lineageChip] = screen
+      .getAllByTestId('ontology-data-semantic-edge-label')
+      .map((label) => parseFloat((label as HTMLElement).style.top));
+
+    expect(edges.map((edge) => edge.getAttribute('data-edge-kind'))).toEqual([
+      'semanticProjection',
+      'observedLineage',
+    ]);
+    expect(lineage.slice(1, 3)).toEqual([relation[1], relation[2] + 14]);
+    expect(lineage.slice(-2)).toEqual([
+      relation[relation.length - 2],
+      relation[relation.length - 1] + 14,
+    ]);
+    expect(lineageChip - relationChip).toBeGreaterThanOrEqual(14);
+  });
+
   it('marks both rows of a lineage edge inside one cluster, naming the other table', () => {
     renderGraph({
       data: graphData({ lineageEdges: [{ from: 't0', to: 't2' }] }),
