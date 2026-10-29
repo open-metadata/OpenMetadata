@@ -38,6 +38,7 @@ from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagLabel, TagSource
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.hex.cell_lineage import (
+    ChainedCells,
     get_output_columns,
     get_table_references,
     inline_upstream_cells,
@@ -1049,6 +1050,33 @@ class TestHexCellLineage:
         assert data_models == []
         assert model_fqn in source.datamodel_source_state
         assert [model.root for model in dashboard.right.dataModels] == [model_fqn]
+
+    @pytest.mark.parametrize("connection", [None, "conn_snowflake"], ids=["dataframe SQL", "same connection"])
+    def test_cells_reading_a_broken_cell_keep_their_groups(self, make_source, connection):
+        upstream = sql_cell("c1", "select id, segment from sales.customers", "customers")
+        chained = sql_cell("c2", "select segment from customers", "segments", connection)
+        chained_on_chained = sql_cell("c3", "select segment from segments", "top_segments", connection)
+        first_run = make_source([upstream, chained, chained_on_chained])
+        (first_model,), _ = run(first_run)
+        broken = sql_cell("c1", "select * from where", "customers")
+        source = make_source([broken, chained, chained_on_chained])
+        source.metadata.entities.update(first_run.metadata.entities)
+
+        (request,), _ = run(source)
+
+        assert [column.name.root for column in request.columns] == ["c1", "c2", "c3"]
+        assert request.columns[1:] == first_model.columns[1:]
+        assert request.columns[2].children[0].dataType != DataType.UNKNOWN
+
+    def test_a_failed_cell_is_failed_only_for_the_cells_that_can_read_it(self):
+        chained = ChainedCells()
+        chained.fail("Customers", "conn_snowflake")
+        chained.fail("events", "conn_snowflake")
+        chained.add("events", "conn_snowflake", parse_cell_sql("select 1", None))
+
+        assert chained.failed_readable_by("conn_snowflake") == {"customers"}
+        assert chained.failed_readable_by("conn_other") == set()
+        assert chained.failed_readable_by(None) == {"customers"}
 
     def test_a_cell_that_never_parsed_adds_no_group(self, make_source):
         broken = CUSTOMERS_CELL.model_copy(
