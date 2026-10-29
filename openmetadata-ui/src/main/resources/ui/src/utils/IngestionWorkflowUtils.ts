@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RJSFSchema } from '@rjsf/utils';
-import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import { CustomValidator, RJSFSchema } from '@rjsf/utils';
+import {
+  cloneDeep,
+  isEmpty,
+  isObject,
+  isPlainObject,
+  isUndefined,
+} from 'lodash';
 import { ServiceCategory } from '../enums/service.enum';
 import {
   Pipeline,
@@ -37,6 +43,7 @@ import storageAutoClassificationPipeline from '../jsons/ingestionSchemas/storage
 import storageMetadataPipeline from '../jsons/ingestionSchemas/storageServiceMetadataPipeline.json';
 import testSuitePipeline from '../jsons/ingestionSchemas/testSuitePipeline.json';
 import ProfilerConfigurationClassBase from '../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
+import { t } from './i18next/LocalUtil';
 
 // Keyed lookup instead of a switch — each entry mirrors one former case label,
 // with METADATA_SERVICES/DATABASE_SERVICES sharing a value like the original
@@ -193,4 +200,40 @@ export const cleanWorkFlowData = (workFlowData: Pipeline): Pipeline => {
   });
 
   return cleanedWorkFlowData;
+};
+
+const OWNER_CONFIG_MAP_FIELDS = ['database', 'databaseSchema', 'table'];
+
+/**
+ * Flags ownerConfig map rows that were given a name but no owner. RJSF seeds such a row's value
+ * with {} (or []), and the shared transformErrors hides the resulting type/anyOf errors, so
+ * without this the pipeline saves and every run then fails to parse its config. Rows still under
+ * RJSF's default `newKey*` name are skipped: formatAdditionalProperties drops them on submit.
+ * The error is also set on the map field, because a saved map holding such a row no longer
+ * matches the object branch of its anyOf, so RJSF reopens it on the string branch and the row's
+ * own field is not rendered.
+ */
+export const validateOwnerConfigMaps: CustomValidator = (formData, errors) => {
+  const message = t('message.field-text-is-required', {
+    fieldText: t('label.owner'),
+  });
+
+  OWNER_CONFIG_MAP_FIELDS.forEach((field) => {
+    const ownerMap = formData?.ownerConfig?.[field];
+    if (!isPlainObject(ownerMap)) {
+      return;
+    }
+    const emptyRows = Object.entries(ownerMap).filter(
+      ([name, owner]) =>
+        !name.startsWith('newKey') && isObject(owner) && isEmpty(owner)
+    );
+    if (emptyRows.length > 0) {
+      errors.ownerConfig?.[field]?.addError(message);
+    }
+    emptyRows.forEach(([name]) =>
+      errors.ownerConfig?.[field]?.[name]?.addError(message)
+    );
+  });
+
+  return errors;
 };

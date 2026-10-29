@@ -34,6 +34,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
@@ -254,7 +255,7 @@ public class SocketAddressFilter implements Filter {
     }
     if (tokenPrincipal != null
         && session.get().getUsername() != null
-        && !session.get().getUsername().equalsIgnoreCase(tokenPrincipal.userName())) {
+        && !SecurityUtil.sameIdentifier(session.get().getUsername(), tokenPrincipal.userName())) {
       throw new HandshakeRejectedException(
           HttpServletResponse.SC_FORBIDDEN, "Session does not match token");
     }
