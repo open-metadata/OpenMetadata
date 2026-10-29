@@ -51,6 +51,8 @@ class MintedTokensAreRecognizedTest {
   /** {@code UserSSOOAuthProvider} mints its access tokens for ten minutes. */
   private static final long MCP_ACCESS_TOKEN_SECONDS = 600L;
 
+  private static final String MCP_CLIENT_ID = "mcp-client";
+
   private static JWTTokenGenerator generator;
   private CredentialVerifierFixture credentials;
   private JwtFilter filter;
@@ -93,7 +95,10 @@ class MintedTokensAreRecognizedTest {
     assertEquals(minted.storage.readsOnFirstCheck, credentials.fullReadsOf(minted.principal));
   }
 
-  /** Where the server keeps a minted token. A check reads back only what the server keeps. */
+  /**
+   * Where the server keeps a minted token for the verifier. A check reads back only what is kept
+   * there.
+   */
   private enum Storage {
     AUTHENTICATION_MECHANISM(1),
     PERSONAL_ACCESS_TOKEN_ROW(1),
@@ -125,7 +130,10 @@ class MintedTokensAreRecognizedTest {
         Storage.AUTHENTICATION_MECHANISM,
         tokens -> tokens.generateJWTToken(user(BOT, true), JWTTokenExpiry.Unlimited)),
 
-    /** A regular user's own token, {@code UserResource.generateTokenWithId}. */
+    /**
+     * A regular user's own token, which {@code UserResource.generateTokenWithId} minted before it
+     * became bot-only. Accounts from then still hold one.
+     */
     SELF_SERVICE_TOKEN(
         USER,
         Storage.AUTHENTICATION_MECHANISM,
@@ -178,8 +186,9 @@ class MintedTokensAreRecognizedTest {
                 ServiceTokenType.OM_USER)),
 
     /**
-     * The MCP module's {@code UserSSOOAuthProvider.exchangeAuthorizationCode} and {@code
-     * exchangeRefreshToken}.
+     * The MCP module's {@code UserSSOOAuthProvider.issueAccessToken}. The server keeps the token in
+     * {@code oauth_access_tokens}, which {@code JwtFilter} looks up itself, so the verifier keeps
+     * nothing for it.
      */
     MCP_OAUTH_ACCESS_TOKEN(
         USER,
@@ -193,7 +202,8 @@ class MintedTokensAreRecognizedTest {
                 MCP_ACCESS_TOKEN_SECONDS,
                 false,
                 ServiceTokenType.OM_USER,
-                List.of("openid", "profile", "email")));
+                List.of("openid", "profile", "email"),
+                MCP_CLIENT_ID));
 
     private final String principal;
     private final Storage storage;

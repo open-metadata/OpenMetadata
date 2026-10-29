@@ -7,14 +7,18 @@
   `CredentialsTest`, `OmCredentialTest`, `JwtFilterTest`, `MintedTokensAreRecognizedTest`;
   `CredentialRevocationTwoProcessIT`, `CredentialDatabaseOutageIT`, `RevokeWaitForPropagationIT`,
   `UserResourceIT`
-- **Related:** ADR:2026-10-14-cache-misses-that-do-io-load-outside-the-cache-lock
+- **Related:** ADR:2026-10-14-cache-misses-that-do-io-load-outside-the-cache-lock,
+  ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server,
+  ADR:2026-10-23-every-jetty-request-clears-per-request-thread-state
 
 ## Context
-Bot JWTs and personal access tokens are the OpenMetadata-signed tokens with a server-side current
+Bot JWTs and personal access tokens are OpenMetadata-signed tokens with a server-side current
 value: the bot's stored authentication mechanism and the `user_tokens` rows. Each request checked
 that value with a Redis read when Redis was configured, and against a snapshot in local memory
 otherwise. The check needed one behavior in every deployment mode, no network I/O on the request
-path, and a freshness bound that holds for every writer, including the ops CLI and direct SQL.
+path, and a freshness bound that holds for every writer, including the ops CLI and direct SQL. MCP
+access tokens are stored as well, and
+ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server covers them.
 
 ## Decision
 - Each server runs one `CredentialVerifier`. It keeps, per principal, SHA-256 digests of the tokens
@@ -28,17 +32,18 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   `CredentialVerifier.require`, through `JwtFilter.requireCurrentCredential`. Which method each
   entry point calls:
   - `JwtFilter.filter` (REST) calls `authenticate`.
-  - `JwtFilter.getCatalogSecurityContext` calls `authenticate`. The MCP tool callbacks
-    (`McpServer.executeTool`) and prompt callbacks (`DefaultPromptsContext.callPrompt`) use it.
+  - `JwtFilter.getCatalogSecurityContext` calls `authenticate`. The MCP tool and prompt callbacks
+    use it, through `McpServer.securityContextFrom`, with the token in the request's
+    `Authorization` header.
   - `JwtFilter.validateJwtAndGetClaims` calls `requireCurrentCredential` directly and resolves the
     principal only for a stored kind.
   - `JwtFilter.checkValidationsForToken` decodes the token it is given and calls
     `requireCurrentCredential` with that token's own claims before its other checks.
     `SocketAddressFilter.validatePrefixedTokenRequest` calls it after `verifySignatureOnly`, for the
     WebSocket handshake and for the MCP HTTP transport, so the transport checks each request once.
-    An MCP tool call is checked again by its callback, through `getCatalogSecurityContext`. A prompt
-    call's callback checks the token in the prompt's `Authorization` argument. Callers outside this
-    repository call `checkValidationsForToken` after their own signature check.
+    An MCP tool or prompt call is checked again by its callback, through
+    `getCatalogSecurityContext`. Callers outside this repository call `checkValidationsForToken`
+    after their own signature check.
   - `JwtFilter.verifySignatureOnly` classifies nothing and calls no `require`. Apart from
     `SocketAddressFilter`, only the probes that grant no access use it (`BotTokenCheck`,
     `TestLoginService`, `SystemRepository`).
@@ -46,7 +51,9 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   An OpenMetadata-signed claim combination that matches no issued kind is rejected as unrecognized.
   So is a token that OpenMetadata's key did not sign and that claims `isBot=true` or
   `tokenType=PERSONAL_ACCESS`. Such a token has no stored value to confirm and matches no issued
-  kind.
+  kind. `OmCredential.classify` returns `NotStored` for an MCP access token, because the verifier
+  does not read `oauth_access_tokens`. `checkValidationsForToken` looks the token up there instead,
+  with one indexed read per request.
 - A principal whose latest check read produced no record, because the read failed, got no slot or
   left the principal out, is not read again on a check's behalf for `missRefreshMinAge` (500 ms by
   default, less than `maxStaleness`). Its checks that need a read answer 503 without one in that
@@ -131,8 +138,9 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   `missRefreshMinAge` after this server last read its principal in full. The retry after
   `Retry-After` reads the principal and accepts the token.
 - While the database is unreachable, bot and PAT requests answer 503 once their entries are older
-  than `maxStaleness`. Session tokens and identity-provider tokens that claim neither `isBot=true`
-  nor `tokenType=PERSONAL_ACCESS` are not affected.
+  than `maxStaleness`. Tokens that claim neither `isBot=true` nor `tokenType=PERSONAL_ACCESS` need
+  no verifier read. An MCP access token still needs its own read of `oauth_access_tokens`, so its
+  requests fail.
 - While the secrets manager cannot decrypt a bot's secret, every read that must decrypt it fails, so
   a check of the bot that waits on such a read, or on the backoff after one, answers 503 until a
   read decrypts the secret again. Check reads always decrypt, so that includes the first check on a

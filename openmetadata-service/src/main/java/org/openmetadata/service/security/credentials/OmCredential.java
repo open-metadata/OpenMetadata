@@ -33,9 +33,10 @@ public sealed interface OmCredential
   record Stored(CredentialSubject subject) implements OmCredential {}
 
   /**
-   * A token with no stored value to compare against: identity-provider tokens and OpenMetadata
-   * login or session tokens. Session-bound tokens keep their existing {@code sessionId} read and
-   * logout keeps its denylist; neither is this module's concern.
+   * A token with no stored value for the verifier to compare against: identity-provider tokens,
+   * OpenMetadata login or session tokens, and MCP access tokens. Session-bound tokens keep their
+   * existing {@code sessionId} read, logout keeps its denylist, and {@code JwtFilter} looks an MCP
+   * access token up in {@code oauth_access_tokens}; none of these is this module's concern.
    */
   record NotStored() implements OmCredential {}
 

@@ -49,11 +49,8 @@ class McpServerUnconfirmedTokenTest {
         McpSchema.Tool.builder().name("search_metadata").description("desc").build();
     McpSchema.CallToolRequest request =
         McpSchema.CallToolRequest.builder().name("search_metadata").arguments(Map.of()).build();
-    McpTransportContext context =
-        McpTransportContext.create(
-            Map.of(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER, TOKEN));
 
-    assertThatThrownBy(() -> server.getTool(tool).callHandler().apply(context, request))
+    assertThatThrownBy(() -> server.getTool(tool).callHandler().apply(callerContext(), request))
         .isInstanceOfSatisfying(
             McpError.class,
             error -> assertThat(error.getJsonRpcError()).isEqualTo(TEMPORARILY_UNAVAILABLE));
@@ -64,17 +61,18 @@ class McpServerUnconfirmedTokenTest {
     server.jwtFilter = filterThatCannotConfirm();
     McpSchema.Prompt prompt = new McpSchema.Prompt("search_metadata", "desc", List.of());
     McpSchema.GetPromptRequest request =
-        new McpSchema.GetPromptRequest("search_metadata", Map.of("Authorization", TOKEN));
+        new McpSchema.GetPromptRequest("search_metadata", Map.of());
 
     assertThatThrownBy(
-            () ->
-                server
-                    .getPrompt(prompt)
-                    .promptHandler()
-                    .apply(McpTransportContext.create(Map.of()), request))
+            () -> server.getPrompt(prompt).promptHandler().apply(callerContext(), request))
         .isInstanceOfSatisfying(
             McpError.class,
             error -> assertThat(error.getJsonRpcError()).isEqualTo(TEMPORARILY_UNAVAILABLE));
+  }
+
+  private static McpTransportContext callerContext() {
+    return McpTransportContext.create(
+        Map.of(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER, TOKEN));
   }
 
   private static JwtFilter filterThatCannotConfirm() {

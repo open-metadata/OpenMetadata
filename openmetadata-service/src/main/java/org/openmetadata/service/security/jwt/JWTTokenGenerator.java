@@ -322,6 +322,9 @@ public class JWTTokenGenerator {
           .withClaim(ROLES_CLAIM, roles.stream().toList())
           .withClaim(IS_BOT_CLAIM, isBot)
           .withClaim(TOKEN_TYPE, tokenType.value())
+          // Two tokens minted in the same second for one principal would otherwise be identical,
+          // and stored tokens are told apart by hash. RFC 9068 also asks for a jti on MCP access
+          // tokens.
           .withJWTId(UUID.randomUUID().toString())
           .withIssuedAt(new Date(System.currentTimeMillis()))
           .withExpiresAt(expires);
@@ -333,9 +336,7 @@ public class JWTTokenGenerator {
         tokenBuilder.withClaim(SESSION_ID_CLAIM, sessionId);
       }
       if (!nullOrEmpty(clientId)) {
-        // RFC 9068 asks for a jti. It also keeps two tokens minted in the same second for the same
-        // user and client distinct; the token store keys them by hash and refuses a duplicate.
-        tokenBuilder.withClaim(CLIENT_ID_CLAIM, clientId).withJWTId(UUID.randomUUID().toString());
+        tokenBuilder.withClaim(CLIENT_ID_CLAIM, clientId);
       }
 
       String token = tokenBuilder.sign(algorithm);

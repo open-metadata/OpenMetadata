@@ -568,7 +568,8 @@ public class JwtFilter implements ContainerRequestFilter {
 
   /**
    * The checks that follow {@link #verifySignatureOnly}: the stored-credential check, the logout
-   * denylist, the email and principal domain rules, and the session binding. The stored-credential
+   * denylist, the MCP access token lookup, the email and principal domain rules, the rule that a
+   * provider token never signs in to a bot account, and the session binding. The stored-credential
    * check classifies the token from its own claims and checks its own principal, so it holds
    * whatever {@code claims} and {@code userName} the caller passes. A caller that verified the
    * token with {@link #validateJwtAndGetClaims} instead makes that check twice, and the second is
