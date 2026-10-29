@@ -37,9 +37,10 @@ import org.openmetadata.service.security.credentials.CredentialVerifierFixture;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 /**
- * Mints a token with each call the server issues tokens with, then checks it the way {@link
- * JwtFilter} does. The filter rejects as unrecognized any claim combination outside the table in
- * {@code OmCredential.classify}, so a mint call that changes its claims fails here first.
+ * Mints a token with each call the server issues tokens with, then runs the stored-credential
+ * check on it through {@link JwtFilter#validateJwtAndGetClaims}. The filter rejects as unrecognized
+ * any claim combination outside the table in {@code OmCredential.classify}, so a mint call that
+ * changes its claims fails here first.
  */
 class MintedTokensAreRecognizedTest {
   private static final String BOT = "ingestion-bot";
@@ -85,7 +86,7 @@ class MintedTokensAreRecognizedTest {
 
   @ParameterizedTest
   @EnumSource(MintedToken.class)
-  void mintedTokenIsAcceptedAndReadBackOnlyWhenTheServerStoresIt(MintedToken minted) {
+  void mintedTokenIsAcceptedAndReadBackOnlyWhenKeptForTheVerifier(MintedToken minted) {
     String token = minted.mint.apply(generator).getJWTToken();
     minted.storage.store(credentials, minted.principal, token);
 

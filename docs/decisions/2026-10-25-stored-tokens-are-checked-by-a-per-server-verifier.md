@@ -41,7 +41,7 @@ ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server cover
     `requireCurrentCredential` with that token's own claims before its other checks.
     `SocketAddressFilter.validatePrefixedTokenRequest` calls it after `verifySignatureOnly`, for the
     WebSocket handshake and for the MCP HTTP transport, so the transport checks each request once.
-    An MCP tool or prompt call is checked again by its callback, through
+    An MCP tool or prompt call's callback repeats the stored-credential check, through
     `getCatalogSecurityContext`. Callers outside this repository call `checkValidationsForToken`
     after their own signature check.
   - `JwtFilter.verifySignatureOnly` classifies nothing and calls no `require`. Apart from
@@ -51,9 +51,9 @@ ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server cover
   An OpenMetadata-signed claim combination that matches no issued kind is rejected as unrecognized.
   So is a token that OpenMetadata's key did not sign and that claims `isBot=true` or
   `tokenType=PERSONAL_ACCESS`. Such a token has no stored value to confirm and matches no issued
-  kind. `OmCredential.classify` returns `NotStored` for an MCP access token, because the verifier
-  does not read `oauth_access_tokens`. `checkValidationsForToken` looks the token up there instead,
-  with one indexed read per request.
+  kind. `OmCredential.classify` does not read `client_id`, so an MCP access token is `NotStored`,
+  like a login token. `checkValidationsForToken` looks it up in `oauth_access_tokens` instead, with
+  one indexed read per request.
 - A principal whose latest check read produced no record, because the read failed, got no slot or
   left the principal out, is not read again on a check's behalf for `missRefreshMinAge` (500 ms by
   default, less than `maxStaleness`). Its checks that need a read answer 503 without one in that
