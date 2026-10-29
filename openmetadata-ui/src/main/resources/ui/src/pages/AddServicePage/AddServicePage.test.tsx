@@ -15,9 +15,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import { DEFAULT_DOMAIN_VALUE } from '../../constants/constants';
 import { ALL_SERVICES_CATEGORY } from '../../constants/Services.constant';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { EntityType } from '../../enums/entity.enum';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { getServiceByFQN, postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
@@ -558,6 +560,53 @@ describe('AddServicePage', () => {
     });
 
     expect(postService).toHaveBeenCalled();
+    expect((postService as jest.Mock).mock.calls[0][1]).not.toHaveProperty(
+      'domains'
+    );
+    expect(triggerOnDemandApp).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
+  });
+
+  it('creates the service in the picked domain', async () => {
+    useDomainStore.getState().updateActiveDomain({
+      id: 'domain-1',
+      type: 'domain',
+      fullyQualifiedName: 'Engineering',
+    });
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    const selectMySQLButton = screen.getByText('Select MySQL');
+    await act(async () => {
+      fireEvent.click(selectMySQLButton);
+    });
+
+    const setNameButton = screen.getByText('Set Service Name');
+    await act(async () => {
+      fireEvent.click(setNameButton);
+    });
+
+    const saveConnectionButton = screen.getByText('Save Connection');
+    await act(async () => {
+      fireEvent.click(saveConnectionButton);
+    });
+
+    const saveFiltersButton = await screen.findByText('Save Filters');
+    await act(async () => {
+      fireEvent.click(saveFiltersButton);
+    });
+
+    expect(postService).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ domains: ['Engineering'] })
+    );
+
+    useDomainStore.setState({
+      activeDomain: DEFAULT_DOMAIN_VALUE,
+      activeDomainEntityRef: undefined,
+    });
+
     expect(triggerOnDemandApp).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
   });
