@@ -67,6 +67,34 @@ export const forceInteractionRequired = async (
   await request.post(`${MOCK_OIDC_BASE_URL}/test/force-interaction-required`);
 };
 
+/**
+ * Returns an ID token for a seeded mock-IdP account, signed with the key the
+ * mock publishes at its JWKS URL. For fixtures that mock the IdP's browser SDK
+ * but still need a token the OM server verifies like a real IdP token.
+ * `tenantId` becomes the token's `tid` claim, as in an Entra ID token.
+ */
+export const mintMockOidcIdToken = async (
+  request: APIRequestContext,
+  options: {
+    audience: string;
+    expiresInSeconds: number;
+    account?: string;
+    tenantId?: string;
+  }
+): Promise<string> => {
+  const response = await request.post(`${MOCK_OIDC_BASE_URL}/test/id-token`, {
+    data: options,
+  });
+  if (!response.ok()) {
+    throw new Error(
+      `mock IdP /test/id-token returned ${response.status()}: ${await response.text()}`
+    );
+  }
+  const { idToken } = (await response.json()) as { idToken: string };
+
+  return idToken;
+};
+
 export const resetMockOidc = async (
   request: APIRequestContext
 ): Promise<void> => {

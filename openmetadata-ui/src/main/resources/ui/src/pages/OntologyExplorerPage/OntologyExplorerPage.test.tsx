@@ -18,6 +18,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
 import { OntologyConceptType } from '../../generated/entity/data/ontologyConcept';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   getOntology,
@@ -143,6 +144,11 @@ const mockUseOntologyStudioScopes = jest.fn(() => ({
 const mockUseAuth = jest.fn(() => ({
   isAdminUser: true,
   isFirstTimeUser: false,
+}));
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../hooks/useApplicationStore', () => ({
@@ -316,6 +322,7 @@ jest.mock(
 
 describe('OntologyExplorerPage', () => {
   beforeEach(() => {
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
     jest.clearAllMocks();
     (useEntityPermissions as jest.Mock).mockReturnValue({ canEditAll: true });
     mockUseRealRouter = false;
@@ -446,6 +453,37 @@ describe('OntologyExplorerPage', () => {
 
     expect(
       screen.getByTestId('ontology-publication-tab-changes')
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('shows the feature placeholder for an empty catalog in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    mockSearchParams = new URLSearchParams();
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
+
+    const empty = await screen.findByTestId('all-ontologies-empty');
+
+    expect(empty).toHaveTextContent('message.ontology-empty-title');
+    expect(empty).toHaveTextContent('label.the-graph');
+
+    fireEvent.click(screen.getByTestId('all-ontologies-new-ontology'));
+
+    expect(await screen.findByTestId('ontology-create-form')).toBeVisible();
+  });
+
+  it('opens Releases from the version chip in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    renderNativeStudio('?ontology=native-sales');
+    fireEvent.click(
+      await screen.findByTestId('ontology-release-history-trigger')
+    );
+
+    expect(
+      screen.getByTestId('ontology-publication-tab-releases')
     ).toHaveAttribute('aria-selected', 'true');
   });
 

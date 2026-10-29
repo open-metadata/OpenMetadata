@@ -123,14 +123,18 @@ const GROUPING: Record<
 const ActivityEmptyState = ({
   error,
   isFiltered,
+  hasActivity,
   userFirstName,
   onRetry,
+  onClearTypes,
 }: {
   error: unknown;
   isFiltered: boolean;
+  hasActivity: boolean;
   // Set when the feed is another user's, so the empty state names them.
   userFirstName?: string;
   onRetry: () => void;
+  onClearTypes?: () => void;
 }) => {
   const { t } = useTranslation();
 
@@ -148,6 +152,15 @@ const ActivityEmptyState = ({
           entity: t('label.activity'),
         })}
         onReload={onRetry}
+      />
+    );
+  }
+
+  if (onClearTypes && hasActivity) {
+    return (
+      <NoFilteredResultsPlaceholder
+        data-testid="inbox-activity-no-results"
+        onClearFilters={onClearTypes}
       />
     );
   }
@@ -188,6 +201,8 @@ export interface ActivityTabProps {
   // Show this user's feeds instead of the viewer's. Likes and replies still
   // act as the viewer.
   user?: User;
+  /** The sub-tab the feed opens on; defaults to All. */
+  initialFilter?: ActivityFilter;
 }
 
 const getDefaultDateRange = (): InboxDateRange => ({
@@ -306,11 +321,16 @@ const ActivityGroupList = ({
   );
 };
 
-const ActivityTab: React.FC<ActivityTabProps> = ({ user, ...windowProps }) => {
+const ActivityTab: React.FC<ActivityTabProps> = ({
+  user,
+  initialFilter = ActivityFilter.All,
+  ...windowProps
+}) => {
   const { t } = useTranslation();
-  const [filter, setFilter] = useState(ActivityFilter.All);
+  const [filter, setFilter] = useState(initialFilter);
   const [grouping, setGrouping] = useState(ActivityGrouping.Day);
   const [typeKeys, setTypeKeys] = useState<string[]>([]);
+  const clearTypeKeys = useCallback(() => setTypeKeys([]), []);
   // The Inbox centres a reading column; a user's profile tab spans its panel.
   const feedColumnClass = classNames(
     'tw:mx-auto tw:w-full',
@@ -402,8 +422,10 @@ const ActivityTab: React.FC<ActivityTabProps> = ({ user, ...windowProps }) => {
     activityContent = (
       <ActivityEmptyState
         error={error}
-        isFiltered={Boolean(isFiltered || typeKeys.length)}
+        hasActivity={items.length > 0}
+        isFiltered={isFiltered}
         userFirstName={userFirstName}
+        onClearTypes={typeKeys.length ? clearTypeKeys : undefined}
         onRetry={refetch}
       />
     );

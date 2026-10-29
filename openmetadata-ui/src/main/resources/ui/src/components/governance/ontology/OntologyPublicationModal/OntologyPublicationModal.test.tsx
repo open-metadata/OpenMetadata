@@ -13,12 +13,17 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import OntologyPublicationModal from './OntologyPublicationModal';
 
 const mockReleasePanel = jest.fn();
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 jest.mock('../../../../hooks/useEntityPermissions/useEntityPermissions');
 
 jest.mock('../OntologyReleasePanel/OntologyReleasePanel', () => ({
@@ -45,6 +50,7 @@ const ontology: Ontology = {
 describe('OntologyPublicationModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
     const permissions = {
       ...DEFAULT_ENTITY_PERMISSION,
       EditAll: true,
@@ -163,6 +169,45 @@ describe('OntologyPublicationModal', () => {
     expect(screen.getByRole('textbox', { name: 'draft notes' })).toHaveValue(
       'Keep these notes'
     );
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
+
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('keeps the picker, Change ontology, tabs and close in AI mode', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const onClose = jest.fn();
+    render(
+      <OntologyPublicationModal
+        canEdit={false}
+        ontologies={[ontology]}
+        onClose={onClose}
+      />
+    );
+
+    expect(screen.getByTestId('ontology-publication-picker')).toBeVisible();
+
+    fireEvent.click(
+      screen.getByTestId('ontology-publication-select-' + ontology.id)
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'label.review-publish' })
+    ).toBeVisible();
+    expect(screen.getByText('· RetailCommerce')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-publication-tab-releases'));
+
+    expect(mockReleasePanel).toHaveBeenLastCalledWith(
+      expect.objectContaining({ ontology, view: 'releases' })
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.change-ontology' })
+    );
+
+    expect(screen.getByTestId('ontology-publication-picker')).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
 

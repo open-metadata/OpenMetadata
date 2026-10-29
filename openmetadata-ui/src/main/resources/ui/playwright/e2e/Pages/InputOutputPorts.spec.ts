@@ -1038,7 +1038,7 @@ test.describe('Input Output Ports', () => {
           .getByRole('button', { name: 'Cancel', exact: true })
           .click();
 
-        await expect(page.getByRole('dialog')).not.toBeVisible();
+        await expect(dialog).not.toBeVisible();
       });
 
       await test.step('Verify port still exists', async () => {
