@@ -493,10 +493,49 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   public List<Metric> updateManyEntitiesForImport(
       List<Metric> originals, List<Metric> updates, String updatedBy, String impersonatedBy) {
+    // Read before the batch replaces the CONTAINS edges: the originals are loaded without them.
+    Map<UUID, UUID> previousParentIds = parentIdsOf(originals);
     List<Metric> updated =
         super.updateManyEntitiesForImport(originals, updates, updatedBy, impersonatedBy);
     reconcileImportedHierarchyGroups(updated);
+    refreshParentsOfMovedMetrics(previousParentIds, updated);
     return updated;
+  }
+
+  private Map<UUID, UUID> parentIdsOf(List<Metric> metrics) {
+    return daoCollection
+        .relationshipDAO()
+        .findFromBatch(
+            entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, NON_DELETED)
+        .stream()
+        .collect(
+            Collectors.toMap(
+                record -> UUID.fromString(record.getToId()),
+                record -> UUID.fromString(record.getFromId()),
+                (first, ignored) -> first));
+  }
+
+  /**
+   * The batch import path never runs MetricUpdater.updateParent, so a parent changed in a CSV
+   * refreshed neither parent's search document. This does the same for each moved metric.
+   */
+  private void refreshParentsOfMovedMetrics(
+      Map<UUID, UUID> previousParentIds, List<Metric> metrics) {
+    Set<UUID> refreshed = new HashSet<>();
+    for (Metric metric : listOrEmpty(metrics)) {
+      UUID previousParentId = previousParentIds.get(metric.getId());
+      UUID currentParentId = metric.getParent() == null ? null : metric.getParent().getId();
+      if (!Objects.equals(previousParentId, currentParentId)) {
+        refreshParentOnce(previousParentId, refreshed);
+        refreshParentOnce(currentParentId, refreshed);
+      }
+    }
+  }
+
+  private void refreshParentOnce(UUID parentId, Set<UUID> refreshed) {
+    if (parentId != null && refreshed.add(parentId)) {
+      refreshSearchDocument(new EntityReference().withId(parentId).withType(METRIC));
+    }
   }
 
   private void reconcileImportedHierarchyGroups(List<Metric> metrics) {

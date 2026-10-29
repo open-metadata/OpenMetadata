@@ -1018,6 +1018,35 @@ public class MetricGroupResourceIT {
   }
 
   @Test
+  void csvReparentRefreshesBothParentsChildrenCount(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Metric oldParent = createMetric(ns, "csv_move_old_parent");
+    Metric newParent = createMetric(ns, "csv_move_new_parent");
+    Metric child = createChild(ns, "csv_move_child", oldParent);
+    awaitMetricSearchDocument(
+        rest,
+        oldParent.getId(),
+        document -> assertEquals(1, document.path("childrenCount").asInt()));
+
+    String exported = SdkClients.adminClient().metrics().exportCsv(child.getFullyQualifiedName());
+    String moved =
+        exported.replace(oldParent.getFullyQualifiedName(), newParent.getFullyQualifiedName());
+    CsvImportResult result =
+        JSON.readValue(
+            SdkClients.adminClient().metrics().importCsv("*", moved, false), CsvImportResult.class);
+    assertEquals(1, result.getNumberOfRowsPassed(), result.getImportResultsCsv());
+
+    awaitMetricSearchDocument(
+        rest,
+        oldParent.getId(),
+        document -> assertEquals(0, document.path("childrenCount").asInt()));
+    awaitMetricSearchDocument(
+        rest,
+        newParent.getId(),
+        document -> assertEquals(1, document.path("childrenCount").asInt()));
+  }
+
+  @Test
   void groupMutationsAndHardDeleteRefreshMemberSearchDocuments(TestNamespace ns) throws Exception {
     RestClient rest = RestClient.admin();
     Metric metric = createMetric(ns, "search_refresh_member");
