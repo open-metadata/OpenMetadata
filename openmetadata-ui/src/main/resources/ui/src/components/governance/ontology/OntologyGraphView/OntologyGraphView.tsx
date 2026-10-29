@@ -148,24 +148,33 @@ const registerInverse = async ({
 
 /**
  * Links the unlinked inverse with this id back to the type that names it, whatever a retry is
- * called, so a relabelled retry never gives it a second primary. While nothing names it, it is
- * returned for the draft to reuse.
+ * called, so a relabelled retry never gives it a second primary. The registry comes back with the
+ * linked inverse in place, so a retry drawn under the inverse's label is planned as a pair. While
+ * nothing names the inverse, it is returned for the draft to reuse.
  */
 const finishUnlinkedPair = async (
   registry: readonly RelationshipType[],
   id: string | undefined
-): Promise<RelationshipType | undefined> => {
+): Promise<{
+  registry: readonly RelationshipType[];
+  unlinked?: RelationshipType;
+}> => {
   const unlinked = registry.find((type) => type.id === id && !type.inverse);
   if (!unlinked) {
-    return undefined;
+    return { registry };
   }
   const primary = registry.find((type) => type.inverse?.id === unlinked.id);
   if (!primary) {
-    return unlinked;
+    return { registry, unlinked };
   }
-  await patchRelationshipType(unlinked.id, buildInverseBackLink(primary));
+  const linked = await patchRelationshipType(
+    unlinked.id,
+    buildInverseBackLink(primary)
+  );
 
-  return undefined;
+  return {
+    registry: registry.map((type) => (type === unlinked ? linked : type)),
+  };
 };
 
 interface RelationshipTypeDialogProps {
@@ -507,9 +516,8 @@ const OntologyGraphView = ({
       }
       // The cached list is up to 30 s old. A type registered since then is reused with its inverse,
       // and new names are chosen apart from everything the registry holds now.
-      const registry = await loadRegistry();
-      const unlinked = await finishUnlinkedPair(
-        registry,
+      const { registry, unlinked } = await finishUnlinkedPair(
+        await loadRegistry(),
         unlinkedInverseId.current
       );
       unlinkedInverseId.current = unlinked?.id;
