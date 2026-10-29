@@ -389,11 +389,22 @@ public class SearchAggregateRbacIT {
       DatabaseSchema schema,
       Domain domain,
       Deque<Runnable> cleanup) {
+    return createTable(admin, name, schema, domain, COLUMN.getName(), cleanup);
+  }
+
+  private Table createTable(
+      OpenMetadataClient admin,
+      String name,
+      DatabaseSchema schema,
+      Domain domain,
+      String columnName,
+      Deque<Runnable> cleanup) {
     CreateTable create =
         new CreateTable()
             .withName(name)
             .withDatabaseSchema(schema.getFullyQualifiedName())
-            .withColumns(List.of(COLUMN));
+            .withColumns(
+                List.of(new Column().withName(columnName).withDataType(ColumnDataType.INT)));
     if (domain != null) {
       create.withDomains(List.of(domain.getFullyQualifiedName()));
     }
@@ -469,6 +480,58 @@ public class SearchAggregateRbacIT {
     } finally {
       drain(cleanup);
     }
+  }
+
+  /**
+   * The column grid aggregates over the same documents search does, so with search access control
+   * on, a restricted caller sees only the columns of tables their policies let them find.
+   */
+  @Test
+  void test_columnGrid_restrictedUserSeesOnlyOwnDomainColumns(TestNamespace ns) throws Exception {
+    assumeTheServerTrustsHarnessSignedTokens();
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain own = createDomain(admin, p + "_own", cleanup);
+      Domain foreign = createDomain(admin, p + "_foreign", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      String ownColumn = p + "_owncol";
+      String foreignColumn = p + "_foreigncol";
+      createTable(admin, p + "_own_tbl", schema, own, ownColumn, cleanup);
+      createTable(admin, p + "_foreign_tbl", schema, foreign, foreignColumn, cleanup);
+
+      OpenMetadataClient restricted = createRestrictedUserClient(admin, p, own, cleanup);
+
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      Awaitility.await("both columns are indexed")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> assertEquals(Set.of(ownColumn, foreignColumn), gridColumnNames(admin, p)));
+      assertEquals(Set.of(ownColumn), gridColumnNames(restricted, p));
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  private Set<String> gridColumnNames(OpenMetadataClient client, String pattern) throws Exception {
+    String grid =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/columns/grid",
+                null,
+                RequestOptions.builder().queryParam("columnNamePattern", pattern).build());
+    Set<String> names = new HashSet<>();
+    MAPPER
+        .readTree(grid)
+        .path("columns")
+        .forEach(item -> names.add(item.path("columnName").asText()));
+    return names;
   }
 
   private boolean disableSearchAccessControl(OpenMetadataClient admin) throws Exception {

@@ -116,6 +116,9 @@ public class ColumnRepository {
     // Row-level filters (metadataStatus / hasConflicts / hasMissingMetadata) are applied inside the
     // aggregator over the fully-grouped columns, before pagination, so page counts and per-page
     // size stay correct (#26824). Nothing to post-process here.
+    if (securityContext != null) {
+      request.setSubjectContext(DefaultAuthorizer.getSubjectContext(securityContext));
+    }
     return columnAggregator.aggregateColumns(request);
   }
 
