@@ -416,15 +416,16 @@ public final class CredentialVerifier implements Managed {
    * <p>When the deep verify is due, a cycle begins over the subjects cached then. Each pass reads
    * the next of them in full with every decrypt forced, a chunk at a time, and starts another chunk
    * only while the pass has run for less than the deep budget, maxStaleness minus twice
-   * sweepInterval. The next pass starts sweepInterval after this one ends, so an entry reconfirmed
-   * by both ages about sweepInterval plus one chunk plus the longer of the deep budget and the time
-   * this pass took to drain and reconfirm, however slow the decrypts. A drain that holds this thread
-   * when the next pass is due adds its own time. A subject the deep read leaves out is unconfirmed,
-   * so its next check reads it again, and it does not fail the cycle. A deep read that throws, on a
-   * statement failure or on an {@link Error} for one subject, which the source's per-subject guard
-   * does not catch, changes no entry. The next cycle begins deepVerifyInterval after this one
-   * began, or {@code min(deepVerifyInterval, 1 min)} after it when one of its reads threw, and at
-   * the first pass after this one ends when that is later.
+   * sweepInterval. The budget leaves one sweepInterval for the chunk that overruns it and one for
+   * the wait before the next pass, so however many subjects the cycle covers, an entry stays within
+   * maxStaleness between passes while a chunk takes less than sweepInterval and draining and
+   * reconfirming fit in the budget and take about as long in each pass. A drain that holds this
+   * thread when the next pass is due delays that pass. A subject the deep read leaves out is
+   * unconfirmed, so its next check reads it again, and it does not fail the cycle. A deep read that
+   * throws, on a statement failure or on an {@link Error} for one subject, which the source's
+   * per-subject guard does not catch, changes no entry. The next cycle begins with the first pass
+   * that starts after this one has ended and once deepVerifyInterval has passed since this one
+   * began, or {@code min(deepVerifyInterval, 1 min)} when one of its reads threw.
    */
   void sweepOnce() {
     long sweepStart = ticker.read();

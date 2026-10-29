@@ -36,9 +36,9 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
     `requireCurrentCredential` with that token's own claims before its other checks.
     `SocketAddressFilter.validatePrefixedTokenRequest` calls it after `verifySignatureOnly`, for the
     WebSocket handshake and for the MCP HTTP transport, so the transport checks each request once.
-    An MCP tool or prompt call is checked again by its callback, through
-    `getCatalogSecurityContext`. Callers outside this repository call it after their own signature
-    check.
+    An MCP tool call is checked again by its callback, through `getCatalogSecurityContext`. A prompt
+    call's callback checks the token in the prompt's `Authorization` argument. Callers outside this
+    repository call `checkValidationsForToken` after their own signature check.
   - `JwtFilter.verifySignatureOnly` classifies nothing and calls no `require`. Apart from
     `SocketAddressFilter`, only the probes that grant no access use it (`BotTokenCheck`,
     `TestLoginService`, `SystemRepository`).
@@ -76,19 +76,20 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   a bot whose secret lives in an external secrets manager makes one call to it. A principal the deep
   read cannot convert is unconfirmed from that read on. Its next check reads it again and answers
   503 until a read converts it, and no sweep confirms it by fingerprint. A deep pass covers the
-  principals cached when it begins, 10 to a read (`DEEP_CHUNK_SIZE`, a constant, not a setting).
-  Each sweep pass drains the queued nudges and reconfirms every batch first, then makes at least one
-  of these reads. It starts another only while the pass has run less than the deep budget,
-  `maxStaleness` minus twice `sweepInterval` (1 s by default). Between two reconfirmations an entry
-  then ages about `sweepInterval`, plus one of these reads, plus the longer of the deep budget and
-  the time the pass took to drain and reconfirm. A drain that holds the sweep thread when the next
-  pass is due adds its own time. So entries stay within `maxStaleness` while draining and
-  reconfirming fit in the deep budget and 10 decrypts take no longer than `sweepInterval`, however
-  many principals the deep pass covers. A nudge re-read decrypts a changed secret, so a burst of
-  nudges for bots whose decrypts are slow can break the first condition. The next deep pass begins
-  `deepVerifyInterval` after this one began, or `min(deepVerifyInterval, 1 min)` after it when one
-  of its reads threw, and at the first sweep after this one ends when that is later. A read that
-  throws changes no entry.
+  principals cached when it begins, at most 10 to a read (`DEEP_CHUNK_SIZE`, a constant, not a
+  setting), fewer when `batchSize` is smaller. Each sweep pass drains the queued nudges and
+  reconfirms every batch first, then makes at least one of these reads. It starts another only while
+  the pass has run less than the deep budget, `maxStaleness` minus twice `sweepInterval` (1 s by
+  default), and the rest of the deep pass carries over to later passes. The budget leaves one
+  `sweepInterval` for the read that overruns it and one for the wait before the next pass. So
+  however many principals the deep pass covers, entries stay within `maxStaleness` between passes
+  while one of these reads takes less than `sweepInterval`, and draining and reconfirming fit in the
+  budget and take about as long in each pass. Otherwise entries can age past `maxStaleness`, and
+  their checks then read the database. A burst of nudges for bots whose decrypts are slow can do
+  that, because a nudge re-read decrypts a changed secret and a drain that holds the sweep thread
+  delays the next pass. The next deep pass begins with the first sweep pass that starts after this
+  one has ended and once `deepVerifyInterval` has passed since this one began, or
+  `min(deepVerifyInterval, 1 min)` when one of its reads threw. A read that throws changes no entry.
 - When the verifier cannot confirm within `loadTimeout` (2 s), the request gets 503 with
   `Retry-After` (the sweep interval, rounded up), and an MCP tool or prompt call gets JSON-RPC
   error -32003. It never gets 401, and it is never accepted unconfirmed. A check whose thread is
