@@ -47,6 +47,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.PipelineRepository;
+import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -133,7 +134,7 @@ class RdfLiveWriteTest {
     final RdfLiveWrite command = new RdfLiveWrite.EntityDelete(Entity.TABLE, UUID.randomUUID());
     assertThrows(
         RuntimeException.class,
-        () -> RdfProjectionHealth.withDurableRecovery(() -> replay(command)));
+        () -> command.apply(repository.forDelivery(RdfWriteDelivery.QUEUED)));
     assertFalse(RdfProjectionHealth.isDegraded());
     RdfProjectionHealth.markDegraded();
     assertTrue(RdfProjectionHealth.isDegraded());

@@ -9,7 +9,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -131,7 +131,9 @@ class RdfIndexAppTest {
     lenient().when(mockRdfRepository.configuredAppendPayloadBytes()).thenReturn(16L << 20);
     // The repository mock is shared by every test, so stub without invoking earlier answers.
     lenient()
-        .doAnswer(invocation -> invocation.<Supplier<?>>getArgument(1).get())
+        .doAnswer(
+            invocation ->
+                invocation.<Function<RdfRepository, ?>>getArgument(1).apply(mockRdfRepository))
         .when(mockRdfRepository)
         .withServingWritesPaused(anyString(), any());
     lenient().doReturn(Duration.ofMinutes(5)).when(mockRdfRepository).maintenanceBudget();
@@ -327,6 +329,25 @@ class RdfIndexAppTest {
 
       assertNull(buildField.get(testApp));
       verify(mockRdfRepository, never()).activateDataset(anyString(), anyString(), anyString());
+      verify(mockRdfRepository, never()).clearRetiredDataset(anyString());
+    }
+
+    @Test
+    @DisplayName(
+        "the dataset a promotion retired is emptied; a failure there does not fail the run")
+    void retiredDatasetIsEmptiedBestEffort() throws Exception {
+      TestableRdfIndexApp testApp = appWith(true, true);
+      var method = RdfIndexApp.class.getDeclaredMethod("clearRetiredDataset", String.class);
+      method.setAccessible(true);
+      doReturn(COMPACTED).when(mockRdfRepository).clearRetiredDataset("openmetadata");
+
+      method.invoke(testApp, "openmetadata");
+      verify(mockRdfRepository).clearRetiredDataset("openmetadata");
+
+      doThrow(new IllegalStateException("Fuseki unavailable"))
+          .when(mockRdfRepository)
+          .clearRetiredDataset("openmetadata");
+      assertDoesNotThrow(() -> method.invoke(testApp, "openmetadata"));
     }
   }
 
