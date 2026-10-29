@@ -280,6 +280,18 @@ describe('AlertsClassBase', () => {
     });
   });
 
+  describe('formatDestinations', () => {
+    // A test send finds a masked destination's stored secrets by its id.
+    it('should keep the destination id when not given the stored alert', () => {
+      const destinations = alertsClass.formatDestinations({
+        ...mockModifiedData,
+        destinations: [{ ...mockDestinationData, id: 'destination-id-1' }],
+      });
+
+      expect(destinations?.[0].id).toBe('destination-id-1');
+    });
+  });
+
   describe('getAlertCreationData', () => {
     it('should create alert data with all required fields', () => {
       const result = alertsClass.getAlertCreationData(

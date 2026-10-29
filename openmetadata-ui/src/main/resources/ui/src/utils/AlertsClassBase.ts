@@ -195,6 +195,7 @@ class AlertsClassBase {
 
       return {
         ...(initialDestination ?? {}),
+        id: d.id,
         type: d.type,
         config: {
           ...d.config,
