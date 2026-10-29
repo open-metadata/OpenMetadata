@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
@@ -35,7 +36,9 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.credentials.CredentialUnavailableException;
+import org.openmetadata.service.socket.HandshakeRejectedException;
 import org.openmetadata.service.socket.SocketAddressFilter;
 
 /** What a client sees when the push-feed WebSocket upgrade does not accept its handshake. */
@@ -73,6 +76,24 @@ class OpenMetadataApplicationPushFeedUpgradeTest {
 
     assertEquals(503, answer.statusCode());
     assertEquals(Optional.of("2"), answer.headers().firstValue("Retry-After"));
+  }
+
+  @Test
+  void upgradeAnswersARejectedHandshakeWithItsStatus() throws Exception {
+    when(websocketFilter.authenticate(any()))
+        .thenThrow(
+            new HandshakeRejectedException(
+                HttpServletResponse.SC_FORBIDDEN, "Socket user does not match session"));
+
+    assertEquals(403, openFeedSocketExpectingRejection().statusCode());
+  }
+
+  @Test
+  void upgradeAnswersUnauthorizedWhenAuthenticationFails() throws Exception {
+    when(websocketFilter.authenticate(any()))
+        .thenThrow(new AuthenticationException("Unknown WebSocket principal"));
+
+    assertEquals(401, openFeedSocketExpectingRejection().statusCode());
   }
 
   private HttpResponse<?> openFeedSocketExpectingRejection() {
