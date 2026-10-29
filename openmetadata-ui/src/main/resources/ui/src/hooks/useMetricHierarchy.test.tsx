@@ -621,6 +621,21 @@ describe('useMetricHierarchy', () => {
       });
     });
 
+    it('keeps a matched metric collapsed even when a child also matches', async () => {
+      (getMetricSearchPaths as jest.Mock).mockResolvedValue({
+        matchIds: new Set(['root-id', 'canada-id']),
+        ancestorIds: new Set(['root-id']),
+        complete: true,
+      });
+      const { result } = renderSearch('revenue');
+
+      await waitFor(() => expect(getMetricSearchPaths).toHaveBeenCalled());
+      await waitFor(() => expect(result.current.topLevelNodes).toHaveLength(1));
+
+      expect(result.current.expandedRowKeys).toEqual([]);
+      expect(getMetrics).not.toHaveBeenCalled();
+    });
+
     it('re-fetches auto-expanded branches when returning to a cached query', async () => {
       (getMetricSearchPaths as jest.Mock).mockResolvedValue({
         matchIds: new Set(['canada-id']),

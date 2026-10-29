@@ -445,9 +445,13 @@ export const useMetricHierarchy = ({
       ...Object.values(childrenByParentId).flatMap(({ rows }) => rows),
     ];
     loadedMetrics
+      // A metric that is itself a match is already in view; opening it would bury it under its
+      // children, so it stays collapsed until the user expands it.
       .filter(
         ({ id }) =>
-          searchPaths.ancestorIds.has(id) && !autoExpandedIds.current.has(id)
+          searchPaths.ancestorIds.has(id) &&
+          !searchPaths.matchIds.has(id) &&
+          !autoExpandedIds.current.has(id)
       )
       .forEach((metric) => {
         autoExpandedIds.current.add(metric.id);
