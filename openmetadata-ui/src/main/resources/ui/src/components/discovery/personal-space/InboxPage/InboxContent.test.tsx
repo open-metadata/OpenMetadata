@@ -27,6 +27,7 @@ jest.mock('./useInboxCounts', () => ({
 
 interface CapturedActivityTabProps {
   dateRange?: InboxDateRange;
+  initialFilter?: string;
   isFiltered?: boolean;
   onDatePresetChange: (key: string) => void;
 }
@@ -132,11 +133,13 @@ jest.mock('react-i18next', () => ({
 }));
 
 let mockPathname = '/inbox';
+let mockSearch = '';
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useLocation: () => ({ pathname: mockPathname }),
   useNavigate: () => mockNavigate,
+  useSearchParams: () => [new URLSearchParams(mockSearch)],
 }));
 
 import InboxContent from './InboxContent';
@@ -145,6 +148,7 @@ describe('InboxContent', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPathname = '/inbox';
+    mockSearch = '';
     mockActivityCount = { total: 5, isCapped: false };
   });
 
@@ -152,6 +156,20 @@ describe('InboxContent', () => {
     render(<InboxContent />);
 
     expect(screen.getByTestId('activity')).toBeInTheDocument();
+  });
+
+  it('opens Activity on the sub-tab a link names', () => {
+    mockSearch = 'filter=my-assets';
+    render(<InboxContent />);
+
+    expect(mockActivityTabProps.initialFilter).toBe('my-assets');
+  });
+
+  it('ignores a filter the Activity tab does not have', () => {
+    mockSearch = 'filter=bogus';
+    render(<InboxContent />);
+
+    expect(mockActivityTabProps.initialFilter).toBeUndefined();
   });
 
   it('navigates to the Tasks route when the Tasks tab is selected', () => {

@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import java.util.concurrent.TimeUnit;
+import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -34,6 +35,7 @@ class OutboundHttpClientsTest {
   void getClientClampsTimeoutsAndCarriesTheOutboundPolicy() {
     ClientBuilder builder = mock(ClientBuilder.class);
     Client client = mock(Client.class);
+    when(builder.withConfig(any())).thenReturn(builder);
     when(builder.connectTimeout(5, TimeUnit.SECONDS)).thenReturn(builder);
     when(builder.readTimeout(120, TimeUnit.SECONDS)).thenReturn(builder);
     when(builder.build()).thenReturn(client);
@@ -48,6 +50,7 @@ class OutboundHttpClientsTest {
       verify(builder).readTimeout(120, TimeUnit.SECONDS);
       verify(builder).property(ClientProperties.FOLLOW_REDIRECTS, false);
       verify(builder).register(any(OutboundUrlPolicyFilter.class));
+      verify(builder).withConfig(any(ClientConfig.class));
     }
   }
 }
