@@ -151,11 +151,7 @@ final class WorkflowSignalDispatcher {
       final EventSubscription subscription,
       final String signal,
       final Map<String, Object> variables) {
-    final ProcessDefinition definition =
-        repository
-            .createProcessDefinitionQuery()
-            .processDefinitionId(subscription.getProcessDefinitionId())
-            .singleResult();
+    final ProcessDefinition definition = definitionOf(subscription);
     if (definition == null) {
       return false;
     }
@@ -163,11 +159,26 @@ final class WorkflowSignalDispatcher {
       return true;
     }
     if (subscription.getExecutionId() == null) {
-      start(subscription, definition, variables);
+      try {
+        start(subscription, definition, variables);
+      } catch (RuntimeException startFailure) {
+        // A redeploy's drain can delete this version between the lookup and the start.
+        if (definitionOf(subscription) == null) {
+          return false;
+        }
+        throw startFailure;
+      }
     } else {
       resume(subscription, signal, variables);
     }
     return true;
+  }
+
+  private ProcessDefinition definitionOf(final EventSubscription subscription) {
+    return repository
+        .createProcessDefinitionQuery()
+        .processDefinitionId(subscription.getProcessDefinitionId())
+        .singleResult();
   }
 
   private void start(

@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -48,6 +49,8 @@ public class WorkflowRedeploySignalIT {
   private static final Duration CREATE_INTERVAL = Duration.ofMillis(300);
   private static final Duration REDEPLOYING_AFTER_CREATES = Duration.ofSeconds(15);
   private static final Duration STATUS_TIMEOUT = Duration.ofMinutes(3);
+  private static final int OVERLAPPING_REDEPLOYERS = 2;
+  private static final int REDEPLOYS_PER_REDEPLOYER = 10;
 
   @Test
   void entityCreatedWhileItsWorkflowRedeploysStillStartsTheWorkflow(TestNamespace ns)
@@ -56,41 +59,100 @@ public class WorkflowRedeploySignalIT {
     ObjectNode request = stageWorkflowRequest(ns, marker);
     JsonNode workflow = JsonUtils.readTree(execute(HttpMethod.POST, WORKFLOWS_PATH, request));
     try {
-      AtomicBoolean redeploy = new AtomicBoolean(true);
-      AtomicInteger redeploys = new AtomicInteger();
-      CompletableFuture<Void> redeploying =
-          CompletableFuture.runAsync(
-              () -> {
-                while (redeploy.get()) {
-                  request.put("description", "Redeploy " + redeploys.incrementAndGet());
-                  execute(HttpMethod.PUT, WORKFLOWS_PATH, request);
-                }
-              });
-      List<Domain> domains = new ArrayList<>();
-      try {
-        for (int i = 0; i < DOMAINS_CREATED_DURING_REDEPLOYS; i++) {
-          domains.add(createDomain(ns, marker + i));
-          Thread.sleep(CREATE_INTERVAL.toMillis());
-        }
-        // The workflow consumer handles the events after they are created: keep redeploying while
-        // it does.
-        Thread.sleep(REDEPLOYING_AFTER_CREATES.toMillis());
-      } finally {
-        redeploy.set(false);
-      }
-      redeploying.get();
-      assertTrue(redeploys.get() > 1, "the workflow must redeploy while the domains are created");
+      List<Domain> domains = createDomainsWhileRedeploying(ns, marker, request);
       assertTrue(
           domains.stream().noneMatch(domain -> domain.getEntityStatus() == EntityStatus.DRAFT),
           "Draft must come from the workflow, not from the stage a domain is created in");
 
       awaitWorkflowSetDraft(domains);
     } finally {
-      execute(
-          HttpMethod.DELETE,
-          WORKFLOWS_PATH + "/" + workflow.get("id").asText() + "?hardDelete=true&recursive=true",
-          null);
+      deleteWorkflow(workflow);
     }
+  }
+
+  @Test
+  void overlappingRedeploysLeaveTheWorkflowDeployed(TestNamespace ns) throws Exception {
+    String marker = ns.prefix(MARKER);
+    ObjectNode request = stageWorkflowRequest(ns, marker);
+    JsonNode workflow = JsonUtils.readTree(execute(HttpMethod.POST, WORKFLOWS_PATH, request));
+    try {
+      CompletableFuture<?>[] redeployers = new CompletableFuture<?>[OVERLAPPING_REDEPLOYERS];
+      for (int r = 0; r < redeployers.length; r++) {
+        ObjectNode own = request.deepCopy();
+        int redeployer = r;
+        redeployers[r] =
+            CompletableFuture.runAsync(
+                () -> {
+                  for (int i = 0; i < REDEPLOYS_PER_REDEPLOYER; i++) {
+                    own.put("description", "Redeployer " + redeployer + " deploy " + i);
+                    execute(HttpMethod.PUT, WORKFLOWS_PATH, own);
+                  }
+                });
+      }
+      CompletableFuture.allOf(redeployers).get();
+
+      awaitWorkflowSetDraft(List.of(createDomain(ns, marker + "after")));
+    } finally {
+      deleteWorkflow(workflow);
+    }
+  }
+
+  @Test
+  void suspendedWorkflowRedeployedTakesNoSignal(TestNamespace ns) throws Exception {
+    String marker = ns.prefix(MARKER);
+    ObjectNode request = stageWorkflowRequest(ns, marker);
+    JsonNode workflow = JsonUtils.readTree(execute(HttpMethod.POST, WORKFLOWS_PATH, request));
+    try {
+      changeWorkflowState(workflow, "suspend");
+      List<Domain> whileSuspended = createDomainsWhileRedeploying(ns, marker, request);
+
+      changeWorkflowState(workflow, "resume");
+      // One consumer handles the events in order: once this domain reaches the workflow, every
+      // event of the domains created while it was suspended has been handled too.
+      awaitWorkflowSetDraft(List.of(createDomain(ns, marker + "resumed")));
+      Map<String, EntityStatus> started =
+          whileSuspended.stream()
+              .map(domain -> SdkClients.adminClient().domains().get(domain.getId().toString()))
+              .filter(domain -> domain.getEntityStatus() == EntityStatus.DRAFT)
+              .collect(Collectors.toMap(Domain::getName, Domain::getEntityStatus));
+      assertTrue(started.isEmpty(), "A suspended workflow started for " + started.keySet());
+    } finally {
+      deleteWorkflow(workflow);
+    }
+  }
+
+  /**
+   * Creates marked domains while the workflow redeploys, and keeps redeploying a while after:
+   * the workflow consumer handles the events after the domains are created.
+   */
+  private static List<Domain> createDomainsWhileRedeploying(
+      TestNamespace ns, String marker, ObjectNode request) throws Exception {
+    AtomicBoolean redeploy = new AtomicBoolean(true);
+    AtomicInteger redeploys = new AtomicInteger();
+    ObjectNode own = request.deepCopy();
+    CompletableFuture<Void> redeploying =
+        CompletableFuture.runAsync(
+            () -> {
+              while (redeploy.get()) {
+                own.put("description", "Redeploy " + redeploys.incrementAndGet());
+                execute(HttpMethod.PUT, WORKFLOWS_PATH, own);
+              }
+            });
+    List<Domain> domains = new ArrayList<>();
+    try {
+      for (int i = 0; i < DOMAINS_CREATED_DURING_REDEPLOYS; i++) {
+        domains.add(createDomain(ns, marker + i));
+        Thread.sleep(CREATE_INTERVAL.toMillis());
+      }
+      Thread.sleep(REDEPLOYING_AFTER_CREATES.toMillis());
+    } finally {
+      redeploy.set(false);
+      // A PUT still in flight would recreate the workflow after the test deletes it.
+      redeploying.exceptionally(ignored -> null).join();
+    }
+    redeploying.get();
+    assertTrue(redeploys.get() > 1, "the workflow must redeploy while the domains are created");
+    return domains;
   }
 
   private static void awaitWorkflowSetDraft(List<Domain> domains) {
@@ -166,6 +228,20 @@ public class WorkflowRedeploySignalIT {
                     .withName(name)
                     .withDomainType(CreateDomain.DomainType.AGGREGATE)
                     .withDescription("Domain created while its workflow redeploys")));
+  }
+
+  private static void changeWorkflowState(JsonNode workflow, String action) {
+    execute(
+        HttpMethod.PUT,
+        WORKFLOWS_PATH + "/name/" + workflow.get("name").asText() + "/" + action,
+        new HashMap<>());
+  }
+
+  private static void deleteWorkflow(JsonNode workflow) {
+    execute(
+        HttpMethod.DELETE,
+        WORKFLOWS_PATH + "/" + workflow.get("id").asText() + "?hardDelete=true&recursive=true",
+        null);
   }
 
   private static String execute(HttpMethod method, String path, Object body) {

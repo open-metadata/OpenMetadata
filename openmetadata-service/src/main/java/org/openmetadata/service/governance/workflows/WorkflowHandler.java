@@ -569,10 +569,6 @@ public class WorkflowHandler {
     }
   }
 
-  /**
-   * Flowable deploys every new process-definition version active. A workflow stored as suspended
-   * has its new trigger versions suspended too, so neither their timers nor a trigger start it.
-   */
   private static Map<String, Integer> deployedVersionsByKey(
       RepositoryService repositoryService, Set<String> deploymentIds) {
     Map<String, Integer> versions = new HashMap<>();
@@ -585,6 +581,10 @@ public class WorkflowHandler {
     return versions;
   }
 
+  /**
+   * Flowable deploys every new process-definition version active. A workflow stored as suspended
+   * has its new trigger versions suspended too, so neither their timers nor a trigger start it.
+   */
   private void keepSuspended(WorkflowDefinition workflowDefinition) {
     if (Boolean.TRUE.equals(workflowDefinition.getSuspended())) {
       suspendWorkflow(workflowDefinition.getName());

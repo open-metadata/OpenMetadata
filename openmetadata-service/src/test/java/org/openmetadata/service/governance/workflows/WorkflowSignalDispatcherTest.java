@@ -1,6 +1,7 @@
 package org.openmetadata.service.governance.workflows;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.RETURNS_SELF;
@@ -86,6 +87,34 @@ class WorkflowSignalDispatcherTest {
 
     verify(builder).processDefinitionId("trigger:2");
     verify(builder).start();
+  }
+
+  @Test
+  void startThatLosesTheRaceWithTheDrainGoesToTheReplacement() {
+    subscriptionsRead(
+        List.of(startSubscription("sub-v1", "trigger:1", "trigger-start")),
+        List.of(startSubscription("sub-v2", "trigger:2", "trigger-start")));
+    ProcessDefinition drained = active("trigger:1");
+    when(repository.createProcessDefinitionQuery().processDefinitionId("trigger:1").singleResult())
+        .thenReturn(drained, (ProcessDefinition) null);
+    definition("trigger:2", active("trigger:2"));
+    when(builder.start())
+        .thenThrow(new IllegalStateException("no deployed process definition found"))
+        .thenReturn(mock(ProcessInstance.class));
+
+    dispatcher().dispatch(SIGNAL, VARIABLES);
+
+    verify(builder).processDefinitionId("trigger:2");
+    verify(builder, times(2)).start();
+  }
+
+  @Test
+  void startFailureOnALiveVersionIsStillAFailure() {
+    subscriptionsRead(List.of(startSubscription("sub-v1", "trigger:1", "trigger-start")));
+    definition("trigger:1", active("trigger:1"));
+    when(builder.start()).thenThrow(new IllegalArgumentException("Invalid workflow variables"));
+
+    assertThrows(IllegalArgumentException.class, () -> dispatcher().dispatch(SIGNAL, VARIABLES));
   }
 
   @Test
