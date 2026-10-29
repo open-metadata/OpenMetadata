@@ -20,14 +20,23 @@ import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrate;
 import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.SqlLogger;
+import org.jdbi.v3.core.statement.SqlStatements;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.tasks.Task;
@@ -79,6 +88,36 @@ class OntologyReleaseReviewListTest {
         });
   }
 
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void theCallersGlossaryApprovalsAreNeverReadToListTheirReleaseReview(ConnectionType dialect) {
+    withReviews(
+        dialect,
+        reviews -> {
+          User requester = reviews.user("requester");
+          User steward = reviews.user("steward");
+          Set<UUID> tasks =
+              new HashSet<>(
+                  List.of(
+                      reviews.glossaryApproval("customer", requester, steward),
+                      reviews.glossaryApproval("account", requester, steward)));
+          UUID review =
+              reviews.inReview("release", requester, List.of(steward), List.of(steward), List.of());
+          tasks.add(review);
+
+          Listing pending = reviews.listing(View.PENDING, steward);
+          Listing created = reviews.listing(View.CREATED, requester);
+
+          assertAll(
+              () -> assertEquals(List.of("release"), pending.releases()),
+              () -> assertEquals(Set.of(review), pending.tasksRead(tasks)),
+              () -> assertEquals(List.of("release"), created.releases()),
+              () -> assertEquals(Set.of(review), created.tasksRead(tasks)));
+        });
+  }
+
   private static TaskReviewVote approval(User voter) {
     return new TaskReviewVote()
         .withVoter(voter.getEntityReference())
@@ -101,9 +140,14 @@ class OntologyReleaseReviewListTest {
               new EntityRelationshipRepository(Entity.getCollectionDAO()));
           try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class)) {
             new UserRepository();
+            new GlossaryTermRepository();
             new OntologyRepository();
             test.accept(
-                new Reviews(subjects, new OntologyReleaseRepository(), new TaskRepository()));
+                new Reviews(
+                    handle.getJdbi(),
+                    subjects,
+                    new OntologyReleaseRepository(),
+                    new TaskRepository()));
           } finally {
             Entity.setCollectionDAO(previous);
             Entity.setEntityRelationshipRepository(previousRelationships);
@@ -111,9 +155,21 @@ class OntologyReleaseReviewListTest {
         });
   }
 
+  private record Listing(List<String> releases, List<String> statements) {
+    /** A task counts as read when any statement of the listing names or binds its id. */
+    Set<UUID> tasksRead(Set<UUID> tasks) {
+      return tasks.stream()
+          .filter(
+              task ->
+                  statements.stream().anyMatch(statement -> statement.contains(task.toString())))
+          .collect(Collectors.toSet());
+    }
+  }
+
   private static final class Reviews {
     private final String run = UUID.randomUUID().toString().substring(0, 8);
     private final Map<UUID, String> labels = new HashMap<>();
+    private final Jdbi jdbi;
     private final MockedStatic<SubjectContext> subjects;
     private final OntologyReleaseRepository releases;
     private final TaskRepository tasks;
@@ -121,9 +177,11 @@ class OntologyReleaseReviewListTest {
     private long revision;
 
     private Reviews(
+        Jdbi jdbi,
         MockedStatic<SubjectContext> subjects,
         OntologyReleaseRepository releases,
         TaskRepository tasks) {
+      this.jdbi = jdbi;
       this.subjects = subjects;
       this.releases = releases;
       this.tasks = tasks;
@@ -195,6 +253,28 @@ class OntologyReleaseReviewListTest {
       return taskId;
     }
 
+    UUID glossaryApproval(String label, User requester, User steward) {
+      String name = label + run;
+      GlossaryTerm term =
+          new GlossaryTerm()
+              .withId(UUID.randomUUID())
+              .withName(name)
+              .withFullyQualifiedName("Business" + run + "." + name)
+              .withDescription(name)
+              .withVersion(0.1)
+              .withUpdatedAt(1L)
+              .withUpdatedBy("admin");
+      Entity.getCollectionDAO().glossaryTermDAO().insert(term, term.getFullyQualifiedName());
+      UUID taskId = UUID.randomUUID();
+      store(
+          openApproval(taskId, requester),
+          term.getEntityReference(),
+          requester,
+          List.of(steward),
+          List.of(steward));
+      return taskId;
+    }
+
     List<String> list(View view, User caller) {
       return releases
           .listReviews(view, caller.getName(), DEFAULT_PAGE_SIZE, null, release -> true)
@@ -202,6 +282,24 @@ class OntologyReleaseReviewListTest {
           .stream()
           .map(review -> labels.get(review.getRelease().getId()))
           .toList();
+    }
+
+    Listing listing(View view, User caller) {
+      SqlStatements statements = jdbi.getConfig(SqlStatements.class);
+      SqlLogger previous = statements.getSqlLogger();
+      List<String> executed = new ArrayList<>();
+      statements.setSqlLogger(
+          new SqlLogger() {
+            @Override
+            public void logBeforeExecution(StatementContext context) {
+              executed.add(context.getRenderedSql() + " " + context.getBinding());
+            }
+          });
+      try {
+        return new Listing(list(view, caller), executed);
+      } finally {
+        statements.setSqlLogger(previous);
+      }
     }
 
     private static Task openApproval(UUID taskId, User requester) {
