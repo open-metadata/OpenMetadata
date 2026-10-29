@@ -40,6 +40,15 @@ public final class NativeOntologyCsvCodec {
 
   public record Located(NativeOntologyDocument document, Map<String, Integer> propertyRows) {}
 
+  /** The header of the column that holds a property's field. */
+  public static String propertyColumn(final String field) {
+    return switch (field) {
+      case "kind" -> Column.PROPERTY_KIND.header();
+      case "isIdentifier" -> Column.IDENTIFIER.header();
+      default -> field;
+    };
+  }
+
   public static String write(final NativeOntologyDocument document) {
     return NativeOntologyCsvWriter.write(document);
   }
