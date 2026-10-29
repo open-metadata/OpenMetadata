@@ -470,8 +470,9 @@ OpenMetadata compacts the serving dataset itself:
   live graph or other datasets fill the volume: urgent compactions then stop for one interval,
   while the scheduled compaction still runs, and the server logs that the volume needs expanding.
 - **During indexing.** A recreate run clears the dataset, compacts it while it is empty, and
-  compacts again after loading. Blue/green runs compact the target before promotion and empty
-  the dataset the promotion retires.
+  compacts again after loading. When the image's write guard refuses the clear, the run compacts
+  to free the old pages and clears again once, so a reindex also recovers a full volume. Blue/green
+  runs compact the target before promotion and empty the dataset the promotion retires.
 
 Fuseki blocks every writer to a dataset for the whole compaction, so OpenMetadata pauses its own
 writes to the serving dataset first, on every server. Queued live writes wait in SQL and are

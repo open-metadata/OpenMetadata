@@ -41,6 +41,7 @@ import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.rdf.storage.CompactionResult;
+import org.openmetadata.service.rdf.storage.RdfStorageLowDiskException;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -954,6 +955,46 @@ class RdfIndexAppTest {
         final EventPublisherJob jobConfig = executeInPlaceRebuild();
 
         verify(mockRdfRepository).compact(any());
+        verify(mockRdfRepository, never()).reloadOntologies();
+        assertEquals(EventPublisherJob.Status.FAILED, jobConfig.getStatus());
+      } finally {
+        doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
+      }
+    }
+
+    @Test
+    @DisplayName("A clear the disk guard refuses compacts to make room, then clears and succeeds")
+    void clearRefusedForLowDiskCompactsThenRetries() throws Exception {
+      doThrow(new RdfStorageLowDiskException("maintenanceUpdate"))
+          .doNothing()
+          .when(mockRdfRepository)
+          .clearAllAsMaintenance(any());
+      try {
+        final EventPublisherJob jobConfig = executeInPlaceRebuild();
+
+        final InOrder reset = inOrder(mockRdfRepository);
+        reset.verify(mockRdfRepository).clearAllAsMaintenance(any());
+        reset.verify(mockRdfRepository).compact(any());
+        reset.verify(mockRdfRepository).clearAllAsMaintenance(any());
+        reset.verify(mockRdfRepository).compact(any());
+        reset.verify(mockRdfRepository).reloadOntologies();
+        assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
+      } finally {
+        doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
+      }
+    }
+
+    @Test
+    @DisplayName("A clear refused again after making room fails the run after a final compaction")
+    void clearRefusedTwiceFailsTheRunAfterCompacting() throws Exception {
+      doThrow(new RdfStorageLowDiskException("maintenanceUpdate"))
+          .when(mockRdfRepository)
+          .clearAllAsMaintenance(any());
+      try {
+        final EventPublisherJob jobConfig = executeInPlaceRebuild();
+
+        verify(mockRdfRepository, times(2)).clearAllAsMaintenance(any());
+        verify(mockRdfRepository, times(2)).compact(any());
         verify(mockRdfRepository, never()).reloadOntologies();
         assertEquals(EventPublisherJob.Status.FAILED, jobConfig.getStatus());
       } finally {
