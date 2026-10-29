@@ -277,6 +277,7 @@ const APPROVES = 'https://open-metadata.org/ontology/approves';
 const APPROVED_BY = 'https://open-metadata.org/ontology/approvedBy';
 const GOVERNS = 'https://open-metadata.org/ontology/governs';
 const GOVERNS_2 = 'https://open-metadata.org/ontology/governs2';
+const SIGNED_OFF_BY = 'https://open-metadata.org/ontology/signedOffBy';
 
 const relationshipType = (
   name: string,
@@ -391,24 +392,25 @@ const backLinkTo = (name: string) => [
     },
   },
 ];
-const registerApprovedBy = async () => {
+const registerType = async (label: string, inverseLabel: string) => {
   let creation: Promise<void> = Promise.resolve();
   act(() => {
     creation = latestGraphProps().onCreateRelation(
       customer.id,
       orphan.id,
-      'new:approved by'
+      `new:${label}`
     );
   });
   await screen.findByTestId('relationship-type-dialog');
   fireEvent.change(screen.getByTestId('relationship-type-inverse'), {
-    target: { value: 'approves' },
+    target: { value: inverseLabel },
   });
   await act(async () => {
     fireEvent.click(screen.getByTestId('relationship-type-submit'));
     await creation;
   });
 };
+const registerApprovedBy = () => registerType('approved by', 'approves');
 
 describe('OntologyGraphView', () => {
   beforeEach(() => {
@@ -1201,6 +1203,37 @@ describe('OntologyGraphView', () => {
     expect(createOntologyAxiom).toHaveBeenCalledWith(
       expect.objectContaining({
         expressions: [expect.objectContaining({ propertyIri: APPROVED_BY })],
+      })
+    );
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('finishes the earlier pair and gives a relabelled retry its own inverse', async () => {
+    const stored = keepRegistryWrites();
+    const failure = { isAxiosError: true, response: { status: 500 } };
+    (patchRelationshipType as jest.Mock).mockRejectedValueOnce(failure);
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    await registerApprovedBy();
+
+    expect(showErrorToast).toHaveBeenCalledWith(failure);
+
+    await registerType('signed off by', 'approves');
+
+    expect(registeredPairs(stored)).toEqual([
+      ['approves', 'approvedBy'],
+      ['approvedBy', 'approves'],
+      ['approves2', 'signedOffBy'],
+      ['signedOffBy', 'approves2'],
+    ]);
+    expect(createOntologyAxiom).toHaveBeenCalledTimes(1);
+    expect(createOntologyAxiom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expressions: [expect.objectContaining({ propertyIri: SIGNED_OFF_BY })],
       })
     );
     expect(showErrorToast).toHaveBeenCalledTimes(1);
