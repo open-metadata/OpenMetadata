@@ -15,6 +15,8 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.resources.scim.ScimResource;
+import org.openmetadata.service.resources.system.SystemResource;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -22,11 +24,14 @@ class ImpersonationRestrictionFilterTest {
 
   @Test
   void identityEndpointsAreBoundToTheFilter() {
-    // Impersonation lasts one request; a credential it reads, mints or revokes outlives the grant,
-    // so the whole identity surface is off-limits while the principal has been swapped. Removing
-    // the annotation from any of these reopens that surface.
+    // Impersonation lasts one request; a credential or account it reads, mints, creates or revokes
+    // outlives the grant, so the whole identity surface is off-limits while the principal has been
+    // swapped. Removing the annotation from any of these reopens that surface.
     Set<String> expected =
         Set.of(
+            "createUser",
+            "importCsv",
+            "importCsvAsync",
             "generateRandomPassword",
             "logoutUser",
             "generateToken",
@@ -40,6 +45,18 @@ class ImpersonationRestrictionFilterTest {
             "createAccessToken");
 
     assertEquals(expected, identityEndpoints(UserResource.class));
+  }
+
+  @Test
+  void securityConfigurationWritesAreBoundToTheFilter() {
+    assertEquals(
+        Set.of("updateSecurityConfig", "patchSecurityConfig"),
+        identityEndpoints(SystemResource.class));
+  }
+
+  @Test
+  void scimUserCreationIsBoundToTheFilter() {
+    assertEquals(Set.of("createUser"), identityEndpoints(ScimResource.class));
   }
 
   @Test
