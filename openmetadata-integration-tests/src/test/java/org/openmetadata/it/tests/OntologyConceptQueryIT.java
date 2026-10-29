@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.admin;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.bind;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.bindings;
+import static org.openmetadata.it.tests.OntologyBindingFixtures.client;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.ownerReader;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.readerReference;
 
@@ -39,6 +40,8 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyColumnBinding;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.TableConstraint;
@@ -253,6 +256,54 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void anInverseTheReaderMayViewAsItsOwnerLabelsAHopFollowedFromTheRange(final TestNamespace ns) {
+    final Payments payments =
+        payments(ns, "ownedInversePayments", DatabaseServiceTestFactory.createPostgres(ns));
+    final Table customers = table(payments, "customers", List.of("customer_id", "name"));
+    final Table accounts =
+        table(
+            payments,
+            "accounts",
+            List.of("account_id", "customer_id"),
+            foreignKey("customer_id", customers, "customer_id"));
+    bindData(payments.account(), accounts, payments.ontology(), "account_id");
+    bindData(payments.customer(), customers, payments.ontology(), "name");
+    try (var fixtures = new RdfAccessFixtures("conceptQueryInverse" + ns.shortPrefix())) {
+      final OpenMetadataClient reader = ownerOnlyPropertyReader(fixtures);
+      final List<EntityReference> owners = List.of(readerReference(reader));
+      final URI keptBy = URI.create("urn:payments:keptBy");
+      objectProperty(payments.ontology(), "keptBy", ACCOUNT, CUSTOMER, null, owners);
+      final OntologyProperty keeps =
+          objectProperty(payments.ontology(), "keeps", CUSTOMER, ACCOUNT, keptBy, owners);
+
+      final OntologyConceptQuery fromRange =
+          query(reader, payments.account(), hop(keeps, payments.customer()));
+
+      assertEquals(
+          "SELECT t1.name\nFROM "
+              + payments.schema().getName()
+              + ".accounts t0\nJOIN "
+              + payments.schema().getName()
+              + ".customers t1 ON t0.customer_id = t1.customer_id -- kept by\nLIMIT 50",
+          fromRange.getSql());
+    }
+  }
+
+  /** Denies ViewBasic and ViewAll on ontology properties the reader does not own. */
+  private static OpenMetadataClient ownerOnlyPropertyReader(final RdfAccessFixtures fixtures) {
+    final var role = fixtures.denyRole(MetadataOperation.VIEW_BASIC, Entity.ONTOLOGY_PROPERTY);
+    final var policy =
+        admin().policies().get(role.getPolicies().getFirst().getId().toString(), "rules");
+    policy.getRules().getFirst().setCondition("!isOwner()");
+    policy
+        .getRules()
+        .getFirst()
+        .setOperations(List.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL));
+    admin().policies().update(policy.getId(), policy);
+    return client(fixtures.userToken("propertyOwner", List.of(role.getId())));
+  }
+
+  @Test
   void generatingSqlWritesNothing(final TestNamespace ns) {
     final Payments payments =
         payments(ns, "readOnlyPayments", DatabaseServiceTestFactory.createPostgres(ns));
@@ -396,6 +447,16 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
 
   private static OntologyProperty objectProperty(
       final Ontology ontology, final String name, final URI domain, final URI range) {
+    return objectProperty(ontology, name, domain, range, null, null);
+  }
+
+  private static OntologyProperty objectProperty(
+      final Ontology ontology,
+      final String name,
+      final URI domain,
+      final URI range,
+      final URI inverse,
+      final List<EntityReference> owners) {
     return admin()
         .ontologyProperties()
         .create(
@@ -405,7 +466,9 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
                 .withKind(OntologyPropertyKind.OBJECT)
                 .withIri(URI.create("urn:payments:" + name))
                 .withDomain(List.of(domain))
-                .withRange(List.of(range)));
+                .withRange(List.of(range))
+                .withInverse(inverse)
+                .withOwners(owners));
   }
 
   private static OntologyConceptQueryHop hop(
