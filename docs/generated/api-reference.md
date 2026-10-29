@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1989 endpoints** across 75 resource packages · 1979 carry a summary.
+**1990 endpoints** across 75 resource packages · 1980 carry a summary.
 
 ## (root)
 
@@ -1422,6 +1422,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologyConcepts/{id}/bindings` | Get one page of the catalog bindings of a concept the caller may view |
 | `PUT` | `/v1/ontologyConcepts/{id}/bindings` | Replace one concept catalog association |
 | `DELETE` | `/v1/ontologyConcepts/{id}/bindings/{assetType}/{assetId}` | Remove one concept catalog association |
+| `POST` | `/v1/ontologyConcepts/{id}/query` | Generate SQL over the concept's bound tables, joined along search-around hops |
 | `GET` | `/v1/ontologyConcepts/{id}/versions` | List ontology concept versions |
 | `GET` | `/v1/ontologyConcepts/{id}/versions/{version}` | Get an ontology concept version |
 | `POST` | `/v1/ontologyEditLocks/acquire` | Acquire an authoring lease |

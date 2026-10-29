@@ -1,0 +1,66 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyConceptQuery.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyConceptQuery",
+  "description": "SQL generated from a native concept's table bindings, optionally following search-around hops. The request sends only hops; the response returns them with their labels and the generated SQL. OpenMetadata generates the SQL and never runs it (ADR:2026-10-21-ontology-live-data-execution-is-a-collate-extension).",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyConceptQuery",
+  "definitions": {
+    "hop": {
+      "description": "One step from the previous concept to a related concept through an object property.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.OntologyConceptQueryHop",
+      "properties": {
+        "property": {
+          "description": "Id of the OBJECT property that relates the previous concept and the target.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "target": {
+          "description": "Id of the concept this hop reaches.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "label": {
+          "description": "Relation label written as the JOIN comment. Set by the server.",
+          "type": "string"
+        }
+      },
+      "required": ["property", "target"],
+      "additionalProperties": false
+    },
+    "dialect": {
+      "description": "Identifier quoting family of the bound table's service.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.api.data.OntologyConceptQueryDialect",
+      "enum": ["ansi", "bigquery", "mysql", "snowflake", "spark", "tsql"]
+    }
+  },
+  "properties": {
+    "hops": {
+      "description": "Search-around hops in order, at most five.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/hop" },
+      "maxItems": 5,
+      "default": []
+    },
+    "sql": {
+      "description": "Generated SELECT with LIMIT 50. Set by the server.",
+      "type": "string"
+    },
+    "dialect": { "$ref": "#/definitions/dialect" },
+    "service": {
+      "description": "Name of the database service that holds the bound tables. Set by the server.",
+      "type": "string"
+    },
+    "serviceType": {
+      "description": "Type of that database service. Set by the server.",
+      "type": "string"
+    },
+    "tables": {
+      "description": "Fully qualified names of the tables the SQL reads, in join order. Set by the server.",
+      "type": "array",
+      "items": { "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName" },
+      "default": []
+    }
+  },
+  "additionalProperties": false
+}

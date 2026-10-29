@@ -115,6 +115,14 @@ public final class OntologyConceptBindingStore {
                 limit);
   }
 
+  public List<BindingRow> firstTables(final Collection<UUID> conceptIds, final int perConcept) {
+    return conceptIds.isEmpty()
+        ? List.of()
+        : dao.ontologyConceptBindingDAO()
+            .listFirstTablesForConcepts(
+                conceptIds.stream().map(UUID::toString).toList(), perConcept);
+  }
+
   public List<ConceptAssetCount> boundConcepts(
       final UUID ontologyId, final int limit, final int offset) {
     return dao.ontologyConceptBindingDAO().listBoundConcepts(ontologyId, limit, offset);
