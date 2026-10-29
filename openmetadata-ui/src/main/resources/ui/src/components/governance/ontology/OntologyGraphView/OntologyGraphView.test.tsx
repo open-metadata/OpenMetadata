@@ -1197,6 +1197,13 @@ describe('OntologyGraphView', () => {
       ['approves', 'approvedBy'],
       ['approvedBy', 'approves'],
     ]);
+    expect(createOntologyAxiom).toHaveBeenCalledTimes(1);
+    expect(createOntologyAxiom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expressions: [expect.objectContaining({ propertyIri: APPROVED_BY })],
+      })
+    );
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
   });
 
   it('leaves a one-way pair it did not register as it is', async () => {
@@ -1236,6 +1243,38 @@ describe('OntologyGraphView', () => {
     );
     expect(createRelationshipType).not.toHaveBeenCalled();
     expect(patchRelationshipType).not.toHaveBeenCalled();
+  });
+
+  it('leaves an unlinked inverse it did not register as it is', async () => {
+    const approves = relationshipType('approves', 'approves', APPROVES, {
+      category: Category.Custom,
+      systemDefined: false,
+    });
+    const fresh = [...registryTypes, approves];
+    (listRelationshipTypes as jest.Mock).mockResolvedValue({
+      data: fresh,
+      paging: { total: fresh.length },
+    });
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    await registerApprovedBy();
+
+    expect(
+      (createRelationshipType as jest.Mock).mock.calls.map(([request]) => [
+        request.name,
+        request.inverse,
+      ])
+    ).toEqual([
+      ['approves2', undefined],
+      ['approvedBy', 'approves2'],
+    ]);
+    expect((patchRelationshipType as jest.Mock).mock.calls).toEqual([
+      ['type-approves2', backLinkTo('approvedBy')],
+    ]);
   });
 
   it('reuses a registry type whose label matches the requested new type', async () => {
