@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.OntologyReleaseDiff;
+import org.openmetadata.schema.api.data.OntologyReleaseReview;
 import org.openmetadata.schema.api.data.OntologyReleaseStructureReport;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.Include;
@@ -165,6 +166,21 @@ public final class OntologyReleaseResource
             "Content-Disposition",
             "attachment; filename=\"ontology-release-" + id + "." + format.extension() + "\"")
         .build();
+  }
+
+  @GET
+  @Path("/{id}/review")
+  @Operation(
+      operationId = "getOntologyReleaseReview",
+      summary = "Read this release's review as the calling user sees it",
+      description =
+          "Lists each assignee entry with its recorded vote, the deciding vote with its verbatim reason, and whether the caller's vote would complete the frozen approval rule. Returns 404 when the release has no review task.")
+  public OntologyReleaseReview review(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id) {
+    final OntologyRelease release = get(uriInfo, securityContext, id);
+    return repository.review(release, securityContext.getUserPrincipal().getName());
   }
 
   @GET

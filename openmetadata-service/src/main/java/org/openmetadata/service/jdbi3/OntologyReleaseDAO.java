@@ -40,6 +40,13 @@ public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
   String findLatestSemanticVersion(@BindUUID("ontologyId") UUID ontologyId);
 
   @SqlQuery(
+      "SELECT json FROM ontology_release_entity WHERE ontologyId = :ontologyId "
+          + "AND entityStatus = :entityStatus AND (deleted IS NULL OR deleted = false) "
+          + "ORDER BY releaseRevision")
+  List<String> listByStatus(
+      @BindUUID("ontologyId") UUID ontologyId, @Bind("entityStatus") String entityStatus);
+
+  @SqlQuery(
       "SELECT COALESCE(MAX(releaseRevision), 0) FROM ontology_release_entity "
           + "WHERE ontologyId = :ontologyId AND sealedAt IS NOT NULL "
           + "AND (deleted IS NULL OR deleted = false)")

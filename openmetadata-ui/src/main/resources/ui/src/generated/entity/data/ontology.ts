@@ -15,6 +15,11 @@
  * entities.
  */
 export interface Ontology {
+    /**
+     * How many reviewers must approve a release review. Frozen into each review task when a
+     * review is requested.
+     */
+    approvalRule?:      OntologyApprovalRule;
     changeDescription?: ChangeDescription;
     deleted?:           boolean;
     description?:       string;
@@ -44,6 +49,19 @@ export interface Ontology {
     updatedAt?: number;
     updatedBy?: string;
     version?:   number;
+}
+
+/**
+ * How many reviewers must approve a release review. Frozen into each review task when a
+ * review is requested.
+ *
+ * How many of an ontology's reviewers must approve a release review. AnyReviewer decides on
+ * the first approval. AllReviewers waits for every reviewer entry; a reviewer team counts
+ * once and any member covers it. Frozen into the review task when a review is requested.
+ */
+export enum OntologyApprovalRule {
+    AllReviewers = "AllReviewers",
+    AnyReviewer = "AnyReviewer",
 }
 
 /**
