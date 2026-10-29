@@ -26,6 +26,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -900,6 +902,12 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(articles.contains(pickedPage.getId().toString()));
     assertTrue(articles.contains(globalPage.getId().toString()));
     assertFalse(articles.contains(otherPage.getId().toString()));
+
+    // Without a sort the list reads from the database.
+    String dbArticles = getAs(user, "/v1/contextCenter/pages?limit=1000000");
+    assertTrue(dbArticles.contains(pickedPage.getId().toString()));
+    assertTrue(dbArticles.contains(globalPage.getId().toString()));
+    assertFalse(dbArticles.contains(otherPage.getId().toString()));
   }
 
   @Test
@@ -964,6 +972,43 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     String scoped = getAs(user, grid);
     assertTrue(scoped.contains(pickedTable.getFullyQualifiedName()));
     assertFalse(scoped.contains(otherTable.getFullyQualifiedName()));
+  }
+
+  @Test
+  void test_pickNarrowsDataInsightCharts(TestNamespace ns) {
+    // Data Insights and the Home data estate count assets from search, so they follow the pick.
+    Domain picked = createAggregateDomain(ns.prefix("navChart"));
+    Domain other = createAggregateDomain(ns.prefix("navChartOther"));
+    Table pickedTable = createTableInDomain(ns, "navChartPicked", "id", picked);
+    Table otherTable = createTableInDomain(ns, "navChartOther", "id", other);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+    String onlyTheseTables =
+        String.format(
+            "{\"query\":{\"ids\":{\"values\":[\"%s\",\"%s\"]}}}",
+            pickedTable.getId(), otherTable.getId());
+    long end = System.currentTimeMillis();
+    String chart =
+        "/v1/analytics/dataInsights/system/charts/listChartData?chartNames=total_data_assets_live"
+            + "&live=true&start="
+            + (end - Duration.ofDays(1).toMillis())
+            + "&end="
+            + end
+            + "&filter="
+            + URLEncoder.encode(onlyTheseTables, StandardCharsets.UTF_8);
+
+    assertEquals(2, chartCount(getAsAdmin(chart)));
+    assertEquals(1, chartCount(getAs(user, chart)));
+  }
+
+  private static long chartCount(String response) {
+    long count = 0;
+    for (JsonNode result :
+        JsonUtils.readTree(response).path("total_data_assets_live").path("results")) {
+      count += result.path("count").asLong();
+    }
+    return count;
   }
 
   private static Metric createMetric(String name, Domain domain) {

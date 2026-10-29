@@ -1193,6 +1193,31 @@ public final class EntityUtil {
   }
 
   /**
+   * The caller's navbar domain and its sub-domains as a search query filter, or null with no pick;
+   * for reads that query search documents directly (e.g. Data Insights charts).
+   */
+  public static String navbarDomainSearchFilter(SecurityContext securityContext) {
+    if (getSubjectContext(securityContext).isBot()) {
+      return null;
+    }
+    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+    if (selected == null || nullOrEmpty(selected.getFullyQualifiedName())) {
+      return null;
+    }
+    String fqn = selected.getFullyQualifiedName();
+    Map<String, Object> inSubtree =
+        Map.of(
+            "bool",
+            Map.of(
+                "should",
+                List.of(
+                    Map.of("term", Map.of("domains.fullyQualifiedName", fqn)),
+                    Map.of(
+                        "prefix", Map.of("domains.fullyQualifiedName", fqn + Entity.SEPARATOR)))));
+    return JsonUtils.pojoToJson(Map.of("query", inSubtree));
+  }
+
+  /**
    * Ids of the {@code entityType} entities in the caller's navbar domain or its sub-domains, or
    * empty when the pick does not narrow that type; for lists that page their own rows.
    */

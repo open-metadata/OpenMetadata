@@ -481,7 +481,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     // No relationships to store beyond what is stored in the super class
   }
 
-  static String combineFilters(String existingFilter, String userFilter) {
+  public static String combineFilters(String existingFilter, String userFilter) {
     if (existingFilter == null || existingFilter.isEmpty() || existingFilter.equals("{}")) {
       return userFilter;
     }
