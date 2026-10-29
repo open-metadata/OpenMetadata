@@ -3,9 +3,10 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-25 (initial)
 - **Deciders:** Sriharsha Chintalapani
-- **Guard:** `CredentialVerifierTest`, `CredentialsTest`, `OmCredentialTest`, `JwtFilterTest`,
-  `MintedTokensAreRecognizedTest`; `CredentialRevocationTwoProcessIT`, `CredentialDatabaseOutageIT`,
-  `RevokeWaitForPropagationIT`, `UserResourceIT`
+- **Guard:** `CredentialVerifierTest`, `CheckDecisionTest`, `VerifiedCredentialsTest`,
+  `CredentialsTest`, `OmCredentialTest`, `JwtFilterTest`, `MintedTokensAreRecognizedTest`;
+  `CredentialRevocationTwoProcessIT`, `CredentialDatabaseOutageIT`, `RevokeWaitForPropagationIT`,
+  `UserResourceIT`
 - **Related:** ADR:2026-10-14-cache-misses-that-do-io-load-outside-the-cache-lock
 
 ## Context
@@ -32,6 +33,9 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   - `JwtFilter.validateJwtAndGetClaims` calls `requireCurrentCredential` directly and resolves the
     principal only for a stored kind. `SocketAddressFilter.validatePrefixedTokenRequest` calls it,
     for the WebSocket handshake and for the MCP HTTP transport.
+  - `JwtFilter.checkValidationsForToken` decodes the token it is given and calls
+    `requireCurrentCredential` with that token's own claims before its other checks. Callers
+    outside this repository call it after their own signature check.
   - `JwtFilter.verifySignatureOnly` classifies nothing and calls no `require`. The probes that grant
     no access use it (`BotTokenCheck`, `TestLoginService`, `SystemRepository`).
 
@@ -43,8 +47,14 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   left the principal out, is not read again on a check's behalf for `missRefreshMinAge` (500 ms by
   default, less than `maxStaleness`). Its checks that need a read answer 503 without one in that
   window. A token that a fresh entry lacks triggers a read only when the entry's last full read is
-  older than `missRefreshMinAge`, and the check rejects it otherwise. So a principal's unknown or
-  failing tokens cost at most about two reads per second per server.
+  at least `missRefreshMinAge` old. Inside that window the check rejects the token only when the
+  entry shows it withdrawn, and answers 503 otherwise, since the token may have been created on
+  another server after that read. An entry shows a token withdrawn when a read lacks it although a
+  check presented it before that read began, or when an earlier read held it and the read began
+  after that one finished. A counter taken just before and just after each read's statement orders
+  the reads, and an entry keeps at most 8 withdrawn digests (`MAX_WITHDRAWN`, a constant, not a
+  setting). So a principal's unknown or failing tokens cost at most about two reads per second per
+  server.
 - Check reads run on a pool of `min(maxConcurrentRequestReads, databasePool / 2)` platform threads
   (16 by default, at least 1), so they cannot fill a small database pool. A request thread waits for
   its read within `loadTimeout`. The pool queues 16 reads per thread (`QUEUED_READS_PER_THREAD`, a
@@ -58,12 +68,21 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   replaces a deep pass's result with a digest decrypted before that pass began, and a check read of
   a bot whose secret lives in an external secrets manager makes one call to it. A principal the
   deep read cannot convert is unconfirmed from that read on. Its next check reads it again and
-  answers 503 until a read converts it, and no sweep confirms it by fingerprint. A deep pass is
-  retried after `min(deepVerifyInterval, 1 min)` only when one of its reads throws, and a read that
-  throws changes no entry.
+  answers 503 until a read converts it, and no sweep confirms it by fingerprint. A deep pass covers
+  the principals cached when it begins, 10 to a read (`DEEP_CHUNK_SIZE`, a constant, not a
+  setting). Each sweep pass reconfirms every batch first, then makes at least one of these reads,
+  and starts another only while the pass has run less than `maxStaleness` minus twice
+  `sweepInterval` (1 s by default). So while 10 decrypts take no longer than `sweepInterval`, no
+  entry ages past `maxStaleness` between passes, however many principals the deep pass covers. The
+  next deep pass begins `deepVerifyInterval` after this one began, or `min(deepVerifyInterval, 1
+  min)` after it when one of its reads threw, and a read that throws changes no entry.
 - When the verifier cannot confirm within `loadTimeout` (2 s), the request gets 503 with
   `Retry-After` (the sweep interval, rounded up), and an MCP tool or prompt call gets JSON-RPC
-  error -32003. It never gets 401, and it is never accepted unconfirmed.
+  error -32003. It never gets 401, and it is never accepted unconfirmed. A check whose thread is
+  interrupted while it waits for its read answers the same, counted under `cause=interrupted`
+  rather than as a read timeout. `REVIEW.md` asks that an `InterruptedException` never map to a
+  retryable status; here the check has changed nothing, so the 503 asks the client to repeat the
+  request.
 - Redis is an accelerator only. A write publishes a nudge so that peers re-read at once. No request
   makes a Redis round trip, and without Redis every server still converges within `maxStaleness`.
 - Correctness asks nothing of writers, since the sweep sees every committed change. The
@@ -88,6 +107,9 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
 - While any principal is cached, each server sends one fingerprint statement per 500 cached
   principals every 2 s, whether or not requests arrive. The load scales with cached principals
   (4000 at most), not with request rate.
+- A token created on another server answers 503 on this server, under `cause=deferred`, until
+  `missRefreshMinAge` after this server last read its principal in full. The retry after
+  `Retry-After` reads the principal and accepts the token.
 - While the database is unreachable, bot and PAT requests answer 503 once their entries are older
   than `maxStaleness`. Session tokens and identity-provider tokens that claim neither `isBot=true`
   nor `tokenType=PERSONAL_ACCESS` are not affected.
@@ -95,8 +117,8 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   next deep pass on, so within `deepVerifyInterval`, until a read decrypts the secret again. On
   each server, each bot that keeps sending requests costs about two check reads a second, each
   with a decrypt, and once its stored rows change, a decrypt on every sweep as well. Nothing bounds
-  how long a decrypt takes. One that hangs during the deep read holds the sweep thread, so no sweep
-  completes until the secrets manager answers. After `maxStaleness`, every bot and PAT check then
+  how long a decrypt takes. A slow one delays only the deep pass, but one that hangs during a deep
+  read holds the sweep thread, so no sweep completes until the secrets manager answers. After `maxStaleness`, every bot and PAT check then
   needs a read, and the sweep-age gauge alerts. One that hangs in a check read holds a
   request-read thread, so with more such bots than request-read threads, other checks that need a
   read wait for a thread or answer 503. The next step named below takes the secrets manager out of

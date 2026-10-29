@@ -61,7 +61,7 @@ final class CredentialMetrics {
         case LOAD_MISSING -> MISS;
         case LOAD_STALE -> STALE;
         case LOAD_UNKNOWN_TOKEN -> UNKNOWN_TOKEN;
-        case ACCEPT, REJECT -> throw new IllegalArgumentException(load + " needs no read");
+        case ACCEPT, REJECT, DEFER -> throw new IllegalArgumentException(load + " needs no read");
       };
     }
   }
@@ -80,7 +80,14 @@ final class CredentialMetrics {
     TIMEOUT,
     NO_PERMIT,
     /** A check's read produced no record within missRefreshMinAge, so no read was started. */
-    BACKOFF
+    BACKOFF,
+    /**
+     * An entry read within missRefreshMinAge lacks the token without showing it withdrawn, so the
+     * token may be newer than that read. No further read is started.
+     */
+    DEFERRED,
+    /** The thread waiting for a check's read was interrupted; its flag is restored. */
+    INTERRUPTED
   }
 
   enum SweepQuery {

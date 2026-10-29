@@ -77,6 +77,7 @@ final class FakeCredentialSource implements CredentialSource {
   private final AtomicBoolean errorOnRead = new AtomicBoolean();
   private final AtomicReference<Runnable> duringNextFingerprints = new AtomicReference<>();
   private final AtomicReference<Runnable> duringNextRead = new AtomicReference<>();
+  private volatile Runnable duringEachDecrypt = () -> {};
   private final Set<String> unconvertible = ConcurrentHashMap.newKeySet();
   private final Set<String> poison = ConcurrentHashMap.newKeySet();
   private final Set<String> poisonWithError = ConcurrentHashMap.newKeySet();
@@ -222,6 +223,11 @@ final class FakeCredentialSource implements CredentialSource {
   /** The next full read runs {@code hook} after it has seen the rows and before it returns. */
   void duringNextRead(Runnable hook) {
     duringNextRead.set(hook);
+  }
+
+  /** Every decrypt from now on runs {@code hook}, the way a slow secrets manager takes time. */
+  void duringEachDecrypt(Runnable hook) {
+    duringEachDecrypt = hook;
   }
 
   /** The next full read computes its result, then parks until {@link #releaseReads()}. */
@@ -384,6 +390,7 @@ final class FakeCredentialSource implements CredentialSource {
 
   private TokenDigest decryptDigest(Row row) {
     decrypts.incrementAndGet();
+    duringEachDecrypt.run();
     return TokenDigest.of(decrypt(row.storedMechanism()));
   }
 

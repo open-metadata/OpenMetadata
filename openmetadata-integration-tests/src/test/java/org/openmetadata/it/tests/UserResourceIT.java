@@ -3169,7 +3169,9 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   /**
    * A PATCH cannot change a user's authentication mechanism: {@code UserRepository} puts the
    * stored one back before the update, so the token a patch carries is never stored and is
-   * rejected. Bot tokens change through generateToken and revokeToken, which the tests above cover.
+   * rejected. Until missRefreshMinAge after the server last read the bot, that token could be one
+   * created on another server, so a check may answer 503 first. Bot tokens change through
+   * generateToken and revokeToken, which the tests above cover.
    */
   @Test
   void test_patchBotAuthMechanism_isIgnored(TestNamespace ns) {
@@ -3189,7 +3191,14 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
         Set.of(TokenDigest.of(storedToken)),
         CredentialSourceTestSupport.digests(Entity.getJdbi(), botUser.getName()));
     assertEquals(botUser.getId(), getLoggedInUser(storedClient).getId());
-    assertUnauthorized(clientWithToken(patched.getJWTToken()));
+    String patchedToken = patched.getJWTToken();
+    Awaitility.await("an answer other than 503 for the patched token")
+        .pollInterval(Duration.ofMillis(100))
+        .atMost(Duration.ofSeconds(10))
+        .until(
+            () ->
+                CredentialFixtures.status(CredentialFixtures.LOGGED_IN_USER, patchedToken) != 503);
+    assertUnauthorized(clientWithToken(patchedToken));
   }
 
   @Test

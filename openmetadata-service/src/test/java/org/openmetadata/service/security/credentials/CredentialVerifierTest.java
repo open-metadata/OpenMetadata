@@ -329,19 +329,73 @@ class CredentialVerifierTest {
     assertEquals(1.0, counter("om.credential.reads", "reason", "unknown_token", "outcome", "ok"));
   }
 
+  /**
+   * Until missRefreshMinAge after the read that accepted token A, the unknown token cannot be
+   * confirmed either way. The read it then starts shows the token withdrawn, so it is rejected
+   * without a read until the window ends again.
+   */
   @Test
   void unknownTokenReloadsAreRateLimited() {
     source.withPats(ALICE, TOKEN_A);
     verifier(DEFAULTS);
     assertAccepted(ALICE, TOKEN_A);
 
-    for (int millisecond = 1; millisecond <= 1000; millisecond++) {
-      ticker.advanceNanos(MILLISECOND);
-      assertRejected(ALICE, NEVER_ISSUED);
-    }
+    checkEveryMillisecond(1000, ALICE, NEVER_ISSUED);
 
     assertEquals(3, source.fullReads());
-    assertEquals(1000.0, counter("om.credential.checks", "decision", "reject"));
+    assertEquals(499.0, counter("om.credential.checks", "decision", "defer"));
+    assertEquals(499.0, counter("om.credential.unavailable", "cause", "deferred"));
+    assertEquals(501.0, counter("om.credential.checks", "decision", "reject"));
+  }
+
+  @Test
+  void aTokenCreatedOnAPeerJustAfterThisServerReadItsOwnerIsAcceptedOnceTheWindowEnds() {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(DEFAULTS);
+    assertAccepted(ALICE, TOKEN_A);
+
+    source.addPat(ALICE, TOKEN_B);
+    ticker.advanceNanos(100 * MILLISECOND);
+
+    assertEquals(2, assertUnavailable(ALICE, TOKEN_B).retryAfterSeconds());
+    assertEquals(1.0, counter("om.credential.unavailable", "cause", "deferred"));
+    assertEquals(1, source.fullReads());
+    ticker.advanceNanos(400 * MILLISECOND);
+    assertAccepted(ALICE, TOKEN_B);
+    assertEquals(2, source.fullReads());
+  }
+
+  @Test
+  void aCheckThatJoinsAReadLackingItsTokenCannotConfirmUntilTheWindowEnds() throws Exception {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(DEFAULTS);
+    source.blockNextRead();
+    RunningCheck starter = startCheck(ALICE, TOKEN_A);
+    source.awaitReadStarted();
+    source.addPat(ALICE, TOKEN_B);
+    RunningCheck joiner = startCheck(ALICE, TOKEN_B);
+    awaitParked(joiner.thread());
+    source.releaseReads();
+
+    assertNull(starter.result());
+    assertInstanceOf(CredentialUnavailableException.class, joiner.result());
+    assertEquals(1, source.fullReads());
+    ticker.advanceNanos(MISS_REFRESH_MIN_AGE);
+    assertAccepted(ALICE, TOKEN_B);
+    assertEquals(2, source.fullReads());
+  }
+
+  @Test
+  void aTokenTheCheckReadLacksIsRejectedAgainWithoutAReadInsideTheWindow() {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(DEFAULTS);
+
+    assertRejected(ALICE, NEVER_ISSUED);
+    ticker.advanceNanos(MISS_REFRESH_MIN_AGE - 1);
+    assertRejected(ALICE, NEVER_ISSUED);
+
+    assertEquals(1, source.fullReads());
+    assertEquals(0.0, counter("om.credential.checks", "decision", "defer"));
   }
 
   @Test
@@ -459,6 +513,33 @@ class CredentialVerifierTest {
     assertEquals(2.0, counter("om.credential.unavailable", "cause", "read_failed"));
     assertEquals(0.0, counter("om.credential.unavailable", "cause", "timeout"));
     assertEquals(1.0, counter("om.credential.reads", "reason", "miss", "outcome", "error"));
+  }
+
+  @Test
+  void anInterruptedWaitCannotConfirmUnderItsOwnCauseAndKeepsTheInterruptFlag() throws Exception {
+    source.withPats(ALICE, TOKEN_A);
+    verifier(loadTimeoutOf(Duration.seconds(4)));
+    source.blockNextRead();
+    AtomicBoolean interruptedAfterwards = new AtomicBoolean();
+    CompletableFuture<Throwable> outcome = new CompletableFuture<>();
+    Thread waiting =
+        Thread.ofVirtual()
+            .start(
+                () -> {
+                  Throwable failure = checkOutcome(ALICE, TOKEN_A);
+                  interruptedAfterwards.set(Thread.currentThread().isInterrupted());
+                  outcome.complete(failure);
+                });
+    source.awaitReadStarted();
+    awaitParked(waiting);
+
+    waiting.interrupt();
+
+    assertInstanceOf(CredentialUnavailableException.class, outcome.get(30, TimeUnit.SECONDS));
+    assertTrue(interruptedAfterwards.get(), "the check restores the interrupt flag");
+    assertEquals(1.0, counter("om.credential.unavailable", "cause", "interrupted"));
+    assertEquals(0.0, counter("om.credential.unavailable", "cause", "timeout"));
+    source.releaseReads();
   }
 
   @Test
@@ -624,7 +705,7 @@ class CredentialVerifierTest {
     checkEveryMillisecond(2000, BOB, NEVER_ISSUED);
 
     assertEquals(5, source.fullReadsOf(BOB));
-    assertEquals(499.0, counter("om.credential.checks", "decision", "reject"));
+    assertEquals(499.0, counter("om.credential.checks", "decision", "defer"));
     assertEquals(4.0, counter("om.credential.unavailable", "cause", "subject_read_failed"));
     assertEquals(1497.0, counter("om.credential.unavailable", "cause", "backoff"));
   }
@@ -673,9 +754,10 @@ class CredentialVerifierTest {
     assertEquals(1.0, counter("om.credential.unavailable", "cause", "backoff"));
   }
 
+  /** Nine users and bob fill one deep read, so the read that throws is every user's deep read. */
   @Test
   void subjectsSharingADeepReadWithOneWhoseReadThrowsAnErrorAreAcceptedOnTheirNextCheck() {
-    List<String> users = IntStream.range(0, 50).mapToObj(i -> "u" + i).toList();
+    List<String> users = IntStream.range(0, 9).mapToObj(i -> "u" + i).toList();
     users.forEach(user -> source.withPats(user, "first-" + user));
     source.withJwtMechanism(BOB, JWT_OLD);
     verifier(new CredentialVerificationConfig(null, null, null, null, null, null, 100, 100, null));
@@ -690,7 +772,7 @@ class CredentialVerifierTest {
 
     users.forEach(user -> assertAccepted(user, "new-" + user));
     assertEquals(0.0, counter("om.credential.unavailable", "cause", "backoff"));
-    assertEquals(102, source.fullReads());
+    assertEquals(20, source.fullReads());
   }
 
   @Test
@@ -1001,6 +1083,33 @@ class CredentialVerifierTest {
     assertEquals(4, source.fullReadsOf(BOB), "bob is read by his first check and each deep pass");
     bots.forEach(bot -> assertAccepted(bot, "jwt-" + bot));
     assertEquals(4, source.fullReadsOf("u1"));
+  }
+
+  /**
+   * Each decrypt takes 150 ms, so one deep read of ten bots overruns the one-second deep budget of
+   * a pass. The verify of 25 bots then finishes over three passes, each of which reconfirms every
+   * bot first, so no check needs a read.
+   */
+  @Test
+  void aDeepVerifyOfSlowDecryptsSpreadsOverPassesSoNoEntryOutlivesMaxStaleness() {
+    List<String> bots = IntStream.range(0, 25).mapToObj(i -> "bot-" + i).toList();
+    bots.forEach(bot -> source.withJwtMechanism(bot, "jwt-" + bot));
+    verifier(DEFAULTS);
+    bots.forEach(bot -> assertAccepted(bot, "jwt-" + bot));
+    sweepsAfterInterval(299);
+    source.duringEachDecrypt(() -> ticker.advanceNanos(150 * MILLISECOND));
+
+    for (int pass = 0; pass < 3; pass++) {
+      ticker.advanceNanos(2 * SECOND);
+      bots.forEach(bot -> assertAccepted(bot, "jwt-" + bot));
+      assertEquals(25 + pass, source.fullReads());
+      verifier.sweepOnce();
+    }
+    sweepAfterInterval();
+
+    assertEquals(28, source.fullReads());
+    assertEquals(50, source.decrypts());
+    assertEquals(3.0, counter("om.credential.reads", "reason", "deep", "outcome", "ok"));
   }
 
   /**
@@ -1453,6 +1562,7 @@ class CredentialVerifierTest {
     verifier(DEFAULTS);
 
     assertAccepted(ALICE, TOKEN_A);
+    ticker.advanceNanos(MISS_REFRESH_MIN_AGE);
     assertRejected(ALICE, "basic");
     assertEquals(0, source.decrypts());
   }
@@ -1563,6 +1673,7 @@ class CredentialVerifierTest {
     assertTrue(verifier.cachedSubjects() <= 10, "cached " + verifier.cachedSubjects());
     assertTrue(counter("om.credential.evictions", "cause", "size") >= 990);
     assertAccepted("user-0", "token-0");
+    ticker.advanceNanos(MISS_REFRESH_MIN_AGE);
     assertRejected("user-0", "token-1");
   }
 

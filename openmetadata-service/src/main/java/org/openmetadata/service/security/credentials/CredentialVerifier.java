@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
@@ -58,6 +59,8 @@ import org.openmetadata.service.security.credentials.CredentialMetrics.ReadOutco
 import org.openmetadata.service.security.credentials.CredentialMetrics.ReadReason;
 import org.openmetadata.service.security.credentials.CredentialMetrics.SweepQuery;
 import org.openmetadata.service.security.credentials.CredentialMetrics.UnavailableCause;
+import org.openmetadata.service.security.credentials.VerifiedCredentials.FullRead;
+import org.openmetadata.service.security.credentials.VerifiedCredentials.ReadOrder;
 
 /**
  * This server's view of which OpenMetadata-signed credentials are current.
@@ -73,7 +76,8 @@ import org.openmetadata.service.security.credentials.CredentialMetrics.Unavailab
  * or gets no slot, the check throws {@link CredentialUnavailableException} ("cannot confirm"),
  * which is not {@link AuthenticationException} ("confirmed not current"). For missRefreshMinAge
  * after a check's read of a principal produced no record, such a check answers the same without a
- * read.
+ * read. So does a check of a token that an entry read within missRefreshMinAge lacks without
+ * showing it withdrawn, since the token may be newer than that read.
  *
  * <p>All state is per instance. Every stamp is a {@link Ticker} reading compared by difference.
  */
@@ -87,6 +91,13 @@ public final class CredentialVerifier implements Managed {
   private static final long LEFT_OUT_WARNING_INTERVAL_NANOS = TimeUnit.MINUTES.toNanos(1);
   private static final long READ_THREAD_IDLE_SECONDS = 60;
   private static final int QUEUED_READS_PER_THREAD = 16;
+
+  /**
+   * Subjects per deep read, so the pass's deep budget is overrun by at most this many decrypts. A
+   * constant, not a setting.
+   */
+  private static final int DEEP_CHUNK_SIZE = 10;
+
   private static final BooleanSupplier NEVER_CREATES = () -> false;
 
   private final CredentialVerificationConfig config;
@@ -103,8 +114,17 @@ public final class CredentialVerifier implements Managed {
   private final AtomicLong lastCompleteSweepStartNanos;
   private final AtomicLong nextDeepVerifyNanos;
   private final long deepRetryIntervalNanos;
+  private final long deepBudgetNanos;
+  private final int deepChunkSize;
+
+  /** Only {@link #sweepOnce} reads or replaces it, and passes run one at a time. */
+  private final AtomicReference<DeepCycle> deepCycle = new AtomicReference<>();
+
   private final AtomicBoolean drainScheduled = new AtomicBoolean();
   private final AtomicReference<ScheduledExecutorService> sweeper = new AtomicReference<>();
+
+  /** Counted as every full read starts and again as it returns, for its {@link ReadOrder}. */
+  private final AtomicLong readCounter = new AtomicLong();
 
   /**
    * A read of one subject that may create its entry: a check's read, a refresh or a nudge. It stays
@@ -119,8 +139,21 @@ public final class CredentialVerifier implements Managed {
    */
   private static final class InFlightRead {
     private final CompletableFuture<VerifiedCredentials> result = new CompletableFuture<>();
+
+    /**
+     * The token of the check that registered this read, none for a refresh or nudge. A client holds
+     * a token only once it has committed, and that check began before the read, so the read's
+     * {@link FullRead} carries it as presented before the read began. A check that joins later may
+     * hold a token newer than the read and adds nothing here.
+     */
+    private final Set<TokenDigest> presented;
+
     private volatile RequestRead task;
     private volatile boolean superseded;
+
+    private InFlightRead(Set<TokenDigest> presented) {
+      this.presented = presented;
+    }
 
     private boolean mayCreate() {
       return !superseded;
@@ -167,6 +200,44 @@ public final class CredentialVerifier implements Managed {
       } finally {
         fail(subject, read, why);
       }
+    }
+  }
+
+  /**
+   * A deep verify in progress: the subjects cached when it began, read in chunks over as many
+   * passes as the deep budget needs. A subject cached later was read by the check that cached it.
+   */
+  private static final class DeepCycle {
+    private final long startNanos;
+    private final Iterator<List<CredentialSubject>> chunks;
+    private boolean failed;
+
+    private DeepCycle(long startNanos, List<CredentialSubject> subjects, int chunkSize) {
+      this.startNanos = startNanos;
+      this.chunks = Lists.partition(subjects, chunkSize).iterator();
+    }
+
+    private boolean isDone() {
+      return !chunks.hasNext();
+    }
+
+    /** {@code deepRead} answers whether the read of the chunk succeeded. */
+    private void readNext(Predicate<List<CredentialSubject>> deepRead) {
+      failed |= !deepRead.test(chunks.next());
+    }
+
+    private long nextStartNanos(long intervalNanos, long retryIntervalNanos) {
+      return startNanos + (failed ? retryIntervalNanos : intervalNanos);
+    }
+  }
+
+  /** A full read's records, with the stamp and order that every entry it installs carries. */
+  private record ReadResult(
+      Map<CredentialSubject, CredentialRecord> records, long stampNanos, ReadOrder order) {
+    /** Null when the read left {@code subject} out. */
+    private FullRead of(CredentialSubject subject, Set<TokenDigest> presentedBefore) {
+      CredentialRecord record = records.get(subject);
+      return record == null ? null : new FullRead(record, stampNanos, order, presentedBefore);
     }
   }
 
@@ -250,6 +321,8 @@ public final class CredentialVerifier implements Managed {
     this.lastCompleteSweepStartNanos = new AtomicLong(now);
     this.nextDeepVerifyNanos = new AtomicLong(now + config.deepVerifyIntervalNanos());
     this.deepRetryIntervalNanos = Math.min(config.deepVerifyIntervalNanos(), DEEP_RETRY_CAP_NANOS);
+    this.deepBudgetNanos = config.maxStalenessNanos() - 2 * config.sweepIntervalNanos();
+    this.deepChunkSize = Math.min(config.batchSize(), DEEP_CHUNK_SIZE);
     metrics.registerGauges(this::cachedSubjects, this::lastCompleteSweepAgeSeconds);
   }
 
@@ -335,36 +408,29 @@ public final class CredentialVerifier implements Managed {
   }
 
   /**
-   * One pass: drain nudges, then re-confirm every cached subject in batches. The stamp is read
-   * before each query. A batch failure of any kind, an {@link Error} included, leaves its entries
-   * to age out and does not stop the others; the sweep-age gauge restarts only when every batch was
-   * reconfirmed. When the deep verify is due, each batch is reconfirmed first and then read in full
-   * with every decrypt forced. A subject the deep read leaves out is unconfirmed, so its next check
-   * reads it again, and it does not fail the deep verify. A deep read that throws, on a statement
-   * failure or on an {@link Error} for one subject, which the source's per-subject guard does not
-   * catch, changes no entry and leaves the pass complete. When a batch's reconfirmation or deep
-   * read throws, the deep pass is retried after {@code min(deepVerifyInterval, 1 min)}. A throw
-   * fails the whole batch, so the whole pass is what to retry, and one stamp holds that decision.
+   * One pass: drain nudges, re-confirm every cached subject in batches, then continue the deep
+   * verify. The stamp is read before each query. A batch failure of any kind, an {@link Error}
+   * included, leaves its entries to age out and does not stop the others; the sweep-age gauge
+   * restarts only when every batch was reconfirmed.
+   *
+   * <p>When the deep verify is due, a cycle begins over the subjects cached then. Each pass reads
+   * the next of them in full with every decrypt forced, a chunk at a time, and starts another chunk
+   * only while the pass has run for less than maxStaleness minus twice sweepInterval. The next pass
+   * starts sweepInterval after this one ends, so an entry reconfirmed by both is then at most one
+   * chunk past maxStaleness minus sweepInterval old, however slow the decrypts. A subject the deep
+   * read leaves out is unconfirmed, so its next check reads it again, and it does not fail the
+   * cycle. A deep read that throws, on a statement failure or on an {@link Error} for one subject,
+   * which the source's per-subject guard does not catch, changes no entry; the next cycle then
+   * begins {@code min(deepVerifyInterval, 1 min)} after this one began instead of
+   * deepVerifyInterval after it.
    */
   void sweepOnce() {
     long sweepStart = ticker.read();
     drainNudges();
-    boolean deep = sweepStart - nextDeepVerifyNanos.get() >= 0;
-    boolean complete = true;
-    boolean deepVerified = true;
-    List<CredentialSubject> subjects = List.copyOf(entries.asMap().keySet());
-    for (List<CredentialSubject> batch : Lists.partition(subjects, config.batchSize())) {
-      BatchOutcome outcome = sweepBatch(batch, deep);
-      complete &= outcome.reconfirmed();
-      deepVerified &= outcome.deepVerified();
-    }
-    if (deep) {
-      long interval = deepVerified ? config.deepVerifyIntervalNanos() : deepRetryIntervalNanos;
-      nextDeepVerifyNanos.set(sweepStart + interval);
-    }
-    if (complete) {
+    if (reconfirmAll()) {
       lastCompleteSweepStartNanos.set(sweepStart);
     }
+    continueDeepVerify(sweepStart);
     metrics.recordSweep(ticker.read() - sweepStart);
   }
 
@@ -392,7 +458,20 @@ public final class CredentialVerifier implements Managed {
           null);
     }
     metrics.recordCheck(decision, entry.ageNanos(now));
+    refuseDeferred(subject, decision);
     return decision == CheckDecision.ACCEPT;
+  }
+
+  /** The 503 asks the client to repeat the request once a read can show whether the token is new. */
+  private void refuseDeferred(CredentialSubject subject, CheckDecision decision) {
+    if (decision == CheckDecision.DEFER) {
+      throw unavailable(
+          UnavailableCause.DEFERRED,
+          "The token is not among the credentials of "
+              + subject.principal()
+              + " read within missRefreshMinAge, and may be newer than that read",
+          null);
+    }
   }
 
   /**
@@ -443,7 +522,7 @@ public final class CredentialVerifier implements Managed {
    */
   private InFlightRead joinOrStart(
       CredentialSubject subject, TokenDigest digest, ReadReason reason) {
-    InFlightRead mine = new InFlightRead();
+    InFlightRead mine = new InFlightRead(Set.of(digest));
     InFlightRead running = inFlight.putIfAbsent(subject, mine);
     if (running == null) {
       try {
@@ -495,6 +574,10 @@ public final class CredentialVerifier implements Managed {
     return loaded;
   }
 
+  /**
+   * An interrupt restores the flag and answers "cannot confirm" under its own cause. The check has
+   * changed nothing, so the 503 asks the client to repeat the request.
+   */
   private VerifiedCredentials resultWithin(
       CredentialSubject subject, InFlightRead read, long deadlineNanos) {
     try {
@@ -506,7 +589,7 @@ public final class CredentialVerifier implements Managed {
     } catch (InterruptedException interrupted) {
       Thread.currentThread().interrupt();
       throw unavailable(
-          UnavailableCause.TIMEOUT,
+          UnavailableCause.INTERRUPTED,
           "Interrupted while waiting for the read of " + subject.principal(),
           interrupted);
     }
@@ -554,11 +637,12 @@ public final class CredentialVerifier implements Managed {
   private void readAndInstall(
       Map<CredentialSubject, InFlightRead> reads, long stampNanos, ReadReason reason) {
     try {
-      Map<CredentialSubject, CredentialRecord> records =
+      ReadResult result =
           timedRead(reads.keySet(), cachedRecords(reads.keySet(), reason), reason, stampNanos);
       reads.forEach(
           (subject, read) ->
-              finish(subject, read, installRead(subject, read, records.get(subject), stampNanos)));
+              finish(
+                  subject, read, installRead(subject, read, result.of(subject, read.presented))));
     } catch (Throwable failure) {
       reads.forEach((subject, read) -> fail(subject, read, failure));
       throw failure;
@@ -567,10 +651,10 @@ public final class CredentialVerifier implements Managed {
 
   /** Null when the source left the subject out: unconfirmed, so nothing is installed. */
   private VerifiedCredentials installRead(
-      CredentialSubject subject, InFlightRead read, CredentialRecord record, long stampNanos) {
-    return record == null
+      CredentialSubject subject, InFlightRead read, FullRead fullRead) {
+    return fullRead == null
         ? null
-        : install(subject, new VerifiedCredentials(record, stampNanos), read::mayCreate);
+        : install(subject, new VerifiedCredentials(fullRead), read::mayCreate);
   }
 
   /** Deregisters before completing, so a check that reads again can never find a finished read. */
@@ -589,7 +673,7 @@ public final class CredentialVerifier implements Managed {
    * subjects it left out; a failure propagates as is. Each subject's outcome ends or opens its
    * backoff from {@code stampNanos}, the read's stamp, when a check started the read.
    */
-  private Map<CredentialSubject, CredentialRecord> timedRead(
+  private ReadResult timedRead(
       Collection<CredentialSubject> subjects,
       Map<CredentialSubject, CredentialRecord> previous,
       ReadReason reason,
@@ -597,12 +681,11 @@ public final class CredentialVerifier implements Managed {
     long started = ticker.read();
     Map<CredentialSubject, Throwable> unconverted = new HashMap<>();
     try {
-      Map<CredentialSubject, CredentialRecord> records =
-          source.read(subjects, previous, unconverted);
+      ReadResult result = orderedRead(subjects, previous, unconverted, stampNanos);
       metrics.recordRead(reason, ReadOutcome.OK, ticker.read() - started);
-      recordConversions(subjects, records, unconverted, reason, stampNanos);
-      recordDecrypts(records.values());
-      return records;
+      recordConversions(subjects, result.records(), unconverted, reason, stampNanos);
+      recordDecrypts(result.records().values());
+      return result;
     } catch (RuntimeException | Error failure) {
       metrics.recordRead(reason, ReadOutcome.ERROR, ticker.read() - started);
       if (reason.startedByCheck()) {
@@ -610,6 +693,18 @@ public final class CredentialVerifier implements Managed {
       }
       throw failure;
     }
+  }
+
+  /** The source's read between two counts, so its place among the reads is known. */
+  private ReadResult orderedRead(
+      Collection<CredentialSubject> subjects,
+      Map<CredentialSubject, CredentialRecord> previous,
+      Map<CredentialSubject, Throwable> unconverted,
+      long stampNanos) {
+    long started = readCounter.incrementAndGet();
+    Map<CredentialSubject, CredentialRecord> records = source.read(subjects, previous, unconverted);
+    return new ReadResult(
+        records, stampNanos, new ReadOrder(started, readCounter.incrementAndGet()));
   }
 
   private void recordDecrypts(Collection<CredentialRecord> records) {
@@ -673,8 +768,9 @@ public final class CredentialVerifier implements Managed {
                   replaced.set(existing);
                   return merged(existing, candidate, mayCreate);
                 });
-    if (installed == candidate && replaced.get() != null) {
-      notifyRemovedDigests(subject, replaced.get().record(), candidate.record());
+    VerifiedCredentials before = replaced.get();
+    if (before != null && installed != null && installed.record() != before.record()) {
+      notifyRemovedDigests(subject, before.record(), installed.record());
     }
     return installed == null ? candidate : installed;
   }
@@ -710,12 +806,42 @@ public final class CredentialVerifier implements Managed {
     }
   }
 
-  private record BatchOutcome(boolean reconfirmed, boolean deepVerified) {}
+  /** Each batch on its own, so one that fails leaves only its own entries to age out. */
+  private boolean reconfirmAll() {
+    boolean complete = true;
+    List<CredentialSubject> subjects = List.copyOf(entries.asMap().keySet());
+    for (List<CredentialSubject> batch : Lists.partition(subjects, config.batchSize())) {
+      complete &= reconfirmQuietly(batch);
+    }
+    return complete;
+  }
 
-  private BatchOutcome sweepBatch(List<CredentialSubject> batch, boolean deep) {
-    boolean reconfirmed = reconfirmQuietly(batch);
-    boolean deepVerified = !deep || (reconfirmed && deepReadQuietly(batch));
-    return new BatchOutcome(reconfirmed, deepVerified);
+  /** Continues the cycle an earlier pass left unfinished, or begins one when it is due. */
+  private void continueDeepVerify(long sweepStart) {
+    DeepCycle cycle = deepCycle.get() == null ? dueCycle(sweepStart) : deepCycle.get();
+    if (cycle != null) {
+      readChunksWithinBudget(cycle, sweepStart);
+      deepCycle.set(cycle.isDone() ? null : cycle);
+      if (cycle.isDone()) {
+        nextDeepVerifyNanos.set(
+            cycle.nextStartNanos(config.deepVerifyIntervalNanos(), deepRetryIntervalNanos));
+      }
+    }
+  }
+
+  private DeepCycle dueCycle(long sweepStart) {
+    return sweepStart - nextDeepVerifyNanos.get() >= 0
+        ? new DeepCycle(sweepStart, List.copyOf(entries.asMap().keySet()), deepChunkSize)
+        : null;
+  }
+
+  /** One chunk, and more while the pass is within its deep budget. */
+  private void readChunksWithinBudget(DeepCycle cycle, long sweepStart) {
+    boolean withinBudget = true;
+    while (withinBudget && !cycle.isDone()) {
+      cycle.readNext(this::deepReadQuietly);
+      withinBudget = ticker.read() - sweepStart < deepBudgetNanos;
+    }
   }
 
   private boolean reconfirmQuietly(List<CredentialSubject> batch) {
@@ -736,17 +862,17 @@ public final class CredentialVerifier implements Managed {
    * The deep verify: every decrypt forced, so a secret edited inside the secrets manager is seen.
    * It fails only when the read throws; a subject the read leaves out is unconfirmed instead.
    */
-  private boolean deepReadQuietly(List<CredentialSubject> batch) {
+  private boolean deepReadQuietly(List<CredentialSubject> chunk) {
     boolean succeeded = false;
     try {
-      reread(batch, ReadReason.DEEP, Map.of());
+      reread(chunk, ReadReason.DEEP, Map.of());
       metrics.recordSweepQuery(SweepQuery.FULL);
       succeeded = true;
     } catch (Throwable failure) {
       LOG.warn(
           "Deep credential verification of {} subjects failed and changed none of their entries;"
-              + " the pass is retried in {} ms",
-          batch.size(),
+              + " the next deep verify begins {} ms after this one began",
+          chunk.size(),
           TimeUnit.NANOSECONDS.toMillis(deepRetryIntervalNanos),
           failure);
     }
@@ -797,11 +923,11 @@ public final class CredentialVerifier implements Managed {
       ReadReason reason,
       Map<CredentialSubject, CredentialRecord> previous) {
     long stamp = ticker.read();
-    Map<CredentialSubject, CredentialRecord> records = timedRead(subjects, previous, reason, stamp);
+    ReadResult result = timedRead(subjects, previous, reason, stamp);
     for (CredentialSubject subject : subjects) {
-      CredentialRecord record = records.get(subject);
-      if (record != null) {
-        install(subject, new VerifiedCredentials(record, stamp), NEVER_CREATES);
+      FullRead fullRead = result.of(subject, Set.of());
+      if (fullRead != null) {
+        install(subject, new VerifiedCredentials(fullRead), NEVER_CREATES);
       } else if (reason == ReadReason.DEEP) {
         unconfirm(subject, stamp);
       }
@@ -840,7 +966,7 @@ public final class CredentialVerifier implements Managed {
 
   /** The read joins {@code reads} before it is registered, so a failure between strands nothing. */
   private void supersede(CredentialSubject subject, Map<CredentialSubject, InFlightRead> reads) {
-    InFlightRead mine = new InFlightRead();
+    InFlightRead mine = new InFlightRead(Set.of());
     reads.put(subject, mine);
     InFlightRead previous = inFlight.put(subject, mine);
     if (previous != null) {

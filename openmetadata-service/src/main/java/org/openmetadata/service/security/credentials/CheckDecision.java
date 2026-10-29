@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.security.credentials;
 
+import org.openmetadata.service.security.credentials.VerifiedCredentials.Standing;
+
 /**
  * The hot-path policy as a pure function of (entry, now, digest, policy): no clock, no I/O, no
  * cache access. {@link CredentialVerifier} gathers the inputs and acts on the answer. Staleness is
@@ -25,12 +27,20 @@ package org.openmetadata.service.security.credentials;
  * age > maxStaleness                -> LOAD_STALE
  * entry holds digest                -> ACCEPT
  * fullReadAge >= missRefreshMinAge  -> LOAD_UNKNOWN_TOKEN
- * otherwise                         -> REJECT
+ * entry shows digest withdrawn      -> REJECT
+ * otherwise                         -> DEFER
  * </pre>
  */
 enum CheckDecision {
   ACCEPT,
   REJECT,
+  /**
+   * A fresh entry lacks the digest without showing it withdrawn, and its last full read is younger
+   * than missRefreshMinAge: the token may have been created after that read began, and reading
+   * again this soon would let retries become database load. The verifier answers "cannot confirm"
+   * without a read, and a retry after the window reads.
+   */
+  DEFER,
   /** No entry for the subject: first use on this server, evicted, or idle-expired. */
   LOAD_MISSING,
   /**
@@ -57,7 +67,10 @@ enum CheckDecision {
   }
 
   boolean needsLoad() {
-    return this != ACCEPT && this != REJECT;
+    return switch (this) {
+      case LOAD_MISSING, LOAD_STALE, LOAD_UNKNOWN_TOKEN -> true;
+      case ACCEPT, REJECT, DEFER -> false;
+    };
   }
 
   static CheckDecision decide(
@@ -72,40 +85,47 @@ enum CheckDecision {
           decideOn(
               entry.ageNanos(nowNanos),
               entry.fullReadAgeNanos(nowNanos),
-              entry.record().holds(digest),
+              entry.standingOf(digest),
               policy);
     }
     return decision;
   }
 
   /**
-   * After one load: ACCEPT or REJECT when the loaded entry is within maxStaleness, so one request
-   * does at most one read. A load that completes outside the bound confirms nothing and answers
-   * LOAD_STALE, which the verifier reports as "cannot confirm", never as "revoked". {@code loaded}
-   * is confirmed: when the entry after the read is one that a newer deep read left unconfirmed, the
-   * verifier answers "cannot confirm" before this.
+   * After one load: ACCEPT, REJECT or DEFER when the loaded entry is within maxStaleness, so one
+   * request does at most one read. A load that completes outside the bound confirms nothing and
+   * answers LOAD_STALE, which the verifier reports as "cannot confirm", never as "revoked". A load
+   * that lacks the digest rejects it only when the entry shows it withdrawn, which a check's own
+   * read does for the token the check presented; a check that joined another's read may hold a
+   * token newer than that read, and defers. {@code loaded} is confirmed: when the entry after the
+   * read is one that a newer deep read left unconfirmed, the verifier answers "cannot confirm"
+   * before this.
    */
   static CheckDecision decideAfterLoad(
       VerifiedCredentials loaded, long nowNanos, TokenDigest digest, Policy policy) {
+    return loaded.ageNanos(nowNanos) > policy.maxStalenessNanos()
+        ? LOAD_STALE
+        : answerFor(loaded.standingOf(digest));
+  }
+
+  private static CheckDecision decideOn(
+      long ageNanos, long fullReadAgeNanos, Standing standing, Policy policy) {
     CheckDecision decision;
-    if (loaded.ageNanos(nowNanos) > policy.maxStalenessNanos()) {
+    if (ageNanos > policy.maxStalenessNanos()) {
       decision = LOAD_STALE;
+    } else if (standing != Standing.HELD && fullReadAgeNanos >= policy.missRefreshMinAgeNanos()) {
+      decision = LOAD_UNKNOWN_TOKEN;
     } else {
-      decision = loaded.record().holds(digest) ? ACCEPT : REJECT;
+      decision = answerFor(standing);
     }
     return decision;
   }
 
-  private static CheckDecision decideOn(
-      long ageNanos, long fullReadAgeNanos, boolean holdsDigest, Policy policy) {
-    CheckDecision decision;
-    if (ageNanos > policy.maxStalenessNanos()) {
-      decision = LOAD_STALE;
-    } else if (holdsDigest) {
-      decision = ACCEPT;
-    } else {
-      decision = fullReadAgeNanos >= policy.missRefreshMinAgeNanos() ? LOAD_UNKNOWN_TOKEN : REJECT;
-    }
-    return decision;
+  private static CheckDecision answerFor(Standing standing) {
+    return switch (standing) {
+      case HELD -> ACCEPT;
+      case WITHDRAWN -> REJECT;
+      case UNKNOWN -> DEFER;
+    };
   }
 }

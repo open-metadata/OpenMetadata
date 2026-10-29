@@ -865,6 +865,25 @@ class JwtFilterTest {
   }
 
   @Test
+  void checkValidationsForTokenChecksTheTokenItIsGivenWhateverClaimsAccompanyIt() {
+    String pat = personalAccessToken(USER);
+    credentials.withPats(Map.of(USER, List.of(pat)));
+    Map<String, Claim> providerClaims =
+        JWT.decode(JWT.create().withExpiresAt(inOneDay()).withClaim("sub", USER).sign(algorithm))
+            .getClaims();
+    omFilter.checkValidationsForToken(providerClaims, pat, USER, null);
+
+    credentials.revoke(USER);
+
+    AuthenticationException rejected =
+        assertThrows(
+            AuthenticationException.class,
+            () -> omFilter.checkValidationsForToken(providerClaims, pat, USER, null));
+    assertEquals(INVALID_PAT, rejected.getMessage());
+    assertEquals(2, credentials.fullReadsOf(USER), "the first check's read and the revoke's");
+  }
+
+  @Test
   void verifySignatureOnlySkipsTheStoredCredentialCheck() {
     String neverStored = botToken(BOT);
 
@@ -893,6 +912,14 @@ class JwtFilterTest {
       @Override
       void authenticate(JwtFilter filter, String token) {
         filter.getCatalogSecurityContext(token);
+      }
+    },
+    /** A caller that obtains the claims some other way and then runs the follow-up checks. */
+    CHECKS_AFTER_SIGNATURE_ONLY {
+      @Override
+      void authenticate(JwtFilter filter, String token) {
+        Map<String, Claim> claims = filter.verifySignatureOnly(token);
+        filter.checkValidationsForToken(claims, token, claims.get("sub").asString(), null);
       }
     };
 

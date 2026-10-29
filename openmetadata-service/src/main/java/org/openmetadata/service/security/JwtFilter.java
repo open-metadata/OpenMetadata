@@ -567,24 +567,31 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   /**
-   * The checks that follow {@link #validateJwtAndGetClaims}: the logout denylist, the email and
-   * principal domain rules, and the session binding. The stored-credential check already ran
-   * there, against the token's own principal, so {@code impersonatedBy} is not consulted. The
-   * parameter stays because other distributions call this signature.
+   * The checks that follow {@link #validateJwtAndGetClaims}: the stored-credential check, the
+   * logout denylist, the email and principal domain rules, and the session binding. The
+   * stored-credential check classifies the token from its own claims and checks its own principal,
+   * so it holds whatever {@code claims} and {@code userName} the caller passes. After
+   * validateJwtAndGetClaims accepted the same token it is answered from memory. {@code
+   * impersonatedBy} is not consulted; the parameter stays because other distributions call this
+   * signature.
+   *
+   * @throws AuthenticationException the token cannot be decoded, or is unrecognized or not current
+   * @throws CredentialUnavailableException the stored-credential check could not be confirmed
    */
   public void checkValidationsForToken(
       Map<String, Claim> claims, String tokenFromHeader, String userName, String impersonatedBy) {
-    String tokenKeyId = null;
-    try {
-      tokenKeyId = JWT.decode(tokenFromHeader).getKeyId();
-    } catch (JWTDecodeException e) {
-      LOG.debug("Unable to read key id from token during OpenMetadata issuer check", e);
-    }
+    DecodedJWT jwt = decode(tokenFromHeader);
+    Map<String, Claim> tokenClaims = extractClaims(jwt);
+    requireCurrentCredential(
+        tokenFromHeader,
+        jwt,
+        tokenClaims,
+        () -> resolveIdentity(tokenClaims, isBot(tokenClaims)).userName());
     ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBot(claims));
     checkValidationsForToken(
         claims,
         tokenFromHeader,
-        tokenKeyId,
+        jwt.getKeyId(),
         userName,
         resolvedIdentity.email(),
         resolvedIdentity.usedEmailFirstFlow());
@@ -754,14 +761,17 @@ public class JwtFilter implements ContainerRequestFilter {
     return value;
   }
 
-  @SneakyThrows
-  private DecodedJWT decodeAndVerify(String token) {
-    DecodedJWT jwt;
+  private static DecodedJWT decode(String token) {
     try {
-      jwt = JWT.decode(token);
+      return JWT.decode(token);
     } catch (JWTDecodeException e) {
       throw AuthenticationException.getInvalidTokenException("Invalid token.");
     }
+  }
+
+  @SneakyThrows
+  private DecodedJWT decodeAndVerify(String token) {
+    DecodedJWT jwt = decode(token);
 
     if (jwt.getExpiresAt() != null
         && jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {

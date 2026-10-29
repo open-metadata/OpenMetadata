@@ -13,8 +13,11 @@
 
 package org.openmetadata.service.security.credentials;
 
+import com.google.common.collect.Sets;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * One cache entry: a {@link CredentialRecord} plus two moments on this server's monotonic clock.
@@ -30,7 +33,13 @@ import java.lang.invoke.VarHandle;
  *
  * <p>A token the entry lacks may have been created on a peer after the full read, so the window in
  * which such a token is answered without a read is measured from {@code fullReadAtNanos}: a
- * reconfirmation proves the record current but reads nothing new.
+ * reconfirmation proves the record current but reads nothing new. Inside that window the entry
+ * rejects only a token it shows withdrawn: one that a read lacked although a check had presented
+ * it before that read began, or one that a read held and a read begun after that one finished
+ * lacked. A client is handed a token only after its commit, so in the first case the read began
+ * after the commit too, and in the second the token went away between the reads. A record that
+ * holds the token again outranks both. A stamp cannot order two reads, since it only bounds a
+ * snapshot from below; a {@link ReadOrder} can.
  *
  * <p>The trust stamp moves forward in place, never backwards, so a reconfirmation is not a cache
  * write and leaves the cache's frequency, recency and idle expiry to requests alone. The stamps
@@ -43,6 +52,12 @@ import java.lang.invoke.VarHandle;
  * before the deep read and gives it up to a read stamped after it.
  */
 final class VerifiedCredentials {
+  /**
+   * Withdrawn digests one entry keeps. One past the cap is forgotten, so inside the window it
+   * answers "cannot confirm" instead of "not current" until a read shows it withdrawn again.
+   */
+  static final int MAX_WITHDRAWN = 8;
+
   private static final VarHandle VERIFIED_AT;
 
   static {
@@ -55,30 +70,74 @@ final class VerifiedCredentials {
     }
   }
 
-  private final CredentialRecord record;
-  private final long fullReadAtNanos;
+  /** What an entry says about a token's digest. */
+  enum Standing {
+    HELD,
+    WITHDRAWN,
+    UNKNOWN
+  }
+
+  /**
+   * Where a full read falls among this verifier's reads: a counter taken just before its statement
+   * and again just after it returned. A read that started after another finished saw a later
+   * snapshot.
+   */
+  record ReadOrder(long started, long finished) {
+    boolean startedAfter(long counter) {
+      return started > counter;
+    }
+  }
+
+  /**
+   * What one full read found, the stamp it was issued under, its place among the reads, and the
+   * tokens a check presented before it began: the token of the check that started it, if one did.
+   */
+  record FullRead(
+      CredentialRecord record,
+      long stampNanos,
+      ReadOrder order,
+      Set<TokenDigest> presentedBefore) {}
+
+  private final FullRead read;
+  private final Set<TokenDigest> withdrawn;
   private final boolean confirmed;
   private volatile long verifiedAtNanos;
 
-  /** The entry a full read produces: both stamps are the read's own. */
-  VerifiedCredentials(CredentialRecord record, long readStampNanos) {
-    this(record, readStampNanos, readStampNanos);
+  /**
+   * The entry a full read produces: both stamps are the read's own, and a token presented before
+   * the read began that the read lacks is withdrawn.
+   */
+  VerifiedCredentials(FullRead read) {
+    this(
+        read,
+        read.stampNanos(),
+        Set.copyOf(Sets.difference(read.presentedBefore(), read.record().digests())));
   }
 
-  VerifiedCredentials(CredentialRecord record, long verifiedAtNanos, long fullReadAtNanos) {
-    this(record, verifiedAtNanos, fullReadAtNanos, true);
+  private VerifiedCredentials(FullRead read, long verifiedAtNanos, Set<TokenDigest> withdrawn) {
+    this(read, verifiedAtNanos, withdrawn, true);
   }
 
   private VerifiedCredentials(
-      CredentialRecord record, long verifiedAtNanos, long fullReadAtNanos, boolean confirmed) {
-    this.record = record;
+      FullRead read, long verifiedAtNanos, Set<TokenDigest> withdrawn, boolean confirmed) {
+    this.read = read;
     this.verifiedAtNanos = verifiedAtNanos;
-    this.fullReadAtNanos = fullReadAtNanos;
+    this.withdrawn = withdrawn;
     this.confirmed = confirmed;
   }
 
   CredentialRecord record() {
-    return record;
+    return read.record();
+  }
+
+  Standing standingOf(TokenDigest digest) {
+    Standing standing;
+    if (read.record().holds(digest)) {
+      standing = Standing.HELD;
+    } else {
+      standing = withdrawn.contains(digest) ? Standing.WITHDRAWN : Standing.UNKNOWN;
+    }
+    return standing;
   }
 
   /** False for the entry a deep read leaves when it cannot convert the subject. */
@@ -88,13 +147,14 @@ final class VerifiedCredentials {
 
   /**
    * This entry as a deep read stamped {@code stampNanos} leaves it when it cannot convert the
-   * subject: the same record and full-read stamp, unconfirmed, with the read's stamp as its trust
-   * stamp. An entry trusted from a later stamp is newer than that read and is returned as is.
+   * subject: the same record, full read and withdrawn digests, unconfirmed, with the read's stamp
+   * as its trust stamp. An entry trusted from a later stamp is newer than that read and is returned
+   * as is.
    */
   VerifiedCredentials unconfirmedAt(long stampNanos) {
     return isLater(verifiedAtNanos, stampNanos)
         ? this
-        : new VerifiedCredentials(record, stampNanos, fullReadAtNanos, false);
+        : new VerifiedCredentials(read, stampNanos, withdrawn, false);
   }
 
   long verifiedAtNanos() {
@@ -102,7 +162,7 @@ final class VerifiedCredentials {
   }
 
   long fullReadAtNanos() {
-    return fullReadAtNanos;
+    return read.stampNanos();
   }
 
   long ageNanos(long nowNanos) {
@@ -110,7 +170,7 @@ final class VerifiedCredentials {
   }
 
   long fullReadAgeNanos(long nowNanos) {
-    return nowNanos - fullReadAtNanos;
+    return nowNanos - read.stampNanos();
   }
 
   /**
@@ -122,7 +182,7 @@ final class VerifiedCredentials {
    * outrank a converting read already in flight.
    */
   boolean confirm(SourceFingerprint fingerprint, long stampNanos) {
-    boolean unchanged = fingerprint.equals(record.fingerprint());
+    boolean unchanged = fingerprint.equals(read.record().fingerprint());
     if (unchanged && confirmed) {
       advanceTrustTo(stampNanos);
     }
@@ -132,10 +192,47 @@ final class VerifiedCredentials {
   /**
    * Merge function for {@code asMap().merge/compute}: pure, no I/O. Keeps the read with the later
    * trust stamp. On a tie the candidate wins: a confirmation can move the existing entry's stamp to
-   * the very instant of a full read, and the full read saw the rows.
+   * the very instant of a full read, and the full read saw the rows. The kept entry also takes what
+   * either entry shows withdrawn, and each token one read shows committed before the other began
+   * that the other lacks, less every digest its own record holds. It is copied when that adds a
+   * digest; a reconfirmation that lands on the copied entry meanwhile is lost, which leaves the
+   * copy older than it could be, never newer.
    */
   static VerifiedCredentials newer(VerifiedCredentials existing, VerifiedCredentials candidate) {
-    return isLater(existing.verifiedAtNanos, candidate.verifiedAtNanos) ? existing : candidate;
+    VerifiedCredentials kept =
+        isLater(existing.verifiedAtNanos, candidate.verifiedAtNanos) ? existing : candidate;
+    Set<TokenDigest> withdrawn = withdrawnAcross(existing, candidate, kept.record());
+    return withdrawn.equals(kept.withdrawn)
+        ? kept
+        : new VerifiedCredentials(kept.read, kept.verifiedAtNanos, withdrawn, kept.confirmed);
+  }
+
+  /** Newest knowledge first, so the cap forgets what was learned earliest. */
+  private static Set<TokenDigest> withdrawnAcross(
+      VerifiedCredentials existing, VerifiedCredentials candidate, CredentialRecord kept) {
+    Set<TokenDigest> withdrawn = new LinkedHashSet<>(goneBy(existing, candidate));
+    withdrawn.addAll(goneBy(candidate, existing));
+    withdrawn.addAll(candidate.withdrawn);
+    withdrawn.addAll(existing.withdrawn);
+    withdrawn.removeAll(kept.digests());
+    return Set.copyOf(withdrawn.stream().limit(MAX_WITHDRAWN).toList());
+  }
+
+  /**
+   * The tokens {@code earlier} shows committed before {@code later} began, less those {@code
+   * later} holds. A token presented before the earlier read began counts once the later began after
+   * it; a token the earlier read held counts once the later began after it finished.
+   */
+  private static Set<TokenDigest> goneBy(VerifiedCredentials earlier, VerifiedCredentials later) {
+    ReadOrder before = earlier.read.order();
+    ReadOrder after = later.read.order();
+    Set<TokenDigest> committed = Set.of();
+    if (after.startedAfter(before.finished())) {
+      committed = Sets.union(earlier.record().digests(), earlier.read.presentedBefore());
+    } else if (after.startedAfter(before.started())) {
+      committed = earlier.read.presentedBefore();
+    }
+    return Sets.difference(committed, later.record().digests());
   }
 
   private void advanceTrustTo(long stampNanos) {
