@@ -398,8 +398,8 @@ export const UserTeamSelectableList = ({
     // Ids that arrive while the picker is open (e.g. still loading when it was
     // opened) re-read the lists, through their `key`, and both tab counts.
     if (isOpen) {
-      getUserCount();
-      getTeamCount();
+      // A failed count keeps the previous one; nothing else waits on it.
+      void Promise.allSettled([getUserCount(), getTeamCount()]);
     }
     // Only a change of ids re-reads; opening the picker already reads in init.
     // eslint-disable-next-line react-hooks/exhaustive-deps
