@@ -1,6 +1,6 @@
 # Databend
 
-Use this connector to ingest databases, tables, views, columns, and descriptions from the Databend `default` catalog. It also supports table and column profiling, sampling and sample data, data quality tests, and auto-classification.
+Use this connector to ingest databases, tables, views, columns, and descriptions from the Databend `default` catalog. It also supports table and column profiling, sampling and sample data, data quality tests, auto-classification, and table and column lineage.
 
 Databend objects are represented in OpenMetadata as follows:
 
@@ -19,6 +19,19 @@ The Databend user must be able to connect to the HTTP query service and read the
 ### Profiler, Sampling, Data Quality, and Auto-Classification
 
 The Databend user needs `SELECT` permission on every table or view where OpenMetadata runs profiling, sampling, sample-data extraction, data quality tests, or auto-classification. Percentage sampling uses Databend's `rand()` function and does not create temporary tables.
+
+### Lineage
+
+Lineage is read from Databend's own lineage records in `system_history.lineage_history`, so no SQL is parsed by OpenMetadata. This requires:
+
+- Databend v1.2.933 or later.
+- A Databend Enterprise license.
+- Lineage and history tables enabled in the query configuration: `[lineage] on = true` and `[log.history] on = true`.
+- `SELECT` permission on `system_history.lineage_history`.
+
+These requirements only apply to lineage ingestion. Without them, the optional `GetLineage` test connection step fails and the lineage workflow reports the missing requirement, while metadata, profiler, and data quality workflows keep working.
+
+View lineage comes from `CREATE VIEW` records. Query lineage comes from `CREATE TABLE ... AS SELECT` and DML records updated within the configured query log duration. Run the metadata workflow first: edges whose tables are not ingested yet are skipped and picked up by a later run. Edges that involve an external catalog are skipped.
 
 ## Connection Details
 

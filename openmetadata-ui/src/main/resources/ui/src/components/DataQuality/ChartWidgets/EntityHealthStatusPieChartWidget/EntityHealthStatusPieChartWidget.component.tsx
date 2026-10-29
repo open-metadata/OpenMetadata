@@ -93,31 +93,35 @@ const EntityHealthStatusPieChartWidget = ({
   if (isLoading) {
     return (
       <Card className={className} data-testid="entity-health-pie-chart-widget">
-        <Skeleton height={200} width="100%" />
+        <Card.Content>
+          <Skeleton height={200} width="100%" />
+        </Card.Content>
       </Card>
     );
   }
 
   return (
     <Card className={className} data-testid="entity-health-pie-chart-widget">
-      <div className="d-flex flex-column items-center">
-        <div className="d-flex items-center gap-2">
-          <div className="custom-chart-icon-background health-check-icon icon-container">
-            <HealthCheckIcon />
+      <Card.Content>
+        <div className="d-flex flex-column items-center">
+          <div className="d-flex items-center gap-2">
+            <div className="custom-chart-icon-background health-check-icon icon-container">
+              <HealthCheckIcon />
+            </div>
+            <Typography as="span" className="font-semibold text-sm">
+              {t('label.healthy-data-asset-plural')}
+            </Typography>
           </div>
-          <Typography as="span" className="font-semibold text-sm">
-            {t('label.healthy-data-asset-plural')}
-          </Typography>
+          <CustomPieChart
+            showLegends
+            ariaLabel={t('label.healthy-data-asset-plural')}
+            data={data}
+            label={chartLabel}
+            name="healthy-data-assets"
+            onSegmentClick={handleSegmentClick}
+          />
         </div>
-        <CustomPieChart
-          showLegends
-          ariaLabel={t('label.healthy-data-asset-plural')}
-          data={data}
-          label={chartLabel}
-          name="healthy-data-assets"
-          onSegmentClick={handleSegmentClick}
-        />
-      </div>
+      </Card.Content>
     </Card>
   );
 };

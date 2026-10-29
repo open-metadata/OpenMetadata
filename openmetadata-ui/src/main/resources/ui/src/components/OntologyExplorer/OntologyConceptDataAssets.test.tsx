@@ -38,18 +38,19 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../DataAssets/AssetsSelectionModal/AssetSelectionModal', () => ({
-  AssetSelectionModal: ({
-    entityFqn,
+jest.mock('./OntologyDataAssetPicker', () => ({
+  __esModule: true,
+  default: ({
+    term,
     onCancel,
     onSave,
   }: {
-    entityFqn: string;
+    term: { fullyQualifiedName: string };
     onCancel: () => void;
     onSave: () => void;
   }) => (
-    <div data-testid="asset-selection-modal">
-      <span>{entityFqn}</span>
+    <div data-testid="ontology-data-asset-picker">
+      <span>{term.fullyQualifiedName}</span>
       <button type="button" onClick={onSave}>
         save-assets
       </button>
@@ -107,7 +108,7 @@ describe('OntologyConceptDataAssets', () => {
 
     expect(await screen.findByText('table_0')).toBeInTheDocument();
     expect(screen.getByTestId('authoring-more-assets')).toHaveTextContent(
-      '+2 label.more-lowercase label.data-asset-lowercase-plural'
+      'label.show-count-more'
     );
 
     fireEvent.click(screen.getByTestId('authoring-more-assets'));
@@ -163,7 +164,7 @@ describe('OntologyConceptDataAssets', () => {
     await screen.findByText('table_0');
     fireEvent.click(screen.getByTestId('authoring-add-data-assets'));
 
-    expect(screen.getByTestId('asset-selection-modal')).toHaveTextContent(
+    expect(screen.getByTestId('ontology-data-asset-picker')).toHaveTextContent(
       TERM.fullyQualifiedName ?? ''
     );
 
@@ -171,7 +172,7 @@ describe('OntologyConceptDataAssets', () => {
 
     expect(await screen.findByText('table_1')).toBeInTheDocument();
     expect(
-      screen.queryByTestId('asset-selection-modal')
+      screen.queryByTestId('ontology-data-asset-picker')
     ).not.toBeInTheDocument();
     expect(mockGetAssets).toHaveBeenLastCalledWith(
       TERM_ID,

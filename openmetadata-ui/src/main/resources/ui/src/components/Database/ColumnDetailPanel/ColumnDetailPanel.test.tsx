@@ -47,45 +47,6 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Drawer: jest
-    .fn()
-    .mockImplementation(({ children, open, title, footer, ...props }) => (
-      <div data-open={open} data-testid="drawer" {...props}>
-        {title && <div data-testid="drawer-title">{title}</div>}
-        <div data-testid="drawer-content">{children}</div>
-        {footer && <div data-testid="drawer-footer">{footer}</div>}
-      </div>
-    )),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onClick, disabled, ...props }) => (
-      <button
-        data-testid={props['data-testid'] || 'button'}
-        disabled={disabled}
-        onClick={onClick}
-        {...props}>
-        {children}
-      </button>
-    )),
-  Card: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="card" {...props}>
-      {children}
-    </div>
-  )),
-  Space: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="space" {...props}>
-      {children}
-    </div>
-  )),
-  Tooltip: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="tooltip" {...props}>
-      {children}
-    </div>
-  )),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
   Button: jest.fn().mockImplementation(
@@ -108,10 +69,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Tooltip: ({ children }: React.PropsWithChildren) => children,
 }));
 
-jest.mock('@ant-design/icons', () => ({
-  CloseOutlined: () => <div data-testid="close-icon">CloseIcon</div>,
-}));
-
 jest.mock('../../../assets/svg/down-arrow-icon.svg', () => ({
   ReactComponent: () => <div data-testid="arrow-down-icon">ArrowDown</div>,
 }));
@@ -122,10 +79,6 @@ jest.mock('../../../assets/svg/up-arrow-icon.svg', () => ({
 
 jest.mock('../../../assets/svg/entity/column.svg', () => ({
   ReactComponent: () => <div data-testid="column-icon">ColumnIcon</div>,
-}));
-
-jest.mock('../../../assets/svg/icon-key.svg', () => ({
-  ReactComponent: () => <div data-testid="key-icon">KeyIcon</div>,
 }));
 
 jest.mock('../../common/DescriptionSection/DescriptionSection', () => ({
@@ -507,10 +460,11 @@ describe('ColumnDetailPanel', () => {
 
   describe('Component Rendering', () => {
     it('should render drawer when isOpen is true', async () => {
-      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
+      const { getByTestId, getByRole } = render(
+        <ColumnDetailPanel {...mockProps} />
+      );
 
-      expect(getByTestId('drawer')).toBeInTheDocument();
-      expect(getByTestId('drawer')).toHaveAttribute('data-open', 'true');
+      expect(getByRole('dialog')).toBeInTheDocument();
 
       await waitFor(() => {
         expect(getByTestId('description-section')).toBeInTheDocument();
@@ -518,11 +472,11 @@ describe('ColumnDetailPanel', () => {
     });
 
     it('should not render drawer when isOpen is false', () => {
-      const { getByTestId } = render(
+      const { queryByRole } = render(
         <ColumnDetailPanel {...mockProps} isOpen={false} />
       );
 
-      expect(getByTestId('drawer')).toHaveAttribute('data-open', 'false');
+      expect(queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('should render all sections in overview tab', async () => {

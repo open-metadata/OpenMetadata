@@ -128,6 +128,14 @@ public final class ContextFileVisibility {
         .setPaging(files.getPaging());
   }
 
+  /** Drops the files this caller may not see from an unpaged list, such as a folder's children. */
+  public static List<ContextFile> filterVisible(
+      List<ContextFile> files, SecurityContext securityContext) {
+    String userName = callerName(securityContext);
+    boolean admin = isAdmin(securityContext);
+    return files.stream().filter(file -> isVisibleToUser(file, userName, admin)).toList();
+  }
+
   /**
    * Merges the fields the decision reads into a caller's selection. Owners and shareConfig are null
    * unless the fetch asked for them, and a read that omits them hands the guard a file that looks

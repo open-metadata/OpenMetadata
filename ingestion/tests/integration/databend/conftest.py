@@ -30,6 +30,8 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
+# The lineage tests are skipped when this image rejects the Enterprise license for system_history;
+# upgrade to a newer pinned tag if they start skipping.
 DATABEND_IMAGE = "datafuselabs/databend:v1.2.945-nightly"
 DATABEND_HTTP_PORT = 8000
 DATABEND_USERNAME = "databend"

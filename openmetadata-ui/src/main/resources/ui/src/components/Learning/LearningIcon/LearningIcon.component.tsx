@@ -149,7 +149,7 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
             <Button
               color="tertiary"
               data-testid="learning-resources-button"
-              iconTrailing={<ArrowRight size={14} />}
+              iconTrailing={ArrowRight}
               size="sm"
               onPress={handleClick}>
               {resourceCount} {t('label.resource-plural').toLowerCase()}

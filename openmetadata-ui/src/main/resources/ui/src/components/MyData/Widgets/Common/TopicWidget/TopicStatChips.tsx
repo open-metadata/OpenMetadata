@@ -21,8 +21,8 @@ export interface TopicStat {
   id: string;
   label: string;
   tone: TopicStatTone;
-  /** Omitted when the count is zero — an empty bucket is not worth a click. */
-  onPress?: () => void;
+  /** An empty bucket has no list to show, so its chip cannot be picked. */
+  isDisabled?: boolean;
 }
 
 // Dot and label colour per bucket. The chip surface stays neutral so the row
@@ -42,33 +42,53 @@ const TONE_CLASSES: Record<TopicStatTone, { dot: string; label: string }> = {
   },
 };
 
-// Button draws its own border on `::after` (see CLAUDE.md §Styling), so the
-// tone recolours that rather than adding a second border around it.
-const TONE_SURFACE: Record<TopicStatTone, string> = {
+// The selected chip takes its tone's surface; the rest stay neutral. Button
+// draws its own border on `::after` (see CLAUDE.md §Styling), so the tone
+// recolours that rather than adding a second border around it.
+// ADR:2026-10-23-landing-page-segmented-controls-are-styled-at-the-call-site
+const SELECTED_SURFACE: Record<TopicStatTone, string> = {
   critical: 'tw:bg-utility-error-50 tw:after:outline-utility-error-200',
-  success: 'tw:bg-primary',
-  muted: 'tw:bg-primary',
+  success: 'tw:bg-utility-success-50 tw:after:outline-utility-success-200',
+  muted: 'tw:bg-secondary',
 };
 
 export interface TopicStatChipsProps {
   stats: TopicStat[];
+  /** The id of the bucket whose rows the card is showing. */
+  value: string;
+  onChange: (id: string) => void;
+  /** Names the group for assistive tech. */
+  label: string;
 }
 
-/** The bucket chips above a topic card's rows, e.g. "15 of 25 failing". */
-const TopicStatChips: React.FC<TopicStatChipsProps> = ({ stats }) => (
-  <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2.5">
+/**
+ * The bucket chips above a topic card's rows, e.g. "15 of 25 failing". They
+ * filter the rows below in place — one is always selected — rather than leave
+ * the page.
+ */
+const TopicStatChips: React.FC<TopicStatChipsProps> = ({
+  stats,
+  value,
+  onChange,
+  label,
+}) => (
+  <div
+    aria-label={label}
+    className="tw:flex tw:flex-wrap tw:items-center tw:gap-2.5"
+    role="group">
     {stats.map((stat) => (
       <Button
+        aria-pressed={stat.id === value}
         className={classNames(
-          'tw:rounded-lg tw:px-3 tw:py-1.5',
-          TONE_SURFACE[stat.tone]
+          'tw:rounded-lg tw:px-2.5 tw:py-1',
+          stat.id === value && SELECTED_SURFACE[stat.tone]
         )}
         color="secondary"
         data-testid={`topic-stat-${stat.id}`}
-        isDisabled={!stat.onPress}
+        isDisabled={stat.isDisabled && stat.id !== value}
         key={stat.id}
         size="sm"
-        onPress={stat.onPress}>
+        onPress={() => onChange(stat.id)}>
         <span className="tw:flex tw:items-center tw:gap-2">
           <span
             aria-hidden

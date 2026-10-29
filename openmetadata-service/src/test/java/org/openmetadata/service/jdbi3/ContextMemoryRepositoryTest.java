@@ -42,6 +42,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
@@ -164,6 +165,33 @@ class ContextMemoryRepositoryTest {
 
     assertEquals(102L, updated.getUpdatedAt());
     assertEquals(original.getVersion(), updated.getVersion());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = EntityRepository.Operation.class,
+      names = {"PATCH", "PUT"})
+  void aWriteReturnsAndIndexesTheStoredTelemetryNotTheValuesItSent(
+      EntityRepository.Operation operation) {
+    MemoryOutcomes stored = new MemoryOutcomes().withAppliedCount(4).withCountedAt(90L);
+    ContextMemory original =
+        memory(MemoryVisibility.ENTITY)
+            .withUpdatedBy("admin")
+            .withUpdatedAt(101L)
+            .withUsageCount(4)
+            .withLastUsedAt(80L)
+            .withOutcomes(stored);
+    ContextMemory updated =
+        JsonUtils.deepCopy(original, ContextMemory.class)
+            .withUsageCount(999999)
+            .withLastUsedAt(999L)
+            .withOutcomes(new MemoryOutcomes().withAppliedCount(999999).withCountedAt(999L));
+
+    repository.getUpdater(original, updated, operation, ChangeSource.MANUAL);
+
+    assertEquals(4, updated.getUsageCount());
+    assertEquals(80L, updated.getLastUsedAt());
+    assertEquals(stored, updated.getOutcomes());
   }
 
   @ParameterizedTest

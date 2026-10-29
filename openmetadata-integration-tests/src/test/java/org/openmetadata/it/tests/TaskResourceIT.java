@@ -16,13 +16,18 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -37,6 +42,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
@@ -92,6 +98,7 @@ import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.DataAccessPermission;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.DataAccessType;
+import org.openmetadata.schema.type.DescriptionUpdatePayload;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
@@ -127,6 +134,9 @@ import org.openmetadata.service.jdbi3.TaskRepository;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
+  private static final String SORT_ORDER_ASC = "asc";
+
+  private static final String REQUESTED_DESCRIPTION = "Description requested by the creator";
 
   private static String entityLink(String entityType, String entityFqn) {
     return String.format("<#E::%s::%s>", entityType, entityFqn);
@@ -2393,6 +2403,218 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         "Paging back returns the previous page");
   }
 
+  @Test
+  void testListPagesNewestFirstBothWays(TestNamespace ns) throws Exception {
+    final Domain domain = createDomain(ns, "list-order-domain");
+    final Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    final List<Task> created = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      created.add(createTaskWithDisplayName(ns, "list-order-" + i, table, "Order check " + i));
+    }
+
+    assertCreationOrderPaging(table.getFullyQualifiedName(), null, created);
+  }
+
+  @Test
+  void testListSearchPagesNewestFirstBothWays(TestNamespace ns) throws Exception {
+    final Domain domain = createDomain(ns, "list-search-order-domain");
+    final Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    final String text = "Rotate credentials " + ns.prefix("order");
+    final List<Task> matching = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      matching.add(createTaskWithDisplayName(ns, "list-search-order-" + i, table, text));
+    }
+    createTaskWithDisplayName(ns, "list-search-order-other", table, "Unrelated work");
+
+    assertCreationOrderPaging(table.getFullyQualifiedName(), text, matching);
+  }
+
+  @Test
+  void testScopedListsReturnNewestFirst(TestNamespace ns) throws Exception {
+    final Domain domain = createDomain(ns, "scoped-order-domain");
+    final ScopedOrderTasks tasks = createScopedOrderTasks(ns, domain);
+    final String domainFqn = domain.getFullyQualifiedName();
+
+    assertScopedListNewestFirst("/assigned", domainFqn, tasks.assigned());
+    assertScopedListNewestFirst("/created", domainFqn, tasks.created());
+    assertScopedListNewestFirst("/owned", domainFqn, tasks.all());
+    assertScopedListNewestFirst("/visible", domainFqn, tasks.all());
+  }
+
+  @Test
+  void testListRejectsNameCursorAndUnknownSortOrder(TestNamespace ns) {
+    final NameCursor cursor = new NameCursor("TASK-00001", UUID.randomUUID().toString());
+    final String nameCursor =
+        Base64.getUrlEncoder()
+            .encodeToString(JsonUtils.pojoToJson(cursor).getBytes(StandardCharsets.UTF_8));
+
+    assertListRejects(
+        "after", nameCursor, "A name cursor issued before creation-time paging is rejected");
+    assertListRejects("sortOrder", "sideways", "An unknown sortOrder is rejected");
+  }
+
+  /** The cursor shape issued before task lists paged by creation time. */
+  private record NameCursor(String name, String id) {}
+
+  /**
+   * Admin-filed tasks assigned to user1 reach /assigned and user1's own tasks reach /created. All
+   * of them are about a user1-owned table, so /owned and /visible hold every one.
+   */
+  private record ScopedOrderTasks(List<Task> assigned, List<Task> created) {
+    List<Task> all() {
+      final List<Task> all = new ArrayList<>(assigned);
+      all.addAll(created);
+      return all;
+    }
+  }
+
+  private ScopedOrderTasks createScopedOrderTasks(TestNamespace ns, Domain domain) {
+    final Table ownedTable =
+        createTableWithDomainAndOwners(
+            ns, domain.getEntityReference(), List.of(SharedEntities.get().USER1_REF));
+    final List<Task> assigned = new ArrayList<>();
+    final List<Task> created = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      assigned.add(createTaskAssignedToUser1(ns, "scoped-order-assigned-" + i, ownedTable));
+      created.add(createTaskAsUser1(ns, "scoped-order-created-" + i, ownedTable));
+    }
+    return new ScopedOrderTasks(assigned, created);
+  }
+
+  private Task createTaskAssignedToUser1(TestNamespace ns, String name, Table table) {
+    final String user1 = SharedEntities.get().USER1.getFullyQualifiedName();
+    return SdkClients.adminClient()
+        .tasks()
+        .create(createTaskRequestAboutTable(ns, name, table).withAssignees(List.of(user1)));
+  }
+
+  private Task createTaskAsUser1(TestNamespace ns, String name, Table table) {
+    return SdkClients.user1Client().tasks().create(createTaskRequestAboutTable(ns, name, table));
+  }
+
+  /**
+   * Lists one of user1's scoped endpoints within the test's own domain, so tasks other concurrent
+   * tests file for user1 cannot satisfy or break the check, and requires every expected task on
+   * the page in non-increasing createdAt order.
+   */
+  private static void assertScopedListNewestFirst(
+      String path, String domainFqn, List<Task> expected) throws Exception {
+    final JsonNode page = listAsUser1InDomain(path, domainFqn);
+
+    assertTrue(
+        pageIds(page).containsAll(expected.stream().map(Task::getId).toList()),
+        "%s lists every task filed for this test".formatted(path));
+    assertNewestFirst(createdAtsOf(page), "%s lists the newest task first".formatted(path));
+  }
+
+  private static JsonNode listAsUser1InDomain(String path, String domainFqn) throws Exception {
+    final RequestOptions options =
+        RequestOptions.builder().queryParam("domain", domainFqn).queryParam("limit", "100").build();
+    final String response =
+        SdkClients.user1Client()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/tasks" + path, null, options);
+    return JsonUtils.readTree(response);
+  }
+
+  private static List<Long> createdAtsOf(JsonNode page) {
+    final List<Long> createdAts = new ArrayList<>();
+    page.path("data").forEach(node -> createdAts.add(node.path("createdAt").asLong()));
+    return createdAts;
+  }
+
+  private static void assertNewestFirst(List<Long> createdAts, String message) {
+    assertEquals(
+        createdAts.stream().sorted(Comparator.reverseOrder()).toList(), createdAts, message);
+  }
+
+  private static void assertListRejects(String param, String value, String message) {
+    final RequestOptions options = RequestOptions.builder().queryParam(param, value).build();
+    assertThrows(InvalidRequestException.class, () -> taskListPage("/v1/tasks", options), message);
+  }
+
+  /**
+   * Walks the tasks about one entity a row at a time in both orders and checks each walk, and a
+   * step back from its last page, against the creation times of {@code expected}.
+   */
+  private void assertCreationOrderPaging(String aboutEntity, String query, List<Task> expected)
+      throws Exception {
+    final List<JsonNode> descPages = walkTaskPages(aboutEntity, query, null);
+    final List<JsonNode> ascPages = walkTaskPages(aboutEntity, query, SORT_ORDER_ASC);
+    final List<UUID> newestFirst = idsOf(descPages);
+
+    assertVisitsNewestFirst(expected, newestFirst);
+    assertEquals(newestFirst.reversed(), idsOf(ascPages), "sortOrder=asc lists the oldest first");
+    assertPagesBackTo(aboutEntity, query, null, descPages);
+    assertPagesBackTo(aboutEntity, query, SORT_ORDER_ASC, ascPages);
+  }
+
+  /**
+   * Rows created in the same millisecond are ordered by id under the database's collation, so the
+   * walk is checked on createdAt rather than against a Java id sort.
+   */
+  private static void assertVisitsNewestFirst(List<Task> expected, List<UUID> visited) {
+    final Map<UUID, Long> createdAtById =
+        expected.stream().collect(Collectors.toMap(Task::getId, Task::getCreatedAt));
+
+    assertEquals(expected.size(), visited.size(), "Paging visits every task exactly once");
+    assertEquals(createdAtById.keySet(), Set.copyOf(visited), "Paging visits every task once");
+    assertNewestFirst(
+        visited.stream().map(createdAtById::get).toList(),
+        "Default order lists the newest task first");
+  }
+
+  private void assertPagesBackTo(
+      String aboutEntity, String query, String sortOrder, List<JsonNode> pages) throws Exception {
+    final RequestOptions.Builder options = orderedPageOptions(aboutEntity, query, sortOrder);
+    options.queryParam("before", pages.getLast().path("paging").path("before").asText());
+    assertEquals(
+        pageIds(pages.get(pages.size() - 2)),
+        pageIds(taskListPage("/v1/tasks", options.build())),
+        "Paging back from the last page returns the one before it");
+  }
+
+  private List<JsonNode> walkTaskPages(String aboutEntity, String query, String sortOrder)
+      throws Exception {
+    final List<JsonNode> pages = new ArrayList<>();
+    String after = null;
+    do {
+      final RequestOptions.Builder options = orderedPageOptions(aboutEntity, query, sortOrder);
+      if (after != null) {
+        options.queryParam("after", after);
+      }
+      final JsonNode page = taskListPage("/v1/tasks", options.build());
+      pages.add(page);
+      after = page.path("paging").path("after").asText(null);
+    } while (after != null && pages.size() < 10);
+    return pages;
+  }
+
+  private static RequestOptions.Builder orderedPageOptions(
+      String aboutEntity, String query, String sortOrder) {
+    final RequestOptions.Builder options =
+        RequestOptions.builder().queryParam("aboutEntity", aboutEntity).queryParam("limit", "1");
+    if (query != null) {
+      options.queryParam("q", query);
+    }
+    if (sortOrder != null) {
+      options.queryParam("sortOrder", sortOrder);
+    }
+    return options;
+  }
+
+  private static List<UUID> idsOf(List<JsonNode> pages) {
+    return pages.stream().flatMap(page -> pageIds(page).stream()).toList();
+  }
+
+  private static JsonNode taskListPage(String path, RequestOptions options) throws Exception {
+    final String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, path, null, options);
+    return JsonUtils.readTree(response);
+  }
+
   private JsonNode searchPage(String aboutEntity, String query, String cursorParam, String cursor)
       throws Exception {
     RequestOptions.Builder options =
@@ -2483,26 +2705,36 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .create(createTaskRequestAboutTable(ns, "time-range-created", ownedTable));
 
     // assignedTask is visible to user1 both via /visible and /owned (about a
-    // user1-owned table); createdTask exercises /created (createdBy user1).
+    // user1-owned table); createdTask exercises /created (createdBy user1). Scoped to this
+    // test's domain so tasks other concurrent tests give user1 cannot move total vs page.
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listVisible(null, null, null, "assignees,about", 1000, startTs, endTs),
+                .listVisible(
+                    null,
+                    null,
+                    domain.getFullyQualifiedName(),
+                    "assignees,about",
+                    1000,
+                    startTs,
+                    endTs),
         assignedTask.getId(),
         assignedTask.getCreatedAt());
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listOwned(null, null, null, "about", 1000, startTs, endTs),
+                .listOwned(
+                    null, null, domain.getFullyQualifiedName(), "about", 1000, startTs, endTs),
         assignedTask.getId(),
         assignedTask.getCreatedAt());
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listCreated(null, null, null, "about", 1000, startTs, endTs),
+                .listCreated(
+                    null, null, domain.getFullyQualifiedName(), "about", 1000, startTs, endTs),
         createdTask.getId(),
         createdTask.getCreatedAt());
 
@@ -5183,6 +5415,112 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                   () -> SdkClients.adminClient().tasks().get(taskId.toString()),
                   "Deleted suggestion task should no longer be retrievable");
             });
+  }
+
+  @Test
+  void testSoftDeletingCreatorKeepsTheirTasks(TestNamespace ns) {
+    CreatorWithTasks creator = createUserWithMetadataTasks(ns, "soft_delete_creator");
+    String creatorId = creator.user().getId().toString();
+
+    SdkClients.adminClient().users().delete(creatorId);
+    assertTasksKeptWithCreator(creator);
+
+    SdkClients.adminClient().users().restore(creatorId);
+    assertTasksKeptWithCreator(creator);
+  }
+
+  @Test
+  void testHardDeletingCreatorRemovesOnlyTheirSuggestions(TestNamespace ns) {
+    CreatorWithTasks creator = createUserWithMetadataTasks(ns, "hard_delete_creator");
+
+    SdkClients.adminClient()
+        .users()
+        .delete(
+            creator.user().getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    for (Task suggestion : List.of(creator.openSuggestion(), creator.closedSuggestion())) {
+      ApiException notFound =
+          assertThrows(
+              ApiException.class,
+              () -> SdkClients.adminClient().tasks().get(suggestion.getId().toString()));
+      assertEquals(
+          404,
+          notFound.getStatusCode(),
+          "The deleted creator's suggestion " + suggestion.getName() + " should be removed");
+    }
+    Task resolvedRequest =
+        SdkClients.adminClient()
+            .tasks()
+            .resolve(
+                creator.descriptionRequest().getId().toString(),
+                new ResolveTask()
+                    .withResolutionType(TaskResolutionType.Approved)
+                    .withNewValue(REQUESTED_DESCRIPTION));
+    assertEquals(TaskEntityStatus.Approved, resolvedRequest.getStatus());
+  }
+
+  private record CreatorWithTasks(
+      User user, Task descriptionRequest, Task openSuggestion, Task closedSuggestion) {
+    List<Task> tasks() {
+      return List.of(descriptionRequest, openSuggestion, closedSuggestion);
+    }
+  }
+
+  private CreatorWithTasks createUserWithMetadataTasks(TestNamespace ns, String baseName) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    String about = entityLink("table", table.getFullyQualifiedName());
+    User user = UserTestFactory.createUser(ns, baseName);
+    OpenMetadataClient creatorClient =
+        SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+    DescriptionUpdatePayload request =
+        new DescriptionUpdatePayload()
+            .withFieldPath("description")
+            .withNewDescription(REQUESTED_DESCRIPTION);
+    Task descriptionRequest =
+        createMetadataTask(creatorClient, ns, about, TaskEntityType.DescriptionUpdate, request);
+    Task openSuggestion =
+        createMetadataTask(creatorClient, ns, about, TaskEntityType.Suggestion, suggestion());
+    Task closedSuggestion =
+        createMetadataTask(creatorClient, ns, about, TaskEntityType.Suggestion, suggestion());
+    SdkClients.adminClient().tasks().close(closedSuggestion.getId().toString());
+    return new CreatorWithTasks(user, descriptionRequest, openSuggestion, closedSuggestion);
+  }
+
+  private Task createMetadataTask(
+      OpenMetadataClient client,
+      TestNamespace ns,
+      String about,
+      TaskEntityType type,
+      Object payload) {
+    return client
+        .tasks()
+        .create(
+            new CreateTask()
+                .withName(ns.prefix(type.value() + "-" + UUID.randomUUID()))
+                .withCategory(TaskCategory.MetadataUpdate)
+                .withType(type)
+                .withAbout(about)
+                .withPayload(payload));
+  }
+
+  private static Map<String, Object> suggestion() {
+    return Map.of(
+        "suggestionType", "Description",
+        "fieldPath", "description",
+        "suggestedValue", "Description suggested by the creator",
+        "source", "User");
+  }
+
+  private void assertTasksKeptWithCreator(CreatorWithTasks creator) {
+    for (Task task : creator.tasks()) {
+      Task stored = SdkClients.adminClient().tasks().get(task.getId().toString(), "createdBy");
+      assertEquals(
+          creator.user().getId(),
+          stored.getCreatedBy().getId(),
+          "Soft-deleting the creator should keep the task " + task.getName());
+    }
   }
 
   @Test

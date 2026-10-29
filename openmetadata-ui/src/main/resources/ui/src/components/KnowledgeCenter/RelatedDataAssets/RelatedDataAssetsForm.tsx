@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   BadgeWithButton,
   Box,
@@ -18,6 +17,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { FC, useState } from 'react';
 import { Pressable } from 'react-aria-components';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
@@ -101,7 +101,7 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
               aria-label={t('label.cancel')}
               color="secondary"
               data-testid="cancelDataAssets"
-              iconLeading={<CloseOutlined size={12} />}
+              iconLeading={<XClose size={12} />}
               isDisabled={isSubmitLoading}
               size="xs"
               onClick={onCancel}
@@ -110,7 +110,7 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
               aria-label={t('label.save')}
               color="primary"
               data-testid="saveDataAssets"
-              iconLeading={<CheckOutlined size={12} />}
+              iconLeading={<Check size={12} />}
               isLoading={isSubmitLoading}
               size="xs"
               onClick={handleSubmit}

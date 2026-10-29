@@ -40,7 +40,6 @@ checkmark (`::after` content `\2713`).
 | Checkmark offset | `--om-space-4` |
 | Checkmark size | `--om-font-size-xs` |
 | Checkmark weight | `--om-font-weight-black` |
-| Tail padding (vertical / horizontal) | `--om-space-3_5`, `--om-space-24` |
 | Title size (small) | `--om-font-size-xs` |
 | Incident-tail color | `--om-legacy-color-757575` |
 | Active / completed accent (semantic) | `--om-color-fg-brand` |
@@ -79,9 +78,6 @@ treat as legacy; do not build new steppers against a new API.
     font-weight: var(--om-font-weight-black);
     margin-top: calc(-1 * var(--om-space-4));
     color: var(--om-color-fg-brand);
-  }
-  .ant-steps-item-tail {
-    padding: var(--om-space-3_5) var(--om-space-24);
   }
 }
 ```

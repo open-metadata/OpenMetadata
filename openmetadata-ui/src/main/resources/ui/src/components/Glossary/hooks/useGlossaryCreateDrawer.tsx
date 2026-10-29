@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { TargetEntityType } from '../../../generated/governance/intakeForm';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { addGlossaries } from '../../../rest/glossaryAPI';
@@ -30,6 +32,7 @@ import {
   toEntityReferenceOption,
   transformGlossaryFormData,
 } from '../AddGlossary/AddGlossary.utils';
+import { useGlossaryIntakeForm } from './useGlossaryTermIntakeForm';
 
 export const GLOSSARY_FORM_DRAWER_WIDTH = '40vw';
 
@@ -41,6 +44,10 @@ export const useGlossaryCreateDrawer = (
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const { activeDomainEntityRef } = useDomainStore();
+  const queryClient = useQueryClient();
+  // The intake form is fetched on first open, not when the host page mounts.
+  const [loadIntake, setLoadIntake] = useState(false);
+  const intake = useGlossaryIntakeForm(loadIntake);
   const form = useForm<GlossaryFormValues>({
     defaultValues: GLOSSARY_FORM_DEFAULTS,
   });
@@ -48,7 +55,11 @@ export const useGlossaryCreateDrawer = (
     async (values: GlossaryFormValues) => {
       try {
         const glossary = await addGlossaries(
-          transformGlossaryFormData(values, currentUser?.id)
+          transformGlossaryFormData(
+            values,
+            currentUser?.id,
+            intake.customProperties
+          )
         );
         // Await the list refresher before navigating so the sidebar is
         // repopulated (page-1 fetch) by the time the URL changes to the new
@@ -73,7 +84,7 @@ export const useGlossaryCreateDrawer = (
         throw error;
       }
     },
-    [currentUser?.id, form, navigate, onCreated, t]
+    [currentUser?.id, form, intake.customProperties, navigate, onCreated, t]
   );
 
   const { formDrawer, openDrawer, closeDrawer } =
@@ -89,6 +100,7 @@ export const useGlossaryCreateDrawer = (
       form: (
         <AddGlossary
           form={form}
+          intake={intake}
           onSubmit={(values: GlossaryFormValues): Promise<void> =>
             submitAndClose(values, handleSubmit, closeDrawer)
           }
@@ -96,11 +108,16 @@ export const useGlossaryCreateDrawer = (
       ),
       onSubmit: (values: GlossaryFormValues): Promise<void> =>
         submitAndClose(values, handleSubmit, closeDrawer),
-      loading: form.formState.isSubmitting,
+      loading: form.formState.isSubmitting || !intake.isLoaded,
     });
 
   // Defaults are rebuilt on every open so the active domain is always current.
   const openCreateDrawer = useCallback(() => {
+    setLoadIntake(true);
+    // Refetch on every open so an intake form edited since the last open applies.
+    void queryClient.invalidateQueries({
+      queryKey: ['intake', TargetEntityType.Glossary],
+    });
     form.reset({
       ...GLOSSARY_FORM_DEFAULTS,
       domains: activeDomainEntityRef
@@ -108,7 +125,7 @@ export const useGlossaryCreateDrawer = (
         : [],
     });
     openDrawer();
-  }, [activeDomainEntityRef, form, openDrawer]);
+  }, [activeDomainEntityRef, form, openDrawer, queryClient]);
 
   return { formDrawer, openDrawer: openCreateDrawer, closeDrawer };
 };

@@ -108,7 +108,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Table: () => <span data-testid="table-icon" />,
 }));
 
-jest.mock('../../DataQuality/Dashboard/DqDateRangeFilter', () => ({
+jest.mock('../../../common/DateRangeFilter/DateRangeFilter', () => ({
   __esModule: true,
   default: ({ onApply, startTs, endTs }: any) => (
     <button

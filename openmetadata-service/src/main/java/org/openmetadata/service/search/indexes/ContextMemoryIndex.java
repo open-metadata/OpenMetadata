@@ -26,6 +26,7 @@ import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
@@ -36,6 +37,7 @@ public class ContextMemoryIndex implements TaggableIndex {
   public static final String FIELD_MEMORY_SCOPE = "memoryScope";
   public static final String FIELD_MEMORY_TYPE = "memoryType";
   public static final String FIELD_PINNED = "pinned";
+  public static final String FIELD_OUTCOMES = "outcomes";
   public static final String UNANCHORED = "unanchored";
 
   private static final Set<String> REINDEX_RELATIONSHIP_FIELDS =
@@ -90,10 +92,21 @@ public class ContextMemoryIndex implements TaggableIndex {
             : null);
     doc.put("usageCount", memory.getUsageCount() != null ? memory.getUsageCount() : 0);
     doc.put("lastUsedAt", memory.getLastUsedAt());
+    applyOutcomes(doc);
 
     applyShareConfig(doc);
     applyEntityReferences(doc);
     return doc;
+  }
+
+  /**
+   * Only a counted memory indexes outcomes: a list read from search then shows an uncounted one's
+   * usage, not zero citations, and a sort on a count puts it last.
+   */
+  private void applyOutcomes(Map<String, Object> doc) {
+    if (memory.getOutcomes() != null) {
+      doc.put(FIELD_OUTCOMES, JsonUtils.getMap(memory.getOutcomes()));
+    }
   }
 
   public static String memoryTypeValue(ContextMemory memory) {

@@ -1,7 +1,7 @@
 # Memory content recency and usage are independent of review writes
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-10 (initial)
+- **Revisions:** v1 2026-10-10 (initial) · v2 2026-10-14 (outcome counters are preserved telemetry with their own write)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryWriteAccessIT` (content-clock and concurrent-usage cases on both databases)
 - **Related:** open-metadata/OpenMetadata#35011, open-metadata/openmetadata-collate#7247;
@@ -48,3 +48,11 @@ Content ordering cannot be changed by bookkeeping or a client-supplied content t
 legacy fallback is conservative: an old row's most recent audit write is its baseline until it
 is first updated by this version. Usage fields are server telemetry and metadata writes cannot
 reset them; an explicit telemetry-reset operation would need its own atomic contract.
+
+## Amendment — 2026-10-14: outcome counters are telemetry too
+
+Metadata writes preserve `outcomes` from the current row exactly as they preserve `usageCount` and
+`lastUsedAt`, and the entity a write returns and indexes carries the stored telemetry rather than
+any value the request sent. The atomic contract the last paragraph asks for is
+ADR:2026-10-14-memory-outcome-counters-are-recounted-telemetry: one absolute, monotonic outcome
+write that keeps the version and timestamps.

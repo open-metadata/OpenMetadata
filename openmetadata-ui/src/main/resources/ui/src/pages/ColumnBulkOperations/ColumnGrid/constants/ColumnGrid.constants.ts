@@ -19,6 +19,7 @@ import i18n from '../../../../utils/i18next/LocalUtil';
 export const COLUMN_TAG_FIELD = 'columnTags';
 export const COLUMN_GLOSSARY_FIELD = 'columnGlossaryTerms';
 
+export const MAX_EARLY_SOCKET_MESSAGES = 100;
 export const RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS = 1000;
 
 export const MAX_REFETCH_CHAIN_PAGES = 25;

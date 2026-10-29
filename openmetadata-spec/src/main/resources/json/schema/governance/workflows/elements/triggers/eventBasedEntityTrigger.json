@@ -52,6 +52,16 @@
             "type": "string"
           }
         },
+        "approvalMode": {
+          "title": "Approval Mode",
+          "description": "How the workflow treats edits to the fields it watches. Default runs it after the edit is published. Enforce holds the edit for review: the workflow's user approval task publishes it when approved and discards it when rejected.",
+          "type": "string",
+          "enum": [
+            "Default",
+            "Enforce"
+          ],
+          "default": "Default"
+        },
         "include": {
           "title": "Include Fields",
           "description": "Array of field names that must be present in the change description to trigger the workflow. Takes priority over exclude fields.",
@@ -114,7 +124,7 @@
         "relatedEntity"
       ],
       "minItems": 1,
-      "maxItems": 1,
+      "maxItems": 2,
       "uniqueItems": true
     }
   },

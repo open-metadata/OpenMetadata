@@ -11,11 +11,18 @@
  *  limitations under the License.
  */
 
-import { Box, SimpleModal, Typography } from '@openmetadata/ui-core-components';
-import { Form, Input, Select } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
+import {
+  Box,
+  FormField,
+  HookForm,
+  Input,
+  Select,
+  SimpleModal,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import {
@@ -23,20 +30,25 @@ import {
   SUBSCRIPTION_WEBHOOK_OPTIONS,
 } from '../../../../../constants/Teams.constants';
 import { Webhook } from '../../../../../generated/type/profile';
+import { isValidUrl } from '../../../../../utils/SSOUtils';
 import { getWebhookIcon } from '../../../../../utils/TeamUtils';
-import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 
 import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
 import './teams-subscription.less';
+
+// react-aria keys cannot be empty, so the "None" option gets a sentinel id.
+const NO_WEBHOOK = 'none';
 
 const TeamsSubscription = ({
   subscription,
   hasEditPermission,
   updateTeamSubscription,
 }: TeamsSubscriptionProps) => {
-  const [form] = useForm();
   const { t } = useTranslation();
+  const form = useForm<SubscriptionWebhook>({
+    defaultValues: { webhook: NO_WEBHOOK, endpoint: '' },
+  });
   const [editSubscription, setEditSubscription] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -53,8 +65,7 @@ const TeamsSubscription = ({
     );
   }, []);
 
-  // Watchers
-  const isWebhookEmpty = isEmpty(Form.useWatch('webhook', form));
+  const isWebhookEmpty = form.watch('webhook') === NO_WEBHOOK;
 
   const cellItem = useCallback(
     (key: string, value: Webhook) => (
@@ -110,24 +121,23 @@ const TeamsSubscription = ({
 
   useEffect(() => {
     if (isWebhookEmpty) {
-      form.setFieldValue('endpoint', '');
+      form.setValue('endpoint', '');
+      form.clearErrors('endpoint');
     }
   }, [isWebhookEmpty, form]);
 
   useEffect(() => {
-    if (subscription) {
-      const data = Object.entries(subscription)[0];
-      form.setFieldsValue({
-        webhook: data[0],
-        endpoint: data[1].endpoint,
-      });
-    }
+    const [webhook, value] = Object.entries(subscription ?? {})[0] ?? [];
+    form.reset({
+      webhook: webhook ?? NO_WEBHOOK,
+      endpoint: value?.endpoint ?? '',
+    });
   }, [subscription, editSubscription, form]);
 
-  const subscriptionWebhookTranslated = useMemo(
+  const webhookItems = useMemo(
     () =>
       SUBSCRIPTION_WEBHOOK_OPTIONS.map((option) => ({
-        ...option,
+        id: option.value || NO_WEBHOOK,
         label: t(option.label),
       })),
     [t]
@@ -190,46 +200,61 @@ const TeamsSubscription = ({
               entity: t('label.subscription'),
             })}
             onCancel={() => setEditSubscription(false)}
-            onOk={form.submit}>
-            <DrawerPopupContainerProvider>
-              <Form
-                data-testid="subscription-modal"
-                form={form}
-                id="subscription-form"
-                layout="vertical"
-                onFinish={handleSave}>
-                <Form.Item label={t('label.webhook')} name="webhook">
+            onOk={form.handleSubmit(handleSave)}>
+            <HookForm
+              className="tw:flex tw:flex-col tw:gap-4"
+              data-testid="subscription-modal"
+              form={form}
+              id="subscription-form"
+              onSubmit={form.handleSubmit(handleSave)}>
+              <FormField control={form.control} name="webhook">
+                {({ field }) => (
                   <Select
-                    options={subscriptionWebhookTranslated}
+                    data-testid="webhook-select"
+                    items={webhookItems}
+                    label={t('label.webhook')}
                     placeholder={t('label.select-field', {
                       field: t('label.condition'),
                     })}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={t('label.endpoint')}
-                  name="endpoint"
-                  rules={[
-                    {
-                      required: !isWebhookEmpty,
-                      message: t('label.field-required-plural', {
-                        field: t('label.endpoint'),
-                      }),
-                    },
-                    {
-                      type: 'url',
-                      message: t('message.endpoint-should-be-valid'),
-                    },
-                  ]}>
+                    selectedKey={field.value}
+                    onSelectionChange={(key) =>
+                      key !== null && field.onChange(String(key))
+                    }>
+                    {(item) => <Select.Item id={item.id} label={item.label} />}
+                  </Select>
+                )}
+              </FormField>
+              <FormField
+                control={form.control}
+                name="endpoint"
+                rules={{
+                  required:
+                    !isWebhookEmpty &&
+                    t('label.field-required-plural', {
+                      field: t('label.endpoint'),
+                    }),
+                  validate: (value) =>
+                    isWebhookEmpty ||
+                    isValidUrl(value) ||
+                    t('message.endpoint-should-be-valid'),
+                }}>
+                {({ field, fieldState }) => (
                   <Input
-                    disabled={isWebhookEmpty}
+                    hint={fieldState.error?.message}
+                    id="endpoint"
+                    isDisabled={isWebhookEmpty}
+                    isInvalid={fieldState.invalid}
+                    label={t('label.endpoint')}
                     placeholder={t('label.enter-entity-value', {
                       entity: t('label.endpoint'),
                     })}
+                    value={field.value}
+                    onBlur={field.onBlur}
+                    onChange={field.onChange}
                   />
-                </Form.Item>
-              </Form>
-            </DrawerPopupContainerProvider>
+                )}
+              </FormField>
+            </HookForm>
           </SimpleModal>
         </div>
       )}

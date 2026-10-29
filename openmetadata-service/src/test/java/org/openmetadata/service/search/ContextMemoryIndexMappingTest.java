@@ -26,9 +26,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 /** Pins the memory index's security and lifecycle fields in every language. */
 class ContextMemoryIndexMappingTest {
 
-  private static final List<String> LANGUAGES = List.of("en", "jp", "ru", "zh");
+  private static final List<String> LANGUAGES = List.of("en", "jp", "ko", "ru", "zh");
   private static final List<String> INDEX_FIELDS =
-      List.of("entityStatus", "statusReason", "supersededBy", "disputes", "anchorId");
+      List.of("entityStatus", "statusReason", "supersededBy", "disputes", "anchorId", "outcomes");
+  private static final List<String> OUTCOME_COUNTS =
+      List.of("appliedCount", "positiveCount", "negativeCount", "correctedCount");
+  private static final List<String> OUTCOME_TIMES =
+      List.of("lastAppliedAt", "lastCorrectedAt", "countedAt");
 
   @Test
   void lifecycleFieldsAreMappedInEveryLanguage() throws IOException {
@@ -49,6 +53,20 @@ class ContextMemoryIndexMappingTest {
       assertEquals("text", properties.at("/disputes/properties/reason/type").asText(), language);
       assertEquals(
           "date", properties.at("/disputes/properties/detectedAt/type").asText(), language);
+    }
+  }
+
+  @Test
+  void outcomeCountsSortAsNumbersAndTimesAsDatesInEveryLanguage() throws IOException {
+    for (String language : LANGUAGES) {
+      JsonNode outcomes = loadProperties(language).at("/outcomes/properties");
+      for (String count : OUTCOME_COUNTS) {
+        assertEquals("long", outcomes.at("/" + count + "/type").asText(), language + " " + count);
+        assertEquals(0, outcomes.at("/" + count + "/null_value").asInt(-1), language + " " + count);
+      }
+      for (String time : OUTCOME_TIMES) {
+        assertEquals("date", outcomes.at("/" + time + "/type").asText(), language + " " + time);
+      }
     }
   }
 

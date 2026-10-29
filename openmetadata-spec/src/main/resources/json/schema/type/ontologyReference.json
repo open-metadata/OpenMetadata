@@ -1,0 +1,45 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyReference.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyReference",
+  "description": "A derived reference from a working ontology definition to an exact semantic IRI. References are scoped to their owning ontology, not resolved globally.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyReference",
+  "properties": {
+    "ontologyId": {
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "source": {
+      "$ref": "entityReference.json"
+    },
+    "role": {
+      "javaType": "org.openmetadata.schema.type.OntologyReferenceRole",
+      "type": "string",
+      "enum": [
+        "DOMAIN",
+        "RANGE",
+        "INVERSE",
+        "PROPERTY_CHAIN",
+        "DISJOINT_PROPERTY",
+        "AXIOM_SUBJECT",
+        "PROPERTY",
+        "CLASS_EXPRESSION",
+        "INDIVIDUAL",
+        "DATATYPE",
+        "MAPPING_TARGET",
+        "MAPPING_SCHEME",
+        "SUPER_CLASS"
+      ]
+    },
+    "iri": {
+      "$ref": "ontologyIri.json"
+    }
+  },
+  "required": [
+    "ontologyId",
+    "source",
+    "role",
+    "iri"
+  ],
+  "additionalProperties": false
+}

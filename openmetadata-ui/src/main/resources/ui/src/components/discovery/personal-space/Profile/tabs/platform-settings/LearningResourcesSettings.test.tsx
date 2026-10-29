@@ -28,7 +28,10 @@ import {
   LearningResource,
   updateLearningResource,
 } from '../../../../../../rest/learningResourceAPI';
-import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
 import {
   toLearningResourceFormValues,
   toLearningResourcePayload,
@@ -157,6 +160,92 @@ describe('Learning resources settings', () => {
     });
   });
 
+  it('restores its search and page after a preview, without resetting to page 1', async () => {
+    const onSaveState = jest.fn();
+    render(
+      <MemoryRouter>
+        <LearningResourcesSettings
+          savedState={{
+            searchText: 'video',
+            filterState: { type: ['Video'] },
+            currentPage: 2,
+            pageSize: 25,
+          }}
+          onNavigate={onNavigate}
+          onSaveState={onSaveState}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+
+    await screen.findByTestId('intro-video');
+
+    expect(inputOf('search-resources')).toHaveValue('video');
+    expect(onSaveState).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        searchText: 'video',
+        filterState: { type: ['Video'] },
+        currentPage: 2,
+        pageSize: 25,
+      })
+    );
+  });
+
+  it('restarts at page 1 when the saved page is past what a remount can walk to', async () => {
+    const onSaveState = jest.fn();
+    render(
+      <MemoryRouter>
+        <LearningResourcesSettings
+          savedState={{
+            searchText: '',
+            filterState: {},
+            currentPage: 30,
+            pageSize: 15,
+          }}
+          onNavigate={onNavigate}
+          onSaveState={onSaveState}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+
+    await screen.findByTestId('intro-video');
+
+    expect(onSaveState).toHaveBeenLastCalledWith(
+      expect.objectContaining({ currentPage: 1 })
+    );
+  });
+
+  it('reports its state so the panel can restore it, back on page 1 after a new search', async () => {
+    const onSaveState = jest.fn();
+    render(
+      <MemoryRouter>
+        <LearningResourcesSettings
+          savedState={{
+            searchText: '',
+            filterState: {},
+            currentPage: 3,
+            pageSize: 15,
+          }}
+          onNavigate={onNavigate}
+          onSaveState={onSaveState}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('intro-video');
+
+    fireEvent.change(inputOf('search-resources'), {
+      target: { value: 'lineage' },
+    });
+
+    await waitFor(() =>
+      expect(onSaveState).toHaveBeenLastCalledWith(
+        expect.objectContaining({ searchText: 'lineage', currentPage: 1 })
+      )
+    );
+  });
+
   it('deletes a resource after confirmation', async () => {
     render(
       <MemoryRouter>
@@ -169,10 +258,62 @@ describe('Learning resources settings', () => {
 
     fireEvent.click(await screen.findByTestId('delete-intro-video'));
     await act(async () => {
-      fireEvent.click(await screen.findByTestId('confirm-button'));
+      fireEvent.click(
+        await screen.findByTestId('delete-learning-resource-popover-confirm')
+      );
     });
 
     expect(deleteLearningResource).toHaveBeenCalled();
+    expect(showSuccessToast).toHaveBeenCalled();
+  });
+
+  it('does not delete a resource when the confirmation is cancelled', async () => {
+    render(
+      <MemoryRouter>
+        <LearningResourcesSettings
+          onNavigate={onNavigate}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByTestId('delete-intro-video'));
+    fireEvent.click(
+      await screen.findByTestId('delete-learning-resource-popover-cancel')
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-learning-resource-popover')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(deleteLearningResource).not.toHaveBeenCalled();
+  });
+
+  it('keeps the confirmation open and reports the error when the delete fails', async () => {
+    (deleteLearningResource as jest.Mock).mockRejectedValue(new Error('boom'));
+    render(
+      <MemoryRouter>
+        <LearningResourcesSettings
+          onNavigate={onNavigate}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByTestId('delete-intro-video'));
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByTestId('delete-learning-resource-popover-confirm')
+      );
+    });
+
+    expect(showErrorToast).toHaveBeenCalled();
+    expect(showSuccessToast).not.toHaveBeenCalled();
+    expect(
+      screen.getByTestId('delete-learning-resource-popover')
+    ).toBeInTheDocument();
   });
 
   it('edit loads the resource, locks its name and saves an update', async () => {
@@ -249,6 +390,24 @@ describe('Learning resources settings', () => {
     expect(await screen.findByText('label.invalid-url')).toBeInTheDocument();
     // Name, description, type, categories and context (the URL is invalid, not empty).
     expect(screen.getAllByText('label.field-required')).toHaveLength(5);
+    expect(createLearningResource).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'javascript:alert(document.domain)',
+    'data:text/html,<script>alert(1)</script>',
+  ])('add rejects a source URL that is not http(s): %s', async (url) => {
+    render(
+      <LearningResourceSettingsForm showHint={false} onNavigate={onNavigate} />
+    );
+    await screen.findByTestId('learning-resource-form');
+
+    fireEvent.change(inputOf('source-url-input'), { target: { value: url } });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(await screen.findByText('label.invalid-url')).toBeInTheDocument();
     expect(createLearningResource).not.toHaveBeenCalled();
   });
 });

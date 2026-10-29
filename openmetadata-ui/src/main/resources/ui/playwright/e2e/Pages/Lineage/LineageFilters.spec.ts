@@ -26,7 +26,6 @@ import {
   fitToScreen,
   openImpactAnalysisTab,
   performZoomOut,
-  rearrangeNodes,
   setLineageDepthAndVerify,
   visitLineageTab,
 } from '../../../utils/lineage';
@@ -107,7 +106,6 @@ test.describe('Lineage Filters', () => {
     await waitForAllLoadersToDisappear(page);
     await setLineageDepthAndVerify(page, 2, 2);
     await waitForAllLoadersToDisappear(page);
-    await rearrangeNodes(page);
     await fitToScreen(page);
     await expect(
       page.getByTestId(
@@ -310,12 +308,11 @@ test.describe('Lineage Filters', () => {
               .click();
 
             const lineageRes = page.waitForResponse(
-              '**/api/v1/lineage/scene?*'
+              '/api/v1/lineage/getLineage?*'
             );
             await page.getByTestId('update-btn').click();
             await lineageRes;
 
-            await rearrangeNodes(page);
             await fitToScreen(page);
 
             for (const entity of entitiesToShow) {
@@ -567,7 +564,6 @@ test.describe('Lineage Filters', () => {
         await page.getByTestId('update-btn').click();
         await expect(page.getByTestId('update-btn')).toBeHidden();
 
-        await rearrangeNodes(page);
         await fitToScreen(page);
 
         for (const entity of entitiesToShow) {
@@ -732,7 +728,6 @@ test.describe('Lineage Filters', () => {
         await page.getByTestId('update-btn').click();
         await waitForAllLoadersToDisappear(page);
 
-        await rearrangeNodes(page);
         await fitToScreen(page);
 
         for (const entity of entitiesToShow) {
@@ -781,11 +776,10 @@ test.describe('Lineage Filters', () => {
       await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
       await page.getByTestId('drop-down-menu').getByText(databaseName).click();
 
-      const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
+      const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
       await page.getByTestId('update-btn').click();
       await lineageRes;
 
-      await rearrangeNodes(page);
       await fitToScreen(page);
 
       // filtered service node should be visible
@@ -830,11 +824,10 @@ test.describe('Lineage Filters', () => {
         .getByText(databaseSchemaName)
         .click();
 
-      const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
+      const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
       await page.getByTestId('update-btn').click();
       await lineageRes;
 
-      await rearrangeNodes(page);
       await fitToScreen(page);
 
       // filtered service node should be visible
@@ -876,11 +869,10 @@ test.describe('Lineage Filters', () => {
       await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
       await page.getByTestId('drop-down-menu').getByText(columnName).click();
 
-      const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
+      const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
       await page.getByTestId('update-btn').click();
       await lineageRes;
 
-      await rearrangeNodes(page);
       await fitToScreen(page);
 
       // filtered service node should be visible
@@ -930,16 +922,14 @@ test.describe('Lineage Filters', () => {
     await performZoomOut(page);
     await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
 
-    await searchSelect.click();
-
-    // LineageSearchSelect resets its allOptions state whenever the
-    // lineage `nodes` prop changes (LineageSearchSelect.tsx:133 useEffect).
-    // Under SharedInfra load the graph re-renders a few times after
-    // initial mount as async data settles, so a single fill can filter
-    // a stale allOptions and drop our target. Poll: refill, wait for
-    // option to appear, retry if the state was reset.
+    // LineageSearchSelect rebuilds its options from the lineage nodes, and
+    // under SharedInfra load the graph re-renders a few times as async data
+    // settles, so a single fill can filter a stale option list. Poll: refill,
+    // wait for the option to appear, retry if the list was rebuilt.
     const combobox = page.getByTestId('lineage-search').getByRole('combobox');
-    const option = page.getByTestId(`option-${topicFqn}`);
+    const option = page
+      .locator('[role="listbox"]:visible')
+      .getByTestId(`option-${topicFqn}`);
     await expect
       .poll(
         async () => {

@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.nimbusds.common.contenttype.ContentType;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.PlainJWT;
 import com.nimbusds.oauth2.sdk.AuthorizationGrant;
 import com.nimbusds.oauth2.sdk.TokenRequest;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
@@ -34,24 +36,28 @@ class OidcProviderTokenRefresherTest {
   private final List<TokenRequest> sentRequests = new ArrayList<>();
 
   @Test
-  void refresh_successWithRotatedToken_isRenewedAndCarriesTheRotatedTokenAndLifetime() {
+  void refresh_successWithRotatedToken_isRenewedAndCarriesTheRotatedTokenAndIdToken() {
+    String renewedIdToken =
+        new PlainJWT(new JWTClaimsSet.Builder().subject("alice").build()).serialize();
     OidcProviderTokenRefresher refresher =
         refresherAnswering(
             jsonResponse(
                 200,
                 """
                 {"access_token":"new-access","token_type":"Bearer","expires_in":300,
-                 "refresh_token":"rotated-refresh"}"""));
+                 "refresh_token":"rotated-refresh","id_token":"%s"}"""
+                    .formatted(renewedIdToken)));
 
     Outcome outcome = refresher.refresh("provider-refresh");
 
     assertEquals(Status.RENEWED, outcome.status());
     assertEquals("rotated-refresh", outcome.rotatedRefreshToken());
-    assertEquals(300, outcome.lifetimeSeconds());
+    assertEquals(renewedIdToken, outcome.idToken());
   }
 
+  /** OpenID Connect allows a refresh response without an ID token (Core 12.2). */
   @Test
-  void refresh_successWithoutRotation_isRenewedWithNoReplacementToken() {
+  void refresh_successWithoutRotationOrIdToken_isRenewedWithNeither() {
     OidcProviderTokenRefresher refresher =
         refresherAnswering(
             jsonResponse(200, "{\"access_token\":\"new-access\",\"token_type\":\"Bearer\"}"));
@@ -60,8 +66,7 @@ class OidcProviderTokenRefresherTest {
 
     assertTrue(outcome.isRenewed());
     assertNull(outcome.rotatedRefreshToken());
-    // No expires_in: the provider's schedule is unknown.
-    assertEquals(0, outcome.lifetimeSeconds());
+    assertNull(outcome.idToken());
   }
 
   @Test

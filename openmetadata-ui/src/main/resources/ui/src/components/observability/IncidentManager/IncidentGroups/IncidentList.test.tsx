@@ -218,7 +218,7 @@ describe('IncidentList', () => {
       'label.assigned'
     );
     expect(within(row).getByTestId('incident-severity')).toHaveTextContent(
-      'Severity 1'
+      'label.severity 1'
     );
     expect(within(row).getByTestId('incident-assignee')).toHaveTextContent(
       'Tomas Montiel'
@@ -256,6 +256,9 @@ describe('IncidentList', () => {
     expect(
       within(row).queryByTestId('incident-assignee')
     ).not.toBeInTheDocument();
+    expect(within(row).getByTestId('incident-no-assignee')).toHaveTextContent(
+      '--'
+    );
   });
 
   it('should show a loader while the first page loads', () => {

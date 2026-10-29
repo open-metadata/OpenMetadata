@@ -49,28 +49,6 @@ export const withShortSamlTokenValidity = (
   };
 };
 
-/** Seconds, no schema minimum, and governs OM's own JWT rather than the IdP's. */
-export const withShortOidcTokenValidity = (
-  base: ProviderConfigOverride,
-  tokenValiditySeconds: number = SHORT_ACCESS_TTL_SECONDS
-): ProviderConfigOverride => {
-  const oidcConfig =
-    (base.authenticationConfiguration.oidcConfiguration as
-      | Record<string, unknown>
-      | undefined) ?? {};
-
-  return {
-    ...base,
-    authenticationConfiguration: {
-      ...base.authenticationConfiguration,
-      oidcConfiguration: {
-        ...oidcConfig,
-        tokenValidity: tokenValiditySeconds,
-      },
-    },
-  };
-};
-
 /**
  * Caps the number of concurrent server-side sessions a single user may hold;
  * exceeding it revokes the least-recently-used session. Top-level on

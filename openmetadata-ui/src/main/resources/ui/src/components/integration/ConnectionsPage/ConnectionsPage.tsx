@@ -232,17 +232,19 @@ const ConnectionsPage: React.FC = () => {
             onCategoryChange={handleCategoryChange}
           />
         </div>
-
-        {footerContributions.length > 0 && (
-          <div
-            className="tw:absolute tw:bottom-0 tw:left-0 tw:right-0 tw:z-10 tw:overflow-hidden tw:rounded-b-card"
-            ref={footerRef}>
-            {footerContributions.map((contribution) => (
-              <contribution.component key={contribution.key} />
-            ))}
-          </div>
-        )}
       </PageLayout.Content>
+
+      {/* Pinned to the page canvas, not the padded Content, so the composer meets the canvas
+          edge the way Home's footer slot does. */}
+      {footerContributions.length > 0 && (
+        <div
+          className="tw:absolute tw:bottom-0 tw:left-0 tw:right-0 tw:z-10 tw:overflow-hidden tw:rounded-b-card"
+          ref={footerRef}>
+          {footerContributions.map((contribution) => (
+            <contribution.component key={contribution.key} />
+          ))}
+        </div>
+      )}
     </PageLayout>
   );
 };

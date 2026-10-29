@@ -22,7 +22,7 @@ import {
   getTableViewData,
   StatusIndicator,
 } from '../../../../utils/executionUtils';
-import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import Table from '../../../common/Table/TableV2';
 
 interface ListViewProps {
@@ -109,7 +109,11 @@ const ListView = ({
       dataSource={tableData}
       loading={loading}
       locale={{
-        emptyText: <FilterTablePlaceHolder />,
+        emptyText: (
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+          </div>
+        ),
       }}
       pagination={false}
       rowKey={(record) => `${record.name}-${record.status}-${record.key}`}

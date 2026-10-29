@@ -22,8 +22,8 @@ already chose the wrong pattern. Every rule therefore exists twice.
 `make ui-checkstyle-changed`, and in the `ui-checkstyle` CI job. Prefer an off-the-shelf ESLint plugin
 over a bespoke script: a plugin matches the AST rather than diff text, gives live editor feedback,
 and composes with `--fix` and `eslint-disable`. Reach for a script only when a rule genuinely cannot
-be expressed in ESLint — `tw-guard` qualifies, because its antd/`.less` backlog (864 and 449 files)
-makes added-lines-only scoping unavoidable.
+be expressed in ESLint — `tw-guard` qualifies, because its `.less` and raw-SVG backlog makes
+added-lines-only scoping unavoidable.
 
 Depth behind the rules lives in `skills/vendor/` — `react-best-practices`, `web-design-guidelines`
 and `composition-patterns`, vendored verbatim from
@@ -61,7 +61,7 @@ Warnings remain non-blocking; ESLint errors and formatting changes still fail `u
 | Licence header | changed files | Apache-2.0 header missing/stale |
 | i18n key-sync | all locales | locale files out of sync with `en-us.json` |
 | `tw-audit` | changed files | hardcoded Tailwind value that maps to a design token |
-| `tw-guard` | **added lines** | new `antd` import or new `.less` file |
+| `tw-guard` | **added lines** | new `assets/svg/` `.svg` file or import (fails); new `.less` file (reported) |
 | `jsx-a11y` (ESLint) | changed files | one of 19 zero-backlog accessibility rules trips |
 | SonarJS (ESLint) | changed files | one of 16 zero-backlog correctness rules trips |
 | OpenMetadata performance (ESLint) | changed files | eager route page import, unguarded lazy component, or unbounded module cache |

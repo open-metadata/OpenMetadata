@@ -81,11 +81,14 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.metrics.MetricResource;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
@@ -256,13 +259,15 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   /**
-   * A metric with no reviewers has nothing to approve, so it starts life Approved. With reviewers
+   * A metric with no reviewers has nothing to approve, so it starts life Approved, unless a lifecycle
+   * playbook owns its stage and onboards it from Draft. With reviewers
    * it starts as Draft and MetricApprovalWorkflow drives it through review. Unlike glossary terms
    * there is no reviewer inheritance — a metric's parent does not lend it reviewers.
    */
   @Override
   protected EntityStatus initialEntityStatus(Metric entity) {
-    return nullOrEmpty(entity.getReviewers()) ? EntityStatus.APPROVED : EntityStatus.DRAFT;
+    final boolean awaitsReview = !nullOrEmpty(entity.getReviewers()) || playbookOwnsStage(entity);
+    return awaitsReview ? EntityStatus.DRAFT : EntityStatus.APPROVED;
   }
 
   private void validateCustomUnitOfMeasurement(Metric metric) {
@@ -305,9 +310,16 @@ public class MetricRepository extends EntityRepository<Metric> {
   private EntityReference getMetricGroup(Metric metric) {
     String groupId =
         daoCollection.metricDAO().findActiveGroupId(metric.getId(), Relationship.HAS.ordinal());
-    return groupId == null
-        ? null
-        : Entity.getEntityReferenceById(Entity.METRIC_GROUP, UUID.fromString(groupId), NON_DELETED);
+    return groupId == null ? null : resolveMetricGroupReference(UUID.fromString(groupId));
+  }
+
+  private EntityReference resolveMetricGroupReference(UUID groupId) {
+    try {
+      return Entity.getEntityReferenceById(Entity.METRIC_GROUP, groupId, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Skipping missing metric group {} while resolving membership", groupId);
+      return null;
+    }
   }
 
   @Override
@@ -403,8 +415,7 @@ public class MetricRepository extends EntityRepository<Metric> {
             .findActiveGroups(entityListToStrings(metrics), Relationship.HAS.ordinal())) {
       groups.put(
           UUID.fromString(record.getToId()),
-          Entity.getEntityReferenceById(
-              Entity.METRIC_GROUP, UUID.fromString(record.getFromId()), NON_DELETED));
+          resolveMetricGroupReference(UUID.fromString(record.getFromId())));
     }
     for (Metric metric : metrics) {
       metric.setMetricGroup(groups.get(metric.getId()));
@@ -441,6 +452,11 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   public void storeEntity(Metric metric, boolean update) {
+    // Intake governs human creation, including PUT upserts; ingestion and later metadata edits
+    // must not be blocked by requirements intended for the creation form.
+    if (!update) {
+      validateIntakeForCreation(metric);
+    }
     store(metric, update);
   }
 
@@ -452,7 +468,15 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   public void storeEntities(List<Metric> entities) {
+    entities.forEach(this::validateIntakeForCreation);
     storeMany(entities);
+  }
+
+  private void validateIntakeForCreation(final Metric metric) {
+    if (nullOrEmpty(metric.getUpdatedBy())
+        || !SubjectContext.getSubjectContext(metric.getUpdatedBy()).isBot()) {
+      IntakeFormValidator.validate(metric, METRIC);
+    }
   }
 
   @Override

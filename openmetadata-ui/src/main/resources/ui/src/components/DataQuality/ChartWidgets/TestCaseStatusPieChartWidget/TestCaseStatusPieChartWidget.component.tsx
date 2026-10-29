@@ -96,31 +96,35 @@ const TestCaseStatusPieChartWidget = ({
       <Card
         className={className}
         data-testid="test-case-status-pie-chart-widget">
-        <Skeleton height={200} width="100%" />
+        <Card.Content>
+          <Skeleton height={200} width="100%" />
+        </Card.Content>
       </Card>
     );
   }
 
   return (
     <Card className={className} data-testid="test-case-status-pie-chart-widget">
-      <div className="d-flex flex-column items-center">
-        <div className="d-flex items-center gap-2">
-          <div className="custom-chart-icon-background all-tests-icon icon-container">
-            <TestCaseIcon />
+      <Card.Content>
+        <div className="d-flex flex-column items-center">
+          <div className="d-flex items-center gap-2">
+            <div className="custom-chart-icon-background all-tests-icon icon-container">
+              <TestCaseIcon />
+            </div>
+            <Typography as="span" className="font-semibold text-sm">
+              {t('label.test-case-result')}
+            </Typography>
           </div>
-          <Typography as="span" className="font-semibold text-sm">
-            {t('label.test-case-result')}
-          </Typography>
+          <CustomPieChart
+            showLegends
+            ariaLabel={t('label.test-case-result')}
+            data={data}
+            label={chartLabel}
+            name="test-case-result"
+            onSegmentClick={handleSegmentClick}
+          />
         </div>
-        <CustomPieChart
-          showLegends
-          ariaLabel={t('label.test-case-result')}
-          data={data}
-          label={chartLabel}
-          name="test-case-result"
-          onSegmentClick={handleSegmentClick}
-        />
-      </div>
+      </Card.Content>
     </Card>
   );
 };

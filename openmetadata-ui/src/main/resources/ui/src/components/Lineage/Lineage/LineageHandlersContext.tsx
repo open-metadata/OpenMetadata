@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { createContext, DragEvent, useContext } from 'react';
-import type { Connection, Edge, Node, NodeProps } from 'reactflow';
+import { createContext, useContext } from 'react';
+import type {
+  Connection,
+  Edge,
+  Node,
+  NodeProps,
+  OnNodesChange,
+  ReactFlowInstance,
+} from 'reactflow';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
@@ -33,7 +40,6 @@ export type LineageHandlersValue = {
   ) => Promise<void>;
   removeNodeHandler: (node: Node | NodeProps) => Promise<void>;
   onNodeClick: (node: Node) => void;
-  onNodeDrop: (event: DragEvent, reactFlowBounds: DOMRect) => void;
   onNodeCollapse: (node: Node | NodeProps, direction: LineageDirection) => void;
   onConnect: (connection: Edge | Connection) => void;
   onEdgeDetailsUpdate: (updatedEdgeDetails: AddLineage) => Promise<void>;
@@ -47,6 +53,9 @@ export type LineageHandlersValue = {
     exportTypes?: ExportTypes[],
     onExportCallback?: (_: string) => Promise<CSVExportResponse>
   ) => void;
+  onInitReactFlow: (instance: ReactFlowInstance) => void;
+  onNodesChange: OnNodesChange;
+  refetchLineage: () => void;
 };
 
 const noop = () => undefined;
@@ -56,13 +65,15 @@ export const LineageHandlersContext = createContext<LineageHandlersValue>({
   loadChildNodesHandler: noopAsync,
   removeNodeHandler: noopAsync,
   onNodeClick: noop,
-  onNodeDrop: noop,
   onNodeCollapse: noop,
   onConnect: noop,
   onEdgeDetailsUpdate: noopAsync,
   updateEntityData: noop,
   handleEntityUpdate: noop,
   onExportClick: noop,
+  onInitReactFlow: noop,
+  onNodesChange: noop,
+  refetchLineage: noop,
 });
 
 export const useLineageHandlers = () => useContext(LineageHandlersContext);

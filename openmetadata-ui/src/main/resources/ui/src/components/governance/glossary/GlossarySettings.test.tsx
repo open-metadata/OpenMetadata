@@ -29,6 +29,12 @@ jest.mock('../../../rest/settingConfigAPI', () => ({
   getGlossarySettings: jest.fn(),
   updateGlossarySettings: jest.fn(),
 }));
+jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
+  jest.fn(({ children }) => <div>{children}</div>)
+);
+jest.mock('../../common/TitleBreadcrumb/TitleBreadcrumb.component', () =>
+  jest.fn(() => <div>TitleBreadcrumb</div>)
+);
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -116,5 +122,26 @@ describe('Glossary settings', () => {
     });
 
     expect(screen.getByRole('switch')).toBeChecked();
+  });
+
+  it('renders as a platform settings section when embedded', async () => {
+    await act(async () => {
+      renderWithQueryClient(<GlossarySettings embedded />);
+    });
+
+    expect(screen.queryByText('TitleBreadcrumb')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('message.glossary-tag-propagation-reindex')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: 'label.glossary-tag-propagation' })
+      );
+    });
+
+    expect(
+      (updateGlossarySettings as jest.Mock).mock.calls.at(-1)?.[0]
+    ).toEqual({ enableTagPropagation: false });
   });
 });

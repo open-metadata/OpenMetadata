@@ -18,9 +18,9 @@ import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  descriptionBox,
   fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   uuid,
 } from './common';
@@ -359,9 +359,10 @@ const checkTeamTypeOptions = async (page: Page, type: string) => {
   const teamTypeOptions = getTeamType(type)?.teamTypeOptions;
   if (teamTypeOptions) {
     for (const teamType of teamTypeOptions) {
-      const teamTypeElement = page.locator(
-        `.ant-select-dropdown [title="${teamType}"]`
-      );
+      const teamTypeElement = page.getByRole('option', {
+        name: teamType,
+        exact: true,
+      });
 
       await expect(teamTypeElement).toBeVisible();
     }
@@ -375,11 +376,13 @@ export const selectTeamHierarchy = async (page: Page, index: number) => {
     checkTeamTypeOptions(page, text);
     const childTeamType = getTeamType(text).childTeamType;
     await page
-      .locator(`.ant-select-dropdown [title="${childTeamType}"]`)
+      .getByRole('option', { name: childTeamType, exact: true })
       .click();
   } else {
     checkTeamTypeOptions(page, 'BusinessUnit');
-    await page.locator(`.ant-select-dropdown [title='BusinessUnit']`).click();
+    await page
+      .getByRole('option', { name: 'BusinessUnit', exact: true })
+      .click();
   }
 };
 
@@ -424,10 +427,20 @@ export const addTeamHierarchy = async (
   if (isHierarchy) {
     await selectTeamHierarchy(page, index ?? 0);
   } else {
-    await page.click(`.ant-select-dropdown [title="${teamDetails.teamType}"]`);
+    await page
+      .getByRole('option', { name: teamDetails.teamType, exact: true })
+      .click();
   }
 
-  await page.locator(descriptionBox).fill(teamDetails.description);
+  // Under load ProseMirror can drop a fill, and the team is then created with
+  // "No description". Re-fill until the editor holds the text.
+  const descriptionEditor = getDescriptionBox(addTeamModal);
+  await expect(async () => {
+    await descriptionEditor.fill(teamDetails.description, { timeout: 5_000 });
+    await expect(descriptionEditor).toHaveText(teamDetails.description, {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 20_000 });
 
   // Saving the created team
   const saveTeamResponse = waitForResponseWithStatus(
@@ -447,7 +460,10 @@ export const addTeamHierarchy = async (
     .getByTestId('add-team-modal')
     .getByRole('button', { name: 'Save' })
     .click();
-  await saveTeamResponse;
+  const savedTeam = await saveTeamResponse;
+  expect(savedTeam.request().postDataJSON().description).toContain(
+    teamDetails.description
+  );
   const teamsListResponseResult = await teamsListResponse;
 
   expect(teamsListResponseResult.status()).toBe(200);

@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.jetty.io.EofException;
 import org.eclipse.jetty.websocket.api.Callback;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
@@ -28,6 +29,7 @@ import org.eclipse.jetty.websocket.api.annotations.OnWebSocketError;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketOpen;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
+import org.eclipse.jetty.websocket.api.exceptions.WebSocketTimeoutException;
 
 /**
  * Jetty 12 compatible WebSocket handler for Engine.IO. This replaces the JettyWebSocketHandler from
@@ -128,8 +130,8 @@ public class Jetty12WebSocketHandler extends EngineIoWebSocket {
 
   @OnWebSocketError
   public void onError(Throwable error) {
-    if (error instanceof ClosedChannelException) {
-      LOG.debug("WebSocket channel closed by peer (likely abnormal disconnect)");
+    if (isPeerGone(error)) {
+      LOG.debug("WebSocket closed without a close handshake: {}", error.toString());
       return;
     }
     try {
@@ -139,5 +141,14 @@ public class Jetty12WebSocketHandler extends EngineIoWebSocket {
     } catch (Exception e) {
       LOG.error("Failed to handle WebSocket error gracefully: {}", e.getMessage(), e);
     }
+  }
+
+  // The peer went away without a close handshake: it dropped or reset the connection, or stopped
+  // answering until the idle timeout fired, as every socket still open at server shutdown does.
+  // This is a normal end of the socket, and onClose runs next to clean up the Engine.IO socket.
+  private static boolean isPeerGone(Throwable error) {
+    return error instanceof ClosedChannelException
+        || error instanceof EofException
+        || error instanceof WebSocketTimeoutException;
   }
 }

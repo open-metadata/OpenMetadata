@@ -1,0 +1,79 @@
+{
+  "$id": "https://open-metadata.org/schema/type/bulkCreateResult.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BulkCreateResult",
+  "description": "Per-input outcomes of a bulk create requested with an explicit onConflict policy. Validation failures and conflicts are isolated to the affected inputs. Authentication, malformed requests and unexpected server failures remain HTTP errors.",
+  "javaType": "org.openmetadata.schema.type.BulkCreateResult",
+  "type": "object",
+  "definitions": {
+    "conflictPolicy": {
+      "javaType": "org.openmetadata.schema.type.BulkCreateConflictPolicy",
+      "description": "How to report existing FQNs and repeated FQNs in the request. Both policies continue creating other valid inputs; neither updates existing entities. The first valid occurrence of a new FQN wins.",
+      "type": "string",
+      "enum": ["skip", "fail"],
+      "default": "skip"
+    },
+    "item": {
+      "javaType": "org.openmetadata.schema.type.BulkCreateItemResult",
+      "description": "Outcome for one input, identified by its zero-based request index even when names are repeated.",
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fullyQualifiedName": {
+          "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "id": {
+          "description": "ID of the newly created entity. Absent for skipped and failed inputs.",
+          "$ref": "basic.json#/definitions/uuid"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["created", "skipped", "failed"]
+        },
+        "reason": {
+          "description": "Stable reason code for a skipped or failed input. Absent for created inputs.",
+          "type": "string",
+          "enum": ["ALREADY_EXISTS", "DUPLICATE_IN_REQUEST", "VALIDATION_ERROR"]
+        },
+        "message": {
+          "description": "Human-readable explanation of a skipped or failed input.",
+          "type": "string"
+        }
+      },
+      "required": ["index", "status"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "onConflict": {
+      "$ref": "#/definitions/conflictPolicy"
+    },
+    "createdCount": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "skippedCount": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "failedCount": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "results": {
+      "description": "Exactly one outcome per input, in request order. Counts sum to the number of inputs.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/item"
+      }
+    }
+  },
+  "required": ["onConflict", "createdCount", "skippedCount", "failedCount", "results"],
+  "additionalProperties": false
+}

@@ -1,0 +1,37 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyReviewTarget.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyReviewTarget",
+  "description": "Server-captured immutable ontology release reviewed by an existing approval workflow task.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyReviewTarget",
+  "properties": {
+    "entityId": {
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "ontologyId": {
+      "description": "Owning ontology ID used to serialize release review decisions.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "entityVersion": {
+      "description": "Entity-history version submitted for review; reviewers read this frozen release header.",
+      "$ref": "entityHistory.json#/definitions/entityVersion"
+    },
+    "contentDigest": {
+      "description": "SHA-256 of the ontology-review-v3 sealed release identity.",
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "author": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "entityId",
+    "ontologyId",
+    "entityVersion",
+    "contentDigest",
+    "author"
+  ],
+  "additionalProperties": false
+}

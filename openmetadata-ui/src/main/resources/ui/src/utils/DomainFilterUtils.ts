@@ -306,3 +306,23 @@ export const domainBuildESQuery = (
 
   return query;
 };
+
+/**
+ * True when an entity with `domains` sits outside the navbar selection `activeDomainFqn`. A
+ * sub-domain of the selection counts as inside; entities without a domain are never outside.
+ */
+export const isOutsideSelectedDomain = (
+  domains: EntityReference[] | undefined,
+  activeDomainFqn: string,
+  allDomainsValue: string
+): boolean => {
+  if (activeDomainFqn === allDomainsValue || !domains?.length) {
+    return false;
+  }
+
+  return !domains.some(
+    ({ fullyQualifiedName }) =>
+      fullyQualifiedName === activeDomainFqn ||
+      fullyQualifiedName?.startsWith(`${activeDomainFqn}.`)
+  );
+};

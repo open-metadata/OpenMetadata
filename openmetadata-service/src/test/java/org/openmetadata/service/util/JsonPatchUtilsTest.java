@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
@@ -77,6 +78,8 @@ class JsonPatchUtilsTest {
       {"/" + Entity.FIELD_DESCRIPTION, MetadataOperation.EDIT_DESCRIPTION},
       {"/" + Entity.FIELD_DISPLAY_NAME, MetadataOperation.EDIT_DISPLAY_NAME},
       {"/" + Entity.FIELD_TAGS, MetadataOperation.EDIT_TAGS},
+      {"/" + Entity.FIELD_DOMAINS, MetadataOperation.EDIT_DOMAINS},
+      {"/" + Entity.FIELD_DOMAINS + "/0/id", MetadataOperation.EDIT_DOMAINS},
       {"/Unknown", MetadataOperation.EDIT_ALL} // Unknown fields map to EDIT_ALL
     };
     for (Object[] patchPathToOperation : patchPathToOperations) {
@@ -344,6 +347,24 @@ class JsonPatchUtilsTest {
     assertEquals(1, operations.size());
   }
 
+  /** The write path turns this replace into an add, so the check must see the tag it adds. */
+  @Test
+  void replaceTagsOnEntityWithoutTagsMapsToTagOperation() {
+    Mockito.<EntityInterface<?>>when(resourceContextMock.getEntity())
+        .thenReturn(new Table().withName("untagged_table").withTags(null));
+    String patch =
+        """
+        [{"op": "replace", "path": "/tags", "value": [
+          {"tagFQN": "PII.Sensitive", "source": "Classification",
+           "labelType": "Manual", "state": "Confirmed"}]}]
+        """;
+
+    Set<MetadataOperation> operations =
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch(patch));
+
+    assertEquals(Set.of(MetadataOperation.EDIT_TAGS), operations);
+  }
+
   @Test
   void copyAndMoveReadFromAnotherPath() {
     String tokenPath = "/nodes/1/config/sinkConfig/credentials/token";
@@ -374,6 +395,46 @@ class JsonPatchUtilsTest {
         """;
 
     assertFalse(JsonPatchUtils.readsFromAnotherPath(jsonPatch(patch)));
+  }
+
+  /**
+   * extractPatchedFields skips root paths, so a root replace bundled with a field edit looks like
+   * that field edit alone; replacesWholeDocument must still see it.
+   */
+  @Test
+  void replacesWholeDocumentSeesARootOperationEvenAlongsideFieldEdits() {
+    JsonPatch rootAndDescription =
+        jsonPatch(
+            "[{\"op\":\"replace\",\"path\":\"\",\"value\":{\"name\":\"svc\"}},"
+                + "{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"tidy up\"}]");
+
+    assertEquals(Set.of("description"), JsonUtils.extractPatchedFields(rootAndDescription));
+    assertTrue(JsonPatchUtils.replacesWholeDocument(rootAndDescription));
+    assertTrue(
+        JsonPatchUtils.replacesWholeDocument(
+            jsonPatch("[{\"op\":\"replace\",\"path\":\"\",\"value\":{}}]")));
+    assertTrue(
+        JsonPatchUtils.replacesWholeDocument(
+            jsonPatch("[{\"op\":\"replace\",\"path\":\"/\",\"value\":{}}]")));
+  }
+
+  /** A test operation only reads the document, so a root test changes nothing. */
+  @Test
+  void aRootTestOperationDoesNotReplaceTheWholeDocument() {
+    assertFalse(
+        JsonPatchUtils.replacesWholeDocument(
+            jsonPatch(
+                "[{\"op\":\"test\",\"path\":\"\",\"value\":{\"name\":\"svc\"}},"
+                    + "{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"tidy up\"}]")));
+  }
+
+  @Test
+  void fieldEditsDoNotReplaceTheWholeDocument() {
+    assertFalse(
+        JsonPatchUtils.replacesWholeDocument(
+            jsonPatch(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"tidy up\"},"
+                    + "{\"op\":\"add\",\"path\":\"/connection/config/hostPort\",\"value\":\"h:1\"}]")));
   }
 
   private static JsonPatch jsonPatch(String patch) {

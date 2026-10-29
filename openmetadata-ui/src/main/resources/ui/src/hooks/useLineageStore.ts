@@ -35,7 +35,7 @@ import { LineagePlatformView, LineageTimeRange } from './lineage/types';
 
 interface LineageState {
   // state properties
-  isEditMode: boolean;
+  canEditLineage: boolean;
   lineageConfig: LineageConfig;
   tracedColumns: Set<string>;
   tracedNodes: Set<string>;
@@ -55,6 +55,9 @@ interface LineageState {
   nodeFilterState: Map<string, boolean>;
   isRepositioning: boolean;
   isCanvasReady: boolean;
+  // Set while a PNG export captures the canvas: virtualized canvases then
+  // mount their off-screen nodes so the image is complete.
+  renderAllNodes: boolean;
   lineageMutationTick: number;
   sceneBand?: LineageBand;
   nodes: Node[];
@@ -76,12 +79,10 @@ interface LineageState {
   showAddEdgeModal: boolean;
   showDeleteModal: boolean;
   isDrawerOpen: boolean;
-  newAddedNode?: Node;
   deletionState: { loading: boolean; status: LoadingState };
 
   // Actions
-  setIsEditMode: (isEditMode: boolean) => void;
-  toggleEditMode: () => void;
+  setCanEditLineage: (canEditLineage: boolean) => void;
   setLineageConfig: (lineageConfig: LineageConfig) => void;
   setTracedColumns: (tracedColumns: Set<string>) => void;
   addTracedColumns: (newColumn: string) => void;
@@ -108,6 +109,7 @@ interface LineageState {
   setNodeFilterState: (nodeId: string, isVisible: boolean) => void;
   setIsRepositioning: (isRepositioning: boolean) => void;
   setIsCanvasReady: (isCanvasReady: boolean) => void;
+  setRenderAllNodes: (renderAllNodes: boolean) => void;
   bumpLineageMutationTick: () => void;
   setSceneBand: (sceneBand?: LineageBand) => void;
   reset: () => void;
@@ -144,7 +146,6 @@ interface LineageState {
   closeDeleteModal: () => void;
   openDrawer: () => void;
   closeDrawer: () => void;
-  setNewAddedNode: (node?: Node) => void;
   setDeletionState: (next: { loading: boolean; status: LoadingState }) => void;
 }
 
@@ -156,7 +157,7 @@ const defaultLineageSettings = {
 };
 
 export const useLineageStore = create<LineageState>((set, get) => ({
-  isEditMode: false,
+  canEditLineage: false,
   lineageConfig: defaultLineageSettings,
   tracedColumns: new Set(),
   tracedNodes: new Set(),
@@ -172,6 +173,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   nodeFilterState: new Map(),
   isRepositioning: false,
   isCanvasReady: false,
+  renderAllNodes: false,
   lineageMutationTick: 0,
   nodes: [],
   edges: [],
@@ -190,41 +192,12 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   showAddEdgeModal: false,
   showDeleteModal: false,
   isDrawerOpen: false,
-  newAddedNode: undefined,
   deletionState: { loading: false, status: 'initial' },
 
   // Actions
   setLineageConfig: (lineageConfig: LineageConfig) => set({ lineageConfig }),
 
-  setIsEditMode: (isEditMode: boolean) => set({ isEditMode }),
-
-  toggleEditMode: () => {
-    const { isEditMode, isColumnLevelLineage, sceneBand } = get();
-    const updatedEditMode = !isEditMode;
-
-    if (
-      updatedEditMode &&
-      sceneBand === LineageBand.Field &&
-      !isColumnLevelLineage
-    ) {
-      set({
-        activeLayer: [LineageLayer.ColumnLevelLineage],
-        isColumnLevelLineage: true,
-      });
-    }
-
-    if (!updatedEditMode) {
-      set({ tracedColumns: new Set(), tracedNodes: new Set() });
-    }
-
-    set({
-      isEditMode: !isEditMode,
-      activeNode: undefined,
-      selectedNode: undefined,
-      selectedEdge: undefined,
-      selectedColumn: undefined,
-    });
-  },
+  setCanEditLineage: (canEditLineage: boolean) => set({ canEditLineage }),
 
   setTracedColumns: (tracedColumns: Set<string>) => set({ tracedColumns }),
 
@@ -338,6 +311,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   setIsRepositioning: (isRepositioning: boolean) => set({ isRepositioning }),
 
   setIsCanvasReady: (isCanvasReady: boolean) => set({ isCanvasReady }),
+  setRenderAllNodes: (renderAllNodes: boolean) => set({ renderAllNodes }),
 
   bumpLineageMutationTick: () =>
     set((state) => ({
@@ -348,7 +322,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
 
   reset: () =>
     set({
-      isEditMode: false,
+      canEditLineage: false,
       lineageConfig: defaultLineageSettings,
       tracedColumns: new Set(),
       tracedNodes: new Set(),
@@ -368,6 +342,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       nodeFilterState: new Map(),
       isRepositioning: false,
       isCanvasReady: false,
+      renderAllNodes: false,
       lineageMutationTick: 0,
       sceneBand: undefined,
       nodes: [],
@@ -389,7 +364,6 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       showAddEdgeModal: false,
       showDeleteModal: false,
       isDrawerOpen: false,
-      newAddedNode: undefined,
       deletionState: { loading: false, status: 'initial' },
     }),
 
@@ -481,8 +455,6 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   openDrawer: () => set({ isDrawerOpen: true }),
 
   closeDrawer: () => set({ isDrawerOpen: false }),
-
-  setNewAddedNode: (newAddedNode?: Node) => set({ newAddedNode }),
 
   setDeletionState: (deletionState: {
     loading: boolean;

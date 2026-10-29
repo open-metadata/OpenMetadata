@@ -12,7 +12,10 @@
  */
 
 import { TFunction } from 'i18next';
-import { getServiceCategoryBreadcrumb } from './connectionsBreadcrumb.utils';
+import {
+  getServiceCategoryBreadcrumb,
+  getServiceListPath,
+} from './connectionsBreadcrumb.utils';
 
 const t = ((key: string) => key) as unknown as TFunction;
 
@@ -42,5 +45,18 @@ describe('getServiceCategoryBreadcrumb', () => {
     // llm/mcp services have no tab, so a crumb would point at a tab that does not exist.
     expect(getServiceCategoryBreadcrumb(t, 'llmServices')).toBeNull();
     expect(getServiceCategoryBreadcrumb(t, undefined)).toBeNull();
+  });
+});
+
+describe('getServiceListPath', () => {
+  it("leads to the service category's tab on the listing", () => {
+    expect(getServiceListPath('databaseServices')).toBe(
+      '/connections?category=databaseServices'
+    );
+  });
+
+  it('falls back to the listing for a category it does not tab', () => {
+    expect(getServiceListPath('llmServices')).toBe('/connections');
+    expect(getServiceListPath(undefined)).toBe('/connections');
   });
 });

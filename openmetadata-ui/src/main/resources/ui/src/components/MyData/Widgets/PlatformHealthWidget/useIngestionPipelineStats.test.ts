@@ -34,6 +34,7 @@ import {
 import {
   MAX_FAILING_ROWS,
   PIPELINE_STATS_TTL_MS,
+  useBucketServices,
   useIngestionPipelineStats,
 } from './useIngestionPipelineStats';
 
@@ -481,4 +482,60 @@ describe('useIngestionPipelineStats route revalidation', () => {
       expect(mockGetServicesOverview).toHaveBeenCalledTimes(2)
     );
   });
+});
+
+describe('useBucketServices', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    queryClient.clear();
+  });
+
+  it('reads nothing until a healthy or not-run bucket is picked', () => {
+    const { result } = renderHook(() => useBucketServices(undefined, 3), {
+      wrapper: withQueryClient,
+    });
+
+    expect(mockGetServicesOverview).not.toHaveBeenCalled();
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.services).toEqual([]);
+  });
+
+  it.each([
+    ['healthy', ServiceHealth.Success],
+    ['notRun', ServiceHealth.NotRun],
+  ] as const)(
+    'asks the overview for one page of the %s bucket',
+    async (filter, health) => {
+      mockGetServicesOverview.mockResolvedValue(
+        overview({}, [
+          service('orders_db', health, {
+            displayName: 'Orders DB',
+            serviceType: 'Mysql',
+          }),
+        ])
+      );
+
+      const { result } = renderHook(() => useBucketServices(filter, 3), {
+        wrapper: withQueryClient,
+      });
+
+      await waitFor(() => expect(result.current.services).toHaveLength(1));
+
+      expect(mockGetServicesOverview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          excludeProvider: 'system',
+          health: [health],
+          includeHealth: true,
+          limit: 3,
+        })
+      );
+      expect(result.current.services[0]).toEqual({
+        displayName: 'Orders DB',
+        fqn: 'orders_db',
+        id: 'orders_db',
+        serviceCategory: 'databaseServices',
+        serviceType: 'Mysql',
+      });
+    }
+  );
 });

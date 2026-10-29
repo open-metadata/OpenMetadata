@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { FieldTypes, getField } from '@openmetadata/ui-core-components';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { DataQualityDimensions } from '../../../enums/DataQuality.enum';
 import type { TestDefinition } from '../../../generated/tests/testDefinition';
 import {
@@ -33,28 +40,47 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
+const NAME_DOC = 'Provide the unique technical name for the test definition.';
+
+type MockForm = { setValue: (name: string, value: unknown) => void };
+
+let mockLatestForm: MockForm | undefined;
+
 jest.mock('./TestDefinitionFormBody', () => ({
   __esModule: true,
-  default: ({
-    form,
-  }: {
-    form: { setValue: (name: string, value: unknown) => void };
-  }) => (
-    <div data-testid="form-body">
-      <button
-        data-testid="set-display-name"
-        type="button"
-        onClick={() => form.setValue('displayName', 'Updated Display Name')}>
-        set-display-name
-      </button>
-    </div>
-  ),
+  default: ({ form }: { form: MockForm }) => {
+    mockLatestForm = form;
+
+    return (
+      <div data-testid="form-body">
+        {getField({
+          name: 'name',
+          label: 'Name',
+          type: FieldTypes.TEXT,
+          required: false,
+          id: 'root/name',
+          doc: NAME_DOC,
+        })}
+        <button
+          data-testid="set-display-name"
+          type="button"
+          onClick={() => form.setValue('displayName', 'Updated Display Name')}>
+          set-display-name
+        </button>
+      </div>
+    );
+  },
 }));
 
-jest.mock('../../common/ServiceDocPanel/ServiceDocPanel', () => ({
-  __esModule: true,
-  default: () => <div data-testid="service-doc-panel" />,
-}));
+// The real previewer wraps a lazy TipTap editor that does not render in jsdom;
+// render the markdown as text so the Form Hint assertions see the doc string.
+jest.mock(
+  '../../common/RichTextEditor/RichTextEditorPreviewerV1',
+  () =>
+    function MockRichTextEditorPreviewerV1({ markdown }: { markdown: string }) {
+      return <div>{markdown}</div>;
+    }
+);
 
 const mockOnSuccess = jest.fn();
 const mockOnCancel = jest.fn();
@@ -78,7 +104,7 @@ describe('TestDefinitionForm wrapper', () => {
     jest.clearAllMocks();
   });
 
-  it('renders the drawer variant with the doc panel by default', () => {
+  it('renders the drawer with the Show Hint toggle on', async () => {
     render(
       <TestDefinitionForm
         open
@@ -88,29 +114,72 @@ describe('TestDefinitionForm wrapper', () => {
     );
 
     expect(screen.getByTestId('form-body')).toBeInTheDocument();
-    expect(screen.getByTestId('service-doc-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('save-test-definition')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('switch', { name: 'label.show-hint' })
+    ).toBeChecked();
   });
 
-  it('renders the modal variant without the doc panel', () => {
-    render(
+  it('opens Add empty after an edit closes, even if a closing field writes its old value back', async () => {
+    const { rerender } = render(
       <TestDefinitionForm
         open
-        variant="modal"
+        initialValues={mockInitialValues}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
     );
 
-    expect(screen.getByTestId('form-body')).toBeInTheDocument();
-    expect(screen.queryByTestId('service-doc-panel')).not.toBeInTheDocument();
-    expect(screen.getByTestId('create-btn')).toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveValue(mockInitialValues.name);
+
+    rerender(
+      <TestDefinitionForm
+        open={false}
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
+    // The drawer's fields stay mounted while it slides out and re-register
+    // their last value. jsdom unmounts them at once, so write it directly.
+    act(() => mockLatestForm?.setValue('name', mockInitialValues.name));
+
+    rerender(
+      <TestDefinitionForm
+        open
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
+
+    expect(await screen.findByLabelText('Name')).toHaveValue('');
+  });
+
+  it('shows the focused field doc in the Form Hint until Show Hint is off', async () => {
+    render(
+      <TestDefinitionForm
+        open
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
+
+    await act(async () => {
+      screen.getByLabelText('Name').focus();
+    });
+
+    expect(await screen.findByText(NAME_DOC)).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('switch', { name: 'label.show-hint' }));
+    });
+
+    expect(screen.queryByText(NAME_DOC)).not.toBeInTheDocument();
   });
 
   it('uses the add title when there are no initialValues', () => {
     render(
       <TestDefinitionForm
         open
-        variant="modal"
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
@@ -124,7 +193,6 @@ describe('TestDefinitionForm wrapper', () => {
       <TestDefinitionForm
         open
         initialValues={mockInitialValues}
-        variant="modal"
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
@@ -137,13 +205,12 @@ describe('TestDefinitionForm wrapper', () => {
     render(
       <TestDefinitionForm
         open
-        variant="modal"
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
     );
 
-    fireEvent.click(screen.getByTestId('create-btn'));
+    fireEvent.click(screen.getByTestId('save-test-definition'));
 
     await waitFor(() => {
       expect(createTestDefinition).toHaveBeenCalledWith(
@@ -172,14 +239,13 @@ describe('TestDefinitionForm wrapper', () => {
       <TestDefinitionForm
         open
         initialValues={mockInitialValues}
-        variant="modal"
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
     );
 
     fireEvent.click(screen.getByTestId('set-display-name'));
-    fireEvent.click(screen.getByTestId('create-btn'));
+    fireEvent.click(screen.getByTestId('save-test-definition'));
 
     await waitFor(() => {
       expect(patchTestDefinition).toHaveBeenCalledWith(
@@ -204,13 +270,12 @@ describe('TestDefinitionForm wrapper', () => {
       <TestDefinitionForm
         open
         initialValues={mockInitialValues}
-        variant="modal"
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
     );
 
-    fireEvent.click(screen.getByTestId('create-btn'));
+    fireEvent.click(screen.getByTestId('save-test-definition'));
 
     await waitFor(() => expect(mockOnSuccess).toHaveBeenCalled());
 
@@ -225,13 +290,12 @@ describe('TestDefinitionForm wrapper', () => {
     render(
       <TestDefinitionForm
         open
-        variant="modal"
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
     );
 
-    fireEvent.click(screen.getByTestId('create-btn'));
+    fireEvent.click(screen.getByTestId('save-test-definition'));
 
     await waitFor(() => expect(createTestDefinition).toHaveBeenCalled());
 

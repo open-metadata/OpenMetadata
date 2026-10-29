@@ -28,7 +28,6 @@ import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
-  descriptionBoxReadOnly,
   fillDescriptionBox,
   getAuthContext,
   redirectToHomePage,
@@ -164,7 +163,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
 export const softDeleteUserProfilePage = async (
   page: Page,
   userName: string,
-  displayName: string
+  _displayName: string
 ) => {
   const userResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=*&from=0&size=*'
@@ -225,7 +224,7 @@ export const restoreUserProfilePage = async (page: Page, fqn: string) => {
 
 export const hardDeleteUserProfilePage = async (
   page: Page,
-  displayName: string
+  _displayName: string
 ) => {
   await page.getByTestId('user-profile-manage-btn').click();
   await page.getByText('Delete Profile').click();
@@ -264,47 +263,6 @@ export const editDisplayName = async (page: Page, editedUserName: string) => {
   const userName = await page.textContent('[data-testid="user-display-name"]');
 
   expect(userName).toContain(editedUserName);
-};
-
-export const editTeams = async (page: Page, teamName: string) => {
-  await page.click('[data-testid="edit-teams-button"]');
-  await page.click('.ant-select-selection-item-remove > .anticon');
-
-  await page.click('[data-testid="team-select"]');
-  await page.getByTestId('team-select').fill(teamName);
-
-  // Click the team from the dropdown
-  await page.click('.filter-node > .ant-select-tree-node-content-wrapper');
-
-  const updateTeamResponse = page.waitForResponse('/api/v1/users/*');
-  await page.click('[data-testid="inline-save-btn"]');
-  await updateTeamResponse;
-
-  // Verify the new team link is visible
-  await expect(page.locator(`[data-testid="${teamName}-link"]`)).toBeVisible();
-};
-
-export const editDescription = async (
-  page: Page,
-  updatedDescription: string
-) => {
-  await page.click('[data-testid="edit-description"]');
-
-  // Clear and type the new description
-  await fillDescriptionBox(page, updatedDescription);
-
-  const updateDescription = page.waitForResponse('/api/v1/users/*');
-  await page.click('[data-testid="save"]');
-  await updateDescription;
-
-  await page.click('.ant-collapse-expand-icon > .anticon > svg');
-
-  // Verify the updated description
-  const description = page.locator(
-    `[data-testid="asset-description-container"] ${descriptionBoxReadOnly}`
-  );
-
-  await expect(description).toContainText(updatedDescription);
 };
 
 export const handleAdminUpdateDetails = async (
@@ -496,7 +454,7 @@ export const generateToken = async (page: Page) => {
 
   await page.click('[data-testid="token-expiry"]');
 
-  await page.locator('[title="1 hour"] div').click();
+  await page.getByRole('option', { name: '1 hour', exact: true }).click();
 
   await expect(page.locator('[data-testid="token-expiry"]')).toBeVisible();
 
@@ -521,23 +479,18 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
 
 export const updateExpiration = async (page: Page, expiry: number) => {
   await page.click('[data-testid="token-expiry"]');
-  await page.click(`text=${expiry} day${expiry > 1 ? 's' : ''}`);
+  await page
+    .getByRole('option', {
+      name: `${expiry} day${expiry > 1 ? 's' : ''}`,
+      exact: true,
+    })
+    .click();
 
   const expiryDate = customFormatDateTime(
     getEpochMillisForFutureDays(expiry as number),
     `ccc d'th' MMMM, yyyy`
   );
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown close animation delay
-  await page.waitForTimeout(100);
-
-  // Click outside to close any open dropdowns
-  await page.mouse.click(1, 1);
-
-  // Wait for any dropdown animations to complete
-  await page.locator('.ant-select-dropdown').waitFor({ state: 'hidden' });
-
-  // Now click the save button
   await page.click('[data-testid="save-edit"]');
 
   await expect(
@@ -602,7 +555,8 @@ export const checkDataConsumerPermissions = async (page: Page) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
+  await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
+  await expect(page.getByTestId('lineage-node-menu')).toHaveCount(0);
 };
 
 export const checkStewardServicesPermissions = async (page: Page) => {
@@ -698,8 +652,8 @@ export const checkStewardPermissions = async (page: Page) => {
   await page.click('[data-testid="lineage"]');
   await waitForAllLoadersToDisappear(page);
 
-  // Check if edit lineage option is available
-  await expect(page.getByTestId('edit-lineage')).toBeVisible();
+  // Editors get the lineage node menu instead of an edit-mode toggle
+  await expect(page.getByTestId('lineage-node-menu')).not.toHaveCount(0);
 };
 
 export const addUser = async (
@@ -731,9 +685,9 @@ export const addUser = async (
 
   await fillDescriptionBox(page, 'Adding new user');
 
-  await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
-  await page.fill('input[name="password"]', password);
-  await page.fill('input[name="confirmPassword"]', password);
+  await page.getByTestId('password-create').click();
+  await page.getByTestId('password').fill(password);
+  await page.getByTestId('confirmPassword').fill(password);
 
   const rolesCombobox = page
     .getByTestId('roles-dropdown')
@@ -743,29 +697,19 @@ export const addUser = async (
   const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
   await rolesCombobox.fill(role);
   await rolesSearchResponse;
-  const roleOption = page
-    .locator('.ant-select-item-option-content')
-    .filter({ hasText: new RegExp(`^${role}$`) });
+  const roleOption = page.getByRole('option', { name: role, exact: true });
   await expect(roleOption).toBeVisible({ timeout: LONG_ACTION_TIMEOUT });
   await roleOption.click();
-  await clickOutside(page);
+  await page.keyboard.press('Escape');
 
   if (personas?.length) {
-    await page
-      .locator('[data-testid="personas-dropdown"] .ant-select-selector')
-      .click();
-    await page
+    const personasCombobox = page
       .getByTestId('personas-dropdown')
-      .getByRole('combobox')
-      .fill(personas[0]);
-    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
-    const personaOption = page
-      .locator('.ant-select-dropdown:visible')
-      .locator('.ant-select-item-option')
-      .filter({ hasText: personas[0] });
-    await personaOption.waitFor({ state: 'visible' });
-    await personaOption.click();
-    await clickOutside(page);
+      .getByRole('combobox');
+    await personasCombobox.click();
+    await personasCombobox.fill(personas[0]);
+    await page.getByRole('option', { name: personas[0], exact: true }).click();
+    await page.keyboard.press('Escape');
   }
 
   const saveResponse = page.waitForResponse('/api/v1/users');
@@ -795,9 +739,9 @@ export const checkForUserExistError = async (
 
   await fillDescriptionBox(page, 'Adding new user');
 
-  await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
-  await page.fill('input[name="password"]', password);
-  await page.fill('input[name="confirmPassword"]', password);
+  await page.getByTestId('password-create').click();
+  await page.getByTestId('password').fill(password);
+  await page.getByTestId('confirmPassword').fill(password);
 
   const saveResponse = page.waitForResponse('/api/v1/users');
   await page.click('[data-testid="save-user"]');

@@ -121,7 +121,7 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
               query.getSortField(),
               query.getSortOrder());
 
-      Response response = searchRepository.search(searchRequest, null);
+      Response response = searchRepository.search(searchRequest, query.getSubjectContext());
       String responseBody = extractResponseBody(response);
       JsonNode searchResponse = JsonUtils.readTree(responseBody);
 
@@ -155,7 +155,7 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
           buildSearchRequest(
               0, 0, queryFilter, false, null, DEFAULT_SORT_FIELD, DEFAULT_SORT_ORDER);
 
-      Response response = searchRepository.search(searchRequest, null);
+      Response response = searchRepository.search(searchRequest, query.getSubjectContext());
 
       String responseBody = extractResponseBody(response);
       JsonNode searchResponse = JsonUtils.readTree(responseBody);
@@ -267,6 +267,12 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
   @Override
   public Map<String, Integer> getAggregatedCountsByField(
       String fieldPath, String queryFilter, int size) {
+    return getAggregatedCountsByField(fieldPath, queryFilter, size, null);
+  }
+
+  @Override
+  public Map<String, Integer> getAggregatedCountsByField(
+      String fieldPath, String queryFilter, int size, SubjectContext caller) {
     try {
       if (isSearchUnavailable()) {
         LOG.warn("Search unavailable for aggregated counts");
@@ -289,8 +295,15 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       SearchAggregation searchAggregation = SearchAggregation.fromTree(aggregationNode);
 
       JsonObject response =
-          searchRepository.aggregate(
-              queryFilter, GLOBAL_SEARCH_ALIAS, searchAggregation, new SearchListFilter());
+          caller == null
+              ? searchRepository.aggregate(
+                  queryFilter, GLOBAL_SEARCH_ALIAS, searchAggregation, new SearchListFilter())
+              : searchRepository.aggregate(
+                  queryFilter,
+                  GLOBAL_SEARCH_ALIAS,
+                  searchAggregation,
+                  new SearchListFilter(),
+                  caller);
 
       LOG.info("Aggregation response: {}", response);
 

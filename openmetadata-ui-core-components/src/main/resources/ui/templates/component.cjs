@@ -49,7 +49,7 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const ${name}: FC<Props> = ({ size = 24, ${colorParam}, ...props }) => (
+export const ${name}: FC<Props> = ({ size = 20, ${colorParam}, ...props }) => (
   ${jsx}
 );
 ${name}.displayName = '${name}';

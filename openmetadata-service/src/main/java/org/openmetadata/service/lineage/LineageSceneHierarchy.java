@@ -19,6 +19,7 @@ import static org.openmetadata.service.lineage.LineageSceneMapper.nullableList;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -237,9 +238,27 @@ final class LineageSceneHierarchy {
     };
   }
 
+  // Asset kinds that have a field level. The Asset band fetches no field payloads, so an
+  // asset node's own fields are empty there; drillability has to come from its kind.
+  private static final Set<LineageLevelKind> FIELD_BEARING_KINDS =
+      EnumSet.of(
+          LineageLevelKind.TABLE,
+          LineageLevelKind.DASHBOARD_DATA_MODEL,
+          LineageLevelKind.TOPIC,
+          LineageLevelKind.DASHBOARD,
+          LineageLevelKind.MODEL,
+          LineageLevelKind.CONTAINER,
+          LineageLevelKind.SEARCH_INDEX,
+          LineageLevelKind.API_ENDPOINT,
+          LineageLevelKind.METRIC,
+          LineageLevelKind.PIPELINE,
+          LineageLevelKind.WORKSHEET);
+
   static boolean isExpandable(Ref ref, SceneAsset asset) {
     if (Objects.equals(ref.fqn(), asset.self().fqn())) {
-      return isContainerKind(ref.kind()) || !asset.fields().isEmpty();
+      return isContainerKind(ref.kind())
+          || FIELD_BEARING_KINDS.contains(ref.kind())
+          || !asset.fields().isEmpty();
     }
     return isContainerKind(ref.kind()) || asset.isDescendantOf(ref);
   }

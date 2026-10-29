@@ -34,10 +34,7 @@ import { hardDeleteEntity } from '../../../../utils/DeleteWidget/DeleteWidgetUti
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
-import {
-  EntityName,
-  EntityNameValidationRule,
-} from '../../../Modals/EntityNameModal/EntityNameModal.interface';
+import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import DeleteModal from '../../DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../DeleteWidget/DeleteEntityModal';
 import { DeleteType } from '../../DeleteWidget/DeleteWidget.interface';
@@ -382,9 +379,7 @@ const ManageButton: FC<ManageButtonProps> = ({
       {onEditDisplayName && isDisplayNameEditing && (
         <EntityNameModal
           allowRename={allowRename}
-          displayNameValidationRules={
-            DISPLAY_NAME_FIELD_RULES as EntityNameValidationRule[]
-          }
+          displayNameValidationRules={DISPLAY_NAME_FIELD_RULES}
           entity={{
             name: entityName,
             displayName,

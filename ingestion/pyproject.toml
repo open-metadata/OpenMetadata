@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools~=70.3.0"]
+requires = ["setuptools>=83"]
 build-backend = "setuptools.build_meta"
 
 # We will keep handling dependencies in setup.py
@@ -19,6 +19,130 @@ requires-python = ">=3.10"
 Homepage = "https://open-metadata.org/"
 Documentation = "https://docs.open-metadata.org/"
 Source = "https://github.com/open-metadata/OpenMetadata"
+
+[dependency-groups]
+nox = [{ include-group = "bootstrap" }, "nox"]
+
+style = [
+    { include-group = "bootstrap" },
+    "ruff~=0.15.12",
+]
+
+dev = [
+    { include-group = "style" },
+    { include-group = "generation" },
+    "boto3-stubs",
+    "mypy-boto3-glue",
+    "google-api-python-client-stubs",
+    "google-auth-stubs",
+    "types-requests",
+    "pandas-stubs~=2.2",
+    "scipy-stubs",
+    "nox",
+    "pre-commit",
+    "basedpyright==1.39.3",
+    "import-linter~=2.13",
+    "twine",
+    "build",
+]
+
+test = [
+    { include-group = "dev" },
+    { include-group = "coverage" },
+    { include-group = "dialect-compat" },
+    { include-group = "exasol-test" },
+    "en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl#sha256=5e6329fe3fecedb1d1a02c3ea2172ee0fede6cea6e4aefb6a02d832dba78a310",
+    "es-core-news-md @ https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl#sha256=478b8bb3f3e8eb149192f7d80e7cd64f990b7e9bccbc5329df41a57e86326be2",
+    "it-core-news-md @ https://github.com/explosion/spacy-models/releases/download/it_core_news_md-3.8.0/it_core_news_md-3.8.0-py3-none-any.whl#sha256=a731d2d8e7c5a7093ac42f88774ea2a2ad3d5809959eedee65632b3533f804ec",
+    "pl-core-news-md @ https://github.com/explosion/spacy-models/releases/download/pl_core_news_md-3.8.0/pl_core_news_md-3.8.0-py3-none-any.whl#sha256=4f433a556880c0b7ef01970e7c612c0e30103b893e6d26ed54672d8e056ad9b1",
+    "pytest==7.0.1",
+    "pytest-cov",
+    "pytest-xdist~=3.5",
+    "pytest-order",
+    "pytest-rerunfailures",
+    "pytest-timeout~=2.4",
+    "dirty-equals",
+    "freezegun",
+    "faker==37.1.0",
+    "factory-boy~=3.3.3",
+    "testcontainers~=4.8.0",
+    "skops",
+    "socksio==1.*",
+    "minio==7.2.5",
+    "kafka-python==2.3.2",
+    "locust~=2.32.0",
+]
+
+exasol-test = [
+    "exasol-integration-test-docker-environment>=6.0.0,<7",
+    "luigi>=2.8.4,<=3.6.0",
+]
+
+generation = [
+    { include-group = "bootstrap" },
+    "uvloop==0.21.0",
+    "datamodel-code-generator==0.83.0",
+    "ruff~=0.15.12",
+]
+
+coverage = [{ include-group = "bootstrap" }, "coverage[toml]"]
+
+bootstrap = ["pip", "uv==0.13.4", "tomli>=2; python_version < '3.11'"]
+
+dialect-compat = ["sqlalchemy-ibmi==0.9.3"]
+
+[tool.uv]
+required-version = "==0.13.4"
+default-groups = []
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64' and python_version >= '3.10' and python_version < '3.13'",
+    "sys_platform == 'linux' and platform_machine == 'aarch64' and python_version >= '3.10' and python_version < '3.13'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64' and python_version >= '3.10' and python_version < '3.13'",
+]
+
+# The existing DB2 shim adapts this exact release's SQLAlchemy 1.x call sites.
+[[tool.uv.dependency-metadata]]
+name = "sqlalchemy-ibmi"
+version = "0.9.3"
+requires-dist = ["pyodbc>=4.0", "sqlalchemy>=2.0,<2.1"]
+
+[tool.openmetadata.python-environments.profiles.runtime]
+groups = ["bootstrap"]
+extras = []
+install-project = true
+
+[tool.openmetadata.python-environments.profiles.all]
+groups = ["bootstrap"]
+extras = ["all"]
+install-project = true
+
+[tool.openmetadata.python-environments.profiles.style]
+groups = ["style"]
+extras = []
+install-project = false
+
+[tool.openmetadata.python-environments.profiles.generation]
+groups = ["generation"]
+extras = []
+install-project = false
+
+[tool.openmetadata.python-environments.profiles.dev]
+groups = ["dev"]
+extras = ["sample-data"]
+install-project = true
+
+[tool.openmetadata.python-environments.profiles.test]
+groups = ["test"]
+extras = ["all", "airflow", "great-expectations"]
+install-project = true
+
+[tool.openmetadata.python-environments.profiles.coverage]
+groups = ["coverage"]
+extras = []
+install-project = false
+
+[tool.openmetadata.python-environments.classification-models]
+languages = ["en", "es", "it", "pl"]
 
 [tool.setuptools.dynamic]
 readme = { file = ["README.md"] }
@@ -59,7 +183,6 @@ omit = [
     "*__init__*",
     "*/generated/*",
     "tests/*",
-    "ingestion/src/*",
     "*/src/metadata/ingestion/source/database/sample_*"
 ]
 
@@ -71,12 +194,15 @@ show_contexts = true
 
 [tool.pytest.ini_options]
 markers = [
+    "metadata: connector metadata ingestion and reflection",
+    "lineage: connector lineage extraction and ingestion",
+    "usage: connector query usage ingestion",
+    "profiler: connector profiling, sampling, and metric computation",
+    "dataquality: connector data quality validation",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "xdist_group(name): group tests to run on the same xdist worker"
 ]
 
-# Skip tests that are known to fail or are not ready to run until issue #21736 is solved
-addopts = "--ignore=ingestion/tests/unit/topology/database/test_deltalake.py --ignore=ingestion/tests/integration/sources/mlmodels/mlflow/test_mlflow.py"
 [project.entry-points.pytest11]
 pytest_openmetadata = "_openmetadata_testutils.pytest_openmetadata.plugin"
 
@@ -266,6 +392,7 @@ ban-relative-imports = "all"
 # the `metadata.` package directly.
 "ingestion.src.metadata".msg     = "Use `metadata.` imports instead of `ingestion.src.metadata`."
 "ingestion.build.lib".msg        = "Don't import build artifacts; use `metadata.` directly."
+"testcontainers.cockroachdb.CockroachDBContainer".msg = "Use the shared cockroach_container fixture in tests/integration/cockroach/conftest.py."
 
 [tool.basedpyright]
 include = ["src"]

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   ButtonGroup,
   ButtonGroupItem,
@@ -31,10 +30,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
-import {
-  DATA_ASSET_ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { PIPELINE_TASK_TABS } from '../../../constants/pipeline.constants';
 import {
   SEGMENT_TOGGLE_GROUP_CLASS,
@@ -321,11 +317,7 @@ export const PipelineTaskTab = () => {
               <div className="d-flex items-center">
                 <span className="break-all">{getEntityName(record)}</span>
 
-                <Icon
-                  className="m-l-xs flex-none"
-                  component={ExternalLinkIcon}
-                  style={DATA_ASSET_ICON_DIMENSION}
-                />
+                <ExternalLinkIcon className="tw:ml-2 tw:shrink-0 tw:size-3.5" />
               </div>
             </Link>
           ) : (

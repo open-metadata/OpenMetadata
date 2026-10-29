@@ -16,10 +16,8 @@ import {
   render,
   screen,
   waitForElementToBeRemoved,
-  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Table as AntdTable } from 'antd';
 import React from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { Status } from '../../../../generated/entity/applications/appRunRecord';
@@ -145,11 +143,15 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../../../common/Table/TableV2', () => {
+  const ActualTable = jest.requireActual(
+    '../../../common/Table/TableV2'
+  ).default;
+
   return jest
     .fn()
     .mockImplementation(({ loading, customPaginationProps, ...rest }) => (
       <div>
-        {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
+        {loading ? <p>TableLoader</p> : <ActualTable {...rest} />}
         {customPaginationProps && (
           <button
             onClick={() =>
@@ -260,7 +262,9 @@ describe('AppRunsHistory', () => {
       .findIndex((header) => header.textContent === 'label.triggered-by');
     const [, firstDataRow] = screen.getAllByRole('row');
 
-    return within(firstDataRow).getAllByRole('cell')[columnIndex];
+    return Array.from(
+      firstDataRow.querySelectorAll('[role="rowheader"], [role="gridcell"]')
+    )[columnIndex];
   };
 
   it('should show the user who triggered an on-demand run', async () => {
@@ -312,7 +316,7 @@ describe('AppRunsHistory', () => {
   });
 
   it('should fetch data based on startTs and endTs for external app onclick of NextPrevious', async () => {
-    jest.useFakeTimers('modern').setSystemTime(new Date('2024-02-05'));
+    jest.useFakeTimers().setSystemTime(new Date('2024-02-05'));
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
@@ -544,5 +548,50 @@ describe('AppRunsHistory', () => {
     });
 
     expect(screen.getByText('Running')).toBeInTheDocument();
+  });
+
+  it('toggles a run with stats from the expand chevron', async () => {
+    mockHasAppRunStats.mockReturnValue(true);
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [
+        { ...mockApplicationData, id: 'run-chevron', status: Status.Failed },
+      ],
+      paging: { offset: 0, total: 1 },
+    });
+
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    fireEvent.click(screen.getByTestId('expand-icon'));
+
+    expect(screen.getByText('AppLogsViewer')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('expand-icon'));
+
+    expect(screen.queryByText('AppLogsViewer')).not.toBeInTheDocument();
+  });
+
+  it('hands the run to onViewRunConfig instead of opening the config dialog', async () => {
+    const onViewRunConfig = jest.fn();
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [
+        { ...mockApplicationData, id: 'run-config', status: Status.Failed },
+      ],
+      paging: { offset: 0, total: 1 },
+    });
+
+    render(
+      <AppRunsHistory {...mockProps1} onViewRunConfig={onViewRunConfig} />
+    );
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    fireEvent.click(screen.getByText('label.config'));
+
+    expect(onViewRunConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ status: Status.Failed })
+    );
+    expect(
+      screen.queryByTestId('edit-table-type-property-modal')
+    ).not.toBeInTheDocument();
   });
 });

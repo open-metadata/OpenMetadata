@@ -33,11 +33,13 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.ai.CreateAIGovernanceFramework;
 import org.openmetadata.schema.api.ai.ForkAIGovernanceFrameworkRequest;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -46,7 +48,11 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.seeding.SeedDataGate;
 
 @Path("/v1/aiGovernanceFrameworks")
@@ -185,9 +191,24 @@ public class AIGovernanceFrameworkResource
       @Valid ForkAIGovernanceFrameworkRequest request) {
     AIGovernanceFramework source =
         getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED, null);
+    authorizeFork(securityContext);
     return Response.ok(
             repository.fork(uriInfo, source, request, securityContext.getUserPrincipal().getName()))
         .build();
+  }
+
+  /** A fork creates a framework and a copy of every control, so it needs Create on both. */
+  private void authorizeFork(SecurityContext securityContext) {
+    authorizer.authorizeRequests(
+        securityContext,
+        List.of(
+            new AuthRequest(
+                new OperationContext(entityType, MetadataOperation.CREATE),
+                new ResourceContext<>(entityType)),
+            new AuthRequest(
+                new OperationContext(Entity.AI_FRAMEWORK_CONTROL, MetadataOperation.CREATE),
+                new ResourceContext<>(Entity.AI_FRAMEWORK_CONTROL))),
+        AuthorizationLogic.ALL);
   }
 
   @DELETE

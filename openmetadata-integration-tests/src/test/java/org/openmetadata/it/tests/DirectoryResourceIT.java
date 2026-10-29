@@ -564,6 +564,41 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
         "Parent reference must match on the list path");
   }
 
+  @Test
+  void test_getWithChildren_skipsSoftDeletedChild(TestNamespace ns) {
+    DriveService driveService = sharedDriveService(ns);
+    Directory parentDir =
+        Directories.create()
+            .name(ns.prefix("get_parent"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+    File liveFile =
+        getFileService()
+            .create(
+                new CreateFile()
+                    .withName(ns.prefix("get_live_file"))
+                    .withService(driveService.getFullyQualifiedName())
+                    .withDirectory(parentDir.getFullyQualifiedName())
+                    .withSize(100));
+    File deletedFile =
+        getFileService()
+            .create(
+                new CreateFile()
+                    .withName(ns.prefix("get_deleted_file"))
+                    .withService(driveService.getFullyQualifiedName())
+                    .withDirectory(parentDir.getFullyQualifiedName())
+                    .withSize(999));
+    getFileService().delete(deletedFile.getId().toString());
+
+    Directory fetched =
+        getDirectoryService().get(parentDir.getId().toString(), "children,numberOfFiles,totalSize");
+
+    assertEquals(1, fetched.getChildren().size(), "Only the live file is a child");
+    assertEquals(liveFile.getId(), fetched.getChildren().getFirst().getId());
+    assertEquals(1, fetched.getNumberOfFiles());
+    assertEquals(100, fetched.getTotalSize());
+  }
+
   /**
    * A nested directory must inherit its domain from its parent directory (not the drive service)
    * on the bulk list path, even when the parent field is not requested: the parent reference is

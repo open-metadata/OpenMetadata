@@ -15,12 +15,12 @@ package org.openmetadata.service.security.policyevaluator;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.Function;
+import org.openmetadata.service.alerting.matching.AlertsRuleEvaluator;
 import org.springframework.expression.ParseException;
 import org.springframework.expression.spel.SpelNode;
 import org.springframework.expression.spel.ast.BooleanLiteral;
@@ -295,10 +295,9 @@ public final class ExpressionValidator {
 
   private static List<Class<?>> getClassesAlertAndCompletion() {
     List<Class<?>> evaluatorClasses = new ArrayList<>();
+    evaluatorClasses.add(AlertsRuleEvaluator.class);
     List<String> classNames =
-        Arrays.asList(
-            "org.openmetadata.service.events.subscription.AlertsRuleEvaluator",
-            "io.collate.service.apps.bundles.onboarding.CompletionEvaluator");
+        List.of("io.collate.service.apps.bundles.onboarding.CompletionEvaluator");
 
     for (String className : classNames) {
       try {

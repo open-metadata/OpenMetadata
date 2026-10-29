@@ -41,6 +41,7 @@ export const getNextEnumSelection = (
 const CoreEnumMultiSelectField = ({
   schema,
   formData,
+  formContext,
   idSchema,
   name,
   disabled,
@@ -138,6 +139,8 @@ const CoreEnumMultiSelectField = ({
       label={schema.title ?? getFormDisplayLabel(name)}
       placeholder={t('label.select-field', { field: schema.title ?? name })}
       selectedItems={selected}
+      // Lets a form's doc panel follow this field, as CoreArrayField does.
+      onFocus={() => formContext?.handleFocus?.(idSchema.$id)}
       onItemCleared={handleCleared}
       onItemInserted={handleInserted}>
       {(item) => (

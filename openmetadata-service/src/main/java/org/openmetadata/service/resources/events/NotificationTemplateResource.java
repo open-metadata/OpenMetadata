@@ -61,10 +61,11 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerting.TemplatePreview;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.AuthRequest;
@@ -91,8 +92,11 @@ public class NotificationTemplateResource
 
   private final NotificationTemplateMapper mapper = new NotificationTemplateMapper();
 
+  private final TemplatePreview preview;
+
   public NotificationTemplateResource(Authorizer authorizer, Limits limits) {
     super(Entity.NOTIFICATION_TEMPLATE, authorizer, limits);
+    this.preview = new TemplatePreview(repository);
   }
 
   @Override
@@ -854,7 +858,7 @@ public class NotificationTemplateResource
   public Response renderTemplate(
       @Context SecurityContext securityContext, @Valid NotificationTemplateRenderRequest request) {
     authorizePreviewCapability(securityContext);
-    NotificationTemplateRenderResponse response = repository.render(request);
+    NotificationTemplateRenderResponse response = preview.render(request);
 
     return Response.ok(response).build();
   }
@@ -866,7 +870,8 @@ public class NotificationTemplateResource
       summary = "Validate and send notification template to external destinations",
       description =
           "Validates template syntax, generates mock ChangeEvent data, and sends to specified external destinations. "
-              + "Returns validation status only. Delivery errors are logged server-side. "
+              + "Returns validation status only. Delivery errors are logged server-side, except a "
+              + "message too large for a destination's channel, which is returned as a body error. "
               + "Only external destinations (Email, Slack, Teams, GChat, Webhook) are supported. "
               + "Requires any of: CREATE, EDIT_ALL, EDIT_USER_NOTIFICATION_TEMPLATE.",
       responses = {
@@ -883,7 +888,7 @@ public class NotificationTemplateResource
   public Response sendTemplate(
       @Context SecurityContext securityContext, @Valid NotificationTemplateSendRequest request) {
     authorizePreviewCapability(securityContext);
-    NotificationTemplateValidationResponse response = repository.send(request);
+    NotificationTemplateValidationResponse response = preview.send(request);
 
     return Response.ok(response).build();
   }

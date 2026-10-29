@@ -19,12 +19,16 @@ import {
 import { waitForAllLoadersToDisappear } from './entity';
 
 // The default landing layout, in DEFAULT_LANDING_PAGE_LAYOUT order. MyData,
-// DataAssets, TotalAssets, Following and MyTask are gone: the topic cards
-// replaced them, and `getExcludedWidgetFqns` keeps their keys out of both the
-// grid and the Add Widgets picker, so waiting on one now waits forever.
+// DataAssets and Following are gone: the topic cards replaced them, and
+// `getExcludedWidgetFqns` keeps their keys out of both the grid and the Add
+// Widgets picker, so waiting on one now waits forever. TotalAssets and MyTask
+// are back, holding the Total data assets and My tasks topic cards.
 const DEFAULT_LANDING_PAGE_WIDGETS = [
   'KnowledgePanel.PlatformHealth',
   'KnowledgePanel.DataEstate',
+  'KnowledgePanel.TotalAssets',
+  'KnowledgePanel.MyTask',
+  'KnowledgePanel.PipelineStatus',
   'KnowledgePanel.ActivityFeed',
   'KnowledgePanel.YoursAndFollowed',
   'KnowledgePanel.KnowledgeCenter',
@@ -279,7 +283,21 @@ const isLandingPageWidgetVisible = async (
     );
   }
 
-  return widget.isVisible().catch(() => false);
+  if (!(await widget.isVisible().catch(() => false))) {
+    return false;
+  }
+
+  // The grid cell is visible before its deferred slot mounts, and if the grid
+  // rendered after the reveal above nothing was scrolled, so the widget would
+  // never mount. Only a mounted slot counts; the next poll re-runs the reveal.
+  // The customize view renders no slot.
+  const slot = getLandingPageWidgetSlot(page, widgetKey);
+
+  if ((await slot.count()) === 0) {
+    return true;
+  }
+
+  return (await slot.locator(':scope > *').count()) > 0;
 };
 
 const isLandingPageWidgetLoading = async (widget: Locator) =>
@@ -387,8 +405,16 @@ export const setUserDefaultPersona = async (
 
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
-  // Click on the persona option by text within the dropdown
-  await page.click(`.ant-select-dropdown:visible [title="${personaName}"]`);
+  const personaSelect = page.getByTestId('default-persona-select-list');
+  const currentDefault = personaSelect.getByTestId(
+    'autocomplete-selected-item'
+  );
+  // Single select: an existing default is removed before picking another.
+  if ((await currentDefault.count()) > 0) {
+    await currentDefault.getByRole('button').click();
+  }
+  await personaSelect.getByRole('combobox').click();
+  await page.getByRole('option', { name: personaName }).click();
 
   await page
     .locator('[data-testid="user-profile-default-persona-edit-save"]')
@@ -575,7 +601,7 @@ export const selectAssetTypes = async (
   assetTypes: string[] | 'all'
 ) => {
   const field = page.getByTestId('asset-type-select');
-  const search = field.getByRole('textbox');
+  const search = field.getByRole('combobox');
   await field.click();
   const tree = page.getByTestId('asset-type-select-popover');
   await expect(tree.getByTestId('tree-node-all')).toBeVisible();

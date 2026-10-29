@@ -65,6 +65,19 @@ const mockNavigate = jest.fn();
 const mockUpdateNotificationAlert = jest.fn();
 const mockUpdateObservabilityAlert = jest.fn();
 
+jest.mock(
+  '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: jest
+      .fn()
+      .mockImplementation(
+        ({ onUpdate }: { onUpdate?: (owners: unknown[]) => void }) => (
+          <button onClick={() => onUpdate?.([])}>Owner</button>
+        )
+      ),
+  })
+);
+
 jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'testAlert' }),
 }));
@@ -146,10 +159,6 @@ jest.mock('../../components/common/DeleteModal/DeleteModal', () =>
   jest.fn().mockImplementation(() => <div>DeleteModal</div>)
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
@@ -217,7 +226,89 @@ describe('AlertDetailsPage', () => {
       });
     });
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('should render the breadcrumb and a retryable error when the alert fails to load', async () => {
+    (
+      ObservabilityAPIs.getObservabilityAlertByFQN as jest.Mock
+    ).mockImplementationOnce(() =>
+      Promise.reject({ response: { status: 500 } })
+    );
+
+    render(<AlertDetailsPage isNotificationAlert />, {
+      wrapper: createWrapper(),
+    });
+
+    expect(
+      await screen.findByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(screen.getByText('TitleBreadcrumb')).toBeInTheDocument();
+    expect(screen.queryByText('ErrorPlaceHolder')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+    expect(await screen.findByText('EntityHeaderTitle')).toBeInTheDocument();
+  });
+
+  it('should render a not-found state without retry when the alert does not exist', async () => {
+    (
+      ObservabilityAPIs.getObservabilityAlertByFQN as jest.Mock
+    ).mockImplementationOnce(() =>
+      Promise.reject({ response: { status: 404 } })
+    );
+
+    render(<AlertDetailsPage isNotificationAlert />, {
+      wrapper: createWrapper(),
+    });
+
+    expect(
+      await screen.findByText('label.alert-not-found')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('message.alert-not-found-description')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.something-went-wrong')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.reload' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('should show the owners label and edit control to an editor when the alert has no owners', async () => {
+    render(<AlertDetailsPage isNotificationAlert />, {
+      wrapper: createWrapper(),
+    });
+
+    const ownersRow = await screen.findByTestId('alert-owners');
+
+    expect(ownersRow).toHaveTextContent('label.owner-plural');
+    expect(ownersRow).toHaveTextContent('Owner');
+    expect(ownersRow).not.toHaveTextContent('label.no-owners');
+  });
+
+  it('should hide the owners row from a viewer when the alert has no owners', async () => {
+    mockGetEntityPermissionByFqn.mockImplementationOnce(() =>
+      Promise.resolve(
+        toApiResponse({
+          ...ENTITY_PERMISSIONS,
+          EditAll: false,
+          EditOwners: false,
+        })
+      )
+    );
+
+    render(<AlertDetailsPage isNotificationAlert />, {
+      wrapper: createWrapper(),
+    });
+
+    expect(await screen.findByText('EntityHeaderTitle')).toBeInTheDocument();
+    expect(screen.queryByTestId('alert-owners')).not.toBeInTheDocument();
   });
 
   it('should render alert details page properly if fqn is present', async () => {

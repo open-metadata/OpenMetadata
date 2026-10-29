@@ -88,6 +88,28 @@ async function openTaskNodeSidebar(page: Page) {
   return sidebar;
 }
 
+async function openStartNodeSidebar(page: Page) {
+  const fitViewButton = page.getByTestId('fit-view-button');
+
+  await expect(fitViewButton).toBeVisible();
+  await fitViewButton.click();
+  await enterEditMode(page);
+
+  const startNode = page
+    .locator('.react-flow__node')
+    .filter({ hasText: /^Start$/ });
+
+  await expect(startNode).toBeVisible();
+  await startNode.click();
+
+  const sidebar = page.getByTestId('node-config-sidebar');
+
+  await expect(sidebar).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
+
+  return sidebar;
+}
+
 if (process.env.PLAYWRIGHT_IS_OSS) {
   test.describe('OSS Workflow Capabilities', () => {
     test.beforeAll('Create test workflow via API', async ({ browser }) => {
@@ -208,6 +230,68 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('edit-workflow-button')).toBeVisible();
+      });
+    });
+
+    test.describe('Test workflow — edit mode: start node description', () => {
+      test('editing the workflow description on the start node persists it on save', async ({
+        page,
+      }) => {
+        const newDescription = `OSS description edited by Playwright ${uuid()}`;
+
+        await redirectToHomePage(page);
+        await navigateToWorkflowDetailPage(page, workflowName);
+
+        const sidebar = await openStartNodeSidebar(page);
+        const descriptionInput = sidebar
+          .getByTestId('workflow-description-input')
+          .locator('textarea');
+
+        await expect(
+          sidebar.getByTestId('workflow-name-input').locator('input')
+        ).toBeDisabled();
+        await expect(descriptionInput).toBeEnabled();
+        await descriptionInput.fill(newDescription);
+
+        await sidebar.getByTestId('save-node-configuration-button').click();
+        await expect(sidebar).not.toBeVisible();
+
+        const saveRequest = page.waitForRequest(
+          (request) =>
+            request.url().includes('/api/v1/governance/workflowDefinitions') &&
+            request.method() === 'PUT'
+        );
+        const saveResponse = waitForResponseWithStatus(
+          page,
+          (response) =>
+            response.url().includes('/api/v1/governance/workflowDefinitions') &&
+            response.request().method() === 'PUT',
+          'ok'
+        );
+
+        await page.getByTestId('save-workflow-button').click();
+
+        expect((await saveRequest).postDataJSON().description).toBe(
+          newDescription
+        );
+
+        await saveResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        const detailResponse = page.waitForResponse(
+          '/api/v1/governance/workflowDefinitions/name/*'
+        );
+        await page.reload();
+        await detailResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        const reopenedSidebar = await openStartNodeSidebar(page);
+
+        await expect(
+          reopenedSidebar
+            .getByTestId('workflow-description-input')
+            .locator('textarea')
+        ).toHaveValue(newDescription);
       });
     });
 

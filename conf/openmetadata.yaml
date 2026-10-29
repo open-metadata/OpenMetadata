@@ -549,12 +549,12 @@ authenticationConfiguration:
     clientAuthenticationMethod: ${OIDC_CLIENT_AUTH_METHOD:-"client_secret_post"}
     tenant: ${OIDC_TENANT:-""}
     maxClockSkew: ${OIDC_MAX_CLOCK_SKEW:-""}
-    tokenValidity: ${OIDC_OM_REFRESH_TOKEN_VALIDITY:-"3600"} # in seconds
+    tokenValidity: ${OIDC_OM_REFRESH_TOKEN_VALIDITY:-"3600"} # Deprecated and ignored: the browser holds the identity provider's ID token, whose lifetime the provider sets
     customParams: ${OIDC_CUSTOM_PARAMS:-}
     maxAge: ${OIDC_MAX_AGE:-""}
     prompt: ${OIDC_PROMPT_TYPE:-""}
     sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} # Deprecated fallback; use AUTHENTICATION_SESSION_EXPIRY
-    endSessionWithProvider: ${OIDC_END_SESSION_WITH_PROVIDER:-false} # sign users out when the identity provider ends their session
+    endSessionWithProvider: ${OIDC_END_SESSION_WITH_PROVIDER:-false} # Deprecated and ignored: OIDC sessions always end with the identity provider's
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
@@ -674,8 +674,8 @@ llmConfiguration:
   # `enabled` above, which also gates embeddings: LLM features can stay on for semantic search
   # with extraction off. Unmetered here, so opt-in.
   memoryExtractionEnabled: ${LLM_MEMORY_EXTRACTION_ENABLED:-false}
-  ontologyMemoryDerivationEnabled: ${LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED:-false}
-  # FQCN of an alternate AiProvider for Context Center memory extraction; empty = built-in LLM provider
+  # FQCN of an alternate AiProvider for memory extraction and glossary-term derivation from
+  # memories; empty = built-in LLM provider, which extracts memories but derives no terms
   aiProviderClass: ${LLM_AI_PROVIDER_CLASS:-""}
   maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
   openai:
@@ -692,7 +692,7 @@ llmConfiguration:
       accessKeyId: ${AWS_ACCESS_KEY_ID:-""}
       secretAccessKey: ${AWS_SECRET_ACCESS_KEY:-""}
       sessionToken: ${AWS_SESSION_TOKEN:-""}
-    modelId: ${LLM_BEDROCK_MODEL_ID:-"eu.anthropic.claude-haiku-4-5-20251001-v1:0"}
+    modelId: ${LLM_BEDROCK_MODEL_ID:-"eu.anthropic.claude-haiku-5-5"}
     maxTokens: ${LLM_BEDROCK_MAX_TOKENS:-4096}
   google:
     apiKey: ${LLM_GOOGLE_API_KEY:-""}

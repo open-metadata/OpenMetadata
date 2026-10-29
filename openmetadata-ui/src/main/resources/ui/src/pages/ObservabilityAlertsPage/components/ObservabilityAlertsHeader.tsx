@@ -50,7 +50,8 @@ function ObservabilityAlertsHeader({
                 <Button
                   color="primary"
                   data-testid="create-observability"
-                  onClick={onAddAlert}>
+                  size="md"
+                  onPress={onAddAlert}>
                   {t('label.add-entity', { entity: t('label.alert') })}
                 </Button>
               </LimitWrapper>

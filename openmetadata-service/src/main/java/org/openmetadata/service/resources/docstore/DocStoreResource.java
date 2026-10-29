@@ -519,6 +519,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       })
   public Response resetEmailTemplate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
     try {
       repository.deleteEmailTemplates();
       repository.initSeedDataFromResources();

@@ -59,6 +59,30 @@ class TestLoginStageRecorderTest {
     }
   }
 
+  /**
+   * Only a confidential OIDC client leaves a provider refresh token on the server to test: a public
+   * client's browser renews its own tokens, and SAML, LDAP and Basic have none.
+   */
+  @Test
+  void checksTheRefreshTokenOnlyForServerSideOidcClients() {
+    assertEquals(
+        TestLoginStageStatus.PENDING,
+        statusesOf(TestLoginStageRecorder.forProtocol(TestLoginProtocol.OIDC))
+            .get(TestLoginStage.TOKEN_REFRESHED));
+    assertEquals(
+        TestLoginStageStatus.SKIPPED,
+        statusesOf(TestLoginStageRecorder.forPublicOidcClient())
+            .get(TestLoginStage.TOKEN_REFRESHED));
+    for (TestLoginProtocol protocol :
+        List.of(TestLoginProtocol.SAML, TestLoginProtocol.LDAP, TestLoginProtocol.BASIC)) {
+      assertEquals(
+          TestLoginStageStatus.SKIPPED,
+          statusesOf(TestLoginStageRecorder.forProtocol(protocol))
+              .get(TestLoginStage.TOKEN_REFRESHED),
+          protocol.value());
+    }
+  }
+
   @Test
   void listsEveryStageExactlyOnceInDeclarationOrder() {
     List<TestLoginStage> order =

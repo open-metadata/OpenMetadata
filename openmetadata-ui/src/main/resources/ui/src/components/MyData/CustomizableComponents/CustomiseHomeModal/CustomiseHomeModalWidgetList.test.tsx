@@ -46,16 +46,16 @@ const asDoc = (fullyQualifiedName: string, index: number) =>
 /**
  * Everything docStore can hold: the widgets this build renders, plus the
  * retired, other-edition and never-rendered panels that accumulate there
- * because seeds are inserted once and never withdrawn.
+ * because seeds are inserted once and never withdrawn. `TotalAssets`, `MyTask`
+ * and `PipelineStatus` are not among the retired: their keys now hold topic
+ * cards, so they arrive through `MY_DATA_WIDGET_KEYS`.
  */
 const SEEDED_PANELS = [
   ...MY_DATA_WIDGET_KEYS,
   'KnowledgePanel.RecentlyViewed',
-  'KnowledgePanel.PipelineStatus',
   'KnowledgePanel.Announcements',
   'KnowledgePanel.MyData',
   'KnowledgePanel.Following',
-  'KnowledgePanel.TotalAssets',
   'KnowledgePanel.AskCollateActionRequired',
   'KnowledgePanel.SomethingSeededLater',
 ].map(asDoc);
@@ -135,7 +135,7 @@ describe('CustomiseHomeModal sidebar', () => {
 
     expect(sidebarLabels()).toHaveLength(MY_DATA_WIDGET_KEYS.length);
     expect(sidebarLabels().join('|')).not.toMatch(
-      /My Data|Following|Total Assets|My Task|Recently Viewed/
+      /My Data|Following|Recently Viewed/
     );
   });
 

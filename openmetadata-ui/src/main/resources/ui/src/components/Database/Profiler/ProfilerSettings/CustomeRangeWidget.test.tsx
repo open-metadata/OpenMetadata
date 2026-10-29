@@ -10,47 +10,69 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render } from '@testing-library/react';
-
 import { WidgetProps } from '@rjsf/utils';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { CustomRangeWidget } from './CustomRangeWidget';
-const widgetProps = {
-  id: 'custom-range-widget',
-  name: 'custom-range',
-  value: 50,
-  schema: {},
-  options: {},
-  onChange: jest.fn(),
-  onBlur: jest.fn(),
-  onFocus: jest.fn(),
-  registry: {},
-} as unknown as WidgetProps;
 
-describe('Test Custom Range Widget', () => {
-  it('renders the CustomRangeWidget with a Slider and InputNumber', () => {
-    const { getByTestId } = render(<CustomRangeWidget {...widgetProps} />);
-    const slider = getByTestId('percentage-input');
-    const inputNumber = getByTestId('slider-input');
+const Range = () => {
+  const [value, setValue] = useState<number | null>(50);
+  const props = {
+    id: 'sample',
+    name: 'sample',
+    label: 'Sample',
+    value,
+    schema: { minimum: 1 },
+    options: {},
+    onChange: setValue,
+    onBlur: jest.fn(),
+    onFocus: jest.fn(),
+    registry: {},
+  } as unknown as WidgetProps;
 
-    expect(slider).toBeInTheDocument();
-    expect(inputNumber).toBeInTheDocument();
+  return <CustomRangeWidget {...props} />;
+};
+
+describe('CustomRangeWidget', () => {
+  it('keeps the slider and input synchronized after editing a percentage', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<Range />);
+    const input = screen.getByTestId('slider-input');
+    await user.clear(input);
+    await user.type(input, '75%');
+    await user.tab();
+
+    expect(input).toHaveValue('75%');
+    expect(screen.getByRole('slider')).toHaveValue('75');
   });
 
-  it('updates the value when Slider is changed', () => {
-    const { getByTestId } = render(<CustomRangeWidget {...widgetProps} />);
-    const slider = getByTestId('slider-input');
+  it('preserves bounds and keyboard slider changes', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<Range />);
+    const slider = screen.getByRole('slider');
+    await user.tab();
+    await user.keyboard('{Home}');
 
-    fireEvent.change(slider, { target: { value: 75 } });
+    expect(screen.getByTestId('slider-input')).toHaveValue('1%');
 
-    expect(widgetProps.onChange).toHaveBeenCalledWith(75);
+    await user.keyboard('{End}');
+
+    expect(screen.getByTestId('slider-input')).toHaveValue('100%');
+
+    await user.keyboard('{ArrowRight}');
+
+    expect(slider).toHaveValue('100');
   });
 
-  it('updates the value when InputNumber is changed', () => {
-    const { getByTestId } = render(<CustomRangeWidget {...widgetProps} />);
-    const inputNumber = getByTestId('slider-input');
+  it('allows an empty percentage instead of saving NaN', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<Range />);
+    const input = screen.getByTestId('slider-input');
+    await user.clear(input);
+    await user.tab();
 
-    fireEvent.change(inputNumber, { target: { value: '30%' } });
-
-    expect(widgetProps.onChange).toHaveBeenCalledWith(30);
+    expect(input).toHaveValue('');
+    expect(screen.getByRole('slider')).toHaveValue('1');
   });
 });

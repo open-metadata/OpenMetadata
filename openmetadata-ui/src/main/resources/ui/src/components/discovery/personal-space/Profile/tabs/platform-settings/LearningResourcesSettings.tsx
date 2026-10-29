@@ -17,6 +17,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  ConfirmPopover,
   Grid,
   Input,
   Table,
@@ -29,9 +30,10 @@ import {
   Search,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
-import { CSSProperties, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   PAGE_SIZE_BASE,
@@ -46,14 +48,19 @@ import {
 import { VIEW_MODE_PAGE } from '../../../../../../constants/platform/personaAppLayout.constants';
 import { PageViewMode } from '../../../../../../generated/type/personaPreferences';
 import { usePersonaViewMode } from '../../../../../../hooks/platform/usePersonaViewMode';
-import { useLearningResourceActions } from '../../../../../../pages/LearningResourcesPage/hooks/useLearningResourceActions';
 import {
   LearningResourceFilterState,
   useLearningResourceFilters,
 } from '../../../../../../pages/LearningResourcesPage/hooks/useLearningResourceFilters';
 import { useLearningResources } from '../../../../../../pages/LearningResourcesPage/hooks/useLearningResources';
-import { LearningResource } from '../../../../../../rest/learningResourceAPI';
-import { DeleteModal } from '../../../../../common/DeleteModal/DeleteModal';
+import {
+  deleteLearningResource,
+  LearningResource,
+} from '../../../../../../rest/learningResourceAPI';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
 import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
 import ViewToggle from '../../../../../common/ViewToggle/ViewToggle';
 import {
@@ -62,8 +69,11 @@ import {
   ResourceCategory,
 } from '../../../../../Learning/Learning.interface';
 import { LearningResourceCard } from '../../../../../Learning/LearningResourceCard/LearningResourceCard.component';
-import { ResourcePlayerModal } from '../../../../../Learning/ResourcePlayer/ResourcePlayerModal.component';
 import { ResourceTypeIcon } from '../../../../../Learning/ResourceTypeIcon/ResourceTypeIcon';
+import {
+  getInitialLearningListState,
+  getResourceName,
+} from './LearningResourceSettings.utils';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
 
@@ -72,6 +82,7 @@ const CARD_GRID_STYLE: CSSProperties = {
 };
 
 const SEARCH_DEBOUNCE_MS = 300;
+const PAGE_ID = 'learning-resources';
 
 const getCategoryLabel = (category: string) =>
   LEARNING_CATEGORIES[category as ResourceCategory]?.label ?? category;
@@ -108,15 +119,19 @@ const BadgeList = ({
 const LearningResourcesSettings = ({
   onNavigate,
   onSetHeaderActions,
+  savedState,
+  onSaveState,
 }: PlatformSettingsPageProps) => {
   const { t } = useTranslation();
-  const [searchText, setSearchText] = useState('');
-  const [searchInput, setSearchInput] = useState('');
+  // Restored after previewing a resource, so the list is where the user left it.
+  const [initial] = useState(() => getInitialLearningListState(savedState));
+  const [searchText, setSearchText] = useState(initial.searchText);
+  const [searchInput, setSearchInput] = useState(initial.searchText);
   const [filterState, setFilterState] = useState<LearningResourceFilterState>(
-    {}
+    initial.filterState
   );
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+  const [currentPage, setCurrentPage] = useState(initial.currentPage);
+  const [pageSize, setPageSize] = useState(initial.pageSize);
 
   const { resources, paging, isLoading, refetch } = useLearningResources({
     searchText,
@@ -124,25 +139,15 @@ const LearningResourcesSettings = ({
     pageSize,
     currentPage,
   });
-  const {
-    isPlayerOpen,
-    isDeleteModalOpen,
-    isDeleting,
-    selectedResource,
-    deletingResource,
-    handleDelete,
-    handleDeleteConfirm,
-    handleDeleteCancel,
-    handlePreview,
-    handlePlayerClose,
-  } = useLearningResourceActions({ onRefetch: refetch });
   const { quickFilters, filterSelectionDisplay } = useLearningResourceFilters({
     filterState,
     onFilterChange: setFilterState,
   });
 
   const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
-  const [selectedView, setSelectedView] = useState<PageViewMode>();
+  const [selectedView, setSelectedView] = useState<PageViewMode | undefined>(
+    initial.selectedView
+  );
   const view = selectedView ?? personaView;
 
   const debouncedSearch = useMemo(
@@ -151,17 +156,72 @@ const LearningResourcesSettings = ({
   );
   useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
 
+  // A new search or filter starts from page 1. Compared with the previous
+  // values rather than skipping the first run, so a restored page survives
+  // mount — including StrictMode's mount, unmount, mount in development.
+  const lastQuery = useRef({ searchText, filterState });
   useEffect(() => {
+    if (
+      lastQuery.current.searchText === searchText &&
+      lastQuery.current.filterState === filterState
+    ) {
+      return;
+    }
+    lastQuery.current = { searchText, filterState };
     setCurrentPage(1);
   }, [searchText, filterState]);
+
+  useEffect(() => {
+    onSaveState?.({
+      searchText,
+      filterState,
+      currentPage,
+      pageSize,
+      selectedView,
+    });
+  }, [
+    searchText,
+    filterState,
+    currentPage,
+    pageSize,
+    selectedView,
+    onSaveState,
+  ]);
+
+  const openResource = (resource: LearningResource) =>
+    onNavigate({
+      type: 'page',
+      page: PAGE_ID,
+      isEditing: false,
+      itemId: resource.id,
+    });
 
   const openForm = (resource?: LearningResource) =>
     onNavigate({
       type: 'page',
-      page: 'learning-resources',
+      page: PAGE_ID,
       isEditing: true,
       ...(resource ? { itemId: resource.id } : {}),
     });
+
+  /** Resolves `false` when the delete failed, keeping the confirmation open. */
+  const handleDelete = async (resource: LearningResource) => {
+    try {
+      await deleteLearningResource(resource.id);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: t('label.learning-resource'),
+        })
+      );
+      void refetch();
+
+      return true;
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return false;
+    }
+  };
 
   useEffect(() => {
     onSetHeaderActions(
@@ -169,11 +229,11 @@ const LearningResourcesSettings = ({
         color="primary"
         data-testid="create-resource"
         iconLeading={Plus}
-        size="sm"
+        size="xs"
         onPress={() =>
           onNavigate({
             type: 'page',
-            page: 'learning-resources',
+            page: PAGE_ID,
             isEditing: true,
           })
         }>
@@ -210,9 +270,9 @@ const LearningResourcesSettings = ({
               as="span"
               className="tw:min-w-0 tw:text-secondary"
               size="text-sm"
-              title={record.displayName || record.name}
+              title={getResourceName(record)}
               weight="medium">
-              {record.displayName || record.name}
+              {getResourceName(record)}
             </Typography>
           </Box>
         );
@@ -259,14 +319,23 @@ const LearningResourcesSettings = ({
               tooltip={t('label.edit')}
               onPress={() => openForm(record)}
             />
-            <ButtonUtility
-              color="tertiary"
-              data-testid={`delete-${record.name}`}
-              icon={Trash01}
-              size="xs"
-              tooltip={t('label.delete')}
-              onPress={() => handleDelete(record)}
-            />
+            <ConfirmPopover
+              data-testid="delete-learning-resource-popover"
+              description={t('message.delete-entity-permanently', {
+                entityType: t('label.learning-resource'),
+              })}
+              title={t('label.delete-entity', {
+                entity: getResourceName(record),
+              })}
+              onConfirm={() => handleDelete(record)}>
+              <ButtonUtility
+                color="tertiary"
+                data-testid={`delete-${record.name}`}
+                icon={Trash01}
+                size="xs"
+                tooltip={t('label.delete')}
+              />
+            </ConfirmPopover>
           </Box>
         );
     }
@@ -292,7 +361,7 @@ const LearningResourcesSettings = ({
 
   return (
     <Box data-testid="learning-resources-settings" direction="col">
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root className="tw:flex tw:flex-col" size="sm" variant="muted">
         <Box className="tw:shrink-0 tw:p-3" direction="col" gap={2}>
           <Box align="center" gap={2} wrap="wrap">
             <Input
@@ -318,14 +387,14 @@ const LearningResourcesSettings = ({
         {view === PageViewMode.Card ? (
           <Box className="tw:p-3" direction="col">
             {isLoading ? (
-              <SettingsSkeleton rows={4} />
+              <SettingsSkeleton rows={4} variant="default" />
             ) : (
               <Grid gap="4" style={CARD_GRID_STYLE}>
                 {resources.map((resource) => (
                   <LearningResourceCard
                     key={resource.id}
                     resource={resource}
-                    onClick={handlePreview}
+                    onClick={openResource}
                   />
                 ))}
               </Grid>
@@ -335,7 +404,7 @@ const LearningResourcesSettings = ({
           <Table
             aria-label={t('label.learning-resource')}
             data-testid="learning-resources-table"
-            size="compact">
+            size="sm">
             <Table.Header columns={columns}>
               {(column) => (
                 <Table.Head
@@ -352,7 +421,7 @@ const LearningResourcesSettings = ({
               renderEmptyState={() => (
                 <Box className="tw:justify-center tw:py-12">
                   {isLoading ? (
-                    <SettingsSkeleton rows={3} />
+                    <SettingsSkeleton rows={3} variant="default" />
                   ) : (
                     <Typography className="tw:text-tertiary" size="text-sm">
                       {t('server.no-records-found')}
@@ -366,7 +435,7 @@ const LearningResourcesSettings = ({
                   data-testid={record.name}
                   id={record.id}
                   key={record.id}
-                  onAction={() => handlePreview(record)}>
+                  onAction={() => openResource(record)}>
                   {(column) => (
                     <Table.Cell className={column.className} key={column.id}>
                       {renderCell(record, column.id)}
@@ -379,27 +448,6 @@ const LearningResourcesSettings = ({
         )}
         {pagination}
       </TableCard.Root>
-
-      {selectedResource && (
-        <ResourcePlayerModal
-          open={isPlayerOpen}
-          resource={selectedResource}
-          onClose={handlePlayerClose}
-        />
-      )}
-
-      {deletingResource && (
-        <DeleteModal
-          entityTitle={deletingResource.displayName || deletingResource.name}
-          isDeleting={isDeleting}
-          message={t('message.delete-entity-permanently', {
-            entityType: t('label.learning-resource'),
-          })}
-          open={isDeleteModalOpen}
-          onCancel={handleDeleteCancel}
-          onDelete={handleDeleteConfirm}
-        />
-      )}
     </Box>
   );
 };

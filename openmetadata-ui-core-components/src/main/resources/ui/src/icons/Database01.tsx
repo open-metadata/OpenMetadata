@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Database01: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,13 +29,13 @@ export const Database01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M21 5c0 1.657-4.03 3-9 3S3 6.657 3 5m18 0c0-1.657-4.03-3-9-3S3 3.343 3 5m18 0v14c0 1.66-4 3-9 3s-9-1.34-9-3V5m18 7c0 1.66-4 3-9 3s-9-1.34-9-3"
+      d="M17.5 4.167c0 1.381-3.358 2.5-7.5 2.5s-7.5-1.119-7.5-2.5m15 0c0-1.381-3.358-2.5-7.5-2.5s-7.5 1.119-7.5 2.5m15 0v11.667c0 1.383-3.333 2.5-7.5 2.5s-7.5-1.117-7.5-2.5V4.167M17.5 10c0 1.383-3.333 2.5-7.5 2.5S2.5 11.383 2.5 10"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.3}
     />
   </svg>
 );

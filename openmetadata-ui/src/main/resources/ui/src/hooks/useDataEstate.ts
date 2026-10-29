@@ -25,7 +25,7 @@ import { postAggregateFieldOptions } from '../rest/miscAPI';
 import { getFormattedDataAssetServiceType } from '../utils/DataAssetServiceUtils';
 import { getAggregations } from '../utils/ExplorePureUtils';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const DATA_ESTATE_WINDOW_DAYS = 7;
 /** Windows the card's range filter offers. */
@@ -36,7 +36,7 @@ export const DATA_ESTATE_CONNECTORS_QUERY_KEY = [
   'widgets',
   'dataEstateConnectors',
 ];
-const DATA_ESTATE_TTL_MS = 5 * 60 * 1000;
+export const DATA_ESTATE_TTL_MS = 5 * 60 * 1000;
 
 const SERVICE_TYPE_FIELD = 'serviceType';
 
@@ -87,16 +87,16 @@ export interface DataEstate {
   refetch: () => void;
 }
 
-type ChartResults = DataInsightCustomChartResult['results'];
+export type ChartResults = DataInsightCustomChartResult['results'];
 
 /**
  * The charts report one row per (day, group). Collapse to the newest day and
  * sum its groups: that day is the current estate, whatever slice it arrived in.
  */
-const latestDay = (results: ChartResults): number =>
+export const latestDay = (results: ChartResults): number =>
   results.reduce((newest, row) => Math.max(newest, row.day), 0);
 
-const sumForDay = (results: ChartResults, day: number): number =>
+export const sumForDay = (results: ChartResults, day: number): number =>
   results
     .filter((row) => row.day === day)
     .reduce((total, row) => total + row.count, 0);
@@ -231,6 +231,19 @@ const fetchDataEstate = async (windowDays: number) => {
   return { charts, windowDays };
 };
 
+/**
+ * The system-chart read behind "Your data estate", shared with "Total data
+ * assets": both cards default to the same window, so one key means the page
+ * asks Data Insights once rather than once per card.
+ */
+export const dataEstateChartsQuery = (windowDays: number) => ({
+  queryFn: () => fetchDataEstate(windowDays),
+  // The window is part of the key: two ranges are two different answers, and
+  // sharing one entry would serve the previous range's data on a switch.
+  queryKey: [...DATA_ESTATE_QUERY_KEY, windowDays],
+  staleTime: DATA_ESTATE_TTL_MS,
+});
+
 /** The card's figures from the two answers in hand — pure, so the hook can memoise it. */
 const deriveEstate = (
   charts: Awaited<ReturnType<typeof getMultiChartsPreviewByName>> | undefined,
@@ -290,11 +303,7 @@ export const useDataEstate = (options?: {
     // so a range switch dims the card instead of swapping it for a skeleton —
     // which unmounted the range filter mid-interaction and dropped its focus.
     placeholderData: keepPreviousData,
-    queryFn: () => fetchDataEstate(windowDays),
-    // The window is part of the key: two ranges are two different answers, and
-    // sharing one entry would serve the previous range's data on a switch.
-    queryKey: [...DATA_ESTATE_QUERY_KEY, windowDays],
-    staleTime: DATA_ESTATE_TTL_MS,
+    ...dataEstateChartsQuery(windowDays),
   });
 
   // A live count, so no window in the key — the range filter moves the totals

@@ -673,9 +673,7 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
           @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE

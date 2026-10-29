@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,41 +11,31 @@
  *  limitations under the License.
  */
 
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
+import { useForm } from 'react-hook-form';
+import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 import { useSelectedAlertSources } from './useObservabilityAlertResources';
 
-const mockUseWatch = jest.fn();
+it('tracks programmatic source and rule changes used for capabilities requests', () => {
+  const { result } = renderHook(() => {
+    const form = useForm<ModifiedCreateEventSubscription>({
+      defaultValues: { resources: [], input: {} },
+    });
 
-jest.mock('antd', () => ({
-  Form: { useWatch: (...args: unknown[]) => mockUseWatch(...args) },
-}));
-
-const FORM = {} as Parameters<typeof useSelectedAlertSources>[0];
-
-describe('useSelectedAlertSources', () => {
-  beforeEach(() => {
-    mockUseWatch.mockReset();
+    return { form, ...useSelectedAlertSources(form) };
   });
 
-  // The AI alert form copies its sources into the form with no field for them, and a watch
-  // without preserve sees only fields that are mounted.
-  it('reads the chosen sources from the whole form store', () => {
-    renderHook(() => useSelectedAlertSources(FORM));
+  expect(result.current.sources).toEqual([]);
 
-    expect(mockUseWatch).toHaveBeenCalledWith(
-      ['resources'],
-      expect.objectContaining({ form: FORM, preserve: true })
-    );
+  act(() => {
+    result.current.form.setValue('resources', ['table', 'topic']);
+    result.current.form.setValue('input', {
+      filters: [{ name: 'filterByOwnerName' }],
+    });
   });
 
-  it('hands every chosen source and the choices so far to the caller', () => {
-    const input = { filters: [{ name: 'filterByOwnerName' }] };
-    mockUseWatch.mockImplementation((name) =>
-      name === 'input' ? input : ['table', 'topic']
-    );
-
-    const { result } = renderHook(() => useSelectedAlertSources(FORM));
-
-    expect(result.current).toEqual({ sources: ['table', 'topic'], input });
+  expect(result.current.sources).toEqual(['table', 'topic']);
+  expect(result.current.input).toEqual({
+    filters: [{ name: 'filterByOwnerName' }],
   });
 });

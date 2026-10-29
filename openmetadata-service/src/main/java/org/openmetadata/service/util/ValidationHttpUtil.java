@@ -28,6 +28,10 @@ import lombok.extern.slf4j.Slf4j;
  * Common HTTP utility class for SSO authentication validators.
  * Provides standardized HTTP request methods to avoid code duplication
  * across different authentication provider validators.
+ *
+ * <p>Every request checks its URL against the outbound URL policy first. Validators follow URLs
+ * that an identity provider's discovery document hands back, so a URL is never trusted just
+ * because the one that led to it passed.
  */
 @Slf4j
 public class ValidationHttpUtil {
@@ -100,6 +104,7 @@ public class ValidationHttpUtil {
    */
   public static HttpResponseData get(String url, Map<String, String> headers)
       throws IOException, InterruptedException {
+    validateUrl(url);
     HttpRequest.Builder builder =
         HttpRequest.newBuilder().uri(URI.create(url)).timeout(DEFAULT_TIMEOUT).GET();
 
@@ -137,6 +142,7 @@ public class ValidationHttpUtil {
    */
   public static HttpResponseData getNoRedirect(String url, Map<String, String> headers)
       throws IOException, InterruptedException {
+    validateUrl(url);
     HttpRequest.Builder builder =
         HttpRequest.newBuilder().uri(URI.create(url)).timeout(DEFAULT_TIMEOUT).GET();
 
@@ -180,6 +186,7 @@ public class ValidationHttpUtil {
    */
   public static HttpResponseData postForm(String url, String formData, Map<String, String> headers)
       throws IOException, InterruptedException {
+    validateUrl(url);
     HttpRequest.Builder builder =
         HttpRequest.newBuilder()
             .uri(URI.create(url))
@@ -223,6 +230,7 @@ public class ValidationHttpUtil {
    */
   public static HttpResponseData postJson(String url, String jsonData, Map<String, String> headers)
       throws IOException, InterruptedException {
+    validateUrl(url);
     HttpRequest.Builder builder =
         HttpRequest.newBuilder()
             .uri(URI.create(url))
@@ -287,7 +295,6 @@ public class ValidationHttpUtil {
    * @throws IllegalArgumentException If URL is invalid
    */
   public static HttpResponseData safeGet(String url) throws IOException, InterruptedException {
-    validateUrl(url);
     return get(url);
   }
 
@@ -303,7 +310,6 @@ public class ValidationHttpUtil {
    */
   public static HttpResponseData safeGet(String url, Map<String, String> headers)
       throws IOException, InterruptedException {
-    validateUrl(url);
     return get(url, headers);
   }
 }

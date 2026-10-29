@@ -8,6 +8,13 @@ public final class VectorPagingContract {
 
   private VectorPagingContract() {}
 
+  /**
+   * One page of ranked hits: {@code rawCount} came back from the index at offset {@code from}, and
+   * the first {@code consumed} of them are behind this page. {@code consumed} is what the cursor
+   * advances by; it can exceed {@code returnedCount} when hits were dropped before returning.
+   */
+  public record Window(int from, int rawCount, int consumed, int requestedSize) {}
+
   public static void attach(
       Map<String, Object> result,
       int from,
@@ -17,18 +24,31 @@ public final class VectorPagingContract {
       String pageMessage) {
     int returned =
         result.get("returnedCount") instanceof Number number ? number.intValue() : rawCount;
-    boolean budgetTrimmed = returned < rawCount;
-    boolean fullPage = rawCount >= requestedSize;
-    boolean moreInIndex = hasMoreInIndex(response, from, rawCount);
-    boolean canAdvance = returned > 0;
+    attach(result, new Window(from, rawCount, returned, requestedSize), response, pageMessage);
+  }
+
+  /** As above, but with the cursor advancing by {@code window.consumed()} rather than the count. */
+  public static void attach(
+      Map<String, Object> result,
+      Window window,
+      VectorSearchResponse response,
+      String pageMessage) {
+    int consumed = window.consumed();
+    boolean budgetTrimmed = consumed < window.rawCount();
+    boolean fullPage = window.rawCount() >= window.requestedSize();
+    boolean moreInIndex = hasMoreInIndex(response, window.from(), window.rawCount());
+    boolean canAdvance = consumed > 0;
     if (canAdvance && (budgetTrimmed || (fullPage && moreInIndex))) {
       result.put(McpResponseTrim.HAS_MORE_KEY, Boolean.TRUE);
-      result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
+      result.put(
+          McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(window.from() + consumed));
     } else if (!canAdvance) {
       result.remove(McpResponseTrim.HAS_MORE_KEY);
       result.remove(McpResponseTrim.MESSAGE_KEY);
     }
     if (fullPage && !budgetTrimmed && moreInIndex && pageMessage != null) {
+      int returned =
+          result.get("returnedCount") instanceof Number number ? number.intValue() : consumed;
       result.put(McpResponseTrim.MESSAGE_KEY, String.format(pageMessage, returned));
     }
   }

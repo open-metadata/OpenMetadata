@@ -137,11 +137,14 @@ export const GenericWidget = (props: WidgetCommonProps) => {
   }, [props.widgetKey]);
 
   return (
-    // Light values reproduce the antd inner Card this replaced.
-    <Card className="tw:h-full tw:overflow-visible tw:border-utility-gray-blue-100 tw:pb-4 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums tw:dark:border-subtle">
+    // muted: one step below the gray-800 customize panels in dark mode, so the
+    // widgets don't blend into the surface they sit on.
+    <Card
+      className="tw:h-full tw:overflow-visible tw:pb-4 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums"
+      variant="muted">
       <Box
         align="center"
-        className="tw:-mb-px tw:min-h-12 tw:rounded-xl tw:bg-utility-gray-100 tw:px-4 tw:py-2"
+        className="tw:-mb-px tw:min-h-12 tw:rounded-xl tw:bg-quaternary tw:px-4 tw:py-2"
         gap={2}>
         {/* Grid drag handle: react-grid-layout starts a drag on mousedown here. */}
         <span

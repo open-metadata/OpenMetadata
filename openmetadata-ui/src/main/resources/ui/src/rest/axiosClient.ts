@@ -18,6 +18,8 @@ import {
   attachEtagInterceptor,
   DISABLE_ETAG_CONDITIONAL_READS_KEY,
 } from './etagInterceptor';
+import { attachPendingChangeInterceptor } from './pendingChangeInterceptor';
+import { attachTourMockInterceptor } from './product-tour/productTourMock';
 
 const axiosClient = axios.create({
   baseURL: getApiBaseUrl(),
@@ -35,5 +37,11 @@ if (
 ) {
   attachEtagInterceptor(axiosClient);
 }
+
+// Edits held for approval return 200 with the unchanged entity plus a pending-change header.
+attachPendingChangeInterceptor(axiosClient);
+
+// While a product tour runs, its pages read recorded fixtures instead of the server.
+attachTourMockInterceptor(axiosClient);
 
 export default axiosClient;

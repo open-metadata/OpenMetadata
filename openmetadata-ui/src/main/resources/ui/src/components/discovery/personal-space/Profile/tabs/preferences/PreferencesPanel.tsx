@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ButtonGroup,
-  ButtonGroupItem,
-  Select,
-  Toggle,
-} from '@openmetadata/ui-core-components';
+import { Select, Tabs, Toggle } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import type { Key } from 'react';
 import { useState } from 'react';
@@ -69,27 +64,23 @@ const PreferencesPanel = () => {
         <ReadOnlyRow
           description={t('message.theme-preference-description')}
           title={t('label.theme')}>
-          <ButtonGroup
-            disallowEmptySelection
+          <Tabs
             aria-label={t('label.theme')}
+            className="tw:w-fit"
             data-testid="theme-preference"
-            selectedKeys={[themePreference]}
-            size="sm"
-            onSelectionChange={(keys) => {
-              const [next] = Array.from(keys);
-              if (next) {
-                setTheme(next as ThemePreference);
-              }
-            }}>
-            {THEME_OPTIONS.map(({ id, labelKey }) => (
-              <ButtonGroupItem
-                data-testid={`theme-preference-${id}`}
-                id={id}
-                key={id}>
-                {t(labelKey)}
-              </ButtonGroupItem>
-            ))}
-          </ButtonGroup>
+            selectedKey={themePreference}
+            onSelectionChange={(key) => setTheme(key as ThemePreference)}>
+            <Tabs.List size="sm" type="button-border">
+              {THEME_OPTIONS.map(({ id, labelKey }) => (
+                <Tabs.Item
+                  data-testid={`theme-preference-${id}`}
+                  id={id}
+                  key={id}>
+                  {t(labelKey)}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+          </Tabs>
         </ReadOnlyRow>
         <ReadOnlyRow
           description={t('message.compact-sidebar-description')}

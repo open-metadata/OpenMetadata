@@ -22,7 +22,6 @@ import {
   ConceptMappingType,
   GlossaryTerm,
 } from '../../generated/entity/data/glossaryTerm';
-import { DataType } from '../../generated/type/ontologyAttribute';
 import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
 import {
   getGlossaryTermAssets,
@@ -52,14 +51,6 @@ jest.mock('../../utils/ToastUtils', () => ({
 const TERM_ID = '11111111-1111-1111-1111-111111111111';
 const TARGET_ID = '22222222-2222-2222-2222-222222222222';
 const TERM: GlossaryTerm = {
-  attributes: [
-    {
-      dataType: DataType.String,
-      id: 'attribute-id',
-      isIdentifier: true,
-      name: 'controlCode',
-    },
-  ],
   conceptMappings: [
     {
       conceptIri: 'https://example.com/aml',
@@ -131,25 +122,20 @@ describe('OntologyAuthoringInspector', () => {
     const inspector = screen.getByTestId('ontology-authoring-inspector');
 
     expect(inspector).toHaveClass(
-      'tw:w-[300px]',
-      'tw:p-[18px]',
-      'tw:border-l',
-      'tw:overflow-y-auto'
+      'tw:fixed',
+      'tw:w-[max(420px,40vw)]',
+      'tw:bg-overlay-surface'
     );
-    expect(screen.getByRole('heading', { level: 2 })).toHaveClass(
-      'tw:text-[17px]',
-      'tw:font-bold',
-      'tw:leading-[1.25]'
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+      'Anti-Money Laundering'
     );
-    expect(screen.getByText('finance.AntiMoneyLaundering')).toHaveClass(
-      'tw:font-mono',
-      'tw:text-[11px]'
-    );
+    expect(screen.getByText('finance')).toBeInTheDocument();
+    expect(screen.getByText('label.concept')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('ontology-attribute-controlCode')
-      ).toBeInTheDocument();
+        screen.queryByTestId('authoring-properties')
+      ).not.toBeInTheDocument();
       expect(screen.getByText('https://example.com/aml')).toBeInTheDocument();
       expect(screen.getByText('transaction_monitoring')).toBeInTheDocument();
     });
@@ -160,7 +146,7 @@ describe('OntologyAuthoringInspector', () => {
       )
     ).toBeInTheDocument();
     expect(screen.getByTestId('authoring-more-assets')).toHaveTextContent(
-      '+46 label.more-lowercase label.data-asset-lowercase-plural'
+      'label.show-count-more'
     );
   });
 
@@ -237,10 +223,18 @@ describe('OntologyAuthoringInspector', () => {
     );
 
     fireEvent.click(screen.getByTestId('authoring-add-relationship'));
-    fireEvent.click(
-      screen.getByTestId(`authoring-relation-type-${RELATIONSHIP_TYPE.name}`)
-    );
-    fireEvent.click(screen.getByTestId(`authoring-target-${TARGET_ID}`));
+    fireEvent.click(screen.getByRole('button', { name: /label\.type/ }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Requires' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Show options/ }));
+    fireEvent.click(await screen.findByRole('option', { name: /Target/ }));
+
+    expect(
+      within(screen.getByTestId('authoring-relationship-draft')).getByText(
+        'Source'
+      )
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('authoring-save-relationship'));
 
     await waitFor(() => {
       expect(onCreateRelation).toHaveBeenCalledWith(

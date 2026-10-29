@@ -39,6 +39,8 @@ export interface ModifiedEventSubscription
   notificationTemplate?: string | EventSubscription['notificationTemplate'];
   timeout: number;
   readTimeout: number;
+  /** Its rules were stored without form selections, so the form shows them read-only. */
+  hasRulesWithoutSelections?: boolean;
 }
 
 export interface ModifiedCreateEventSubscription
@@ -46,7 +48,10 @@ export interface ModifiedCreateEventSubscription
   notificationTemplate?:
     | string
     | CreateEventSubscription['notificationTemplate'];
-  customNotificationTemplateData?: NotificationTemplate;
+  customNotificationTemplateData?: Pick<
+    NotificationTemplate,
+    'displayName' | 'templateSubject' | 'templateBody'
+  >;
   destinations: ModifiedDestination[];
   timeout: number;
   readTimeout: number;
@@ -54,7 +59,6 @@ export interface ModifiedCreateEventSubscription
 
 export interface AddAlertPageLoadingState {
   alerts: boolean;
-  functions: boolean;
   templates: boolean;
 }
 

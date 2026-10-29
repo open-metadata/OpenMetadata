@@ -171,7 +171,7 @@ const GovernancePanel: FC<GovernancePanelProps> = ({ onHeaderChange }) => {
           <Button
             color="primary"
             data-testid="add-relation-type"
-            size="sm"
+            size="xs"
             onPress={() => onNavigate({ type: 'glossary-add' })}>
             {addRelType}
           </Button>

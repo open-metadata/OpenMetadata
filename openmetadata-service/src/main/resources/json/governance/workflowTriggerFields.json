@@ -43,7 +43,6 @@
     "directory",
     "domain",
     "duration",
-    "effectiveAttributes",
     "endDate",
     "entity",
     "entityFQN",
@@ -293,8 +292,7 @@
       "lifeCycle"
     ],
     "glossary": [
-      "mutuallyExclusive",
-      "ontologyConfiguration"
+      "mutuallyExclusive"
     ],
     "glossaryTerm": [
       "style",
@@ -305,10 +303,6 @@
       "relatedTerms",
       "references",
       "conceptMappings",
-      "attributes",
-      "realizedIn",
-      "conceptType",
-      "ontologySource",
       "mutuallyExclusive"
     ],
     "classification": [

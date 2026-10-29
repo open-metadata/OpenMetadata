@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.RelationshipType;
 
 /**
@@ -30,12 +29,10 @@ import org.openmetadata.schema.entity.data.RelationshipType;
 record GlossaryOntologySource(
     Glossary glossary,
     List<GlossaryTerm> terms,
-    List<OntologyAxiom> axioms,
     List<RelationshipType> relationshipTypes,
     Map<UUID, String> externalTermIris) {
   GlossaryOntologySource {
     terms = List.copyOf(terms);
-    axioms = List.copyOf(axioms);
     relationshipTypes = List.copyOf(relationshipTypes);
     externalTermIris = Map.copyOf(externalTermIris);
   }

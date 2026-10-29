@@ -13,117 +13,40 @@
 
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import { AxiosError } from 'axios';
-import { isEmpty, pick } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ClientErrors } from '../../../../enums/Axios.enum';
 import { MCPConfiguration } from '../../../../generated/configuration/mcpConfiguration';
-import { SettingType } from '../../../../generated/settings/settings';
-import { useSettingsSource } from '../../../../hooks/platform/useSettingsSource';
-import { getMcpConfig, updateMcpConfig } from '../../../../rest/mcpConfigAPI';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import {
-  applyManagedPathsToUiSchema,
-  findSettingSource,
-  isPathManaged,
-  toJsonPointer,
-} from '../../../../utils/platform/settingsSource.utils';
-import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import Loader from '../../../common/Loader/Loader';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import SettingsSourceBanner from '../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
-import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
+import { useMcpConfiguration } from './useMcpConfiguration';
 
 export interface McpApplicationConfigurationProps {
   appName: string;
   jsonSchema: RJSFSchema;
 }
 
-/**
- * Base URL and allowed origins are the two settings an operator has to be able to correct from
- * the product: an empty allowlist makes the MCP server reject every cross-origin request, and a
- * wrong base URL breaks the OAuth metadata behind a load balancer. The response cap depends on
- * which MCP clients connect, so it is set here too. Everything else in the stored
- * `mcpConfiguration` (timeouts, plus fields no code reads) stays out of the form but is merged
- * back on save, because the PUT replaces the whole setting.
- */
-const EDITABLE_MCP_CONFIG_FIELDS: (keyof MCPConfiguration)[] = [
-  'baseUrl',
-  'allowedOrigins',
-  'maxResponseChars',
-];
-
-const MCP_SETTING_TYPES = [SettingType.MCPConfiguration];
-
-/**
- * The MCP app entity holds no configuration of its own. Everything the MCP server actually reads
- * lives in the `mcpConfiguration` system setting, so this tab talks to `/system/mcp/config`
- * directly rather than going through the app entity's `appConfiguration`.
- */
 const McpApplicationConfiguration = ({
   appName,
   jsonSchema,
 }: McpApplicationConfigurationProps) => {
   const { t } = useTranslation();
   const [activeField, setActiveField] = useState<string>('');
-  const [formConfig, setFormConfig] = useState<MCPConfiguration>({});
-  const [isFetching, setIsFetching] = useState<boolean>(true);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  // Fields outside the form are not rendered but must survive a save, since the PUT replaces the
-  // whole setting. Held in a ref because they never affect rendering.
-  const storedConfig = useRef<MCPConfiguration>({});
-  const { sources, refetch: refetchSources } =
-    useSettingsSource(MCP_SETTING_TYPES);
-
-  const { managedFields, isEveryFieldManaged } = useMemo(() => {
-    const mcpSource = findSettingSource(sources, SettingType.MCPConfiguration);
-    const fields = EDITABLE_MCP_CONFIG_FIELDS.filter((field) =>
-      isPathManaged(mcpSource, toJsonPointer(field))
-    );
-
-    return {
-      managedFields: fields,
-      isEveryFieldManaged: fields.length === EDITABLE_MCP_CONFIG_FIELDS.length,
-    };
-  }, [sources]);
-
-  const formUiSchema = useMemo(
-    () =>
-      applyManagedPathsToUiSchema(
-        applicationsClassBase.getJSONUISchema(),
-        managedFields.map((field) => toJsonPointer(field))
-      ),
-    [managedFields]
-  );
-
-  const applyConfig = useCallback((config: MCPConfiguration) => {
-    storedConfig.current = config;
-    setFormConfig(pick(config, EDITABLE_MCP_CONFIG_FIELDS));
-  }, []);
-
-  const fetchMcpConfig = useCallback(async () => {
-    setIsFetching(true);
-    try {
-      applyConfig(await getMcpConfig());
-    } catch (error) {
-      // A 404 means the setting has never been written. That is a valid starting state, so the
-      // form falls back to the schema defaults instead of showing an error.
-      if ((error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND) {
-        applyConfig({});
-      } else {
-        showErrorToast(error as AxiosError);
-      }
-    } finally {
-      setIsFetching(false);
-    }
-  }, [applyConfig]);
-
-  useEffect(() => {
-    fetchMcpConfig();
-  }, [fetchMcpConfig]);
+  const {
+    formConfig,
+    formUiSchema,
+    isEveryFieldManaged,
+    isFetching,
+    isSaving,
+    sources,
+    fetchMcpConfig,
+    refetchSources,
+    saveMcpConfig,
+  } = useMcpConfiguration();
 
   const handleFieldFocus = useCallback((fieldName: string) => {
     if (isEmpty(fieldName)) {
@@ -133,29 +56,6 @@ const McpApplicationConfiguration = ({
       setActiveField(fieldName);
     }, 50);
   }, []);
-
-  const handleSubmit = useCallback(
-    async ({ formData }: IChangeEvent<MCPConfiguration>) => {
-      setIsSaving(true);
-      try {
-        const payload = {
-          ...storedConfig.current,
-          ...formatFormDataForSubmit(formData as MCPConfiguration),
-        };
-        applyConfig(await updateMcpConfig(payload));
-        showSuccessToast(
-          t('message.entity-saved-successfully', {
-            entity: t('label.configuration'),
-          })
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [applyConfig, t]
-  );
 
   if (isFetching) {
     return <Loader />;
@@ -181,7 +81,9 @@ const McpApplicationConfiguration = ({
         schema={jsonSchema}
         uiSchema={formUiSchema}
         onFocus={handleFieldFocus}
-        onSubmit={handleSubmit}
+        onSubmit={({ formData }: IChangeEvent<MCPConfiguration>) =>
+          saveMcpConfig(formatFormDataForSubmit(formData ?? {}))
+        }
       />
     </>
   );

@@ -28,7 +28,9 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 // build sits at 1341 emitted / 1164 small (ui-core now ships one module per
 // file, so its lazy-only components split per route). Headroom of ~15 % lets a few new
 // lazy routes ship without a churn PR; a big regression still fails the gate.
-const MAX_EMITTED_JS_FILES = 1400;
+// Main has since grown to 1390; removing the `antd` package and its
+// `vendor-antd` chunk brought it back to 1335 emitted / 1154 small.
+const MAX_EMITTED_JS_FILES = 1450;
 const MAX_SMALL_JS_FILES = 1250;
 // Bumped 8 → 9 because sharing `oidcTokenStorage` between `silentCallbackEntry.ts`
 // and the main app graph (see the silent-callback iframe fix on this PR) splits

@@ -15,7 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
+  ConfirmPopover,
   Input,
   Table,
   TableCard,
@@ -37,20 +37,16 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
-import {
-  Effect,
-  Rule,
-} from '../../../../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { useAuth } from '../../../../../../hooks/authHooks';
+import { useClipboard } from '../../../../../../hooks/useClipBoard';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
   getPolicyByName,
@@ -62,24 +58,24 @@ import {
   getTeamByName,
   patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { t as translate } from '../../../../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import CopyLinkButton from '../../../../../CopyLinkButton/CopyLinkButton.component';
 import { profileHash } from '../members/profileHash.utils';
-import { INITIAL_RULE } from './AccessControl.constants';
 import type { AccessControlView } from './AccessControl.types';
-import AccessControlRuleForm from './AccessControlRuleForm';
+import { getCountLabel } from './AccessControl.utils';
+import AccessControlRulesTable from './AccessControlRulesTable';
 
 type PolicyTab = 'rules' | 'roles' | 'teams';
 type DetailColumnId = 'name' | 'description' | 'actions';
@@ -124,7 +120,7 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
   onStartEdit,
   t,
 }) => (
-  <Box className="tw:mb-4" direction="col">
+  <Box className="tw:mb-4" direction="col" gap={2}>
     <Box align="center" direction="row" gap={2}>
       <Typography className="tw:text-primary" weight="medium">
         {t('label.description')}
@@ -223,155 +219,22 @@ const RenameHeaderInput: FC<RenameHeaderInputProps> = ({
   );
 };
 
-// ─── Rule card ────────────────────────────────────────────────────────────────
-
-interface RuleCardProps {
-  canEditAll: boolean;
-  isActionsDisabled: boolean;
-  isLoadingOnSave: boolean;
-  rule: Rule;
-  t: ReturnType<typeof useTranslation>['t'];
-  onDelete: (name: string) => void;
-  onEdit: (rule: Rule) => void;
-}
-
-function getPermissionTooltipTitle(
-  canEdit: boolean,
-  allowed: string,
-  denied: string
-): string {
-  return String(canEdit ? allowed : denied);
-}
-
-const formatList = (items?: string[]) => items?.join(', ') || '--';
-
-const RuleCard: FC<RuleCardProps> = ({
-  canEditAll,
-  isActionsDisabled,
-  isLoadingOnSave,
-  rule,
-  t,
-  onDelete,
-  onEdit,
-}) => {
-  const effectClass =
-    rule.effect === Effect.Allow
-      ? 'tw:text-success-primary'
-      : 'tw:text-error-primary';
-
-  return (
-    <Box
-      className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
-      data-testid={`rule-${rule.name}`}
-      direction="col"
-      gap={2}>
-      <Box align="center" direction="row" justify="between">
-        <Typography
-          className="tw:text-primary"
-          size="text-sm"
-          weight="semibold">
-          {rule.name}
-        </Typography>
-        <Box direction="row" gap={1}>
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`edit-rule-${rule.name}`}
-            icon={Edit}
-            isDisabled={!canEditAll || isLoadingOnSave || isActionsDisabled}
-            size="xs"
-            tooltip={getPermissionTooltipTitle(
-              canEditAll,
-              t('label.edit'),
-              t(NO_PERMISSION_FOR_ACTION)
-            )}
-            tooltipPlacement="left"
-            onPress={() => onEdit(rule)}
-          />
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`delete-rule-${rule.name}`}
-            icon={Delete}
-            isDisabled={!canEditAll || isLoadingOnSave || isActionsDisabled}
-            size="xs"
-            tooltip={getPermissionTooltipTitle(
-              canEditAll,
-              t('label.delete'),
-              t(NO_PERMISSION_FOR_ACTION)
-            )}
-            tooltipPlacement="left"
-            onPress={() => onDelete(rule.name ?? '')}
-          />
-        </Box>
-      </Box>
-      <Box direction="col" gap={1}>
-        <Box direction="row" gap={2}>
-          <Typography className="tw:text-secondary tw:shrink-0" size="text-sm">
-            {`${t('label.resource-plural')}:`}
-          </Typography>
-          <Typography className="tw:text-primary" size="text-sm">
-            {formatList(rule.resources)}
-          </Typography>
-        </Box>
-        <Box direction="row" gap={2}>
-          <Typography className="tw:text-secondary tw:shrink-0" size="text-sm">
-            {`${t('label.operation-plural')}:`}
-          </Typography>
-          <Typography className="tw:text-primary" size="text-sm">
-            {formatList(rule.operations)}
-          </Typography>
-        </Box>
-        <Box direction="row" gap={2}>
-          <Typography className="tw:text-secondary tw:shrink-0" size="text-sm">
-            {`${t('label.effect')}:`}
-          </Typography>
-          <Typography className={effectClass} size="text-sm" weight="medium">
-            {rule.effect}
-          </Typography>
-        </Box>
-        {rule.description && (
-          <Box direction="row" gap={2}>
-            <Typography
-              className="tw:text-secondary tw:shrink-0"
-              size="text-sm">
-              {`${t('label.description')}:`}
-            </Typography>
-            <RichTextEditorPreviewerV1 markdown={rule.description} />
-          </Box>
-        )}
-        {rule.condition && (
-          <Box direction="row" gap={2}>
-            <Typography
-              className="tw:text-secondary tw:shrink-0"
-              size="text-sm">
-              {`${t('label.condition')}:`}
-            </Typography>
-            <code className="tw:text-xs tw:bg-secondary tw:px-1 tw:rounded">
-              {rule.condition}
-            </code>
-          </Box>
-        )}
-      </Box>
-    </Box>
-  );
-};
-
 // ─── Role/team cell ───────────────────────────────────────────────────────────
 
 interface RenderRoleOrTeamCellContext {
-  t: ReturnType<typeof useTranslation>['t'];
+  parentName: string;
   onNavigateToDetail?: (item: EntityReference) => void;
 }
 
 const renderRoleOrTeamCell = (
   item: EntityReference,
   colId: DetailColumnId,
-  kind: 'role' | 'team',
   canEditAll: boolean,
   isLoadingOnSave: boolean,
-  onRemove: (item: EntityReference, kind: 'role' | 'team') => void,
+  onRemove: (item: EntityReference) => Promise<boolean>,
   ctx: RenderRoleOrTeamCellContext
 ) => {
-  const { t, onNavigateToDetail } = ctx;
+  const { parentName, onNavigateToDetail } = ctx;
   if (colId === 'name') {
     const name = getEntityName(item);
     if (onNavigateToDetail) {
@@ -400,16 +263,27 @@ const renderRoleOrTeamCell = (
 
   if (colId === 'actions' && canEditAll) {
     return (
-      <ButtonUtility
-        color="tertiary"
-        data-testid={`remove-${getEntityName(item)}`}
-        icon={Delete}
-        isDisabled={isLoadingOnSave}
-        size="xs"
-        tooltip={t('label.remove')}
-        tooltipPlacement="left"
-        onPress={() => onRemove(item, kind)}
-      />
+      <ConfirmPopover
+        confirmText={translate('label.remove')}
+        data-testid="remove-entity-popover"
+        description={translate(
+          'message.are-you-sure-you-want-to-remove-child-from-parent',
+          { child: getEntityName(item), parent: parentName }
+        )}
+        title={translate('label.remove-entity', {
+          entity: getEntityName(item),
+        })}
+        onConfirm={() => onRemove(item)}>
+        <ButtonUtility
+          color="tertiary"
+          data-testid={`remove-${getEntityName(item)}`}
+          icon={Delete}
+          isDisabled={isLoadingOnSave}
+          size="xs"
+          tooltip={translate('label.remove')}
+          tooltipPlacement="left"
+        />
+      </ConfirmPopover>
     );
   }
 
@@ -424,11 +298,10 @@ interface RoleOrTeamTableProps {
   emptyTitle: string;
   isLoadingOnSave: boolean;
   items: EntityReference[];
-  kind: 'role' | 'team';
   label: string;
+  parentName: string;
   onNavigateToDetail?: (item: EntityReference) => void;
-  t: ReturnType<typeof useTranslation>['t'];
-  onRemove: (item: EntityReference, kind: 'role' | 'team') => void;
+  onRemove: (item: EntityReference) => Promise<boolean>;
 }
 
 const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
@@ -437,60 +310,58 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
   emptyTitle,
   isLoadingOnSave,
   items,
-  kind,
   label,
+  parentName,
   onNavigateToDetail,
-  t,
   onRemove,
 }) => (
-  <Box className="tw:w-full tw:overflow-x-auto tw:p-1" direction="col">
-    <TableCard.Root className="tw:w-full" size="compact">
-      <Table aria-label={label} className="tw:table-fixed" size="compact">
-        <Table.Header columns={columns}>
-          {(col) => (
-            <Table.Head
-              className={col.className}
-              id={col.id}
-              isRowHeader={col.id === 'name'}
-              key={col.id}
-              label={col.label}
-            />
-          )}
-        </Table.Header>
-        <Table.Body
-          items={items}
-          renderEmptyState={() => (
-            <Box
-              align="center"
-              className="tw:min-h-32 tw:relative"
-              justify="center">
-              <EmptyPlaceholder title={emptyTitle} />
-            </Box>
-          )}>
-          {(item) => (
-            <Table.Row
-              columns={columns}
-              data-testid={getEntityName(item)}
-              id={item.fullyQualifiedName ?? item.name ?? item.id}
-              key={item.fullyQualifiedName ?? item.name ?? item.id}>
-              {(col) => (
-                <Table.Cell className={col.className} key={col.id}>
-                  {renderRoleOrTeamCell(
-                    item,
-                    col.id as DetailColumnId,
-                    kind,
-                    canEditAll,
-                    isLoadingOnSave,
-                    onRemove,
-                    { t, onNavigateToDetail }
-                  )}
-                </Table.Cell>
-              )}
-            </Table.Row>
-          )}
-        </Table.Body>
-      </Table>
-    </TableCard.Root>
+  <Box className="tw:w-full tw:overflow-x-auto" direction="col">
+    <Table aria-label={label} className="tw:table-fixed" size="compact">
+      <Table.Header columns={columns}>
+        {(col) => (
+          <Table.Head
+            className={col.className}
+            id={col.id}
+            isRowHeader={col.id === 'name'}
+            key={col.id}
+            label={col.label}
+          />
+        )}
+      </Table.Header>
+      <Table.Body
+        dependencies={[canEditAll, isLoadingOnSave, onRemove, parentName]}
+        items={items}
+        renderEmptyState={() => (
+          <Box
+            align="center"
+            className="tw:min-h-32 tw:relative"
+            justify="center">
+            <NoDataPlaceholder title={emptyTitle} />
+          </Box>
+        )}>
+        {(item) => (
+          <Table.Row
+            columns={columns}
+            data-testid={getEntityName(item)}
+            dependencies={[canEditAll, isLoadingOnSave, onRemove, parentName]}
+            id={item.fullyQualifiedName ?? item.name ?? item.id}
+            key={item.fullyQualifiedName ?? item.name ?? item.id}>
+            {(col) => (
+              <Table.Cell className={col.className} key={col.id}>
+                {renderRoleOrTeamCell(
+                  item,
+                  col.id as DetailColumnId,
+                  canEditAll,
+                  isLoadingOnSave,
+                  onRemove,
+                  { parentName, onNavigateToDetail }
+                )}
+              </Table.Cell>
+            )}
+          </Table.Row>
+        )}
+      </Table.Body>
+    </Table>
   </Box>
 );
 
@@ -505,11 +376,6 @@ const usePolicyDetail = (fqn: string) => {
   const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
   const [policyPermission, setPolicyPermission] =
     useState<OperationPermission | null>(null);
-  const [isAddingRule, setIsAddingRule] = useState(false);
-  const [editingRule, setEditingRule] = useState<Rule | null>(null);
-  const [selectedEntity, setSelectedEntity] = useState<EntityReference>();
-  const ruleForm = useForm<Rule>({ defaultValues: INITIAL_RULE });
-  const [removeKind, setRemoveKind] = useState<'role' | 'team'>('role');
 
   const fetchPolicy = useCallback(async () => {
     setIsLoading(true);
@@ -532,43 +398,6 @@ const usePolicyDetail = (fqn: string) => {
       setPolicyPermission
     );
   }, [fqn, getEntityPermissionByFqn]);
-
-  const handleSaveRule = useCallback(
-    async (formData: Rule) => {
-      if (!policy) {
-        return;
-      }
-
-      const { condition, ...rest } = {
-        ...formData,
-        name: formData.name?.trim() ?? '',
-      };
-      const newRule = condition ? { ...rest, condition } : rest;
-      const updatedRules = editingRule
-        ? (policy.rules ?? []).map((r) =>
-            r.name === editingRule.name ? newRule : r
-          )
-        : [...(policy.rules ?? []), newRule];
-      const patch = compare(policy, { ...policy, rules: updatedRules });
-
-      setIsLoadingOnSave(true);
-      try {
-        const saved = await patchPolicy(patch, policy.id);
-        setPolicy(saved);
-        setIsAddingRule(false);
-        setEditingRule(null);
-        ruleForm.reset(INITIAL_RULE);
-        showSuccessToast(
-          t('server.entity-updated-success', { entity: t('label.policy') })
-        );
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      } finally {
-        setIsLoadingOnSave(false);
-      }
-    },
-    [policy, editingRule, t, ruleForm]
-  );
 
   const handleDeleteRule = useCallback(
     async (ruleName: string) => {
@@ -600,7 +429,7 @@ const usePolicyDetail = (fqn: string) => {
   const handleRemoveRole = useCallback(
     async (roleRef: EntityReference) => {
       if (!policy) {
-        return;
+        return false;
       }
 
       setIsLoadingOnSave(true);
@@ -626,11 +455,14 @@ const usePolicyDetail = (fqn: string) => {
         showSuccessToast(
           t('server.entity-updated-success', { entity: t('label.policy') })
         );
+
+        return true;
       } catch (err) {
         showErrorToast(err as AxiosError);
+
+        return false;
       } finally {
         setIsLoadingOnSave(false);
-        setSelectedEntity(undefined);
       }
     },
     [policy, t]
@@ -639,7 +471,7 @@ const usePolicyDetail = (fqn: string) => {
   const handleRemoveTeam = useCallback(
     async (teamRef: EntityReference) => {
       if (!policy) {
-        return;
+        return false;
       }
 
       setIsLoadingOnSave(true);
@@ -665,42 +497,17 @@ const usePolicyDetail = (fqn: string) => {
         showSuccessToast(
           t('server.entity-updated-success', { entity: t('label.policy') })
         );
+
+        return true;
       } catch (err) {
         showErrorToast(err as AxiosError);
+
+        return false;
       } finally {
         setIsLoadingOnSave(false);
-        setSelectedEntity(undefined);
       }
     },
     [policy, t]
-  );
-
-  const handleEditRule = useCallback(
-    (rule: Rule) => {
-      setEditingRule(rule);
-      ruleForm.reset(rule);
-      setIsAddingRule(false);
-    },
-    [ruleForm]
-  );
-
-  const handleCancelRuleForm = useCallback(() => {
-    setIsAddingRule(false);
-    setEditingRule(null);
-    ruleForm.reset(INITIAL_RULE);
-  }, [ruleForm]);
-
-  const handleStartAdd = useCallback(() => {
-    setIsAddingRule(true);
-    ruleForm.reset(INITIAL_RULE);
-  }, [ruleForm]);
-
-  const handleEntityRemove = useCallback(
-    (item: EntityReference, kind: 'role' | 'team') => {
-      setSelectedEntity(item);
-      setRemoveKind(kind);
-    },
-    []
   );
 
   const { canDelete, canEditAll } = getDerivedPermissionFlags(
@@ -710,24 +517,13 @@ const usePolicyDetail = (fqn: string) => {
   return {
     canDelete,
     canEditAll,
-    editingRule,
     fetchPolicy,
-    handleCancelRuleForm,
     handleDeleteRule,
-    handleEditRule,
-    handleEntityRemove,
     handleRemoveRole,
     handleRemoveTeam,
-    handleSaveRule,
-    handleStartAdd,
-    isAddingRule,
     isLoading,
     isLoadingOnSave,
     policy,
-    removeKind,
-    ruleForm,
-    selectedEntity,
-    setSelectedEntity,
   };
 };
 
@@ -751,28 +547,18 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   onSetHeaderTitleSuffix,
 }) => {
   const { t } = useTranslation();
+  const { onCopyToClipBoard, hasCopied } = useClipboard(window.location.href);
   const { isAdminUser } = useAuth();
   const {
     canDelete,
     canEditAll,
-    editingRule,
     fetchPolicy,
-    handleCancelRuleForm,
     handleDeleteRule,
-    handleEditRule,
-    handleEntityRemove,
     handleRemoveRole,
     handleRemoveTeam,
-    handleSaveRule,
-    handleStartAdd,
-    isAddingRule,
     isLoading,
     isLoadingOnSave,
     policy,
-    removeKind,
-    ruleForm,
-    selectedEntity,
-    setSelectedEntity,
   } = usePolicyDetail(fqn);
 
   const [activeTab, setActiveTab] = useState<PolicyTab>('rules');
@@ -791,9 +577,6 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [isSavingRename, setIsSavingRename] = useState(false);
-
-  const [isDeletePolicyOpen, setIsDeletePolicyOpen] = useState(false);
-  const [isDeletingPolicy, setIsDeletingPolicy] = useState(false);
 
   const detailColumns = useMemo<DetailColumn[]>(
     () => [
@@ -826,6 +609,11 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       setIsSavingRename(false);
     }
   }, [policy, renameValue, fetchPolicy, t, onRename]);
+
+  const handleAfterDeletePolicy = useCallback(
+    () => onNavigate({ type: 'policies' }),
+    [onNavigate]
+  );
 
   useEffect(() => {
     if (!policy) {
@@ -863,28 +651,42 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
             setIsRenameOpen(true);
           }}
         />
-        <CopyLinkButton
-          testId="copy-link-btn"
-          tooltip={String(t('label.copy'))}
-          url={window.location.href}>
-          <Copy01 className="tw:size-3" />
-        </CopyLinkButton>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="copy-link-btn"
+          icon={Copy01}
+          size="xs"
+          tooltip={String(
+            hasCopied
+              ? t('message.link-copy-to-clipboard')
+              : t('label.copy-item', { item: t('label.url-uppercase') })
+          )}
+          tooltipPlacement="right"
+          onPress={() => onCopyToClipBoard()}
+        />
       </Box>
     );
 
     const deleteButtonNode: React.ReactNode = isRenameOpen ? undefined : (
-      <ButtonUtility
-        color="tertiary"
-        data-testid="delete-policy-btn"
-        icon={Delete}
-        isDisabled={!canDelete}
-        size="xs"
-        tooltip={String(
-          canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
-        )}
-        tooltipPlacement="left"
-        onPress={() => setIsDeletePolicyOpen(true)}
-      />
+      <DeleteEntityPopover
+        afterDeleteAction={handleAfterDeletePolicy}
+        allowSoftDelete={false}
+        data-testid="delete-policy-popover"
+        entityId={policy.id}
+        entityName={getEntityName(policy)}
+        entityType={EntityType.POLICY}>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="delete-policy-btn"
+          icon={Delete}
+          isDisabled={!canDelete}
+          size="xs"
+          tooltip={String(
+            canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
+          )}
+          tooltipPlacement="left"
+        />
+      </DeleteEntityPopover>
     );
 
     onSetHeaderTitleSuffix?.(titleSuffixNode);
@@ -898,7 +700,10 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
     renameValue,
     isSavingRename,
     handleSaveRename,
+    handleAfterDeletePolicy,
     t,
+    hasCopied,
+    onCopyToClipBoard,
     onSetHeaderActions,
     onSetHeaderTitleInput,
     onSetHeaderTitleSuffix,
@@ -927,111 +732,28 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
     }
   }, [policy, fetchPolicy, t]);
 
-  const handleDeletePolicy = useCallback(async () => {
-    if (!policy) {
-      return;
-    }
-
-    setIsDeletingPolicy(true);
-    const isSuccess = await hardDeleteEntity(
-      getEntityName(policy),
-      policy.id ?? '',
-      EntityType.POLICY
-    );
-    setIsDeletingPolicy(false);
-    setIsDeletePolicyOpen(false);
-
-    if (isSuccess) {
-      onNavigate({ type: 'policies' });
-    }
-  }, [policy, onNavigate]);
+  const openRuleForm = useCallback(
+    (ruleName?: string) =>
+      onNavigate({
+        type: 'policies-rule',
+        fqn,
+        name: policy ? getEntityName(policy) : fqn,
+        ...(ruleName ? { ruleName } : {}),
+      }),
+    [fqn, onNavigate, policy]
+  );
 
   const renderRulesTab = useCallback(
     () => (
-      <Box direction="col" gap={3}>
-        {canEditAll && !isAddingRule && !editingRule && (
-          <Box direction="row" justify="end">
-            <Button
-              color="primary"
-              data-testid="add-rule"
-              size="sm"
-              onPress={handleStartAdd}>
-              {t('label.add-entity', { entity: t('label.rule') })}
-            </Button>
-          </Box>
-        )}
-
-        {(isAddingRule || editingRule) && (
-          <Box
-            className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
-            direction="col"
-            gap={4}>
-            <Typography
-              className="tw:text-primary"
-              size="text-sm"
-              weight="semibold">
-              {editingRule
-                ? t('label.edit-entity', { entity: t('label.rule') })
-                : t('label.add-entity', { entity: t('label.rule') })}
-            </Typography>
-            <AccessControlRuleForm
-              form={ruleForm}
-              key={editingRule?.name ?? 'new-rule'}
-              takenNames={(policy?.rules ?? [])
-                .filter((r) => r.name !== editingRule?.name)
-                .map((r) => r.name ?? '')}
-            />
-            <Box direction="row" gap={3} justify="end">
-              <Button color="tertiary" size="sm" onPress={handleCancelRuleForm}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                isLoading={isLoadingOnSave}
-                size="sm"
-                onPress={() => ruleForm.handleSubmit(handleSaveRule)()}>
-                {t('label.save')}
-              </Button>
-            </Box>
-          </Box>
-        )}
-
-        {policy?.rules?.length ? (
-          policy.rules.map((rule) => (
-            <RuleCard
-              canEditAll={canEditAll}
-              isActionsDisabled={isAddingRule || !!editingRule}
-              isLoadingOnSave={isLoadingOnSave}
-              key={rule.name ?? ''}
-              rule={rule}
-              t={t}
-              onDelete={handleDeleteRule}
-              onEdit={handleEditRule}
-            />
-          ))
-        ) : (
-          <EmptyPlaceholder
-            title={t('label.no-entity-found', {
-              entity: t('label.rule-plural'),
-            })}
-          />
-        )}
-      </Box>
+      <AccessControlRulesTable
+        canEdit={canEditAll}
+        isDisabled={isLoadingOnSave}
+        rules={policy?.rules ?? []}
+        onDelete={handleDeleteRule}
+        onEdit={(rule) => openRuleForm(rule.name)}
+      />
     ),
-    [
-      canEditAll,
-      editingRule,
-      handleCancelRuleForm,
-      handleDeleteRule,
-      handleEditRule,
-      handleSaveRule,
-      handleStartAdd,
-      isAddingRule,
-      isLoadingOnSave,
-      policy,
-      ruleForm,
-      t,
-    ]
+    [canEditAll, handleDeleteRule, isLoadingOnSave, openRuleForm, policy]
   );
 
   const renderRolesTab = useCallback(
@@ -1044,9 +766,8 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         })}
         isLoadingOnSave={isLoadingOnSave}
         items={policy?.roles ?? []}
-        kind="role"
         label={t('label.role-plural')}
-        t={t}
+        parentName={getEntityName(policy)}
         onNavigateToDetail={(item) =>
           onNavigate({
             type: 'roles-detail',
@@ -1054,12 +775,12 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
             name: getEntityName(item),
           })
         }
-        onRemove={handleEntityRemove}
+        onRemove={handleRemoveRole}
       />
     ),
     [
       detailColumns,
-      handleEntityRemove,
+      handleRemoveRole,
       isAdminUser,
       isLoadingOnSave,
       onNavigate,
@@ -1078,19 +799,18 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         })}
         isLoadingOnSave={isLoadingOnSave}
         items={policy?.teams ?? []}
-        kind="team"
         label={t('label.team-plural')}
-        t={t}
+        parentName={getEntityName(policy)}
         onNavigateToDetail={(item) =>
           goTo(profileHash.team(item.fullyQualifiedName ?? item.name ?? ''))
         }
-        onRemove={handleEntityRemove}
+        onRemove={handleRemoveTeam}
       />
     ),
     [
       detailColumns,
       goTo,
-      handleEntityRemove,
+      handleRemoveTeam,
       isAdminUser,
       isLoadingOnSave,
       policy,
@@ -1105,8 +825,6 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   if (!policy) {
     return null;
   }
-
-  const policyName = getEntityName(policy);
 
   const tabRenderers: Record<PolicyTab, () => React.ReactNode> = {
     rules: renderRulesTab,
@@ -1132,63 +850,43 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         onStartEdit={() => setIsEditingDesc(true)}
       />
 
-      <Tabs
-        selectedKey={activeTab}
-        onSelectionChange={(k) => setActiveTab(k as PolicyTab)}>
-        <Tabs.List size="sm" type="underline">
-          <Tabs.Item id="rules">
-            {`${t('label.rule-plural')} (${policy.rules?.length ?? 0})`}
-          </Tabs.Item>
-          <Tabs.Item id="roles">
-            {`${t('label.role-plural')} (${policy.roles?.length ?? 0})`}
-          </Tabs.Item>
-          <Tabs.Item id="teams">
-            {`${t('label.team-plural')} (${policy.teams?.length ?? 0})`}
-          </Tabs.Item>
-        </Tabs.List>
-      </Tabs>
-
-      <Box
-        className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:w-full"
-        direction="col">
+      <TableCard.Root
+        className="tw:rounded-xl tw:shadow-none"
+        size="compact"
+        variant="muted">
+        <Tabs
+          selectedKey={activeTab}
+          onSelectionChange={(k) => setActiveTab(k as PolicyTab)}>
+          {/* -mb-px lays the tab underline over the row border so the divider
+              also runs under the actions. */}
+          <div className="tw:flex tw:items-center tw:justify-between tw:gap-4 tw:border-b tw:border-secondary tw:pr-4">
+            <Tabs.List
+              className="tw:-mb-px tw:px-4 tw:pt-3"
+              size="sm"
+              type="underline">
+              <Tabs.Item id="rules">
+                {getCountLabel(t('label.rule-plural'), policy.rules)}
+              </Tabs.Item>
+              <Tabs.Item id="roles">
+                {getCountLabel(t('label.role-plural'), policy.roles)}
+              </Tabs.Item>
+              <Tabs.Item id="teams">
+                {getCountLabel(t('label.team-plural'), policy.teams)}
+              </Tabs.Item>
+            </Tabs.List>
+            {activeTab === 'rules' && canEditAll && (
+              <Button
+                color="primary"
+                data-testid="add-rule"
+                size="xs"
+                onPress={() => openRuleForm()}>
+                {t('label.add-entity', { entity: t('label.rule') })}
+              </Button>
+            )}
+          </div>
+        </Tabs>
         {tabRenderers[activeTab]()}
-      </Box>
-
-      {selectedEntity && (
-        <DeleteModal
-          entityTitle={t('label.remove-entity', {
-            entity: getEntityName(selectedEntity),
-          })}
-          isDeleting={isLoadingOnSave}
-          message={t(
-            'message.are-you-sure-you-want-to-remove-child-from-parent',
-            {
-              child: getEntityName(selectedEntity),
-              parent: policyName,
-            }
-          )}
-          open={Boolean(selectedEntity)}
-          onCancel={() => setSelectedEntity(undefined)}
-          onDelete={async () => {
-            if (removeKind === 'role') {
-              await handleRemoveRole(selectedEntity);
-            } else {
-              await handleRemoveTeam(selectedEntity);
-            }
-          }}
-        />
-      )}
-
-      <DeleteModal
-        entityTitle={policyName}
-        isDeleting={isDeletingPolicy}
-        message={t('message.permanently-delete-common-message', {
-          entity: policyName.toLowerCase(),
-        })}
-        open={isDeletePolicyOpen}
-        onCancel={() => setIsDeletePolicyOpen(false)}
-        onDelete={handleDeletePolicy}
-      />
+      </TableCard.Root>
     </Box>
   );
 };

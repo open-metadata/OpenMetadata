@@ -46,6 +46,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -213,17 +214,16 @@ public class WorkflowDefinitionResource
   @POST
   @Path("/{id}/redeploy")
   @Operation(
-      operationId = "getWorkflowDefinitionByID",
-      summary = "Get a Workflow Definition by Id",
-      description = "Get a Workflow Definition by `Id`.",
+      operationId = "redeployWorkflowDefinition",
+      summary = "Redeploy a Workflow Definition",
+      description =
+          "Remove the Workflow Definition by `Id` from the workflow engine, including its running "
+              + "instances, and deploy it again.",
       responses = {
+        @ApiResponse(responseCode = "200", description = "Workflow redeployed"),
         @ApiResponse(
-            responseCode = "200",
-            description = "The Workflow Definition",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = WorkflowDefinition.class)))
+            responseCode = "404",
+            description = "Workflow Definition for instance {id} is not found")
       })
   public Response redeploy(
       @Context UriInfo uriInfo,
@@ -231,6 +231,10 @@ public class WorkflowDefinitionResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+        getResourceContextById(id));
     WorkflowDefinition wd =
         repository.get(
             uriInfo,
@@ -240,6 +244,7 @@ public class WorkflowDefinitionResource
             false);
     WorkflowHandler.getInstance().deleteWorkflowDefinition(wd);
     WorkflowHandler.getInstance().deploy(new Workflow(wd));
+    ChangeRequestService.redeliverStuck(wd.getId());
     return Response.status(Response.Status.OK).entity("Workflow Redeployed").build();
   }
 
@@ -620,6 +625,10 @@ public class WorkflowDefinitionResource
     try {
       WorkflowDefinition workflow =
           repository.getByName(uriInfo, fqn, repository.getFields("suspended"));
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+          new ResourceContext<>(entityType, workflow.getId(), workflow.getName()));
       if (workflow.getSuspended() != null && workflow.getSuspended()) {
         return Response.status(Response.Status.BAD_REQUEST)
             .entity(

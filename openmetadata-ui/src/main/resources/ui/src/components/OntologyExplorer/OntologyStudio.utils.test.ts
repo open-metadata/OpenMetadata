@@ -18,7 +18,9 @@ import { GraphFilters, OntologyGraphData } from './OntologyExplorer.interface';
 import {
   buildOntologyQuerySuggestions,
   buildOntologyTreeGroups,
+  buildOntologyTreeMetrics,
   getOntologyHealthSummary,
+  nestTreeRows,
   resolveOntologyTermLabel,
 } from './OntologyStudio.utils';
 
@@ -285,6 +287,97 @@ describe('OntologyStudio utils', () => {
       ['Revenue Policy', 0],
       ['Recognition Rule', 1],
     ]);
+  });
+
+  it('nests depth-ordered rows back under their parents', () => {
+    const row = (id: string, depth: number) => ({
+      depth,
+      isIsolated: false,
+      node: { id, label: id, type: 'glossaryTerm' },
+      parentCount: 0,
+      relationCount: 1,
+    });
+    const tree = nestTreeRows([
+      row('a', 0),
+      row('b', 1),
+      row('c', 2),
+      row('d', 1),
+      row('e', 0),
+    ]);
+    const shape = (items: typeof tree): unknown[] =>
+      items.map((item) => [item.node.id, shape(item.children)]);
+
+    expect(shape(tree)).toEqual([
+      [
+        'a',
+        [
+          ['b', [['c', []]]],
+          ['d', []],
+        ],
+      ],
+      ['e', []],
+    ]);
+  });
+
+  it('keeps the real depth so a hierarchy deeper than the indent cap nests correctly', () => {
+    const ids = Array.from({ length: 20 }, (_, index) => `t${index}`);
+    const [group] = buildOntologyTreeGroups(
+      {
+        nodes: ids.map((id) => ({
+          id,
+          label: id,
+          type: 'glossaryTerm',
+          glossaryId: 'g1',
+        })),
+        edges: ids.slice(1).map((id, index) => parentOf(ids[index], id)),
+      },
+      { ...FILTERS, glossaryIds: ['g1'] },
+      GLOSSARIES,
+      RELATION_TYPES
+    );
+    let item = nestTreeRows(group.rows)[0];
+    const chain = [item.node.id];
+    while (item.children.length > 0) {
+      expect(item.children).toHaveLength(1);
+
+      item = item.children[0];
+      chain.push(item.node.id);
+    }
+
+    expect(group.rows[19].depth).toBe(19);
+    expect(chain).toEqual(ids);
+  });
+
+  it('lists only metrics that measure a scoped term', () => {
+    const metrics = buildOntologyTreeMetrics(
+      {
+        nodes: [
+          { id: 'a', label: 'Revenue', type: 'glossaryTerm', glossaryId: 'g1' },
+          { id: 'b', label: 'Policy', type: 'glossaryTerm', glossaryId: 'g2' },
+          { id: 'm1', label: 'Net Revenue', type: 'metric' },
+          { id: 'm2', label: 'Policy Count', type: 'metric' },
+        ],
+        edges: [
+          {
+            from: 'm1',
+            to: 'a',
+            label: 'Metric for',
+            relationType: 'metricFor',
+          },
+          {
+            from: 'm2',
+            to: 'b',
+            label: 'Metric for',
+            relationType: 'metricFor',
+          },
+        ],
+      },
+      { ...FILTERS, glossaryIds: ['g1'] }
+    );
+
+    expect(metrics).toHaveLength(1);
+    expect(metrics[0].node.id).toBe('m1');
+    expect(metrics[0].measures.map((term) => term.id)).toEqual(['a']);
   });
 
   it('derives executable query suggestions from scoped ontology relations', () => {

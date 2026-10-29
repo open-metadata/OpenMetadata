@@ -22,8 +22,8 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.events.subscription.channels.DestinationConfig;
-import org.openmetadata.service.events.subscription.ledger.AlertRecord;
+import org.openmetadata.service.alerting.channel.DestinationConfig;
+import org.openmetadata.service.events.consumer.ledger.AlertRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**

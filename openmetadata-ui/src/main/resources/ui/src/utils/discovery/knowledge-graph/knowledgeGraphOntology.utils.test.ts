@@ -12,11 +12,7 @@
  */
 
 import { GraphData } from '../../../components/discovery/knowledge-graph/KnowledgeGraph.interface';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import {
-  addDeclaredOntologyProperties,
-  getOntologyScope,
-} from './knowledgeGraphOntology.utils';
+import { getOntologyScope } from './knowledgeGraphOntology.utils';
 
 const graph: GraphData = {
   nodes: [
@@ -47,29 +43,6 @@ const graph: GraphData = {
     { from: 'table', to: 'owner', label: 'Owned by', relationType: 'ownedBy' },
   ],
 };
-const terms = [
-  {
-    id: 'customer',
-    name: 'Customer',
-    attributes: [
-      {
-        id: 'email',
-        name: 'emailAddress',
-        dataType: 'STRING',
-        iri: 'https://business.example/email',
-      },
-      {
-        id: 'identifier',
-        name: 'customerId',
-        dataType: 'STRING',
-        isIdentifier: true,
-      },
-    ],
-    effectiveAttributes: [
-      { id: 'inherited', name: 'inheritedProperty', dataType: 'STRING' },
-    ],
-  },
-] as GlossaryTerm[];
 
 it('shows actual directional concept predicates and their asset mappings', () => {
   const result = getOntologyScope(graph, 'customer');
@@ -90,54 +63,4 @@ it('preserves an isolated selected concept and partial response information', ()
   expect(
     getOntologyScope({ ...graph, edges: [], truncated: true }, 'customer')
   ).toEqual({ nodes: [graph.nodes[0]], edges: [], truncated: true });
-});
-
-it('exposes declared property domains without inventing inherited declarations', () => {
-  const result = addDeclaredOntologyProperties(
-    graph,
-    graph,
-    terms,
-    'customer',
-    1,
-    'Domain'
-  );
-
-  expect(
-    result?.nodes
-      .filter((node) => node.type === 'property')
-      .map((node) => node.label)
-  ).toEqual(['emailAddress', 'customerId']);
-  expect(result?.edges.slice(-2)).toEqual([
-    expect.objectContaining({
-      from: 'https://business.example/email',
-      to: 'customer',
-      relationType: 'http://www.w3.org/2000/01/rdf-schema#domain',
-    }),
-    expect.objectContaining({ to: 'customer', label: 'Domain' }),
-  ]);
-});
-
-it('keeps property expansion within the selected level and honors filters', () => {
-  expect(
-    addDeclaredOntologyProperties(graph, graph, terms, 'customer', 0, 'Domain')
-  ).toBe(graph);
-  expect(
-    addDeclaredOntologyProperties(graph, graph, terms, 'table', 1, 'Domain')
-      ?.nodes
-  ).toHaveLength(4);
-  expect(
-    addDeclaredOntologyProperties(graph, graph, terms, 'table', 2, 'Domain')
-      ?.nodes
-  ).toHaveLength(6);
-  expect(
-    addDeclaredOntologyProperties(
-      graph,
-      graph,
-      terms,
-      'customer',
-      2,
-      'Domain',
-      { entityTypes: ['table'], relationshipTypes: [] }
-    )
-  ).toBe(graph);
 });

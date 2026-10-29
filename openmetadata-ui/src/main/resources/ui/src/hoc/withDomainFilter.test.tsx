@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import { InternalAxiosRequestConfig } from 'axios';
-import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  SKIP_DOMAIN_FILTER_HEADER,
+} from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
+import { useProductTourStore } from '../hooks/product-tour/useProductTourStore';
 import { useDomainStore } from '../hooks/useDomainStore';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 import { withDomainFilter } from './withDomainFilter';
@@ -46,6 +50,23 @@ describe('withDomainFilter', () => {
     } as InternalAxiosRequestConfig);
 
   describe('should not intercept requests', () => {
+    it('should leave every request unfiltered while a product tour runs', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/explore'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'testDomain' });
+      useProductTourStore.setState({ isActive: true });
+
+      const config = createMockConfig('get', '/search/query', {
+        index: SearchIndex.TABLE,
+      });
+      const result = withDomainFilter(config);
+      useProductTourStore.setState({ isActive: false });
+
+      expect(result).toBe(config);
+      expect(result.params).toEqual({ index: SearchIndex.TABLE });
+    });
+
     it('should return config unchanged when path starts with /domain', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockImplementationOnce(
         () => '/domain/test'
@@ -202,6 +223,70 @@ describe('withDomainFilter', () => {
 
       expect(result).toBe(config);
       expect(result.params?.query_filter).toBeUndefined();
+    });
+
+    it.each([SearchIndex.USER, SearchIndex.TEAM])(
+      'should return config unchanged for %s index searches (owner and member pickers)',
+      (index) => {
+        (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+          '/api/search'
+        );
+        mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+        const config = createMockConfig('get', '/search/query', { index });
+        const result = withDomainFilter(config);
+
+        expect(result).toBe(config);
+        expect(result.params?.query_filter).toBeUndefined();
+      }
+    );
+
+    it.each([['team,user'], [['team', 'user']], ['user,team,tag']])(
+      'should return config unchanged for combined people searches (%s)',
+      (index) => {
+        (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+          '/api/search'
+        );
+        mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+        const config = createMockConfig('get', '/search/query', { index });
+        const result = withDomainFilter(config);
+
+        expect(result).toBe(config);
+        expect(result.params?.query_filter).toBeUndefined();
+      }
+    );
+
+    it('should still filter a combined search that includes a data index', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const config = createMockConfig('get', '/search/query', {
+        index: 'table,user',
+      });
+      const result = withDomainFilter(config);
+
+      expect(result.params?.query_filter).toBeDefined();
+    });
+
+    it('should leave a request marked to skip the domain filter unfiltered, and drop the marker', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const config = createMockConfig('get', '/search/query', {
+        index: SearchIndex.GLOSSARY_TERM,
+      });
+      config.headers = {
+        [SKIP_DOMAIN_FILTER_HEADER]: 'true',
+      } as unknown as InternalAxiosRequestConfig['headers'];
+      const result = withDomainFilter(config);
+
+      expect(result.params?.query_filter).toBeUndefined();
+      expect(result.headers?.[SKIP_DOMAIN_FILTER_HEADER]).toBeUndefined();
     });
 
     it('should use fullyQualifiedName field for DOMAIN index searches', () => {

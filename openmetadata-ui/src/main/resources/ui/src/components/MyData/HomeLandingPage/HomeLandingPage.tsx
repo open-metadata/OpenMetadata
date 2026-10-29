@@ -15,12 +15,13 @@ import { PageLayout } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import type { ReactNode } from 'react';
-import { lazy, useMemo } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
 import type { ReactGridLayoutProps } from 'react-grid-layout';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useNavigate } from 'react-router-dom';
 import { PageType } from '../../../generated/system/ui/page';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import type { WidgetConfig } from '../../../interface/customization.interface';
 import {
@@ -39,6 +40,7 @@ import { getCustomizePagePath } from '../../../utils/RouterUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DeferredWidget from '../../common/DeferredWidget/DeferredWidget.component';
 import { TopicCollapseContext } from '../Widgets/Common/TopicWidget/TopicCollapseContext';
+import HomeLandingPageHeader from './HomeLandingPageHeader';
 import HomeLandingPageSkeleton from './HomeLandingPageSkeleton';
 import TopicsSectionHeader from './TopicsSectionHeader';
 import { useTopicsView } from './useTopicsView';
@@ -52,6 +54,10 @@ const LandingPageWidgetRenderer = withSuspenseFallback(
 const AnnouncementsRail = withSuspenseFallback(
   lazy(() => import('./AnnouncementsRail'))
 );
+
+// Not wrapped in withSuspenseFallback: the greeting it replaces is its
+// Suspense fallback too, so the header shows before the chunk lands.
+const CriticalAnnouncements = lazy(() => import('./CriticalAnnouncements'));
 
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: ReactNode }
@@ -121,15 +127,17 @@ const usePersonaLandingPage = () => {
 /**
  * The home page, shared by both app modes.
  *
- * Fixed shell top to bottom — announcements rail, then the persona's widget
- * grid. Which widgets appear and where is entirely the persona's
- * landing-page layout (docStore), edited through `CustomizeMyData`; nothing
- * here is mode-specific. Widgets that have AI-only content decide that for
- * themselves.
+ * Fixed shell top to bottom — Classic's greeting (or, while one is live, the
+ * critical announcement banner in its place), announcements rail, the deployment's "Needs you
+ * now" section when it supplies one, then the persona's widget grid. Which
+ * widgets appear and where is entirely the persona's landing-page layout
+ * (docStore), edited through `CustomizeMyData`; only the greeting is
+ * mode-specific. Widgets that have AI-only content decide that for themselves.
  */
 const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
   const navigate = useNavigate();
   const { isLoading, layout, selectedPersona } = usePersonaLandingPage();
+  const isAiMode = useIsAiMode();
 
   const {
     collapseValue,
@@ -165,10 +173,15 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
           </DeferredWidget>
         </div>
       )),
-    [displayLayout]
+    [displayLayout, widgetHeight]
   );
 
   const personaFqn = selectedPersona?.fullyQualifiedName;
+  // AI mode's "Needs you now" heading greets the user, so the page opens on
+  // it rather than on a second greeting.
+  const greeting = isAiMode ? null : <HomeLandingPageHeader />;
+  const NeedsYouNowSection =
+    customizeMyDataPageClassBase.getNeedsYouNowSection();
 
   // react-grid-layout has known RTL issues; the grid wrapper is pinned to ltr.
   useGridLayoutDirection(isLoading);
@@ -180,8 +193,19 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
         data-testid="home-landing-page"
         scroll="page">
         <PageLayout.Content className={contentClassName(Boolean(footerSlot))}>
-          <div className="tw:flex tw:flex-col tw:gap-14 tw:px-4 tw:pt-8">
+          <div className="tw:flex tw:flex-col tw:gap-6 tw:p-5">
+            <Suspense fallback={greeting}>
+              <CriticalAnnouncements fallback={greeting} />
+            </Suspense>
             <AnnouncementsRail />
+
+            {NeedsYouNowSection && (
+              // A deployment's section is usually lazy; its own boundary keeps
+              // the rest of the page from waiting on that chunk.
+              <Suspense fallback={null}>
+                <NeedsYouNowSection />
+              </Suspense>
+            )}
 
             <section data-testid="topics-to-catch-up-on">
               <TopicsSectionHeader

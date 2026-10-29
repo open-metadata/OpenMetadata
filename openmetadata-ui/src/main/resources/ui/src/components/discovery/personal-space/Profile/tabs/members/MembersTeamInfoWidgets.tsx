@@ -14,6 +14,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   Divider,
   Input,
   Owner,
@@ -58,7 +59,7 @@ const InfoWidget: FC<{
   action?: ReactNode;
   children: ReactNode;
 }> = ({ label, action, children }) => (
-  <Box className={WIDGET_CLASS} direction="col" gap={1}>
+  <Card className={WIDGET_CLASS} variant="muted">
     <Box align="center" direction="row" gap={1}>
       <Typography
         className="tw:text-brand-secondary"
@@ -68,8 +69,11 @@ const InfoWidget: FC<{
       </Typography>
       {action}
     </Box>
-    {children}
-  </Box>
+    {/* min-w-0 lets long values (owner names, emails) truncate inside the card. */}
+    <Box className="tw:w-full tw:min-w-0 tw:overflow-hidden" direction="col">
+      {children}
+    </Box>
+  </Card>
 );
 
 const NoneText: FC = () => {
@@ -510,6 +514,9 @@ const OwnerField: FC<MembersTeamInfoWidgetsProps> = ({
           <UserTeamSelectableList
             hasPermission
             owner={owners}
+            // As a plain inline box the trigger span's line box is taller than
+            // the icon button, which lifts it off-centre in the widget header.
+            triggerClassName="tw:inline-flex"
             onUpdate={(next) => void onPatch({ ...team, owners: next })}>
             <EditPencil
               dataTestId="edit-owners"

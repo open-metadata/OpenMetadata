@@ -551,6 +551,10 @@ public class SearchResource {
       @RequestBody(description = "Preview request containing search settings", required = true)
           PreviewSearchRequest previewRequest)
       throws IOException {
+    // Preview runs with caller-supplied search settings, which can be made expensive enough to
+    // stall
+    // the cluster; it is an admin tool for tuning those settings, so only admins may call it.
+    authorizer.authorizeAdmin(securityContext);
     requireNonNegative("from", previewRequest.getFrom());
     requireNonNegative("size", previewRequest.getSize());
 
@@ -718,6 +722,8 @@ public class SearchResource {
       @Parameter(description = "Index Name", schema = @Schema(type = "string")) @PathParam("index")
           String indexName)
       throws IOException {
+    // A raw document from any index, read by id with no policy filter; for admins and bots only.
+    authorizer.authorizeAdminOrBot(securityContext);
     return searchRepository.getDocument(indexName, id);
   }
 
@@ -760,7 +766,8 @@ public class SearchResource {
           int size)
       throws IOException {
 
-    return searchRepository.searchByField(fieldName, fieldValue, index, deleted, from, size);
+    return searchRepository.searchByField(
+        fieldName, fieldValue, index, deleted, from, size, getSubjectContext(securityContext));
   }
 
   @GET
@@ -783,7 +790,7 @@ public class SearchResource {
       @Parameter(description = "source url") @QueryParam("sourceUrl") String sourceUrl)
       throws IOException {
 
-    return searchRepository.searchBySourceUrl(sourceUrl);
+    return searchRepository.searchBySourceUrl(sourceUrl, getSubjectContext(securityContext));
   }
 
   @GET

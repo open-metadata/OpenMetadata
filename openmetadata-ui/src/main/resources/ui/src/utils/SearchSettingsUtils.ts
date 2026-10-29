@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DefaultOptionType } from 'antd/lib/select';
 import { startCase } from 'lodash';
 import {
   GlobalSettingOptions,
@@ -258,31 +257,16 @@ export const getEffectiveRankingConfiguration = (
 };
 
 export const boostModeOptions = Object.values(BoostMode).map((value) => ({
+  id: value,
   label: startCase(value),
-  value: value,
 }));
 
 export const scoreModeOptions = Object.values(ScoreMode).map((value) => ({
+  id: value,
   label: startCase(value),
-  value: value,
 }));
 
 export const modifierOptions = Object.values(Modifier).map((value) => ({
   label: value,
   value: value,
 }));
-
-/**
- * Filter function for select options based on input value
- * @param input Input string to filter by
- * @param option Option object containing value
- * @returns boolean indicating if option matches input
- */
-export const getFilterOptions = (
-  input: string,
-  option: DefaultOptionType | undefined
-): boolean => {
-  return (option?.value?.toString().toLowerCase() ?? '').includes(
-    input.toLowerCase()
-  );
-};

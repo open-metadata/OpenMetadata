@@ -30,17 +30,14 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
-import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.Reaction;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.jdbi.BindFQN;
@@ -168,21 +165,49 @@ public interface FeedDAOs {
     int updateAboutFqnHash(
         @Bind("oldFqnHash") String oldFqnHash, @Bind("newFqnHash") String newFqnHash);
 
-    @Transaction
-    @ConnectionAwareSqlBatch(
+    /**
+     * Swap the {@code oldFqnHash} prefix for {@code newFqnHash} on the tasks about the entity
+     * itself (exact hash, {@code entityType}) and about the entities nested under it ({@code
+     * hash.%}, {@code nestedTypes}). One statement, so a row the exact match moves is not matched
+     * again by the prefix. Other entity types can share an FQN (a domain and a glossary both named
+     * {@code X}), so each match also requires the task's {@code about} relationship to come from
+     * the matching type. Hashes are hex and dots, so the prefix holds no LIKE wildcard.
+     */
+    @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', :newFqnHash) "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.aboutFqnHash')) = :oldFqnHash",
+            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', "
+                + "CONCAT(:newFqnHash, SUBSTRING(aboutFqnHash, CHAR_LENGTH(:oldFqnHash) + 1))) "
+                + "WHERE (aboutFqnHash = :oldFqnHash AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "= :entityType)) "
+                + "OR (aboutFqnHash LIKE CONCAT(:oldFqnHash, '.%') AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "IN (<nestedTypes>)))",
         connectionType = MYSQL)
-    @ConnectionAwareSqlBatch(
+    @ConnectionAwareSqlUpdate(
         value =
             "UPDATE task_entity SET json = jsonb_set(json, '{aboutFqnHash}', "
-                + "to_jsonb(:newFqnHash::text)) WHERE json->>'aboutFqnHash' = :oldFqnHash",
+                + "to_jsonb(:newFqnHash::text || "
+                + "substring(aboutfqnhash from char_length(:oldFqnHash::text) + 1))) "
+                + "WHERE (aboutfqnhash = :oldFqnHash AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "= :entityType)) "
+                + "OR (aboutfqnhash LIKE :oldFqnHash::text || '.%' AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "IN (<nestedTypes>)))",
         connectionType = POSTGRES)
-    @BatchChunkSize(100)
-    int[] updateAboutFqnHashBatch(
-        @Bind("oldFqnHash") List<String> oldFqnHashes,
-        @Bind("newFqnHash") List<String> newFqnHashes);
+    int repointAboutFqnHash(
+        @Bind("oldFqnHash") String oldFqnHash,
+        @Bind("newFqnHash") String newFqnHash,
+        @Bind("entityType") String entityType,
+        @Bind("relation") int relation,
+        @BindList(value = "nestedTypes", onEmpty = BindList.EmptyHandling.NULL_STRING)
+            List<String> nestedTypes);
+
+    /** Opens the {@code about} relationship check; the caller appends the entity-type predicate. */
+    String TASK_ABOUT_FROM =
+        "SELECT 1 FROM entity_relationship er WHERE er.toId = task_entity.id "
+            + "AND er.toEntity = 'task' AND er.relation = :relation AND er.fromEntity ";
 
     @Override
     default void update(UUID id, String fqn, String json) {
@@ -239,6 +264,18 @@ public interface FeedDAOs {
 
     @SqlQuery(
         "SELECT json FROM task_entity "
+            + "WHERE aboutFqnHash = :aboutFqnHash AND type = :type "
+            + "AND status IN (<statuses>) "
+            + "AND (deleted = false OR deleted IS NULL) "
+            + "ORDER BY createdAt DESC LIMIT :limit")
+    List<String> listByAboutAndTypeAndStatuses(
+        @BindFQN("aboutFqnHash") String aboutFqn,
+        @Bind("type") String type,
+        @BindList("statuses") List<String> statuses,
+        @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT json FROM task_entity "
             + "WHERE aboutFqnHash = :aboutFqnHash AND type = :type AND status = :status "
             + "AND (deleted = false OR deleted IS NULL) "
             + "LIMIT 1")
@@ -280,24 +317,22 @@ public interface FeedDAOs {
         @Bind("category") String category,
         @BindList("statuses") List<String> statuses);
 
-    @SqlUpdate(
-        "DELETE FROM task_entity " + "WHERE createdById = :createdById AND category = :category")
-    void deleteByCreatorAndCategory(
-        @Bind("createdById") String createdById, @Bind("category") String category);
+    @SqlUpdate("DELETE FROM task_entity WHERE createdById = :createdById AND type = :type")
+    void deleteByCreatorAndType(@Bind("createdById") String createdById, @Bind("type") String type);
 
     @ConnectionAwareSqlQuery(
         value =
             "SELECT id, json_unquote(json_extract(json, '$.fullyQualifiedName')) AS fqn "
-                + "FROM task_entity WHERE createdById = :createdById AND category = :category",
+                + "FROM task_entity WHERE createdById = :createdById AND type = :type",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT id, json->>'fullyQualifiedName' AS fqn "
-                + "FROM task_entity WHERE createdById = :createdById AND category = :category",
+                + "FROM task_entity WHERE createdById = :createdById AND type = :type",
         connectionType = POSTGRES)
     @RegisterRowMapper(EntityDAO.EntityIdFqnPairMapper.class)
-    List<EntityDAO.EntityIdFqnPair> listIdAndFqnByCreatorAndCategory(
-        @Bind("createdById") String createdById, @Bind("category") String category);
+    List<EntityDAO.EntityIdFqnPair> listIdAndFqnByCreatorAndType(
+        @Bind("createdById") String createdById, @Bind("type") String type);
 
     @RegisterRowMapper(TaskCountSummaryMapper.class)
     @SqlQuery(
@@ -355,10 +390,15 @@ public interface FeedDAOs {
 
     String TASK_SEARCH_PARAM = "taskSearch";
 
+    // The REST list endpoints page by creation time (TaskListOrder), where the cursor's name slot
+    // carries createdAt; every other listing, the search reindex included, keeps the name keyset.
     // A free-text search can't narrow the rows through an index, so filter first and sort only
     // the matches (e.g. one entity's tasks); paging the name index would check every task.
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
+      if (TaskListOrder.isRequestedBy(filter)) {
+        return listByCreatedAt(filter, limit, TaskListOrder.of(filter).after(afterName, afterId));
+      }
       if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
@@ -373,6 +413,10 @@ public interface FeedDAOs {
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
+      if (TaskListOrder.isRequestedBy(filter)) {
+        return listByCreatedAt(
+            filter, limit, TaskListOrder.of(filter).before(beforeName, beforeId));
+      }
       if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
@@ -383,6 +427,61 @@ public interface FeedDAOs {
           beforeName,
           beforeId);
     }
+
+    default List<String> listByCreatedAt(
+        ListFilter filter, int limit, TaskListOrder.CreatedAtPage page) {
+      final String condition = filter.getConditionForEntity(getTableName());
+      return filter.getQueryParam(TASK_SEARCH_PARAM) == null
+          ? listPageByCreatedAt(condition, filter.getQueryParams(), limit, page)
+          : listSearchPageByCreatedAt(condition, filter.getQueryParams(), limit, page);
+    }
+
+    // The createdAt bound is written twice so the outer `<op>=` stays a range the createdAt index
+    // can seek on; the OR alone would make the planner walk the index from the first row.
+    String CREATED_AT_KEYSET =
+        "task_entity.createdAt <op>= :cursorCreatedAt AND (task_entity.createdAt <op> "
+            + ":cursorCreatedAt OR task_entity.id <op> :cursorId)";
+
+    @SqlQuery(
+        "SELECT task_entity.json FROM task_entity INNER JOIN ("
+            + "SELECT task_entity.id FROM task_entity <cond> AND "
+            + CREATED_AT_KEYSET
+            + " ORDER BY task_entity.createdAt <scanDir>, task_entity.id <scanDir> LIMIT :limit"
+            + ") page_rows ON task_entity.id = page_rows.id "
+            + "ORDER BY task_entity.createdAt <pageDir>, task_entity.id <pageDir>")
+    List<String> listPageByCreatedAt(
+        @Define("cond") String cond,
+        @BindMap Map<String, ?> params,
+        @Bind("limit") int limit,
+        @TaskListOrder.BindPage TaskListOrder.CreatedAtPage page);
+
+    // A free-text search can't narrow the rows through an index, so filter first and sort only
+    // the matches (e.g. one entity's tasks); paging the createdAt index would check every task.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT task_entity.json FROM task_entity INNER JOIN ("
+                + "SELECT task_entity.id FROM task_entity IGNORE INDEX (idx_created_at) <cond> AND "
+                + CREATED_AT_KEYSET
+                + " ORDER BY task_entity.createdAt <scanDir>, task_entity.id <scanDir> LIMIT :limit"
+                + ") page_rows ON task_entity.id = page_rows.id "
+                + "ORDER BY task_entity.createdAt <pageDir>, task_entity.id <pageDir>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "WITH matched AS MATERIALIZED ("
+                + "SELECT task_entity.id, task_entity.createdAt FROM task_entity <cond> AND "
+                + CREATED_AT_KEYSET
+                + ") SELECT task_entity.json FROM task_entity INNER JOIN ("
+                + "SELECT matched.id FROM matched "
+                + "ORDER BY matched.createdAt <scanDir>, matched.id <scanDir> LIMIT :limit"
+                + ") page_rows ON task_entity.id = page_rows.id "
+                + "ORDER BY task_entity.createdAt <pageDir>, task_entity.id <pageDir>",
+        connectionType = POSTGRES)
+    List<String> listSearchPageByCreatedAt(
+        @Define("cond") String cond,
+        @BindMap Map<String, ?> params,
+        @Bind("limit") int limit,
+        @TaskListOrder.BindPage TaskListOrder.CreatedAtPage page);
 
     @ConnectionAwareSqlQuery(
         value =

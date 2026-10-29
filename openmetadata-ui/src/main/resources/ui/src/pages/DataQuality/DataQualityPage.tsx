@@ -19,7 +19,6 @@ import {
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
-
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +26,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestCaseFormDrawer from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import BundleSuiteFormDrawer from '../../components/DataQuality/BundleSuiteForm/BundleSuiteFormDrawer';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -46,6 +46,7 @@ const DataQualityPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
+  const { showModal } = useEntityExportModalProvider();
   const { testSuite: testSuitePermission, testCase: testCasePermission } =
     permissions;
 
@@ -124,8 +125,12 @@ const DataQualityPage = () => {
   );
 
   const exportDataQualityDashboardButton = useMemo(
-    () => DataQualityClassBase.getExportDataQualityDashboardButton(activeTab),
-    [activeTab]
+    () =>
+      DataQualityClassBase.getExportDataQualityDashboardButton(
+        activeTab,
+        showModal
+      ),
+    [activeTab, showModal]
   );
 
   const handleTabChange = (activeKey: string) => {
@@ -172,7 +177,7 @@ const DataQualityPage = () => {
         gap={4}>
         <Card>
           <Card.Content>
-            <div className="tw:flex">
+            <Box>
               <div className="tw:w-2/3">
                 <PageHeader
                   data={{
@@ -183,7 +188,7 @@ const DataQualityPage = () => {
                 />
               </div>
 
-              <div className="d-flex justify-end tw:w-1/3">
+              <Box className="tw:w-1/3" justify="end">
                 {activeTab === DataQualityPageTabs.TEST_SUITES &&
                   testSuitePermission?.Create && (
                     <Button
@@ -213,7 +218,7 @@ const DataQualityPage = () => {
                       <Button
                         className="m-l-md"
                         data-testid="data-quality-add-button-menu"
-                        iconTrailing={<ChevronDown size={14} />}
+                        iconTrailing={ChevronDown}
                         size="sm">
                         {t('label.add')}
                       </Button>
@@ -233,8 +238,8 @@ const DataQualityPage = () => {
                       </Dropdown.Popover>
                     </Dropdown.Root>
                   )}
-              </div>
-            </div>
+              </Box>
+            </Box>
           </Card.Content>
         </Card>
         <Tabs

@@ -89,6 +89,39 @@ describe('useAsyncDataAssetOptions', () => {
     expect(result.current.isLoading).toBe(false);
   });
 
+  it('escapes Elasticsearch reserved characters in the search text', async () => {
+    (searchQuery as jest.Mock).mockResolvedValue(buildSearchResponse([], 0));
+
+    const { result } = renderHook(() =>
+      useAsyncDataAssetOptions(DEFAULT_PARAMS)
+    );
+
+    await act(async () => {
+      await result.current.loadOptions('orders (v2)');
+    });
+
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ query: '*orders \\(v2\\)*' })
+    );
+  });
+
+  it('searches every index it is given', async () => {
+    (searchQuery as jest.Mock).mockResolvedValue(buildSearchResponse([], 0));
+    const searchIndex = [SearchIndex.DATA_ASSET, SearchIndex.DOMAIN];
+
+    const { result } = renderHook(() =>
+      useAsyncDataAssetOptions({ ...DEFAULT_PARAMS, searchIndex })
+    );
+
+    await act(async () => {
+      await result.current.loadOptions('');
+    });
+
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ query: '*', searchIndex })
+    );
+  });
+
   it('sets totalCount from the search response total', async () => {
     (searchQuery as jest.Mock).mockResolvedValue(
       buildSearchResponse(

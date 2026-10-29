@@ -12,7 +12,6 @@
  */
 import { Button, Grid } from '@openmetadata/ui-core-components';
 import { useChartPalette } from '@openmetadata/ui-core-components/charts';
-import { Gutter } from 'antd/lib/grid/row';
 import classNames from 'classnames';
 import { includes, startCase, toLower } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -30,7 +29,6 @@ type TotalEntityInsightSummaryProps = {
   selectedDays: number;
   entities: string[];
   latestData: Record<string, number>;
-  gutter?: Gutter | [Gutter, Gutter];
   onActiveKeysUpdate?: (entity: string[]) => void;
   onActiveKeyMouseHover?: (entity: string) => void;
   activeKeys?: string[];

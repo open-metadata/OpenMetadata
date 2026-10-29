@@ -1,0 +1,21 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/changeRequest/changeRequestPreview.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChangeRequestPreview",
+  "description": "What saving a proposed edit would do, computed without saving anything.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.governance.changeRequest.ChangeRequestPreview",
+  "properties": {
+    "entityType": { "type": "string" },
+    "entityId": { "$ref": "../../type/basic.json#/definitions/uuid" },
+    "requiresApproval": { "description": "True when the edit would be held for review instead of published.", "type": "boolean" },
+    "workflowDefinitionId": { "description": "Workflow that would review the edit.", "$ref": "../../type/basic.json#/definitions/uuid" },
+    "ops": {
+      "description": "Operations the edit would submit, each with the published value it is based on.",
+      "type": "array",
+      "items": { "$ref": "mutationOp.json" }
+    }
+  },
+  "required": ["entityType", "entityId", "requiresApproval"],
+  "additionalProperties": false
+}

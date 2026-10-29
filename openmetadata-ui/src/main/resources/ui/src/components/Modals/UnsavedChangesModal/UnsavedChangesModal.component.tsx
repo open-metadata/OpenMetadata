@@ -20,7 +20,7 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { SaveOutlined } from '@openmetadata/ui-core-components/icons';
+import { Save } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { UnsavedChangesModalProps } from './UnsavedChangesModal.interface';
@@ -52,7 +52,7 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
           width={400}
           onClose={onCancel}>
           <Box className="tw:p-6" direction="col" gap={4}>
-            <FeaturedIcon color="warning" icon={SaveOutlined} size="md" />
+            <FeaturedIcon color="warning" icon={Save} size="md" />
             <Box direction="col" gap={1}>
               <Typography
                 as="h5"

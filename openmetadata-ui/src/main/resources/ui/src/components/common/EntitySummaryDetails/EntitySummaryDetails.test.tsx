@@ -24,22 +24,6 @@ const mockData = {
   openInNewTab: false,
 };
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Row: jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="entity-summary-details">{children}</div>
-    )),
-  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Dropdown: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-  Popover: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-}));
-
 jest.mock('../../../utils/TeamUtils', () => ({
   getTeamsUser: jest.fn().mockReturnValue({
     ownerName: 'test-owner',

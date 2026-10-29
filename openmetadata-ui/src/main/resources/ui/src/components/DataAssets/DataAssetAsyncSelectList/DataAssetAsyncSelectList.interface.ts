@@ -36,7 +36,7 @@ export interface DataAssetAsyncSelectListProps {
   value?: DataAssetOption | DataAssetOption[] | string | string[];
   debounceTimeout?: number;
   initialOptions?: DataAssetOption[];
-  searchIndex?: SearchIndex;
+  searchIndex?: SearchIndex | SearchIndex[];
   onChange?: (option?: DataAssetOption | DataAssetOption[]) => void;
   filterFqns?: string[];
   queryFilter?: Record<string, unknown>;

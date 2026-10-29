@@ -95,6 +95,22 @@ const mockLatestContractResults: DataContractResult = {
   },
 } as DataContractResult;
 
+jest.mock('../../../assets/svg/ic-fail.svg', () => ({
+  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
+}));
+
+jest.mock('../../../assets/svg/ic-inherit.svg', () => ({
+  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
+}));
+
+jest.mock('../../../assets/svg/ic-successful.svg', () => ({
+  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
+}));
+
+jest.mock('../../../assets/svg/ic-task.svg', () => ({
+  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
+}));
+
 describe('ContractSemantics', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -161,6 +177,33 @@ describe('ContractSemantics', () => {
       const icons = document.querySelectorAll('.rule-icon');
 
       expect(icons).toHaveLength(2);
+    });
+  });
+
+  describe('Rule icon', () => {
+    it('should render every status icon at one size with its status color', () => {
+      const { container } = render(
+        <ContractSemantics
+          latestContractResults={mockLatestContractResults}
+          semantics={[
+            ...mockSemantics,
+            { ...mockSemantics[0], enabled: false, rule: 'disabled' },
+          ]}
+        />
+      );
+
+      const icons = [...container.querySelectorAll('.rule-icon')];
+
+      expect(icons).toHaveLength(3);
+
+      icons.forEach((icon) => expect(icon).toHaveClass('tw:size-5'));
+
+      expect(icons[0]).toHaveClass('tw:text-fg-success-secondary');
+      expect(icons[1]).toHaveClass('tw:text-fg-error-secondary');
+      expect(icons[2]).toHaveClass(
+        'rule-icon-default',
+        'tw:text-fg-quaternary'
+      );
     });
   });
 

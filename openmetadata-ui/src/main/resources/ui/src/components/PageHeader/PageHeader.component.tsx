@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Badge } from 'antd';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+
 import { useTranslation } from 'react-i18next';
 import { LearningIcon } from '../Learning/LearningIcon/LearningIcon.component';
 import './page-header.less';
@@ -48,10 +48,11 @@ const PageHeader = ({
           {isBeta && (
             <Badge
               className="service-beta-page-header m-l-sm"
-              count={t('label.beta')}
+              color="brand"
               data-testid="beta-badge"
-              size="small"
-            />
+              size="sm">
+              {t('label.beta')}
+            </Badge>
           )}
         </Typography>
         {learningPageId && (

@@ -87,6 +87,24 @@ class OntologyExpressionRdfWriterTest {
   private final OntologyExpressionRdfWriter writer =
       new OntologyExpressionRdfWriter(iri -> iri.equals(CUSTOMER_CODE.getIRI().toString()));
 
+  @Test
+  void classAndIndividualReuseRetainsBothMeaningsInOwl2Dl() {
+    final Model model = ModelFactory.createDefaultModel();
+    try {
+      writer.write(model, classAxiom(OntologyAxiomType.SUBCLASS_OF, named(PARTY)));
+      writer.write(model, classAxiom(OntologyAxiomType.CLASS_ASSERTION, named(PERSON)));
+      final OWLOntology ontology = OwlApiProjection.parse(model);
+      assertEquals(List.of(), OwlApiProjection.dlViolations(ontology));
+      assertEquals(
+          Set.of(
+              OWL.getOWLSubClassOfAxiom(CUSTOMER, PARTY),
+              OWL.getOWLClassAssertionAxiom(PERSON, OWL.getOWLNamedIndividual(CUSTOMER.getIRI()))),
+          ontology.logicalAxioms().collect(Collectors.toSet()));
+    } finally {
+      model.close();
+    }
+  }
+
   @ParameterizedTest(name = "{0}")
   @MethodSource("constructs")
   void roundTripsThroughOwlApiAsDlValidOwl(
@@ -148,7 +166,7 @@ class OntologyExpressionRdfWriterTest {
                 OntologyAxiomType.EQUIVALENT_CLASS,
                 new OntologyExpression()
                     .withKind(OntologyExpressionKind.ONE_OF)
-                    .withIndividualIris(Set.of(iri(ACTIVE), iri(INACTIVE)))),
+                    .withIndividualIris(List.of(iri(ACTIVE), iri(INACTIVE)))),
             OWL.getOWLEquivalentClassesAxiom(CUSTOMER, OWL.getOWLObjectOneOf(ACTIVE, INACTIVE))),
         construct(
             "nested expression inside a restriction filler",
@@ -198,6 +216,24 @@ class OntologyExpressionRdfWriterTest {
 
   private static Stream<Arguments> dataRestrictions() {
     return Stream.of(
+        construct(
+            "data union",
+            classAxiom(
+                OntologyAxiomType.SUBCLASS_OF,
+                some(CUSTOMER_CODE, union(datatype(XSD_STRING), datatype(XSD_INTEGER)))),
+            OWL.getOWLSubClassOfAxiom(
+                CUSTOMER,
+                OWL.getOWLDataSomeValuesFrom(
+                    CUSTOMER_CODE, OWL.getOWLDataUnionOf(XSD_STRING, XSD_INTEGER)))),
+        construct(
+            "data intersection",
+            classAxiom(
+                OntologyAxiomType.SUBCLASS_OF,
+                only(CUSTOMER_CODE, intersection(datatype(XSD_STRING), datatype(XSD_INTEGER)))),
+            OWL.getOWLSubClassOfAxiom(
+                CUSTOMER,
+                OWL.getOWLDataAllValuesFrom(
+                    CUSTOMER_CODE, OWL.getOWLDataIntersectionOf(XSD_STRING, XSD_INTEGER)))),
         construct(
             "data has-value literal",
             classAxiom(

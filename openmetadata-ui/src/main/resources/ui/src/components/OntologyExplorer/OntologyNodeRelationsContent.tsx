@@ -34,7 +34,6 @@ import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { patchGlossaryTerm } from '../../rest/glossaryAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useOntologyTermDetails } from './hooks/useOntologyTermDetails';
-import { OntologyConceptAttributes } from './OntologyConceptAttributes.component';
 import { COLOR_META_BY_HEX, RELATION_META } from './OntologyExplorer.constants';
 import { OntologyEdge, OntologyNode } from './OntologyExplorer.interface';
 import { isValidUUID } from './utils/graphBuilders';
@@ -426,16 +425,6 @@ export const OntologyNodeRelationsContent: React.FC<
             {parentCount}
           </Badge>
         </Card>
-      ) : null}
-
-      {isValidUUID(termId) ? (
-        <OntologyConceptAttributes
-          attributes={termDetails?.attributes ?? []}
-          effectiveAttributes={termDetails?.effectiveAttributes}
-          isEditMode={isEditMode}
-          termId={termId}
-          onTermUpdate={setTermDetails}
-        />
       ) : null}
 
       {renderRelationsSection()}

@@ -2181,7 +2181,6 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         - ML Store (S3 storage + ECR image repository)
 
         NOTE: Tags, description, displayName are NOT extracted by the connector
-        even though _get_tags() method exists (it's never called).
         """
 
         for model in self.sagemaker_models:

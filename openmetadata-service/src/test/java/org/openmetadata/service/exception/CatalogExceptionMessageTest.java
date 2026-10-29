@@ -13,10 +13,16 @@
 package org.openmetadata.service.exception;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.Entity;
 
 class CatalogExceptionMessageTest {
 
@@ -60,5 +66,36 @@ class CatalogExceptionMessageTest {
 
     assertTrue(message.contains("Tag labels"));
     assertTrue(message.contains("mutually exclusive"));
+  }
+
+  /**
+   * A denied domain reassignment names the domain from the JSON Patch, which carries no {@code name}
+   * — reading that field alone rendered the message as "domains [null]", hiding the one detail the
+   * caller needs.
+   */
+  @Test
+  void testDomainPermissionNotAllowed_namesDomainFromFullyQualifiedNameOnly() {
+    EntityReference fromPatch =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN);
+    fromPatch.setFullyQualifiedName("Marketing");
+
+    String message =
+        CatalogExceptionMessage.domainPermissionNotAllowed(
+            "bu.admin", List.of(fromPatch), List.of(MetadataOperation.EDIT_DOMAINS));
+
+    assertTrue(message.contains("Marketing"), message);
+    assertFalse(message.contains("null"), message);
+  }
+
+  @Test
+  void testDomainPermissionNotAllowed_fallsBackToIdWhenUnnamed() {
+    UUID id = UUID.randomUUID();
+    EntityReference bare = new EntityReference().withId(id).withType(Entity.DOMAIN);
+
+    String message =
+        CatalogExceptionMessage.domainPermissionNotAllowed(
+            "bu.admin", List.of(bare), List.of(MetadataOperation.EDIT_DOMAINS));
+
+    assertTrue(message.contains(id.toString()), message);
   }
 }

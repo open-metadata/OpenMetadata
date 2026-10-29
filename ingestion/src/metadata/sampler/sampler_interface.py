@@ -31,6 +31,7 @@ from metadata.sampler.sampler_config import SamplerConfig
 from metadata.utils.constants import (
     SAMPLE_DATA_DEFAULT_COUNT,
     SAMPLE_DATA_MAX_CELL_LENGTH,
+    SAMPLE_DATA_MAX_COUNT,
 )
 from metadata.utils.logger import sampler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -57,7 +58,7 @@ class SamplerInterface(ABC):
         self.entity = entity
         self.service_connection_config = service_connection_config
         self.sample_config = resolved_config.sample_config
-        self.sample_limit = resolved_config.sample_data_count or SAMPLE_DATA_DEFAULT_COUNT
+        self.sample_limit = self._bounded_sample_limit(resolved_config.sample_data_count)
         self._columns: list[SQALikeColumn] = []
         self._row_count = None
         self._sample_config: StaticSamplingConfig | None = None
@@ -173,6 +174,19 @@ class SamplerInterface(ABC):
         return self._row_count or 0
 
     @staticmethod
+    def _bounded_sample_limit(sample_data_count: int | None) -> int:
+        requested = sample_data_count or SAMPLE_DATA_DEFAULT_COUNT
+        if requested > SAMPLE_DATA_MAX_COUNT:
+            logger.warning(
+                "Requested sample data count %s exceeds the maximum of %s; sampling %s rows instead.",
+                requested,
+                SAMPLE_DATA_MAX_COUNT,
+                SAMPLE_DATA_MAX_COUNT,
+            )
+            return SAMPLE_DATA_MAX_COUNT
+        return requested
+
+    @staticmethod
     def _truncate_cell(value: Any) -> Any:
         """Truncate string values that exceed the max cell length."""
         if isinstance(value, str) and len(value) > SAMPLE_DATA_MAX_CELL_LENGTH:
@@ -198,8 +212,7 @@ class SamplerInterface(ABC):
                 logger.debug(f"Fetching sample data for {self.entity.fullyQualifiedName.root}...")
                 table_data = self.fetch_sample_data(self.columns)
                 table_data.rows = [
-                    [self._truncate_cell(cell) for cell in row]
-                    for row in table_data.rows[: min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)]
+                    [self._truncate_cell(cell) for cell in row] for row in (table_data.rows or [])[: self.sample_limit]
                 ]
                 return table_data
 

@@ -32,6 +32,7 @@ import {
 } from '../OntologyExplorer.constants';
 import {
   BuildGraphDataProps,
+  MergedEdge,
   OntologyEdge,
   OntologyNode,
 } from '../OntologyExplorer.interface';
@@ -641,5 +642,24 @@ describe('useGraphDataBuilder data projection', () => {
         }),
       ])
     );
+  });
+});
+
+describe('getOntologyEdgeId', () => {
+  it('keys a proposal apart from the live relationship it repeats', () => {
+    const live = {
+      from: 'account-id',
+      relationType: 'relatedTo',
+      to: 'ledger-id',
+    } as MergedEdge;
+    const proposed = {
+      ...live,
+      proposal: { changeSetId: 'cs-1', operationId: 'op-1' },
+    } as MergedEdge;
+
+    expect(getOntologyEdgeId(live)).toBe(
+      'edge-account-id-ledger-id-relatedTo-ontology'
+    );
+    expect(getOntologyEdgeId(proposed)).toBe('edge-proposal-op-1');
   });
 });

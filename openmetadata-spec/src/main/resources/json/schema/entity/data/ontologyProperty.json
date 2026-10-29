@@ -1,0 +1,166 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/ontologyProperty.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyProperty",
+  "description": "A formal object, data, or annotation property owned by an ontology, independent of glossary relation types.",
+  "$comment": "@om-entity-type",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.OntologyProperty",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
+    "org.openmetadata.schema.OntologyEntityInterface"
+  ],
+  "definitions": {
+    "kind": {
+      "javaType": "org.openmetadata.schema.type.OntologyPropertyKind",
+      "type": "string",
+      "enum": [
+        "OBJECT",
+        "DATA",
+        "ANNOTATION"
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "version": {
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
+    "href": {
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "ontology": {
+      "description": "Owning ontology entity. Glossaries do not own ontology definitions.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "iri": {
+      "description": "Persisted semantic IRI. Renaming the catalog entity must preserve this identity.",
+      "$ref": "../../type/ontologyIri.json"
+    },
+    "kind": {
+      "$ref": "#/definitions/kind"
+    },
+    "domain": {
+      "description": "Semantic IRIs of the classes in the property domain.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyIri.json"
+      },
+      "uniqueItems": true,
+      "$comment": "A Java URI set would merge identifiers differing only in scheme/host casing or percent-escape spelling.",
+      "existingJavaType": "java.util.List<java.net.URI>",
+      "default": []
+    },
+    "range": {
+      "description": "Semantic IRIs of range classes or datatypes.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyIri.json"
+      },
+      "uniqueItems": true,
+      "existingJavaType": "java.util.List<java.net.URI>",
+      "default": []
+    },
+    "enumValues": {
+      "description": "Allowed typed values for a DATA property, projected as an OWL data enumeration. An absent datatype denotes xsd:string. Empty means no enumeration constraint.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyExpression.json#/definitions/literal"
+      },
+      "uniqueItems": true,
+      "maxItems": 1000,
+      "existingJavaType": "java.util.List<org.openmetadata.schema.type.OntologyLiteral>",
+      "default": []
+    },
+    "unit": {
+      "description": "Unit IRI or display symbol for a DATA property, retained as an annotation without implying conversion.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "isIdentifier": {
+      "description": "Identifier intent for a DATA property. This annotation does not assert functionality, an OWL key, or uniqueness in source data.",
+      "type": "boolean",
+      "default": false
+    },
+    "inverse": {
+      "description": "Semantic IRI of the inverse object property.",
+      "$ref": "../../type/ontologyIri.json"
+    },
+    "characteristics": {
+      "type": "array",
+      "items": {
+        "$ref": "relationshipType.json#/definitions/characteristic"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "propertyChain": {
+      "description": "Ordered object-property IRIs whose composition implies this property.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyIri.json"
+      },
+      "default": []
+    },
+    "disjointWith": {
+      "description": "Semantic IRIs of properties disjoint with this property.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyIri.json"
+      },
+      "uniqueItems": true,
+      "existingJavaType": "java.util.List<java.net.URI>",
+      "default": []
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "fullyQualifiedName",
+    "iri",
+    "ontology",
+    "kind"
+  ],
+  "additionalProperties": false
+}

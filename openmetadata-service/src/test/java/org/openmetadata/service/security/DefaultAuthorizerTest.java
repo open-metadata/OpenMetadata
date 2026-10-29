@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
@@ -302,6 +303,76 @@ class DefaultAuthorizerTest {
   }
 
   @Test
+  void authorizeActorEvaluatesPolicyForTheRecordedAuthor() {
+    SubjectContext analystContext = subjectContext("analyst", false, false, null);
+    ResourceContextInterface resourceContext = mock(ResourceContextInterface.class);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_DOMAINS);
+
+    try (MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class);
+        MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class)) {
+      mockedSubjectContext
+          .when(() -> SubjectContext.getSubjectContext("analyst", null))
+          .thenReturn(analystContext);
+
+      authorizer.authorizeActor(
+          ChangeActor.user("analyst", null), operationContext, resourceContext);
+
+      mockedPolicyEvaluator.verify(
+          () -> PolicyEvaluator.hasPermission(analystContext, resourceContext, operationContext));
+    }
+  }
+
+  @Test
+  void authorizeActorRefusesAnAuthorThatNoLongerExists() {
+    ResourceContextInterface resourceContext = mock(ResourceContextInterface.class);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_DOMAINS);
+
+    try (MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class)) {
+      mockedSubjectContext
+          .when(() -> SubjectContext.getSubjectContext("deleted-user", null))
+          .thenThrow(EntityNotFoundException.byName("deleted-user"));
+
+      assertThrows(
+          AuthorizationException.class,
+          () ->
+              authorizer.authorizeActor(
+                  ChangeActor.user("deleted-user", null), operationContext, resourceContext));
+    }
+  }
+
+  /**
+   * A recorded impersonation was validated when its request came in, or is a workflow's record, so
+   * it is kept for impersonation conditions but not checked again.
+   */
+  @Test
+  void authorizeActorEvaluatesAnImpersonatedAuthorWithoutRevalidatingTheBot() {
+    SubjectContext impersonatedContext =
+        new SubjectContext(new User().withName("target-user"), "agent-bot");
+    ResourceContextInterface resourceContext = mock(ResourceContextInterface.class);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_DOMAINS);
+
+    try (MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class);
+        MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedSubjectContext
+          .when(() -> SubjectContext.getSubjectContext("target-user", "agent-bot"))
+          .thenReturn(impersonatedContext);
+
+      authorizer.authorizeActor(
+          ChangeActor.user("target-user", "agent-bot"), operationContext, resourceContext);
+
+      mockedPolicyEvaluator.verify(
+          () ->
+              PolicyEvaluator.hasPermission(
+                  impersonatedContext, resourceContext, operationContext));
+      mockedEntity.verifyNoInteractions();
+    }
+  }
+
+  @Test
   void authorizeRejectsBotsNotAllowedToImpersonateTarget() {
     SecurityContext securityContext = impersonatedSecurityContext("target-user", "bot-user");
     SubjectContext impersonatedContext =
@@ -489,6 +560,53 @@ class DefaultAuthorizerTest {
               authorizer.authorizeRequests(
                   securityContext, List.of(firstRequest, secondRequest), AuthorizationLogic.ALL));
       assertEquals(2, evaluations.get());
+    }
+  }
+
+  /**
+   * In ANY mode an explicit Deny on one request refuses the whole thing, even if another request
+   * would allow it: a resource a Deny rule names must not be reachable through a sibling check.
+   */
+  @Test
+  void authorizeRequestsAnyRefusesWhenOneRequestIsDenied() {
+    SecurityContext securityContext = securityContext("analyst");
+    SubjectContext analystContext = subjectContext("analyst", false, false, null);
+    AuthRequest deniedRequest =
+        new AuthRequest(
+            new OperationContext(Entity.TABLE, MetadataOperation.VIEW_ALL),
+            mock(ResourceContextInterface.class));
+    AuthRequest allowedRequest =
+        new AuthRequest(
+            new OperationContext(Entity.QUERY, MetadataOperation.VIEW_ALL),
+            mock(ResourceContextInterface.class));
+
+    try (MockedStatic<DefaultAuthorizer> mockedAuthorizer = mockStatic(DefaultAuthorizer.class);
+        MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class)) {
+      mockedAuthorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(analystContext);
+      mockedPolicyEvaluator
+          .when(
+              () ->
+                  PolicyEvaluator.hasPermission(
+                      analystContext,
+                      deniedRequest.resourceContext(),
+                      deniedRequest.operationContext()))
+          .thenThrow(new PolicyDeniedException("denied by rule"));
+      // allowedRequest passes (the default mock returns normally).
+
+      // The Deny must win in either order: [allowed, denied] must refuse too, so an early success
+      // cannot let the loop return before the later Deny is seen.
+      assertThrows(
+          PolicyDeniedException.class,
+          () ->
+              authorizer.authorizeRequests(
+                  securityContext, List.of(deniedRequest, allowedRequest), AuthorizationLogic.ANY));
+      assertThrows(
+          PolicyDeniedException.class,
+          () ->
+              authorizer.authorizeRequests(
+                  securityContext, List.of(allowedRequest, deniedRequest), AuthorizationLogic.ANY));
     }
   }
 

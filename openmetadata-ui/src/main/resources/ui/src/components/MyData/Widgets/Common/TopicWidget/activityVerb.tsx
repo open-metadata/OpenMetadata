@@ -79,8 +79,9 @@ export const ActivitySentence: React.FC<ActivitySentenceProps> = ({
     components={{
       actor: <span className="tw:font-medium tw:text-text-primary" />,
       entity: entityLink ? (
+        // `!`: the legacy `.prose-typography a` rule pins links to 14px.
         <Link
-          className="tw:font-medium tw:text-brand-secondary"
+          className="tw:text-xs! tw:font-medium tw:text-brand-secondary"
           data-testid={`activity-entity-link-${event.id}`}
           to={entityLink}
         />

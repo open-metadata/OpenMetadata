@@ -2535,6 +2535,7 @@ dataContractEntities.forEach((EntityClass) => {
                 .getByText('Data Assets')
                 .click();
               await page
+                .getByTestId('customize-ui-options')
                 .getByText(entityName[entityType] ?? entityType, {
                   exact: true,
                 })

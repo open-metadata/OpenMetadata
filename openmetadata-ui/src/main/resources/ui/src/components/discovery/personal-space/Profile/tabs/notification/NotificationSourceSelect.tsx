@@ -11,48 +11,25 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  Card,
-  Dropdown,
-  Select,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { useCallback, useMemo } from 'react';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import { FilterResourceDescriptor } from '../../../../../../generated/events/filterResourceDescriptor';
-import { EntityIconSize } from '../../../../../../utils/EntityIconUtils';
-import { getEntityNameLabel } from '../../../../../../utils/EntityNameUtils';
-import searchClassBase from '../../../../../../utils/SearchClassBase';
+import type { UseAlertCapabilitiesReturn } from '../../../../../../hooks/useAlertCapabilities';
+import AlertSourcePicker from '../../../../../Alerts/AlertSourcePicker/AlertSourcePicker';
 
 interface NotificationSourceSelectProps {
-  filterResources: FilterResourceDescriptor[];
+  capabilities: UseAlertCapabilitiesReturn;
   value: string[];
-  onChange: (resources: string[]) => void;
-  isViewMode?: boolean;
 }
 
+/** Every source a saved alert watches, read-only, as the alert's configuration shows it. */
 function NotificationSourceSelect({
-  filterResources,
+  capabilities,
   value,
-  onChange,
-  isViewMode = false,
 }: Readonly<NotificationSourceSelectProps>) {
   const { t } = useTranslation();
-  const hasSource = value.length > 0;
-  const resources = useMemo(
-    () => filterResources.map((r) => r.name ?? ''),
-    [filterResources]
-  );
-
-  const handleSourceChange = useCallback(
-    (val: string) => onChange([val]),
-    [onChange]
-  );
 
   return (
-    <Card className="tw:w-full" size="md">
+    <Card className="tw:w-full" size="md" variant="muted">
       <Card.Content>
         <Box direction="col" gap={3}>
           <Box direction="col" gap={1}>
@@ -63,74 +40,11 @@ function NotificationSourceSelect({
               {t('message.alerts-source-description')}
             </Typography>
           </Box>
-
-          {hasSource ? (
-            <Select
-              className="tw:w-full"
-              data-testid="source-select"
-              isDisabled={isViewMode}
-              items={resources.map((name) => ({
-                id: name,
-                label: getEntityNameLabel(name),
-              }))}
-              placeholder={t('label.select-field', {
-                field: t('label.data-asset-plural'),
-              })}
-              value={value[0] ?? null}
-              onChange={(key) =>
-                !isViewMode && key && handleSourceChange(String(key))
-              }>
-              {(item) => (
-                <Select.Item id={item.id} key={item.id}>
-                  <Box align="center" direction="row" gap={2}>
-                    {searchClassBase.getEntityIconWithBg(
-                      item.id,
-                      EntityIconSize.Size14
-                    )}
-                    <Typography>{item.label}</Typography>
-                  </Box>
-                </Select.Item>
-              )}
-            </Select>
-          ) : (
-            <Box className="tw:self-start">
-              <Dropdown.Root>
-                <Button color="primary" data-testid="add-source-button">
-                  {t('label.add-entity', {
-                    entity: t('label.source'),
-                  })}
-                </Button>
-                <Dropdown.Popover placement="bottom left">
-                  <Box
-                    className="tw:py-1 tw:px-1.5 tw:max-h-60 tw:overflow-y-auto"
-                    direction="col">
-                    <Typography
-                      className="tw:text-tertiary tw:px-2.5 tw:py-1"
-                      size="text-xs">
-                      {t('label.data-asset-plural')}
-                    </Typography>
-                    <Dropdown.Menu
-                      onAction={(key) => handleSourceChange(String(key))}>
-                      {resources.map((name) => (
-                        <Dropdown.Item
-                          id={name}
-                          key={name}
-                          textValue={getEntityNameLabel(name)}>
-                          <Box inline align="center" direction="row" gap={2}>
-                            {searchClassBase.getEntityIconWithBg(
-                              name,
-                              EntityIconSize.Size14
-                            )}
-                            {getEntityNameLabel(name)}
-                          </Box>
-                        </Dropdown.Item>
-                      ))}
-                    </Dropdown.Menu>
-                  </Box>
-                </Dropdown.Popover>
-              </Dropdown.Root>
-            </Box>
-          )}
+          <AlertSourcePicker
+            isDisabled
+            capabilities={capabilities}
+            value={value}
+          />
         </Box>
       </Card.Content>
     </Card>

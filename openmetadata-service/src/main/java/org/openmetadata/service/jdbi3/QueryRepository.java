@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.review.MemoryEvidenceHolds;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.search.vector.QueryBodyTextContributor;
 import org.openmetadata.service.util.EntityUtil;
@@ -71,6 +72,15 @@ public class QueryRepository extends EntityRepository<Query> {
   public void setFullyQualifiedName(Query query) {
     query.setFullyQualifiedName(
         FullyQualifiedName.add(query.getService().getFullyQualifiedName(), query.getName()));
+  }
+
+  /**
+   * Runs before every delete, direct or cascaded from the service, while the relationship rows
+   * naming the memories this Query supports still exist: a Query has no soft delete.
+   */
+  @Override
+  protected void preDelete(Query query, String deletedBy) {
+    MemoryEvidenceHolds.inCatalog().holdMemoriesSupportedBy(query);
   }
 
   @Override
@@ -154,39 +164,57 @@ public class QueryRepository extends EntityRepository<Query> {
     if (!needsQueryUsage(fields) || queries == null || queries.isEmpty()) {
       return;
     }
+    final Map<UUID, List<EntityReference>> queryUsageMap =
+        fields.contains(QUERY_USED_IN_FIELD) ? getQueryUsage(queries) : getTableUsage(queries);
+    queries.forEach(
+        query -> query.setQueryUsedIn(queryUsageMap.getOrDefault(query.getId(), List.of())));
+  }
 
-    final boolean queryUsageRequested = fields.contains(QUERY_USED_IN_FIELD);
-    final List<String> queryIds = queries.stream().map(q -> q.getId().toString()).toList();
+  /** {@link #getQueryUsage(Query)} for many queries in one batch, keyed by query id. */
+  public Map<UUID, List<EntityReference>> getQueryUsage(List<Query> queries) {
+    if (queries.isEmpty()) {
+      return Map.of();
+    }
     final List<CollectionDAO.EntityRelationshipObject> relationships =
-        queryUsageRequested
-            ? daoCollection
-                .relationshipDAO()
-                .findFromBatch(queryIds, Entity.QUERY, Relationship.MENTIONED_IN.ordinal())
-            : findActiveTableUsageRelationships(queryIds);
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(queryIds(queries), Entity.QUERY, Relationship.MENTIONED_IN.ordinal());
     final Map<String, Map<UUID, EntityReference>> referencesByType =
-        queryUsageRequested ? loadQueryUsageReferences(relationships) : Map.of();
-    Map<UUID, List<EntityReference>> queryUsageMap = new HashMap<>();
+        loadQueryUsageReferences(relationships);
+    final Map<UUID, List<EntityReference>> queryUsageMap = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : relationships) {
-      final String usageType = record.getFromEntity();
-      if (!queryUsageRequested && !Entity.TABLE.equals(usageType)) {
-        continue;
-      }
-      final UUID usageId = UUID.fromString(record.getFromId());
       final EntityReference entityRef =
-          queryUsageRequested
-              ? referencesByType.getOrDefault(usageType, Map.of()).get(usageId)
-              : new EntityReference().withId(usageId).withType(Entity.TABLE);
+          referencesByType
+              .getOrDefault(record.getFromEntity(), Map.of())
+              .get(UUID.fromString(record.getFromId()));
       if (entityRef != null) {
-        final UUID queryId = UUID.fromString(record.getToId());
-        queryUsageMap.computeIfAbsent(queryId, ignored -> new ArrayList<>()).add(entityRef);
+        queryUsageMap
+            .computeIfAbsent(UUID.fromString(record.getToId()), ignored -> new ArrayList<>())
+            .add(entityRef);
       }
     }
+    return queryUsageMap;
+  }
 
-    queries.forEach(
-        query -> {
-          List<EntityReference> usage = queryUsageMap.getOrDefault(query.getId(), List.of());
-          query.setQueryUsedIn(usage);
-        });
+  /** The tables each query is used in, as bare references: all that domain inheritance reads. */
+  private Map<UUID, List<EntityReference>> getTableUsage(List<Query> queries) {
+    final Map<UUID, List<EntityReference>> queryUsageMap = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record :
+        findActiveTableUsageRelationships(queryIds(queries))) {
+      if (Entity.TABLE.equals(record.getFromEntity())) {
+        queryUsageMap
+            .computeIfAbsent(UUID.fromString(record.getToId()), ignored -> new ArrayList<>())
+            .add(
+                new EntityReference()
+                    .withId(UUID.fromString(record.getFromId()))
+                    .withType(Entity.TABLE));
+      }
+    }
+    return queryUsageMap;
+  }
+
+  private static List<String> queryIds(List<Query> queries) {
+    return queries.stream().map(q -> q.getId().toString()).toList();
   }
 
   private Map<String, Map<UUID, EntityReference>> loadQueryUsageReferences(

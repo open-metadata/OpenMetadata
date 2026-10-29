@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
@@ -41,11 +41,6 @@ jest.mock(
     default: () => <div data-testid="add-pipeline-modal" />,
   })
 );
-
-jest.mock('../../Entity/EntityLineage/EntityLineageSidebar.component', () => ({
-  __esModule: true,
-  default: () => <div data-testid="entity-lineage-sidebar" />,
-}));
 
 jest.mock('@openmetadata/ui-core-components', () => {
   type ChildrenProps = { children?: ReactNode };
@@ -102,8 +97,25 @@ describe('Lineage', () => {
     );
 
     expect(useLineageStore.getState().entityFqn).toBe('svc.db.s.t');
-    expect(screen.getByTestId('entity-lineage-sidebar')).toBeInTheDocument();
   });
+
+  it.each([
+    [false, true],
+    [true, false],
+  ])(
+    'with ?fullscreen=true, platform=%s goes full screen: %s',
+    (isPlatformLineage, expected) => {
+      const { container } = render(
+        <MemoryRouter initialEntries={['/lineage?fullscreen=true']}>
+          <Lineage entityFqn="x" isPlatformLineage={isPlatformLineage} />
+        </MemoryRouter>
+      );
+
+      expect(Boolean(container.querySelector('.full-screen-lineage'))).toBe(
+        expected
+      );
+    }
+  );
 
   it('mirrors entityFqn to the store on mount with default props', () => {
     render(

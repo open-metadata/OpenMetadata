@@ -25,6 +25,7 @@ import java.time.ZoneOffset;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -61,6 +62,43 @@ public class RdfLiveWriteRecoveryIT {
       new EnumMap<>(RdfTestDatabase.Backend.class);
   private static GenericContainer<?> fuseki;
   private static String endpoint;
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void callerTransactionCommitsOrRollsBackItsOutboxAndWatermark(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final long previous = fixture.primary.enqueuedWatermark();
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              fixture
+                  .database
+                  .jdbi()
+                  .useTransaction(
+                      handle -> {
+                        fixture.primary.enqueue(handle, insert(0));
+                        assertEquals(
+                            0, CompletableFuture.supplyAsync(fixture.other::pendingWrites).join());
+                        throw new IllegalStateException("metadata mutation failed");
+                      }));
+      assertEquals(0, fixture.other.pendingWrites());
+      assertEquals(previous, fixture.other.enqueuedWatermark());
+      fixture
+          .database
+          .jdbi()
+          .useHandle(
+              handle ->
+                  assertThrows(
+                      IllegalStateException.class,
+                      () -> fixture.primary.enqueue(handle, insert(0))));
+      fixture.database.jdbi().useTransaction(handle -> fixture.primary.enqueue(handle, insert(0)));
+      assertEquals(1, fixture.other.pendingWrites());
+      assertTrue(fixture.other.processNext(fixture::apply));
+      assertEquals(0, fixture.primary.pendingWrites());
+      assertEquals(1, fixture.storage.getTripleCount(GRAPH));
+    }
+  }
 
   @BeforeAll
   static void startServices() {

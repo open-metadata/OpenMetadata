@@ -12,21 +12,19 @@
  */
 import {
   Box,
+  Button,
   EmptyPlaceholderAction,
   Grid,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
-import { Form, Select } from 'antd';
+import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
-import { getLayoutGutter } from '../../../../utils/common/layout.utils';
-import { getPopupContainer } from '../../../../utils/formPureUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import PieChartSummaryPanel from '../../SummaryPannel/PieChartSummaryPanel.component';
 import { TestSuiteListPanel } from './TestSuiteListPanel.component';
@@ -95,47 +93,41 @@ export const TestSuites = () => {
 
   if (!testSuiteFlags.hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.test-suite'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.test-suite'),
+          })}
+        />
+      </div>
     );
   }
 
   return (
     <Grid
-      className="layout-row layout-grid"
+      className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
       data-testid="test-suite-container"
-      style={{ ...getLayoutGutter(16, 16) }}>
+      rowGap="4">
       <Grid.Item className="layout-column" span={24}>
-        <Form className="new-form-style" layout="inline">
-          <Box
-            inline
-            align="center"
-            className="layout-space layout-space-horizontal w-full justify-between"
-            gap={4}
-            itemClassName="layout-space-item">
-            <Form.Item className="m-0" label={t('label.owner')} name="owner">
-              <UserTeamSelectableList
-                hasPermission
-                owner={selectedOwner}
-                popoverProps={{
-                  getPopupContainer: getPopupContainer,
-                }}
-                onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}>
-                <Select
-                  data-testid="owner-select-filter"
-                  open={false}
-                  placeholder={t('label.owner')}
-                  value={ownerFilterValue}
-                />
-              </UserTeamSelectableList>
-            </Form.Item>
-          </Box>
-        </Form>
+        <Box align="center" gap={2}>
+          <Typography as="span" size="text-sm">
+            {t('label.owner')}
+          </Typography>
+          <UserTeamSelectableList
+            hasPermission
+            owner={selectedOwner}
+            onUpdate={handleOwnerSelect}>
+            <Button
+              aria-label={t('label.owner')}
+              color="secondary"
+              data-testid="owner-select-filter"
+              iconTrailing={ChevronDown}
+              size="sm">
+              {ownerFilterValue?.label ?? t('label.owner')}
+            </Button>
+          </UserTeamSelectableList>
+        </Box>
       </Grid.Item>
 
       <Grid.Item className="layout-column" span={24}>

@@ -86,7 +86,7 @@ test.describe(
       await page.keyboard.type(businessTeamName);
 
       for (const teamName of teamNames) {
-        const dropdown = page.locator('.ant-tree-select-dropdown');
+        const dropdown = page.getByTestId('team-select-popover');
 
         await expect(dropdown).toContainText(teamName);
         await expect(dropdown.getByText(teamName)).toHaveCount(1);
@@ -98,7 +98,7 @@ test.describe(
         await page.click('[data-testid="team-select"]');
         await page.keyboard.type(teamName);
 
-        await expect(page.locator('.ant-tree-select-dropdown')).toContainText(
+        await expect(page.getByTestId('team-select-popover')).toContainText(
           teamName
         );
       }
@@ -128,13 +128,7 @@ test.describe(
 
         const teamSelect = page.getByTestId('team-select');
         const teamSelectInput = teamSelect.getByRole('combobox');
-        const dropdown = page.getByRole('tree');
-        // Selection chips only — the select also mirrors the typed search
-        // text as a text node (ant-select-selection-search-mirror), so a
-        // bare getByText inside the control matches even with no selection.
-        const selectedTeamChips = teamSelect.locator(
-          '.ant-select-selection-item'
-        );
+        const dropdown = page.getByTestId('team-select-popover');
 
         await test.step('Non-Group team with children is visible but not selectable', async () => {
           await teamSelect.click();
@@ -147,14 +141,16 @@ test.describe(
           await departmentOption.click();
 
           await expect(
-            selectedTeamChips.filter({ hasText: departmentTeamName })
+            teamSelect.getByRole('button', {
+              name: `Remove ${departmentTeamName}`,
+            })
           ).toHaveCount(0);
         });
 
         await test.step('Non-Group team without children is hidden', async () => {
           await teamSelectInput.fill(childlessDepartmentName);
 
-          // With every option pruned antd unmounts the tree ("No data"), so a
+          // With every option pruned the tree unmounts ("No data"), so a
           // count assertion is used — not.toContainText fails on a missing
           // element instead of passing.
           await expect(dropdown.getByText(childlessDepartmentName)).toHaveCount(
@@ -172,7 +168,7 @@ test.describe(
           await groupOption.click();
 
           await expect(
-            selectedTeamChips.filter({ hasText: groupTeamName })
+            teamSelect.getByRole('button', { name: `Remove ${groupTeamName}` })
           ).toHaveCount(1);
         });
       } finally {
@@ -209,15 +205,12 @@ test.describe(
 
         const teamSelect = popover.getByTestId('team-select');
         const teamSelectInput = teamSelect.getByRole('combobox');
-        // `teams-custom-dropdown-class` is set by TeamsSelectableNew via
-        // popupClassName (component-owned, not an antd internal).
-        const dropdown = page.locator('.teams-custom-dropdown-class');
+        // The core TreeSelect renders its tree in a `team-select-popover` overlay.
+        const dropdown = page.getByTestId('team-select-popover');
         // Chips truncate long labels, so selection is asserted on the tree
-        // node's selected state where the full team name is rendered. The antd
-        // class is the only selected-state signal: rc-tree renders no treeitem
-        // role and (mis)maps aria-selected to `selectable`, not `selected`.
+        // node's `data-selected` state, where the full team name is rendered.
         const selectedTreeNodes = dropdown.locator(
-          '.ant-select-tree-treenode-selected'
+          '[data-testid^="tree-node-"][data-selected="true"]'
         );
 
         await test.step('Non-Group team with children is visible but not selectable', async () => {
@@ -257,6 +250,13 @@ test.describe(
             selectedTreeNodes.filter({ hasText: groupTeamName })
           ).toHaveCount(1);
         });
+
+        // The multi-select tree stays open after a pick, and when it opens
+        // below the input it covers the Cancel/Save row. Dismiss it first.
+        await page.keyboard.press('Escape');
+
+        await expect(dropdown).toBeHidden();
+        await expect(popover).toBeVisible();
 
         // Close without saving so the admin's team memberships stay untouched
         await page.getByTestId('teams-edit-close-btn').click();

@@ -102,6 +102,17 @@ def filter_by_table(table_filter_pattern: FilterPattern | None, table_name: str)
     return _filter(table_filter_pattern, table_name)
 
 
+def filter_by_column(column_filter_pattern: FilterPattern | None, column_name: str) -> bool:
+    """
+    Return True if the column needs to be filtered, False otherwise
+
+    :param column_filter_pattern: Model defining column filtering logic
+    :param column_name: column name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(column_filter_pattern, column_name)
+
+
 def filter_by_chart(chart_filter_pattern: FilterPattern | None, chart_name: str) -> bool:
     """
     Return True if the chart needs to be filtered, False otherwise

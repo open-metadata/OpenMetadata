@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Steps } from 'antd';
+import {
+  ProgressStepItem,
+  ProgressSteps,
+} from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import './ingestion-stepper.style.less';
@@ -36,21 +40,20 @@ const IngestionStepper = ({
       steps
         .filter((step) => !excludeSteps.includes(step.step))
         .map((step) => {
+          let status: ProgressStepItem['status'] = 'incomplete';
+          if (step.step === activeStep) {
+            status = 'current';
+          } else if (step.step < activeStep) {
+            status = 'complete';
+          }
+
+          // Optional steps can leave gaps, so derive status from the original identifier.
           return {
-            icon: (
-              <span
-                className={classNames(
-                  'ingestion-rounder self-center',
-                  {
-                    active: step.step === activeStep,
-                  },
-                  { completed: step.step < activeStep }
-                )}
-                data-testid={`step-icon-${step.step}`}
-              />
+            id: String(step.step),
+            title: (
+              <span data-testid={`step-icon-${step.step}`}>{step.name}</span>
             ),
-            key: step.name,
-            title: step.name,
+            status,
           };
         }),
     [steps, activeStep, excludeSteps]
@@ -60,11 +63,11 @@ const IngestionStepper = ({
     <div
       className={classNames('stepper-container p-x-24', className)}
       data-testid="stepper-container">
-      <Steps
-        current={activeStep}
-        items={items}
-        labelPlacement="vertical"
-        size="small"
+      <ProgressSteps
+        labelPlacement="bottom"
+        size="sm"
+        steps={items}
+        type="icon"
       />
     </div>
   );

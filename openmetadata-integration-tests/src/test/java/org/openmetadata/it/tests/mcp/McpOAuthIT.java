@@ -10,6 +10,9 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -18,6 +21,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.mcp.auth.RefreshToken;
+import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Execution(ExecutionMode.SAME_THREAD)
@@ -58,6 +63,33 @@ public class McpOAuthIT extends McpTestBase {
 
     assertThat(metadata.get("response_types_supported").toString()).contains("code");
     assertThat(metadata.get("code_challenge_methods_supported").toString()).contains("S256");
+  }
+
+  @Test
+  @Order(1)
+  void testOpenIdConfigurationAppendedToIssuer_servesOpenIdDiscoveryMetadata() throws Exception {
+    JsonNode openIdConfiguration = getJson("/mcp/.well-known/openid-configuration");
+
+    assertThat(openIdConfiguration)
+        .isEqualTo(getJson("/mcp/.well-known/oauth-authorization-server"));
+    // Required by OpenID Connect Discovery; the TypeScript MCP SDK rejects the document without
+    // them
+    assertThat(openIdConfiguration.get("jwks_uri").asText()).endsWith("/api/v1/system/config/jwks");
+    assertThat(openIdConfiguration.get("subject_types_supported").toString()).contains("public");
+    assertThat(openIdConfiguration.has("id_token_signing_alg_values_supported")).isTrue();
+  }
+
+  private JsonNode getJson(String path) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getMcpUrl(path)))
+            .header("Accept", "application/json")
+            .GET()
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertThat(response.statusCode()).isEqualTo(200);
+    return OBJECT_MAPPER.readTree(response.body());
   }
 
   @Test
@@ -332,6 +364,75 @@ public class McpOAuthIT extends McpTestBase {
                 + "\"error\":{\"code\":-32001,\"message\":\"Invalid or expired bearer token\"}}");
     // RFC 6750 section 3.1: a token was supplied and rejected, so the challenge says so.
     assertThat(challengeOf(response)).contains("error=\"invalid_token\"");
+  }
+
+  @Test
+  @Order(14)
+  void testRefresh_rotatedTokenKeepsTheEndOfTheGrant() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    long grantEnd = System.currentTimeMillis() + Duration.ofDays(5).toMillis();
+    String refreshToken = seedRefreshToken(List.of(), grantEnd);
+
+    HttpResponse<String> response = refresh(refreshToken);
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    String rotated = OBJECT_MAPPER.readTree(response.body()).get("refresh_token").asText();
+    assertThat(new OAuthTokenRepository().findRefreshToken(rotated).getExpiresAt())
+        .isEqualTo(grantEnd);
+  }
+
+  @Test
+  @Order(15)
+  void testRefreshOfAGrantHoldingUnknownScopes_keepsOnlyTheKnownOnes() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    List<String> granted =
+        Stream.concat(
+                Stream.of("openid"), IntStream.range(0, 200).mapToObj(index -> "scope" + index))
+            .toList();
+    String refreshToken =
+        seedRefreshToken(granted, System.currentTimeMillis() + Duration.ofDays(1).toMillis());
+
+    HttpResponse<String> response = refresh(refreshToken);
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    String rotated = OBJECT_MAPPER.readTree(response.body()).get("refresh_token").asText();
+    assertThat(new OAuthTokenRepository().findRefreshToken(rotated).getScopes())
+        .containsExactly("openid");
+  }
+
+  /**
+   * Stores a refresh token for admin granting {@code scopes} and ending at {@code expiresAt}, as a
+   * sign-in would.
+   */
+  private static String seedRefreshToken(List<String> scopes, long expiresAt) {
+    String value = UUID.randomUUID().toString();
+    new OAuthTokenRepository()
+        .storeRefreshToken(
+            new RefreshToken(value, registeredClientId, scopes, expiresAt),
+            registeredClientId,
+            "admin",
+            scopes);
+    return value;
+  }
+
+  private HttpResponse<String> refresh(String refreshToken) throws Exception {
+    String formBody =
+        "grant_type=refresh_token&refresh_token="
+            + refreshToken
+            + "&client_id="
+            + registeredClientId
+            + "&client_secret="
+            + registeredClientSecret;
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getMcpUrl("/mcp/token")))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .POST(HttpRequest.BodyPublishers.ofString(formBody))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private static String challengeOf(HttpResponse<String> response) {

@@ -12,7 +12,7 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { Button } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import { Persona as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, {
@@ -76,6 +76,12 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
       setHash(HASH_TAB, viewToSubPath(nextView));
     },
     [setHash]
+  );
+  // Stable: PersonaDetail builds its header actions from it, and a new
+  // callback each render would re-push the header in a render loop.
+  const onPersonaDeleted = useCallback(
+    () => onNavigate({ type: 'landing' }),
+    [onNavigate]
   );
 
   const [editorActions, setEditorActions] = useState<CustomizeEditorActions>();
@@ -260,7 +266,7 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
           <Button
             color="primary"
             data-testid="add-persona-button"
-            size="sm"
+            size="xs"
             onPress={() => onNavigate({ type: 'add' })}>
             {addPersonaLabel}
           </Button>
@@ -372,7 +378,7 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
           activeTab={activeTab}
           fqn={view.fqn}
           subCategory={subCategory}
-          onDeleted={() => onNavigate({ type: 'landing' })}
+          onDeleted={onPersonaDeleted}
           onRename={setResolvedName}
           onSelectCategory={(category) =>
             onNavigate({
@@ -423,9 +429,9 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
   }
 
   return (
-    <div className="tw:flex-1 tw:overflow-y-auto tw:pt-1">
+    <Box className="tw:min-h-0 tw:flex-1" direction="col">
       <PersonasLanding onNavigate={onNavigate} />
-    </div>
+    </Box>
   );
 };
 /* eslint-enable sonarjs/cyclomatic-complexity */

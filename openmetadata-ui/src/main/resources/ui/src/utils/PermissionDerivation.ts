@@ -28,6 +28,7 @@ export interface DerivedPermissionFlags {
   canEditDisplayName: boolean;
   canEditCustomFields: boolean;
   canEditOwners: boolean;
+  canEditDomains: boolean;
   canEditTier: boolean;
   canEditLineage: boolean;
   canEditStatus: boolean;
@@ -84,6 +85,7 @@ export const getDerivedPermissionFlags = (
     canEditDisplayName: edit(Operation.EditDisplayName),
     canEditCustomFields: edit(Operation.EditCustomFields),
     canEditOwners: edit(Operation.EditOwners),
+    canEditDomains: edit(Operation.EditDomains),
     canEditTier: edit(Operation.EditTier),
     canEditLineage: edit(Operation.EditLineage),
     canEditStatus: edit(Operation.EditStatus),

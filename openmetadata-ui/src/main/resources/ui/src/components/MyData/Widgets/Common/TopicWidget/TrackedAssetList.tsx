@@ -45,7 +45,7 @@ const TrackedAssetList: React.FC<TrackedAssetListProps> = ({
       </Typography>
 
       {assets.length === 0 ? (
-        <Typography className="tw:text-text-tertiary!" size="text-sm">
+        <Typography className="tw:text-text-tertiary!" size="text-xs">
           {t('message.no-data-available')}
         </Typography>
       ) : (
@@ -53,7 +53,7 @@ const TrackedAssetList: React.FC<TrackedAssetListProps> = ({
           {assets.map((asset) => (
             <li data-testid={`${dataTestId}-${asset.name}`} key={asset.id}>
               <Link
-                className="tw:flex tw:min-w-0 tw:items-center tw:gap-2.5 tw:rounded-lg tw:bg-secondary tw:px-3 tw:py-2.5"
+                className="tw:flex tw:min-w-0 tw:items-center tw:gap-2.5 tw:rounded-lg tw:bg-secondary tw:px-3 tw:py-2.5 tw:no-underline!"
                 to={entityUtilClassBase.getEntityLink(
                   asset.entityType,
                   asset.fullyQualifiedName
@@ -73,8 +73,10 @@ const TrackedAssetList: React.FC<TrackedAssetListProps> = ({
                   size="text-sm">
                   {asset.name}
                 </Typography>
+                {/* `ml-auto`: Typography's ellipsis wrapper does not take the
+                  name's `flex-1`, so the badge would otherwise hug the name. */}
                 <Badge
-                  className="tw:shrink-0"
+                  className="tw:ml-auto tw:shrink-0"
                   color={asset.hasChanged ? 'warning' : 'gray'}
                   size="sm"
                   type="pill-color">

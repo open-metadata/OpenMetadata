@@ -12,28 +12,15 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import UserProfileCard from './UserProfileCard';
-
-let mockSwitcherCardRef: React.RefObject<HTMLElement> | undefined;
 
 jest.mock('../../../AppModeSwitcher/AppModeSwitcher', () => ({
   __esModule: true,
-  default: ({
-    compact,
-    cardRef,
-  }: {
-    compact?: boolean;
-    cardRef?: React.RefObject<HTMLElement>;
-  }) => {
-    mockSwitcherCardRef = cardRef;
-
-    return (
-      <button data-testid="app-mode-switcher" type="button">
-        {compact ? 'compact' : 'full'}
-      </button>
-    );
-  },
+  default: ({ compact }: { compact?: boolean }) => (
+    <button data-testid="app-mode-switcher" type="button">
+      {compact ? 'compact' : 'full'}
+    </button>
+  ),
 }));
 
 jest.mock('../../../discovery/personal-space/AIUserMenu/AIUserMenu', () => ({
@@ -58,32 +45,19 @@ jest.mock(
 );
 
 describe('UserProfileCard', () => {
-  beforeEach(() => {
-    mockSwitcherCardRef = undefined;
-  });
-
-  it('shows the full user menu beside the inbox, with the mode switcher in its own card below', () => {
+  it('shows the full user menu, the inbox and the mode switcher in one card', () => {
     render(<UserProfileCard />);
 
     const profileCard = screen.getByTestId('ask-user-card');
-    const switcherCard = screen.getByTestId('ask-app-mode-card');
 
     expect(profileCard).toHaveTextContent('expanded');
     expect(profileCard).toContainElement(
       screen.getByTestId('ai-inbox-icon-btn')
     );
-    expect(profileCard).not.toContainElement(
+    expect(profileCard).toContainElement(
       screen.getByTestId('app-mode-switcher')
     );
-    expect(switcherCard).toHaveTextContent('full');
-  });
-
-  it('hands the switcher its own card, so clicks inside it do not close the switcher popover', () => {
-    render(<UserProfileCard />);
-
-    expect(mockSwitcherCardRef?.current).toBe(
-      screen.getByTestId('ask-app-mode-card')
-    );
+    expect(screen.getByTestId('app-mode-switcher')).toHaveTextContent('full');
   });
 
   it('stacks the inbox, avatar-only user menu and compact switcher in the rail', () => {

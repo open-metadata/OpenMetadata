@@ -30,7 +30,6 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.ShaclValidationMode;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.entity.data.RelationshipType;
-import org.openmetadata.schema.type.OntologyAttributeDataType;
 import org.openmetadata.schema.type.RdfValidationReport;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.service.exception.BadRequestException;
@@ -199,10 +198,7 @@ class GlossaryRdfImporterTest {
             .orElseThrow();
     assertEquals("hasNpiNumber", npi.name, "local name -> custom property name");
     assertEquals(List.of(HCP + "HealthcareProvider"), npi.domainIris, "rdfs:domain captured");
-    assertEquals(
-        OntologyAttributeDataType.STRING,
-        importer.attributeDataType(npi.xsdType),
-        "xsd:string -> string");
+    assertEquals("string", importer.customPropertyTypeFor(npi.xsdType), "xsd:string -> string");
 
     DatatypeIntent years =
         datatypes.stream()
@@ -210,12 +206,10 @@ class GlossaryRdfImporterTest {
             .findFirst()
             .orElseThrow();
     assertEquals(
-        OntologyAttributeDataType.INTEGER,
-        importer.attributeDataType(years.xsdType),
-        "xsd:integer -> integer");
+        "integer", importer.customPropertyTypeFor(years.xsdType), "xsd:integer -> integer");
     assertEquals(
-        OntologyAttributeDataType.DECIMAL,
-        importer.attributeDataType("http://www.w3.org/2001/XMLSchema#double"),
+        "number",
+        importer.customPropertyTypeFor("http://www.w3.org/2001/XMLSchema#double"),
         "xsd:double -> number");
   }
 

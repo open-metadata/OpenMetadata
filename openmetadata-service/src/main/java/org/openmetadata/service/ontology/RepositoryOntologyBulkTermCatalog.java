@@ -22,8 +22,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 final class RepositoryOntologyBulkTermCatalog implements OntologyBulkTermCatalog {
-  private static final String BULK_FIELDS =
-      "parent,relatedTerms,attributes,conceptMappings,ontologySource";
+  private static final String BULK_FIELDS = "parent,relatedTerms,conceptMappings";
   private static final String PARENT_FILTER = "parent";
   private final GlossaryTermRepository repository;
   private final Fields fields;

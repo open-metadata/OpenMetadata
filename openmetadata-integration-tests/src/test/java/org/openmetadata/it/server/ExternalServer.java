@@ -2,6 +2,7 @@ package org.openmetadata.it.server;
 
 import java.net.URI;
 import java.util.Locale;
+import org.openmetadata.it.bench.ApiLatencyRecorder;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 
@@ -35,7 +36,7 @@ public final class ExternalServer {
     final URI uri = URI.create(baseUrl.endsWith("/") ? baseUrl + "api" : baseUrl + "/api");
 
     final OpenMetadataConfig config =
-        OpenMetadataConfig.builder()
+        ApiLatencyRecorder.instrument(OpenMetadataConfig.builder())
             .serverUrl(uri.toString())
             .accessToken(adminToken)
             .readTimeout(120000)

@@ -53,6 +53,10 @@ export type SearchGlossaryTermsParams = ListParamsWithOffset & {
   parent?: string;
   parentFqn?: string;
   entityStatus?: string;
+  /** Only terms from this provider, such as `automation` for an AI agent's proposals. */
+  provider?: string;
+  /** Leave out the terms from this provider. */
+  excludeProvider?: string;
 };
 
 const BASE_URL = '/glossaries';
@@ -298,7 +302,7 @@ export const addAssetsToGlossaryTerm = async (
 
   const response = await APIClient.put<
     AddGlossaryToAssetsRequest,
-    AxiosResponse<GlossaryTerm>
+    AxiosResponse<BulkOperationResult>
   >(`/glossaryTerms/${glossaryTerm.id}/assets/add`, data);
 
   return response.data;

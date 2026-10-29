@@ -35,7 +35,6 @@ enum ODCSSqlQuote {
           "BigQuery",
           "Clickhouse",
           "Databricks",
-          "DeltaLake",
           "Doris",
           "Hive",
           "Impala",

@@ -1,0 +1,91 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/ontology.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ontology",
+  "description": "An independently governed ontology namespace. Formal definitions are stored as separate entities.",
+  "$comment": "@om-entity-type",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.Ontology",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
+    "org.openmetadata.schema.OntologyEntityInterface"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "version": {
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
+    "href": {
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "iri": {
+      "description": "Stable semantic identity of this ontology; independent of its name and catalog record IRI.",
+      "$ref": "../../type/ontologyIri.json"
+    },
+    "namespace": {
+      "description": "Absolute namespace used to mint persistent IRIs for native definitions.",
+      "$ref": "../../type/ontologyIri.json"
+    },
+    "layer": {
+      "$ref": "../../type/ontologyConfiguration.json#/definitions/layer"
+    },
+    "prefixes": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyConfiguration.json#/definitions/prefix"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "fullyQualifiedName",
+    "iri",
+    "namespace"
+  ],
+  "additionalProperties": false
+}

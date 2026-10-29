@@ -14,7 +14,8 @@
         "FINISHED",
         "FAILURE",
         "EXCEPTION",
-        "SUPERSEDED"
+        "SUPERSEDED",
+        "CANCELLED"
       ]
     }
   },

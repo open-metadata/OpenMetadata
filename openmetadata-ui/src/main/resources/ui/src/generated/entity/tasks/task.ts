@@ -108,6 +108,10 @@ export interface Task {
     id:   string;
     name: string;
     /**
+     * Immutable, server-managed review target for ontology approval tasks.
+     */
+    ontologyReview?: OntologyReviewTarget;
+    /**
      * Task-specific payload validated at runtime by the resolved TaskFormSchema for the task
      * type and category.
      */
@@ -147,6 +151,11 @@ export interface Task {
      * User who made the last update.
      */
     updatedBy?: string;
+    /**
+     * Whether to assign entity owners when this task is created without assignees. Approval
+     * workflows disable this for an explicit wait strategy.
+     */
+    useEntityOwnerFallback?: boolean;
     /**
      * Metadata version of the entity.
      */
@@ -482,6 +491,28 @@ export enum SyncStatus {
 }
 
 /**
+ * Immutable, server-managed review target for ontology approval tasks.
+ *
+ * Server-captured immutable ontology release reviewed by an existing approval workflow task.
+ */
+export interface OntologyReviewTarget {
+    author: string;
+    /**
+     * SHA-256 of the ontology-review-v3 sealed release identity.
+     */
+    contentDigest: string;
+    entityId:      string;
+    /**
+     * Entity-history version submitted for review; reviewers read this frozen release header.
+     */
+    entityVersion: number;
+    /**
+     * Owning ontology ID used to serialize release review decisions.
+     */
+    ontologyId: string;
+}
+
+/**
  * Priority level of the task.
  */
 export enum TaskPriority {
@@ -731,6 +762,8 @@ export enum TaskType {
     DomainUpdate = "DomainUpdate",
     GlossaryApproval = "GlossaryApproval",
     IncidentResolution = "IncidentResolution",
+    MemoryConflictReview = "MemoryConflictReview",
+    MetadataCompletion = "MetadataCompletion",
     OwnershipUpdate = "OwnershipUpdate",
     PipelineReview = "PipelineReview",
     RecognizerFeedbackApproval = "RecognizerFeedbackApproval",

@@ -106,8 +106,10 @@ const selectTagSuggestion = async ({
     has: page.getByTestId('tag-selector'),
   });
   if (await containingDialog.count()) {
-    // The open menu aria-hides the title, so locate its test ID.
-    await containingDialog.getByTestId('dialog-title').click();
+    // Focus the dialog itself (React Aria gives it tabIndex=-1) rather than
+    // clicking inside it: with no room below the input the menu flips open
+    // upwards and covers the header, so a click on the title is intercepted.
+    await containingDialog.focus();
   } else {
     await clickOutside(page);
   }

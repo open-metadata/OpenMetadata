@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { ExclamationCircleFilled } from '@ant-design/icons';
 import {
   Button,
   Card,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ExclamationCircleFilled } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { kebabCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -77,7 +77,10 @@ const ApplicationCard = ({
               <div
                 className="deleted-badge-button text-xss flex-center tw:items-center"
                 data-testid="deleted-badge">
-                <ExclamationCircleFilled className="d-flex m-r-xss font-medium text-xs" />
+                <ExclamationCircleFilled
+                  className="tw:flex tw:mr-1"
+                  size={10}
+                />
                 {t('label.disabled')}
               </div>
             )}

@@ -65,6 +65,10 @@
     "numberOfRowsFailed" : {
       "$ref": "#/definitions/rowCount"
     },
+    "numberOfRowsPendingApproval" : {
+      "description": "Rows accepted as change requests awaiting approval; counted in numberOfRowsPassed but not yet published.",
+      "$ref": "#/definitions/rowCount"
+    },
     "successRequest": {
       "description": "Request that can be processed successfully.",
       "type": "array",

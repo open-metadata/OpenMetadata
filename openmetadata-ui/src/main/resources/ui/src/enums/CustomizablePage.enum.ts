@@ -32,6 +32,7 @@ export enum LandingPageWidgetKeys {
   MY_DATA = 'KnowledgePanel.MyData',
   MY_TASK = 'KnowledgePanel.MyTask',
   PIPELINE = 'KnowledgePanel.Pipeline',
+  PIPELINE_STATUS = 'KnowledgePanel.PipelineStatus',
   PLATFORM_HEALTH = 'KnowledgePanel.PlatformHealth',
   RECENTLY_VIEWED = 'KnowledgePanel.RecentlyViewed',
   TOTAL_DATA_ASSETS = 'KnowledgePanel.TotalAssets',

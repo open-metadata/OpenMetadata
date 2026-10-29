@@ -2,7 +2,8 @@
 Integration tests for failed row sampling.
 
 Runs data quality tests against a PostgreSQL database and asserts that
-failed row samples are published for failing tests and not for passing tests.
+failed row samples are published for failing tests and for tests passing within
+their failure threshold, and not for tests passing with no failed rows.
 """
 
 import pandas as pd
@@ -390,3 +391,54 @@ def test_passing_tests_dont_publish(
     assert test_case_entity.testCaseResult.testCaseStatus == TestCaseStatus.Success
     failed_sample = metadata.get_failed_rows_sample(test_case_entity)
     assert failed_sample is None
+
+
+def test_passing_within_threshold_publishes_failed_samples(
+    postgres_service: DatabaseService,
+    ingest_postgres_metadata,
+    patch_passwords_for_db_services,
+    metadata: OpenMetadata,
+    cleanup_fqns,
+    run_workflow,
+    sink_config,
+    workflow_config,
+):
+    table: Table = metadata.get_by_name(
+        Table,
+        f"{postgres_service.fullyQualifiedName.root}.dvdrental.public.bad_data_customer",
+        nullable=False,
+    )
+    test_case_definition = TestCaseDefinition(
+        name="email_is_mostly_not_null",
+        testDefinitionName="columnValuesToBeNotNull",
+        columnName="email",
+        computePassedFailedRowCount=True,
+        parameterValues=[
+            TestCaseParameterValue(name="threshold", value="50"),
+            TestCaseParameterValue(name="thresholdUnit", value="PERCENTAGE"),
+        ],
+    )
+    _run_test_suite(
+        metadata,
+        postgres_service,
+        table,
+        [test_case_definition],
+        sink_config,
+        workflow_config,
+        run_workflow,
+    )
+    test_case_entity: TestCase = metadata.get_by_name(
+        entity=TestCase,
+        fqn=f"{table.fullyQualifiedName.root}.{test_case_definition.columnName}.{test_case_definition.name}",
+        fields=["*"],
+        nullable=False,
+    )
+    cleanup_fqns(TestCase, test_case_entity.fullyQualifiedName.root)
+    assert test_case_entity.testCaseResult.testCaseStatus == TestCaseStatus.Success
+    assert test_case_entity.testCaseResult.failedRows > 0
+    failed_sample = metadata.get_failed_rows_sample(test_case_entity)
+    assert failed_sample is not None
+    df = pd.DataFrame(failed_sample.rows, columns=[c.root for c in failed_sample.columns])
+    assert len(df) > 0
+    (~assume.notnull("email")).validate(df)
+    assert test_case_entity.inspectionQuery is not None

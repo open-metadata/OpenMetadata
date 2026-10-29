@@ -2,7 +2,7 @@
 
 # Platform
 
-> **13 Components** | **86 Files** | **1622 Tests** | **2327 Scenarios** 🚀
+> **12 Components** | **85 Files** | **1619 Tests** | **2324 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
@@ -14,7 +14,6 @@
 - [Users & Teams](#users-teams)
 - [SSO](#sso)
 - [RBAC](#rbac)
-- [Onboarding](#onboarding)
 - [App Marketplace](#app-marketplace)
 - [General](#general)
 - [Authentication](#authentication)
@@ -4333,28 +4332,6 @@
 | | ↳ *Check if last policy is not removed* | |
 | | ↳ *Delete created Role* | |
 | 2 | **Roles page tests** - Delete role action from manage button options | Delete role action from manage button options |
-
-</details>
-
-
----
-
-<div id="onboarding"></div>
-
-## Onboarding
-
-<details open>
-<summary>📄 <b>Tour.spec.ts</b> (3 tests, 3 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/Tour.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/Tour.spec.ts)
-
-### Tour should work properly
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Tour should work properly** - Tour should work from help section | Tour should work from help section |
-| 2 | **Tour should work properly** - Tour should work from welcome screen | Tour should work from welcome screen |
-| 3 | **Tour should work properly** - Tour should work from URL directly | Tour should work from URL directly |
 
 </details>
 

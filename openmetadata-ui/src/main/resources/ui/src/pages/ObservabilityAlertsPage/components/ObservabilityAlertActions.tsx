@@ -12,17 +12,15 @@
  */
 
 import {
+  Box,
   ButtonUtility,
   Skeleton,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { ProviderType } from '../../../generated/events/eventSubscription';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -52,47 +50,49 @@ function ObservabilityAlertActions({
     return <Typography className="p-l-xs">{NO_DATA_PLACEHOLDER}</Typography>;
   }
 
+  const editButton = (
+    <ButtonUtility
+      color="tertiary"
+      data-testid={`alert-edit-${record.name}`}
+      href={
+        onEditAlert
+          ? undefined
+          : observabilityRouterClassBase.getObservabilityAlertsEditPath(
+              record.fullyQualifiedName ?? ''
+            )
+      }
+      icon={Edit01}
+      size="lg"
+      tooltip={t('label.edit')}
+      tooltipPlacement="bottom"
+      onClick={
+        onEditAlert
+          ? (event: MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onEditAlert(record);
+            }
+          : undefined
+      }
+    />
+  );
+
   return (
-    <div className="d-flex items-center">
-      {alertPermission.edit && (
-        <Tooltip arrow placement="bottom" title={t('label.edit')}>
-          {onEditAlert ? (
-            <ButtonUtility
-              color="tertiary"
-              data-testid={`alert-edit-${record.name}`}
-              icon={EditIcon}
-              size="sm"
-              onClick={(event: MouseEvent) => {
-                event.stopPropagation();
-                onEditAlert(record);
-              }}
-            />
-          ) : (
-            <ButtonUtility
-              color="tertiary"
-              data-testid={`alert-edit-${record.name}`}
-              href={observabilityRouterClassBase.getObservabilityAlertsEditPath(
-                record.fullyQualifiedName ?? ''
-              )}
-              icon={EditIcon}
-              size="sm"
-            />
-          )}
-        </Tooltip>
-      )}
+    <Box align="center">
+      {alertPermission.edit && editButton}
       {alertPermission.delete && (
-        <Tooltip arrow placement="bottom" title={t('label.delete')}>
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`alert-delete-${record.name}`}
-            icon={DeleteIcon}
-            isDisabled={record.provider === ProviderType.System}
-            size="sm"
-            onClick={() => onSelectAlert(record)}
-          />
-        </Tooltip>
+        <ButtonUtility
+          color="tertiary"
+          data-testid={`alert-delete-${record.name}`}
+          icon={Trash01}
+          isDisabled={record.provider === ProviderType.System}
+          size="lg"
+          tooltip={t('label.delete')}
+          tooltipPlacement="bottom"
+          onClick={() => onSelectAlert(record)}
+        />
       )}
-    </div>
+    </Box>
   );
 }
 

@@ -61,9 +61,7 @@
     margin-bottom: 0;
   }
 
-  .form-control,
-  .ant-select-selector,
-  .ant-input {
+  .form-control {
     background-color: @background-color;
     border: 1px solid @grey-300;
     border-radius: @border-rad-xs;
@@ -76,26 +74,6 @@
       border-color: @primary-color;
       box-shadow: @box-shadow-ant-select;
       outline: none;
-    }
-  }
-
-  .ant-radio-wrapper {
-    .ant-radio {
-      .ant-radio-inner {
-        background-color: @background-color;
-        border-color: @grey-300;
-      }
-
-      &.ant-radio-checked {
-        .ant-radio-inner {
-          background-color: @primary-color;
-          border-color: @primary-color;
-        }
-      }
-
-      &:hover .ant-radio-inner {
-        border-color: @primary-color;
-      }
     }
   }
 
@@ -161,28 +139,4 @@
   display: flex;
   align-items: center;
   gap: @size-xs;
-}
-
-.ant-collapse.sso-advanced-properties-collapse {
-  border-radius: @border-rad-xs;
-
-  .ant-collapse-item {
-    border-radius: @border-rad-xs;
-
-    .ant-collapse-header {
-      background: @grey-9;
-      border-radius: @border-rad-xs;
-    }
-    .ant-collapse-content {
-      border: none;
-      border-radius: 0 0 @border-rad-xs @border-rad-xs;
-      .ant-collapse-content-box {
-        padding: 0;
-        border-radius: 0 0 @border-rad-xs @border-rad-xs;
-        .sso-field-group-box {
-          border-radius: 0 0 @border-rad-xs @border-rad-xs;
-        }
-      }
-    }
-  }
 }

@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import {
+  CheckCircle,
+  MinusCircle,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FailIcon } from '../../../assets/svg/ic-fail.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-successful.svg';
-import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { SemanticsRule } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
@@ -34,18 +36,14 @@ const ContractSemantics: React.FC<{
   const getSemanticIconPerLastExecution = (semantic: SemanticsRule) => {
     // A disabled rule is skipped by validation, so the last run did not pass it
     if (!latestContractResults || !semantic.enabled) {
-      return DefaultIcon;
+      return MinusCircle;
     }
     const isRuleFailed =
       latestContractResults?.semanticsValidation?.failedRules?.find(
         (rule) => rule.ruleName === semantic.name
       );
 
-    if (isRuleFailed) {
-      return FailIcon;
-    }
-
-    return CheckIcon;
+    return isRuleFailed ? XCircle : CheckCircle;
   };
 
   return (
@@ -60,20 +58,27 @@ const ContractSemantics: React.FC<{
                 entity: t('label.semantic-plural'),
               })}
               triggerClassName="tw:inline-flex">
-              <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+              <InheritIcon
+                className="inherit-icon tw:cursor-pointer"
+                width={14}
+              />
             </Tooltip>
           ) : null;
           const RuleIcon = getSemanticIconPerLastExecution(item);
 
           return (
             <div className="rule-item" key={item.rule}>
+              {/* One size for every status; 20px matches the rule name's line height. */}
               <RuleIcon
-                className={classNames('rule-icon', {
-                  'rule-icon-default': !latestContractResults || !item.enabled,
-                })}
-                fill="currentColor"
-                height="1em"
-                width="1em"
+                className={classNames(
+                  'rule-icon tw:mt-px tw:size-5 tw:shrink-0',
+                  {
+                    'rule-icon-default tw:text-fg-quaternary':
+                      RuleIcon === MinusCircle,
+                    'tw:text-fg-error-secondary': RuleIcon === XCircle,
+                    'tw:text-fg-success-secondary': RuleIcon === CheckCircle,
+                  }
+                )}
               />
               <div className="rule-item-content">
                 <div className="d-flex items-center gap-1">
@@ -93,7 +98,10 @@ const ContractSemantics: React.FC<{
         })}
       </div>
       {contractStatus && (
-        <div className="contract-status-container">
+        <Box
+          align="center"
+          className="contract-status-container tw:self-start"
+          gap={3}>
           <Typography className="contract-status-label">{`${t(
             'label.entity-status',
             {
@@ -105,7 +113,7 @@ const ContractSemantics: React.FC<{
             label={contractStatus}
             status={getContractStatusType(contractStatus)}
           />
-        </div>
+        </Box>
       )}
     </div>
   );

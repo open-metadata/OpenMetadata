@@ -21,8 +21,8 @@ import { useShallow } from 'zustand/react/shallow';
 import App from './App';
 import { DocumentTitleProvider } from './components/common/DocumentTitle/DocumentTitleProvider';
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
-import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
+import { useThemeCssVariables } from './hooks/useThemeCssVariables';
 import {
   getCustomUiThemePreference,
   getSystemConfig,
@@ -34,6 +34,7 @@ import { getThemeConfig } from './utils/ThemeUtils';
 
 const AppRoot: FC = () => {
   const { initializeAuthState } = useApplicationStore();
+  useThemeCssVariables();
 
   const { applicationConfig, setApplicationConfig, setRdfEnabled } =
     useApplicationStore(
@@ -91,16 +92,14 @@ const AppRoot: FC = () => {
           basename={getBasePath()}
           useTransitions={!isPlaywrightEnv()}>
           <I18nextProvider i18n={i18n}>
-            <AntDConfigProvider>
-              <HelmetProvider>
-                <DocumentTitleProvider>
-                  <ErrorBoundary>
-                    <App />
-                    <ToastProvider />
-                  </ErrorBoundary>
-                </DocumentTitleProvider>
-              </HelmetProvider>
-            </AntDConfigProvider>
+            <HelmetProvider>
+              <DocumentTitleProvider>
+                <ErrorBoundary>
+                  <App />
+                  <ToastProvider />
+                </ErrorBoundary>
+              </DocumentTitleProvider>
+            </HelmetProvider>
           </I18nextProvider>
         </BrowserRouter>
       </div>

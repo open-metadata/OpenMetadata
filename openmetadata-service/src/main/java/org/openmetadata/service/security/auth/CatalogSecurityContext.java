@@ -20,6 +20,7 @@ import java.security.Principal;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.type.EntityReference;
 
 /** Holds authenticated principal and security context which is passed to the JAX-RS request methods */
 @Slf4j
@@ -30,7 +31,8 @@ public record CatalogSecurityContext(
     Set<String> userRoles,
     boolean isBot,
     String impersonatedUser,
-    String activePersona)
+    String activePersona,
+    EntityReference activeDomain)
     implements SecurityContext {
   public static final String OPENID_AUTH = "openid";
 
@@ -56,7 +58,7 @@ public record CatalogSecurityContext(
   // Backward compatibility constructors
   public CatalogSecurityContext(
       Principal principal, String scheme, String authenticationScheme, Set<String> userRoles) {
-    this(principal, scheme, authenticationScheme, userRoles, false, null, null);
+    this(principal, scheme, authenticationScheme, userRoles, false, null, null, null);
   }
 
   public CatalogSecurityContext(
@@ -65,7 +67,7 @@ public record CatalogSecurityContext(
       String authenticationScheme,
       Set<String> userRoles,
       boolean isBot) {
-    this(principal, scheme, authenticationScheme, userRoles, isBot, null, null);
+    this(principal, scheme, authenticationScheme, userRoles, isBot, null, null, null);
   }
 
   public CatalogSecurityContext(
@@ -75,7 +77,26 @@ public record CatalogSecurityContext(
       Set<String> userRoles,
       boolean isBot,
       String impersonatedUser) {
-    this(principal, scheme, authenticationScheme, userRoles, isBot, impersonatedUser, null);
+    this(principal, scheme, authenticationScheme, userRoles, isBot, impersonatedUser, null, null);
+  }
+
+  public CatalogSecurityContext(
+      Principal principal,
+      String scheme,
+      String authenticationScheme,
+      Set<String> userRoles,
+      boolean isBot,
+      String impersonatedUser,
+      String activePersona) {
+    this(
+        principal,
+        scheme,
+        authenticationScheme,
+        userRoles,
+        isBot,
+        impersonatedUser,
+        activePersona,
+        null);
   }
 
   @Override

@@ -172,9 +172,15 @@ test.describe(
         .toBe(`/context-center/articles/${article.fullyQualifiedName}`);
     });
 
-    test('the footer opens the Context Center', async ({ page }) => {
+    test('the footer opens the Context Center', async ({ page, article }) => {
       const { widget } = await openContextCenter(page);
 
+      // An empty card swaps the footer for its own call to action, so the
+      // footer is only there once a page is listed: seed one rather than
+      // relying on pages another spec happened to leave behind.
+      await expect(
+        widget.getByTestId(`context-page-${article.id}`)
+      ).toBeVisible();
       await widget.getByTestId(`topic-action-${TOPIC_KEY}`).click();
 
       await expect(page).toHaveURL(/\/context-center\/articles$/);

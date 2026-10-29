@@ -11,18 +11,22 @@
  *  limitations under the License.
  */
 import {
-  CheckCircleTwoTone,
-  ClockCircleOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
-import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Avatar,
   Box,
   Button,
   Card,
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Avatar, Collapse } from 'antd';
+import {
+  CheckCircle,
+  Clock,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -56,11 +60,18 @@ const AppInstallVerifyCard = ({
         <Divider
           dashed
           className="tw:w-44 tw:gap-0 app-card-divider"
-          label={<CheckCircleTwoTone twoToneColor={LIGHT_GREEN_COLOR} />}
+          label={
+            <CheckCircle
+              className="tw:shrink-0"
+              color={LIGHT_GREEN_COLOR}
+              size={14}
+            />
+          }
         />
         <Avatar
-          className="app-marketplace-avatar flex-center bg-white border"
-          icon={
+          className="tw:size-25 app-marketplace-avatar flex-center bg-white border"
+          contrastBorder={false}
+          placeholder={
             <BrandImage
               isMonoGram
               className="vertical-middle"
@@ -69,7 +80,7 @@ const AppInstallVerifyCard = ({
               width={56}
             />
           }
-          size={100}
+          size="2xl"
         />
       </Box>
       <Typography as="h5" className="m-t-md" size="text-md" weight="semibold">
@@ -116,14 +127,14 @@ const AppInstallVerifyCard = ({
             </div>
           </Box>
 
-          <Collapse ghost className="w-full m-t-md" expandIconPosition="end">
-            <Collapse.Panel
-              header={` ${t('label.all-entity', {
+          <Accordion allowsMultipleExpanded className="w-full m-t-md">
+            <AccordionItem id="1" key="1">
+              <AccordionHeader>{` ${t('label.all-entity', {
                 entity: t('label.metadata'),
-              })}`}
-              key="1"
-            />
-          </Collapse>
+              })}`}</AccordionHeader>
+              <AccordionPanel>{null}</AccordionPanel>
+            </AccordionItem>
+          </Accordion>
 
           <Divider className="tw:my-6" />
           <div className="d-flex justify-end gap-2">
@@ -154,7 +165,7 @@ const AppInstallVerifyCard = ({
               className="layout-space layout-space-horizontal"
               gap={2}
               itemClassName="layout-space-item">
-              <UserOutlined />
+              <User01 className="tw:shrink-0" size={14} />
               <Typography className="text-xs" color="secondary">
                 {t('label.developed-by-developer', {
                   developer: appData?.developer,
@@ -167,7 +178,7 @@ const AppInstallVerifyCard = ({
               className="layout-space layout-space-horizontal"
               gap={2}
               itemClassName="layout-space-item">
-              <ClockCircleOutlined />
+              <Clock className="tw:shrink-0" size={14} />
               <Typography className="text-xs" color="secondary">
                 {`${t('label.updated')} ${getRelativeTime(appData?.updatedAt)}`}
               </Typography>

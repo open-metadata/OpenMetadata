@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Card } from '@openmetadata/ui-core-components';
+import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CardExpandCollapseIconButton } from '../IconButtons/EditIconButton';
 
 interface ExpandableCardProps {
   children: ReactNode;
@@ -58,28 +58,28 @@ const ExpandableCard = ({
         className
       )}
       data-testid={dataTestId}>
-      <div
+      <Box
+        align="center"
         className={classNames(
-          'expandable-card-header tw:flex tw:min-h-12 tw:items-center tw:px-6 tw:text-sm tw:font-medium tw:text-primary',
+          'expandable-card-header tw:min-h-12 tw:px-6 tw:text-sm tw:font-medium tw:text-primary',
           { 'tw:-mb-px tw:border-b tw:border-secondary': !isExpanded }
         )}>
         <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:py-4">
           {title}
         </div>
-        <div className="expandable-card-extra tw:ml-3 tw:font-normal tw:text-primary">
-          <CardExpandCollapseIconButton
-            className={classNames(
-              'expand-collapse-icon bordered tw:[&_svg]:fill-bg-primary',
-              { 'tw:rotate-180': !isExpanded }
-            )}
+        <Box className="tw:ml-3 tw:font-normal tw:text-primary">
+          <ButtonUtility
+            className="expand-collapse-icon"
+            color="secondary"
             data-testid="expand-collapse-icon"
-            disabled={isExpandDisabled}
-            size="small"
-            title={isExpanded ? t('label.collapse') : t('label.expand')}
+            icon={isExpanded ? ChevronUp : ChevronDown}
+            isDisabled={isExpandDisabled}
+            size="sm"
+            tooltip={isExpanded ? t('label.collapse') : t('label.expand')}
             onClick={handleExpandClick}
           />
-        </div>
-      </div>
+        </Box>
+      </Box>
       {/* `hidden` (not unmount) keeps collapsed form fields registered. */}
       <div
         className={classNames('expandable-card-body', { 'tw:p-5': children })}

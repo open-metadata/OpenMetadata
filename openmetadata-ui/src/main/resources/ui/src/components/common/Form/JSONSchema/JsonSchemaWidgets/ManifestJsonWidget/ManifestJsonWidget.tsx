@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Alert, Typography } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { Alert } from 'antd';
+
 import { TFunction } from 'i18next';
 import { lazy, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -159,22 +159,22 @@ const ManifestJsonWidget = ({
         <Alert
           showIcon
           className="m-t-xs"
-          message={
+          title={
             <Typography>
               {t('label.valid-manifest-entry-count', {
                 count: validation.entryCount,
               })}
             </Typography>
           }
-          type="success"
+          variant="success"
         />
       )}
       {validation.status === 'error' && (
         <Alert
           showIcon
           className="m-t-xs"
-          message={formatValidationError(validation.error, t)}
-          type="error"
+          title={formatValidationError(validation.error, t)}
+          variant="error"
         />
       )}
     </div>

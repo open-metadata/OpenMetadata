@@ -42,6 +42,7 @@ import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.PathSegment;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
@@ -53,20 +54,26 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -77,7 +84,9 @@ import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.security.session.SessionProviders;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
@@ -95,8 +104,14 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   public static final String IMPERSONATE_USER_HEADER = "X-Impersonate-User";
   public static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
-  private static final Set<String> NATIVE_PASSWORD_PROVIDER_VALUES =
-      Set.of(AuthProvider.BASIC.value(), AuthProvider.OPENMETADATA.value());
+  private static final Set<String> MULTI_TENANT_AUTHORITIES =
+      Set.of("common", "organizations", "consumers");
+  private static final Pattern TENANT_ID =
+      Pattern.compile(
+          "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+  // The path segment after the tenant in a v2 endpoint authority, as in .../{tenant}/v2.0.
+  private static final String AUTHORITY_VERSION_SEGMENT = "v2.0";
+  private static final String EMAIL_SEPARATOR = "@";
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   @Getter private String jwtTeamClaimMapping;
@@ -107,6 +122,9 @@ public class JwtFilter implements ContainerRequestFilter {
   private AuthProvider providerType;
   private boolean useRolesFromProvider = false;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
+  private OidcClientConfig serverSideOidcClient;
+  private ProviderTokenValidator providerTokenValidator =
+      ProviderTokenValidator.acceptingAnyProviderToken();
 
   private String emailClaim;
   private String displayNameClaim;
@@ -170,6 +188,20 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/refresh",
           "v1/collate/apps/support/redeem-code");
 
+  /**
+   * Whether the request targets an endpoint that bypasses authentication (and, for the event
+   * filter, auditing). Matches the resource path exactly, after dropping matrix parameters from
+   * each segment: a substring or raw-path match would let {@code ;x=…} or an encoded separator in
+   * an entity name make a different endpoint look like an excluded one.
+   */
+  public static boolean isExcludedEndpoint(UriInfo uriInfo) {
+    String path =
+        uriInfo.getPathSegments().stream()
+            .map(PathSegment::getPath)
+            .collect(Collectors.joining("/"));
+    return EXCLUDED_ENDPOINTS.stream().anyMatch(path::equalsIgnoreCase);
+  }
+
   @SuppressWarnings("unused")
   private JwtFilter() {}
 
@@ -189,7 +221,17 @@ public class JwtFilter implements ContainerRequestFilter {
     for (String publicKeyUrlStr : authenticationConfiguration.getPublicKeyUrls()) {
       publicKeyUrlsBuilder.add(URI.create(publicKeyUrlStr).toURL());
     }
-    this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
+    this.jwkProvider =
+        new MultiUrlJwkProvider(publicKeyUrlsBuilder.build(), this::providerKeySetUrls);
+    this.serverSideOidcClient =
+        authenticationConfiguration.getClientType() == ClientType.CONFIDENTIAL
+            ? authenticationConfiguration.getOidcConfiguration()
+            : null;
+    this.providerTokenValidator =
+        new ProviderTokenValidator(
+            clientIdsOf(authenticationConfiguration),
+            this::providerIssuer,
+            publicClientEntraTenant(authenticationConfiguration));
 
     this.principalDomain =
         SecurityUtil.resolvePrincipalDomain(
@@ -263,6 +305,16 @@ public class JwtFilter implements ContainerRequestFilter {
   @VisibleForTesting
   JwtFilter(
       JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      ProviderTokenValidator providerTokenValidator) {
+    this(jwkProvider, jwtPrincipalClaims, principalDomain, false);
+    this.providerTokenValidator = providerTokenValidator;
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
       String emailClaim,
       String displayNameClaim,
       List<String> allowedEmailDomains) {
@@ -293,15 +345,14 @@ public class JwtFilter implements ContainerRequestFilter {
   @SneakyThrows
   @Override
   public void filter(ContainerRequestContext requestContext) {
-    UriInfo uriInfo = requestContext.getUriInfo();
-    if (EXCLUDED_ENDPOINTS.stream()
-        .anyMatch(endpoint -> uriInfo.getPath().equalsIgnoreCase(endpoint))) {
+    if (isExcludedEndpoint(requestContext.getUriInfo())) {
       return;
     }
 
     Timer.Sample authSample = RequestLatencyContext.startAuthOperation();
     ImpersonationContext.clear();
     ActivePersonaContext.clear();
+    ActiveDomainContext.clear();
 
     try {
       String tokenFromHeader = extractToken(requestContext.getHeaders());
@@ -339,6 +390,10 @@ public class JwtFilter implements ContainerRequestFilter {
 
       CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
       String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+      // The persisted navbar selection is a UI view preference: bot tokens (including impersonated
+      // requests) and personal access tokens (scripts, SDK) list without it.
+      EntityReference activeDomain =
+          ActiveDomainContext.resolve(userName, isBotUser || isPersonalAccessToken(claims));
       CatalogSecurityContext catalogSecurityContext =
           new CatalogSecurityContext(
               catalogPrincipal,
@@ -347,7 +402,8 @@ public class JwtFilter implements ContainerRequestFilter {
               getUserRolesFromClaims(claims, isBotUser, tokenKeyId),
               isBotUser,
               impersonatedBy,
-              activePersona);
+              activePersona,
+              activeDomain);
       LOG.debug("SecurityContext {}", catalogSecurityContext);
       requestContext.setSecurityContext(catalogSecurityContext);
 
@@ -357,9 +413,11 @@ public class JwtFilter implements ContainerRequestFilter {
         ImpersonationContext.clear();
       }
       ActivePersonaContext.setActivePersona(activePersona);
+      ActiveDomainContext.setActiveDomain(activeDomain);
     } catch (Throwable t) {
       ImpersonationContext.clear();
       ActivePersonaContext.clear();
+      ActiveDomainContext.clear();
       throw t;
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);
@@ -386,6 +444,72 @@ public class JwtFilter implements ContainerRequestFilter {
     }
     ImpersonationAuthorizer.authorize(botName, target);
     return target;
+  }
+
+  /**
+   * The legacy claim flow names the user after a claim's local part, so a provider token for any
+   * address with that local part would resolve to the account of that name. When {@code
+   * allowedEmailDomains} is set, the address the request runs as must be in an allowed domain: the
+   * token's email when it carries one, otherwise {@code userName@principalDomain}, the address the
+   * legacy flow builds. Either way, a provider token never resolves to a bot account.
+   */
+  private void validateLegacyProviderIdentity(Map<String, Claim> claims, String userName) {
+    String claimedEmail = claimedEmail(claims);
+    if (!nullOrEmpty(allowedEmailDomains)) {
+      // With no email claim the legacy flow runs as userName@principalDomain (principalDomain
+      // carries
+      // the allowedEmailDomains fallback), so check that derived address rather than skipping the
+      // allowlist for a bare principal claim.
+      String emailToCheck =
+          claimedEmail != null ? claimedEmail : userName + EMAIL_SEPARATOR + principalDomain;
+      validateConfiguredEmailDomain(
+          emailToCheck,
+          allowedEmailDomains,
+          principalDomain,
+          allowedDomains,
+          enforcePrincipalDomain);
+    } else if (enforcePrincipalDomain) {
+      validateDomainEnforcement(
+          jwtPrincipalClaimsMapping,
+          jwtPrincipalClaims,
+          claims,
+          principalDomain,
+          allowedDomains,
+          enforcePrincipalDomain);
+    }
+    rejectProviderTokenForBotAccount(userName);
+  }
+
+  /**
+   * A provider token names the user after a claim's local part, so one whose local part matches a bot
+   * account's name - with or without an email - would otherwise sign in as that bot and inherit its
+   * roles. Bots authenticate with their own issued tokens, never through the provider flow, so a
+   * provider token must never resolve to a bot account. Uses the cached user context so this stays off
+   * the database on the per-request path.
+   */
+  private static void rejectProviderTokenForBotAccount(String userName) {
+    User account;
+    try {
+      account = SubjectCache.getUserContext(userName);
+    } catch (EntityNotFoundException e) {
+      // No account holds the name yet: a first login, which provisioning handles. Any other failure
+      // propagates, so an unreadable account is refused rather than waved through.
+      return;
+    }
+    if (account != null && Boolean.TRUE.equals(account.getIsBot())) {
+      throw new AuthenticationException(
+          "Authentication failed: a provider token cannot sign in to a bot account");
+    }
+  }
+
+  /** The email the provider asserted, or null when the principal claims carry none. */
+  private String claimedEmail(Map<String, Claim> claims) {
+    String value =
+        nullOrEmpty(jwtPrincipalClaimsMapping)
+            ? SecurityUtil.getFirstMatchJwtClaim(jwtPrincipalClaims, claims)
+            : SecurityUtil.getClaimOrObject(
+                claims.get(jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY)));
+    return value != null && value.contains(EMAIL_SEPARATOR) ? value : null;
   }
 
   public void checkValidationsForToken(
@@ -432,14 +556,8 @@ public class JwtFilter implements ContainerRequestFilter {
         validateConfiguredEmailDomain(
             email, allowedEmailDomains, principalDomain, allowedDomains, enforcePrincipalDomain);
       }
-    } else if (enforcePrincipalDomain && !isInternallyIssuedToken(claims, tokenKeyId)) {
-      validateDomainEnforcement(
-          jwtPrincipalClaimsMapping,
-          jwtPrincipalClaims,
-          claims,
-          principalDomain,
-          allowedDomains,
-          enforcePrincipalDomain);
+    } else if (!isBot(claims) && !isInternallyIssuedToken(claims, tokenKeyId)) {
+      validateLegacyProviderIdentity(claims, userName);
     }
 
     // Validate Bot token matches what was created in OM. Under impersonation the presented token
@@ -534,8 +652,89 @@ public class JwtFilter implements ContainerRequestFilter {
       throw AuthenticationException.getInvalidTokenException(
           "Invalid token. Token verification failed. Public key mismatch.", runtimeException);
     }
+    requireIssuedForThisDeployment(jwt);
 
     return jwt;
+  }
+
+  private void requireIssuedForThisDeployment(DecodedJWT jwt) {
+    if (!isSignedWithOpenMetadataKey(jwt)) {
+      providerTokenValidator.validate(jwt);
+    }
+  }
+
+  /**
+   * Key lookup resolves OpenMetadata's own key id locally before any configured URL, so a verified
+   * token carrying it was signed with our key. Unlike {@link #isInternallyIssuedToken}, this does
+   * not require the current issuer: long-lived bot tokens minted under an earlier one are still ours.
+   */
+  private static boolean isSignedWithOpenMetadataKey(DecodedJWT jwt) {
+    String openMetadataKeyId = JWTTokenGenerator.getInstance().getKid();
+    return !nullOrEmpty(openMetadataKeyId) && openMetadataKeyId.equals(jwt.getKeyId());
+  }
+
+  /** The OIDC client IDs this deployment's sign-in flows request tokens for. */
+  static Set<String> clientIdsOf(AuthenticationConfiguration authenticationConfiguration) {
+    OidcClientConfig oidcClient = authenticationConfiguration.getOidcConfiguration();
+    return Stream.of(
+            authenticationConfiguration.getClientId(),
+            oidcClient == null ? null : oidcClient.getId())
+        .filter(clientId -> !nullOrEmpty(clientId) && !clientId.isBlank())
+        .collect(Collectors.toUnmodifiableSet());
+  }
+
+  /**
+   * The Entra ID tenant a public client's authority names, which provider tokens must come from. A
+   * confidential client checks the issuer from discovery instead, so it has none. A multi-tenant
+   * authority (common, organizations, consumers) restricts nothing on purpose. A tenant named by
+   * domain cannot be compared with the token's tenant ID without a discovery lookup.
+   */
+  @VisibleForTesting
+  static String publicClientEntraTenant(AuthenticationConfiguration authenticationConfiguration) {
+    if (authenticationConfiguration.getProvider() != AuthProvider.AZURE
+        || authenticationConfiguration.getClientType() == ClientType.CONFIDENTIAL
+        || nullOrEmpty(authenticationConfiguration.getAuthority())) {
+      return null;
+    }
+    List<String> segments =
+        Stream.of(
+                URI.create(authenticationConfiguration.getAuthority().trim()).getPath().split("/"))
+            .filter(segment -> !segment.isEmpty() && !AUTHORITY_VERSION_SEGMENT.equals(segment))
+            .toList();
+    String tenant = segments.isEmpty() ? null : segments.get(segments.size() - 1);
+    if (tenant == null || MULTI_TENANT_AUTHORITIES.contains(tenant.toLowerCase(Locale.ROOT))) {
+      return null;
+    }
+    if (!TENANT_ID.matcher(tenant).matches()) {
+      LOG.warn(
+          "Entra ID tokens are accepted from any tenant: the authority names tenant '{}' by domain;"
+              + " use the tenant ID to restrict sign-in to it",
+          tenant);
+      return null;
+    }
+    return tenant;
+  }
+
+  @VisibleForTesting
+  Optional<String> providerIssuer() {
+    return codeFlowHandler().map(AuthenticationCodeFlowHandler::getProviderIssuer);
+  }
+
+  @VisibleForTesting
+  List<URL> providerKeySetUrls() {
+    return codeFlowHandler().map(AuthenticationCodeFlowHandler::getProviderKeySetUrl).stream()
+        .toList();
+  }
+
+  /**
+   * The server-side sign-in handler, when it serves this filter's OIDC client. It registers after
+   * this filter at startup and is replaced on a configuration change, so it is looked up per use.
+   */
+  private Optional<AuthenticationCodeFlowHandler> codeFlowHandler() {
+    return AuthServeletHandlerRegistry.getHandler() instanceof AuthenticationCodeFlowHandler handler
+            && handler.servesClient(serverSideOidcClient)
+        ? Optional.of(handler)
+        : Optional.empty();
   }
 
   private static Map<String, Claim> extractClaims(DecodedJWT jwt) {
@@ -574,12 +773,15 @@ public class JwtFilter implements ContainerRequestFilter {
         "The given token does not match the current bot's token!");
   }
 
+  private static boolean isPersonalAccessToken(Map<String, Claim> claims) {
+    Claim tokenTypeClaim = claims.get(TOKEN_TYPE);
+    return tokenTypeClaim != null
+        && ServiceTokenType.PERSONAL_ACCESS.value().equals(tokenTypeClaim.asString());
+  }
+
   private void validatePersonalAccessToken(
       Map<String, Claim> claims, String tokenFromHeader, String userName) {
-    Claim tokenTypeClaim = claims.get(TOKEN_TYPE);
-    String tokenType = tokenTypeClaim == null ? StringUtils.EMPTY : tokenTypeClaim.asString();
-    if (claims.containsKey(TOKEN_TYPE)
-        && ServiceTokenType.PERSONAL_ACCESS.value().equals(tokenType)) {
+    if (isPersonalAccessToken(claims)) {
       if (UserTokenCache.isTokenValid(userName, tokenFromHeader)) {
         return;
       }
@@ -624,7 +826,7 @@ public class JwtFilter implements ContainerRequestFilter {
     if (!isAuthenticated
         || session.isExpired(System.currentTimeMillis())
         || nullOrEmpty(session.getUsername())
-        || !session.getUsername().equalsIgnoreCase(userName)) {
+        || !SecurityUtil.sameIdentifier(session.getUsername(), userName)) {
       throw AuthenticationException.getInvalidTokenException("Invalid session.");
     }
     validateSessionProviderIsCurrent(session);
@@ -647,7 +849,7 @@ public class JwtFilter implements ContainerRequestFilter {
     if (nullOrEmpty(sessionProvider) || providerType == null) {
       return;
     }
-    if (!isSameProvider(sessionProvider, providerType.value())) {
+    if (!SessionProviders.isSameProvider(sessionProvider, providerType.value())) {
       LOG.warn(
           "Rejecting session {} issued by provider {} — the configured provider is now {}",
           SessionService.truncateId(session.getId()),
@@ -656,22 +858,6 @@ public class JwtFilter implements ContainerRequestFilter {
       throw AuthenticationException.getInvalidTokenException(
           "Session was issued by a provider that is no longer configured.");
     }
-  }
-
-  /**
-   * {@code basic} and {@code openmetadata} are two historical names for the same native-password
-   * authenticator — {@code SecurityConfigurationManager.isNativePasswordProvider} treats them
-   * interchangeably and one servlet handler serves both. Renaming one to the other is not a provider
-   * swap and must not log the whole deployment out.
-   */
-  private static boolean isSameProvider(String sessionProvider, String configuredProvider) {
-    return sessionProvider.equalsIgnoreCase(configuredProvider)
-        || (isNativePasswordProviderValue(sessionProvider)
-            && isNativePasswordProviderValue(configuredProvider));
-  }
-
-  private static boolean isNativePasswordProviderValue(String provider) {
-    return NATIVE_PASSWORD_PROVIDER_VALUES.contains(provider.toLowerCase(Locale.ROOT));
   }
 
   public CatalogSecurityContext getCatalogSecurityContext(String token) {
@@ -705,7 +891,9 @@ public class JwtFilter implements ContainerRequestFilter {
         getUserRolesFromClaims(claims, isBotUser, tokenKeyId),
         isBotUser,
         null,
-        activePersona);
+        activePersona,
+        ActiveDomainContext.resolve(
+            resolvedIdentity.userName(), isBotUser || isPersonalAccessToken(claims)));
   }
 
   private Algorithm createAlgorithmFromJwk(

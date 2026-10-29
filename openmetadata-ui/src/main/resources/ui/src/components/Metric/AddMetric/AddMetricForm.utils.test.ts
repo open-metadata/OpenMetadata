@@ -16,7 +16,11 @@ import {
   MetricType,
   UnitOfMeasurement,
 } from '../../../generated/api/data/createMetric';
-import type { EntityReference } from '../../../generated/entity/type';
+import type {
+  CustomProperty,
+  EntityReference,
+} from '../../../generated/entity/type';
+import { getExtensionFormKey } from '../../Domain/AddDomainForm/AddDomainFormExtensionFields.utils';
 import { MetricFormSelectItem, MetricFormValues } from './AddMetricForm.types';
 import { transformMetricFormData } from './AddMetricForm.utils';
 
@@ -54,6 +58,33 @@ const baseValues = (
 });
 
 describe('transformMetricFormData', () => {
+  it('serializes typed intake fields and decodes names containing punctuation', () => {
+    const customProperties = [
+      { name: 'cost.€', propertyType: { name: 'integer' } },
+      { name: 'risk', propertyType: { name: 'enum' } },
+      { name: 'optional', propertyType: { name: 'string' } },
+    ] as CustomProperty[];
+    const payload = transformMetricFormData(
+      baseValues({
+        extensionFormValues: {
+          [getExtensionFormKey('cost.€')]: '0',
+          [getExtensionFormKey('risk')]: 'low',
+          [getExtensionFormKey('optional')]: '',
+        },
+      }),
+      undefined,
+      customProperties
+    );
+
+    expect(payload.extension).toEqual({ 'cost.€': 0, risk: ['low'] });
+  });
+
+  it('omits extension from existing metric create requests without intake values', () => {
+    expect(transformMetricFormData(baseValues())).not.toHaveProperty(
+      'extension'
+    );
+  });
+
   it('should send owners and reviewers as EntityReference arrays', () => {
     const owner = reference({ id: 'u1', type: 'user', name: 'alice' });
     const reviewer = reference({ id: 't1', type: 'team', name: 'team-a' });

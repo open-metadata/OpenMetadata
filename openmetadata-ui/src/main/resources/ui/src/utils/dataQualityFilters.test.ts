@@ -17,6 +17,9 @@ import {
   DataQualityScope,
   DEFAULT_DATA_QUALITY_FILTERS,
   toSearchParams,
+  toTableCountsKey,
+  toTableCountsQuery,
+  toTableStatusCounts,
 } from './dataQualityFilters';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -65,5 +68,94 @@ describe('toSearchParams', () => {
     );
 
     expect(params.testCaseType).toBe(TestCaseType.table);
+  });
+});
+
+describe('toTableCountsQuery', () => {
+  const VIEWER = { id: 'user-1', teamIds: ['team-1'] };
+  const mustOf = (q: string) => JSON.parse(q).query.bool.must;
+
+  it('counts only the listed tables, in the window, without a scope clause by default', () => {
+    const must = mustOf(
+      toTableCountsQuery(DEFAULT_DATA_QUALITY_FILTERS, ['a.b.c.t1'], VIEWER)
+    );
+
+    expect(must).toContainEqual({ terms: { originEntityFQN: ['a.b.c.t1'] } });
+    expect(must).toContainEqual({ term: { deleted: false } });
+    expect(JSON.stringify(must)).toContain('testCaseResult.timestamp');
+    expect(JSON.stringify(must)).not.toContain('owners');
+    expect(JSON.stringify(must)).not.toContain('followers');
+  });
+
+  it('counts the viewer and their teams as owners for "mine"', () => {
+    const must = mustOf(
+      toTableCountsQuery(
+        { ...DEFAULT_DATA_QUALITY_FILTERS, scope: DataQualityScope.MINE },
+        ['t'],
+        VIEWER
+      )
+    );
+
+    expect(JSON.stringify(must)).toContain('["user-1","team-1"]');
+  });
+
+  it('matches the viewer as a follower for "followed"', () => {
+    const must = mustOf(
+      toTableCountsQuery(
+        { ...DEFAULT_DATA_QUALITY_FILTERS, scope: DataQualityScope.FOLLOWED },
+        ['t'],
+        VIEWER
+      )
+    );
+
+    expect(must).toContainEqual({ term: { 'followers.keyword': 'user-1' } });
+  });
+});
+
+describe('toTableStatusCounts', () => {
+  it('folds the table × status rows into one entry per table', () => {
+    expect(
+      toTableStatusCounts([
+        {
+          originEntityFQN: 't1',
+          'testCaseResult.testCaseStatus': 'success',
+          document_count: '4',
+        },
+        {
+          originEntityFQN: 't1',
+          'testCaseResult.testCaseStatus': 'failed',
+          document_count: '2',
+        },
+        {
+          originEntityFQN: 't2',
+          'testCaseResult.testCaseStatus': 'aborted',
+          document_count: '1',
+        },
+        {
+          originEntityFQN: 't2',
+          'testCaseResult.testCaseStatus': 'queued',
+          document_count: '9',
+        },
+      ])
+    ).toEqual({
+      t1: { passed: 4, failed: 2, aborted: 0 },
+      t2: { passed: 0, failed: 0, aborted: 1 },
+    });
+  });
+
+  it('keys each table so a mixed-case FQN finds it', () => {
+    const counts = toTableStatusCounts([
+      {
+        originEntityFQN: 'snow.db.public.orders',
+        'testCaseResult.testCaseStatus': 'success',
+        document_count: '3',
+      },
+    ]);
+
+    expect(counts[toTableCountsKey('SNOW.DB.PUBLIC.Orders')]).toEqual({
+      passed: 3,
+      failed: 0,
+      aborted: 0,
+    });
   });
 });

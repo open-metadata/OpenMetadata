@@ -174,14 +174,30 @@ public final class OntologyExpressionRdfWriter {
     }
   }
 
-  /** A data restriction's filler is a datatype, which OWL 2 never declares as a class. */
   private Resource filler(
       final Model model, final OntologyExpression filler, final boolean isData) {
-    final Resource resource =
-        isData && isDatatypeFiller(filler)
-            ? model.createResource(filler.getClassIri().toString())
-            : expression(model, filler);
-    return resource;
+    return isData ? dataRange(model, filler) : expression(model, filler);
+  }
+
+  private Resource dataRange(final Model model, final OntologyExpression value) {
+    return switch (value.getKind()) {
+      case NAMED_CLASS -> {
+        final Resource datatype = model.createResource(value.getClassIri().toString());
+        OwlEntityDeclarations.declare(model, datatype, EntityKind.DATATYPE);
+        yield datatype;
+      }
+      case UNION, INTERSECTION -> model
+          .createResource()
+          .addProperty(RDF.type, RDFS.Datatype)
+          .addProperty(
+              value.getKind() == OntologyExpressionKind.UNION ? OWL2.unionOf : OWL2.intersectionOf,
+              model.createList(
+                  value.getOperands().stream()
+                      .map(operand -> dataRange(model, operand))
+                      .iterator()));
+      case ONE_OF, RESTRICTION -> throw new IllegalArgumentException(
+          "Unsupported data range: " + value.getKind());
+    };
   }
 
   private static void addHasValue(
@@ -233,7 +249,7 @@ public final class OntologyExpressionRdfWriter {
     return model.createResource(iri);
   }
 
-  private static Literal literal(final Model model, final OntologyLiteral literal) {
+  static Literal literal(final Model model, final OntologyLiteral literal) {
     final Literal value =
         literal.getDatatypeIri() == null
             ? model.createLiteral(literal.getValue())

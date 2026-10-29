@@ -1,12 +1,17 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class ListFilterTest {
@@ -181,6 +186,93 @@ class ListFilterTest {
     assertEquals(
         "11111111-1111-1111-1111-111111111111",
         filter.getQueryParams().get("primaryEntityIdParam"));
+  }
+
+  @Test
+  void getDomainCondition_appliedForDataAssetEntityType() {
+    // A data-asset list is scoped to the selected domain (navbar global domain filter).
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("entityType", "table");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains("'11111111-1111-1111-1111-111111111111'"),
+        "data-asset list should be scoped by the selected domain");
+  }
+
+  @Test
+  void getDomainCondition_matchesEveryGivenDomainId() {
+    // The navbar filter passes the selected domain and its sub-domains as resolved ids.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam(
+        "domainId", "11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains(
+            "fromId IN ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222')"));
+    assertFalse(condition.contains("domain_entity"));
+  }
+
+  @Test
+  void getDomainCondition_bindsAnIdThatIsNotAUuid() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "x') OR ('1'='1");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(condition.contains("fromId IN (:domainId_0)"));
+    assertEquals("x) OR (1=1", filter.getQueryParams().get("domainId_0"));
+  }
+
+  @Test
+  void getDomainCondition_restrictsMembershipRowsToTheListedType() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainEntityType", "table");
+    assertTrue(
+        filter.getCondition("table_entity").contains("entity_relationship.toEntity = 'table'"));
+
+    filter.addQueryParam("domainAccessControl", "true");
+    String accessCondition = filter.getCondition("table_entity");
+    assertTrue(accessCondition.contains("er.toEntity = 'table'"));
+    assertTrue(accessCondition.contains("er2.toEntity = 'table'"));
+  }
+
+  @Test
+  void getDomainCondition_accessCheckIsOneAntiJoinOnPostgresAndAnOrOnMySql() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainAccessControl", "true");
+    String postgres = filter.getCondition("table_entity");
+    assertTrue(postgres.contains("AND NOT EXISTS (SELECT er2.toId"));
+    assertTrue(postgres.contains("er2.toId = er.toId"));
+    assertFalse(postgres.contains(" OR "));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig mysqlConfig = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(mysqlConfig);
+      when(mysqlConfig.isMySQL()).thenReturn(true);
+      String mysql = filter.getCondition("table_entity");
+      assertTrue(mysql.contains(") OR table_entity.id IN (SELECT er2.toId"));
+      assertFalse(mysql.contains("er2.toId = er.toId"));
+    }
+  }
+
+  @Test
+  void getDomainCondition_ignoresAnEntityTypeThatIsNotAPlainName() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainEntityType", "table' OR '1'='1");
+    assertFalse(filter.getCondition("table_entity").contains("toEntity"));
+  }
+
+  @Test
+  void getDomainCondition_appliedWhenEntityTypeUnset_backwardCompatible() {
+    // Existing ?domain= callers do not set entityType; that path must keep working unchanged.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains("'11111111-1111-1111-1111-111111111111'"),
+        "explicit ?domain= without entityType must still apply (backward-compatible)");
   }
 
   @Test
@@ -675,5 +767,57 @@ class ListFilterTest {
     filter.addQueryParam("systemAnnouncement", "false");
 
     assertTrue(filter.getCondition().contains("entityLink IS NOT NULL"));
+  }
+
+  private static final String POSTGRES_ENTITY_LINK_HASH_CONDITION =
+      "md5(COALESCE(entityLink, '')) = :entityLinkHash";
+  private static final String MYSQL_ENTITY_LINK_HASH_CONDITION = "entityLinkHash = :entityLinkHash";
+  private static final String ENTITY_LINK_CONDITION = "entityLink = :entityLink";
+  private static final String MD5_CALL = "md5(";
+  private static final String ENTITY_LINK_HASH_PARAM = "entityLinkHash";
+  private static final String WORKFLOW_INSTANCE_ID_PARAM = "workflowInstanceId";
+  private static final String WORKFLOW_INSTANCE_ID_CONDITION =
+      "workflowInstanceId = :workflowInstanceId";
+
+  /**
+   * The run list for an entity is only an index lookup when its condition is exactly the key of
+   * idx_wf_instance_entity_link from the 2.0.7 migration: md5(COALESCE(entityLink, '')) on
+   * PostgreSQL, the entityLinkHash virtual column on MySQL. Any drift in either text silently turns
+   * the lookup back into a scan of every run.
+   */
+  @Test
+  void entityLinkHashCondition_matchesTheEntityLinkIndexKeyOnEachDialect() {
+    final ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("entityLink", "<#E::glossaryTerm::g.t>");
+    filter.addQueryParam(ENTITY_LINK_HASH_PARAM, "0cc175b9c0f1b6a831c399e269772661");
+
+    final String postgres = filter.getCondition();
+    assertTrue(postgres.contains(POSTGRES_ENTITY_LINK_HASH_CONDITION));
+    assertTrue(postgres.contains(ENTITY_LINK_CONDITION));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      final DatasourceConfig mysqlConfig = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(mysqlConfig);
+      when(mysqlConfig.isMySQL()).thenReturn(true);
+      final String mysql = filter.getCondition();
+      assertTrue(mysql.contains(MYSQL_ENTITY_LINK_HASH_CONDITION));
+      assertFalse(mysql.contains(MD5_CALL));
+    }
+  }
+
+  @Test
+  void entityLinkHashCondition_absentWhenNotRequested() {
+    final ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("entityLink", "<#E::glossaryTerm::g.t>");
+    assertFalse(filter.getCondition().contains(ENTITY_LINK_HASH_PARAM));
+  }
+
+  @Test
+  void workflowInstanceIdCondition_appliedOnlyWhenRequested() {
+    final ListFilter filter = new ListFilter(null);
+    assertFalse(filter.getCondition().contains(WORKFLOW_INSTANCE_ID_PARAM));
+
+    filter.addQueryParam(WORKFLOW_INSTANCE_ID_PARAM, "11111111-1111-1111-1111-111111111111");
+    assertTrue(filter.getCondition().contains(WORKFLOW_INSTANCE_ID_CONDITION));
   }
 }

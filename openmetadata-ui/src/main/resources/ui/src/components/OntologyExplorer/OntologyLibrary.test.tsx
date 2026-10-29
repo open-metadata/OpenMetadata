@@ -16,8 +16,14 @@ import {
   Format,
   OntologyPackManifest,
 } from '../../generated/api/data/ontologyPackManifest';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { installOntologyPack, listOntologyPacks } from '../../rest/ontologyAPI';
 import OntologyLibrary from './OntologyLibrary';
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 jest.mock('../../rest/ontologyAPI', () => ({
   installOntologyPack: jest.fn(),
@@ -78,6 +84,21 @@ const EXTERNAL_PACK: OntologyPackManifest = {
   id: 'isa-95',
   name: 'ISA-95',
 };
+const FIBO_PACK: OntologyPackManifest = {
+  ...FHIR_PACK,
+  abbreviation: 'FIBO',
+  description: 'A compact starter subset of financial concepts',
+  id: 'fibo',
+  name: 'FIBO Starter',
+  standard: 'Financial Industry Business Ontology',
+};
+const UNKNOWN_PACK: OntologyPackManifest = {
+  ...FHIR_PACK,
+  abbreviation: 'NEW',
+  id: 'new-pack',
+  name: 'New standard pack',
+  standard: 'New standard',
+};
 
 const installResult = (dryRun: boolean) => ({
   conceptCount: 5,
@@ -108,35 +129,64 @@ describe('OntologyLibrary', () => {
     );
   });
 
-  it('restores an installed version from glossary provenance', async () => {
-    render(
-      <OntologyLibrary
-        installedPacks={[
-          {
-            installedAt: 1,
-            installedBy: 'admin',
-            license: 'CC0-1.0',
-            licenseUrl: FHIR_PACK.licenseUrl,
-            modules: [
-              {
-                moduleId: 'core',
-                sha256: 'a'.repeat(64),
-              },
-            ],
-            packId: FHIR_PACK.id,
-            sourceUrl: FHIR_PACK.sourceUrl,
-            version: FHIR_PACK.version,
-          },
-        ]}
-      />
-    );
+  it('orders available standards, filters by domain, and keeps manifest facts visible', async () => {
+    mockListPacks.mockResolvedValue({
+      packs: [UNKNOWN_PACK, EXTERNAL_PACK, FHIR_PACK, FIBO_PACK],
+    });
+    render(<OntologyLibrary />);
 
-    expect(await screen.findByTestId('ontology-pack-fhir')).toHaveTextContent(
-      'label.installed'
+    await screen.findByTestId('ontology-pack-fibo');
+
+    expect(
+      screen
+        .getAllByTestId(/^ontology-pack-(fibo|fhir|isa-95|new-pack)$/)
+        .map((card) => card.getAttribute('data-testid'))
+    ).toEqual([
+      'ontology-pack-fibo',
+      'ontology-pack-fhir',
+      'ontology-pack-isa-95',
+      'ontology-pack-new-pack',
+    ]);
+    expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
+      'label.ontology-library-financial-services'
+    );
+    expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
+      FIBO_PACK.description
+    );
+    expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
+      FIBO_PACK.standard
+    );
+    expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
+      '5 label.concept-plural · 3 label.relation-plural'
+    );
+    expect(screen.getByTestId('ontology-pack-new-pack')).toHaveTextContent(
+      UNKNOWN_PACK.name
     );
     expect(
-      screen.getByTestId('ontology-library-installed-count')
-    ).toHaveTextContent('1 label.installed-lowercase');
+      screen.getByTestId('ontology-pack-abbreviation-new-pack')
+    ).toHaveTextContent(UNKNOWN_PACK.abbreviation);
+
+    fireEvent.click(screen.getByTestId('ontology-library-filter-fhir'));
+
+    expect(screen.getByTestId('ontology-pack-fhir')).toBeVisible();
+    expect(screen.queryByTestId('ontology-pack-fibo')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-pack-isa-95')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-library-filter-new-pack'));
+
+    expect(screen.getByTestId('ontology-pack-new-pack')).toBeVisible();
+    expect(screen.queryByTestId('ontology-pack-fhir')).not.toBeInTheDocument();
+  });
+
+  it('shows the vocabulary catalogue without glossary installation metadata', async () => {
+    render(<OntologyLibrary />);
+
+    expect(await screen.findByTestId('ontology-pack-fhir')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-library-installed-count')
+    ).not.toBeInTheDocument();
   });
 
   it('closes from the library header and Escape key', async () => {
@@ -145,7 +195,9 @@ describe('OntologyLibrary', () => {
 
     await screen.findByTestId('ontology-pack-fhir');
     fireEvent.click(screen.getByTestId('ontology-library-close'));
-    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.keyDown(screen.getByTestId('ontology-library'), {
+      key: 'Escape',
+    });
 
     expect(onClose).toHaveBeenCalledTimes(2);
   });
@@ -229,5 +281,70 @@ describe('OntologyLibrary', () => {
       screen.queryByTestId('ontology-pack-install')
     ).not.toBeInTheDocument();
     expect(mockInstallPack).not.toHaveBeenCalled();
+  });
+
+  describe('in AI mode', () => {
+    beforeEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(false);
+    });
+
+    it('filters the catalogue, shows the pack count and closes from Cancel', async () => {
+      const onClose = jest.fn();
+      render(<OntologyLibrary onClose={onClose} />);
+
+      expect(await screen.findByTestId('ontology-pack-fhir')).toBeVisible();
+      expect(screen.getByTestId('ontology-library-count')).toHaveTextContent(
+        '2 label.ontology-plural'
+      );
+
+      fireEvent.click(screen.getByTestId('ontology-library-filter-isa-95'));
+
+      expect(screen.getByTestId('ontology-pack-isa-95')).toBeVisible();
+      expect(
+        screen.queryByTestId('ontology-pack-fhir')
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('ontology-library-cancel'));
+      fireEvent.click(screen.getByTestId('ontology-library-close'));
+
+      expect(onClose).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps module counts and the dry-run install path in the pack detail', async () => {
+      mockInstallPack.mockResolvedValueOnce(installResult(true));
+      render(<OntologyLibrary canInstall />);
+
+      fireEvent.click(await screen.findByTestId('ontology-pack-details-fhir'));
+      fireEvent.click(screen.getByTestId('ontology-module-clinical'));
+
+      expect(
+        screen.getByTestId('ontology-pack-concept-count')
+      ).toHaveTextContent('5');
+      expect(
+        screen.getByTestId('ontology-pack-relationship-count')
+      ).toHaveTextContent('3');
+      expect(
+        screen.queryByTestId('ontology-library-count')
+      ).not.toBeInTheDocument();
+
+      fireEvent.change(screen.getByTestId('ontology-pack-target-glossary'), {
+        target: { value: 'FHIR Reference' },
+      });
+      fireEvent.click(screen.getByTestId('ontology-pack-dry-run'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('ontology-pack-install')).toBeEnabled()
+      );
+
+      fireEvent.click(screen.getByTestId('ontology-library-back'));
+
+      expect(
+        await screen.findByTestId('ontology-pack-catalogue')
+      ).toBeVisible();
+    });
   });
 });

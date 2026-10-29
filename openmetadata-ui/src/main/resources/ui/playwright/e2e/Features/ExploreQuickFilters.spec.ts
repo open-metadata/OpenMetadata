@@ -739,22 +739,7 @@ test.describe('Metric search result highlight', () => {
         state: 'visible',
       });
       await page.getByTestId('global-search-selector').click();
-      await page.getByTestId('global-search-select-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      await page
-        .getByTestId('global-search-select-dropdown')
-        .locator('.rc-virtual-list-holder')
-        .evaluate((el) => {
-          el.scrollTop = el.scrollHeight;
-        });
-
-      const metricOption = page.getByTestId(
-        'global-search-select-option-Metric'
-      );
-      await metricOption.waitFor({ state: 'visible' });
-      await metricOption.click();
+      await page.getByTestId('global-search-select-option-Metric').click();
 
       const searchResponse = page.waitForResponse(
         (response) =>

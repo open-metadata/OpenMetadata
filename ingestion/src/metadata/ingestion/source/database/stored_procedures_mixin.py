@@ -19,7 +19,8 @@ from collections import defaultdict
 from collections.abc import Iterator
 
 from sqlalchemy import text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -107,10 +108,29 @@ class StoredProcedureLineageMixin(ABC):
         Yield query and stored procedure object for lineage processing.
         """
         for engine in self.get_stored_procedure_engines():
-            for query in self.get_stored_procedure_sql_statements():
-                yield from self._yield_queries_for_statement(engine, query)
+            # Connecting is guarded per engine rather than per statement, so an engine we
+            # cannot reach is skipped once. It is skipped rather than reported because on an
+            # ingest-all-databases run a single database that denies VIEW SERVER STATE must
+            # not drag the whole run's success percentage down - unlike a statement that
+            # fails after connecting, which is reported below. Narrowed because SQLAlchemy
+            # wraps driver failures but mssql+pytds leaks raw OSError subclasses on connect
+            # (socket.gaierror, TimeoutError); a KeyError/AttributeError here is a code bug
+            # and must keep propagating.
+            try:
+                connection = engine.connect()
+            except (SQLAlchemyError, OSError) as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Failed to fetch stored procedure query history from a connection, skipping it: %s", exc)
+                continue
 
-    def _yield_queries_for_statement(self, engine: Engine, query: str) -> Iterator[QueryByProcedure]:
+            # Statements are built inside the connection but outside the guard above: a
+            # failure here is a bug in the source's statement builder, not an unreachable
+            # engine, and must not be reported as a skipped connection.
+            with connection as conn:
+                for query in self.get_stored_procedure_sql_statements():
+                    yield from self._yield_queries_for_statement(conn, query)
+
+    def _yield_queries_for_statement(self, conn: Connection, query: str) -> Iterator[QueryByProcedure]:
         """
         Read one history statement. A statement that fails is retried over whatever narrower
         statements the source offers, and otherwise recorded and skipped rather than raised:
@@ -119,8 +139,7 @@ class StoredProcedureLineageMixin(ABC):
         lineage as well.
         """
         try:
-            with engine.connect() as conn:
-                results = conn.execute(text(query)).all()
+            results = conn.execute(text(query)).all()
         except Exception as exc:
             narrowed = list(self.narrow_stored_procedure_statement(query, exc))
             if not narrowed:
@@ -133,7 +152,7 @@ class StoredProcedureLineageMixin(ABC):
                 )
                 return
             for narrower_query in narrowed:
-                yield from self._yield_queries_for_statement(engine, narrower_query)
+                yield from self._yield_queries_for_statement(conn, narrower_query)
             return
 
         for row in results:

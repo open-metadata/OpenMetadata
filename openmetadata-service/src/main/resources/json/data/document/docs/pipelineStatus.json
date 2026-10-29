@@ -1,0 +1,10 @@
+{
+  "name": "PipelineStatus",
+  "displayName": "Pipeline Status",
+  "description": "Each pipeline's latest run, failures first, with its last ten runs and the error behind a failure.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.PipelineStatus",
+  "data": {
+    "gridSizes": ["small", "medium", "large"]
+  }
+}

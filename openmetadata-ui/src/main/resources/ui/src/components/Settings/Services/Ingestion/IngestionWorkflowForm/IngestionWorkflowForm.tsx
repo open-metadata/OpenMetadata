@@ -15,7 +15,7 @@ import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import classNames from 'classnames';
-import { capitalize, isUndefined, omit, omitBy } from 'lodash';
+import { capitalize, cloneDeep, isUndefined, omit, omitBy } from 'lodash';
 import {
   forwardRef,
   lazy,
@@ -29,6 +29,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  EXCLUDE_AUTO_PARTITION_DETECTION_SUPPORT_UI_SCHEMA,
   EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
@@ -45,7 +46,11 @@ import {
 import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
-import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import {
+  getSchemaByWorkflowType,
+  validateOwnerConfigMaps,
+} from '../../../../../utils/IngestionWorkflowUtils';
+import { formatAdditionalProperties } from '../../../../../utils/JSONSchemaFormUtils';
 import { getFieldSchemaForId } from '../../../../../utils/ServiceConnectionUtils';
 import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
 import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
@@ -209,6 +214,9 @@ const IngestionWorkflowForm = forwardRef<
   const isIncrementalExtractionSupported =
     serviceData?.connection?.config?.supportsIncrementalMetadataExtraction;
 
+  const isAutoPartitionDetectionSupported =
+    serviceData?.connection?.config?.supportsAutoPartitionDetection;
+
   const uiSchema = useMemo(() => {
     let commonSchema: UiSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
     if (isElasticSearchPipeline) {
@@ -231,6 +239,8 @@ const IngestionWorkflowForm = forwardRef<
         profileSampleConfig: {
           'ui:field': 'ProfileSampleConfigField',
         },
+        ...(!isAutoPartitionDetectionSupported &&
+          EXCLUDE_AUTO_PARTITION_DETECTION_SUPPORT_UI_SCHEMA),
       };
     }
 
@@ -256,6 +266,7 @@ const IngestionWorkflowForm = forwardRef<
     return commonSchema;
   }, [
     hideFooter,
+    isAutoPartitionDetectionSupported,
     isElasticSearchPipeline,
     isIncrementalExtractionSupported,
     pipeLineType,
@@ -359,7 +370,7 @@ const IngestionWorkflowForm = forwardRef<
 
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
-      let formData = { ...e.formData };
+      let formData = formatAdditionalProperties(cloneDeep(e.formData));
       if (isElasticSearchPipeline) {
         formData = {
           ...omit(formData, [
@@ -399,6 +410,7 @@ const IngestionWorkflowForm = forwardRef<
         focusOnFirstError
         noHtml5Validate
         className={classNames('rjsf no-header', className)}
+        customValidate={validateOwnerConfigMaps}
         fields={customFields}
         formContext={{ handleFocus: handleFieldFocus }}
         formData={internalData}
@@ -430,7 +442,7 @@ const IngestionWorkflowForm = forwardRef<
               className="layout-space layout-space-horizontal"
               gap={2}
               itemClassName="layout-space-item">
-              <Button color="link-color" onClick={onCancel}>
+              <Button color="secondary" onClick={onCancel}>
                 {cancelText ?? t('label.cancel')}
               </Button>
 

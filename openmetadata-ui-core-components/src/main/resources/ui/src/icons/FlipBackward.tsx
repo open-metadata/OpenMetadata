@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const FlipBackward: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const FlipBackward: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M3 9h13.5a4.5 4.5 0 1 1 0 9H12M3 9l4-4M3 9l4 4"
+      d="M2.5 7.5h11.25a3.75 3.75 0 1 1 0 7.5H10M2.5 7.5l3.333-3.333M2.5 7.5l3.333 3.333"
       stroke="currentColor"
       strokeWidth={1.3}
     />

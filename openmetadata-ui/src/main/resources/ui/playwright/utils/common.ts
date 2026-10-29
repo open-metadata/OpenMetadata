@@ -607,29 +607,6 @@ export const clickOutside = async (page: Page) => {
   });
 };
 
-/**
- * Blocks until every open Ant Design overlay has finished its enter animation.
- *
- * Ant Design animates a dropdown open with `transform: scaleY(0.8) -> scaleY(1)`
- * around `transform-origin: 0 0`, and rc-motion applies the start class one frame
- * before the `-active` class that begins the transition. Playwright's actionability
- * check ("bounding box unchanged across two consecutive animation frames") can be
- * satisfied on those pre-transition frames, so the click point gets computed against
- * the 0.8-scaled menu. Once the menu finishes growing, that point has slid onto the
- * item above the intended one — the click silently selects the wrong option.
- *
- * rc-motion strips the `-appear`/`-enter` classes on `animationend`, so their absence
- * is the signal that the popup geometry is final.
- */
-export const waitForAntdPopupToSettle = async (page: Page) => {
-  await expect(
-    page.locator(
-      '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-appear"], ' +
-        '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-enter"]'
-    )
-  ).toHaveCount(0);
-};
-
 export const searchFromSearchInput = async (
   page: Page,
   searchInput: Locator,
@@ -842,7 +819,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await waitForAllLoadersToDisappear(page);
   await page
     .getByTestId('glossary-left-panel')
-    .getByRole('link', { name: glossaryName, exact: true })
+    .getByRole('link')
+    .filter({ has: page.getByText(glossaryName, { exact: true }) })
     .click({ timeout: ACTION_TIMEOUT });
   await waitForAllLoadersToDisappear(page);
 };
@@ -1799,11 +1777,31 @@ export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
   }).toPass({ timeout: 30_000 });
 };
 
+/**
+ * Picks a React Aria Select option with the keyboard: focuses it and presses Enter, retrying until
+ * `selected` (visible only once the pick took) shows. Use it when the option list can jump into
+ * place after opening: a mouse pick selects on release over whichever row is then under the
+ * pointer, so it can pick the next row or nothing. A repeat after the pick took is a no-op.
+ */
+export const pickSelectOption = async (
+  trigger: Locator,
+  option: Locator,
+  selected: Locator
+) => {
+  await expect(async () => {
+    if (await selected.isVisible()) {
+      return;
+    }
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.press('Enter', { timeout: 2_000 });
+    }
+    await option.press('Enter', { timeout: 2_000 });
+    await expect(selected).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
+};
+
 export const dismissHoverPopovers = async (page: Page) => {
   await page.mouse.move(0, 0);
-  await expect(
-    page.locator('.ant-popover:not(.ant-popover-hidden)')
-  ).toHaveCount(0);
 };
 
 export const dismissToasts = async (page: Page) => {

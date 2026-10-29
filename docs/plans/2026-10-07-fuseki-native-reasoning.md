@@ -6,6 +6,16 @@ in review, and phase 3 has started. Date:
 code, and again to package all reasoning in the existing image without a sidecar;
 [Open decisions](#open-decisions) lists what remains.
 
+**2026-10-17 boundary revision:**
+ADR:2026-10-17-glossaries-do-not-own-ontology-models supersedes the glossary modeling
+assumptions below. Glossaries retain vocabulary terms, configurable relations and tagging;
+their unreleased ontology configuration, attributes and realization fields are removed.
+Native ontology releases own authored classes, properties and axioms, and Fuseki serves only
+the active release under
+ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release. Native asset mappings and imports
+remain follow-up work; references below to glossary realization roles or configuration are
+historical design context, not supported API contracts.
+
 ## Decision and requirements
 
 OpenMetadata owns authoring, authorization, scheduling, and presentation; it submits jobs and reads
@@ -694,8 +704,11 @@ no production memory or latency number is claimed here.
 | Caches | No new heap cache; snapshot TDB2 stores open in Fuseki with explicit cache sizes, counted in `H_f` |
 
 Concurrency, queue, and batch values are starting settings, not benchmark results. Choose
-closure/time/disk limits from conformance and scale fixtures before production activation; missing
-required limits fail capability readiness.
+closure/time/disk limits from conformance and scale fixtures before production activation. Limits
+are mandatory per operation: capabilities list the limits the store enforces, and an operation whose
+required limits are missing is reported `NOT_IMPLEMENTED`, not `AVAILABLE`; readiness reflects only
+whether work may be admitted now
+(ADR:2026-10-14-rdf-reasoning-capabilities-list-each-operation-and-the-limits-it-enforces).
 
 Validate governance queries with Jena's parsed algebra. Allow a positive, finite rule subset;
 prohibit external calls, dataset escapes, fresh blank-node construction, nondeterministic term
@@ -1113,9 +1126,10 @@ The phase checks build toward these observable outcomes:
 Deploy the reasoning-capable `openmetadata/fuseki` image, pinned by its immutable tag, with a
 container memory limit from [Packaging and sizing](#packaging-and-sizing). Set
 `OPENMETADATA_EXTENSION_ENABLED=true` and `OPENMETADATA_REASONING_ENABLED=true` once
-capabilities report the budget fits, and then enable remote reasoning in OM. Negotiate protocol and
-coverage through capabilities. An absent or `NOT_READY` capability leaves normal metadata APIs and
-serving SPARQL available and inference unavailable. Removing local inference is mandatory;
+capabilities report the budget fits, and then enable remote reasoning in OM. Negotiate protocol,
+operations and coverage through capabilities. An absent or `NOT_READY` capability leaves normal
+metadata APIs and serving SPARQL available and inference unavailable; a `NOT_IMPLEMENTED` operation
+leaves the features that need it unavailable. Removing local inference is mandatory;
 disabling defaults is insufficient.
 
 Exclude old per-rule inferred graphs from new snapshots and remove them after cutover. Migrate

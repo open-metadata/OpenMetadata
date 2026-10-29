@@ -7,7 +7,7 @@
 | **Name** | Card |
 | **Category** | Base / container |
 | **Status** | Stable |
-| **Styles** | [`core card.tsx`](../../../../../../../openmetadata-ui-core-components/src/main/resources/ui/src/components/base/card/card.tsx) |
+| **Styles** | [Core Card implementation](../../../../../../../openmetadata-ui-core-components/src/main/resources/ui/src/components/base/card/card.tsx) |
 | **Component** | `@openmetadata/ui-core-components` → `Card` (`Card.Header` / `Card.Content` / `Card.Footer`) for new work; Ant Design `Card` (legacy) |
 
 ## Overview
@@ -35,8 +35,8 @@ Parts: **root** (surface, border, radius, optional shadow), **header**
 
 ## Tokens used
 
-Surface, border and radius come from the core-components Card; the medium
-weight and expand transition below are the matching `--om-*` tokens.
+The legacy token mappings below correspond to the semantic styles maintained
+in the [core Card implementation](../../../../../../../openmetadata-ui-core-components/src/main/resources/ui/src/components/base/card/card.tsx).
 
 | Part | Token |
 | --- | --- |
@@ -52,12 +52,12 @@ weight and expand transition below are the matching `--om-*` tokens.
 
 | Prop | Values |
 | --- | --- |
-| `variant` | `default`, `elevated`, `outlined`, `ghost` |
-| `color` | `default`, `brand`, `brandOutlined`, `error`, `warning`, `success` |
+| `variant` | `default`, `elevated`, `outlined`, `ghost`, `muted` |
+| `color` | `default`, `secondary`, `brand`, `brandOutlined`, `error`, `warning`, `success` |
 | `size` | `sm`, `md`, `lg` (drives padding) |
 | `isClickable` | boolean |
 | `isSelected` | boolean |
-| Sub-components | `Card.Header` (`title`, `subtitle`, `extra`), `Card.Content`, `Card.Footer` |
+| Sub-components | `Card.Header` (`title`, `subtitle`, `extra`, `hasDivider`), `Card.Content`, `Card.Footer` |
 
 ## States
 

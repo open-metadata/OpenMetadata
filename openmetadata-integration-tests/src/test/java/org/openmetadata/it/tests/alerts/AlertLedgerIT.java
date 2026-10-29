@@ -16,9 +16,9 @@ import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.ledger.AlertLedger;
-import org.openmetadata.service.events.subscription.ledger.AlertRecord;
-import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.events.consumer.ledger.AlertLedger;
+import org.openmetadata.service.events.consumer.ledger.AlertRecord;
+import org.openmetadata.service.events.consumer.ledger.LedgerKeys;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
 
 /** The ledger against a real database, because its guarantees are the database's. */

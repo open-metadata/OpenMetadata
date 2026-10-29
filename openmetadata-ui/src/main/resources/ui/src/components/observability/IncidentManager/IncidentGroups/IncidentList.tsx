@@ -14,7 +14,6 @@
 import {
   Badge,
   Box,
-  EmptyPlaceholder,
   OwnerChip,
   Table,
   toOwnerRef,
@@ -25,9 +24,11 @@ import {
   Database01,
   ShieldTick,
 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import { FqnPart } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -46,6 +47,7 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import InlineSeverity from '../../../DataQuality/IncidentManager/Severity/InlineSeverity.component';
 import InlineTestCaseIncidentStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/InlineTestCaseIncidentStatus.component';
@@ -97,15 +99,14 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
       </Box>
       {incident.failureSummary && (
         // Not the core Alert: it is a live region, and every row of the list
-        // would be announced as one. Same error tokens, in the design's
-        // compact callout.
+        // would be announced as one. Inline, as the design shows it.
         <Box
           align="start"
-          className="tw:rounded-lg tw:border tw:border-error-subtle tw:bg-error-primary tw:px-3 tw:py-2"
+          className="tw:text-error-primary"
           data-testid="incident-failure-summary"
-          gap={2}>
-          <AlertTriangle className="tw:mt-0.5 tw:size-4 tw:shrink-0 tw:text-fg-error-primary" />
-          <Typography as="span" className="tw:text-secondary" size="text-sm">
+          gap={1}>
+          <AlertTriangle className="tw:mt-0.5 tw:size-3.5 tw:shrink-0 tw:text-fg-error-primary" />
+          <Typography as="span" size="text-xs">
             {incident.failureSummary}
           </Typography>
         </Box>
@@ -123,6 +124,7 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
 const IncidentList = ({
   incidents,
   isLoading,
+  isScrollable = false,
   onIncidentChange,
 }: IncidentListProps) => {
   const { t } = useTranslation();
@@ -174,10 +176,9 @@ const IncidentList = ({
       <Box
         className="tw:relative tw:min-h-60 tw:w-full"
         data-testid="incident-list-empty">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           icon={<ShieldTick className="tw:text-fg-brand-primary" />}
           title={t('message.no-active-incidents')}
-          variant="blank"
         />
       </Box>
     );
@@ -187,11 +188,18 @@ const IncidentList = ({
       aria-label={t('label.incident-plural')}
       // The page being left stays until the next one lands; dimmed, it reads
       // as on its way out rather than as the result.
-      className={
-        isLoading && incidents.length > 0 ? 'tw:opacity-60' : undefined
+      className={classNames({
+        'tw:opacity-60': isLoading && incidents.length > 0,
+        // The pager below the list draws the divider under the rows; the last
+        // row's own line would double it.
+        'tw:[&_tbody>tr:last-child>td]:after:hidden': true,
+      })}
+      containerClassName={
+        isScrollable ? 'tw:min-h-0 tw:flex-1 tw:overflow-y-auto' : undefined
       }
       data-testid="incident-list"
-      size="sm">
+      size="sm"
+      stickyHeader={isScrollable}>
       <Table.Header columns={columns}>
         {(column) => (
           <Table.Head
@@ -271,13 +279,21 @@ const IncidentList = ({
                 </span>
               </Table.Cell>
               <Table.Cell className="tw:whitespace-nowrap">
-                {assignee && (
+                {assignee ? (
                   <span data-testid="incident-assignee">
                     <OwnerChip
                       isCompactView={false}
                       owner={toOwnerRef(assignee)}
                     />
                   </span>
+                ) : (
+                  <Typography
+                    as="span"
+                    className="tw:text-tertiary"
+                    data-testid="incident-no-assignee"
+                    size="text-sm">
+                    {NO_DATA_PLACEHOLDER}
+                  </Typography>
                 )}
               </Table.Cell>
             </Table.Row>

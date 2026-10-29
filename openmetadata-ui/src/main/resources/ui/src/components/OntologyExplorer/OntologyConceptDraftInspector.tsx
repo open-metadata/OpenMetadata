@@ -13,21 +13,24 @@
 
 import {
   Badge,
+  BadgeWithDot,
   Button,
+  ButtonUtility,
   Input,
   Select,
   SelectItemType,
+  SlideoutMenu,
   TextArea,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FormEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { OntologyAttribute } from '../../generated/type/ontologyAttribute';
 import { addGlossaryTerm } from '../../rest/glossaryAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { OntologyConceptAttributes } from './OntologyConceptAttributes.component';
+import { ONTOLOGY_DRAWER_WIDTH } from './OntologyExplorer.constants';
 import { OntologyNode } from './OntologyExplorer.interface';
 
 type DraftNodeUpdate = Partial<
@@ -54,6 +57,13 @@ function getDraftLabel(
   return displayName.trim() || name.trim() || fallback;
 }
 
+function getRequiredHint(
+  isMissing: boolean | undefined,
+  message: string
+): string | undefined {
+  return isMissing ? message : undefined;
+}
+
 const OntologyConceptDraftInspector = ({
   glossaries,
   isLeaseOwned,
@@ -68,9 +78,11 @@ const OntologyConceptDraftInspector = ({
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
   const [iri, setIri] = useState('');
-  const [attributes, setAttributes] = useState<OntologyAttribute[]>([]);
   const [iriError, setIriError] = useState<string>();
   const [isCreating, setIsCreating] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const markTouched = (field: string) =>
+    setTouched((previous) => ({ ...previous, [field]: true }));
   const glossaryItems = useMemo<SelectItemType[]>(
     () =>
       glossaries.map((glossary) => ({
@@ -92,12 +104,14 @@ const OntologyConceptDraftInspector = ({
   } else if (!isLeaseOwned) {
     glossaryHint = t('label.loading');
   }
-  const nameHint = name.trim()
-    ? undefined
-    : t('label.field-required', { field: nameLabel });
-  const descriptionHint = description.trim()
-    ? undefined
-    : t('label.field-required', { field: descriptionLabel });
+  const nameHint = getRequiredHint(
+    touched.name && !name.trim(),
+    t('label.field-required', { field: nameLabel })
+  );
+  const descriptionHint = getRequiredHint(
+    touched.description && !description.trim(),
+    t('label.field-required', { field: descriptionLabel })
+  );
   const isComplete = Boolean(
     selectedGlossary && name.trim() && description.trim() && isLeaseOwned
   );
@@ -121,7 +135,6 @@ const OntologyConceptDraftInspector = ({
     setIsCreating(true);
     try {
       const concept = await addGlossaryTerm({
-        ...(attributes.length ? { attributes } : {}),
         description: description.trim(),
         displayName: displayName.trim() || undefined,
         glossary: selectedGlossary.fullyQualifiedName ?? selectedGlossary.name,
@@ -147,29 +160,44 @@ const OntologyConceptDraftInspector = ({
   };
 
   return (
-    <aside
-      className="tw:z-4 tw:h-full tw:w-[360px] tw:max-w-[40vw] tw:shrink-0 tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-primary"
-      data-testid="ontology-concept-draft-inspector">
+    <SlideoutMenu
+      isDismissable
+      isOpen
+      aria-label={t('label.new-entity', { entity: t('label.concept') })}
+      dialogClassName="tw:gap-0 tw:items-stretch"
+      width={ONTOLOGY_DRAWER_WIDTH}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onCancel();
+        }
+      }}>
       <form
-        className="tw:flex tw:h-full tw:min-h-0 tw:flex-col"
+        className="tw:flex tw:size-full tw:min-h-0 tw:flex-col"
+        data-testid="ontology-concept-draft-inspector"
         onSubmit={handleFormSubmit}>
-        <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-[18px]">
-          <div className="tw:mb-2 tw:flex tw:items-center tw:justify-between tw:gap-2">
-            <span className="tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.08em] tw:text-quaternary tw:uppercase">
+        <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-6 tw:pt-5 tw:pb-8">
+          <div className="tw:flex tw:items-center tw:gap-1.5">
+            <BadgeWithDot color="brand" size="sm" type="color">
               {t('label.concept')}
-            </span>
-            <Badge color="blue" size="sm" type="color">
+            </BadgeWithDot>
+            <Badge color="gray" size="sm" type="color">
               {t('label.draft')}
             </Badge>
+            <span className="tw:flex-1" />
+            <ButtonUtility
+              color="tertiary"
+              data-testid="ontology-draft-close"
+              icon={XClose}
+              size="sm"
+              tooltip={t('label.close')}
+              onClick={onCancel}
+            />
           </div>
-          <h2 className="tw:m-0 tw:font-body tw:text-[17px] tw:leading-[1.25] tw:font-bold tw:text-primary">
+          <h2 className="tw:m-0 tw:mt-3 tw:text-md tw:font-semibold tw:text-primary">
             {node.label}
           </h2>
 
-          <section className="tw:mt-5 tw:flex tw:flex-col tw:gap-4">
-            <h3 className="tw:m-0 tw:font-body tw:text-[13px] tw:leading-normal tw:font-semibold tw:text-primary">
-              {t('label.details')}
-            </h3>
+          <section className="tw:mt-4 tw:flex tw:flex-col tw:gap-4">
             <Select
               isRequired
               aria-label={glossaryLabel}
@@ -203,8 +231,10 @@ const OntologyConceptDraftInspector = ({
               hint={nameHint}
               isInvalid={Boolean(nameHint)}
               label={nameLabel}
+              placeholder={t('message.concept-name-placeholder')}
               value={name}
               onChange={(value) => {
+                markTouched('name');
                 setName(value);
                 const label = getDraftLabel(value, displayName, node.label);
                 onChange({ label, originalLabel: label });
@@ -213,6 +243,7 @@ const OntologyConceptDraftInspector = ({
             <Input
               data-testid="ontology-draft-display-name-field"
               label={t('label.display-name')}
+              placeholder={t('message.concept-display-name-placeholder')}
               value={displayName}
               onChange={(value) => {
                 setDisplayName(value);
@@ -226,9 +257,11 @@ const OntologyConceptDraftInspector = ({
               hint={descriptionHint}
               isInvalid={Boolean(descriptionHint)}
               label={descriptionLabel}
+              placeholder={t('message.concept-description-placeholder')}
               rows={4}
               value={description}
               onChange={(value) => {
+                markTouched('description');
                 setDescription(value);
                 onChange({ description: value });
               }}
@@ -238,6 +271,7 @@ const OntologyConceptDraftInspector = ({
               hint={iriError}
               isInvalid={Boolean(iriError)}
               label={t('label.concept-iri')}
+              placeholder={t('message.concept-iri-placeholder')}
               value={iri}
               onChange={(value) => {
                 setIri(value);
@@ -245,17 +279,9 @@ const OntologyConceptDraftInspector = ({
               }}
             />
           </section>
-
-          <div className="tw:my-[18px] tw:h-px tw:bg-secondary" />
-          <OntologyConceptAttributes
-            isEditMode
-            attributes={attributes}
-            variant="inspector"
-            onAttributesChange={setAttributes}
-          />
         </div>
 
-        <div className="tw:flex tw:shrink-0 tw:justify-end tw:gap-2 tw:border-t tw:border-secondary tw:bg-primary tw:p-4">
+        <div className="tw:flex tw:shrink-0 tw:justify-end tw:gap-2 tw:border-t tw:border-secondary tw:p-4">
           <Button
             color="secondary"
             isDisabled={isCreating}
@@ -274,7 +300,7 @@ const OntologyConceptDraftInspector = ({
           </Button>
         </div>
       </form>
-    </aside>
+    </SlideoutMenu>
   );
 };
 

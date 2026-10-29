@@ -25,8 +25,8 @@ import {
   MOCK_SQL_TEST_CASE,
   MOCK_TEST_CASE,
 } from '../../../../mocks/TestSuite.mock';
+import { getPastDaysRange } from '../../../../utils/date-time/calendarDate.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { getPastDaysRange } from '../../../observability/DataQuality/Dashboard/calendarDate.utils';
 import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummary from './TestSummary';
 
@@ -90,11 +90,11 @@ interface DateRangeFilterProps {
 const mockDateRangeFilter = jest.fn();
 
 jest.mock(
-  '../../../observability/DataQuality/Dashboard/DqDateRangeFilter',
+  '../../../common/DateRangeFilter/DateRangeFilter',
   () => (props: DateRangeFilterProps) => {
     mockDateRangeFilter(props);
 
-    return <div>DqDateRangeFilter</div>;
+    return <div>DateRangeFilter</div>;
   }
 );
 
@@ -115,14 +115,11 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   ...jest.requireActual('../../../../utils/date-time/DateTimeUtils'),
   formatDate: jest.fn().mockImplementation((val) => `date-${val}`),
 }));
-jest.mock(
-  '../../../observability/DataQuality/Dashboard/calendarDate.utils',
-  () => ({
-    getPastDaysRange: jest
-      .fn()
-      .mockReturnValue({ startTs: 1633948800000, endTs: 1633948800000 }),
-  })
-);
+jest.mock('../../../../utils/date-time/calendarDate.utils', () => ({
+  getPastDaysRange: jest
+    .fn()
+    .mockReturnValue({ startTs: 1633948800000, endTs: 1633948800000 }),
+}));
 
 describe('TestSummary component', () => {
   beforeEach(() => {
@@ -143,7 +140,7 @@ describe('TestSummary component', () => {
     ).toBeInTheDocument();
     expect(graphContainer).toBeInTheDocument();
     expect(graph).toBeInTheDocument();
-    expect(await screen.findByText('DqDateRangeFilter')).toBeInTheDocument();
+    expect(await screen.findByText('DateRangeFilter')).toBeInTheDocument();
     expect(screen.getByText('Result history')).toBeInTheDocument();
     expect(screen.getByTestId('run-summary-tiles')).toBeInTheDocument();
   });
@@ -268,7 +265,7 @@ describe('TestSummary component', () => {
     expect(screen.getByText('Loader.component')).toBeInTheDocument();
     // Only the body waits: the header and its date picker stay, so nothing shifts.
     expect(screen.getByText('Result history')).toBeInTheDocument();
-    expect(screen.getByText('DqDateRangeFilter')).toBeInTheDocument();
+    expect(screen.getByText('DateRangeFilter')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText('TestSummaryGraph')).toBeInTheDocument();
@@ -278,7 +275,7 @@ describe('TestSummary component', () => {
   it('should open the range picker on the last 30 days', async () => {
     render(<TestSummary {...mockProps} />);
 
-    await screen.findByText('DqDateRangeFilter');
+    await screen.findByText('DateRangeFilter');
 
     expect(mockDateRangeFilter).toHaveBeenLastCalledWith(
       expect.objectContaining({ startTs: 1633948800000, endTs: 1633948800000 })
@@ -288,7 +285,7 @@ describe('TestSummary component', () => {
   it('should refetch exactly once when the range changes', async () => {
     render(<TestSummary {...mockProps} />);
 
-    await screen.findByText('DqDateRangeFilter');
+    await screen.findByText('DateRangeFilter');
     mockGetListTestCaseResults.mockClear();
 
     const newDateRange = { startTs: 1234567890, endTs: 1234567899 };
@@ -307,7 +304,7 @@ describe('TestSummary component', () => {
   it('should not refetch when the same range is applied again', async () => {
     render(<TestSummary {...mockProps} />);
 
-    await screen.findByText('DqDateRangeFilter');
+    await screen.findByText('DateRangeFilter');
     mockGetListTestCaseResults.mockClear();
 
     await applyRange({ startTs: 1633948800000, endTs: 1633948800000 });
@@ -321,7 +318,7 @@ describe('TestSummary component', () => {
     });
     render(<TestSummary {...mockProps} />);
 
-    await screen.findByText('DqDateRangeFilter');
+    await screen.findByText('DateRangeFilter');
 
     expect(screen.getByTestId('run-summary-runs')).toHaveTextContent('1');
 
@@ -346,7 +343,7 @@ describe('TestSummary component', () => {
   it('should keep the newest range when an older response arrives late', async () => {
     render(<TestSummary {...mockProps} />);
 
-    await screen.findByText('DqDateRangeFilter');
+    await screen.findByText('DateRangeFilter');
 
     let resolveSlowResponse!: (value: unknown) => void;
     mockGetListTestCaseResults
@@ -521,10 +518,10 @@ describe('TestSummary component', () => {
       testCaseResult: { timestamp: 1, testCaseStatus: 'Success' },
     } as TestCase;
     const { rerender } = render(<TestSummary data={testCase} />);
-    await screen.findByText('DqDateRangeFilter');
+    await screen.findByText('DateRangeFilter');
 
     rerender(<TestSummary data={{ ...testCase, description: 'edited' }} />);
-    await screen.findByText('DqDateRangeFilter');
+    await screen.findByText('DateRangeFilter');
 
     expect(mockGetListTestCaseResults).toHaveBeenCalledTimes(1);
   });
@@ -542,7 +539,7 @@ describe('TestSummary component', () => {
         'This test has not run yet. Results will be plotted here after its first run.'
       );
       expect(screen.getByText('Result history')).toBeInTheDocument();
-      expect(screen.getByText('DqDateRangeFilter')).toBeInTheDocument();
+      expect(screen.getByText('DateRangeFilter')).toBeInTheDocument();
       expect(screen.queryByText('TestSummaryGraph')).not.toBeInTheDocument();
       expect(screen.queryByTestId('run-summary-tiles')).not.toBeInTheDocument();
       expect(screen.queryByTestId('run-details-card')).not.toBeInTheDocument();

@@ -23,6 +23,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFParser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +41,6 @@ import org.openmetadata.schema.api.data.OntologyImportResult;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.type.OntologyAttribute;
 
 /** Cross-cutting integration coverage for database-primary ontology governance APIs. */
 @Execution(ExecutionMode.CONCURRENT)
@@ -91,7 +93,7 @@ public class OntologyGovernanceIT {
   }
 
   @Test
-  void duplicatesMultiDomainDatatypePropertyWithoutLosingItsIri(TestNamespace ns) throws Exception {
+  void preservesMultiDomainDatatypePropertyInTheImportedRdf(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     String ontology =
         """
@@ -108,12 +110,18 @@ public class OntologyGovernanceIT {
         """;
 
     OntologyImportResult result = importTurtle(glossary, ontology);
-    GlossaryTerm customer = term(glossary, "Customer");
-    GlossaryTerm supplier = term(glossary, "Supplier");
-
-    assertEquals(2, result.getCustomPropertiesCreated());
-    assertTrue(hasAttribute(customer, "rating", "https://example.org/multi-domain#rating"));
-    assertTrue(hasAttribute(supplier, "rating", "https://example.org/multi-domain#rating"));
+    assertEquals(1, result.getCustomPropertiesCreated());
+    Model expected = RDFParser.fromString(ontology, Lang.TURTLE).toModel();
+    Model exported =
+        RDFParser.fromString(exportOntology(glossary, FORMAT_TURTLE), Lang.TURTLE).toModel();
+    try {
+      assertTrue(
+          exported.containsAll(expected),
+          "Imported classes, domains and range must survive export");
+    } finally {
+      expected.close();
+      exported.close();
+    }
   }
 
   @Test
@@ -206,15 +214,7 @@ public class OntologyGovernanceIT {
   private static GlossaryTerm term(Glossary glossary, String name) {
     return SdkClients.adminClient()
         .glossaryTerms()
-        .getByName(glossary.getFullyQualifiedName() + "." + name, "attributes");
-  }
-
-  private static boolean hasAttribute(GlossaryTerm term, String name, String iri) {
-    return term.getAttributes().stream().anyMatch(attribute -> matches(attribute, name, iri));
-  }
-
-  private static boolean matches(OntologyAttribute attribute, String name, String iri) {
-    return name.equals(attribute.getName()) && iri.equals(attribute.getIri().toString());
+        .getByName(glossary.getFullyQualifiedName() + "." + name, "");
   }
 
   private static void createTerm(Glossary glossary, String name, URI iri) {

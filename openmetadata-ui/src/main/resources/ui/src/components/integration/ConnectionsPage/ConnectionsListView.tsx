@@ -13,7 +13,6 @@
 
 import {
   Button,
-  EmptyPlaceholder,
   Owner,
   PaginationCardWithControls,
   Table,
@@ -45,6 +44,7 @@ import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUt
 import { getServiceLogoThemeClass } from '../../../utils/ServiceIconUtils';
 import { getServiceCategoryLabel } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import ConnectionsFilterButton from './ConnectionsFilterButton';
@@ -511,10 +511,9 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         <div
           className="tw:relative tw:min-h-[400px]"
           data-testid="connections-list-error-wrapper">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="connections-list-error"
             title={t('message.something-went-wrong')}
-            variant="blank"
           />
         </div>
       );
@@ -524,7 +523,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
       <div
         className="tw:relative tw:min-h-[400px]"
         data-testid="connections-list-empty-wrapper">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="connections-list-empty-first-run"
           description={!isNarrowed && t(emptyState.descriptionKey)}
           // `footer` rather than `actions` so the button keeps the LimitWrapper the header button
@@ -548,7 +547,6 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
               ? t('message.no-data-available-for-selected-filter')
               : t(emptyState.titleKey)
           }
-          variant="blank"
         />
       </div>
     ) : (

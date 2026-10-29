@@ -11,12 +11,40 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
 import { Input } from './input';
 import { PasswordInput } from './password-input';
 
 describe('Input', () => {
+  it('drops its own border when borderless', () => {
+    const { rerender } = render(<Input label="Search" />);
+    // The border is drawn on the group that wraps the input.
+    const group = () =>
+      screen
+        .getByRole('textbox', { name: /Search/ })
+        .closest('[role="presentation"]');
+
+    expect(group()).not.toHaveClass('tw:outline-0');
+
+    rerender(<Input borderless label="Search" />);
+
+    expect(group()).toHaveClass('tw:outline-0', 'tw:bg-transparent');
+  });
+
+  it('keeps the focus outline on a borderless field for keyboard focus', async () => {
+    render(<Input borderless label="Search" />);
+    const group = screen
+      .getByRole('textbox', { name: /Search/ })
+      .closest('[role="presentation"]');
+
+    await userEvent.tab();
+
+    expect(group).not.toHaveClass('tw:outline-0');
+    expect(group).toHaveClass('tw:outline-brand');
+  });
+
   it('greys the input text when the field is disabled', () => {
     render(<Input isDisabled label="Service name" value="mysql_sample" />);
 

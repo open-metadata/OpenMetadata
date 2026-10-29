@@ -31,6 +31,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.jdbi.v3.core.Jdbi;
@@ -151,6 +152,46 @@ class EntityRepositoryBulkFieldsTest {
   }
 
   @Test
+  void resolveTargetsBySource_batchesPerTypeKeepsRowOrderAndDropsMissingTargets() {
+    DomainAwarePipelineRepo repo = new DomainAwarePipelineRepo(pipelineDAO);
+    UUID teamA = UUID.randomUUID();
+    UUID teamB = UUID.randomUUID();
+    EntityReference table = reference(Entity.TABLE);
+    EntityReference container = reference(Entity.CONTAINER);
+    EntityReference otherTable = reference(Entity.TABLE);
+    // An OWNS row can outlive its target; the per-row lookup it replaces skipped such rows.
+    EntityReference deletedTable = reference(Entity.TABLE);
+    List<EntityRelationshipObject> rows =
+        List.of(
+            owns(teamA, table),
+            owns(teamB, otherTable),
+            owns(teamA, deletedTable),
+            owns(teamA, container));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entityMock.when(() -> Entity.hasEntityRepository(Entity.TABLE)).thenReturn(true);
+      entityMock.when(() -> Entity.hasEntityRepository(Entity.CONTAINER)).thenReturn(true);
+      entityMock
+          .when(() -> Entity.getEntityReferencesByIds(eq(Entity.TABLE), anyList(), any()))
+          .thenReturn(List.of(otherTable, table));
+      entityMock
+          .when(() -> Entity.getEntityReferencesByIds(eq(Entity.CONTAINER), anyList(), any()))
+          .thenReturn(List.of(container));
+
+      Map<UUID, List<EntityReference>> owned = repo.resolveTargetsBySource(rows, Include.ALL);
+
+      assertEquals(List.of(table, container), owned.get(teamA));
+      assertEquals(List.of(otherTable), owned.get(teamB));
+      entityMock.verify(
+          () -> Entity.getEntityReferencesByIds(eq(Entity.TABLE), anyList(), eq(Include.ALL)),
+          times(1));
+      entityMock.verify(
+          () -> Entity.getEntityReferencesByIds(eq(Entity.CONTAINER), anyList(), eq(Include.ALL)),
+          times(1));
+    }
+  }
+
+  @Test
   void folderChildrenCount_isBatchedIntoOneQueryPerPage() {
     Folder f0 = folder("drive.f0");
     Folder f1 = folder("drive.f1");
@@ -206,6 +247,20 @@ class EntityRepositoryBulkFieldsTest {
     verify(relationshipDAO, never())
         .countNonDeletedChildFilesBatch(anyList(), anyString(), anyInt(), anyString());
     assertNull(f0.getChildrenCount());
+  }
+
+  private static EntityReference reference(String type) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(type);
+  }
+
+  private static EntityRelationshipObject owns(UUID teamId, EntityReference target) {
+    return EntityRelationshipObject.builder()
+        .fromId(teamId.toString())
+        .toId(target.getId().toString())
+        .fromEntity(Entity.TEAM)
+        .toEntity(target.getType())
+        .relation(Relationship.OWNS.ordinal())
+        .build();
   }
 
   private FolderRepository newFolderRepository() {

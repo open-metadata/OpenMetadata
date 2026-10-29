@@ -16,6 +16,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.TagLabel;
@@ -59,6 +60,27 @@ class BundleWarmupReadPathCertificationTest {
 
     @Override
     protected void storeRelationships(Pipeline entity) {}
+  }
+
+  private static class TestGlossaryTermRepo extends EntityRepository<GlossaryTerm> {
+    TestGlossaryTermRepo(CollectionDAO.GlossaryTermDAO dao) {
+      super("glossaryTerms", Entity.GLOSSARY_TERM, GlossaryTerm.class, dao, "tags", "tags");
+    }
+
+    @Override
+    protected void setFields(GlossaryTerm entity, Fields fields, RelationIncludes r) {}
+
+    @Override
+    protected void clearFields(GlossaryTerm entity, Fields fields) {}
+
+    @Override
+    protected void prepare(GlossaryTerm entity, boolean update) {}
+
+    @Override
+    protected void storeEntity(GlossaryTerm entity, boolean update) {}
+
+    @Override
+    protected void storeRelationships(GlossaryTerm entity) {}
   }
 
   @BeforeEach
@@ -187,5 +209,36 @@ class BundleWarmupReadPathCertificationTest {
     } finally {
       ReadBundleContext.pop();
     }
+  }
+
+  @Test
+  void canonicalGetPathKeepsCertTagForNonCertificationEntity() {
+    TestGlossaryTermRepo glossaryTermRepo =
+        new TestGlossaryTermRepo(mock(CollectionDAO.GlossaryTermDAO.class));
+    GlossaryTerm term =
+        new GlossaryTerm()
+            .withId(UUID.randomUUID())
+            .withName("term")
+            .withFullyQualifiedName("g.term");
+    TagLabel certTag =
+        new TagLabel()
+            .withTagFQN("Certification.Gold")
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+    TagLabel piiTag =
+        new TagLabel().withTagFQN("PII.Sensitive").withSource(TagLabel.TagSource.CLASSIFICATION);
+    when(tagUsageDAO.getTags(anyString())).thenReturn(List.of(certTag, piiTag));
+
+    List<TagLabel> tags = glossaryTermRepo.getTags(term);
+    assertNotNull(tags);
+    assertEquals(
+        2,
+        tags.size(),
+        "non-certification entity must KEEP Certification.* in canonical `tags`: " + tags);
+    assertEquals("Certification.Gold", tags.get(0).getTagFQN());
+    assertEquals("PII.Sensitive", tags.get(1).getTagFQN());
+
+    AssetCertification cert = glossaryTermRepo.getCertification(term);
+    assertNull(cert, "non-certification entity exposes no certification");
+    verify(tagUsageDAO, never()).getCertTagsInternalBatch(anyInt(), anyList(), anyString());
   }
 }

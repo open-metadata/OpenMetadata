@@ -86,6 +86,31 @@ describe('useApplicationStore domain synchronization', () => {
     expect(domainState.activeDomain).toBe(DEFAULT_DOMAIN_VALUE);
   });
 
+  it('restores the selection persisted on the user into the navbar', () => {
+    act(() => {
+      useApplicationStore
+        .getState()
+        .setCurrentUser({ ...adminUser, defaultDomain: singleDomain });
+    });
+
+    const domainState = useDomainStore.getState();
+
+    expect(domainState.activeDomain).toBe('Engineering');
+    expect(domainState.activeDomainEntityRef).toEqual(singleDomain);
+  });
+
+  it('drops a cached selection when the user has none persisted', () => {
+    act(() => {
+      useDomainStore.getState().updateActiveDomain(singleDomain);
+      useApplicationStore.getState().setCurrentUser(adminUser);
+    });
+
+    const domainState = useDomainStore.getState();
+
+    expect(domainState.activeDomain).toBe(DEFAULT_DOMAIN_VALUE);
+    expect(domainState.activeDomainEntityRef).toBeUndefined();
+  });
+
   it('clears domain restriction state on logout', () => {
     act(() => {
       useApplicationStore.getState().setCurrentUser(restrictedSingleDomainUser);

@@ -39,11 +39,7 @@ public final class OntologyPatternInstantiationService {
     final OntologyPatternCatalog catalog = new OntologyPatternCatalog();
     final OntologyPatternDraftFactory factory =
         new OntologyPatternDraftFactory(
-            catalog,
-            new OntologyPatternRequestValidator(),
-            new OntologyIriMinter(),
-            relationshipTypes::require,
-            clock);
+            catalog, new OntologyPatternRequestValidator(), relationshipTypes::require, clock);
     return new OntologyPatternInstantiationService(factory, repository);
   }
 

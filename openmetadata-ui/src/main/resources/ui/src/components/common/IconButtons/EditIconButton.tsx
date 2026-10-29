@@ -83,7 +83,7 @@ const BaseIconButton = forwardRef<HTMLButtonElement, BaseIconButtonProps>(
         iconLeading={icon ?? DefaultIcon}
         isDisabled={disabled}
         ref={ref}
-        size="xxs"
+        size="xs"
         {...props}
       />
     </Tooltip>
@@ -92,30 +92,15 @@ const BaseIconButton = forwardRef<HTMLButtonElement, BaseIconButtonProps>(
 
 // Forwards its ref so react-aria's Pressable can make it a PopoverTrigger child.
 export const EditIconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
-  (props, ref) => (
-    <BaseIconButton
-      bordered={props.newLook}
-      defaultIcon={Edit01}
-      ref={ref}
-      {...props}
-    />
-  )
+  (props, ref) => <BaseIconButton defaultIcon={Edit01} ref={ref} {...props} />
 );
 
 export const RequestIconButton = (props: IconButtonProps) => (
-  <BaseIconButton
-    bordered={props.newLook}
-    defaultIcon={MessagePlusSquare}
-    {...props}
-  />
+  <BaseIconButton defaultIcon={MessagePlusSquare} {...props} />
 );
 
 export const CommentIconButton = (props: IconButtonProps) => (
-  <BaseIconButton
-    bordered={props.newLook}
-    defaultIcon={MessageChatSquare}
-    {...props}
-  />
+  <BaseIconButton defaultIcon={MessageChatSquare} {...props} />
 );
 
 interface AlignRightIconButtonProps {

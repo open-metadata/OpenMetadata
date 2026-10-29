@@ -37,7 +37,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
 
   return (
     <div data-testid="table-body">
-      <div className="m-b-sm description-text" data-testid="description-text">
+      <div className="tw:mb-1.5" data-testid="description-text">
         {description?.trim() ? (
           <RichTextEditorPreviewerV1
             className="max-two-lines"

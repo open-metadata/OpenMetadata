@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import ProfilerStateWrapper from './ProfilerStateWrapper.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Skeleton: () => <div data-testid="skeleton">Loading...</div>,
 }));
 

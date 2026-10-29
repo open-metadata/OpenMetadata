@@ -54,7 +54,7 @@ public final class OntologyBulkServiceFactory {
       final RelationshipTypeResolver relationshipTypes,
       final Clock clock) {
     final OntologyBulkCsvPlanner csvPlanner =
-        new OntologyBulkCsvPlanner(new OntologyBulkCsvParser(), new OntologyIriMinter(), clock);
+        new OntologyBulkCsvPlanner(new OntologyBulkCsvParser(), clock);
     return new OntologyBulkPlanner(
         new RepositoryOntologyBulkTermCatalog(termRepository),
         csvPlanner,

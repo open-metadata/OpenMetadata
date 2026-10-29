@@ -47,7 +47,6 @@ export interface TestDefinitionFormValues {
 
 export interface TestDefinitionFormProps {
   open: boolean;
-  variant?: 'drawer' | 'modal';
   initialValues?: TestDefinition;
   onSuccess: (data?: TestDefinition) => void;
   onCancel: () => void;
@@ -60,5 +59,4 @@ export interface TestDefinitionFormBodyProps {
   isReadOnlyField: boolean;
   errorMessage?: string;
   onErrorDismiss?: () => void;
-  onActiveFieldChange?: (fieldId: string) => void;
 }

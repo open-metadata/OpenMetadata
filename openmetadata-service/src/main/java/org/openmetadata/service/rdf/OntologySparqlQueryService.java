@@ -40,7 +40,7 @@ public final class OntologySparqlQueryService {
     this(exporter::materialize, new SparqlFederationGuard(null));
   }
 
-  OntologySparqlQueryService(
+  public OntologySparqlQueryService(
       final OntologyModelProvider modelProvider, final SparqlFederationGuard federationGuard) {
     this.modelProvider = Objects.requireNonNull(modelProvider);
     queryValidator = new OntologySparqlQueryValidator(Objects.requireNonNull(federationGuard));
@@ -221,7 +221,7 @@ public final class OntologySparqlQueryService {
   record ValidatedQuery(Query query, ResultFormat format, int timeoutMillis, Inference inference) {}
 
   @FunctionalInterface
-  interface OntologyModelProvider {
+  public interface OntologyModelProvider {
     Model materialize(UUID glossaryId, boolean includeRelations);
   }
 

@@ -407,6 +407,7 @@ vars:
                 openmetadata_include_tags=False,
                 openmetadata_search_across_databases=True,
                 openmetadata_dbt_classification_name="custom_tags",
+                openmetadata_catalog_mapping={"bq_catalog": "my-gcp-project"},
                 openmetadata_database_filter_pattern={"includes": ["prod_*"]},
                 openmetadata_schema_filter_pattern={
                     "includes": ["public"],
@@ -430,6 +431,7 @@ vars:
             self.assertFalse(source_config["includeTags"])
             self.assertTrue(source_config["searchAcrossDatabases"])
             self.assertEqual(source_config["dbtClassificationName"], "custom_tags")
+            self.assertEqual(source_config["catalogMapping"], {"bq_catalog": "my-gcp-project"})
 
             # Validate custom filter patterns
             self.assertEqual(source_config["databaseFilterPattern"], {"includes": ["prod_*"]})
@@ -469,6 +471,7 @@ vars:
             self.assertIn("workflowConfig", config)
             self.assertEqual(config["source"]["serviceName"], "test_service")
             self.assertEqual(config["source"]["sourceConfig"]["config"]["type"], "DBT")
+            self.assertNotIn("catalogMapping", config["source"]["sourceConfig"]["config"])
 
             # Test missing manifest error
             manifest_file.unlink()

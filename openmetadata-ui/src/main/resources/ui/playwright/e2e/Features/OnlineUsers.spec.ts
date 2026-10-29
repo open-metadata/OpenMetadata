@@ -95,7 +95,9 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Current selection should show "Last 24 hours" by default
     const timeFilterDropdown = page.getByTestId('time-window-select');
 
-    await expect(timeFilterDropdown).toContainText('Last 24 hours');
+    await expect(timeFilterDropdown.getByRole('button')).toHaveText(
+      'Last 24 hours'
+    );
   });
 
   test('Should update user activity time when user navigates', async ({
@@ -151,22 +153,19 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const timeFilterDropdown = page.getByTestId('time-window-select');
 
     // Verify default filter is "Last 24 hours"
-    await expect(timeFilterDropdown).toContainText('Last 24 hours');
+    await expect(timeFilterDropdown.getByRole('button')).toHaveText(
+      'Last 24 hours'
+    );
 
     // Click on the time filter dropdown
     await timeFilterDropdown.click();
 
-    // Wait for dropdown to fully render
-    await expect(page.locator('.ant-select-dropdown:visible')).toBeVisible();
-
     await expect(
-      page.locator('.ant-select-dropdown:visible [title="Last 5 minutes"]')
+      page.getByRole('option', { name: 'Last 5 minutes' })
     ).toBeVisible();
+    await expect(page.getByRole('option', { name: 'Last hour' })).toBeVisible();
     await expect(
-      page.locator('.ant-select-dropdown:visible [title="Last hour"]')
-    ).toBeVisible();
-    await expect(
-      page.locator('.ant-select-dropdown:visible [title="Last 24 hours"]')
+      page.getByRole('option', { name: 'Last 24 hours' })
     ).toBeVisible();
 
     const onlineRes = page.waitForResponse(
@@ -174,15 +173,15 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     );
 
     // Select a different time window
-    await page
-      .locator('.ant-select-dropdown:visible [title="Last hour"]')
-      .click();
+    await page.getByRole('option', { name: 'Last hour' }).click();
     const onlineResponse = await onlineRes;
 
     expect(onlineResponse.status()).toBe(200);
 
     // Verify the filter has changed
-    await expect(timeFilterDropdown).toContainText('Last hour');
+    await expect(timeFilterDropdown.getByRole('button')).toHaveText(
+      'Last hour'
+    );
 
     // The table should exist (with or without data)
     await expect(page.getByTestId('online-users-table')).toBeVisible();

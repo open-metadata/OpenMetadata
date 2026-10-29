@@ -461,3 +461,78 @@ describe('TopicCard empty state', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('TopicCard footer-led empty state', () => {
+  const onAdd = jest.fn();
+  const FOOTER_EMPTY_STATE = {
+    // Ignored once the empty state has a footer: the footer link is the step.
+    action: { label: 'Body button', onPress: jest.fn() },
+    description: 'Runs appear here after you connect a pipeline service.',
+    footer: {
+      action: { label: 'Add pipeline service', onPress: onAdd },
+      meta: 'No runs recorded',
+    },
+    icon: Users01,
+    summary: 'No pipelines are connected yet.',
+    title: 'No pipeline runs yet',
+  };
+
+  it('keeps the footer, with its own line and link, instead of a body button', async () => {
+    const { user } = renderCard({
+      action: { label: 'Open Pipelines', onPress: jest.fn() },
+      emptyState: FOOTER_EMPTY_STATE,
+      meta: 'Updated 5 min ago',
+    });
+
+    expect(screen.getByText('No runs recorded')).toBeInTheDocument();
+    expect(screen.queryByText('Updated 5 min ago')).toBeNull();
+    expect(
+      screen.queryByTestId(`topic-empty-action-${TopicKey.TEAM_ACTIVITY}`)
+    ).toBeNull();
+
+    const footerAction = screen.getByTestId(
+      `topic-action-${TopicKey.TEAM_ACTIVITY}`
+    );
+
+    expect(footerAction).toHaveTextContent('Add pipeline service');
+
+    await user.click(footerAction);
+
+    expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws the raised tile and leaves the header without a chip', () => {
+    renderCard({ emptyState: FOOTER_EMPTY_STATE });
+
+    expect(
+      screen.getByTestId(`topic-empty-${TopicKey.TEAM_ACTIVITY}`)
+    ).toHaveAttribute('data-layout', 'footer');
+    expect(screen.getByText('No pipelines are connected yet.')).toBeVisible();
+    expect(
+      screen.queryByTestId(`topic-status-${TopicKey.TEAM_ACTIVITY}`)
+    ).toBeNull();
+  });
+
+  it('keeps the empty title and guidance on the landing page type scale', () => {
+    renderCard({ emptyState: FOOTER_EMPTY_STATE });
+
+    expect(screen.getByText('No pipeline runs yet')).toHaveClass('tw:text-sm');
+    expect(
+      screen.getByText('Runs appear here after you connect a pipeline service.')
+    ).toHaveClass('tw:text-xs');
+  });
+
+  it('keeps the line but drops the link when the viewer may not take it', () => {
+    renderCard({
+      emptyState: {
+        ...FOOTER_EMPTY_STATE,
+        footer: { meta: 'No runs recorded' },
+      },
+    });
+
+    expect(screen.getByText('No runs recorded')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`topic-action-${TopicKey.TEAM_ACTIVITY}`)
+    ).toBeNull();
+  });
+});

@@ -39,6 +39,9 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 @ExtendWith(MockitoExtension.class)
 class SemanticSearchToolTest {
 
+  private static final SemanticSearchTool.HitVisibility ALL_VIEWABLE =
+      (authorizer, securityContext, hit) -> true;
+
   private SemanticSearchTool semanticSearchTool;
   private Authorizer authorizer;
   private CatalogSecurityContext securityContext;
@@ -47,7 +50,7 @@ class SemanticSearchToolTest {
 
   @BeforeEach
   void setUp() {
-    semanticSearchTool = new SemanticSearchTool(ignored -> Optional.empty());
+    semanticSearchTool = new SemanticSearchTool(ignored -> Optional.empty(), ALL_VIEWABLE);
     authorizer = mock(Authorizer.class);
     securityContext = mock(CatalogSecurityContext.class);
     searchRepository = mock(SearchRepository.class);
@@ -191,7 +194,7 @@ class SemanticSearchToolTest {
     PersonaSearchScope scope =
         new PersonaSearchScope(
             "{\"query\":{\"term\":{\"service.name.keyword\":\"finance\"}}}", List.of("table"));
-    semanticSearchTool = new SemanticSearchTool(ignored -> Optional.of(scope));
+    semanticSearchTool = new SemanticSearchTool(ignored -> Optional.of(scope), ALL_VIEWABLE);
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
     when(vectorService.search(any(VectorSearchParameters.class)))
         .thenReturn(new VectorSearchResponse(10L, Collections.emptyList()));
@@ -216,7 +219,7 @@ class SemanticSearchToolTest {
     PersonaSearchScope scope =
         new PersonaSearchScope(
             "{\"query\":{\"term\":{\"service.name.keyword\":\"finance\"}}}", List.of("table"));
-    semanticSearchTool = new SemanticSearchTool(ignored -> Optional.of(scope));
+    semanticSearchTool = new SemanticSearchTool(ignored -> Optional.of(scope), ALL_VIEWABLE);
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
     when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
         .thenReturn(new VectorSearchResponse(10L, Collections.emptyList()));
@@ -789,6 +792,65 @@ class SemanticSearchToolTest {
     String cursor = (String) result.get("nextCursor");
     assertNotNull(cursor, "a full page with more in the index must advertise a cursor");
     assertEquals(2, PageCursor.decode(cursor).orElseThrow().offset());
+  }
+
+  /**
+   * Vector search applies no access policy, so a hit on an entity the caller cannot view must be
+   * dropped - and dropped before anything is counted, or the totals and the page message would say
+   * how many matches the caller is not allowed to see. Only the cursor moves past it, or the next
+   * page would hand the same hit back.
+   */
+  @Test
+  void hitsTheCallerCannotViewAreDroppedButStillAdvanceTheCursor() throws Exception {
+    semanticSearchTool =
+        new SemanticSearchTool(
+            ignored -> Optional.empty(),
+            (authorizer, securityContext, hit) ->
+                !"db.schema.restricted".equals(hit.get("fullyQualifiedName")));
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    List<Map<String, Object>> hits = new ArrayList<>();
+    hits.add(createHit("table", "db.schema.t0", "Table 0", 0.9));
+    hits.add(createHit("table", "db.schema.restricted", "Restricted", 0.8));
+    hits.add(createHit("table", "db.schema.t2", "Table 2", 0.7));
+    when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(new VectorSearchResponse(10L, hits, null, true));
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "test");
+    params.put("size", 3);
+
+    Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+    List<?> results = (List<?>) result.get("results");
+    assertEquals(2, results.size());
+    assertTrue(
+        results.stream()
+            .noneMatch(
+                r -> "db.schema.restricted".equals(((Map<?, ?>) r).get("fullyQualifiedName"))));
+    assertFalse(result.containsKey("hiddenCount"));
+    assertEquals(2, result.get("returnedCount"));
+    assertEquals(2, result.get("totalFound"));
+    assertTrue(((String) result.get("message")).startsWith("Showing 2 results"));
+    Optional<PageCursor.Cursor> decoded = PageCursor.decode((String) result.get("nextCursor"));
+    assertTrue(decoded.isPresent());
+    assertEquals(3, decoded.get().offset());
+  }
+
+  /**
+   * When the response budget keeps fewer viewable hits than there were, the next page must start
+   * right after the last one kept: dropped hits before it are behind the cursor, those after it are
+   * not.
+   */
+  @Test
+  void budgetCutResumesRightAfterTheLastViewableHitKept() {
+    List<SemanticSearchTool.ViewableHit> viewable =
+        List.of(
+            new SemanticSearchTool.ViewableHit(Map.of(), 0),
+            new SemanticSearchTool.ViewableHit(Map.of(), 2),
+            new SemanticSearchTool.ViewableHit(Map.of(), 3));
+
+    assertEquals(3, SemanticSearchTool.consumedThrough(5, viewable, 2));
+    assertEquals(5, SemanticSearchTool.consumedThrough(5, viewable, 3));
+    assertEquals(5, SemanticSearchTool.consumedThrough(5, List.of(), 0));
   }
 
   private Map<String, Object> createHit(String entityType, String fqn, String name, double score) {

@@ -69,6 +69,7 @@ export const CustomizeUI = () => {
   return (
     <Grid
       className="layout-row layout-grid bg-grey"
+      data-testid="customize-ui-options"
       style={getLayoutGutter(16, 16)}>
       {items.map((value) => (
         <Grid.Item className="layout-column" key={value.key} span={8}>

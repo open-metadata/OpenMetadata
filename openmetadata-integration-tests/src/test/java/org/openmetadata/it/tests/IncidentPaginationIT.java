@@ -80,13 +80,9 @@ public class IncidentPaginationIT {
 
     Table table = createTestTable();
     tableFqn = table.getFullyQualifiedName();
-    String testDefFqn =
-        client
-            .testDefinitions()
-            .list(new ListParams().withLimit(1))
-            .getData()
-            .get(0)
-            .getFullyQualifiedName();
+    // A definition that supports the BIGINT `id` column: the server rejects a column type the
+    // definition does not list, and the first definition the listing returns need not list it.
+    String testDefFqn = "columnValuesToBeNotNull";
 
     for (int i = 0; i < TEST_DATA_SIZE; i++) {
       TestCase testCase = createTestCase(table, i, testDefFqn);

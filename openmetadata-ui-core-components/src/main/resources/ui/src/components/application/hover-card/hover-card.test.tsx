@@ -89,6 +89,24 @@ describe('HoverCard', () => {
     expect(screen.queryByText('Profile')).toBeNull();
   });
 
+  it('stays open while keyboard focus moves from the trigger into the card', () => {
+    renderCard({ openDelay: 0, closeDelay: 200 });
+
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    act(() => screen.getByText('Jane').focus());
+    advance(0);
+
+    act(() => screen.getByText('Profile').focus());
+    advance(500);
+
+    expect(screen.getByText('Profile')).toBeInTheDocument();
+
+    act(() => screen.getByText('Profile').blur());
+    advance(500);
+
+    expect(screen.queryByText('Profile')).toBeNull();
+  });
+
   it('never opens when disabled', () => {
     renderCard({ isDisabled: true, openDelay: 0 });
 
@@ -101,5 +119,47 @@ describe('HoverCard', () => {
     advance(1000);
 
     expect(screen.queryByText('Profile')).toBeNull();
+  });
+
+  it('renders an arrow toward the trigger only when arrow is set', () => {
+    const open = (arrow: boolean) => {
+      const { unmount } = renderCard({ openDelay: 0, arrow });
+      fireEvent.mouseEnter(
+        screen.getByText('Jane').parentElement as HTMLElement,
+        { pointerType: 'mouse' }
+      );
+      advance(0);
+      const hasArrow = !!document.querySelector('[data-placement] svg');
+      unmount();
+
+      return hasArrow;
+    };
+
+    expect(open(false)).toBe(false);
+    expect(open(true)).toBe(true);
+  });
+
+  it('places the card offset px away from the trigger', () => {
+    const openLeft = (offset?: number) => {
+      const { unmount } = renderCard({
+        openDelay: 0,
+        placement: 'right',
+        offset,
+      });
+      fireEvent.mouseEnter(
+        screen.getByText('Jane').parentElement as HTMLElement,
+        { pointerType: 'mouse' }
+      );
+      advance(0);
+      const left = (
+        screen.getByText('Profile').closest('[data-placement]') as HTMLElement
+      ).style.left;
+      unmount();
+
+      return left;
+    };
+
+    expect(openLeft()).toBe('8px');
+    expect(openLeft(28)).toBe('28px');
   });
 });

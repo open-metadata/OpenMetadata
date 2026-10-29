@@ -67,3 +67,14 @@ describe('EntityUtilClassBase ingestion pipeline routes', () => {
     expect(linkFor()).toBe(`/table/${pipelineFqn}`);
   });
 });
+
+describe('EntityUtilClassBase data contract routes', () => {
+  it('links a data contract to its own route, not a table page', () => {
+    expect(
+      new EntityUtilClassBase().getEntityLink(
+        EntityType.DATA_CONTRACT,
+        'svc.db.schema.dataContract_Schema Contract'
+      )
+    ).toBe('/dataContract/svc.db.schema.dataContract_Schema%20Contract');
+  });
+});

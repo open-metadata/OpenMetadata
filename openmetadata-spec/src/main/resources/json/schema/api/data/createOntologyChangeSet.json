@@ -5,7 +5,9 @@
   "description": "Create or update an ontology authoring session.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.CreateOntologyChangeSet",
-  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
   "properties": {
     "name": {
       "$ref": "../../type/basic.json#/definitions/entityName"
@@ -22,7 +24,6 @@
       "items": {
         "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       },
-      "minItems": 1,
       "uniqueItems": true
     },
     "state": {
@@ -44,8 +45,22 @@
     },
     "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "ontology": {
+      "description": "Fully qualified native ontology name. Mutually exclusive with glossaries.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "baseWorkingRevision": {
+      "description": "Expected native working revision when applying this proposal.",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long",
+      "minimum": 0
     }
   },
-  "required": ["name", "displayName", "description", "glossaries"],
+  "required": [
+    "name",
+    "displayName",
+    "description"
+  ],
   "additionalProperties": false
 }

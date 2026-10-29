@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { getApiContext } from './common';
 
 export const mockScoreMode = 'first';
@@ -95,7 +95,7 @@ const SLIDER_HANDLE_CLEARANCE_PX = 12;
  * all, and a rail click lands within about a pixel of the target, which is
  * several steps off. So a rail click only closes a large gap, and the arrow
  * keys, which move the handle exactly one `step` per press, finish the job.
- * Every attempt re-reads `aria-valuenow`, so a missed click or a dropped key
+ * Every attempt re-reads the thumb's value, so a missed click or a dropped key
  * is retried from the slider's real state.
  */
 export async function setSliderValue(
@@ -108,13 +108,16 @@ export async function setSliderValue(
   step = 0.1
 ) {
   const slider = page.getByTestId(testId).filter({ visible: true });
-  const rail = slider.locator('.ant-slider');
+  // The core Slider's track is the horizontal element directly under the
+  // react-aria slider root, which also carries data-orientation.
+  const rail = slider.locator(
+    '.react-aria-Slider > div[data-orientation="horizontal"]'
+  );
   const handle = slider.getByRole('slider');
 
   const toSteps = (v: number) => Math.round((v - min) / step);
   const target = toSteps(value);
-  const currentSteps = async () =>
-    toSteps(Number(await handle.getAttribute('aria-valuenow')));
+  const currentSteps = async () => toSteps(Number(await handle.inputValue()));
 
   await expect(async () => {
     const box = await rail.boundingBox();
@@ -166,11 +169,7 @@ export const openMatchingFieldsPanel = async (page: Page) => {
     .catch(() => false);
 
   if (!isMatchingFieldsPanelOpen) {
-    await page
-      .locator('.ant-collapse-header')
-      .filter({ hasText: 'Matching Fields' })
-      .getByText('Matching Fields')
-      .click();
+    await page.getByRole('button', { name: 'Matching Fields' }).click();
 
     await firstFieldHeader.waitFor({ state: 'visible' });
   }
@@ -189,4 +188,21 @@ export const restoreDefaultSearchSettings = async (page: Page) => {
   );
 
   expect(tableConfig).toEqual(mockEntitySearchConfig);
+};
+
+// Expanding a panel smooth-scrolls it, and react-aria closes a select popover
+// whose trigger scrolls, so retry until the value sticks.
+export const selectSettingOption = async (
+  page: Page,
+  select: Locator,
+  optionName: string
+) => {
+  const trigger = select.getByRole('button');
+  await expect(async () => {
+    await trigger.click();
+    await page.getByRole('option', { name: optionName }).click({
+      timeout: 2_000,
+    });
+    await expect(trigger).toHaveText(optionName, { timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
 };

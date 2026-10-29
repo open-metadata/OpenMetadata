@@ -36,6 +36,7 @@ import type {
 import type { MetadataService } from '../generated/entity/services/metadataService';
 import type { EntityReference } from '../generated/entity/type';
 import type { TestCaseParameterValue } from '../generated/tests/testCase';
+import { Status as EntityStatus } from '../generated/type/status';
 import type { TagLabel } from '../generated/type/tagLabel';
 import type { EntityDiffProps } from '../interface/EntityVersion.interface';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
@@ -177,6 +178,31 @@ export const getGlossaryTermApprovalText = (fieldsChanged: FieldChange[]) => {
   return approvalText;
 };
 
+const ENTITY_STATUS_FIELD = 'entityStatus';
+
+const ENTITY_STATUS_LABEL_KEYS: Record<EntityStatus, string> = {
+  [EntityStatus.Approved]: 'label.approved',
+  [EntityStatus.Archived]: 'label.archived',
+  [EntityStatus.Deprecated]: 'label.deprecated',
+  [EntityStatus.Draft]: 'label.draft',
+  [EntityStatus.InReview]: 'label.in-review',
+  [EntityStatus.Rejected]: 'label.rejected',
+  [EntityStatus.Unprocessed]: 'label.unprocessed',
+};
+
+/** A lifecycle status change, read as the status the asset moved to rather than the field's name. */
+export const getEntityStatusChangeText = (fieldsChanged: FieldChange[]) => {
+  const change = fieldsChanged.find(
+    (field) => field.name === ENTITY_STATUS_FIELD
+  );
+  const labelKey =
+    ENTITY_STATUS_LABEL_KEYS[change?.newValue as EntityStatus] ?? '';
+
+  return labelKey
+    ? t('message.status-changed-to', { status: t(labelKey) })
+    : '';
+};
+
 export const getSummaryText = ({
   isPrefix,
   fieldsChanged,
@@ -191,9 +217,12 @@ export const getSummaryText = ({
   isGlossaryTerm?: boolean;
 }) => {
   const prefix = isPrefix ? `+ ${actionType}` : '';
-  const filteredFieldsChanged = isGlossaryTerm
-    ? fieldsChanged.filter((field) => field.name !== 'status')
-    : fieldsChanged;
+  const entityStatusText = getEntityStatusChangeText(fieldsChanged);
+  const filteredFieldsChanged = fieldsChanged.filter(
+    (field) =>
+      !(isGlossaryTerm && field.name === 'status') &&
+      !(entityStatusText && field.name === ENTITY_STATUS_FIELD)
+  );
 
   let summaryText = '';
 
@@ -216,7 +245,7 @@ export const getSummaryText = ({
     ? getGlossaryTermApprovalText(fieldsChanged)
     : '';
 
-  return `${glossaryTermApprovalText} ${summaryText}`;
+  return `${glossaryTermApprovalText}${entityStatusText} ${summaryText}`;
 };
 
 export const isMajorVersion = (version1: string, version2: string) => {

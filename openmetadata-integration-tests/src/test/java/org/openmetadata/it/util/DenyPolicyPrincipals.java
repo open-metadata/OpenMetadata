@@ -39,6 +39,16 @@ public final class DenyPolicyPrincipals {
    */
   public static OpenMetadataClient clientDenied(
       String uniquePrefix, String resource, MetadataOperation operation) {
+    return clientDeniedWhen(uniquePrefix, resource, operation, null);
+  }
+
+  /**
+   * Same as {@link #clientDenied} but the deny only applies where the policy {@code condition}
+   * holds, e.g. {@code matchAnyTag('PII.Sensitive')}. Proves that an endpoint resolves the actual
+   * entity before evaluating, since a condition never matches without one.
+   */
+  public static OpenMetadataClient clientDeniedWhen(
+      String uniquePrefix, String resource, MetadataOperation operation, String condition) {
     OpenMetadataClient admin = SdkClients.adminClient();
     List<Rule> rules = new ArrayList<>();
     if (!isReadOperation(operation)) {
@@ -54,6 +64,7 @@ public final class DenyPolicyPrincipals {
             .withName(uniquePrefix + "_deny")
             .withResources(List.of(resource))
             .withOperations(List.of(operation))
+            .withCondition(condition)
             .withEffect(Rule.Effect.DENY));
 
     Policy policy =

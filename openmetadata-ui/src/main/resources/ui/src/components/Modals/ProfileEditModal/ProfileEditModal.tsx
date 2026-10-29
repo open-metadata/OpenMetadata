@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { SimpleModal } from '@openmetadata/ui-core-components';
-import { Form, FormProps, Input } from 'antd';
+import {
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HookForm,
+  SimpleModal,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { FunctionComponent, useEffect, useState } from 'react';
+import { FunctionComponent, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../generated/entity/teams/user';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -25,18 +31,24 @@ interface ProfileEditModalProps {
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
 }
 
+interface ProfileEditFormValues {
+  displayName: string;
+}
+
 export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
   userData,
   onCancel,
   updateUserDetails,
 }: ProfileEditModalProps) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const form = useForm<ProfileEditFormValues>({
+    defaultValues: { displayName: userData.displayName ?? '' },
+  });
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleSaveData: FormProps['onFinish'] = async ({
+  const handleSaveData = async ({
     displayName,
-  }): Promise<void> => {
+  }: ProfileEditFormValues): Promise<void> => {
     setIsLoading(true);
     try {
       await updateUserDetails({ displayName }, 'displayName');
@@ -48,9 +60,15 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
     }
   };
 
-  useEffect(() => {
-    form.setFieldsValue({ displayName: userData.displayName });
-  }, [userData.displayName]);
+  const fields: FieldProp[] = [
+    {
+      name: 'displayName',
+      label: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      placeholder: t('label.display-name'),
+      props: { inputDataTestId: 'displayName-input' },
+    },
+  ];
 
   return (
     <SimpleModal
@@ -65,19 +83,13 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
       })}
       width={500}
       onCancel={onCancel}
-      onOk={form.submit}>
-      <Form
+      onOk={form.handleSubmit(handleSaveData)}>
+      <HookForm
         form={form}
         id="profile-edit-form"
-        layout="vertical"
-        onFinish={handleSaveData}>
-        <Form.Item label={t('label.display-name')} name="displayName">
-          <Input
-            data-testid="displayName-input"
-            placeholder={t('label.display-name')}
-          />
-        </Form.Item>
-      </Form>
+        onSubmit={form.handleSubmit(handleSaveData)}>
+        <FormFields fields={fields} />
+      </HookForm>
     </SimpleModal>
   );
 };

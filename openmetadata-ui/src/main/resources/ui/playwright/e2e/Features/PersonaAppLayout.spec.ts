@@ -42,6 +42,7 @@ import {
 import { performUserLogin } from '../../utils/user';
 import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { test as base } from '../fixtures/pages';
+import { disableAiAppMode, stubUserPreferencesAppMode } from '../Utils/appMode';
 
 // Glossary opens its first glossary (`/glossary/<name>`) when one exists.
 const GLOSSARY_URL = /\/glossary(\/|\?|#|$)/;
@@ -295,8 +296,10 @@ test.describe('Persona App Layout page', () => {
     const saveButton = page.getByTestId('save-button');
 
     await test.step('Open App Layout from the persona page', async () => {
-      // By URL rather than the sidebar: the shared admin may be in AI mode,
-      // whose shell has no Settings entry.
+      // The persona page is a classic-only settings page, and the shared admin
+      // may be in AI mode (ADR:2026-10-21-settings-pages-are-classic-only).
+      await disableAiAppMode(page);
+      await stubUserPreferencesAppMode(page, 'classic');
       await page.goto(
         `/settings/persona/${getEncodedFqn(blankPersona.data.name)}`,
         { waitUntil: 'domcontentloaded' }

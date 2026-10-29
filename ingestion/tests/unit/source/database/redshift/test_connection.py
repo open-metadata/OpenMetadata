@@ -17,7 +17,9 @@ tests/unit/topology/database/test_redshift_connection.py.
 from unittest.mock import MagicMock, patch
 
 import pytest
+from psycopg2 import OperationalError as Psycopg2OperationalError
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.pool import StaticPool
 
 from metadata.core.connections.lifetime import Borrowed
@@ -111,6 +113,38 @@ _DB_NOT_FOUND_MSG = 'connection to server at "my-cluster" port 5439 failed: FATA
 def test_auth_failure_message_is_classified():
     error = _SqlAlchemyError(_Psycopg2Error(_AUTH_FAILED_MSG))
     assert REDSHIFT_ERRORS.classify(error).title == "Authentication failed"
+
+
+@pytest.mark.parametrize("wrapped", [False, True])
+@pytest.mark.parametrize("ssl_status", ["SSL off", "ssl OFF"])
+def test_unencrypted_connection_rejection_explains_how_to_enable_ssl(wrapped, ssl_status):
+    message = f'FATAL: no pg_hba.conf entry for host "???", user "my_user", database "demo_db", {ssl_status}'
+    error = Psycopg2OperationalError(message)
+    if wrapped:
+        error = OperationalError(None, None, error)
+
+    diagnosis = REDSHIFT_ERRORS.classify(error)
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Connection rejected without SSL"
+    assert "Advanced Config" in diagnosis.remediation
+    assert "SSL Mode" in diagnosis.remediation
+    assert "require" in diagnosis.remediation
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        'FATAL: no pg_hba.conf entry for host "???", user "my_user", database "demo_db", SSL on',
+        'FATAL: no pg_hba.conf entry for host "???", user "my_user", database "demo_db"',
+        "connection failed, SSL off",
+        "SSL certificate verification failed",
+    ],
+)
+def test_other_connection_failures_are_not_diagnosed_as_ssl_disabled(message):
+    error = OperationalError(None, None, Psycopg2OperationalError(message))
+
+    assert REDSHIFT_ERRORS.classify(error) is None
 
 
 def test_a_connect_phase_auth_failure_carries_no_sqlstate_to_match_on():

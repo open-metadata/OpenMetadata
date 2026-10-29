@@ -131,7 +131,7 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
       <div className="tw:overflow-y-auto">
         <HookForm form={form}>
           <Box
-            className="tw:flex-1 tw:p-6 tw:max-w-[50%] tw:w-full tw:pt-0"
+            className="tw:flex-1 tw:p-6 tw:max-w-[50%] tw:w-full tw:pt-0 tw:mx-auto"
             data-testid="add-policy-container"
             direction="col"
             gap={5}>
@@ -172,7 +172,7 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
 
       {/* Fixed footer */}
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-6 tw:py-4"
         data-testid="add-policy-footer"
         direction="row"
         gap={3}

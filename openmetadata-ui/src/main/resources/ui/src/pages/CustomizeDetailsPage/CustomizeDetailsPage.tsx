@@ -13,7 +13,6 @@
 import { Grid } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 
-import { compare } from 'fast-json-patch';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +29,7 @@ import { Page, PageType } from '../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDummyDataByPage } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { asyncNoop } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
+import { isSameDetailsPageLayout } from '../../utils/CustomizePage/GridLayoutDragUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import './customize-details-page.less';
@@ -68,9 +68,7 @@ export const CustomizeDetailsPage = ({
     const editedPage = (currentPage ??
       ({ pageType: currentPageType } as Page)) as Page;
 
-    const jsonPatch = compare(originalPage, editedPage);
-
-    return jsonPatch.length === 0;
+    return isSameDetailsPageLayout(originalPage, editedPage);
   }, [currentPageType, currentPage, getPage]);
 
   if (!currentPageType) {

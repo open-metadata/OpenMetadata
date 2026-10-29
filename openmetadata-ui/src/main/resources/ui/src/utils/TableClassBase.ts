@@ -39,7 +39,6 @@ import {
 export interface TableDetailPageTabProps {
   queryCount: number;
   isQueryCountLoading: boolean;
-  isTourOpen: boolean;
   activeTab: EntityTabs;
   feedCount: FeedCounts;
   isViewTableType: boolean;
@@ -322,6 +321,20 @@ class TableClassBase {
       {
         fullyQualifiedName: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
         name: i18n.t('label.table-constraints'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.PARTITIONED_KEYS,
+        name: i18n.t('label.table-partition-plural'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.TABLE_ALIASES,
+        name: i18n.t('label.alias-plural'),
         data: {
           gridSizes: ['small'] as GridSizes[],
         },

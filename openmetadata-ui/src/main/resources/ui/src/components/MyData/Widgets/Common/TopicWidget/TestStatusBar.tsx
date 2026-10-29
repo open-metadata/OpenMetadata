@@ -30,12 +30,19 @@ const SEGMENTS = [
     color: defaultColors.success[500],
     key: 'passed',
     labelKey: 'label.passed',
+    text: 'tw:text-utility-success-700!',
   },
-  { color: defaultColors.error[500], key: 'failed', labelKey: 'label.failed' },
+  {
+    color: defaultColors.error[500],
+    key: 'failed',
+    labelKey: 'label.failed',
+    text: 'tw:text-utility-error-700!',
+  },
   {
     color: defaultColors.warning[500],
     key: 'aborted',
     labelKey: 'label.aborted',
+    text: 'tw:text-utility-warning-700!',
   },
 ] as const;
 
@@ -82,13 +89,17 @@ const TestStatusBar: React.FC<TestStatusBarProps> = ({
       <div className="tw:mt-2.5 tw:flex tw:flex-wrap tw:items-center tw:gap-x-4 tw:gap-y-1.5">
         {/* `!` on the colours: Typography renders `.prose`, whose unlayered
           `color` rule is emitted after the Tailwind utilities. */}
-        <Typography className="tw:text-text-tertiary!" size="text-sm">
+        <Typography
+          className="tw:text-quaternary!"
+          size="text-xs"
+          weight="semibold">
           {t('message.count-total-tests', { count: total })}
         </Typography>
-        {segments.map((segment) => (
+        {SEGMENTS.map((segment, index) => (
           // Name and count as two nodes, not one concatenated string, matching
           // the connector legend — a locale reads the pair as a label and its
-          // figure rather than as a sentence it has to word-order.
+          // figure rather than as a sentence it has to word-order. Both take
+          // the dot's colour, so each status reads at a glance.
           <span
             className="tw:flex tw:items-center tw:gap-1.5"
             data-testid={`test-status-${segment.key}`}
@@ -98,15 +109,18 @@ const TestStatusBar: React.FC<TestStatusBarProps> = ({
               className="tw:size-1.5 tw:shrink-0 tw:rounded-full"
               style={{ backgroundColor: segment.color }}
             />
-            <Typography className="tw:text-text-secondary!" size="text-sm">
-              {segment.name}
+            <Typography
+              className={segment.text}
+              size="text-xs"
+              weight="semibold">
+              {segments[index].name}
             </Typography>
             <Typography
-              className="tw:text-text-primary!"
+              className={segment.text}
               data-testid={`test-status-${segment.key}-count`}
-              size="text-sm"
-              weight="medium">
-              {segment.value}
+              size="text-xs"
+              weight="semibold">
+              {segments[index].value}
             </Typography>
           </span>
         ))}

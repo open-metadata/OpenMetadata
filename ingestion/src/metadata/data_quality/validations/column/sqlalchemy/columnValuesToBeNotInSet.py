@@ -13,7 +13,6 @@
 Validator for column value to be not in set test case
 """
 
-from ast import literal_eval
 from typing import cast
 
 from sqlalchemy import Column
@@ -129,11 +128,7 @@ class ColumnValuesToBeNotInSetValidator(
         return self._compute_row_count(self.runner, column)
 
     def filter(self):
-        items = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "forbiddenValues",
-            literal_eval,
-        )
+        items = self.get_set_param_value("forbiddenValues")
         return {
             "filters": [(self.get_column(), "in", items)],
             "or_filter": False,

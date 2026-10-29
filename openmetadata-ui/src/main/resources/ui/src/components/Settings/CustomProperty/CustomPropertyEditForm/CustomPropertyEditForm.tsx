@@ -93,6 +93,7 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
   property,
   formId,
   showHint = false,
+  fieldDocVariant,
   onSubmit,
 }) => {
   const { t } = useTranslation();
@@ -151,6 +152,8 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
       allowsCreation: true,
       items: existingEnumItems,
       maxVisibleItems: ENUM_CONFIG_MAX_VISIBLE_VALUES,
+      // Up to 20 values do not fit on one line.
+      wrapSelectedItems: true,
     },
   };
 
@@ -213,6 +216,7 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
       className="tw:flex tw:flex-col tw:gap-6"
       data-testid="edit-custom-property-form"
       fieldDocDisplay="popover"
+      fieldDocVariant={fieldDocVariant}
       form={form}
       id={formId}
       renderFieldDoc={(text) => (

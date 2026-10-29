@@ -51,7 +51,7 @@ export interface ClusterLayout {
 }
 
 export interface EdgeGeometry {
-  arrowPath: string;
+  end: Point;
   labelLeft: number;
   labelTop: number;
   path: string;
@@ -86,8 +86,6 @@ const ANCHOR_SLOT_SPACING = 14;
 const ANCHOR_SIDE_INSET = 18;
 const CONTROL_DISTANCE_MIN = 36;
 const CONTROL_DISTANCE_MAX = 110;
-const ARROW_LENGTH = 7;
-const ARROW_HALF_WIDTH = 3.5;
 const CURVE_SAMPLES_PER_SEGMENT = 12;
 
 const SIDE_NORMALS: Record<CardSide, Point> = {
@@ -184,23 +182,6 @@ function cubicPoint(points: Point[], t: number): Point {
   };
 }
 
-function buildArrowPath(tip: Point, towards: Point): string {
-  const deltaX = tip.x - towards.x;
-  const deltaY = tip.y - towards.y;
-  const length = Math.hypot(deltaX, deltaY) || 1;
-  const unitX = deltaX / length;
-  const unitY = deltaY / length;
-  const baseX = tip.x - unitX * ARROW_LENGTH;
-  const baseY = tip.y - unitY * ARROW_LENGTH;
-
-  return [
-    `M ${tip.x} ${tip.y}`,
-    `L ${baseX - unitY * ARROW_HALF_WIDTH} ${baseY + unitX * ARROW_HALF_WIDTH}`,
-    `L ${baseX + unitY * ARROW_HALF_WIDTH} ${baseY - unitX * ARROW_HALF_WIDTH}`,
-    'Z',
-  ].join(' ');
-}
-
 function buildGeometry(
   from: { anchor: Point; side: CardSide },
   to: { anchor: Point; side: CardSide }
@@ -231,7 +212,7 @@ function buildGeometry(
   const middle = cubicPoint(points, 0.5);
 
   return {
-    arrowPath: buildArrowPath(end, control2),
+    end,
     labelLeft: middle.x,
     labelTop: middle.y,
     path: `M ${start.x} ${start.y} C ${control1.x} ${control1.y} ${control2.x} ${control2.y} ${end.x} ${end.y}`,
@@ -354,7 +335,7 @@ function buildRouteGeometry(route: Point[]): EdgeGeometry {
   const label = pointAlong(sampleCurve(start, segments), 0.5);
 
   return {
-    arrowPath: buildArrowPath(route[route.length - 1], route[route.length - 2]),
+    end: route[route.length - 1],
     labelLeft: label.x,
     labelTop: label.y,
     path: [

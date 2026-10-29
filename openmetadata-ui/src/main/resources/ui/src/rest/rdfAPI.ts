@@ -243,6 +243,15 @@ export const runGlossarySparqlQuery = (
 ): Promise<SparqlPlaygroundResult> =>
   executeSparqlQuery(`/glossaries/${glossaryId}/sparql`, params);
 
+export const runOntologySparqlQuery = (
+  ontologyId: string,
+  params: SparqlPlaygroundParams
+): Promise<SparqlPlaygroundResult> =>
+  executeSparqlQuery(
+    `/ontologies/${encodeURIComponent(ontologyId)}/sparql`,
+    params
+  );
+
 export const EXPORT_FORMAT_TO_ACCEPT_HEADER: Record<string, string> = {
   jsonld: MIME_APPLICATION_LD_JSON,
   turtle: MIME_TEXT_TURTLE,

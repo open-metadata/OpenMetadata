@@ -290,11 +290,12 @@ class TestLoginServiceTest {
     assertEquals(TestLoginProtocol.OIDC, result.getProtocol());
     assertEquals(TestLoginStage.DOMAIN_CHECKED, result.getStage());
     Map<TestLoginStage, TestLoginStageStatus> statuses = statusesOf(result);
+    // A browser-held token: no credentials to verify, and no server-side refresh token to renew.
+    Set<TestLoginStage> inapplicable =
+        Set.of(TestLoginStage.CREDENTIALS_VERIFIED, TestLoginStage.TOKEN_REFRESHED);
     for (TestLoginStage stage : TestLoginStage.values()) {
       TestLoginStageStatus expected =
-          stage == TestLoginStage.CREDENTIALS_VERIFIED
-              ? TestLoginStageStatus.SKIPPED
-              : TestLoginStageStatus.PASSED;
+          inapplicable.contains(stage) ? TestLoginStageStatus.SKIPPED : TestLoginStageStatus.PASSED;
       assertEquals(expected, statuses.get(stage), stage.value());
     }
   }

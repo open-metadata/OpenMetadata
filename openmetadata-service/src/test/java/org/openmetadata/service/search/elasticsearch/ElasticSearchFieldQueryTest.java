@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.json.JsonData;
@@ -24,15 +25,23 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.search.GlobalSettings;
+import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class ElasticSearchFieldQueryTest {
   private final AtomicReference<SearchRequest> request = new AtomicReference<>();
   private final JacksonJsonpMapper mapper = new JacksonJsonpMapper();
   private MockedStatic<Entity> entity;
   private ElasticSearchSearchManager manager;
+  private ElasticsearchClient client;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -42,7 +51,7 @@ class ElasticSearchFieldQueryTest {
     entity.when(Entity::getSearchRepository).thenReturn(repository);
     ElasticsearchTransport transport = mock(ElasticsearchTransport.class);
     when(transport.jsonpMapper()).thenReturn(mapper);
-    ElasticsearchClient client = mock(ElasticsearchClient.class);
+    client = mock(ElasticsearchClient.class);
     when(client._transport()).thenReturn(transport);
     when(client.search(any(SearchRequest.class), eq(JsonData.class)))
         .thenAnswer(
@@ -66,7 +75,7 @@ class ElasticSearchFieldQueryTest {
 
   @Test
   void legacyFieldQueriesKeepEngineDefaultsAndCaseSensitiveMatching() throws Exception {
-    manager.searchByField("name", "Orders*", Entity.TABLE, false, 10, 5).close();
+    manager.searchByField("name", "Orders*", Entity.TABLE, false, 10, 5, null).close();
 
     assertEquals(List.of("table_search_index"), request.get().index());
     assertEquals(10, request.get().from());
@@ -116,6 +125,33 @@ class ElasticSearchFieldQueryTest {
             .orElseThrow();
     assertEquals(
         List.of("literal*", "literal?"), JsonUtils.convertValue(idTerms.path("id"), List.class));
+  }
+
+  /**
+   * The field query is built outside the request builder, so it has to add the caller's search
+   * access policies itself; without them a denied caller reads documents the listing hides.
+   */
+  @Test
+  void fieldQueriesCarryTheCallersAccessPolicies() throws Exception {
+    SubjectContext caller = mock(SubjectContext.class);
+    ElasticQueryBuilder policies = mock(ElasticQueryBuilder.class);
+    when(policies.buildV2())
+        .thenReturn(Query.of(q -> q.term(t -> t.field("owners.id").value("caller-policy"))));
+    RBACConditionEvaluator evaluator = mock(RBACConditionEvaluator.class);
+    when(evaluator.evaluateConditions(caller)).thenReturn(policies);
+    ElasticSearchSearchManager policyAware =
+        new ElasticSearchSearchManager(client, evaluator, "", null);
+
+    try (MockedStatic<SettingsCache> settings = mockStatic(SettingsCache.class)) {
+      settings
+          .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
+          .thenReturn(
+              new SearchSettings()
+                  .withGlobalSettings(new GlobalSettings().withEnableAccessControl(true)));
+      policyAware.searchByField("name", "Orders*", Entity.TABLE, false, 0, 5, caller).close();
+    }
+
+    assertTrue(requestJson().toString().contains("caller-policy"));
   }
 
   private JsonNode requestJson() throws Exception {

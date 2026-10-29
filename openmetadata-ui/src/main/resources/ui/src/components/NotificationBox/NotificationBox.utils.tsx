@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -22,26 +21,12 @@ export const tabsInfo = [
   {
     name: i18n.t('label.task-plural'),
     key: NotificationTabsKey.TASK,
-    icon: (
-      <Icon
-        component={IconTask}
-        style={{
-          marginRight: '8px',
-        }}
-      />
-    ),
+    icon: <IconTask className="tw:mr-2 tw:size-3.5 tw:shrink-0" />,
   },
   {
     name: i18n.t('label.mention-plural'),
     key: NotificationTabsKey.CONVERSATION,
-    icon: (
-      <Icon
-        component={IconMentions}
-        style={{
-          marginRight: '8px',
-        }}
-      />
-    ),
+    icon: <IconMentions className="tw:mr-2 tw:size-3.5 tw:shrink-0" />,
   },
 ];
 

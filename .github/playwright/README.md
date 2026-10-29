@@ -1,9 +1,6 @@
 # Playwright CI planning
 
-`playwright-postgresql-e2e.yml` has two execution modes:
-
-- Pull requests run the Basic smoke list, directly changed specs, and suites selected by `impact-map.json`. Shared test infrastructure and unmapped changes add one canary from every supported project.
-- Merge queue, scheduled, and manual full-suite runs execute all projects covered by this workflow. Manual runs can opt out of the full suite and can select HTTP/1.1 or HTTP/2.
+`playwright-postgresql-e2e.yml` runs the full suite on merge-queue, scheduled, and manual events. `pull_request` events skip every job — PR CI runs no Playwright, so run the impacted specs locally (see [Local pre-merge runs](#local-pre-merge-runs) below). Manual runs can opt out of the full suite and can select HTTP/1.1 or HTTP/2.
 
 The manual HTTP/2 benchmark applies to browser/server lanes. Dedicated Airflow shards stay on HTTP/1.1 because the fixture's self-signed browser certificate is not part of generated ingestion workflow configuration.
 
@@ -19,9 +16,9 @@ make playwright_affected_run                                     # run them, wri
 make playwright_affected_run ARGS="--update-pr --workers=2"      # also upsert the block in the PR body (needs gh)
 ```
 
-`.github/scripts/plan_local_playwright.py` diffs the branch against `origin/main` (`--base` to change it; includes uncommitted and untracked files) and feeds that list to `select_playwright_tests.py` as a `pull_request` event, so the selection is the same targeted plan CI computes from `impact-map.json` and `impact-map.generated.json`: smoke, directly changed specs, impact-mapped specs, and canaries when shared infrastructure or unmapped files change. Delegated specs stay with their dedicated workflows.
+`.github/scripts/plan_local_playwright.py` diffs the branch against `origin/main` (`--base` to change it; includes uncommitted and untracked files) and feeds that list to `select_playwright_tests.py` as a `pull_request` event, so the selection is the targeted plan from `impact-map.json` and `impact-map.generated.json`: smoke, directly changed specs, impact-mapped specs, and canaries when shared infrastructure or unmapped files change. Delegated specs stay with their dedicated workflows.
 
-Where CI escalates unmapped code paths to the full suite, the local plan instead runs the targeted set plus one canary per project and lists the unmapped files as impact-map gaps. Close a gap by adding a mapping here rather than running the full suite locally.
+For unmapped code paths, the local plan runs the targeted set plus one canary per project and lists the unmapped files as impact-map gaps. Close a gap by adding a mapping here rather than running the full suite locally.
 
 The command passes spec files without `--project`, so Playwright routes each file to every project that claims it, as a normal local run does. Flags passed through `ARGS` that the script does not recognise (`--workers`, `--headed`, `--debug`) are forwarded to `npx playwright test`. Like every CI lane, the run sets `PLAYWRIGHT_IS_OSS=true` unless you export it yourself; without it `auth.setup.ts` calls the Collate-only ingestion-runner API and fails before any spec runs. The results block, delimited by `<!-- local-playwright-results:start/end -->` under "Playwright (UI) tests" in the PR template, records the tested commit, a warning for uncommitted changes, totals, and a per-spec table; selected specs that produced no results are listed as "not run" and mark the run as failed.
 
@@ -39,6 +36,15 @@ The `Basic` and `chromium` projects share that common 24-runner cap and are bala
 
 The `@ingestion` project is excluded from common Chromium only when the dynamic planner is active. Its source-matched Airflow image is restored only for ingestion shards, so other workflows that invoke the regular Chromium project keep their existing behavior.
 
+## Visual and RDF lanes
+
+Two lanes run a whole project on one shard and are switched on by their own path filters in `check-changes` (always on for manual and nightly runs), not by spec impact:
+
+- `visual` runs `visual-regression` against its own MySQL environment seeded from scratch — the environment its baselines were captured on — reusing the shared distribution and ingestion image, and renders inside `mcr.microsoft.com/playwright:v1.57.0-jammy` for the same reason. It always renders the regular UI bundle: `build-visual-ui` builds it, and the shard serves it with `.github/scripts/serve_playwright_ui.cjs` in front of the shared server (which proxies `/api`) and points `PLAYWRIGHT_TEST_BASE_URL` there. The shared distribution carries the coarse bundle by default, which folds lazy pages into the eager chunk, so their CSS loads before the global CSS and ties between equally specific rules resolve differently from production (the settings page header loses 4px; the explore page loses its fixed height).
+- `rdf` runs `Knowledge Graph` and `Ontology RDF` against its own Postgres + Fuseki environment with RDF enabled and seeded from scratch, reusing the shared distribution and ingestion image.
+
+Both are shards of the same run, so they count toward `playwright-summary`. Neither runs on `protocol=h2` (their Docker servers are plain HTTP), and `visual` renders the regular bundle whatever `coarse_bundle` is (ADR:2026-10-23-playwright-visual-and-rdf-are-blocking-lanes-on-the-regular-bundle).
+
 ## Entity matrix
 
 Specs that repeat the same scenarios for every entity type (Entity, Lineage, Custom Properties, Explore right panel, service pages, …) wrap the generating collection in `pickEntityMatrix` from `playwright/utils/entityMatrix.ts`. Pull request and merge-queue runs (`entity_matrix=representative` from `select_playwright_tests.py`) generate those tests for one representative entity only — Table for data assets, Database Service for services. The nightly schedule and manual dispatches run the full matrix, as do local runs. A spec changed directly in the pull request keeps its full matrix so the edit is validated against every entity before it merges. Test titles do not depend on the selected set, so stable IDs and timing history are shared between both modes.
@@ -46,6 +52,8 @@ Specs that repeat the same scenarios for every entity type (Entity, Lineage, Cus
 ## Golden fixture
 
 The preparation job runs migrations, sample ingestion, reindexing, authentication setup, and shared entity prerequisites once. The fixture manifest records the source commit, schema hash, seed hash/version, Playwright-state hash, PostgreSQL and OpenSearch image digests, search cluster alias, and the ingestion image ID. Each shard validates the manifest, extracts database/search/auth state under `/dev/shm`, verifies the seeded search indexes, and starts the built OpenMetadata distribution directly on the host with the recorded alias. The pre-seeded response manifest keeps the randomly named shared entities stable across the fixture builder and shard processes.
+
+The Airflow ingestion image is restored or built once by its own `prepare-ingestion-image` job, alongside `build`. A fixture rebuild loads that image (`OM_INGESTION_IMAGE_PRELOADED=true` makes `run_local_docker` skip building it) and still seeds from scratch whenever any fixture input changes; the Airflow shards load the same image.
 
 Standard shards do not build Docker images, run migrations, start Airflow, ingest sample data, reindex, repeat authentication, or recreate shared entity prerequisites. PostgreSQL durability is disabled for the disposable clone, OpenSearch uses a 2 GiB heap and zero replicas, and routine logs are bounded.
 
@@ -58,4 +66,4 @@ Use `workflow_dispatch` on the same commit for baseline comparisons:
 - `coarse_bundle=false` versus `coarse_bundle=true`
 - `protocol=http` versus `protocol=h2`
 
-The local cold-shell bundle benchmark on the same source tree reduced static requests from 144 to 22 (84.7%) and median DOM-content-loaded time from 109 ms to 57 ms (47.7%). The first hosted fixture smoke exposed a circular chunk-initialization failure before React mounted, so the CI-only coarse bundle remains opt-in while its chunking strategy is corrected. HTTP/2 is also opt-in until hosted runs establish its result. Keep a variant enabled only after three consecutive full runs meet the thresholds in `evaluate_playwright_performance.py`.
+The local cold-shell bundle benchmark on the same source tree reduced static requests from 144 to 22 (84.7%) and median DOM-content-loaded time from 109 ms to 57 ms (47.7%). The first hosted fixture smoke exposed a circular chunk-initialization failure before React mounted; that is fixed and the CI-only coarse bundle is now the default. It renders some pages differently from production, so the visual lane serves the regular bundle instead (see Visual and RDF lanes). HTTP/2 is opt-in until hosted runs establish its result. Keep a variant enabled only after three consecutive full runs meet the thresholds in `evaluate_playwright_performance.py`.

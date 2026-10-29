@@ -109,10 +109,12 @@ K8sPipelineClient labels all pipeline resources with:
 - `app.kubernetes.io/pipeline-type = <pipeline type>`
 - `app.kubernetes.io/run-id = <run id>` (for non-scheduled runs)
 
-The OMJob operator adds/uses:
+The OMJob operator adds the labels it uses to find and clean up its pods:
 - `omjob.pipelines.openmetadata.org/name`
 - `omjob.pipelines.openmetadata.org/pod-type` (`main` or `exit-handler`)
-- `app.kubernetes.io/managed-by = omjob-operator`
+
+These two always carry the operator's values. The labels above are copied onto the pods as they
+are, so the pods keep `app.kubernetes.io/managed-by = openmetadata`.
 
 Logs, Status, and Control
 -------------------------

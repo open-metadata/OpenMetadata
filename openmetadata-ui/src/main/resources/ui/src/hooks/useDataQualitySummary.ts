@@ -14,11 +14,17 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCase, TestCaseStatus } from '../generated/tests/testCase';
-import { getListTestCaseBySearch } from '../rest/testAPI';
+import { getDataQualityReport, getListTestCaseBySearch } from '../rest/testAPI';
 import {
   DataQualityFilters,
+  DataQualityViewer,
+  TableStatusCounts,
+  TABLE_STATUS_AGGREGATION,
   toSearchParams,
+  toTableCountsQuery,
+  toTableStatusCounts,
 } from '../utils/dataQualityFilters';
+import { getEntityFQN } from '../utils/FeedUtilsPure';
 
 export const DATA_QUALITY_QUERY_KEY = ['landingPage', 'widgets', 'dataQuality'];
 const TTL_MS = 5 * 60 * 1000;
@@ -28,7 +34,8 @@ const TTL_MS = 5 * 60 * 1000;
  * counted, not listed — and it fetches exactly what is shown, so "N more" is
  * the bucket total minus these rather than minus a larger page nobody sees.
  */
-export const DATA_QUALITY_FAILED_ROWS = 4;
+/** Latest results the card lists, of any status. */
+export const DATA_QUALITY_ROWS = 8;
 const COUNT_ONLY_PAGE_SIZE = 1;
 
 export interface DataQualitySummary {
@@ -36,8 +43,17 @@ export interface DataQualitySummary {
   failed: number;
   aborted: number;
   total: number;
-  /** The failing tests themselves, for the card's rows. */
-  failedTests: TestCase[];
+  /**
+   * The latest results of any status, failures first, for the card's rows —
+   * a list grouped by table needs the passing tests beside the failing ones.
+   */
+  tests: TestCase[];
+  /**
+   * Every result in scope per table the rows show, not just the rows: a table
+   * header reads "3 failed" even when only one of them made the list. Empty
+   * until the rows are in, since they decide which tables to count.
+   */
+  tableCounts: Record<string, TableStatusCounts>;
   /**
    * No test case exists at all, whatever the filters. A zero `total` only says
    * nothing *ran* in the selected scope and window; this is what tells "not
@@ -52,13 +68,14 @@ export interface DataQualitySummary {
 }
 
 const fetchByStatus = async (
-  status: TestCaseStatus,
+  status: TestCaseStatus | undefined,
   limit: number,
   filters: DataQualityFilters,
-  userName?: string
+  userName?: string,
+  fields = 'testCaseResult'
 ) => {
   const response = await getListTestCaseBySearch({
-    fields: 'testCaseResult',
+    fields,
     includeAllTests: true,
     limit,
     q: '*',
@@ -93,9 +110,25 @@ const fetchAnyTestCount = async (): Promise<number> => {
  * page is materialised. A fourth, unfiltered count tells an estate with no
  * tests from a quiet window.
  */
+// Failures first, then aborted, then passing: the card is about what needs
+// attention. Stable, so the newest result still leads within each status.
+const STATUS_RANK: Partial<Record<TestCaseStatus, number>> = {
+  [TestCaseStatus.Failed]: 0,
+  [TestCaseStatus.Aborted]: 1,
+  [TestCaseStatus.Success]: 2,
+};
+
+const sortByStatus = (tests: TestCase[]) =>
+  [...tests].sort(
+    (a, b) =>
+      (STATUS_RANK[a.testCaseResult?.testCaseStatus as TestCaseStatus] ?? 3) -
+      (STATUS_RANK[b.testCaseResult?.testCaseStatus as TestCaseStatus] ?? 3)
+  );
+
 export const useDataQualitySummary = (
   filters: DataQualityFilters,
-  userName?: string
+  userName?: string,
+  viewer?: DataQualityViewer
 ): DataQualitySummary => {
   // The filters are part of every key, so changing one refetches rather than
   // serving the previous filter's counts from cache.
@@ -120,7 +153,7 @@ export const useDataQualitySummary = (
   // observers by key, so on a key change there is no previous observer for
   // `keepPreviousData` to read from and the placeholder never appears.
   const failedQuery = useQuery(
-    queryFor(TestCaseStatus.Failed, DATA_QUALITY_FAILED_ROWS)
+    queryFor(TestCaseStatus.Failed, COUNT_ONLY_PAGE_SIZE)
   );
   const passedQuery = useQuery(
     queryFor(TestCaseStatus.Success, COUNT_ONLY_PAGE_SIZE)
@@ -136,7 +169,60 @@ export const useDataQualitySummary = (
     queryKey: [...DATA_QUALITY_QUERY_KEY, 'anyTest'],
     staleTime: TTL_MS,
   });
-  const queries = [failedQuery, passedQuery, abortedQuery, anyTestQuery];
+  const testsQuery = useQuery({
+    placeholderData: keepPreviousData,
+    // The incident rides along on the row, so a failing test can say whether
+    // anyone has picked it up without a lookup per test.
+    queryFn: () =>
+      fetchByStatus(
+        undefined,
+        DATA_QUALITY_ROWS,
+        filters,
+        userName,
+        'testCaseResult,incidentStatus'
+      ),
+    queryKey: [...DATA_QUALITY_QUERY_KEY, 'latest', filters, userName],
+    staleTime: TTL_MS,
+  });
+  const tableFqns = Array.from(
+    new Set(
+      (testsQuery.data?.tests ?? []).map((test) =>
+        getEntityFQN(test.entityLink ?? '')
+      )
+    )
+  ).sort();
+  // Waits on the rows by necessity: they decide which tables to count.
+  const tableCountsQuery = useQuery({
+    enabled: tableFqns.length > 0,
+    placeholderData: keepPreviousData,
+    queryFn: async () =>
+      toTableStatusCounts(
+        (
+          await getDataQualityReport({
+            aggregationQuery: TABLE_STATUS_AGGREGATION,
+            index: 'testCase',
+            q: toTableCountsQuery(filters, tableFqns, viewer),
+          })
+        ).data ?? []
+      ),
+    queryKey: [
+      ...DATA_QUALITY_QUERY_KEY,
+      'tableCounts',
+      filters,
+      tableFqns,
+      viewer?.id,
+    ],
+    staleTime: TTL_MS,
+  });
+  // The counts only enrich the headers, so they stay out of the loading and
+  // error state: a failed lookup leaves the headers counting the rows.
+  const queries = [
+    failedQuery,
+    passedQuery,
+    abortedQuery,
+    anyTestQuery,
+    testsQuery,
+  ];
 
   const failed = failedQuery.data?.total ?? 0;
   const passed = passedQuery.data?.total ?? 0;
@@ -145,7 +231,8 @@ export const useDataQualitySummary = (
   return {
     aborted,
     failed,
-    failedTests: failedQuery.data?.tests ?? [],
+    tests: sortByStatus(testsQuery.data?.tests ?? []),
+    tableCounts: tableCountsQuery.data ?? {},
     hasNoTests: anyTestQuery.data === 0,
     isError: queries.some((query) => query.isError),
     isFetching: queries.some((query) => query.isFetching),

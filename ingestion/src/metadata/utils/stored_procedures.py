@@ -83,6 +83,33 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
             else value
             for token_type, value in tokenize(query_text)
         )
+        # `sqlparse.lexer.tokenize` only labels a block comment `tokens.Comment`
+        # when its `/*` has a matching `*/`, so a statement that ends inside an
+        # open `/*` -- e.g. Oracle's `gv$sql.sql_text`, which carries only the
+        # first 1000 chars of a statement -- leaves the would-be comment text
+        # intact. A `CALL`/`BEGIN` written inside it then wins the leftmost
+        # `re.search` match, fabricating lineage for a commented-out procedure
+        # (or dropping the real row when the commented name resolves to
+        # nothing). The pass above blanks every *closed* comment, so a `/*`
+        # left in the text can only sit inside a quoted identifier (delimited
+        # names survive the tokenizer verbatim) or be an unterminated comment
+        # running to the end. Scan outside `"..."` / `` `...` `` spans and
+        # truncate at such an unpaired `/*`, so a name like
+        # `schema."weird/*x".proc` keeps resolving while a truncated tail stops
+        # shadowing the statement that actually executed.
+        pos = 0
+        quote = ""
+        while pos < len(query_text):
+            char = query_text[pos]
+            if quote:
+                if char == quote:
+                    quote = ""
+            elif char in ('"', "`"):
+                quote = char
+            elif char == "/" and pos + 1 < len(query_text) and query_text[pos + 1] == "*":
+                query_text = query_text[:pos]
+                break
+            pos += 1
 
     res = re.search(NAME_PATTERN, query_text, re.IGNORECASE if not sensitive_match else 0)
     if not res:

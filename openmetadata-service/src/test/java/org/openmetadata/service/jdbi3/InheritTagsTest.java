@@ -9,12 +9,14 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
@@ -227,6 +229,73 @@ class InheritTagsTest {
     return descriptors.stream().anyMatch(d -> fieldName.equals(d.fieldName()));
   }
 
+  /**
+   * A bulk read has every field inherit its entity's glossary terms, as a single read does, so a
+   * list returns the same column tags as a get. Fields do not inherit classification tags.
+   */
+  @Test
+  void inheritEntityTerms_givesEveryFieldTheEntitysGlossaryTermsAsDerived() {
+    Column inner = new Column().withName("inner").withFullyQualifiedName("t.payload.inner");
+    Column payload =
+        new Column()
+            .withName("payload")
+            .withFullyQualifiedName("t.payload")
+            .withChildren(List.of(inner));
+
+    EntityRepository.inheritEntityTerms(
+        List.of(glossaryTerm("Finance.Revenue"), manual("PII.Sensitive")), List.of(payload));
+
+    assertEveryColumnInheritsTheTerm(List.of(payload, inner), "Finance.Revenue");
+  }
+
+  /** A field that carries the entity's term itself keeps its own label. */
+  @Test
+  void inheritEntityTerms_keepsAFieldsOwnLabelOfTheSameTerm() {
+    Column amount =
+        new Column()
+            .withName("amount")
+            .withFullyQualifiedName("t.amount")
+            .withTags(new ArrayList<>(List.of(glossaryTerm("Finance.Revenue"))));
+
+    EntityRepository.inheritEntityTerms(List.of(glossaryTerm("Finance.Revenue")), List.of(amount));
+
+    assertEquals(1, amount.getTags().size());
+    assertEquals(TagLabel.LabelType.MANUAL, amount.getTags().getFirst().getLabelType());
+  }
+
+  /**
+   * A list runs its field fetchers in no fixed order -- a table's columns are fetched before its
+   * tags -- and may not ask for tags at all, so the terms come from the table's stored tags, never
+   * from whatever the entity holds at that point. Taking them from the entity is what left a listed
+   * table's columns without the term.
+   */
+  @Test
+  void inheritEntityTermsOnFields_takesTheTermsFromTheStoredTagsNotTheEntity() {
+    Column inner =
+        new Column().withName("inner").withFullyQualifiedName("svc.db.s.t.payload.inner");
+    Column payload =
+        new Column()
+            .withName("payload")
+            .withFullyQualifiedName("svc.db.s.t.payload")
+            .withChildren(List.of(inner));
+    Table notYetTagged = table().withFullyQualifiedName("svc.db.s.t").withColumns(List.of(payload));
+
+    EntityRepository.inheritEntityTermsOnFields(
+        List.of(notYetTagged),
+        Table::getColumns,
+        Map.of("svc.db.s.t", List.of(glossaryTerm("Finance.Revenue"))));
+
+    assertEveryColumnInheritsTheTerm(List.of(payload, inner), "Finance.Revenue");
+  }
+
+  private static void assertEveryColumnInheritsTheTerm(List<Column> columns, String termFqn) {
+    for (Column column : columns) {
+      assertEquals(1, column.getTags().size(), column.getName() + " tags: " + column.getTags());
+      assertEquals(termFqn, column.getTags().getFirst().getTagFQN());
+      assertEquals(TagLabel.LabelType.DERIVED, column.getTags().getFirst().getLabelType());
+    }
+  }
+
   private static Table table() {
     return new Table().withId(UUID.randomUUID()).withName("t");
   }
@@ -247,6 +316,10 @@ class InheritTagsTest {
         .withSource(TagLabel.TagSource.CLASSIFICATION)
         .withLabelType(TagLabel.LabelType.MANUAL)
         .withState(TagLabel.State.CONFIRMED);
+  }
+
+  private static TagLabel glossaryTerm(String fqn) {
+    return manual(fqn).withSource(TagLabel.TagSource.GLOSSARY);
   }
 
   private static List<String> tagFqns(Table table) {

@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Grid, Typography } from '@openmetadata/ui-core-components';
-import { Radio, RadioChangeEvent } from 'antd';
+import {
+  ButtonGroup,
+  ButtonGroupItem,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -77,10 +82,6 @@ const APIEndpointSummary = ({
     }
   }, [entityDetails]);
 
-  const handleViewChange = (e: RadioChangeEvent) => {
-    setViewType(e.target.value);
-  };
-
   useEffect(() => {
     if (entityDetails.service?.type === 'apiService') {
       fetchApiEndpointDetails();
@@ -92,14 +93,20 @@ const APIEndpointSummary = ({
       className="layout-row layout-grid p-md border-radius-card"
       style={getLayoutGutter(0, 8)}>
       <Grid.Item className="layout-column" span={24}>
-        <Radio.Group value={viewType} onChange={handleViewChange}>
-          <Radio.Button value={SchemaViewType.REQUEST_SCHEMA}>
+        <ButtonGroup
+          disallowEmptySelection
+          aria-label={t('label.schema')}
+          selectedKeys={new Set([viewType])}
+          onSelectionChange={(keys) =>
+            setViewType([...keys][0] as SchemaViewType)
+          }>
+          <ButtonGroupItem id={SchemaViewType.REQUEST_SCHEMA}>
             {t('label.request')}
-          </Radio.Button>
-          <Radio.Button value={SchemaViewType.RESPONSE_SCHEMA}>
+          </ButtonGroupItem>
+          <ButtonGroupItem id={SchemaViewType.RESPONSE_SCHEMA}>
             {t('label.response')}
-          </Radio.Button>
-        </Radio.Group>
+          </ButtonGroupItem>
+        </ButtonGroup>
       </Grid.Item>
       <Grid.Item className="layout-column" span={24}>
         {isEmpty(activeSchema?.schemaFields) ? (

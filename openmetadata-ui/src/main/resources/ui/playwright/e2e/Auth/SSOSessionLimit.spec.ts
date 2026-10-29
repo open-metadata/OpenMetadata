@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { BrowserContext, Page } from '@playwright/test';
-import { ACTION_TIMEOUT } from '../../constant/common';
 import { SSO_ENV } from '../../constant/ssoAuth';
 import { expect, test } from '../../support/fixtures/base';
 import { withMaxActiveSessions } from '../../utils/sessionRenewal';
@@ -20,10 +19,9 @@ import { swapSecurityConfig } from '../../utils/ssoAuth';
 import { loginViaSso, SSO_LOGIN_HOOK_TIMEOUT_MS } from '../../utils/ssoLogin';
 
 // maxActiveSessionsPerUser is enforced server-side (SessionService.applySessionLimit)
-// only when OpenMetadata mints its own session, i.e. a session-bound JWT carrying a
-// sessionId claim. SAML and confidential OIDC do; the public Okta flow renews
-// client-side and never mints one. So this rides @tokenRenewal — the lane that runs
-// on the Keycloak leg and is excluded from the okta and -crosssite legs.
+// on the sessions OpenMetadata keeps: SAML and confidential OIDC have one, the public
+// Okta flow renews client-side and has none. So this rides @tokenRenewal — the lane
+// that runs on the Keycloak leg and is excluded from the okta and -crosssite legs.
 const SESSION_LIMIT_TAGS = ['@sso', '@Platform', '@tokenRenewal'];
 
 // Cap the server allows for the suite. Two sessions survive; the (CAP+1)th login
@@ -90,20 +88,23 @@ test.describe('SSO Session Limit', { tag: SESSION_LIMIT_TAGS }, () => {
     const evicted = sessions[0].page;
     const survivor = sessions[sessions.length - 1].page;
 
-    // The oldest session was revoked server-side by the last login. Its next
-    // authenticated request — a reload — is rejected with 401, bouncing it to the
-    // sign-in page. Unlike an expired-token refresh, the revoked-session path does
-    // not raise the "session has timed out" banner, so assert the logged-out state.
-    await evicted.reload({ waitUntil: 'domcontentloaded' });
-    await evicted.waitForURL('**/signin', {
-      waitUntil: 'domcontentloaded',
-      timeout: ACTION_TIMEOUT,
-    });
-    await expect(evicted.getByTestId('sso-login-button')).toBeVisible();
+    // The oldest session was revoked server-side by the last login. A confidential
+    // OIDC browser holds the identity provider's own ID token, which stays valid until
+    // it expires, so the eviction takes effect at the next refresh: the server refuses
+    // it as a revoked session, which the browser answers by signing out rather than
+    // re-authenticating (that would evict another session in turn).
+    const evictedRefresh = await evicted.request.get(refreshUrl(evicted));
+    expect(evictedRefresh.status()).toBe(401);
+    expect(await evictedRefresh.text()).toContain('Session revoked');
 
-    // The newest session is within the cap and stays authenticated.
+    // The newest session is within the cap and still renews.
+    const survivorRefresh = await survivor.request.get(refreshUrl(survivor));
+    expect(survivorRefresh.status()).toBe(200);
     await survivor.reload({ waitUntil: 'domcontentloaded' });
     await expect(survivor.getByTestId('dropdown-profile')).toBeVisible();
     expect(survivor.url()).not.toContain('/signin');
   });
 });
+
+const refreshUrl = (page: Page) =>
+  `${new URL(page.url()).origin}/api/v1/auth/refresh`;

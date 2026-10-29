@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const AlignLeft: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const AlignLeft: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M16 10H3m17-4H3m17 8H3m13 4H3"
+      d="M13.333 8.333H2.5M16.667 5H2.5m14.167 6.667H2.5M13.333 15H2.5"
       stroke="currentColor"
       strokeWidth={1.3}
     />

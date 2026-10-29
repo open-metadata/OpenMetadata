@@ -33,6 +33,18 @@ describe('Breadcrumbs', () => {
     );
   });
 
+  it('titles capped labels so a truncated name stays readable', () => {
+    render(<Breadcrumbs items={items} maxItemWidth={80} />);
+
+    expect(screen.getByText('Database')).toHaveAttribute('title', 'Database');
+  });
+
+  it('leaves labels untitled when they are not capped', () => {
+    render(<Breadcrumbs items={items} />);
+
+    expect(screen.getByText('Database')).not.toHaveAttribute('title');
+  });
+
   it('renders a last item without an href as the current page', () => {
     render(
       <Breadcrumbs

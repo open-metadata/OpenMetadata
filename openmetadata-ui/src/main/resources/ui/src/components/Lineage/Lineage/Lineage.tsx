@@ -12,17 +12,17 @@
  */
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isEqual, isUndefined, uniqueId, uniqWith } from 'lodash';
+import { isEmpty, isEqual, isUndefined, uniqWith } from 'lodash';
 import { LoadingState } from 'Models';
 import QueryString from 'qs';
 import {
-  DragEvent,
   ReactNode,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type SetStateAction,
 } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -36,7 +36,6 @@ import {
   Node,
   NodeProps,
   ReactFlowInstance,
-  useKeyPress,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import {
@@ -48,7 +47,6 @@ import {
   LINEAGE_EXPORT_SELECTOR,
 } from '../../../constants/Export.constants';
 import { ELEMENT_DELETE_STATE } from '../../../constants/Lineage.constants';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
@@ -69,6 +67,7 @@ import {
   LineagePlatformView,
   LineageTimeRange,
 } from '../../../hooks/lineage/types';
+import { useFullScreenBounds } from '../../../hooks/lineage/useFullScreenBounds';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
@@ -90,7 +89,6 @@ import {
   exportLineageAsync,
   getDataQualityLineage,
   getLineageDataByFQN,
-  getPlatformLineage,
   updateLineageEdge,
 } from '../../../rest/lineageAPI';
 import { drawEdgesForExport } from '../../../utils/CanvasUtils';
@@ -116,15 +114,16 @@ import {
 import {
   createNodes,
   getConnectedNodesEdges,
-  getEntityTypeFromPlatformView,
-  getNodeLineageData,
-  getUpstreamDownstreamNodesEdges,
   removeUnconnectedNodes,
 } from '../../../utils/EntityLineageNodeUtils';
 import {
   addLineageHandler,
+  applyTempTableVisibility,
+  dropUnreachableNodes,
   parseLineageData,
+  pruneTempLineage,
   removeLineageHandler,
+  withoutLineageEdges,
 } from '../../../utils/EntityLineagePureUtils';
 import { updateNodeType } from '../../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
@@ -136,11 +135,8 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import '../../Entity/EntityLineage/entity-lineage.style.less';
 import { LineageConfig } from '../../Entity/EntityLineage/EntityLineage.interface';
-import EntityLineageSidebar from '../../Entity/EntityLineage/EntityLineageSidebar.component';
-import NodeSuggestions from '../../Entity/EntityLineage/NodeSuggestions.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { getRealEntityRef } from '../LineageMap/LineageMapEdit.utils';
-import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import {
   LineageOverlays,
   LineageOverlaysHandlers,
@@ -375,6 +371,7 @@ const buildColumnLineageDetails = (
     columnsLineage: updatedColumns,
     description: currentEdge?.description ?? '',
     sqlQuery: currentEdge?.sqlQuery,
+    tempLineageTables: currentEdge.tempLineageTables,
   };
 
   return { updatedColumns, lineageDetails };
@@ -476,18 +473,17 @@ export const Lineage = ({
 }: LineageProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
-  const { isTourOpen, isTourPage, tourMockDatasetData } = useTourProvider();
   const { appPreferences } = useApplicationStore();
   const { activeDomain, isDomainRestricted } = useDomainStore();
-  const { preferences } = useCurrentUserPreferences();
   const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
   const isLineageSettingsLoaded = !isUndefined(defaultLineageConfig);
-  const [reactFlowInstance] = useState<ReactFlowInstance>();
+  const [reactFlowInstance, setReactFlowInstance] =
+    useState<ReactFlowInstance>();
   const reactFlowInstanceRef = useRef<ReactFlowInstance>();
   const lastFetchedLineageKeyRef = useRef<string>();
+  const lineageFetchIdRef = useRef(0);
 
   const {
-    isEditMode,
     lineageConfig,
     setLineageConfig,
     tracedColumns,
@@ -523,11 +519,21 @@ export const Lineage = ({
     closeDeleteModal,
   } = useLineageStore();
 
-  const [entityLineage, setEntityLineage] = useState<EntityLineageResponse>({
-    nodes: [],
-    edges: [],
-    entity: {} as LineageNodeType,
-  });
+  const [entityLineage, setEntityLineageState] =
+    useState<EntityLineageResponse>({
+      nodes: [],
+      edges: [],
+      entity: {} as LineageNodeType,
+    });
+  // Every write is pruned so an edit made with temp tables shown or hidden
+  // also updates the other view (see pruneTempLineage).
+  const setEntityLineage = useCallback(
+    (next: SetStateAction<EntityLineageResponse>) =>
+      setEntityLineageState((prev) =>
+        pruneTempLineage(typeof next === 'function' ? next(prev) : next)
+      ),
+    []
+  );
   const [lineageData, setLineageData] = useState<LineageData>();
   const [entity, setEntity] = useState<SourceType | undefined>(entityProp);
   const navigate = useNavigate();
@@ -545,21 +551,23 @@ export const Lineage = ({
     removeEdgeById,
     removeEdgesBySourceTarget,
     removeEdgesByDocId,
-    addNodes,
     updateEdge,
+    onNodesChange,
   } = useMapBasedNodesEdges([], []);
   const [loading, setLoading] = useState(true);
   const [init, setInit] = useState(false);
   const [status, setStatus] = useState<LoadingState>('initial');
-  const [newAddedNode, setNewAddedNode] = useState<Node>({} as Node);
   const selectedQuickFilters = useLineageStore((s) => s.selectedQuickFilters);
   const [entityType, setEntityType] = useState<EntityType | undefined>(
     entityTypeProp
   );
   const queryParams = new URLSearchParams(location.search);
-  const isFullScreen = queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
-  const deletePressed = useKeyPress('Delete');
-  const backspacePressed = useKeyPress('Backspace');
+  // Full screen is an asset-lineage view only; the platform page has no toggle.
+  const isFullScreen =
+    !isPlatformLineageProp &&
+    queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
+  const { ref: fullScreenRef, bounds: fullScreenBounds } =
+    useFullScreenBounds(isFullScreen);
   const { showModal } = useEntityExportModalProvider();
   const [dqHighlightedEdges, setDqHighlightedEdges] = useState<Set<string>>();
 
@@ -684,11 +692,22 @@ export const Lineage = ({
     };
   }, [location.search]);
 
+  const {
+    preferences: { showLineageTempTables = true },
+  } = useCurrentUserPreferences();
+  // What the canvas draws. `entityLineage` holds both the stored edges and the
+  // temp-table hops expanded from them; edits read it, and every write is
+  // pruned so both views stay consistent.
+  const visibleLineage = useMemo(
+    () => applyTempTableVisibility(entityLineage, showLineageTempTables),
+    [entityLineage, showLineageTempTables]
+  );
+
   const cachedEntityEdgesAndMaps = useMemo(() => {
     const seen = new Set<string>();
     const allNodes = [
-      ...(entityLineage.nodes ?? []),
-      ...(entityLineage.entity ? [entityLineage.entity] : []),
+      ...(visibleLineage.nodes ?? []),
+      ...(visibleLineage.entity ? [visibleLineage.entity] : []),
     ].filter((n) => {
       if (seen.has(n.id)) {
         return false;
@@ -702,11 +721,11 @@ export const Lineage = ({
       allNodes,
       ...createEntityEdgesAndMaps(
         allNodes,
-        entityLineage.edges ?? [],
+        visibleLineage.edges ?? [],
         entityFqn
       ),
     };
-  }, [entityLineage, entityFqn]);
+  }, [visibleLineage, entityFqn]);
 
   const cachedColumnEdges = useMemo(() => {
     if (!isColumnLevelLineage) {
@@ -718,11 +737,11 @@ export const Lineage = ({
 
     return createColumnEdges(
       cachedEntityEdgesAndMaps.allNodes,
-      entityLineage.edges ?? []
+      visibleLineage.edges ?? []
     );
   }, [
     cachedEntityEdgesAndMaps.allNodes,
-    entityLineage.edges,
+    visibleLineage.edges,
     isColumnLevelLineage,
   ]);
 
@@ -744,7 +763,7 @@ export const Lineage = ({
 
     return createNodes(
       allNodes,
-      entityLineage.edges ?? [],
+      visibleLineage.edges ?? [],
       entityFqn,
       incomingMap,
       outgoingMap,
@@ -752,7 +771,7 @@ export const Lineage = ({
     );
   }, [
     cachedEdgesAndMaps,
-    entityLineage.edges,
+    visibleLineage.edges,
     entityFqn,
     isColumnLevelLineage,
   ]);
@@ -761,7 +780,7 @@ export const Lineage = ({
     fqn: string,
     config?: LineageConfig
   ) => {
-    if (isTourOpen || !tableClassBase.getAlertEnableStatus()) {
+    if (!tableClassBase.getAlertEnableStatus()) {
       return;
     }
     try {
@@ -787,10 +806,14 @@ export const Lineage = ({
         return;
       }
 
+      const lineageToDraw = applyTempTableVisibility(
+        pruneTempLineage(lineageData),
+        showLineageTempTables
+      );
       const seen = new Set<string>();
       const allNodes = [
-        ...(lineageData.nodes ?? []),
-        ...(lineageData.entity ? [lineageData.entity] : []),
+        ...(lineageToDraw.nodes ?? []),
+        ...(lineageToDraw.entity ? [lineageToDraw.entity] : []),
       ].filter((n) => {
         if (seen.has(n.id)) {
           return false;
@@ -813,7 +836,7 @@ export const Lineage = ({
           cachedEdgesAndMaps,
           cachedNodes,
           allNodes,
-          lineageData.edges,
+          lineageToDraw.edges,
           entityFqn,
           isColumnLevelLineage
         );
@@ -870,9 +893,21 @@ export const Lineage = ({
       setNodes,
       setEdges,
       setColumnsHavingLineage,
+      showLineageTempTables,
       zoomValue,
     ]
   );
+
+  // Showing or hiding temp tables redraws what is loaded: no refetch, so
+  // expanded nodes and loaded pages stay.
+  const drawnTempTablesRef = useRef(showLineageTempTables);
+  useEffect(() => {
+    if (drawnTempTablesRef.current === showLineageTempTables) {
+      return;
+    }
+    drawnTempTablesRef.current = showLineageTempTables;
+    redrawLineage(entityLineage);
+  }, [entityLineage, redrawLineage, showLineageTempTables]);
 
   const updateLineageData = useCallback(
     (
@@ -891,54 +926,28 @@ export const Lineage = ({
         redrawLineage(newLineageData, centerNode, isFirstTime);
       }
     },
-    [redrawLineage]
-  );
-
-  const fetchPlatformLineage = useCallback(
-    async (view: string, config?: LineageConfig) => {
-      try {
-        setLoading(true);
-        setInit(false);
-        const res = await getPlatformLineage({
-          config,
-          view,
-        });
-
-        setLineageData(res);
-
-        const { nodes, edges, entity } = parseLineageData(
-          res,
-          '',
-          entityFqn,
-          config?.pipelineViewMode
-        );
-        const updatedEntityLineage = {
-          nodes,
-          edges,
-          entity,
-        };
-
-        setEntityLineage(updatedEntityLineage);
-      } catch (err) {
-        showErrorToast(
-          err as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.lineage-data-lowercase'),
-          })
-        );
-      } finally {
-        setInit(true);
-        setLoading(false);
-      }
-    },
-    [entityFqn, t]
+    [setEntityLineage, redrawLineage]
   );
 
   const fetchLineageData = useCallback(
     async (fqn: string, entityType: string, config?: LineageConfig) => {
-      if (isTourOpen || lineageMode === 'impact_analysis') {
+      if (lineageMode === 'impact_analysis') {
         return;
       }
+
+      // Claim the key before the request so a second trigger for the same
+      // graph while this one is in flight does not fetch it again. A late
+      // duplicate response redraws with the layers captured at its call and
+      // wipes column rows the user has switched on since.
+      lastFetchedLineageKeyRef.current = getLineageFetchKey(
+        fqn,
+        entityType,
+        config,
+        queryFilter,
+        timeFilter
+      );
+      const fetchId = ++lineageFetchIdRef.current;
+      const isSuperseded = () => fetchId !== lineageFetchIdRef.current;
 
       setLoading(true);
       setInit(false);
@@ -955,13 +964,9 @@ export const Lineage = ({
           startTime: timeFilter.startTime,
           endTime: timeFilter.endTime,
         });
-        lastFetchedLineageKeyRef.current = getLineageFetchKey(
-          fqn,
-          entityType,
-          config,
-          queryFilter,
-          timeFilter
-        );
+        if (isSuperseded()) {
+          return;
+        }
         setLineageData(res);
 
         const { nodes, edges, entity } = parseLineageData(
@@ -979,6 +984,10 @@ export const Lineage = ({
         setEntityLineage(updatedEntityLineage);
         await redrawLineage(updatedEntityLineage, true);
       } catch (err) {
+        if (isSuperseded()) {
+          return;
+        }
+        lastFetchedLineageKeyRef.current = undefined;
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
@@ -986,12 +995,14 @@ export const Lineage = ({
           })
         );
       } finally {
-        setInit(true);
-        setLoading(false);
+        if (!isSuperseded()) {
+          setInit(true);
+          setLoading(false);
+        }
       }
     },
     [
-      isTourOpen,
+      setEntityLineage,
       lineageMode,
       setNodes,
       setEdges,
@@ -1097,6 +1108,19 @@ export const Lineage = ({
                 );
               }
             : undefined,
+        ...(includePNG && {
+          // The canvases leave off-screen nodes out of the DOM. Mount them
+          // for the capture, which clones the DOM, so the image holds every
+          // node and not only the ones in view.
+          beforeCapture: async () => {
+            useLineageStore.getState().setRenderAllNodes(true);
+            await new Promise((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(resolve))
+            );
+          },
+          afterCapture: () =>
+            useLineageStore.getState().setRenderAllNodes(false),
+        }),
         onExport: onExportCallback ?? exportLineageData,
       });
     },
@@ -1420,10 +1444,14 @@ export const Lineage = ({
         return true;
       });
 
+      const drawn = applyTempTableVisibility(
+        { ...entityLineage, nodes: allNodes, edges: updatedEdgeWithColumns },
+        showLineageTempTables
+      );
       const { columnsHavingLineage: updatedColumnsHavingLineage } =
         createEdgesAndEdgeMaps(
-          allNodes,
-          updatedEdgeWithColumns,
+          drawn.nodes,
+          drawn.edges,
           entityFqn,
           isColumnLevelLineage
         );
@@ -1433,6 +1461,7 @@ export const Lineage = ({
       closeDeleteModal();
     },
     [
+      setEntityLineage,
       bumpLineageMutationTick,
       closeDeleteModal,
       entityFqn,
@@ -1440,6 +1469,7 @@ export const Lineage = ({
       isColumnLevelLineage,
       removeEdgeById,
       setColumnsHavingLineage,
+      showLineageTempTables,
     ]
   );
 
@@ -1456,25 +1486,19 @@ export const Lineage = ({
 
       const edgesToRemove = getConnectedEdges([node as Node], nodeEdges);
 
-      const filteredEdges: EdgeDetails[] = [];
-
-      await Promise.all(
+      const removedEdges = await Promise.all(
         edgesToRemove.map(async (edge) => {
           const edgeData = getEdgeDataFromEdge(edge);
           await removeLineageHandler(edgeData);
-
-          filteredEdges.push(
-            ...(entityLineage.edges ?? []).filter(
-              (item) =>
-                !(
-                  item.fromEntity.id === edgeData.fromId &&
-                  item.toEntity.id === edgeData.toId
-                )
-            )
-          );
-
           removeEdgesBySourceTarget(edgeData.fromId, edgeData.toId);
+
+          return edgeData;
         })
+      );
+
+      const filteredEdges = withoutLineageEdges(
+        entityLineage.edges ?? [],
+        removedEdges
       );
 
       const updatedNodes = (entityLineage.nodes ?? []).filter(
@@ -1490,98 +1514,8 @@ export const Lineage = ({
           nodes: updatedNodes,
         };
       });
-
-      setNewAddedNode({} as Node);
     },
     [entityLineage, edges, removeNodeById, removeEdgesBySourceTarget]
-  );
-
-  const onEntitySelect = useCallback(
-    (selectedEntity: EntityReference, nodeId: string) => {
-      const isExistingNode = nodes.some(
-        (n) =>
-          n.data.node.fullyQualifiedName === selectedEntity.fullyQualifiedName
-      );
-      if (isExistingNode) {
-        setNodes((es) =>
-          es
-            .map((n) =>
-              n.id.includes(nodeId)
-                ? {
-                    ...n,
-                    selectable: true,
-                    className: `${n.className} selected`,
-                  }
-                : n
-            )
-            .filter((es) => es.id !== nodeId)
-        );
-        setNewAddedNode({} as Node);
-      } else {
-        setNodes((es) => {
-          return es.map((el) => {
-            if (el.id === nodeId) {
-              return {
-                ...el,
-                connectable: true,
-                selectable: true,
-                id: selectedEntity.id,
-                data: {
-                  saved: false,
-                  node: getNodeLineageData(selectedEntity),
-                },
-              };
-            } else {
-              return el;
-            }
-          });
-        });
-      }
-    },
-    [nodes, setNodes]
-  );
-
-  const onNodeDrop = useCallback(
-    (event: DragEvent, reactFlowBounds: DOMRect) => {
-      event.preventDefault();
-      const entityType = event.dataTransfer.getData('application/reactflow');
-      if (entityType) {
-        const position = reactFlowInstance?.project({
-          x: event.clientX - (reactFlowBounds?.left ?? 0),
-          y: event.clientY - (reactFlowBounds?.top ?? 0),
-        });
-        const nodeId = uniqueId();
-        const newNode = {
-          id: nodeId,
-          nodeType: EntityLineageNodeType.DEFAULT,
-          position,
-          className: '',
-          connectable: false,
-          selectable: false,
-          type: EntityLineageNodeType.DEFAULT,
-          data: {
-            label: (
-              <>
-                <LineageNodeRemoveButton
-                  onRemove={() => removeNodeHandler(newNode as Node)}
-                />
-
-                <NodeSuggestions
-                  entityType={entityType}
-                  onSelectHandler={(value) => onEntitySelect(value, nodeId)}
-                />
-              </>
-            ),
-            isEditMode,
-            isNewNode: true,
-          },
-        };
-        addNodes([newNode as Node]);
-
-        setNewAddedNode(newNode as Node);
-      }
-    },
-    [addNodes, isEditMode, onEntitySelect, reactFlowInstance, removeNodeHandler]
   );
 
   const selectLoadMoreNode = useCallback(
@@ -1641,7 +1575,10 @@ export const Lineage = ({
 
         const uniqueEdgeMap = new Map<string, (typeof newEdges)[0]>();
         newEdges.forEach((e) => {
-          const key = `${e.fromEntity.id}-${e.toEntity.id}`;
+          // A temp hop can join the same two tables as its stored edge.
+          const key = `${e.fromEntity.id}-${e.toEntity.id}-${
+            e.tempHopOf ?? ''
+          }`;
           uniqueEdgeMap.set(key, e);
         });
 
@@ -1764,10 +1701,9 @@ export const Lineage = ({
         await removeEdgeHandler(selectedEdge as Edge, true);
       }
 
-      // Close the modal and drop the selection in the same batch so the
-      // floating edit/delete button in EdgeInteractionOverlay unmounts
-      // right after removal. Doing this here (rather than inside the
-      // handlers) keeps `selectedEdge` populated while the confirmation
+      // Close the modal and drop the selection in the same batch. Doing
+      // this here (rather than inside the handlers) keeps `selectedEdge`
+      // populated while the confirmation
       // modal is still mounted — getModalBodyText() destructures it
       // during render and would crash the tree if `selectedEdge` were
       // cleared before the modal unmounts.
@@ -1879,17 +1815,19 @@ export const Lineage = ({
 
             setNodes((prev) => prev.map(applyNodeTypeUpdate));
 
+            const drawn = applyTempTableVisibility(
+              { ...entityLineage, nodes: allNodes, edges: allEdges },
+              showLineageTempTables
+            );
             const { edges: createdEdges, columnsHavingLineage } =
               createEdgesAndEdgeMaps(
-                allNodes,
-                allEdges,
+                drawn.nodes,
+                drawn.edges,
                 entityFqn,
                 isColumnLevelLineage
               );
             setEdges(createdEdges);
             setColumnsHavingLineage(columnsHavingLineage);
-
-            setNewAddedNode({} as Node);
           })
           .catch((err) => {
             showErrorToast(err);
@@ -1913,6 +1851,7 @@ export const Lineage = ({
       setEdges,
       setColumnsHavingLineage,
       setTracedNodes,
+      showLineageTempTables,
     ]
   );
 
@@ -2001,6 +1940,7 @@ export const Lineage = ({
       }
     },
     [
+      setEntityLineage,
       selectedEdge,
       entityLineage,
       bumpLineageMutationTick,
@@ -2071,6 +2011,7 @@ export const Lineage = ({
       }
     },
     [
+      setEntityLineage,
       bumpLineageMutationTick,
       entityLineage.edges,
       selectedEdge,
@@ -2136,7 +2077,9 @@ export const Lineage = ({
   }, [isColumnLevelLineage]);
 
   const onPlatformViewUpdate = useCallback(() => {
-    if (lineageMode === 'impact_analysis') {
+    // The main Lineage page is drawn from the scene API by LineageMap; this
+    // provider only loads the classic lineage graph for asset pages.
+    if (lineageMode === 'impact_analysis' || isPlatformLineage) {
       return;
     }
 
@@ -2174,15 +2117,6 @@ export const Lineage = ({
           lineageConfig
         );
       }
-
-      return;
-    }
-
-    if (isPlatformLineage) {
-      fetchPlatformLineage(
-        getEntityTypeFromPlatformView(platformView),
-        lineageConfig
-      );
     }
   }, [
     lineageMode,
@@ -2195,7 +2129,6 @@ export const Lineage = ({
     lineageConfig,
     queryFilter,
     timeFilter,
-    fetchPlatformLineage,
   ]);
 
   useEffect(() => {
@@ -2215,56 +2148,10 @@ export const Lineage = ({
   }, [defaultLineageConfig, setActiveLayer, setLineageConfig]);
 
   useEffect(() => {
-    if (!isEditMode && updatedEntityLineage !== null) {
-      // On exit of edit mode, use updatedEntityLineage and update data.
-      const { downstreamEdges, upstreamEdges } =
-        getUpstreamDownstreamNodesEdges(
-          updatedEntityLineage.edges ?? [],
-          updatedEntityLineage.nodes ?? [],
-          entityFqn
-        );
-
-      const updatedNodes =
-        updatedEntityLineage.nodes?.filter(
-          (n) =>
-            !isUndefined(
-              downstreamEdges?.find((d) => d.toEntity.id === n.id)
-            ) ||
-            !isUndefined(upstreamEdges?.find((u) => u.fromEntity.id === n.id))
-        ) ?? [];
-
-      setEntityLineage({
-        ...updatedEntityLineage,
-        nodes: updatedNodes,
-      });
+    if (updatedEntityLineage !== null) {
+      setEntityLineage(dropUnreachableNodes(updatedEntityLineage, entityFqn));
     }
-  }, [isEditMode, updatedEntityLineage, entityFqn]);
-
-  useEffect(() => {
-    if (isEditMode) {
-      setUpdatedEntityLineage(null);
-      if (deletePressed || backspacePressed) {
-        if (activeNode) {
-          removeNodeHandler(activeNode);
-        } else if (selectedEdge) {
-          if (selectedEdge.data?.isColumnLineage) {
-            removeColumnEdge(selectedEdge, true);
-          } else {
-            removeEdgeHandler(selectedEdge, true);
-          }
-        }
-      }
-    }
-  }, [
-    isEditMode,
-    deletePressed,
-    backspacePressed,
-    activeNode,
-    selectedEdge,
-    removeColumnEdge,
-    removeEdgeHandler,
-    removeNodeHandler,
-  ]);
+  }, [setEntityLineage, updatedEntityLineage, entityFqn]);
 
   useEffect(() => {
     if (reactFlowInstance?.viewportInitialized) {
@@ -2287,19 +2174,6 @@ export const Lineage = ({
     timeFilter.startTime,
     timeFilter.endTime,
   ]);
-
-  useEffect(() => {
-    if (isTourOpen || isTourPage) {
-      setInit(true);
-      setLoading(false);
-      const mock = tourMockDatasetData as
-        | { entityLineage: unknown }
-        | undefined;
-      if (mock?.entityLineage) {
-        setEntityLineage(mock.entityLineage as EntityLineageResponse);
-      }
-    }
-  }, [isTourOpen, isTourPage, tourMockDatasetData]);
 
   useEffect(() => {
     if (lineageLayer) {
@@ -2367,32 +2241,54 @@ export const Lineage = ({
     });
   }, [dataQualityLineage, dqHighlightedEdges]);
 
-  const handlers = useMemo<LineageHandlersValue>(
-    () => ({
-      loadChildNodesHandler,
-      removeNodeHandler,
-      onNodeClick,
-      onNodeDrop,
-      onNodeCollapse,
-      onConnect,
-      onEdgeDetailsUpdate,
-      updateEntityData,
-      handleEntityUpdate,
-      onExportClick,
-    }),
-    [
-      loadChildNodesHandler,
-      removeNodeHandler,
-      onNodeClick,
-      onNodeDrop,
-      onNodeCollapse,
-      onConnect,
-      onEdgeDetailsUpdate,
-      updateEntityData,
-      handleEntityUpdate,
-      onExportClick,
-    ]
-  );
+  const onInitReactFlow = useCallback((instance: ReactFlowInstance) => {
+    reactFlowInstanceRef.current = instance;
+    setReactFlowInstance(instance);
+    useLineageStore.getState().setReactFlowInstance(instance);
+  }, []);
+
+  const refetchLineage = useCallback(() => {
+    lastFetchedLineageKeyRef.current = undefined;
+    onPlatformViewUpdateRef.current();
+  }, []);
+
+  // Stable wrappers over the latest handlers: several close over `nodes`, which
+  // changes every drag frame, and must not re-render every context consumer.
+  const currentHandlers: LineageHandlersValue = {
+    loadChildNodesHandler,
+    removeNodeHandler,
+    onNodeClick,
+    onNodeCollapse,
+    onConnect,
+    onEdgeDetailsUpdate,
+    updateEntityData,
+    handleEntityUpdate,
+    onExportClick,
+    onInitReactFlow,
+    onNodesChange,
+    refetchLineage,
+  };
+  const latestHandlersRef = useRef(currentHandlers);
+  latestHandlersRef.current = currentHandlers;
+  const handlers = useMemo<LineageHandlersValue>(() => {
+    const latest = () => latestHandlersRef.current;
+
+    return {
+      loadChildNodesHandler: (...args) =>
+        latest().loadChildNodesHandler(...args),
+      removeNodeHandler: (...args) => latest().removeNodeHandler(...args),
+      onNodeClick: (...args) => latest().onNodeClick(...args),
+      onNodeCollapse: (...args) => latest().onNodeCollapse(...args),
+      onConnect: (...args) => latest().onConnect(...args),
+      onEdgeDetailsUpdate: (...args) => latest().onEdgeDetailsUpdate(...args),
+      updateEntityData: (...args) => latest().updateEntityData(...args),
+      handleEntityUpdate: (...args) => latest().handleEntityUpdate(...args),
+      onExportClick: (...args) => latest().onExportClick(...args),
+      onInitReactFlow: (...args) => latest().onInitReactFlow(...args),
+      onNodesChange: (...args) => latest().onNodesChange(...args),
+      refetchLineage: (...args) => latest().refetchLineage(...args),
+    };
+  }, []);
 
   const overlayHandlers = useMemo<LineageOverlaysHandlers>(
     () => ({
@@ -2418,11 +2314,10 @@ export const Lineage = ({
       <div
         className={classNames('lineage-root', {
           'full-screen-lineage': isFullScreen,
-          'sidebar-collapsed': isFullScreen && preferences?.isSidebarCollapsed,
-          'sidebar-expanded': isFullScreen && !preferences?.isSidebarCollapsed,
-        })}>
+        })}
+        ref={fullScreenRef}
+        style={fullScreenBounds}>
         {children}
-        <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
         <LineageOverlays handlers={overlayHandlers} />
       </div>
     </LineageHandlersContext.Provider>

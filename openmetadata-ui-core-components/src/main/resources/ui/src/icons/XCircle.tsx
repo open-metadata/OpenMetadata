@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const XCircle: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const XCircle: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="m15 9-6 6m0-6 6 6m7-3c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10"
+      d="m12.5 7.5-5 5m0-5 5 5m5.833-2.5c0 4.603-3.731 8.333-8.333 8.333S1.667 14.603 1.667 10 5.398 1.667 10 1.667 18.333 5.398 18.333 10"
       stroke="currentColor"
       strokeWidth={1.3}
     />

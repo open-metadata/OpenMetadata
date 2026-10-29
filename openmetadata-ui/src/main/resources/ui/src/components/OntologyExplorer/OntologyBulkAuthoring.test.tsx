@@ -28,7 +28,7 @@ import {
   listOntologyBulkJobs,
   submitOntologyBulkOperation,
 } from '../../rest/ontologyAPI';
-import { downloadFile } from '../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../utils/Export/ExportUtils';
 import OntologyBulkAuthoring from './OntologyBulkAuthoring';
 
 jest.mock('../../rest/ontologyAPI', () => ({
@@ -39,7 +39,7 @@ jest.mock('../../rest/ontologyAPI', () => ({
 }));
 
 jest.mock('../../utils/Export/ExportUtils', () => ({
-  downloadFile: jest.fn(),
+  downloadCsv: jest.fn(),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -82,9 +82,7 @@ const mockListJobs = listOntologyBulkJobs as jest.MockedFunction<
 const mockSubmit = submitOntologyBulkOperation as jest.MockedFunction<
   typeof submitOntologyBulkOperation
 >;
-const mockDownloadFile = downloadFile as jest.MockedFunction<
-  typeof downloadFile
->;
+const mockDownloadCsv = downloadCsv as jest.MockedFunction<typeof downloadCsv>;
 
 describe('OntologyBulkAuthoring', () => {
   beforeEach(() => {
@@ -123,10 +121,9 @@ describe('OntologyBulkAuthoring', () => {
     );
 
     await waitFor(() =>
-      expect(mockDownloadFile).toHaveBeenCalledWith(
+      expect(mockDownloadCsv).toHaveBeenCalledWith(
         expect.stringContaining('action,termId'),
-        'ontology-bulk-template.csv',
-        'text/csv'
+        'ontology-bulk-template.csv'
       )
     );
   });

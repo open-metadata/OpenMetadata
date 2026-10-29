@@ -11,19 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  Accordion,
-  AccordionHeader,
-  AccordionItem,
-  AccordionPanel,
-} from '@openmetadata/ui-core-components';
-import { Dispatch, SetStateAction, useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Dispatch, SetStateAction, useMemo } from 'react';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Paging } from '../../../generated/type/paging';
-import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
 import { ServicePageData } from '../../../interface/platform/service.interface';
 import { ServicesType } from '../../../interface/service.interface';
@@ -31,9 +24,10 @@ import ServiceMainTabContent from '../../../pages/ServiceDetailsPage/ServiceMain
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
 import Description from '../../common/EntityDescription/Description';
-import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
-import TagsSectionV1 from '../../common/TagsSection/TagsSection';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
+import { CommonWidgets } from '../../DataAssets/CommonWidgets/CommonWidgets';
 import './data-assets-tab.less';
+import { RIGHT_PANEL_WIDGETS } from './DataAssetsTab.constants';
 
 interface DataAssetsTabProps {
   serviceCategory: ServiceCategory;
@@ -62,99 +56,62 @@ const DataAssetsTab = ({
   onDataProductUpdate,
   ...rest
 }: DataAssetsTabProps) => {
-  const { t } = useTranslation();
-
   const entityType = useMemo(
     () => getEntityTypeFromServiceCategory(serviceCategory),
     [serviceCategory]
   );
 
-  const allTags = serviceDetails?.tags ?? [];
-
-  const {
-    canEditTags: editTagsPermission,
-    canEditGlossaryTerms: editGlossaryTermsPermission,
-    canEditDescription: editDescriptionPermission,
-  } = useMemo(
+  const { canEditDescription } = useMemo(
     () => getDerivedPermissionFlags(servicePermission, serviceDetails.deleted),
     [servicePermission, serviceDetails.deleted]
   );
 
-  const handleTagsUpdate = useCallback(
-    async (updatedTags: TagLabel[]): Promise<TagLabel[] | undefined> => {
-      const glossaryTags = allTags.filter(
-        (t) => t.source === TagSource.Glossary
-      );
-      const tierTags = allTags.filter((t) => t.tagFQN?.startsWith('Tier.'));
-      const merged = [...tierTags, ...glossaryTags, ...updatedTags];
-      await saveUpdatedServiceData({ ...serviceDetails, tags: merged });
-
-      return merged;
-    },
-    [allTags, saveUpdatedServiceData, serviceDetails]
-  );
-
-  const handleGlossaryTermsUpdate = useCallback(
-    async (updatedTags: TagLabel[]): Promise<TagLabel[] | undefined> => {
-      const nonGlossaryTags = allTags.filter(
-        (t) => t.source !== TagSource.Glossary
-      );
-      const merged = [...nonGlossaryTags, ...updatedTags];
-      await saveUpdatedServiceData({ ...serviceDetails, tags: merged });
-
-      return merged;
-    },
-    [allTags, saveUpdatedServiceData, serviceDetails]
-  );
-
   return (
-    <div className="data-assets-tab tw:flex tw:flex-col tw:gap-4">
-      <Accordion>
-        <AccordionItem id="metadata-details">
-          <AccordionHeader>{t('label.metadata-detail-plural')}</AccordionHeader>
-          <AccordionPanel className="tw:!overflow-visible tw:!text-inherit">
-            <div className="tw:flex tw:flex-col tw:gap-4">
-              <Description
-                description={serviceDetails.description}
-                entityName={serviceDetails.name ?? ''}
-                entityType={entityType}
-                hasEditAccess={editDescriptionPermission}
-                showActions={!serviceDetails.deleted}
-                showCommentsIcon={false}
-                onDescriptionUpdate={onDescriptionUpdate}
-              />
-              <div className="glossary-terms-section">
-                <GlossaryTermsSection
-                  entityId={serviceDetails.id}
-                  entityType={entityType}
-                  hasPermission={editGlossaryTermsPermission}
-                  tags={allTags}
-                  onGlossaryTermsUpdate={handleGlossaryTermsUpdate}
-                />
-              </div>
-              <TagsSectionV1
-                entityId={serviceDetails.id}
-                entityType={entityType}
-                hasPermission={editTagsPermission}
-                tags={allTags}
-                onTagsUpdate={handleTagsUpdate}
-              />
-            </div>
-          </AccordionPanel>
-        </AccordionItem>
-      </Accordion>
-
-      <div className="data-assets-table-wrapper">
-        <ServiceMainTabContent
-          {...rest}
-          saveUpdatedServiceData={saveUpdatedServiceData}
-          serviceDetails={serviceDetails}
-          serviceName={serviceDetails.name ?? ''}
-          servicePermission={servicePermission}
-          onDataProductUpdate={onDataProductUpdate}
+    <div className="data-assets-tab tw:flex tw:items-start tw:gap-4">
+      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-4">
+        <Description
+          wrapInCard
+          description={serviceDetails.description}
+          entityName={serviceDetails.name ?? ''}
+          entityType={entityType}
+          hasEditAccess={canEditDescription}
+          showActions={!serviceDetails.deleted}
+          showCommentsIcon={false}
           onDescriptionUpdate={onDescriptionUpdate}
         />
+        <div className="data-assets-table-wrapper">
+          <ServiceMainTabContent
+            {...rest}
+            hideRightPanel
+            saveUpdatedServiceData={saveUpdatedServiceData}
+            serviceDetails={serviceDetails}
+            serviceName={serviceDetails.name ?? ''}
+            servicePermission={servicePermission}
+            wrapInCard={false}
+            onDataProductUpdate={onDataProductUpdate}
+            onDescriptionUpdate={onDescriptionUpdate}
+          />
+        </div>
       </div>
+      {/* The same widget cards as an entity page's right panel, saving through the service. */}
+      <GenericProvider
+        data={serviceDetails}
+        permissions={servicePermission}
+        type={entityType as CustomizeEntityType}
+        onUpdate={saveUpdatedServiceData}>
+        <div
+          className="tw:flex tw:w-80 tw:shrink-0 tw:flex-col tw:gap-4"
+          data-testid="service-right-panel">
+          {RIGHT_PANEL_WIDGETS.map((widgetConfig) => (
+            <CommonWidgets
+              entityType={entityType}
+              key={widgetConfig.i}
+              showTaskHandler={false}
+              widgetConfig={widgetConfig}
+            />
+          ))}
+        </div>
+      </GenericProvider>
     </div>
   );
 };

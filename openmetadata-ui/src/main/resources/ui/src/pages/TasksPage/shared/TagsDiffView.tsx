@@ -43,6 +43,7 @@ export const TagsDiffView = ({
                 background: 'rgba(0, 131, 118, 0.2)',
                 color: '#008376',
               }}
+              tooltip={tag.tagFQN}
               type="color">
               {tag.tagFQN}
             </Badge>
@@ -63,6 +64,7 @@ export const TagsDiffView = ({
               key={uniqueId()}
               size="sm"
               style={{ color: 'grey', textDecoration: 'line-through' }}
+              tooltip={tag.tagFQN}
               type="color">
               {tag.tagFQN}
             </Badge>
@@ -83,6 +85,7 @@ export const TagsDiffView = ({
               color="gray"
               key={uniqueId()}
               size="sm"
+              tooltip={tag.tagFQN}
               type="color">
               {tag.tagFQN}
             </Badge>

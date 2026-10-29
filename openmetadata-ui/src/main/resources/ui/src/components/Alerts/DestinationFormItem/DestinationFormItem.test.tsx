@@ -186,7 +186,13 @@ function renderWithForm(
   const selection = {
     sources: resources as string[],
     support: {},
-    capabilities: { loading: false },
+    capabilities: {
+      knownSources: [],
+      loading: false,
+      settled: true,
+      retry: jest.fn(),
+    },
+    ready: true,
     loading: false,
     search: {
       indexes: [],

@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
@@ -25,11 +26,15 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObj
 
 /**
  * Reads the current metadata a live-write replay projects. Replays load state when they run rather
- * than carrying payloads, so a delayed replay never restores an obsolete snapshot.
+ * than carrying payloads, so a delayed replay never restores an obsolete snapshot. The entity
+ * loader reads live entities only and fails as not found for a soft-deleted one, which the replay
+ * turns into a delete: the graph projects the live catalog.
  */
 record RdfProjectionLoaders(
     BiFunction<String, UUID, EntityInterface<?>> entityLoader,
-    LineageDetailsLoader lineageDetailsLoader) {
+    LineageDetailsLoader lineageDetailsLoader,
+    Supplier<OntologyActiveGraph> ontologyGraphs,
+    RdfEntityLiveness liveness) {
 
   @FunctionalInterface
   interface LineageDetailsLoader {
@@ -42,7 +47,10 @@ record RdfProjectionLoaders(
 
   static RdfProjectionLoaders defaults() {
     return new RdfProjectionLoaders(
-        RdfProjectionLoaders::loadEntity, RdfProjectionLoaders::loadLineageDetails);
+        RdfProjectionLoaders::loadEntity,
+        RdfProjectionLoaders::loadLineageDetails,
+        () -> new OntologyActiveGraph(Entity.getCollectionDAO()),
+        RdfEntityLiveness.database());
   }
 
   private static EntityInterface<?> loadEntity(final String entityType, final UUID entityId) {
@@ -50,7 +58,7 @@ record RdfProjectionLoaders(
         entityType,
         entityId,
         String.join(",", RdfIndexingFields.forEntityType(entityType)),
-        Include.ALL,
+        Include.NON_DELETED,
         false);
   }
 

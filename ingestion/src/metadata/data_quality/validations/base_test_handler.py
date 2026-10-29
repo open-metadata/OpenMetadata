@@ -23,6 +23,7 @@ import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from decimal import Decimal
+from functools import partial
 from typing import (
     TYPE_CHECKING,
     TypedDict,
@@ -1355,6 +1356,21 @@ class BaseTestValidator(ABC):
             float,
             default=float("inf"),
         )
+
+    def get_set_param_value(self, param_name: str) -> list:
+        """An allowed or forbidden set, typed by the column it is checked against"""
+        return self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            param_name,
+            partial(utils.parse_set_values, column_type=self.get_set_values_type()),
+        )
+
+    def get_set_values_type(self):
+        """The column type a set is parsed against, or None to keep its values as written.
+
+        Implementation provided by SQAValidatorMixin or PandasValidatorMixin via MRO chain.
+        """
+        return super().get_set_values_type()  # type: ignore
 
     def get_bounds(self, min_param_name: str, max_param_name: str) -> tuple[float | None, float | None]:
         """Resolve the test case bounds and widen them by the failure threshold.

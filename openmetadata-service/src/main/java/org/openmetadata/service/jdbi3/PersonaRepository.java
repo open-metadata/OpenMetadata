@@ -20,9 +20,11 @@ import static org.openmetadata.service.Entity.USER;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -104,6 +106,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
         PERSONA_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = false;
+    fieldFetchers.put(FIELD_USERS, this::fetchAndSetUsers);
   }
 
   @Override
@@ -164,6 +167,34 @@ public class PersonaRepository extends EntityRepository<Persona> {
 
   private List<EntityReference> getUsers(Persona persona) {
     return findTo(persona.getId(), PERSONA, Relationship.APPLIED_TO, Entity.USER);
+  }
+
+  // List endpoints go through setFieldsInBulk, which only runs fieldFetchers — setFields is never
+  // called there, so without this the list response carried no users.
+  private void fetchAndSetUsers(List<Persona> personas, Fields fields) {
+    if (!fields.contains(FIELD_USERS) || nullOrEmpty(personas)) {
+      return;
+    }
+    List<String> personaIds =
+        personas.stream().map(Persona::getId).map(UUID::toString).distinct().toList();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(personaIds, Relationship.APPLIED_TO.ordinal(), PERSONA, USER);
+    Map<UUID, EntityReference> userRefsById =
+        batchResolveRefs(USER, records.stream().map(r -> UUID.fromString(r.getToId())).toList());
+    Map<UUID, List<EntityReference>> personaToUsers = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject relation : records) {
+      EntityReference userRef = userRefsById.get(UUID.fromString(relation.getToId()));
+      if (userRef != null) {
+        personaToUsers
+            .computeIfAbsent(UUID.fromString(relation.getFromId()), k -> new ArrayList<>())
+            .add(userRef);
+      }
+    }
+    for (Persona persona : personas) {
+      persona.setUsers(personaToUsers.getOrDefault(persona.getId(), new ArrayList<>()));
+    }
   }
 
   @Transaction

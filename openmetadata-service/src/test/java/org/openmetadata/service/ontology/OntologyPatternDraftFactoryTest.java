@@ -51,7 +51,7 @@ class OntologyPatternDraftFactoryTest {
     assertNull(terms.getFirst().getParent());
     assertEquals(terms.getFirst().getId(), terms.get(1).getParent().getId());
     assertEquals(terms.get(1).getId(), terms.getLast().getParent().getId());
-    assertTrue(terms.stream().allMatch(term -> term.getIri().isAbsolute()));
+    assertTrue(terms.stream().allMatch(term -> term.getIri() == null));
     assertTrue(terms.stream().allMatch(term -> term.getEntityStatus() == EntityStatus.DRAFT));
     assertEquals(relationshipTypes, relationshipNames(draft));
     assertTrue(

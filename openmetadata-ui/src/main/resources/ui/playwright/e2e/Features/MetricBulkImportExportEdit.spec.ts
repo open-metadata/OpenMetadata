@@ -592,7 +592,7 @@ const getFirstVisibleFixtureMetricRow = async (
 };
 
 const getMetricActionsMenu = (page: Page) =>
-  page.getByRole('menu', { name: 'Open menu' });
+  page.getByRole('menu', { name: 'Actions' });
 
 const openMetricActions = async (page: Page) => {
   await page.getByTestId('metric-actions').click();
@@ -816,7 +816,7 @@ const uploadMetricCsvAndWaitForPreview = async (
   const nextPreviewButton = page.getByRole('button', {
     name: /Next:\s*Preview/i,
   });
-  const fileInput = page.locator('.file-dragger-wrapper input[type="file"]');
+  const fileInput = page.getByTestId('upload-file-input');
 
   await expect(fileInput).toBeAttached();
   await fileInput.setInputFiles(csvPath);

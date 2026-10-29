@@ -20,4 +20,13 @@ public record TokenSet(String accessToken, String refreshToken, String idToken, 
   public boolean expiresWithin(final Duration window) {
     return timeUntilExpiry().compareTo(window) <= 0;
   }
+
+  /**
+   * The token a browser presents to the API: the ID token when the provider issued one. Access
+   * tokens are issued for other audiences (the mock IdP's carry no {@code aud} at all), and the
+   * server only accepts provider tokens issued to its own client.
+   */
+  public String bearerToken() {
+    return idToken != null ? idToken : accessToken;
+  }
 }

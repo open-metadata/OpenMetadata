@@ -260,6 +260,21 @@ jest.mock('../../common/EntityTitleSection/EntityTitleSection', () => ({
   )),
 }));
 
+const mockGetLineageDataByFQN = jest.fn();
+
+jest.mock('../../../rest/lineageAPI', () => ({
+  ...jest.requireActual('../../../rest/lineageAPI'),
+  getLineageDataByFQN: (...args: unknown[]) => mockGetLineageDataByFQN(...args),
+}));
+
+const mockGetListTestCaseBySearch = jest.fn();
+
+jest.mock('../../../rest/testAPI', () => ({
+  ...jest.requireActual('../../../rest/testAPI'),
+  getListTestCaseBySearch: (...args: unknown[]) =>
+    mockGetListTestCaseBySearch(...args),
+}));
+
 const mockGetTableDetailsByFQN = jest.fn();
 
 jest.mock('../../../rest/tableAPI', () => ({

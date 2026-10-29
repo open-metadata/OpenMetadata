@@ -33,12 +33,12 @@ export interface OntologyRelationshipSuggestion {
  * A typed, reversible operation in an ontology authoring session.
  */
 export interface OntologyChangeOperation {
-    attribute?: OntologyAttribute;
-    axiom?:     OntologyAxiom;
+    axiom?: OntologyAxiom;
     /**
      * Version used for optimistic concurrency. Omitted for create operations.
      */
     baseVersion?: number;
+    concept?:     OntologyConcept;
     /**
      * Model confidence in this AI suggestion, from 0 to 1.
      */
@@ -51,6 +51,7 @@ export interface OntologyChangeOperation {
      */
     modelId?:      string;
     operationType: OperationType;
+    property?:     OntologyProperty;
     /**
      * Model explanation of the evidence behind this AI suggestion.
      */
@@ -66,136 +67,6 @@ export interface OntologyChangeOperation {
 }
 
 /**
- * A typed attribute governed by an ontology concept.
- */
-export interface OntologyAttribute {
-    dataType: DataType;
-    /**
-     * Exact RDF datatype IRI preserved for ontology round trips.
-     */
-    datatypeIri?: string;
-    /**
-     * Ancestor concept that declares this attribute. Only set when `inherited` is true.
-     */
-    declaringTerm?: EntityReference;
-    /**
-     * Human-readable meaning of the attribute.
-     */
-    description?: string;
-    /**
-     * Allowed values when dataType is ENUM.
-     */
-    enumValues?: string[];
-    /**
-     * Stable identifier used by drafts and version diffs.
-     */
-    id: string;
-    /**
-     * True when the attribute is contributed by an ancestor concept rather than declared on the
-     * concept itself. Only set on computed `effectiveAttributes`; never valid inside a
-     * concept's own `attributes`.
-     */
-    inherited?: boolean;
-    /**
-     * Canonical IRI of the OWL datatype property.
-     */
-    iri?: string;
-    /**
-     * Whether the attribute identifies instances of the concept.
-     */
-    isIdentifier: boolean;
-    /**
-     * Name of the attribute within its concept.
-     */
-    name: string;
-    /**
-     * Optional unit IRI or display symbol.
-     */
-    unit?: string;
-}
-
-/**
- * Supported value type for an ontology attribute.
- */
-export enum DataType {
-    Boolean = "BOOLEAN",
-    Date = "DATE",
-    Decimal = "DECIMAL",
-    Enum = "ENUM",
-    Integer = "INTEGER",
-    String = "STRING",
-}
-
-/**
- * Ancestor concept that declares this attribute. Only set when `inherited` is true.
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * Reference to the data contract for this entity.
- *
- * Glossary that this term belongs to.
- *
- * Parent glossary term that this term is child of. When `null` this term is the root term
- * of the glossary.
- *
- * Data asset realizing the concept.
- *
- * Resolved first-class relationship type.
- *
- * Reference to the related glossary term.
- */
-export interface EntityReference {
-    /**
-     * If true the entity referred to has been soft-deleted.
-     */
-    deleted?: boolean;
-    /**
-     * Optional description of entity.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this entity.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified name of the entity instance. For entities such as tables, databases
-     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-     * such as `user` and `team` this will be same as the `name` field.
-     */
-    fullyQualifiedName?: string;
-    /**
-     * Link to the entity resource.
-     */
-    href?: string;
-    /**
-     * Unique identifier that identifies an entity instance.
-     */
-    id: string;
-    /**
-     * If true the relationship indicated by this entity reference is inherited from the parent
-     * entity.
-     */
-    inherited?: boolean;
-    /**
-     * Name of the entity instance.
-     */
-    name?: string;
-    /**
-     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-     * `dashboardService`...
-     */
-    type: string;
-}
-
-/**
  * A governed OWL axiom whose relational representation remains authoritative when RDF is
  * disabled.
  */
@@ -205,13 +76,11 @@ export interface OntologyAxiom {
     deleted?:           boolean;
     description:        string;
     displayName:        string;
-    entityStatus:       EntityStatus;
     /**
      * Class expressions participating in the axiom, ordered from left to right.
      */
     expressions:        OntologyExpression[];
     fullyQualifiedName: string;
-    glossary:           EntityReference;
     href?:              string;
     id:                 string;
     /**
@@ -221,11 +90,11 @@ export interface OntologyAxiom {
     incrementalChangeDescription?: ChangeDescription;
     literal?:                      Literal;
     name:                          string;
+    ontology:                      EntityReference;
     owners?:                       EntityReference[];
     propertyIri?:                  string;
     provenance:                    Provenance;
     provider?:                     ProviderType;
-    reviewers?:                    EntityReference[];
     subjectIri:                    string;
     targetIri?:                    string;
     updatedAt?:                    number;
@@ -308,28 +177,6 @@ export interface FieldChange {
 }
 
 /**
- * General lifecycle stage for entities that reference this vocabulary. Specialized entities
- * can declare their own status schema and lifecycle policy. Entity types without an
- * entityStatus property have no lifecycle. When a create request omits the stage, the
- * server assigns the entity type's initial stage.
- *
- * Status of the Glossary.
- *
- * Approval status of the glossary term.
- *
- * Approval status of this relation edge.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Archived = "Archived",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-    Unprocessed = "Unprocessed",
-}
-
-/**
  * A recursive OWL class expression represented without untyped maps.
  *
  * Class expression qualifying a restriction.
@@ -407,9 +254,74 @@ export enum RestrictionKind {
 }
 
 /**
- * How this relation edge originated.
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  *
- * How this realization edge originated. Defaults to 'Manual'.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Owning ontology entity. Glossaries do not own ontology definitions.
+ *
+ * Reference to the data contract for this entity.
+ *
+ * Glossary that this term belongs to.
+ *
+ * Parent glossary term that this term is child of. When `null` this term is the root term
+ * of the glossary.
+ *
+ * Resolved first-class relationship type.
+ *
+ * Reference to the related glossary term.
+ */
+export interface EntityReference {
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
+}
+
+/**
+ * How this relation edge originated.
  *
  * How this relation edge originated. Defaults to 'Manual'.
  */
@@ -430,6 +342,98 @@ export enum ProviderType {
     Automation = "automation",
     System = "system",
     User = "user",
+}
+
+/**
+ * A formal class, SKOS concept, or both, owned by an ontology independently of glossary
+ * terms.
+ */
+export interface OntologyConcept {
+    changeDescription?: ChangeDescription;
+    conceptMappings?:   ConceptMapping[];
+    conceptType:        OntologyConceptType;
+    deleted?:           boolean;
+    description?:       string;
+    displayName?:       string;
+    fullyQualifiedName: string;
+    href?:              string;
+    id:                 string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?:               string;
+    incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Persisted semantic IRI. Renaming the catalog entity must preserve this identity.
+     */
+    iri:  string;
+    name: string;
+    /**
+     * Owning ontology entity. Glossaries do not own ontology definitions.
+     */
+    ontology:  EntityReference;
+    owners?:   EntityReference[];
+    provider?: ProviderType;
+    /**
+     * Direct named subclasses, derived from non-deleted ontology-owned SUBCLASS_OF axioms. Not
+     * stored or independently editable.
+     */
+    subClasses?: string[];
+    /**
+     * Direct named superclasses, derived from non-deleted ontology-owned SUBCLASS_OF axioms.
+     * Not stored or independently editable.
+     */
+    superClasses?: string[];
+    synonyms?:     string[];
+    updatedAt?:    number;
+    updatedBy?:    string;
+    version?:      number;
+}
+
+/**
+ * Mapping from an ontology term to an external concept.
+ */
+export interface ConceptMapping {
+    /**
+     * External concept IRI to map this ontology term to.
+     */
+    conceptIri: string;
+    /**
+     * Type of mapping used for the external concept alignment.
+     */
+    mappingType: ConceptMappingType;
+    /**
+     * Optional external concept scheme IRI for the mapped concept.
+     */
+    schemeIri?: string;
+    /**
+     * Optional source label or catalog for the external concept.
+     */
+    source?: string;
+}
+
+/**
+ * Type of mapping used for the external concept alignment.
+ *
+ * Type of mapping used to align this term with an external concept.
+ */
+export enum ConceptMappingType {
+    BroadMatch = "BROAD_MATCH",
+    CloseMatch = "CLOSE_MATCH",
+    ExactMatch = "EXACT_MATCH",
+    NarrowMatch = "NARROW_MATCH",
+    RelatedMatch = "RELATED_MATCH",
+    SameAs = "SAME_AS",
+}
+
+/**
+ * Vocabulary a source ontology used to assert a concept. Preserved so imported ontologies
+ * round-trip with the typing they were authored with.
+ */
+export enum OntologyConceptType {
+    Both = "BOTH",
+    OwlClass = "OWL_CLASS",
+    SkosConcept = "SKOS_CONCEPT",
 }
 
 /**
@@ -513,10 +517,6 @@ export interface Glossary {
      */
     namespaces?: Namespace[];
     /**
-     * Ontology modeling, layering, import, and IRI settings inherited by glossary terms.
-     */
-    ontologyConfiguration?: OntologyConfiguration;
-    /**
      * Owners of this glossary.
      */
     owners?:   EntityReference[];
@@ -556,6 +556,28 @@ export interface Glossary {
     votes?: Votes;
 }
 
+/**
+ * Status of the Glossary.
+ *
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
+ *
+ * Approval status of the glossary term.
+ *
+ * Approval status of this relation edge.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
 export interface Namespace {
     /**
      * Full namespace IRI the prefix expands to (e.g., `http://example.com/ontology/hcp#`).
@@ -565,79 +587,6 @@ export interface Namespace {
      * Short prefix for the namespace (e.g., `hcp`).
      */
     prefix?: string;
-}
-
-/**
- * Ontology modeling, layering, import, and IRI settings inherited by glossary terms.
- *
- * Ontology modeling and namespace settings inherited by every term in a glossary.
- */
-export interface OntologyConfiguration {
-    /**
-     * Absolute base IRI used when minting governed concepts.
-     */
-    baseIri?: string;
-    /**
-     * Ontology models this model depends on. Dependencies must point to the same or a more
-     * foundational layer.
-     */
-    imports?: EntityReference[];
-    /**
-     * Verified ontology library packs installed into this model, keyed by stable pack ID.
-     */
-    installedPacks: OntologyPackInstallation[];
-    /**
-     * IRI suffix pattern. Supported placeholders are {glossary}, {term}, and {uuid}.
-     */
-    iriMintingPattern: string;
-    layer:             Layer;
-    /**
-     * Prefix registry used for display, authoring, import, and export.
-     */
-    prefixes: Prefix[];
-    /**
-     * Whether the model is an installed reference model that cannot be edited directly.
-     */
-    readOnly: boolean;
-}
-
-/**
- * Durable provenance and version state for an installed ontology library pack.
- */
-export interface OntologyPackInstallation {
-    installedAt: number;
-    installedBy: string;
-    license:     string;
-    licenseUrl:  string;
-    modules:     OntologyPackModuleInstallation[];
-    packId:      string;
-    sourceUrl:   string;
-    version:     string;
-}
-
-/**
- * Verified ontology pack module recorded as installation provenance.
- */
-export interface OntologyPackModuleInstallation {
-    moduleId: string;
-    sha256:   string;
-}
-
-/**
- * Governance layer of an ontology model.
- */
-export enum Layer {
-    L1 = "L1",
-    L2 = "L2",
-    L3 = "L3",
-}
-
-/**
- * A compact IRI prefix and its absolute namespace.
- */
-export interface Prefix {
-    namespace: string;
-    prefix:    string;
 }
 
 /**
@@ -864,56 +813,108 @@ export interface Votes {
     upVotes?: number;
 }
 
-/**
- * Mapping from an ontology term to an external concept.
- */
-export interface ConceptMapping {
-    /**
-     * External concept IRI to map this ontology term to.
-     */
-    conceptIri: string;
-    /**
-     * Type of mapping used for the external concept alignment.
-     */
-    mappingType: ConceptMappingType;
-    /**
-     * Optional external concept scheme IRI for the mapped concept.
-     */
-    schemeIri?: string;
-    /**
-     * Optional source label or catalog for the external concept.
-     */
-    source?: string;
-}
-
-/**
- * Type of mapping used for the external concept alignment.
- *
- * Type of mapping used to align this term with an external concept.
- */
-export enum ConceptMappingType {
-    BroadMatch = "BROAD_MATCH",
-    CloseMatch = "CLOSE_MATCH",
-    ExactMatch = "EXACT_MATCH",
-    NarrowMatch = "NARROW_MATCH",
-    RelatedMatch = "RELATED_MATCH",
-    SameAs = "SAME_AS",
-}
-
 export enum OperationType {
     AddRelationship = "ADD_RELATIONSHIP",
     CreateGlossary = "CREATE_GLOSSARY",
     CreateTerm = "CREATE_TERM",
-    DeleteAttribute = "DELETE_ATTRIBUTE",
     DeleteAxiom = "DELETE_AXIOM",
+    DeleteConcept = "DELETE_CONCEPT",
     DeleteMapping = "DELETE_MAPPING",
+    DeleteProperty = "DELETE_PROPERTY",
     DeleteRelationship = "DELETE_RELATIONSHIP",
     DeleteTerm = "DELETE_TERM",
     UpdateRelationship = "UPDATE_RELATIONSHIP",
     UpdateTerm = "UPDATE_TERM",
-    UpsertAttribute = "UPSERT_ATTRIBUTE",
     UpsertAxiom = "UPSERT_AXIOM",
+    UpsertConcept = "UPSERT_CONCEPT",
     UpsertMapping = "UPSERT_MAPPING",
+    UpsertProperty = "UPSERT_PROPERTY",
+}
+
+/**
+ * A formal object, data, or annotation property owned by an ontology, independent of
+ * glossary relation types.
+ */
+export interface OntologyProperty {
+    changeDescription?: ChangeDescription;
+    characteristics?:   Characteristic[];
+    deleted?:           boolean;
+    description?:       string;
+    /**
+     * Semantic IRIs of properties disjoint with this property.
+     */
+    disjointWith?: string[];
+    displayName?:  string;
+    /**
+     * Semantic IRIs of the classes in the property domain.
+     */
+    domain?: string[];
+    /**
+     * Allowed typed values for a DATA property, projected as an OWL data enumeration. An absent
+     * datatype denotes xsd:string. Empty means no enumeration constraint.
+     */
+    enumValues?:        Literal[];
+    fullyQualifiedName: string;
+    href?:              string;
+    id:                 string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?:               string;
+    incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Semantic IRI of the inverse object property.
+     */
+    inverse?: string;
+    /**
+     * Persisted semantic IRI. Renaming the catalog entity must preserve this identity.
+     */
+    iri: string;
+    /**
+     * Identifier intent for a DATA property. This annotation does not assert functionality, an
+     * OWL key, or uniqueness in source data.
+     */
+    isIdentifier?: boolean;
+    kind:          Kind;
+    name:          string;
+    /**
+     * Owning ontology entity. Glossaries do not own ontology definitions.
+     */
+    ontology: EntityReference;
+    owners?:  EntityReference[];
+    /**
+     * Ordered object-property IRIs whose composition implies this property.
+     */
+    propertyChain?: string[];
+    provider?:      ProviderType;
+    /**
+     * Semantic IRIs of range classes or datatypes.
+     */
+    range?: string[];
+    /**
+     * Unit IRI or display symbol for a DATA property, retained as an annotation without
+     * implying conversion.
+     */
+    unit?:      string;
+    updatedAt?: number;
+    updatedBy?: string;
+    version?:   number;
+}
+
+export enum Characteristic {
+    Asymmetric = "ASYMMETRIC",
+    Functional = "FUNCTIONAL",
+    InverseFunctional = "INVERSE_FUNCTIONAL",
+    Irreflexive = "IRREFLEXIVE",
+    Reflexive = "REFLEXIVE",
+    Symmetric = "SYMMETRIC",
+    Transitive = "TRANSITIVE",
+}
+
+export enum Kind {
+    Annotation = "ANNOTATION",
+    Data = "DATA",
+    Object = "OBJECT",
 }
 
 /**
@@ -943,10 +944,6 @@ export enum OperationState {
  */
 export interface GlossaryTerm {
     /**
-     * Typed properties governed by this ontology concept.
-     */
-    attributes?: OntologyAttribute[];
-    /**
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
@@ -962,11 +959,6 @@ export interface GlossaryTerm {
      * Optional mappings to external concepts (e.g., SKOS alignments).
      */
     conceptMappings?: ConceptMapping[];
-    /**
-     * Vocabulary the source ontology used to assert this concept. Defaults to `BOTH`, which
-     * emits the term as an `owl:Class` and a `skos:Concept`.
-     */
-    conceptType?: OntologyConceptType;
     /**
      * Reference to the data contract for this entity.
      */
@@ -996,12 +988,6 @@ export interface GlossaryTerm {
      * from the Glossary it belongs to.
      */
     domains?: EntityReference[];
-    /**
-     * Attributes declared by this concept together with those inherited from its ancestors
-     * through subsumption. Computed by the server on read and never stored; inherited entries
-     * carry `inherited` and `declaringTerm`.
-     */
-    effectiveAttributes?: OntologyAttribute[];
     /**
      * Approval status of the glossary term.
      */
@@ -1054,10 +1040,6 @@ export interface GlossaryTerm {
      */
     name: string;
     /**
-     * Pinned source provenance when this term belongs to an application ontology subset.
-     */
-    ontologySource?: OntologySourceProvenance;
-    /**
      * Owners of this glossary term.
      */
     owners?: EntityReference[];
@@ -1067,11 +1049,6 @@ export interface GlossaryTerm {
      */
     parent?:   EntityReference;
     provider?: ProviderType;
-    /**
-     * Data assets that physically realize this concept. Distinct from tag labels, which only
-     * record that an asset references the concept.
-     */
-    realizedIn?: AssetRealization[];
     /**
      * Link to a reference from an external glossary.
      */
@@ -1084,11 +1061,7 @@ export interface GlossaryTerm {
      * User names of the reviewers for this glossary.
      */
     reviewers?: EntityReference[];
-    /**
-     * Context memories that supported the derivation of this glossary term.
-     */
-    sourceMemoryIds?: string[];
-    style?:           Style;
+    style?:     Style;
     /**
      * Alternate names that are synonyms or near-synonyms for the glossary term.
      */
@@ -1122,102 +1095,6 @@ export interface GlossaryTerm {
      * Votes on the entity.
      */
     votes?: Votes;
-}
-
-/**
- * Vocabulary the source ontology used to assert this concept. Defaults to `BOTH`, which
- * emits the term as an `owl:Class` and a `skos:Concept`.
- *
- * Vocabulary a source ontology used to assert a concept. Preserved so imported ontologies
- * round-trip with the typing they were authored with.
- */
-export enum OntologyConceptType {
-    Both = "BOTH",
-    OwlClass = "OWL_CLASS",
-    SkosConcept = "SKOS_CONCEPT",
-}
-
-/**
- * Pinned source provenance when this term belongs to an application ontology subset.
- *
- * Pinned source identity and versions for a concept materialized into an application
- * ontology subset.
- */
-export interface OntologySourceProvenance {
-    capturedAt: number;
-    capturedBy: string;
-    /**
-     * Whether the modeler selected this term or it was included as a descendant.
-     */
-    selectedDirectly:      boolean;
-    sourceGlossary:        EntityReference;
-    sourceGlossaryVersion: number;
-    /**
-     * Canonical source concept IRI used for exact-match traceability.
-     */
-    sourceIri?: string;
-    /**
-     * Structural merge base captured at sourceTermVersion.
-     */
-    sourceSnapshot:    OntologyTermStructure;
-    sourceTerm:        EntityReference;
-    sourceTermVersion: number;
-}
-
-/**
- * Structural merge base captured at sourceTermVersion.
- *
- * Typed structural state used for application ontology three-way comparison.
- */
-export interface OntologyTermStructure {
-    attributes:          OntologyAttribute[];
-    conceptMappings:     ConceptMapping[];
-    description:         string;
-    displayName?:        string;
-    entityStatus?:       EntityStatus;
-    name:                string;
-    parentSourceTermId?: string;
-    relationships:       Relationship[];
-}
-
-export interface Relationship {
-    relationshipType:   EntityReference;
-    targetSourceTermId: string;
-}
-
-/**
- * A data asset that physically realizes an ontology concept. Unlike a tag label, which
- * records that an asset merely references a concept, a realization records that the asset
- * stores the instances of the concept.
- */
-export interface AssetRealization {
-    /**
-     * Data asset realizing the concept.
-     */
-    asset: EntityReference;
-    /**
-     * Human-readable note about how the asset realizes the concept.
-     */
-    description?: string;
-    /**
-     * Stable identifier used by drafts and version diffs.
-     */
-    id?: string;
-    /**
-     * How this realization edge originated. Defaults to 'Manual'.
-     */
-    provenance?: Provenance;
-    role?:       RealizationRole;
-}
-
-/**
- * Role the asset plays in realizing the concept. At most one asset may be the primary store
- * of a concept.
- */
-export enum RealizationRole {
-    Derived = "DERIVED",
-    PrimaryStore = "PRIMARY_STORE",
-    Replica = "REPLICA",
 }
 
 export interface TermReference {

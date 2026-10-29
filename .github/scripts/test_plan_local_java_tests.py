@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -279,6 +280,42 @@ def test_lane_membership_is_read_from_the_it_pom() -> None:
     assert planner.lane_for(by_name["TableResourceIT"]) == "parallel"
 
 
+def test_global_state_tests_run_only_in_the_isolated_fork_of_every_engine() -> None:
+    root = ET.fromstring(REPO.pom)
+    ns = {"m": "http://maven.apache.org/POM/4.0.0"}
+    patterns = root.findtext(
+        "m:properties/m:integrationTests.globalStateTests", namespaces=ns
+    )
+    assert patterns
+    paths = [
+        path
+        for path, name in REPO.it_classes.items()
+        if any(fnmatch.fnmatchcase(name, pattern) for pattern in patterns.split(","))
+    ]
+    assert paths
+    checked = []
+    for profile in root.findall("m:profiles/m:profile", ns):
+        executions = {
+            execution.findtext("m:id", namespaces=ns): execution
+            for execution in profile.findall(".//m:execution", ns)
+        }
+        if not {"isolated-tests", "parallel-tests"} <= executions.keys():
+            continue
+        checked.append(profile.findtext("m:id", namespaces=ns))
+        for execution, selector in (
+            ("isolated-tests", "include"),
+            ("parallel-tests", "exclude"),
+        ):
+            selected = [
+                PLANNER.ant_to_fnmatch(element.text)
+                for element in executions[execution].findall(f".//m:{selector}", ns)
+                if element.text
+            ]
+            missing = [path for path in paths if not PLANNER.matches(path, selected)]
+            assert not missing, (checked[-1], execution, selector, missing)
+    assert checked
+
+
 def test_classes_no_lane_runs_are_read_from_the_code_and_the_pom() -> None:
     by_name = {name: relative for relative, name in REPO.it_classes.items()}
 
@@ -291,6 +328,25 @@ def test_classes_no_lane_runs_are_read_from_the_code_and_the_pom() -> None:
     )  # the search-it profile excludes it
     assert REPO.conditional[by_name["RdfCatalogScaleIT"]] == "rdfCatalogScale"
     assert by_name["TableResourceIT"] not in REPO.never_run
+
+
+def test_an_abstract_unit_test_runs_through_the_classes_that_extend_it() -> None:
+    # Surefire runs SessionStoreContractTest's tests only inside RedisSessionStoreTest and writes
+    # no report under its name, so selecting it by name failed a step whose tests all passed.
+    session = f"{SERVICE}/security/session/UserSession.java"
+    contract = "openmetadata-service/src/test/java/org/openmetadata/service/security/session/SessionStoreContractTest.java"
+
+    _, uses_it = plan_for(session)
+    _, changes_it = plan_for(contract)
+
+    for plan in (uses_it, changes_it):
+        units = plan.unit_tests["openmetadata-service"]
+        assert "SessionStoreContractTest" not in units
+        assert "RedisSessionStoreTest" in units
+    assert "SessionServiceTest" in uses_it.unit_tests["openmetadata-service"]
+    assert changes_it.unit_tests["openmetadata-service"]["RedisSessionStoreTest"] == {
+        "extends SessionStoreContractTest, which changed"
+    }
 
 
 def test_a_change_runs_the_tests_that_name_it_and_its_callers_tests() -> None:

@@ -139,21 +139,19 @@ test.describe('Ontology Studio — isolated concepts', () => {
         { message: 'all scoped concepts must be visible in the graph' }
       )
       .toBe(true);
-    await expect(page.getByTestId('ontology-health-panel')).toBeVisible();
-    const connectButton = page.getByTestId(
-      `ontology-connect-${toggleTermIso.responseData.id}`
+    await expect(page.getByTestId('ontology-isolated-count')).toHaveText('1');
+    await page.getByTestId('ontology-health-review').click();
+    const isolatedRow = page.getByTestId(
+      `ontology-isolated-term-${toggleTermIso.responseData.id}`
     );
 
-    await expect(connectButton).toBeVisible();
-    await expect(connectButton).toContainText(
+    await expect(isolatedRow).toBeVisible();
+    await expect(isolatedRow).toContainText(
       toggleTermIso.responseData.displayName
     );
-    await expect(connectButton).not.toContainText(
-      toggleTermIso.responseData.id
-    );
-    await expect(page.getByTestId('ontology-isolated-count')).toHaveText('1');
+    await expect(isolatedRow).not.toContainText(toggleTermIso.responseData.id);
     await expect(
-      page.getByTestId('ontology-header-isolated-count')
-    ).toContainText(/1\s*isolated/i);
+      page.getByTestId(`ontology-connect-${toggleTermIso.responseData.id}`)
+    ).toBeVisible();
   });
 });

@@ -1,11 +1,18 @@
 package org.openmetadata.service.rdf.storage;
 
+import java.net.URI;
 import java.util.List;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
+import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.sparql.core.Quad;
+import org.apache.jena.sparql.modify.request.QuadDataAcc;
+import org.apache.jena.sparql.modify.request.UpdateDataInsert;
+import org.apache.jena.sparql.modify.request.UpdateDrop;
+import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.rdf.RdfWriteMode;
 
@@ -182,6 +189,20 @@ public interface RdfStorageInterface extends AutoCloseable {
    * Load a Turtle file directly into a named graph
    */
   void loadTurtleFile(java.io.InputStream turtleStream, String graphUri);
+
+  /** Replaces a complete named graph atomically, including removal of all previous blank nodes. */
+  default void replaceGraph(final String graphUri, final Model model) {
+    if (!URI.create(graphUri).isAbsolute()) {
+      throw new IllegalArgumentException("A graph requires an absolute IRI");
+    }
+    final var graph = NodeFactory.createURI(graphUri);
+    final var update = new UpdateRequest(new UpdateDrop(graph, true));
+    update.add(
+        new UpdateDataInsert(
+            new QuadDataAcc(
+                model.getGraph().find().mapWith(triple -> new Quad(graph, triple)).toList())));
+    executeSparqlUpdate(update.toString());
+  }
 
   /**
    * Get all graph URIs in the store

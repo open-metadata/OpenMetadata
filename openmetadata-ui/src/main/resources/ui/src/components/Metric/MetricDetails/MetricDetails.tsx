@@ -389,40 +389,38 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           permissions={metricPermissions}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={onMetricUpdate}>
-          <div className="metric-page-tabs">
-            <Tabs
-              className="tw:gap-3"
-              data-testid="tabs"
-              selectedKey={getRenderedActiveTab(tabs, activeTab)}
-              onSelectionChange={(key) => handleTabChange(String(key))}>
-              <Tabs.List
-                actions={
-                  isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
-                        isTabExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={toggleTabExpanded}
-                    />
-                  )
-                }
-                size="sm"
-                type="underline"
-                variant="card">
-                {tabs.map(({ key, label }) => (
-                  <Tabs.Item id={key} key={key}>
-                    {label}
-                  </Tabs.Item>
-                ))}
-              </Tabs.List>
-              {tabs.map(({ key, children }) => (
-                <Tabs.Panel id={key} key={key}>
-                  {children}
-                </Tabs.Panel>
+          <Tabs
+            className="tw:gap-3"
+            data-testid="tabs"
+            selectedKey={getRenderedActiveTab(tabs, activeTab)}
+            onSelectionChange={(key) => handleTabChange(String(key))}>
+            <Tabs.List
+              actions={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
+              size="sm"
+              type="underline"
+              variant="card">
+              {tabs.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
               ))}
-            </Tabs>
-          </div>
+            </Tabs.List>
+            {tabs.map(({ key, children }) => (
+              <Tabs.Panel id={key} key={key}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
         </GenericProvider>
       </Box>
       {isAssetModalOpen && (

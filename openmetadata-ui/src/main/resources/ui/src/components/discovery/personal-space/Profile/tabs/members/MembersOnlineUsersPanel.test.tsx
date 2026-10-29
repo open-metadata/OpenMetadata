@@ -54,11 +54,6 @@ jest.mock('../../../../../../hooks/paging/usePaging', () => ({
   }),
 }));
 
-jest.mock(
-  '../../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () => () => <div data-testid="filter-table-placeholder" />
-);
-
 jest.mock('../../../../../common/Table/TableV2', () =>
   jest.fn(
     ({

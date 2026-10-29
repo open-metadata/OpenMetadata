@@ -188,14 +188,18 @@ public class TestCaseResolutionStatusRepository
     return LATEST_PER_TEST_CASE.equals(groupBy) ? TEST_CASE_INVARIANT_PARAMS : Set.of();
   }
 
-  // {@code testSuites} stays on the exclude list to scrub legacy docs written before the
-  // SearchRepository inheritable-field refactor stopped propagating testCase.testSuites onto
-  // child TCRS docs. The field is absent from the {@link TestCaseResolutionStatus} schema
-  // ({@code additionalProperties: false}), so any surviving polluted source would otherwise
-  // 400 strict Jackson deserialization on /testCaseIncidentStatus/search/list.
+  // Fields a TCRS search doc carries that the {@link TestCaseResolutionStatus} schema
+  // ({@code additionalProperties: false}) does not, so each one left in a hit 400s strict Jackson
+  // deserialization on /testCaseIncidentStatus/search/list. {@code table} is the parent table
+  // reference the tag cascade matches incidents on. {@code testSuites} stays to scrub legacy docs
+  // written before the SearchRepository inheritable-field refactor stopped propagating
+  // testCase.testSuites onto child TCRS docs.
+  static final List<String> SEARCH_ONLY_FIELDS =
+      List.of("@timestamp", "domains", "testCase", "testSuite", "testSuites", "fqnParts", "table");
+
   @Override
   protected List<String> getExcludeSearchFields() {
-    return List.of("@timestamp", "domains", "testCase", "testSuite", "testSuites", "fqnParts");
+    return SEARCH_ONLY_FIELDS;
   }
 
   // The {@code latest=false} listing path skips client-side {@code extractAndFilterSource} and

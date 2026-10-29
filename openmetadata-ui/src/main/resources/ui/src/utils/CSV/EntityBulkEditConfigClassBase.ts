@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DefaultOptionType } from 'antd/lib/select';
 import type { Column } from 'react-data-grid';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -20,6 +19,11 @@ import {
   UnitOfMeasurement,
 } from '../../generated/entity/data/metric';
 import { CsvHeaderDocumentation } from '../../rest/csvAPI';
+
+export interface EnumColumnOption {
+  label: string;
+  value: string;
+}
 
 export interface BulkEditListingFilters {
   searchText?: string;
@@ -90,7 +94,7 @@ export interface BulkEntityEditConfig {
   /** Columns hidden only in bulk edit. */
   bulkEditHiddenColumns: string[];
   /** Columns rendered as single-select dropdowns, with their options. */
-  enumColumns: Record<string, DefaultOptionType[]>;
+  enumColumns: Record<string, EnumColumnOption[]>;
   /** Present when the grid supports adding brand-new rows inline. */
   newRow?: BulkEditNewRowConfig;
   /** Import-wizard upload step copy/variant overrides. */
@@ -105,10 +109,10 @@ export interface BulkEntityEditConfig {
   ) => Promise<BulkEditListingGrid>;
 }
 
-const toSelectOptions = (values: string[]): DefaultOptionType[] =>
+const toSelectOptions = (values: string[]): EnumColumnOption[] =>
   values.map((value) => ({ label: value, value }));
 
-const toTierSelectOptions = (): DefaultOptionType[] =>
+const toTierSelectOptions = (): EnumColumnOption[] =>
   ['Tier1', 'Tier2', 'Tier3', 'Tier4', 'Tier5'].map((tier) => ({
     label: tier,
     value: `Tier.${tier}`,
@@ -164,7 +168,7 @@ class EntityBulkEditConfigClassBase {
 
   public getEnumColumnOptions(
     entityType?: EntityType
-  ): Record<string, DefaultOptionType[]> {
+  ): Record<string, EnumColumnOption[]> {
     return this.getConfig(entityType)?.enumColumns ?? {};
   }
 }

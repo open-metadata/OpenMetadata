@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect, Page } from '@playwright/test';
+import { startCase } from 'lodash';
 import { getServiceSearchIndexMappings } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
@@ -38,17 +39,15 @@ const serviceCell = (page: Page, name: string) =>
     .or(page.getByRole('cell', { name }));
 
 // The Type column filter is a TableV2 column filter: TableV2 wraps the
-// dropdown body in `data-testid="filter-dropdown"` (the `ant-table-filter-dropdown`
-// prefixCls it passes is ignored by ColumnFilter, so that class never renders).
-// The checkbox is matched by its input value (getByLabel is unreliable under CI).
+// dropdown body in `data-testid="filter-dropdown"`. ColumnFilter renders core
+// checkboxes labelled with the start-cased value; the visible label is clicked
+// because the checkbox input itself is visually hidden.
 // Clicking a checkbox calls confirm() → applies the filter and closes the dropdown.
 const toggleServiceTypeFilter = async (page: Page, serviceType: string) => {
   await page.getByTestId('filter-icon').click();
   const dropdown = page.getByTestId('filter-dropdown');
   await expect(dropdown).toBeVisible();
-  await dropdown
-    .locator(`.ant-checkbox-wrapper:has(input[value="${serviceType}"])`)
-    .click();
+  await dropdown.getByText(startCase(serviceType), { exact: true }).click();
 };
 
 test.describe('Service Listing', () => {

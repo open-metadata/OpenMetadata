@@ -171,12 +171,13 @@ export const searchInFields = <T extends SearchIndexField | Column>(
   searchIndex: Array<T>,
   searchText: string
 ): Array<T> => {
+  const searchLowerCase = lowerCase(searchText);
   const searchedValue: Array<T> = searchIndex.reduce(
     (searchedFields, field) => {
       const isContainData =
-        lowerCase(field.name).includes(searchText) ||
-        lowerCase(field.description).includes(searchText) ||
-        lowerCase(getDataTypeString(field.dataType)).includes(searchText);
+        lowerCase(field.name).includes(searchLowerCase) ||
+        lowerCase(field.description).includes(searchLowerCase) ||
+        lowerCase(getDataTypeString(field.dataType)).includes(searchLowerCase);
 
       if (isContainData) {
         return [...searchedFields, field];
@@ -207,7 +208,13 @@ export const searchInFields = <T extends SearchIndexField | Column>(
 export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
   const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
     ...omit(tag, 'isRemovable'),
-    labelType: LabelType.Manual,
+    // The server computes a derived label -- implied by a glossary term, or inherited from the
+    // parent entity -- and ignores it on write. Sent back as Manual it would be stored as the
+    // field's own label and outlive its source.
+    labelType:
+      tag.labelType === LabelType.Derived
+        ? LabelType.Derived
+        : LabelType.Manual,
     state: State.Confirmed,
     source: tag.source ?? 'Classification',
     tagFQN: tag.tagFQN,
@@ -323,7 +330,7 @@ export const getJoinsFromTableJoins = (
 };
 
 export const createTableConstraintObject = (
-  constraints: string[],
+  constraints: string[] | undefined,
   type: ConstraintType
 ) =>
   isEmpty(constraints) ? [] : [{ columns: constraints, constraintType: type }];

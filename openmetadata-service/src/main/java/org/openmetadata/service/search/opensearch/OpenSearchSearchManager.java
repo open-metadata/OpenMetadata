@@ -58,7 +58,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
-import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -83,6 +82,7 @@ import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import os.org.opensearch.client.json.JsonData;
@@ -185,7 +185,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   @Override
-  public Response searchBySourceUrl(String sourceUrl) throws IOException {
+  public Response searchBySourceUrl(String sourceUrl, SubjectContext subjectContext)
+      throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");
     }
@@ -203,7 +204,10 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(restrictToOrgWideMemories(sourceUrlQuery)));
+                    .query(
+                        restrictToOrgWideMemories(
+                            OpenSearchRbacQueries.withAccessPolicies(
+                                sourceUrlQuery, subjectContext, rbacConditionEvaluator))));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -219,7 +223,13 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
   @Override
   public Response searchByField(
-      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      SubjectContext subjectContext)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");
@@ -241,7 +251,10 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                     .index(Entity.getSearchRepository().getIndexOrAliasName(index))
                     .from(from)
                     .size(size)
-                    .query(restrictToOrgWideMemories(query)));
+                    .query(
+                        restrictToOrgWideMemories(
+                            OpenSearchRbacQueries.withAccessPolicies(
+                                query, subjectContext, rbacConditionEvaluator))));
     return executeSearchRequest(request);
   }
 
@@ -463,6 +476,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       } else {
         requestBuilder.sort(searchSortFilter.getSortField(), sortOrder, "long");
       }
+      if (searchSortFilter.getThenSortField() != null) {
+        requestBuilder.sort(searchSortFilter.getThenSortField(), sortOrder, "long");
+      }
     }
 
     try {
@@ -499,7 +515,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       return new SearchResultListMapper(results, totalHits);
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw buildSearchException(e);
       }
@@ -647,6 +663,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       } else {
         requestBuilder.sort(searchSortFilter.getSortField(), sortOrder, "long");
       }
+      if (searchSortFilter.getThenSortField() != null) {
+        requestBuilder.sort(searchSortFilter.getThenSortField(), sortOrder, "long");
+      }
     }
 
     try {
@@ -705,7 +724,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           results, totalHits, lastHitSortValues, lastDocumentsInBatch);
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw buildSearchException(e);
       }
@@ -1198,6 +1217,10 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   static String rbacCacheKey(SubjectContext subjectContext) {
     return ServiceAttributeResolver.generation()
         + ":"
+        // A policy-rule or role-policy edit leaves the ids below unchanged, so without this the
+        // compiled query would be served stale until the TTL; it bumps on every policy-cache drop.
+        + SubjectCache.policyGeneration()
+        + ":"
         + subjectContext.user().getId()
         + ":"
         + sortedIds(subjectContext.user().getRoles())
@@ -1389,8 +1412,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to find index %s", request.getIndex()));
+        throw SearchEngineErrors.indexNotFound(request.getIndex());
       } else {
         throw buildSearchException(e);
       }
@@ -1582,8 +1604,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       return new SearchResultListMapper(results, totalHits, lastHitSortValues);
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to find index %s", request.getIndex()));
+        throw SearchEngineErrors.indexNotFound(request.getIndex());
       } else {
         throw buildSearchException(e);
       }

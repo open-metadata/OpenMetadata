@@ -45,6 +45,9 @@ export const HOVER_CHART_OPACITY = 0.3;
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 export const DOMAIN_STORAGE_KEY = 'om_domains';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
+// Marks a request whose results must not be narrowed to the selected navbar domain; the
+// domain-filter interceptor reads and removes it before the request is sent.
+export const SKIP_DOMAIN_FILTER_HEADER = 'X-Skip-Domain-Filter';
 export const DOMAIN_ONLY_ACCESS_ROLE = 'DomainOnlyAccessRole';
 export const REFRESH_TOKEN_KEY = 'refreshToken';
 
@@ -99,7 +102,6 @@ export const COLLATE_SAAS = 'CollateSaaS';
 export const COLLATE_SAAS_RUNNER = 'Collate SaaS Runner';
 export const RUNNER = 'ingestionRunner';
 
-export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = i18n.t('message.something-went-wrong');
 
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
@@ -119,7 +121,6 @@ export const PLACEHOLDER_SETTING_CATEGORY = ':settingCategory';
 export const PLACEHOLDER_USER_BOT = ':bot';
 export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 export const PLACEHOLDER_RULE_NAME = ':ruleName';
-export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
 export const PLACEHOLDER_ACTION = ':action';
 export const PLACEHOLDER_ROUTE_DIMENSION_KEY = ':dimensionKey';
 
@@ -311,7 +312,6 @@ export const ROUTES = {
 
   CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
-  ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   CHART_DETAILS: `/chart/${PLACEHOLDER_ROUTE_FQN}`,
   CHART_DETAILS_WITH_TAB: `/chart/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 
@@ -328,6 +328,10 @@ export const ROUTES = {
   NOTIFICATION_ALERT_LIST: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}`,
   NOTIFICATION_ALERT_DETAILS_WITH_TAB: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
+  SETTINGS_ANNOUNCEMENTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}`,
+  SETTINGS_ANNOUNCEMENT_ADD: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/add`,
+  SETTINGS_ANNOUNCEMENT_EDIT: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/edit/${PLACEHOLDER_ROUTE_ID}`,
+  SETTINGS_ANNOUNCEMENT_DUPLICATE: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/duplicate/${PLACEHOLDER_ROUTE_ID}`,
 
   // Metric Entity
   METRICS: '/metrics',
@@ -403,6 +407,7 @@ export const ENTITY_PATH = {
   files: 'file',
   spreadsheets: 'spreadsheet',
   worksheets: 'worksheet',
+  articles: 'page',
   dataProductsTab: 'dataProductsTab',
   column: 'tableColumn',
   aiApplications: 'aiApplication',
@@ -468,38 +473,6 @@ export const ENTITY_REFERENCE_OPTIONS = [
     value: 'glossaryTerm',
   },
 ];
-
-export const VALIDATION_MESSAGES = {
-  required: i18n.t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
-  types: {
-    email: i18n.t('message.entity-is-not-valid', {
-      entity: '${label}',
-    }),
-  },
-  whitespace: i18n.t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
-  string: {
-    range: i18n.t('message.entity-size-in-between', {
-      entity: '${label}',
-      min: '${min}',
-      max: '${max}',
-    }),
-  },
-  number: {
-    range: i18n.t('message.entity-size-in-between', {
-      entity: '${label}',
-      min: '${min}',
-      max: '${max}',
-    }),
-    min: i18n.t('message.entity-size-less-than', {
-      entity: '${label}',
-      min: '${min}',
-    }),
-  },
-};
 
 export const ERROR_MESSAGE = {
   alreadyExist: 'already exists',

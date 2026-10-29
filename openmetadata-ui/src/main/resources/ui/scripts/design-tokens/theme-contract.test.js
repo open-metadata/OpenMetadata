@@ -27,7 +27,11 @@ const TAILWIND_REFERENCE_FILE = path.resolve(
 );
 
 function extractBlock(css, marker) {
-  const markerIndex = css.indexOf(marker);
+  const escapedMarker = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Selector mentions in comments must not redirect a contract to another rule.
+  const markerIndex = css.search(
+    new RegExp(`^\\s*${escapedMarker}\\s*\\{`, 'm')
+  );
   assert.notEqual(markerIndex, -1, `Missing ${marker} block`);
 
   const openBrace = css.indexOf('{', markerIndex);
@@ -55,6 +59,25 @@ function declarations(block) {
     ])
   );
 }
+
+test('extracts rule headers instead of selector mentions or longer selectors', () => {
+  const css = `/* :root.dark-mode holds the dark overrides. */
+:root { --om-grey-15: light; }
+:root.dark-mode:hover { --om-grey-15: hover; }
+  :root.dark-mode
+  {
+    --om-grey-15: dark;
+  }`;
+
+  assert.equal(
+    declarations(extractBlock(css, ':root.dark-mode')).get('--om-grey-15'),
+    'dark'
+  );
+  assert.throws(
+    () => extractBlock('/* :root.dark-mode */\n:root { }', ':root.dark-mode'),
+    /Missing :root\.dark-mode block/
+  );
+});
 
 test('keeps the light neutral scale stable and applies the approved dark scale', () => {
   const css = fs.readFileSync(GLOBALS_FILE, 'utf8');
@@ -378,9 +401,9 @@ test('declares --om-* tokens only in tokens.css', () => {
 test('gives every dark --om-* override a light value in tokens.css', () => {
   const css = fs.readFileSync(TOKENS_FILE, 'utf8');
   const dark = declarations(extractBlock(css, ':root.dark-mode'));
-  const light = declarations(extractBlock(css, ':root {'));
+  const light = declarations(extractBlock(css, ':root'));
 
-  assert.ok(dark.size > 0);
+  assert.equal(dark.get('--om-grey-15'), 'var(--color-border-subtle)');
   for (const token of dark.keys()) {
     assert.ok(light.has(token), `${token} has a dark value but no light one`);
   }
@@ -388,7 +411,7 @@ test('gives every dark --om-* override a light value in tokens.css', () => {
 
 test('keeps variables.less fallbacks equal to the tokens.css light values', () => {
   const css = fs.readFileSync(TOKENS_FILE, 'utf8');
-  const light = declarations(extractBlock(css, ':root {'));
+  const light = declarations(extractBlock(css, ':root'));
   const less = fs.readFileSync(
     path.resolve(SRC_DIR, 'styles/variables.less'),
     'utf8'

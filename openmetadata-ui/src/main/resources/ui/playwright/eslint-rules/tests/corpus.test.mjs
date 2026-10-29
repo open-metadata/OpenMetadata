@@ -25,7 +25,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const suppressions = JSON.parse(fs.readFileSync(SUPPRESSIONS, 'utf8'));
 
   const actual = {};
-  // src/ entries belong to the antd ratchet in eslint-rules/openmetadata-antd.test.mjs.
+  // Only playwright/ entries carry suppressions; src/ is not suppressed.
   const playwrightFiles = Object.entries(suppressions)
     .filter(([path]) => path.startsWith('playwright/'))
     .map(([, file]) => file);
@@ -59,8 +59,22 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // `.om-block-editor` instead of `.ProseMirror...first()` removes four. The
     // landing page's FeedWidget, Data Assets and My Tasks suites went with the
     // widgets they drove, taking six more with them, and the Data Contract
-    // core-components migration removes three more.
-    'om-playwright/no-positional-locator': 578,
+    // core-components migration removes three more. The Classic Observability
+    // migration's core-component selectors in the Data Quality, Profiler and
+    // Profiler Configuration specs remove five more. The antd Form / Select /
+    // Input migration (standalone controls, settings forms) removes five more.
+    // Targeting the core TreeSelect popovers and team picker by test id in the
+    // UserDetails and team-editor specs removes more, pinning
+    // customize-navigation switches to their tree rows removes four more, the
+    // Data Marketplace announcements carousel spec dropped its `.first()` item
+    // lookup, picking the bulk-import entity type by its option role removes
+    // one more, editor-scoped bulk tag selection removes another
+    // positional fallback, scoping the Topic nested copy-link button to its
+    // row removes two more, deleting the unused task-count helper removes
+    // two more, moving the IngestionBot spec's checks to
+    // DomainIsolationIT removes one more, and deleting the unused antd
+    // reply-announcement helper removes two more.
+    'om-playwright/no-positional-locator': 533,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

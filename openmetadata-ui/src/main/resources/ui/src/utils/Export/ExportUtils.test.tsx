@@ -16,6 +16,7 @@ import { ExportTypes } from '../../constants/Export.constants';
 import { showErrorToast } from '../ToastUtils';
 import {
   downloadBlob,
+  downloadCsv,
   downloadFile,
   exportPNGImageFromElement,
   shouldIncludeInExport,
@@ -106,6 +107,36 @@ describe('ExportUtils', () => {
       expect(MockBlob).toHaveBeenCalledWith(['content'], {
         type: 'text/csv;charset=utf-8;',
       });
+    });
+  });
+
+  describe('downloadCsv', () => {
+    const BOM = '\uFEFF';
+    let MockBlob: jest.Mock;
+    let originalBlob: typeof Blob;
+
+    beforeEach(() => {
+      originalBlob = global.Blob;
+      MockBlob = jest.fn().mockReturnValue({});
+      global.Blob = MockBlob as unknown as typeof Blob;
+      global.URL.createObjectURL = jest.fn().mockReturnValue('blob:mock-url');
+      global.URL.revokeObjectURL = jest.fn();
+      jest.spyOn(document.body, 'appendChild').mockImplementation(jest.fn());
+      jest.spyOn(document.body, 'removeChild').mockImplementation(jest.fn());
+    });
+
+    afterEach(() => {
+      global.Blob = originalBlob;
+      jest.restoreAllMocks();
+    });
+
+    it('starts the file with a UTF-8 BOM so Excel keeps non-Latin text readable', () => {
+      downloadCsv('name,description\n订单,Заказы', 'export.csv');
+
+      expect(MockBlob).toHaveBeenCalledWith(
+        [`${BOM}name,description\n订单,Заказы`],
+        { type: 'text/csv;charset=utf-8' }
+      );
     });
   });
 
@@ -366,6 +397,41 @@ describe('ExportUtils', () => {
       await expect(exportPNGImageFromElement(mockExportData)).rejects.toThrow(
         'message.error-generating-export-type'
       );
+    });
+
+    it('captures only after beforeCapture resolves, then runs afterCapture', async () => {
+      const steps: string[] = [];
+      (toCanvas as jest.Mock).mockImplementation(async () => {
+        steps.push('capture');
+
+        return mockNodesCanvas;
+      });
+
+      await exportPNGImageFromElement({
+        ...mockExportData,
+        beforeCapture: async () => {
+          steps.push('before');
+        },
+        afterCapture: () => {
+          steps.push('after');
+        },
+      });
+
+      expect(steps).toEqual(['before', 'capture', 'after']);
+    });
+
+    it('runs afterCapture when the capture fails', async () => {
+      document.querySelector = jest.fn().mockReturnValue(null);
+      const afterCapture = jest.fn();
+
+      await expect(
+        exportPNGImageFromElement({
+          ...mockExportData,
+          beforeCapture: () => Promise.resolve(),
+          afterCapture,
+        })
+      ).rejects.toThrow('message.error-generating-export-type');
+      expect(afterCapture).toHaveBeenCalledTimes(1);
     });
 
     it('passes a filter callback to toCanvas', async () => {

@@ -22,15 +22,6 @@ jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div data-testid="loader" />)
 );
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(({ children, type }) => (
-    <div data-testid="error-placeholder" data-type={type}>
-      {children}
-    </div>
-  )),
-}));
-
 const createProperty = (
   name: string,
   displayName: string,
@@ -90,23 +81,21 @@ describe('CustomPropertiesSection', () => {
   it('renders the permission placeholder without view permission', () => {
     renderSection({ viewCustomPropertiesPermission: false });
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'PERMISSION'
-    );
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('searchbar')).not.toBeInTheDocument();
   });
 
   it('renders the empty placeholder when the entity type has no properties', () => {
     renderSection({ entityTypeDetail: { customProperties: [] } });
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'CUSTOM'
-    );
-    expect(screen.getByTestId('error-placeholder')).toHaveTextContent(
-      'message.no-custom-properties-entity'
-    );
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toHaveTextContent('message.no-custom-properties-entity');
     expect(screen.queryByTestId('searchbar')).not.toBeInTheDocument();
   });
 
@@ -158,7 +147,7 @@ describe('CustomPropertiesSection', () => {
 
     expect(
       screen.getByTestId('no-matching-custom-properties')
-    ).toHaveTextContent('message.no-entity-found-for-name');
+    ).toHaveTextContent('label.no-matching-result-plural');
     expect(
       screen.queryByTestId('custom-properties-list')
     ).not.toBeInTheDocument();

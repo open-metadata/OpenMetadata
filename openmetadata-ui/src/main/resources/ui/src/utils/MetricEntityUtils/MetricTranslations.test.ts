@@ -22,6 +22,7 @@ const LOCALES = [
   'fr-fr',
   'gl-es',
   'he-he',
+  'it-it',
   'ja-jp',
   'ko-kr',
   'mr-in',

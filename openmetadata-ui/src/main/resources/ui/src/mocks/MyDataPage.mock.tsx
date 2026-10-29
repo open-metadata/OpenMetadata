@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { ComponentType } from 'react';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
 import { User } from '../generated/entity/teams/user';
@@ -147,6 +148,7 @@ export const mockCustomizePageClassBase = {
       .MY_DATA_WIDGET_KEYS,
   ],
   getPlatformHealthInsight: () => null,
+  getNeedsYouNowSection: (): ComponentType | null => null,
   getWidgetsFromKey: (i: string) => {
     if (!widgetComponentCache[i]) {
       widgetComponentCache[i] = () => <div data-testid={i}>{i}</div>;

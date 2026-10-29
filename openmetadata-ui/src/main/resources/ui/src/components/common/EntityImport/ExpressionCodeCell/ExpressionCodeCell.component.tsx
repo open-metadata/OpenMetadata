@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Check, X } from '@openmetadata/ui-core-components/icons';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import {
   KeyboardEvent,
   useEffect,
@@ -138,7 +138,7 @@ const ExpressionCodeCell = ({
                     data-testid="code-editor-cancel"
                     type="button"
                     onClick={onCancel}>
-                    <X size={14} />
+                    <XClose size={14} />
                   </button>
                 </div>
               </div>

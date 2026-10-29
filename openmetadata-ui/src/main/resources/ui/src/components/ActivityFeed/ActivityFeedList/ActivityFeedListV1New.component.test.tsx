@@ -40,10 +40,6 @@ jest.mock('../ActivityFeedPanel/FeedPanelBodyV1New', () =>
   )
 );
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () =>
-  jest.fn(() => <div data-testid="empty-feed" />)
-);
-
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn(() => <div data-testid="feed-loader" />)
 );

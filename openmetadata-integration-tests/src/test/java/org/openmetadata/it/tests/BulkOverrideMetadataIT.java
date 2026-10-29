@@ -266,6 +266,24 @@ public class BulkOverrideMetadataIT {
         "overrideMetadata=true must not blank a column description when none is supplied");
   }
 
+  /** Snowflake reports a column without a comment as {@code ""}, not as a missing field. */
+  @Test
+  void test_overrideDoesNotBlankColumnDescription_withEmptySourceComment(TestNamespace ns)
+      throws Exception {
+    String schemaFqn = setupSchema(ns);
+    String botToken = BulkApi.botToken();
+    CreateTable original = table(ns, schemaFqn, "ovr_col_empty", "desc", "hash-v1");
+    setColumnDescription(original, "curated column description");
+    BulkApi.upsert("tables", List.of(original), false, botToken);
+
+    String fqn = schemaFqn + "." + original.getName();
+    CreateTable changed = table(ns, schemaFqn, "ovr_col_empty", "desc", "hash-v2");
+    setColumnDescription(changed, "");
+    BulkApi.upsert("tables", List.of(changed), true, botToken);
+
+    assertEquals("curated column description", columnDescription(getTable(fqn)));
+  }
+
   /**
    * Pre-2.0 ingestion clients still PATCH existing tables with the source's empty column comments
    * under overrideMetadata; the PUT guard alone let that blank curated descriptions.

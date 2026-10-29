@@ -23,7 +23,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,19 +43,9 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.RelationshipType;
-import org.openmetadata.schema.type.AssetRealization;
-import org.openmetadata.schema.type.AssetRealizationRole;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.OntologyAttribute;
-import org.openmetadata.schema.type.OntologyAttributeDataType;
-import org.openmetadata.schema.type.OntologyAxiomType;
-import org.openmetadata.schema.type.OntologyConceptType;
-import org.openmetadata.schema.type.OntologyExpression;
-import org.openmetadata.schema.type.OntologyExpressionKind;
-import org.openmetadata.schema.type.OntologyRestrictionKind;
 import org.openmetadata.schema.type.RelationshipCardinality;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.type.SemanticReference;
@@ -67,11 +56,9 @@ import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLDataFactory;
-import org.semanticweb.owlapi.model.OWLDataProperty;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.parameters.Imports;
-import org.semanticweb.owlapi.vocab.OWL2Datatype;
 
 /**
  * Builds a glossary that uses every seeded relationship type, every attribute datatype, each
@@ -94,17 +81,13 @@ class GlossaryOntologyModelBuilderTest {
           .withName("Retail")
           .withFullyQualifiedName("Retail")
           .withDescription("Retail concepts");
-  private final GlossaryTerm party = term("Party", OntologyConceptType.BOTH, null, null);
-  private final GlossaryTerm customer =
-      term("Customer", OntologyConceptType.BOTH, URI.create(EX + "Customer"), party);
-  private final GlossaryTerm order = term("Order", OntologyConceptType.OWL_CLASS, null, null);
-  private final GlossaryTerm retailer =
-      term("Retailer", OntologyConceptType.OWL_CLASS, URI.create(EX + "Retailer"), party);
-  private final GlossaryTerm finance =
-      term("Finance", OntologyConceptType.SKOS_CONCEPT, null, null);
-  private final GlossaryTerm revenue =
-      term("Revenue", OntologyConceptType.SKOS_CONCEPT, null, finance);
-  private final GlossaryTerm legacy = term("Legacy", null, null, null);
+  private final GlossaryTerm party = term("Party", null, null);
+  private final GlossaryTerm customer = term("Customer", URI.create(EX + "Customer"), party);
+  private final GlossaryTerm order = term("Order", null, null);
+  private final GlossaryTerm retailer = term("Retailer", URI.create(EX + "Retailer"), party);
+  private final GlossaryTerm finance = term("Finance", null, null);
+  private final GlossaryTerm revenue = term("Revenue", null, finance);
+  private final GlossaryTerm legacy = term("Legacy", null, null);
 
   @Test
   void projectsTheGlossaryAsOwl2Dl() {
@@ -164,15 +147,17 @@ class GlossaryOntologyModelBuilderTest {
   }
 
   @Test
-  void assertsSubclassForHierarchyOnlyBetweenOwlClasses() {
+  void keepsGlossaryHierarchyAsSkosWithoutInventingSubclasses() {
     withProjection(
         true,
         (model, ontology) -> {
           final Set<OWLAxiom> axioms = axioms(ontology);
+          assertFalse(
+              model.contains(resource(model, customer), RDFS.subClassOf, resource(model, party)));
           assertTrue(
-              axioms.contains(OWL.getOWLSubClassOfAxiom(owlClass(customer), owlClass(party))));
-          assertTrue(
-              axioms.contains(OWL.getOWLSubClassOfAxiom(owlClass(retailer), owlClass(party))));
+              model.contains(resource(model, customer), SKOS.broader, resource(model, party)));
+          assertFalse(
+              model.contains(resource(model, retailer), RDFS.subClassOf, resource(model, party)));
           assertFalse(
               model.contains(resource(model, revenue), RDFS.subClassOf, resource(model, finance)));
           assertTrue(
@@ -182,39 +167,19 @@ class GlossaryOntologyModelBuilderTest {
   }
 
   @Test
-  void namesClassesByAuthoredIriElseEntityIri() {
+  void preservesTermIdentityWithoutRequiringClassDeclarations() {
     withProjection(
         true,
         (model, ontology) -> {
           assertEquals(EX + "Customer", GlossaryTermClassIri.of(customer, BASE));
           assertEquals(
               BASE + "entity/glossaryTerm/" + party.getId(), GlossaryTermClassIri.of(party, BASE));
-          assertTrue(ontology.isDeclared(owlClass(customer), Imports.EXCLUDED));
-          assertTrue(ontology.isDeclared(owlClass(party), Imports.EXCLUDED));
+          assertTrue(model.contains(resource(model, customer), RDF.type, SKOS.Concept));
+          assertTrue(model.contains(resource(model, party), RDF.type, SKOS.Concept));
           assertFalse(
               model.containsResource(
                   model.getResource(BASE + "entity/glossaryTerm/" + customer.getId())));
           assertFalse(model.contains(null, OWL2.sameAs, resource(model, party)));
-        });
-  }
-
-  @Test
-  void mapsAttributesIntoTheOwl2DatatypeMap() {
-    withProjection(
-        true,
-        (model, ontology) -> {
-          final Set<OWLAxiom> axioms = axioms(ontology);
-          assertTrue(
-              axioms.contains(
-                  OWL.getOWLDataPropertyRangeAxiom(
-                      attribute("joinedOn"), OWL2Datatype.XSD_DATE_TIME.getDatatype(OWL))));
-          assertTrue(
-              axioms.contains(OWL.getOWLFunctionalDataPropertyAxiom(attribute("customerCode"))));
-          assertTrue(
-              axioms.contains(
-                  OWL.getOWLSubClassOfAxiom(
-                      owlClass(customer),
-                      OWL.getOWLDataExactCardinality(1, attribute("customerCode")))));
         });
   }
 
@@ -295,16 +260,11 @@ class GlossaryOntologyModelBuilderTest {
   private GlossaryOntologySource source(
       final boolean includeRelations, final List<RelationshipType> extraTypes) {
     customer
-        .withAttributes(customerAttributes())
         .withConceptMappings(
             List.of(
                 new ConceptMapping()
                     .withConceptIri(URI.create("https://schema.org/Person"))
                     .withMappingType(ConceptMapping.ConceptMappingType.CLOSE_MATCH)))
-        .withRealizedIn(
-            List.of(
-                realization("table", AssetRealizationRole.PRIMARY_STORE),
-                realization("table", AssetRealizationRole.DERIVED)))
         .withSynonyms(List.of("Client"));
     if (includeRelations) {
       addSeededRelations();
@@ -315,7 +275,6 @@ class GlossaryOntologyModelBuilderTest {
     return new GlossaryOntologySource(
         glossary,
         List.of(party, customer, order, retailer, finance, revenue, legacy),
-        List.of(customerCodeAxiom()),
         types,
         Map.of(EXTERNAL_TERM, EXTERNAL_IRI));
   }
@@ -353,17 +312,12 @@ class GlossaryOntologyModelBuilderTest {
         .withTerm(new EntityReference().withId(target).withType("glossaryTerm"));
   }
 
-  private GlossaryTerm term(
-      final String name,
-      final OntologyConceptType conceptType,
-      final URI iri,
-      final GlossaryTerm parent) {
+  private GlossaryTerm term(final String name, final URI iri, final GlossaryTerm parent) {
     return new GlossaryTerm()
         .withId(UUID.randomUUID())
         .withName(name)
         .withFullyQualifiedName("Retail." + name)
         .withDescription(name + " concept")
-        .withConceptType(conceptType)
         .withIri(iri)
         .withEntityStatus("Legacy".equals(name) ? EntityStatus.DEPRECATED : EntityStatus.APPROVED)
         .withRelatedTerms(new ArrayList<>())
@@ -371,53 +325,6 @@ class GlossaryOntologyModelBuilderTest {
             parent == null
                 ? null
                 : new EntityReference().withId(parent.getId()).withType("glossaryTerm"));
-  }
-
-  private static List<OntologyAttribute> customerAttributes() {
-    return Arrays.stream(OntologyAttributeDataType.values())
-        .map(
-            dataType ->
-                new OntologyAttribute()
-                    .withId(UUID.randomUUID())
-                    .withName(attributeName(dataType))
-                    .withDataType(dataType)
-                    .withIsIdentifier(dataType == OntologyAttributeDataType.STRING)
-                    .withDescription(dataType + " attribute"))
-        .toList();
-  }
-
-  private static String attributeName(final OntologyAttributeDataType dataType) {
-    return switch (dataType) {
-      case STRING -> "customerCode";
-      case INTEGER -> "loyaltyPoints";
-      case DECIMAL -> "balance";
-      case BOOLEAN -> "active";
-      case DATE -> "joinedOn";
-      case ENUM -> "tier";
-    };
-  }
-
-  private static OWLDataProperty attribute(final String name) {
-    return OWL.getOWLDataProperty(IRI.create(EX + "Customer/property/" + name));
-  }
-
-  private OntologyAxiom customerCodeAxiom() {
-    final OntologyExpression exactlyOneCode =
-        new OntologyExpression()
-            .withKind(OntologyExpressionKind.RESTRICTION)
-            .withPropertyIri(URI.create(attribute("customerCode").getIRI().toString()))
-            .withRestrictionKind(OntologyRestrictionKind.EXACT)
-            .withCardinality(1);
-    return new OntologyAxiom()
-        .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
-        .withSubjectIri(customer.getIri())
-        .withExpressions(List.of(exactlyOneCode));
-  }
-
-  private static AssetRealization realization(final String type, final AssetRealizationRole role) {
-    return new AssetRealization()
-        .withRole(role)
-        .withAsset(new EntityReference().withId(UUID.randomUUID()).withType(type));
   }
 
   private RelationshipType customType(final String name, final String predicate) {

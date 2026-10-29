@@ -12,7 +12,7 @@
  */
 import { Button, Typography } from '@openmetadata/ui-core-components';
 
-import Icon, { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -34,9 +34,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
             aria-label={t('label.add')}
             color="primary"
             data-testid={`add-item-${title}`}
-            iconLeading={
-              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-            }
+            iconLeading={Plus}
             id={`${idSchema.$id}`}
             size="xs"
             onClick={onAddClick}
@@ -56,9 +54,8 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
           key={element.key}>
           <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
-            <Icon
-              className="w-7 h-0 m-l-sm"
-              component={DeleteIcon}
+            <DeleteIcon
+              className="tw:ml-3 tw:size-3.5 tw:shrink-0"
               onClick={(event) => {
                 element.onDropIndexClick(element.index)(event);
               }}
