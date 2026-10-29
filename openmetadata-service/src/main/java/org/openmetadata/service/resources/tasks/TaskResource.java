@@ -91,6 +91,7 @@ import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TaskListOrder;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.limits.Limits;
@@ -151,6 +152,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           + "Matches case-insensitive against task name, displayName, the request "
           + "reason in the payload, and the about-entity displayName / "
           + "fullyQualifiedName.";
+
+  private static final String TASK_SORT_ORDER_DESCRIPTION =
+      "Order by creation time: 'desc' (default) lists the newest tasks first, 'asc' the oldest. "
+          + "Keep the same sortOrder when following a paging cursor.";
 
   private static final String COUNT_VIEW_ALL = "all";
   private static final String COUNT_VIEW_VISIBLE = "visible";
@@ -279,6 +284,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -335,6 +349,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     applyTaskSearch(filter, q);
 
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -636,6 +651,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -645,6 +669,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     filter.addQueryParam("assigneeIds", getCurrentUserAssigneeIds(securityContext));
     applyTaskTimeRange(filter, startTs, endTs);
 
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -699,6 +724,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -708,6 +742,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     addCurrentUserVisibleFilters(filter, uriInfo, securityContext);
     applyTaskTimeRange(filter, startTs, endTs);
 
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -761,6 +796,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -782,6 +826,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     filter.addQueryParam("ownedByIds", String.join(",", ownerIds));
     applyTaskTimeRange(filter, startTs, endTs);
 
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -833,6 +878,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -845,6 +899,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     filter.addQueryParam("createdById", user.getId().toString());
     applyTaskTimeRange(filter, startTs, endTs);
 
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

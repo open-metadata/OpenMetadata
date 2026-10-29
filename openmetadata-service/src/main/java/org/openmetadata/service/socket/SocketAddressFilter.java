@@ -199,7 +199,7 @@ public class SocketAddressFilter implements Filter {
     }
     if (tokenPrincipal != null
         && session.get().getUsername() != null
-        && !session.get().getUsername().equalsIgnoreCase(tokenPrincipal.userName())) {
+        && !SecurityUtil.sameIdentifier(session.get().getUsername(), tokenPrincipal.userName())) {
       response.sendError(HttpServletResponse.SC_FORBIDDEN, "Session does not match token");
       return SessionValidationResult.rejected();
     }

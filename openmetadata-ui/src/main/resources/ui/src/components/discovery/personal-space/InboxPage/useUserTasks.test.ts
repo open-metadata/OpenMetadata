@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SORT_ORDER } from '../../../../enums/common.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { TaskStatusGroup } from '../../../../rest/tasksAPI';
 import { fetchUserTasksPage, userTaskCountQuery } from './useUserTasks';
@@ -33,7 +34,7 @@ const isCreatedQuery = (params: { createdById?: string }) =>
 describe('fetchUserTasksPage', () => {
   beforeEach(() => mockListTasks.mockReset());
 
-  const task = (n: number) => ({ id: `id-${n}`, name: `TASK-0000${n}` });
+  const task = (n: number, createdAt = n) => ({ id: `id-${n}`, createdAt });
   const ids = (page: { data: { id?: string }[] }) =>
     page.data.map(({ id }) => id);
 
@@ -41,8 +42,8 @@ describe('fetchUserTasksPage', () => {
     mockListTasks.mockImplementation((params) =>
       Promise.resolve(
         isCreatedQuery(params)
-          ? { data: [task(1), task(2)], paging: { total: 2 } }
-          : { data: [task(1), task(3)], paging: { total: 4 } }
+          ? { data: [task(2), task(1)], paging: { total: 2 } }
+          : { data: [task(3), task(1)], paging: { total: 4 } }
       )
     );
 
@@ -54,28 +55,28 @@ describe('fetchUserTasksPage', () => {
     expect(mockListTasks).toHaveBeenCalledWith(
       expect.objectContaining({ createdById: 'u1', limit: 25 })
     );
-    expect(ids(page)).toEqual(['id-1', 'id-2', 'id-3']);
+    expect(ids(page)).toEqual(['id-3', 'id-2', 'id-1']);
     expect(page.paging).toEqual({ after: undefined, total: 4 });
   });
 
-  // The assigned source still has TASK-00004 on its next page, so the created
-  // source's TASK-00005 must wait for it rather than land on page one.
+  // The assigned source still has task 3 on its next page, so the created
+  // source's older task 2 must wait for it rather than land on page one.
   it('holds back a task a later page of the other source sorts before', async () => {
     mockListTasks.mockImplementation((params) => {
       if (isCreatedQuery(params)) {
-        return Promise.resolve({ data: [task(2), task(5)], paging: {} });
+        return Promise.resolve({ data: [task(5), task(2)], paging: {} });
       }
 
       return Promise.resolve(
         params.after
-          ? { data: [task(4)], paging: {} }
-          : { data: [task(1), task(3)], paging: { after: 'assigned-2' } }
+          ? { data: [task(3)], paging: {} }
+          : { data: [task(6), task(4)], paging: { after: 'assigned-2' } }
       );
     });
 
     const first = await fetchUserTasksPage(user, { limit: 2 });
 
-    expect(ids(first)).toEqual(['id-1', 'id-2', 'id-3']);
+    expect(ids(first)).toEqual(['id-6', 'id-5', 'id-4']);
 
     mockListTasks.mockClear();
     const second = await fetchUserTasksPage(
@@ -89,8 +90,45 @@ describe('fetchUserTasksPage', () => {
     expect(mockListTasks).toHaveBeenCalledWith(
       expect.objectContaining({ after: 'assigned-2' })
     );
-    expect(ids(second)).toEqual(['id-4', 'id-5']);
+    expect(ids(second)).toEqual(['id-3', 'id-2']);
     expect(second.paging?.after).toBeUndefined();
+  });
+
+  it('orders tasks created in the same millisecond by id, descending', async () => {
+    mockListTasks.mockImplementation((params) =>
+      Promise.resolve(
+        isCreatedQuery(params)
+          ? { data: [task(1, 7)], paging: {} }
+          : { data: [task(2, 7)], paging: {} }
+      )
+    );
+
+    const page = await fetchUserTasksPage(user, {});
+
+    expect(ids(page)).toEqual(['id-2', 'id-1']);
+  });
+
+  it('merges oldest first when asked for ascending order', async () => {
+    mockListTasks.mockImplementation((params) => {
+      if (isCreatedQuery(params)) {
+        return Promise.resolve({ data: [task(2), task(5)], paging: {} });
+      }
+
+      return Promise.resolve({
+        data: [task(1), task(3)],
+        paging: { after: 'assigned-2' },
+      });
+    });
+
+    const page = await fetchUserTasksPage(user, {
+      sortOrder: SORT_ORDER.ASC,
+    });
+
+    expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ sortOrder: SORT_ORDER.ASC })
+    );
+    // Task 5 waits: the assigned source's next page may hold task 4.
+    expect(ids(page)).toEqual(['id-1', 'id-2', 'id-3']);
   });
 
   it('stops paging once both sources are exhausted', async () => {

@@ -1170,6 +1170,7 @@ root-caused to the problem it solves. Paths are relative to `playwright/`.
 | `scrollIntoViewAndSettle(locator)` | `utils/common.ts` | Before opening a React Aria popover near a scroll container |
 | `selectOptionWithRetry(trigger, option, open?)` | `utils/common.ts` | React Aria Select/ComboBox option picks |
 | `chooseSelectOption(trigger, option)` | `utils/common.ts` | Keyboard-driven combobox selection |
+| `pickSelectOption(trigger, option, selected)` | `utils/common.ts` | Select picks whose option list jumps after opening, so a mouse pick lands on the wrong row or nothing |
 | `clickIgnoringToasts(locator)` | `utils/common.ts` | Clicking anything the bottom-center toast strip can cover (pagination, dialog footers) |
 | `waitForToastToDisappear` / `expectNoErrorToast` / `dismissToasts` | `utils/common.ts` | Toasts under cross-worker notifications |
 | `dismissHoverPopovers(page)` | `utils/common.ts` | Lingering Ant hover popovers covering the next target |

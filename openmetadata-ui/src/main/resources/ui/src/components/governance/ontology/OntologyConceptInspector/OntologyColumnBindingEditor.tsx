@@ -26,9 +26,11 @@ import { AssetType } from '../../../../generated/api/data/updateOntologyConceptB
 import { Include } from '../../../../generated/type/include';
 import { useDebouncedValue } from '../../../../hooks/common/useDebouncedValue';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { searchTableColumnsById } from '../../../../rest/tableAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getOntologyColumnOptions } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
+import { ConceptFormCard } from './OntologyConceptSection';
 
 interface OntologyColumnBindingEditorProps {
   conceptId: string;
@@ -42,6 +44,7 @@ const OntologyColumnBindingEditor = ({
   onClose,
 }: OntologyColumnBindingEditorProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const bindings = useOntologyConceptBindings(conceptId);
   const tables =
     bindings.data?.assets.filter(
@@ -169,6 +172,77 @@ const OntologyColumnBindingEditor = ({
     </>
   );
 
+  const renderTableFields = () => (
+    <>
+      <Select
+        items={tables.map((item) => ({
+          id: item.assetId,
+          label: getEntityName(item.asset),
+        }))}
+        label={t('label.table')}
+        size="sm"
+        value={tableId}
+        onChange={(id) => {
+          setTableId(String(id));
+          setPage(0);
+          setColumnId('');
+        }}>
+        {(item) => (
+          <Select.Item id={item.id} key={item.id} label={item.label} />
+        )}
+      </Select>
+      <Input
+        aria-label={t('label.search-entity', {
+          entity: t('label.column-plural'),
+        })}
+        icon={Search}
+        inputDataTestId="ontology-binding-column-search"
+        size="sm"
+        value={search}
+        onChange={(value) => {
+          setSearch(value);
+          setPage(0);
+          setColumnId('');
+        }}
+      />
+    </>
+  );
+
+  const renderAiEditor = () => (
+    <ConceptFormCard testId="ontology-column-binding-editor">
+      {tables.length === 0 ? (
+        <Typography className="tw:text-tertiary" size="text-sm">
+          {t('message.ontology-link-table-before-binding')}
+        </Typography>
+      ) : (
+        <>
+          {renderTableFields()}
+          {renderColumns()}
+        </>
+      )}
+      <Box gap={2} justify="end">
+        <Button color="secondary" size="sm" onPress={onClose}>
+          {t('label.cancel')}
+        </Button>
+        {tables.length > 0 ? (
+          <Button
+            color="primary"
+            data-testid="ontology-binding-save"
+            isDisabled={!selected || !table || columns.isFetching}
+            isLoading={bindings.update.isPending}
+            size="sm"
+            onPress={save}>
+            {t('label.save')}
+          </Button>
+        ) : null}
+      </Box>
+    </ConceptFormCard>
+  );
+
+  if (isAiMode) {
+    return renderAiEditor();
+  }
+
   return (
     <Box data-testid="ontology-column-binding-editor" direction="col" gap={3}>
       {tables.length === 0 ? (
@@ -177,37 +251,7 @@ const OntologyColumnBindingEditor = ({
         </Typography>
       ) : (
         <>
-          <Select
-            items={tables.map((item) => ({
-              id: item.assetId,
-              label: getEntityName(item.asset),
-            }))}
-            label={t('label.table')}
-            size="sm"
-            value={tableId}
-            onChange={(id) => {
-              setTableId(String(id));
-              setPage(0);
-              setColumnId('');
-            }}>
-            {(item) => (
-              <Select.Item id={item.id} key={item.id} label={item.label} />
-            )}
-          </Select>
-          <Input
-            aria-label={t('label.search-entity', {
-              entity: t('label.column-plural'),
-            })}
-            icon={Search}
-            inputDataTestId="ontology-binding-column-search"
-            size="sm"
-            value={search}
-            onChange={(value) => {
-              setSearch(value);
-              setPage(0);
-              setColumnId('');
-            }}
-          />
+          {renderTableFields()}
           {renderColumns()}
           <Button
             data-testid="ontology-binding-save"
