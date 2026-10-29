@@ -49,6 +49,9 @@ dead-lettered, marking the projection degraded until a full rebuild.
   that times out while Fuseki reports a running compaction, whoever started it, is held back like a
   paused write instead of counting as failed.
 - Pipeline run triples go through the live-write queue, so a maintenance window does not lose them.
+- After a blue/green promotion, the run empties and compacts the dataset it retired, which
+  nothing reads again, so between runs only the serving dataset holds a full copy. A build that
+  fails or is stopped is kept for inspection, and the next build clears it.
 - Compaction and the clear that starts an in-place rebuild run under
   `storageMaintenance.maxDurationMinutes` (240), not the per-request timeout, and do not consult or
   feed the circuit breaker. A `CLEAR` cannot be cancelled in Fuseki, so a shorter budget only

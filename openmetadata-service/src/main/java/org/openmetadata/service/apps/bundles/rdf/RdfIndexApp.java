@@ -46,6 +46,7 @@ import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
+import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.quartz.JobExecutionContext;
@@ -263,9 +264,14 @@ public class RdfIndexApp extends AbstractNativeApplication {
         updateJobStatus(EventPublisherJob.Status.STOPPED);
         abandonBuildDataset();
       } else {
+        final String retiring = buildDataset == null ? null : rdf().activeDatasetName();
         final boolean promoted = promoteBuildDataset(indexingRepository);
         updateJobStatus(EventPublisherJob.Status.COMPLETED);
-        if (!promoted) {
+        if (promoted) {
+          // Reported first: returning the retired dataset's disk can take minutes.
+          sendUpdates(jobExecutionContext, true);
+          clearRetiredDataset(retiring);
+        } else {
           // In-place indexing reports completion before potentially lengthy disk maintenance, so
           // it records its rewrite of the serving graph first: once reported, the run is over.
           RdfUpdater.recordUntrackedWrite();
@@ -408,6 +414,22 @@ public class RdfIndexApp extends AbstractNativeApplication {
     jobData.setFailure(
         new IndexingError().withErrorSource(IndexingError.ErrorSource.JOB).withMessage(message));
     sendUpdates(jobExecutionContext, true);
+  }
+
+  /**
+   * The dataset a promotion retired keeps a full copy of the old graph until the next build reuses
+   * it; nothing reads it, so its disk is returned now. A failure leaves it for that next build.
+   */
+  private void clearRetiredDataset(final String retired) {
+    try {
+      final CompactionResult result = rdf().clearRetiredDataset(retired);
+      LOG.info("Emptied retired RDF dataset '{}' ({})", retired, result.outcome());
+    } catch (RuntimeException exception) {
+      LOG.error(
+          "Could not empty retired RDF dataset '{}'; the next blue/green build clears it",
+          retired,
+          exception);
+    }
   }
 
   /**
