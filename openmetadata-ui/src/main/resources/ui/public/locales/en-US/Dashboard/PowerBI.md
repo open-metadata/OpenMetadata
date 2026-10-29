@@ -140,5 +140,5 @@ Option for ingesting the tables, columns and measures that are marked as hidden 
 Hidden tables, columns and measures are ingested into the Dashboard Data Model. Hidden measures keep the `MEASURE_HIDDEN` data type.
 
 - `Disabled`
-Hidden tables, columns and measures are skipped. Hidden fields that were already ingested are removed on the next ingestion, together with their tags and descriptions.
+Hidden tables, columns and measures are skipped. Hidden fields that were already ingested are removed on the next ingestion, together with their tags and descriptions. Metrics already created for measures of hidden tables are not removed.
 $$

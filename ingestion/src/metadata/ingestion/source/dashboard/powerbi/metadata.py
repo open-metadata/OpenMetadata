@@ -1631,6 +1631,11 @@ class PowerbiSource(DashboardServiceSource):
         """
         Method to create lineage between table and datamodels
         """
+        # The data model has no hidden tables or columns when includeHiddenFields is off, and
+        # _get_data_model_column_fqn matches by column name only, so a hidden column would link
+        # to a same-named column of another table. A hidden table still feeds the model's
+        # measures, so it keeps its table-level edge and only loses column lineage.
+        skip_hidden = not self.service_connection.includeHiddenFields
         (
             prefix_service_name,
             prefix_database_name,
@@ -1693,7 +1698,15 @@ class PowerbiSource(DashboardServiceSource):
                             table_entity.name.root,  # pyright: ignore[reportAttributeAccessIssue]
                             datamodel_entity.name.root,
                         )
-                        columns_list = [column.name for column in (table.columns or []) if column.name]
+                        columns_list = (
+                            []
+                            if table.isHidden and skip_hidden
+                            else [
+                                column.name
+                                for column in (table.columns or [])
+                                if column.name and not (column.isHidden and skip_hidden)
+                            ]
+                        )
                         column_lineage = self._get_column_lineage(table_entity, datamodel_entity, columns_list)
                         yield self._get_add_lineage_request(
                             to_entity=datamodel_entity,
@@ -2382,9 +2395,16 @@ class PowerbiSource(DashboardServiceSource):
     def yield_datamodel_metrics(self) -> Iterable[Either]:
         """One Metric per visible measure of the workspace's datasets, plus its lineage."""
         service = self.context.get().dashboard_service  # pyright: ignore[reportAttributeAccessIssue]
-        for dataset in self._filtered_datamodels():
-            if not isinstance(dataset, Dataset):
+        for datamodel in self._filtered_datamodels():
+            if not isinstance(datamodel, Dataset):
                 continue
+            dataset = datamodel
+            if not self.service_connection.includeHiddenFields:
+                # Measures of a hidden table can be visible themselves; keep Metrics to the
+                # tables the data model has.
+                dataset = datamodel.model_copy(
+                    update={"tables": [table for table in datamodel.tables or [] if not table.isHidden]}
+                )
             measures = metric_measures_parents_first(dataset)
             if not measures:
                 continue

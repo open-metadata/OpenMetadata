@@ -8,7 +8,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
-from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -20,6 +20,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
@@ -2554,3 +2555,79 @@ class PowerBIUnitTest(TestCase):
         children = {child.displayName: child.dataType for child in result[0].children}
         assert list(children) == ["Amount", "InternalKey", "Total", "HelperMeasure"]
         assert children["HelperMeasure"] == DataType.MEASURE_HIDDEN
+
+    def _lineage_columns(self, table: PowerBiTable) -> list[tuple[str, str]] | None:
+        """
+        Column lineage from the warehouse table behind `table` to a data model that
+        holds a visible Fact table with Key and Amount columns
+        """
+        warehouse_table = Table(
+            id=uuid.uuid4(),
+            name=table.name,
+            fullyQualifiedName=f"warehouse.db.schema.{table.name}",
+            columns=[
+                Column(
+                    name=column.name,
+                    dataType=DataType.INT,
+                    fullyQualifiedName=f"warehouse.db.schema.{table.name}.{column.name}",
+                )
+                for column in table.columns
+            ],
+        )
+        datamodel = DashboardDataModel(
+            name="hidden_lineage_datamodel",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDataModel.value,
+            columns=[
+                Column(
+                    name="Fact",
+                    dataType=DataType.TABLE,
+                    children=[
+                        Column(name=name, dataType=DataType.INT, fullyQualifiedName=f"model.Fact.{name}")
+                        for name in ["Key", "Amount"]
+                    ],
+                )
+            ],
+        )
+        with patch.object(self.powerbi.metadata, "search_in_any_service", return_value=warehouse_table):
+            results = list(
+                self.powerbi._get_table_and_datamodel_lineage(
+                    db_service_prefix=None, table=table, datamodel_entity=datamodel
+                )
+            )
+        if not results:
+            return None
+        lineage = results[0].right.edge.lineageDetails.columnsLineage or []
+        return [(model_str(item.fromColumns[0]), model_str(item.toColumn)) for item in lineage]
+
+    @pytest.mark.order(61)
+    def test_hidden_table_keeps_table_lineage_without_columns_when_include_hidden_fields_disabled(self):
+        """
+        A hidden table still feeds the data model, so it keeps its table-level edge, but its
+        columns are not in the data model, so its Key column must not link to Fact.Key
+        """
+        helper = PowerBiTable(name="Helper", isHidden=True, source=[], columns=[PowerBiColumns(name="Key")])
+
+        with patch.object(self.powerbi.service_connection, "includeHiddenFields", False):
+            assert self._lineage_columns(helper) == []
+
+    @pytest.mark.order(62)
+    def test_hidden_column_lineage_skipped_when_include_hidden_fields_disabled(self):
+        """
+        Only visible columns of a visible table get column lineage when includeHiddenFields is False;
+        with the default True, hidden columns keep theirs
+        """
+        fact = PowerBiTable(
+            name="Fact",
+            source=[],
+            columns=[PowerBiColumns(name="Key", isHidden=True), PowerBiColumns(name="Amount")],
+        )
+
+        with patch.object(self.powerbi.service_connection, "includeHiddenFields", False):
+            assert self._lineage_columns(fact) == [("warehouse.db.schema.Fact.Amount", "model.Fact.Amount")]
+
+        with patch.object(self.powerbi.service_connection, "includeHiddenFields", True):
+            assert self._lineage_columns(fact) == [
+                ("warehouse.db.schema.Fact.Key", "model.Fact.Key"),
+                ("warehouse.db.schema.Fact.Amount", "model.Fact.Amount"),
+            ]
