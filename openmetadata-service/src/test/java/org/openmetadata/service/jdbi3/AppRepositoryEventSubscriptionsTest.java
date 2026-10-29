@@ -20,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.Json;
 import jakarta.json.JsonPatch;
-import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -28,6 +27,7 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 
 /**
  * An app's eventSubscriptions are the alerts its own code created. The app->alert CONTAINS
