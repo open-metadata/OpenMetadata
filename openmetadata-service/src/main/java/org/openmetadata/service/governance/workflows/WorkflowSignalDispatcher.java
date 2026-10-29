@@ -84,19 +84,27 @@ final class WorkflowSignalDispatcher {
     }
   }
 
-  /** Subscriptions not yet attempted, limited to the given start events when there are any. */
+  /**
+   * The first read returns every subscription. A re-read returns only the not yet attempted start
+   * subscriptions of the given start events.
+   */
   private List<EventSubscription> read(
       final String signal, final Set<String> attempted, final Set<String> startActivityIds) {
-    return RETRY
-        .executeSupplier(
+    final List<EventSubscription> subscriptions =
+        RETRY.executeSupplier(
             () ->
-                runtime.createEventSubscriptionQuery().eventType("signal").eventName(signal).list())
-        .stream()
-        .filter(
-            subscription ->
-                startActivityIds == null
-                    || (subscription.getExecutionId() == null
-                        && startActivityIds.contains(subscription.getActivityId())))
+                runtime
+                    .createEventSubscriptionQuery()
+                    .eventType("signal")
+                    .eventName(signal)
+                    .list());
+    if (startActivityIds == null) {
+      subscriptions.forEach(subscription -> attempted.add(subscription.getId()));
+      return subscriptions;
+    }
+    return subscriptions.stream()
+        .filter(subscription -> subscription.getExecutionId() == null)
+        .filter(subscription -> startActivityIds.contains(subscription.getActivityId()))
         .filter(subscription -> attempted.add(subscription.getId()))
         .toList();
   }
