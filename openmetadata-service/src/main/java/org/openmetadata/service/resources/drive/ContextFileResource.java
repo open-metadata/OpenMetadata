@@ -340,6 +340,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @FormDataParam("displayName") String displayName,
       @FormDataParam("description") String description,
       @FormDataParam("folder") String folderFqn,
+      @FormDataParam("domain") String domainFqn,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext)
       throws IOException {
@@ -377,6 +378,9 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     createFile.setProcessingStatus(ProcessingStatus.Uploaded);
     if (folderFqn != null && !folderFqn.isEmpty()) {
       createFile.setFolder(folderFqn);
+    }
+    if (!nullOrEmpty(domainFqn)) {
+      createFile.setDomains(List.of(domainFqn));
     }
 
     ContextFile file = mapper.createToEntity(createFile, user);
