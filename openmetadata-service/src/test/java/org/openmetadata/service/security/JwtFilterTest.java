@@ -417,46 +417,26 @@ class JwtFilterTest {
 
   @Test
   void allowedEmailDomainsApplyToLegacyProviderTokens() {
-    JwtFilter legacyWithAllowList =
-        new JwtFilter(
-            jwkProvider,
-            List.of("sub", "email"),
-            "openmetadata.org",
-            false,
-            null,
-            null,
-            List.of("openmetadata.org"));
+    JwtFilter legacyWithAllowList = legacyFilterAllowing("openmetadata.org");
 
-    // A token that carries an email outside the allowed domains is rejected.
     ContainerRequestContext outsider =
         createRequestContextWithJwt(legacyProviderJwt("sam@gmail.com"));
     assertThrows(AuthenticationException.class, () -> legacyWithAllowList.filter(outsider));
 
-    // A token with no email runs as sam@openmetadata.org, an allowed domain, so a deployment whose
-    // first principal claim is a bare username keeps working instead of being locked out on
-    // upgrade.
-    String subjectOnly =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "sam")
-            .sign(algorithm);
-    ContainerRequestContext noEmail = createRequestContextWithJwt(subjectOnly);
-    legacyWithAllowList.filter(noEmail);
-    verify(noEmail, times(1)).setSecurityContext(any());
+    ContainerRequestContext insider =
+        createRequestContextWithJwt(legacyProviderJwt("sam@openmetadata.org"));
+    legacyWithAllowList.filter(insider);
+    verify(insider, times(1)).setSecurityContext(any());
   }
 
-  /** With no email, the address the legacy flow builds must still be in an allowed domain. */
+  /**
+   * A bare principal claim says nothing about the account's email domain. Checking the address the
+   * legacy flow builds from it, {@code sam@principalDomain}, would wave through any token the
+   * provider issues without an email, so the allowlist refuses it instead.
+   */
   @Test
-  void aBareClaimOutsideTheAllowedDomainsIsRejected() {
-    JwtFilter principalDomainOutsideAllowList =
-        new JwtFilter(
-            jwkProvider,
-            List.of("sub", "email"),
-            "contractor.example",
-            false,
-            null,
-            null,
-            List.of("openmetadata.org"));
+  void aProviderTokenWithoutAnEmailIsRefusedWhileEmailDomainsAreRestricted() {
+    JwtFilter legacyWithAllowList = legacyFilterAllowing("openmetadata.org");
     String subjectOnly =
         JWT.create()
             .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
@@ -464,9 +444,50 @@ class JwtFilterTest {
             .sign(algorithm);
     ContainerRequestContext context = createRequestContextWithJwt(subjectOnly);
 
-    assertThrows(
-        AuthenticationException.class, () -> principalDomainOutsideAllowList.filter(context));
+    assertThrows(AuthenticationException.class, () -> legacyWithAllowList.filter(context));
     verify(context, never()).setSecurityContext(any());
+  }
+
+  /** The account is named after the first principal claim, but its email can sit in a later one. */
+  @Test
+  void anEmailInALaterPrincipalClaimIsTheOneChecked() {
+    JwtFilter legacyWithAllowList = legacyFilterAllowing("openmetadata.org");
+    String usernameThenEmail =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .withClaim("email", "sam@gmail.com")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(usernameThenEmail);
+
+    assertThrows(AuthenticationException.class, () -> legacyWithAllowList.filter(context));
+    verify(context, never()).setSecurityContext(any());
+  }
+
+  /** Without an email-domain allowlist, a provider token naming only a username still signs in. */
+  @Test
+  void aProviderTokenWithoutAnEmailSignsInWhenNoDomainsAreRestricted() {
+    String subjectOnly =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(subjectOnly);
+
+    jwtFilter.filter(context);
+
+    verify(context, times(1)).setSecurityContext(any());
+  }
+
+  private static JwtFilter legacyFilterAllowing(String allowedEmailDomain) {
+    return new JwtFilter(
+        jwkProvider,
+        List.of("sub", "email"),
+        "openmetadata.org",
+        false,
+        null,
+        null,
+        List.of(allowedEmailDomain));
   }
 
   @Test

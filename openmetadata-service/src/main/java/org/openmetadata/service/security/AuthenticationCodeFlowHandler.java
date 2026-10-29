@@ -4,6 +4,8 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.getClaimAsList;
+import static org.openmetadata.service.security.SecurityUtil.isEmailRegistrationDomainAllowed;
+import static org.openmetadata.service.security.SecurityUtil.sameIdentifier;
 import static org.openmetadata.service.security.SecurityUtil.trustedRedirects;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
@@ -1278,11 +1280,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       String domain = email.split("@")[1];
 
       // Validate email domain against allowed registration domains
-      Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
-      if (allowedDomains != null
-          && !allowedDomains.isEmpty()
-          && !allowedDomains.contains("all")
-          && allowedDomains.stream().noneMatch(domain::equalsIgnoreCase)) {
+      if (!isEmailRegistrationDomainAllowed(
+          email, authorizerConfiguration.getAllowedEmailRegistrationDomains())) {
         LOG.warn(
             "SECURITY: Blocked OAuth signup for disallowed domain: {} (user: {})", domain, email);
         throw new AuthenticationException("Email domain not allowed for self-signup: " + domain);
@@ -1341,7 +1340,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       throw conflict;
     }
     User concurrentlyCreated = loadOrRethrow(loadByName, conflict);
-    if (!email.equalsIgnoreCase(concurrentlyCreated.getEmail())) {
+    if (!sameIdentifier(email, concurrentlyCreated.getEmail())) {
       throw conflict;
     }
     LOG.debug("Signing in to the account a concurrent first login created for {}", email);
