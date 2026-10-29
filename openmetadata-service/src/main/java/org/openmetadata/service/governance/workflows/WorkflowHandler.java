@@ -533,17 +533,24 @@ public class WorkflowHandler {
     // Deploy Trigger Workflow
     byte[] bpmnTriggerWorkflowBytes =
         bpmnXMLConverter.convertToXML(workflow.getTriggerWorkflow().getModel());
+    // One transaction: a suspended workflow's new trigger version is never visible as active, so
+    // a signal delivered during the redeploy cannot start it.
     Deployment triggerDeployment =
-        repositoryService
-            .createDeployment()
-            .addBytes(
-                String.format(
-                    "%s-workflow.bpmn20.xml", workflow.getTriggerWorkflow().getWorkflowName()),
-                bpmnTriggerWorkflowBytes)
-            .name(workflow.getTriggerWorkflow().getWorkflowName())
-            .deploy();
-    // Before the drain, which can be long: a suspended workflow must not take signals meanwhile.
-    keepSuspended(workflow.getWorkflowDefinition());
+        managementService.executeCommand(
+            context -> {
+              Deployment deployed =
+                  repositoryService
+                      .createDeployment()
+                      .addBytes(
+                          String.format(
+                              "%s-workflow.bpmn20.xml",
+                              workflow.getTriggerWorkflow().getWorkflowName()),
+                          bpmnTriggerWorkflowBytes)
+                      .name(workflow.getTriggerWorkflow().getWorkflowName())
+                      .deploy();
+              keepSuspended(workflow.getWorkflowDefinition());
+              return deployed;
+            });
 
     // Cleanup path is skipped in migration context. `redeployGovernanceWorkflows` in v1131 calls
     // deploy() for every workflow_definition in a tight loop; combined with a large ACT_RE_PROCDEF

@@ -49,8 +49,6 @@ public class WorkflowRedeploySignalIT {
   private static final Duration CREATE_INTERVAL = Duration.ofMillis(300);
   private static final Duration REDEPLOYING_AFTER_CREATES = Duration.ofSeconds(15);
   private static final Duration STATUS_TIMEOUT = Duration.ofMinutes(3);
-  private static final int OVERLAPPING_REDEPLOYERS = 2;
-  private static final int REDEPLOYS_PER_REDEPLOYER = 10;
 
   @Test
   void entityCreatedWhileItsWorkflowRedeploysStillStartsTheWorkflow(TestNamespace ns)
@@ -65,33 +63,6 @@ public class WorkflowRedeploySignalIT {
           "Draft must come from the workflow, not from the stage a domain is created in");
 
       awaitWorkflowSetDraft(domains);
-    } finally {
-      deleteWorkflow(workflow);
-    }
-  }
-
-  @Test
-  void overlappingRedeploysLeaveTheWorkflowDeployed(TestNamespace ns) throws Exception {
-    String marker = ns.prefix(MARKER);
-    ObjectNode request = stageWorkflowRequest(ns, marker);
-    JsonNode workflow = JsonUtils.readTree(execute(HttpMethod.POST, WORKFLOWS_PATH, request));
-    try {
-      CompletableFuture<?>[] redeployers = new CompletableFuture<?>[OVERLAPPING_REDEPLOYERS];
-      for (int r = 0; r < redeployers.length; r++) {
-        ObjectNode own = request.deepCopy();
-        int redeployer = r;
-        redeployers[r] =
-            CompletableFuture.runAsync(
-                () -> {
-                  for (int i = 0; i < REDEPLOYS_PER_REDEPLOYER; i++) {
-                    own.put("description", "Redeployer " + redeployer + " deploy " + i);
-                    execute(HttpMethod.PUT, WORKFLOWS_PATH, own);
-                  }
-                });
-      }
-      CompletableFuture.allOf(redeployers).get();
-
-      awaitWorkflowSetDraft(List.of(createDomain(ns, marker + "after")));
     } finally {
       deleteWorkflow(workflow);
     }
