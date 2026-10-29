@@ -81,18 +81,18 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   reconfirms every batch first. While a deep pass has principals left, the sweep pass then makes at
   least one of these reads, and starts another only while it has run less than the deep budget,
   `maxStaleness` minus twice `sweepInterval` (1 s by default). The rest of the deep pass carries
-  over to later passes. When the next sweep pass reconfirms an entry, the entry is as old as the
-  rest of this pass from its batch on, plus the `sweepInterval` wait, plus any time nudge drains
-  hold the sweep thread past the next pass's due time, plus the next pass's drain and
-  reconfirmations through the entry's batch. The budget leaves one `sweepInterval` for the read that
-  overruns it and one for the wait. So when draining and reconfirming take no time, the deep reads
-  keep every entry within `maxStaleness` while one read takes less than `sweepInterval`, however
-  many principals the deep pass covers. A nudge re-read decrypts a changed secret, so draining
-  nudges for bots whose decrypts are slow can age entries past `maxStaleness`. An entry older than
-  `maxStaleness` is stale, and its next check reads it again. The next deep pass begins with the
-  first sweep pass that starts after this one has ended and once `deepVerifyInterval` has passed
-  since this one began, or `min(deepVerifyInterval, 1 min)` when one of its reads threw. A read that
-  throws changes no entry.
+  over to later passes. When the next sweep pass reconfirms an entry that this pass reconfirmed, the
+  entry is at most as old as the rest of this pass from its batch on, plus the `sweepInterval` wait,
+  plus any time nudge drains hold the sweep thread past the next pass's due time, plus the next
+  pass's drain and reconfirmations through the entry's batch. The budget leaves one `sweepInterval`
+  for the read that overruns it and one for the wait. So when draining and reconfirming take no
+  time, the deep reads keep every entry this pass reconfirmed within `maxStaleness` while one read
+  takes less than `sweepInterval`, however many principals the deep pass covers. A sweep or nudge
+  re-read decrypts a changed secret, so slow decrypts while reconfirming or draining nudges can age
+  entries past `maxStaleness`. An entry older than `maxStaleness` is stale, and its next check reads
+  it again. The next deep pass begins with the first sweep pass that starts after this one has ended
+  and once `deepVerifyInterval` has passed since this one began, or `min(deepVerifyInterval, 1 min)`
+  when one of its reads threw. A read that throws changes no entry.
 - When the verifier cannot confirm within `loadTimeout` (2 s), the request gets 503 with
   `Retry-After` (the sweep interval, rounded up), and an MCP tool or prompt call gets JSON-RPC
   error -32003. It never gets 401, and it is never accepted unconfirmed. A check whose thread is
@@ -134,13 +134,16 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   next deep read of the bot on, until a read decrypts the secret again. On each server, each bot
   that keeps sending requests costs about two check reads a second, each with a decrypt, and once
   its stored rows change, a decrypt on every sweep as well. Nothing bounds how long a decrypt takes.
-  A slow one delays only the deep pass, but one that hangs during a deep read holds the sweep
-  thread, so no sweep completes until the secrets manager answers. After `maxStaleness`, every bot
-  and PAT check then needs a read, and the sweep-age gauge alerts. One that hangs in a check read
-  holds a request-read thread, so with more such bots than request-read threads, other checks that
-  need a read wait for a thread or answer 503. The next step named below takes the secrets manager
-  out of these reads. The warning about a principal whose credentials cannot be converted is logged
-  at most once a minute per principal on each server, and sooner only after a read converted it.
+  The sweep thread decrypts in every deep read, and in a sweep or nudge re-read that cannot reuse
+  the last decrypt, as for a bot whose stored secret changed. A slow decrypt there delays the sweep,
+  so entries can age past `maxStaleness`. The deep budget limits how many deep reads a pass starts,
+  not how long one takes. One that hangs holds the sweep thread, so no sweep completes until the
+  secrets manager answers. After `maxStaleness`, every bot and PAT check then needs a read, and the
+  sweep-age gauge alerts. One that hangs in a check read holds a request-read thread, so with more
+  such bots than request-read threads, other checks that need a read wait for a thread or answer
+  503. The next step named below takes the secrets manager out of these reads. The warning about a
+  principal whose credentials cannot be converted is logged at most once a minute per principal on
+  each server, and sooner only after a read converted it.
 - Operators alert when `om.credential.sweep.last.complete.age.seconds` (Prometheus name
   `om_credential_sweep_last_complete_age_seconds`) exceeds `maxStaleness`, and watch
   `om.credential.unavailable`. The gauge is the age of the last sweep that re-confirmed every

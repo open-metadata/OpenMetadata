@@ -416,16 +416,17 @@ public final class CredentialVerifier implements Managed {
    * <p>When the deep verify is due, a cycle begins over the subjects cached then. While it has
    * subjects left, each pass reads the next of them in full with every decrypt forced, a chunk at a
    * time, and starts another chunk only while the pass has run for less than the deep budget,
-   * maxStaleness minus twice sweepInterval. When the next pass reconfirms an entry, the entry is as
-   * old as the rest of this pass from its batch on, plus sweepInterval, plus any time nudge drains
-   * hold this thread past the next pass's due time, plus the next pass's drain and reconfirmations
-   * through the entry's batch. The budget leaves one sweepInterval for the chunk that overruns it
-   * and one for the wait, so when draining and reconfirming take no time, the cycle keeps every
-   * entry within maxStaleness while a chunk takes less than sweepInterval, however many subjects it
-   * covers. A subject the deep read leaves out is unconfirmed, so its next check reads it again,
-   * and it does not fail the cycle. A deep read that throws, on a statement failure or on an
-   * {@link Error} for one subject, which the source's per-subject guard does not catch, changes no
-   * entry. The next cycle begins with the first pass that starts after this one has ended and once
+   * maxStaleness minus twice sweepInterval. When the next pass reconfirms an entry this pass
+   * reconfirmed, the entry is at most as old as the rest of this pass from its batch on, plus
+   * sweepInterval, plus any time nudge drains hold this thread past the next pass's due time, plus
+   * the next pass's drain and reconfirmations through the entry's batch. The budget leaves one
+   * sweepInterval for the chunk that overruns it and one for the wait, so when draining and
+   * reconfirming take no time, the cycle keeps every entry this pass reconfirmed within
+   * maxStaleness while a chunk takes less than sweepInterval, however many subjects it covers. A
+   * subject the deep read leaves out is unconfirmed, so its next check reads it again, and it does
+   * not fail the cycle. A deep read that throws, on a statement failure or on an {@link Error} for
+   * one subject, which the source's per-subject guard does not catch, changes no entry. The next
+   * cycle begins with the first pass that starts after this one has ended and once
    * deepVerifyInterval has passed since this one began, or {@code min(deepVerifyInterval, 1 min)}
    * when one of its reads threw.
    */
