@@ -51,7 +51,9 @@ commented with the relation label, and the service, service type and dialect.
 - Reads are batched, whatever the hop count: one statement for every concept's first 100 table
   bindings, one table batch with only the fields the `VIEW_BASIC` check reads, one table batch with
   columns and constraints for each concept's first ten visible tables in asset-id order, and one
-  property batch. A concept none of whose first 100 bound tables is visible is a 400 that says so.
+  batch of bound properties. Hops add one batch of hop properties and, when one declares an
+  inverse, one inverse lookup by IRI and one batch that reloads the inverses with the fields their
+  `VIEW_BASIC` check reads, owners included. A concept none of whose first 100 bound tables is visible is a 400 that says so.
   At most five hops per request, and the rail stops offering search-around at five.
 - The backtick and bracket dialects (`mysql`, `spark`, `bigquery`, `tsql`) quote every identifier,
   because quoting never changes how those engines resolve a name. `snowflake` double-quotes every
