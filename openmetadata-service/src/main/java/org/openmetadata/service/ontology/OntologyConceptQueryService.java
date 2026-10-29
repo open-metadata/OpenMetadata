@@ -159,7 +159,6 @@ public final class OntologyConceptQueryService {
         store.liveProperties(root.getOntology().getId(), iris).stream()
             .filter(property -> property.getKind() == OntologyPropertyKind.OBJECT)
             .map(OntologyProperty::getId)
-            .distinct()
             .toList();
     if (ids.isEmpty()) {
       return Map.of();

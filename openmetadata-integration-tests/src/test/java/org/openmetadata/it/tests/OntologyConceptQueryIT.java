@@ -289,7 +289,6 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
     }
   }
 
-  /** Denies ViewBasic and ViewAll on ontology properties the reader does not own. */
   private static OpenMetadataClient ownerOnlyPropertyReader(final RdfAccessFixtures fixtures) {
     final var role = fixtures.denyRole(MetadataOperation.VIEW_BASIC, Entity.ONTOLOGY_PROPERTY);
     final var policy =
