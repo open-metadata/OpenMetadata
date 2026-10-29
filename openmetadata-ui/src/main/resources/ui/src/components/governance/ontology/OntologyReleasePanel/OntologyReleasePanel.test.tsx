@@ -1014,7 +1014,7 @@ describe('OntologyReleasePanel', () => {
       );
     });
     fireEvent.click(
-      await screen.findByRole('button', { name: /label.open-task/ })
+      await screen.findByRole('button', { name: /^label\.open-task · / })
     );
 
     expect(onOpenTask).toHaveBeenCalledWith('native-task-uuid');
