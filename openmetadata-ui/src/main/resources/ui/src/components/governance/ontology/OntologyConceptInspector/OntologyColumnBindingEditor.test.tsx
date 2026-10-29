@@ -24,6 +24,7 @@ import {
   OntologyConceptBindingsResponse,
   State,
 } from '../../../../generated/type/ontologyConceptBindingsResponse';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
@@ -33,6 +34,10 @@ jest.mock('../../../../rest/axiosClient', () => ({
   get: jest.fn(),
   put: jest.fn(),
   delete: jest.fn(),
+}));
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -354,4 +359,78 @@ it('retries column search and preserves existing assignments while paging to an 
       ],
     },
   });
+});
+
+it('binds a column and cancels from the AI-mode card', async () => {
+  (useIsAiMode as jest.Mock).mockReturnValue(true);
+  const bindings: OntologyConceptBindingsResponse = {
+    revision: 3,
+    assets: [
+      {
+        assetId: 'table',
+        assetType: AssetType.Table,
+        asset: {
+          id: 'table',
+          type: 'table',
+          name: 'customers',
+          fullyQualifiedName: 'service.db.schema.customers',
+        },
+        columns: [],
+      },
+    ],
+  };
+  http.get.mockImplementation(async (url) => ({
+    data: url.includes('/columns/search')
+      ? {
+          data: [
+            {
+              name: 'email',
+              dataType: DataType.String,
+              fullyQualifiedName: 'service.db.schema.customers.email',
+            },
+          ],
+          paging: { total: 1 },
+        }
+      : bindings,
+  }));
+  http.put.mockResolvedValue({ data: bindings });
+  const onClose = jest.fn();
+  const { queryClient, rerender } = renderWithQueryClient(<div />);
+  queryClient.setQueryData(['ontology-concept-bindings', 'concept'], {
+    kind: 'complete',
+    ...bindings,
+  });
+  rerender(
+    <OntologyColumnBindingEditor
+      conceptId="concept"
+      propertyId="email-property"
+      onClose={onClose}
+    />
+  );
+
+  expect(screen.getByTestId('ontology-binding-column-search')).toBeVisible();
+  expect(screen.getByTestId('ontology-binding-save')).toBeDisabled();
+
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: /label.column/ })).toBeEnabled()
+  );
+  fireEvent.click(screen.getByRole('button', { name: /label.column/ }));
+  fireEvent.click(await screen.findByRole('option', { name: /email/ }));
+  fireEvent.click(screen.getByTestId('ontology-binding-save'));
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+
+  expect(http.put).toHaveBeenCalledWith('/ontologyConcepts/concept/bindings', {
+    expectedRevision: 3,
+    asset: {
+      assetId: 'table',
+      assetType: 'table',
+      columns: [{ propertyId: 'email-property', columnPath: ['email'] }],
+    },
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
+
+  expect(onClose).toHaveBeenCalledTimes(2);
+
+  (useIsAiMode as jest.Mock).mockReturnValue(false);
 });

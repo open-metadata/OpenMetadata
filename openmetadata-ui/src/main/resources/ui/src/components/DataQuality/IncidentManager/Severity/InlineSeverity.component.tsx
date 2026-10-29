@@ -12,13 +12,13 @@
  */
 
 import { Dropdown, Typography } from '@openmetadata/ui-core-components';
-import { startCase } from 'lodash';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SEVERITY_COLORS } from '../../../../constants/Color.constants';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { ChipTrigger } from '../TestCaseStatus/InlineIncidentStatus/ChipTrigger.component';
 import { InlineSeverityProps } from './Severity.interface';
+import { getSeverityLabel } from './Severity.utils';
 
 const SELECTED_ITEM_CLASS =
   'tw:[&[data-selected]>div]:!bg-brand-solid tw:[&[data-selected]>div_*]:!text-white';
@@ -59,7 +59,7 @@ const InlineSeverity = ({
   const severityColor =
     SEVERITY_COLORS[severityKey] ?? SEVERITY_COLORS['NoSeverity'];
   const noSeverityLabel = t('label.no-entity', { entity: t('label.severity') });
-  const label = severity ? startCase(severity) : noSeverityLabel;
+  const label = severity ? getSeverityLabel(severity, t) : noSeverityLabel;
 
   const palette = {
     bg: severityColor.bg,
@@ -124,9 +124,9 @@ const InlineSeverity = ({
                 className={SELECTED_ITEM_CLASS}
                 id={sev}
                 key={sev}
-                textValue={startCase(sev)}>
+                textValue={getSeverityLabel(sev, t)}>
                 <Typography as="span" size="text-sm" weight="regular">
-                  {startCase(sev)}
+                  {getSeverityLabel(sev, t)}
                 </Typography>
               </Dropdown.Item>
             ))}
