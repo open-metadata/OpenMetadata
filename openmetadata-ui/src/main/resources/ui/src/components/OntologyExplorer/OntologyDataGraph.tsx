@@ -588,7 +588,6 @@ const OntologyDataGraph = ({
       ),
     [cardBoxes, cardPositions, clusterEdges, clusterLayout]
   );
-  // Rows a lineage edge can end on: shown, and inside their card's scroll area.
   const rowsInView = useMemo(() => {
     const rows = new Map<string, CardBox>();
     if (!isNative) {
