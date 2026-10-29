@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -103,6 +104,16 @@ class NativeOntologyCsvCodecTest {
 
   private static String concept(final String iri) {
     return row("KIND", "CONCEPT", "IRI", iri, "CONCEPT_TYPE", "OWL_CLASS");
+  }
+
+  private static String previewErrorOf(final String csv) {
+    final NativeOntologyCsvCodec.Located located = NativeOntologyCsvCodec.readLocated(csv);
+    final NativeOntologyRdfImporter.Source source =
+        new NativeOntologyRdfImporter.Source(
+            NativeOntologyImportFormat.CSV, located.document(), located.propertyRows());
+    return assertThrows(
+            BadRequestException.class, () -> new NativeOntologyRdfImporter().summarize(source))
+        .getMessage();
   }
 
   private static String errorOf(final String csv) {
@@ -406,10 +417,12 @@ class NativeOntologyCsvCodecTest {
   }
 
   @Test
-  void rejectsPropertyMetadataThatTheKindCannotCarryNamingTheColumn() {
+  void previewRefusesPropertyMetadataTheKindCannotCarryNamingTheColumn() {
+    final String dataOnly =
+        "Only data properties can define enum values, units or identifier intent";
     assertEquals(
-        "CSV row 2, column unit: only a DATA property can define a unit",
-        errorOf(
+        "CSV row 2, column unit: " + dataOnly,
+        previewErrorOf(
             csv(
                 row(
                     "KIND",
@@ -421,8 +434,8 @@ class NativeOntologyCsvCodecTest {
                     "UNIT",
                     "kg"))));
     assertEquals(
-        "CSV row 2, column inverse: only an OBJECT property can have an inverse",
-        errorOf(
+        "CSV row 2, column inverse: Only object properties can have inverses or property chains",
+        previewErrorOf(
             csv(
                 row(
                     "KIND",
@@ -434,8 +447,8 @@ class NativeOntologyCsvCodecTest {
                     "INVERSE",
                     EX + "q"))));
     assertEquals(
-        "CSV row 2, column identifier: only a DATA property can be an identifier",
-        errorOf(
+        "CSV row 2, column identifier: " + dataOnly,
+        previewErrorOf(
             csv(
                 row(
                     "KIND",
@@ -447,8 +460,8 @@ class NativeOntologyCsvCodecTest {
                     "IDENTIFIER",
                     "true"))));
     assertEquals(
-        "CSV row 2, column characteristics: TRANSITIVE is not allowed on a DATA property",
-        errorOf(
+        "CSV row 2, column characteristics: Unsupported characteristics for DATA property",
+        previewErrorOf(
             csv(
                 row(
                     "KIND",
