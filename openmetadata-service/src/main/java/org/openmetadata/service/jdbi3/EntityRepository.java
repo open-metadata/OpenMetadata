@@ -2847,7 +2847,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       throw new IllegalStateException(
           String.format("%s has no field fetcher for %s", entityType, unfetchable));
     }
-    fetchAndSetFields((List<T>) entities, getFields(String.join(",", fieldNames)));
+    // Only the asked-for fetchers: fetchAndSetFields would also run fetchers that ignore `fields`.
+    Fields fields = getFields(String.join(",", fieldNames));
+    fieldNames.forEach(field -> fieldFetchers.get(field).accept((List<T>) entities, fields));
   }
 
   public void setFieldsInBulk(Fields fields, List<T> entities) {
@@ -4592,6 +4594,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updatedEntities.add(updated);
     }
 
+    // The batch path never runs postUpdate, so it checks for moves itself, reading the counting
+    // parents before the flush rewrites their edges.
+    List<List<EntityReference>> previousParents =
+        originals.stream().map(this::getCountingParents).toList();
+
     // Store the row, extension, and relationship rewrites in one atomic transaction. The cache
     // invalidations issued here are recorded and drained once the transaction ends so no Redis
     // round trip runs while the handle is held.
@@ -4608,6 +4615,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           }
         });
 
+    refreshCountingParentsMovedInBatch(previousParents, updatedEntities);
     return updatedEntities;
   }
 
@@ -4754,10 +4762,22 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private void refreshCountingParentsOnMove(T original, T updated) {
-    List<EntityReference> before = getCountingParents(original);
-    List<EntityReference> after = getCountingParents(updated);
+    refreshIfCountingParentsMoved(
+        getCountingParents(original), getCountingParents(updated), new HashSet<>());
+  }
+
+  private void refreshCountingParentsMovedInBatch(
+      List<List<EntityReference>> previousParents, List<T> updated) {
+    Set<String> refreshed = new HashSet<>();
+    for (int i = 0; i < updated.size(); i++) {
+      refreshIfCountingParentsMoved(
+          previousParents.get(i), getCountingParents(updated.get(i)), refreshed);
+    }
+  }
+
+  private void refreshIfCountingParentsMoved(
+      List<EntityReference> before, List<EntityReference> after, Set<String> refreshed) {
     if (!countingKeys(before).equals(countingKeys(after))) {
-      Set<String> refreshed = new HashSet<>();
       Stream.concat(before.stream(), after.stream())
           .filter(parent -> refreshed.add(countingKey(parent)))
           .forEach(this::refreshCountingParent);
@@ -11053,9 +11073,21 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         updateInternal();
 
         // Finally, go from previous to the latest updated entity to consolidate changes
+        deferMoveCheckAgainstRequestOriginal();
         original = previous;
         entityChanged = false;
       }
+    }
+
+    /**
+     * After a consolidation, postUpdate compares the pre-session version with the update, which
+     * misses a counting parent this request moved the entity away from. So the move is also checked
+     * against the request's own original.
+     */
+    private void deferMoveCheckAgainstRequestOriginal() {
+      T requestOriginal = original;
+      T requestUpdated = updated;
+      deferReactOperation(() -> refreshCountingParentsOnMove(requestOriginal, requestUpdated));
     }
 
     @Transaction
@@ -11080,6 +11112,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         updateInternalForImport();
 
         // Finally, go from previous to the latest updated entity to consolidate changes
+        deferMoveCheckAgainstRequestOriginal();
         original = previous;
         entityChanged = false;
       }

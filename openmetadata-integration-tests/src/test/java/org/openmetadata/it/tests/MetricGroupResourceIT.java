@@ -993,6 +993,40 @@ public class MetricGroupResourceIT {
   }
 
   @Test
+  void patchMovesRefreshEveryParentAMetricPassesThrough(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Metric first = createMetric(ns, "move_first");
+    Metric second = createMetric(ns, "move_second");
+    Metric third = createMetric(ns, "move_third");
+    Metric child = createChild(ns, "move_child", first);
+    awaitChildrenCount(rest, first, 1);
+
+    moveTo(rest, child, second);
+    awaitChildrenCount(rest, first, 0);
+    awaitChildrenCount(rest, second, 1);
+
+    // The same user's next edit in the session is consolidated into the previous version, so the
+    // update compares the first parent with the third and must still refresh the second.
+    moveTo(rest, child, third);
+    awaitChildrenCount(rest, second, 0);
+    awaitChildrenCount(rest, third, 1);
+  }
+
+  private static void moveTo(RestClient rest, Metric child, Metric parent) throws Exception {
+    Metric current = SdkClients.adminClient().metrics().get(child.getId().toString(), "parent");
+    String currentJson = JSON.writeValueAsString(current);
+    current.setParent(parent.getEntityReference());
+    rest.patch("/v1/metrics", current.getId(), currentJson, current, Metric.class);
+  }
+
+  private static void awaitChildrenCount(RestClient rest, Metric metric, int count) {
+    awaitMetricSearchDocument(
+        rest,
+        metric.getId(),
+        document -> assertEquals(count, document.path("childrenCount").asInt()));
+  }
+
+  @Test
   void csvReimportKeepsAParentsChildrenCount(TestNamespace ns) throws Exception {
     RestClient rest = RestClient.admin();
     Metric parent = createMetric(ns, "csv_count_parent");
