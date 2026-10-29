@@ -55,7 +55,6 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -170,7 +169,6 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: StorageConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = StorageServiceTopology()
-    context = TopologyContextManager(topology)
     container_source_state: set = set()  # noqa: RUF012
 
     global_manifest: ManifestMetadataConfig | None

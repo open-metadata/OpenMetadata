@@ -47,7 +47,6 @@ from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -133,7 +132,6 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: SearchConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = SearchServiceTopology()
-    context = TopologyContextManager(topology)
     index_source_state: set = set()  # noqa: RUF012
 
     @retry_with_docker_host()

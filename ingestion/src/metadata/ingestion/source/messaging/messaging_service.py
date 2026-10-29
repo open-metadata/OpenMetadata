@@ -43,7 +43,6 @@ from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -131,7 +130,6 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: MessagingConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = MessagingServiceTopology()
-    context = TopologyContextManager(topology)
     topic_source_state: set = set()  # noqa: RUF012
 
     @retry_with_docker_host()

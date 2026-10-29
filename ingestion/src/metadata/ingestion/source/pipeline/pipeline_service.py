@@ -54,7 +54,6 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -176,7 +175,6 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: PipelineConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = PipelineServiceTopology()
-    context = TopologyContextManager(topology)
     pipeline_source_state: set = set()  # noqa: RUF012
 
     @property

@@ -39,7 +39,6 @@ from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
@@ -199,7 +198,6 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     """
 
     topology = DbtServiceTopology()
-    context = TopologyContextManager(topology)
     source_config: DbtPipeline
 
     @property

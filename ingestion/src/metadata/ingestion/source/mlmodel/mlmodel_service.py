@@ -45,7 +45,6 @@ from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -117,7 +116,6 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: MlModelConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = MlModelServiceTopology()
-    context = TopologyContextManager(topology)
     mlmodel_source_state: set = set()  # noqa: RUF012
 
     @retry_with_docker_host()

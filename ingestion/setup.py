@@ -517,7 +517,7 @@ dev = {
 
 # Dependencies for unit testing in addition to dev dependencies and plugins
 test_unit = {
-    "pytest==7.0.1",
+    "pytest==9.0.3",
     "pytest-cov",
     "pytest-order",
     "pytest-rerunfailures",
@@ -546,7 +546,7 @@ test = {
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "pytest==7.0.1",
+    "pytest==9.0.3",
     "pytest-cov",
     "pytest-xdist~=3.5",
     "pytest-order",

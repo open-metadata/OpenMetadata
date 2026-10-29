@@ -55,7 +55,6 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.source.connections import (
@@ -186,7 +185,6 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
     service_connection: DriveConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = DriveServiceTopology()
-    context = TopologyContextManager(topology)
 
     @property
     def name(self) -> str:

@@ -70,7 +70,6 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.utils import model_str
@@ -230,7 +229,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
     _connection: BaseConnection | None = None
 
     topology = DatabaseServiceTopology()
-    context = TopologyContextManager(topology)
 
     # ``vars(self).setdefault(...)`` for thread-safe lazy init.
     # See: https://docs.python.org/3/library/threadsafety.html

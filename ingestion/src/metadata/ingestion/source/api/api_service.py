@@ -45,7 +45,6 @@ from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -131,7 +130,6 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: ApiConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = ApiServiceTopology()
-    context = TopologyContextManager(topology)
     api_collection_source_state: set = set()  # noqa: RUF012
     api_endpoint_source_state: set = set()  # noqa: RUF012
 

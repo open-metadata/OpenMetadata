@@ -18,7 +18,7 @@ import time
 import traceback
 from collections.abc import Generator, Iterable
 from contextlib import closing
-from functools import singledispatchmethod
+from functools import cached_property, singledispatchmethod
 from time import perf_counter
 from typing import Any, ClassVar, Generic, TypeVar, cast
 
@@ -74,7 +74,6 @@ class TopologyRunnerMixin(Generic[C]):
     """
 
     topology: ServiceTopology
-    context: TopologyContextManager
     metadata: OpenMetadata
 
     queue = Queue()
@@ -83,6 +82,12 @@ class TopologyRunnerMixin(Generic[C]):
     """AUTO (default): the topology runner counts processed entities.
     MANUAL: the runner makes zero progress calls; the source drives
     ``progress_tracking.manual`` itself. OFF: no progress at all."""
+
+    @cached_property
+    def context(self) -> TopologyContextManager:
+        """One context per source. A class-level context is shared by every source of that type
+        in the process, so two sources overwrite each other's service, database and schema."""
+        return TopologyContextManager(self.topology)
 
     _SIDE_OUTPUT_STAGE_TYPES: ClassVar[set[str]] = {
         "OMetaTagAndClassification",
