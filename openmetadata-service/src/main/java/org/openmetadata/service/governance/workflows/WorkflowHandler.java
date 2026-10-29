@@ -520,7 +520,8 @@ public class WorkflowHandler {
     // The new versions are deployed before the old ones are drained. Deploying a version replaces
     // the trigger's start-signal subscription with one on the new version; draining first deleted
     // the version that held the subscription before its replacement existed, so an entity event
-    // handled in between started no workflow at all.
+    // handled in between started no workflow at all
+    // (ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains).
     // Deploy Main Workflow
     byte[] bpmnMainWorkflowBytes =
         bpmnXMLConverter.convertToXML(workflow.getMainWorkflow().getModel());
@@ -563,7 +564,8 @@ public class WorkflowHandler {
     // just deferred out of the migration critical path.
     if (!isMigrationContext) {
       // Spared by version, not by deployment: a deploy of the same workflow that overlaps this one
-      // may already have deployed a newer version, which this drain must not delete.
+      // may already have deployed a newer version, which this drain must not delete
+      // (ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains).
       Map<String, Integer> deployedVersions =
           deployedVersionsByKey(
               repositoryService, Set.of(mainDeployment.getId(), triggerDeployment.getId()));
@@ -597,6 +599,7 @@ public class WorkflowHandler {
    * them active, and neither their timers nor a trigger start it. They are suspended by entity, as
    * Flowable's own deploy-with-activation-date does: the new rows are not flushed yet, so a query
    * in this transaction would not find them.
+   * ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains
    */
   private static void keepSuspended(
       WorkflowDefinition workflowDefinition,

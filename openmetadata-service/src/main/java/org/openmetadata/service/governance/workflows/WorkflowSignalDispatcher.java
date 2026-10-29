@@ -41,7 +41,8 @@ final class WorkflowSignalDispatcher {
               .retryOnException(WorkflowSignalDispatcher::isTransientDatabaseError)
               .build());
 
-  // Each re-read follows one redeploy that happened during delivery.
+  // Each re-read follows one redeploy that happened during delivery
+  // (ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains).
   private static final int MAX_REREADS = 3;
   private static final String RELATED_ENTITY =
       getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
