@@ -165,6 +165,20 @@ describe('normalizeCsvLineBreaks', () => {
     expect(normalizeCsvLineBreaks('a\r\nb\rc\nd')).toBe('a\nb\nc\nd');
   });
 
+  it('treats a quote inside an unquoted cell as text', () => {
+    const inches =
+      'name*,description\r\npipes,12" pipe\r\nfittings,Elbow joint\r\nvalves,3" valve\r\n';
+
+    const rows = parseRows(normalizeCsvLineBreaks(inches));
+
+    expect(rows).toEqual([
+      ['name*', 'description'],
+      ['pipes', '12" pipe'],
+      ['fittings', 'Elbow joint'],
+      ['valves', '3" valve'],
+    ]);
+  });
+
   it('keeps line breaks inside quoted cells', () => {
     const quoted =
       'name*,description\r\norders,"Line one\r\nLine two ""quoted"""\r\nvisits,Daily\n';
