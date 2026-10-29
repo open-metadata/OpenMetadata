@@ -99,6 +99,7 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/**",
+        "openmetadata-ui/src/main/resources/ui/src/mocks/ActivityFeedProvider.mock.tsx",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityLink.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtilsPure.ts",
@@ -184,6 +185,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/**",
         "openmetadata-ui/src/main/resources/ui/src/components/IncidentManager/**",
         "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Visualisations/Chart/DataDistributionHistogram*",
         "openmetadata-ui/src/main/resources/ui/src/components/Alerts/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/DataQuality/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/IncidentManager/**",
@@ -1510,6 +1512,20 @@
       ],
       "projects": ["chromium"],
       "specs": ["playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"]
+    },
+    {
+      "_comment": "The lineage UI types (nodes, edges, lineage responses). Only the lineage pages and their specs read them.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/interface/lineage.interface.ts"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts"
+      ]
     },
     {
       "_comment": "Browser helper tests run under playwright/browser-helper-tests.config.ts, not in any e2e project, so no change to them can alter a spec outcome. Mapped to no specs rather than left unmapped, so a change does not escalate to a full-suite run.",

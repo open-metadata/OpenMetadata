@@ -25,7 +25,7 @@ This module implements a complete OAuth 2.0 Authorization Code Flow with PKCE fo
 
 ### Security Features
 - **PKCE Validation** - SHA-256 code challenge/verifier validation
-- **Token Expiry Management** - Configurable access token (1 hour) and refresh token (7 days) lifetimes
+- **Token Expiry Management** - Access tokens last 10 minutes; refresh tokens last 30 days from sign-in, and rotating them does not extend that
 - **Rate Limiting** - Registration (10/hour per IP) and token (30/minute per IP) endpoint protection
 - **Thread-Safe Concurrent Processing** - ThreadLocal storage for request isolation
 - **Audit Logging** - OAuth operations logged via SLF4J (oauth_audit_log table available for future use)
@@ -81,8 +81,8 @@ Five core OAuth tables with audit logging:
 
 - **oauth_clients** - Dynamically registered MCP clients via RFC 7591
 - **oauth_authorization_codes** - Short-lived codes (10 min TTL) with PKCE challenge
-- **oauth_access_tokens** - JWT access tokens (1 hour TTL) with encryption
-- **oauth_refresh_tokens** - Refresh tokens (7 days TTL) with automatic rotation
+- **oauth_access_tokens** - Not written today: access tokens are 10-minute JWTs returned to the client
+- **oauth_refresh_tokens** - Refresh tokens (30 days from sign-in) with automatic rotation that keeps that end
 - **mcp_pending_auth_requests** - OAuth state parameters for cross-domain redirects (10 min TTL)
 - **oauth_audit_log** - Comprehensive audit trail of all OAuth operations
 
@@ -168,10 +168,10 @@ Five core OAuth tables with audit logging:
        │                                                                  │
        │  10. 200 OK                                                     │
        │      {                                                           │
-       │        "access_token": "eyJhbGc...",  // JWT, 1 hour TTL       │
-       │        "refresh_token": "fernet_encrypted", // 7 days TTL       │
+       │        "access_token": "eyJhbGc...",  // JWT, 10 min TTL       │
+       │        "refresh_token": "fernet_encrypted", // 30 days TTL      │
        │        "token_type": "Bearer",                                  │
-       │        "expires_in": 3600                                       │
+       │        "expires_in": 600                                        │
        │      }                                                           │
        │<─────────────────────────────────────────────────────────────────│
        │                                                                  │
@@ -197,7 +197,7 @@ Five core OAuth tables with audit logging:
        │        "access_token": "eyJhbGc...",  // New JWT               │
        │        "refresh_token": "new_encrypted", // New rotated token   │
        │        "token_type": "Bearer",                                  │
-       │        "expires_in": 3600                                       │
+       │        "expires_in": 600                                        │
        │      }                                                           │
        │<─────────────────────────────────────────────────────────────────│
        │                                                                  │
@@ -267,7 +267,7 @@ curl -X PUT -H "Authorization: Bearer $TOKEN" \
 The OAuth server is configured in `openmetadata.yaml`:
 
 - **JWT Configuration** - RSA key pair for token signing, JWKS endpoint URL
-- **Token Expiry** - Access token (1 hour) and refresh token (7 days) lifetimes
+- **Token Expiry** - Access token (10 minutes) and refresh token (30 days from sign-in) lifetimes are fixed in code, not set here
 - **Rate Limiting** - Registration (10/hour per IP) and token endpoint (30/minute per IP) rate limits
 - **SSO Provider** - Google, Okta, Azure AD, etc. OAuth client ID and secret for SSO integration
 - **Callback URLs** - Allowed redirect URIs for OAuth clients

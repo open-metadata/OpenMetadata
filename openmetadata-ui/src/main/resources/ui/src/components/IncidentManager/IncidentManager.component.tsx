@@ -13,8 +13,8 @@
 import {
   Box,
   Button,
-  Card,
   FilterSelect,
+  TableCard,
   TriggerButton,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -162,8 +162,10 @@ const IncidentManager = ({
     );
   }
 
+  // Keep the incident rows and filter band below the surrounding page-card surface.
+  // ADR:2026-10-28-incident-tables-and-filters-use-the-muted-step
   return (
-    <Card className="tw:rounded-(--om-radius-10) tw:border-border-secondary">
+    <TableCard.Root variant="muted">
       <Box
         align="start"
         className="tw:p-4"
@@ -359,7 +361,7 @@ const IncidentManager = ({
         testCaseListData={testCaseListData}
         testCasePermissions={testCasePermissions}
       />
-    </Card>
+    </TableCard.Root>
   );
 };
 

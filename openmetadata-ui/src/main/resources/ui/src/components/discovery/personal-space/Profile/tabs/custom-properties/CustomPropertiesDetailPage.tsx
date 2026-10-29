@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, TableCard, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  ConfirmPopover,
+  TableCard,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { Plus as Expand } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,6 +26,7 @@ import { OperationPermission } from '../../../../../../context/PermissionProvide
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
+import { useAnchoredConfirm } from '../../../../../../hooks/popover/useAnchoredConfirm';
 import {
   deleteCustomPropertyByName,
   getTypeByFQN,
@@ -33,7 +39,6 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import CustomPropertiesListTable from '../../../../../Settings/CustomProperty/CustomPropertiesListTable';
 import { CustomPropertiesDetailPageProps } from './CustomPropertiesPanel.types';
@@ -53,13 +58,15 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
 
   const [typeDetail, setTypeDetail] = useState<Type | undefined>();
   const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('custom-properties');
   const [permission, setPermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-  const [propertyToDelete, setPropertyToDelete] =
-    useState<CustomProperty | null>(null);
+  const {
+    target: deleteTarget,
+    open: openDeleteConfirm,
+    popoverProps,
+  } = useAnchoredConfirm<CustomProperty>();
 
   const fetchTypeAndPermission = useCallback(async () => {
     if (!entityType.fullyQualifiedName || !entityType.id) {
@@ -92,39 +99,42 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
   const { canCreate, canDelete, canEditAll } =
     getDerivedPermissionFlags(permission);
 
-  const handleDeleteConfirm = useCallback(async () => {
-    if (!propertyToDelete || !entityType.fullyQualifiedName) {
-      return;
-    }
-    setIsDeleting(true);
-    try {
-      const updated = await deleteCustomPropertyByName(
-        entityType.fullyQualifiedName,
-        propertyToDelete.name
-      );
-      // `undefined`: someone else already removed it, so drop it locally.
-      setTypeDetail(
-        (prev) =>
-          updated ??
-          (prev && {
-            ...prev,
-            customProperties: prev.customProperties?.filter(
-              (property) => property.name !== propertyToDelete.name
-            ),
+  const handleDeleteConfirm = useCallback(
+    async (propertyToDelete: CustomProperty) => {
+      if (!entityType.fullyQualifiedName) {
+        return false;
+      }
+      try {
+        const updated = await deleteCustomPropertyByName(
+          entityType.fullyQualifiedName,
+          propertyToDelete.name
+        );
+        // `undefined`: someone else already removed it, so drop it locally.
+        setTypeDetail(
+          (prev) =>
+            updated ??
+            (prev && {
+              ...prev,
+              customProperties: prev.customProperties?.filter(
+                (property) => property.name !== propertyToDelete.name
+              ),
+            })
+        );
+        showSuccessToast(
+          t('server.entity-deleted-success', {
+            entity: t('label.custom-property'),
           })
-      );
-      showSuccessToast(
-        t('server.delete-entity-success', {
-          entity: t('label.custom-property'),
-        })
-      );
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsDeleting(false);
-      setPropertyToDelete(null);
-    }
-  }, [entityType.fullyQualifiedName, propertyToDelete, t]);
+        );
+
+        return true;
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+
+        return false;
+      }
+    },
+    [entityType.fullyQualifiedName, t]
+  );
 
   useEffect(() => {
     onSetHeaderActions(
@@ -146,7 +156,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
 
   return (
     <>
-      <TableCard.Root className="tw:rounded-xl tw:shadow-none">
+      <TableCard.Root className="tw:rounded-xl tw:shadow-none" variant="muted">
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(k) => setActiveTab(k as string)}>
@@ -192,14 +202,15 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
                 </div>
               }
               isLoading={isLoading}
-              onDelete={setPropertyToDelete}
+              variant="muted"
+              onDelete={openDeleteConfirm}
               onEdit={onEditProperty}
             />
           </Tabs.Panel>
 
           <Tabs.Panel id="schema">
             <SchemaEditor
-              className="custom-properties-schemaEditor"
+              className="custom-properties-schemaEditor tw:dark:[&_.cm-editor]:bg-primary_alt!"
               editorClass="custom-entity-schema"
               value={typeDetail?.schema ?? '{}'}
             />
@@ -207,16 +218,17 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
         </Tabs>
       </TableCard.Root>
 
-      {propertyToDelete && (
-        <DeleteModal
-          entityTitle={getEntityName(propertyToDelete)}
-          isDeleting={isDeleting}
-          message={t('message.are-you-sure-delete-property', {
-            propertyName: getEntityName(propertyToDelete),
+      {deleteTarget && (
+        <ConfirmPopover
+          {...popoverProps}
+          data-testid="delete-custom-property-popover"
+          description={t('message.are-you-sure-delete-property', {
+            propertyName: getEntityName(deleteTarget),
           })}
-          open={Boolean(propertyToDelete)}
-          onCancel={() => setPropertyToDelete(null)}
-          onDelete={handleDeleteConfirm}
+          title={t('label.delete-entity', {
+            entity: getEntityName(deleteTarget),
+          })}
+          onConfirm={() => handleDeleteConfirm(deleteTarget)}
         />
       )}
     </>
