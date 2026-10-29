@@ -457,18 +457,10 @@ export const addEventTypeFilter = async ({
   await ensureNoDropdownVisible(page);
 
   // Select event type filter
-  await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-
-  // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.getByRole('listbox')).toHaveCount(1);
-
-  // Use :visible selector chain pattern for dropdown option
-  const eventTypeOption = page
-    .getByRole('listbox')
-    .getByTestId('Event Type-filter-option');
-  await expect(eventTypeOption).toBeVisible();
-  await expect(eventTypeOption).toBeEnabled();
-  await eventTypeOption.click();
+  await chooseSelectOption(
+    page.getByTestId(`filter-select-${filterNumber}`),
+    page.getByRole('listbox').getByTestId('Event Type-filter-option')
+  );
 
   // Verify filter dropdown closed before next interaction
   await expect(page.getByRole('listbox')).toHaveCount(0);
@@ -532,19 +524,10 @@ export const addDomainFilter = async ({
   // Ensure no dropdowns are visible before starting
   await ensureNoDropdownVisible(page);
 
-  // Open filter dropdown
-  await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-
-  // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.getByRole('listbox')).toHaveCount(1);
-
-  // Select Domain filter option - chain :visible selector inline
-  const domainOption = page
-    .getByRole('listbox')
-    .getByTestId('Domain-filter-option');
-  await expect(domainOption).toBeVisible();
-  await expect(domainOption).toBeEnabled();
-  await domainOption.click();
+  await chooseSelectOption(
+    page.getByTestId(`filter-select-${filterNumber}`),
+    page.getByRole('listbox').getByTestId('Domain-filter-option')
+  );
 
   // Verify filter dropdown closed before next interaction
   await expect(page.getByRole('listbox')).toHaveCount(0);
@@ -611,18 +594,12 @@ export const addGMEFilter = async ({
   await ensureNoDropdownVisible(page);
 
   // Select general metadata events filter
-  await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-
-  // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.getByRole('listbox')).toHaveCount(1);
-
-  // Use :visible selector chain pattern for dropdown option
-  const gmeOption = page
-    .getByRole('listbox')
-    .getByTestId('General Metadata Events-filter-option');
-  await expect(gmeOption).toBeVisible();
-  await expect(gmeOption).toBeEnabled();
-  await gmeOption.click();
+  await chooseSelectOption(
+    page.getByTestId(`filter-select-${filterNumber}`),
+    page
+      .getByRole('listbox')
+      .getByTestId('General Metadata Events-filter-option')
+  );
 
   // Verify filter dropdown closed
   await expect(page.getByRole('listbox')).toHaveCount(0);
@@ -753,18 +730,10 @@ export const addGetSchemaChangesAction = async ({
   await ensureNoDropdownVisible(page);
 
   // Select schema changes action
-  await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
-
-  // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.getByRole('listbox')).toHaveCount(1);
-
-  // Use :visible selector chain pattern for dropdown option
-  const schemaChangesOption = page
-    .getByRole('listbox')
-    .getByTestId('Get Schema Changes-filter-option');
-  await expect(schemaChangesOption).toBeVisible();
-  await expect(schemaChangesOption).toBeEnabled();
-  await schemaChangesOption.click();
+  await chooseSelectOption(
+    page.getByTestId(`trigger-select-${filterNumber}`),
+    page.getByRole('listbox').getByTestId('Get Schema Changes-filter-option')
+  );
 
   // Verify trigger dropdown closed
   await expect(page.getByRole('listbox')).toHaveCount(0);
@@ -792,18 +761,12 @@ export const addPipelineStatusUpdatesAction = async ({
   await ensureNoDropdownVisible(page);
 
   // Select pipeline status action
-  await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
-
-  // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.getByRole('listbox')).toHaveCount(1);
-
-  // Use :visible selector chain pattern for dropdown option
-  const pipelineStatusOption = page
-    .getByRole('listbox')
-    .getByTestId('Get Pipeline Status Updates-filter-option');
-  await expect(pipelineStatusOption).toBeVisible();
-  await expect(pipelineStatusOption).toBeEnabled();
-  await pipelineStatusOption.click();
+  await chooseSelectOption(
+    page.getByTestId(`trigger-select-${filterNumber}`),
+    page
+      .getByRole('listbox')
+      .getByTestId('Get Pipeline Status Updates-filter-option')
+  );
 
   // Verify trigger dropdown closed before next interaction
   await expect(page.getByRole('listbox')).toHaveCount(0);

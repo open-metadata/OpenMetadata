@@ -215,6 +215,18 @@ public class TaskRepository extends EntityRepository<Task> {
     return super.listBefore(uriInfo, fields, filter, limitParam, before);
   }
 
+  /**
+   * A listing paged by creation time compares its cursor against createdAt, so the cursor carries
+   * createdAt in the slot the name cursor uses. Listings that never ask for that order keep the
+   * name cursor, which the search reindex seeds by offset.
+   */
+  @Override
+  public String getCursorValue(Task entity, ListFilter filter) {
+    return TaskListOrder.isRequestedBy(filter)
+        ? getCursorValue(String.valueOf(entity.getCreatedAt()), String.valueOf(entity.getId()))
+        : super.getCursorValue(entity, filter);
+  }
+
   public ResultList<Task> listDataAccessRequests(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limit, int offset, String sortOrder) {
     applyTaskDomainFilter(filter);

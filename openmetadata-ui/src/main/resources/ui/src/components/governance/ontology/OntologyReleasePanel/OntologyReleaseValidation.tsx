@@ -12,6 +12,7 @@
  */
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card,
@@ -21,6 +22,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyReleaseStructure } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 
@@ -32,6 +34,7 @@ const OntologyReleaseValidation = ({
   release?: OntologyRelease;
 }) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const structure = useQuery({
     queryKey: [
       'ontology-release-structure',
@@ -69,6 +72,23 @@ const OntologyReleaseValidation = ({
 
     return t(structure.data.valid ? 'label.passed' : 'label.failed');
   };
+
+  const renderReviewers = () =>
+    isAiMode ? (
+      <Box gap={2} wrap="wrap">
+        {reviewers.map((reviewer) => (
+          <Badge color="gray" key={reviewer.id} size="md" type="pill-color">
+            {getEntityName(reviewer)}
+          </Badge>
+        ))}
+      </Box>
+    ) : (
+      reviewers.map((reviewer) => (
+        <Typography key={reviewer.id} size="text-sm">
+          {getEntityName(reviewer)}
+        </Typography>
+      ))
+    );
 
   return (
     <Box direction="col" gap={4}>
@@ -118,11 +138,7 @@ const OntologyReleaseValidation = ({
               {t('message.ontology-configured-reviewers')}
             </Typography>
             {reviewers.length ? (
-              reviewers.map((reviewer) => (
-                <Typography key={reviewer.id} size="text-sm">
-                  {getEntityName(reviewer)}
-                </Typography>
-              ))
+              renderReviewers()
             ) : (
               <Typography size="text-sm">
                 {t('message.ontology-no-reviewers')}
