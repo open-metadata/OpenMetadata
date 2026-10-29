@@ -15,8 +15,10 @@ import {
   clearOidcToken,
   getOidcToken,
   getRefreshToken,
+  isApiOnlyToken,
   isServiceWorkerAvailable,
   resetSwTokenStorageState,
+  setApiOnlyTokenListener,
   setOidcToken,
   setOidcTokenStrict,
   setRefreshToken,
@@ -70,6 +72,9 @@ Object.defineProperty(global, 'window', {
   } as MockWindow,
   writable: true,
 });
+
+const tokenWith = (claims: Record<string, unknown>) =>
+  `e30.${btoa(JSON.stringify(claims))}.sig`;
 
 describe('SwTokenStorageUtils', () => {
   beforeEach(() => {
@@ -176,6 +181,42 @@ describe('SwTokenStorageUtils', () => {
       const result = await getOidcToken();
 
       expect(result).toBe('');
+    });
+
+    it('drops an API-only token, clearing it and signing out once', async () => {
+      const onRejected = jest.fn();
+      setApiOnlyTokenListener(onRejected);
+      const botToken = tokenWith({ isBot: true, tokenType: 'BOT' });
+      mockGetItem.mockResolvedValue(JSON.stringify({ primary: botToken }));
+      mockRemoveItem.mockResolvedValue(undefined);
+
+      const results = await Promise.all([getOidcToken(), getOidcToken()]);
+      setApiOnlyTokenListener();
+
+      expect(results).toEqual(['', '']);
+      expect(mockRemoveItem).toHaveBeenCalledWith('app_state');
+      expect(onRejected).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('isApiOnlyToken', () => {
+    it.each([
+      [{ isBot: true, tokenType: 'BOT' }],
+      [{ isBot: false, tokenType: 'BOT' }],
+      [{ isBot: false, tokenType: 'PERSONAL_ACCESS' }],
+    ])('rejects %j', (claims) => {
+      expect(isApiOnlyToken(tokenWith(claims))).toBe(true);
+    });
+
+    it.each([[{ isBot: false, tokenType: 'OM_USER' }], [{ sub: 'sso-user' }]])(
+      'allows %j',
+      (claims) => {
+        expect(isApiOnlyToken(tokenWith(claims))).toBe(false);
+      }
+    );
+
+    it('allows an opaque, non-JWT token', () => {
+      expect(isApiOnlyToken('opaque')).toBe(false);
     });
   });
 

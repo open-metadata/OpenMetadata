@@ -27,6 +27,7 @@ import {
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
 import { OntologyState } from '../../../../generated/type/ontologyState';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import {
   renderWithQueryClient,
@@ -36,6 +37,10 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import OntologyPublicationModal from '../OntologyPublicationModal/OntologyPublicationModal';
 import OntologyReleasePanel from './OntologyReleasePanel';
 
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 jest.mock('../../../../rest/axiosClient', () => ({
   get: jest.fn(),
   post: jest.fn(),
@@ -159,6 +164,7 @@ runQueryNotificationsSynchronously();
 describe('OntologyReleasePanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
     downloadedBlob = undefined;
     downloadedFileName = undefined;
     URL.createObjectURL = jest.fn((blob) => {
@@ -1158,5 +1164,97 @@ describe('OntologyReleasePanel', () => {
     ).toBeDisabled();
     expect(post).not.toHaveBeenCalled();
     expect(put).not.toHaveBeenCalled();
+  });
+
+  it('groups working changes and captures with the chosen version in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    post.mockResolvedValue({ data: release });
+    await renderPanel(true, 'changes');
+
+    const groups = await screen.findByTestId('ontology-change-groups');
+
+    expect(groups).toHaveTextContent('label.ontology-member-concept');
+    expect(groups).toHaveTextContent('Customer');
+    expect(groups).toHaveTextContent('label.added');
+
+    fireEvent.click(
+      await screen.findByRole('radio', { name: /label.version-patch/ })
+    );
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /label.release-notes/ }),
+      { target: { value: 'Patch notes' } }
+    );
+
+    expect(screen.getByTestId('ontology-version-preview')).toHaveTextContent(
+      '1.2.3 → 1.2.4'
+    );
+    expect(screen.getByTestId('ontology-request-review')).toBeEnabled();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-capture-release')).toBeEnabled()
+    );
+    await act(async () =>
+      fireEvent.click(screen.getByTestId('ontology-capture-release'))
+    );
+
+    expect(post).toHaveBeenCalledWith('/ontologies/ontology-id/releases', {
+      expectedActivationRevision: 3,
+      expectedWorkingRevision: 7,
+      expectedLatestReleaseRevision: 1,
+      versionBump: 'patch',
+      releaseNotes: 'Patch notes',
+    });
+  });
+
+  it('shows a deprecated working change with its badge in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const defaultGet = get.getMockImplementation();
+    get.mockImplementation(async (url, config) =>
+      url.endsWith('/working/diff')
+        ? {
+            data: {
+              state: currentState,
+              data: [
+                {
+                  changeType: 'DEPRECATED',
+                  entity: {
+                    id: 'legacy-customer-id',
+                    name: 'LegacyCustomer',
+                    type: 'ontologyConcept',
+                  },
+                  memberKind: 'CONCEPT',
+                  ontologyId: ontology.id,
+                },
+              ],
+              paging: { total: 1 },
+            },
+          }
+        : defaultGet?.(url, config)
+    );
+    await renderPanel(true, 'changes');
+
+    const row = (await screen.findByText('LegacyCustomer')).closest('li');
+
+    expect(row).toHaveTextContent('label.deprecated');
+  });
+
+  it('keeps release rows, export and the release detail actions in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    currentState.activeReleaseId = release.id;
+    currentRelease.entityStatus = EntityStatus.Approved;
+    await renderPanel();
+    await selectRelease();
+
+    expect(
+      await screen.findByTestId('ontology-release-definition')
+    ).toBeVisible();
+    expect(screen.getByTestId('ontology-active-release')).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-release-export-release-id')
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'label.activate-release' })
+    ).toBeDisabled();
+    expect(screen.getByText('label.release-events')).toBeVisible();
   });
 });
