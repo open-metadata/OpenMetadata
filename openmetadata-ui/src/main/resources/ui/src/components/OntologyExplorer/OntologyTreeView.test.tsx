@@ -12,9 +12,15 @@
  */
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { OntologyNode } from './OntologyExplorer.interface';
 import { OntologyTreeGroup, OntologyTreeMetric } from './OntologyStudio.utils';
 import OntologyTreeView from './OntologyTreeView';
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 const ROOT: OntologyNode = {
   id: 'root',
@@ -129,5 +135,42 @@ describe('OntologyTreeView', () => {
 
     expect(onSelect).toHaveBeenCalledWith(CHILD);
     expect(onConnect).toHaveBeenCalledWith(ORPHAN);
+  });
+
+  describe('in AI mode', () => {
+    beforeEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(false);
+    });
+
+    it('titles the tree with the ontology and keeps expand, collapse, select and connect', () => {
+      const { onConnect, onSelect } = renderTree();
+      const concepts = screen.getByTestId('ontology-tree-concepts');
+
+      expect(
+        within(concepts).getByRole('heading', { name: 'Commerce' })
+      ).toBeVisible();
+      expect(within(concepts).getAllByText('label.x-relations')).toHaveLength(
+        2
+      );
+      expect(screen.getByText('label.polyhierarchy')).toBeVisible();
+
+      fireEvent.click(screen.getByTestId('ontology-tree-collapse-all'));
+
+      expect(screen.queryByText('Order')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('ontology-tree-expand-all'));
+      fireEvent.click(screen.getByText('Order'));
+
+      expect(onSelect).toHaveBeenCalledWith(CHILD);
+
+      fireEvent.click(screen.getByTestId('ontology-tree-connect-orphan'));
+
+      expect(onConnect).toHaveBeenCalledWith(ORPHAN);
+      expect(screen.getByTestId('ontology-tree-metrics')).toBeVisible();
+    });
   });
 });

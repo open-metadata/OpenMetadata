@@ -131,7 +131,9 @@ public class PatchEntityTool implements McpTool {
             null,
             ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.entity(), response.changeType(), userName);
-    return McpResponseUtils.compactPatch(response.entity(), response.changeType());
+    return McpResponseUtils.compactPatch(
+        CommonUtils.withVisibleEvidence(response.entity(), authorizer, securityContext),
+        response.changeType());
   }
 
   private static void requireTarget(String entityType, String fqn) {
