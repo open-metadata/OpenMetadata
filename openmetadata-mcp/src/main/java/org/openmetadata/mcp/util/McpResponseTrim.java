@@ -326,6 +326,14 @@ public final class McpResponseTrim {
   }
 
   /**
+   * The request line a search client puts in front of its error: {@code method [POST], host
+   * [http://search:9200], URI [/index/_search?preference=user], }. It names the internal search
+   * host, which a caller has no use for; the status line after it is what says what went wrong.
+   */
+  private static final Pattern SEARCH_REQUEST_LINE =
+      Pattern.compile("method \\[[^\\]]*], host \\[[^\\]]*], URI \\[[^\\]]*], ");
+
+  /**
    * Returns the throwable's message, or a placeholder when it is null, so a client-facing payload
    * never renders {@code "... null"}. Use only for the message surfaced to the caller — logging
    * should keep passing the throwable itself for the stack trace.
@@ -333,7 +341,7 @@ public final class McpResponseTrim {
   public static String safeMessage(Throwable t) {
     String result = NO_MESSAGE;
     if (t != null && t.getMessage() != null) {
-      result = t.getMessage();
+      result = SEARCH_REQUEST_LINE.matcher(t.getMessage()).replaceAll("search request failed, ");
     }
     return result;
   }
