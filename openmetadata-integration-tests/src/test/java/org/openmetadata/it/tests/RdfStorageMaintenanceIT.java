@@ -225,6 +225,25 @@ public class RdfStorageMaintenanceIT {
     }
   }
 
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aCompactionOverdueForTwoIntervalsReadsAsDegradedUntilTheNextOne(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final RdfLiveWriteStore health =
+          new RdfLiveWriteStore(fixture.database.jdbi(), fixture.clock, Duration.ofHours(48));
+
+      assertFalse(health.isDegraded(), "maintenance has not started the clock yet");
+      final Instant started = health.lastCompaction();
+      fixture.clock.advance(TimeUnit.HOURS.toMillis(49));
+      assertTrue(health.isDegraded(), "no compaction for more than two intervals");
+
+      health.recordCompaction();
+      assertFalse(health.isDegraded(), "the next compaction clears it");
+      assertTrue(health.lastCompaction().isAfter(started), "the clock starts only once");
+    }
+  }
+
   private static String sparql(final int index) {
     return "INSERT DATA { GRAPH <"
         + GRAPH
@@ -267,7 +286,7 @@ public class RdfStorageMaintenanceIT {
                 handle.execute("DELETE FROM rdf_reindex_lock");
                 handle.execute("DELETE FROM rdf_active_dataset");
                 handle.execute(
-                    "UPDATE rdf_projection_health SET failureVersion = 0, repairedVersion = 0, lastError = NULL");
+                    "UPDATE rdf_projection_health SET failureVersion = 0, repairedVersion = 0, lastError = NULL, lastCompactedAt = 0");
               });
       queue = new RdfLiveWriteStore(database.jdbi(), clock);
       locks = database.lockDao();

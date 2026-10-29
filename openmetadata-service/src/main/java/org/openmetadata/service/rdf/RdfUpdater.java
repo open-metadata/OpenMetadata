@@ -13,6 +13,7 @@
 package org.openmetadata.service.rdf;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -52,7 +53,10 @@ public final class RdfUpdater {
         LOG.warn(
             "Durable live RDF delivery uses one cluster-wide writer to preserve mutation order");
       }
-      final RdfLiveWriteStore store = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
+      final RdfStorageMaintenanceConfig maintenanceConfig = maintenanceConfig(config);
+      final RdfLiveWriteStore store =
+          new RdfLiveWriteStore(
+              Entity.getJdbi(), Clock.systemUTC(), compactionDeadline(maintenanceConfig));
       RdfProjectionHealth.initialize(store);
       RdfRepository.initialize(config);
       // The queue writes through its own view: a paused write is held back at once and retried,
@@ -66,20 +70,31 @@ public final class RdfUpdater {
               AsyncService.getInstance().getExecutorService());
       writeQueue = writer::enqueue;
       writer.start();
-      startStorageMaintenance(config);
+      startStorageMaintenance(maintenanceConfig, store);
       LOG.info("RDF updater initialized with durable, ordered live writes");
     }
   }
 
-  private static void startStorageMaintenance(final RdfConfiguration config) {
-    final RdfStorageMaintenanceConfig maintenanceConfig =
-        Optional.ofNullable(config.getStorageMaintenance())
-            .orElseGet(RdfStorageMaintenanceConfig::new);
+  private static RdfStorageMaintenanceConfig maintenanceConfig(final RdfConfiguration config) {
+    return Optional.ofNullable(config.getStorageMaintenance())
+        .orElseGet(RdfStorageMaintenanceConfig::new);
+  }
+
+  /** With maintenance off nothing promises a compaction, so none can be overdue. */
+  private static Duration compactionDeadline(final RdfStorageMaintenanceConfig maintenanceConfig) {
+    return Boolean.TRUE.equals(maintenanceConfig.getEnabled())
+        ? RdfStorageMaintenanceService.overdueAfter(maintenanceConfig)
+        : null;
+  }
+
+  private static void startStorageMaintenance(
+      final RdfStorageMaintenanceConfig maintenanceConfig, final RdfLiveWriteStore store) {
     if (Boolean.TRUE.equals(maintenanceConfig.getEnabled())) {
       maintenance =
           new RdfStorageMaintenanceService(
               maintenanceConfig,
               Entity.getCollectionDAO().rdfReindexLockDAO(),
+              store,
               RdfRepository::getInstance,
               Clock.systemUTC(),
               ServerIdentityResolver.getInstance().getServerId());
