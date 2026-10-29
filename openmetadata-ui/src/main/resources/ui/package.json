@@ -346,6 +346,7 @@
     "postcss-selector-parser": "7.1.7",
     "socket.io-parser": "4.2.7",
     "undici": "^6.29.1",
+    "follow-redirects": "^1.16.2",
     "@codemirror/state": "^6",
     "@codemirror/view": "^6"
   }
