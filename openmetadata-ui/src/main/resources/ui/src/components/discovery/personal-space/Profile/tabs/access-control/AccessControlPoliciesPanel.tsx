@@ -332,7 +332,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
               size="xs">
               {t('label.plus-count-more', { count: listLength - LIST_CAP })}
             </Button>
-            <Popover className="tw:max-h-80! tw:overflow-y-auto">
+            <Popover className="tw:overflow-y-auto" maxHeight={320}>
               <Box className="tw:p-3" direction="col" gap={1}>
                 {roles.slice(LIST_CAP).map(renderRoleItem)}
               </Box>
