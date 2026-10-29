@@ -1159,6 +1159,67 @@ describe('ServiceDocPanel Component', () => {
       });
     });
 
+    it('should highlight a field section that renders after the field is focused', async () => {
+      const lateElement = createMockElement();
+      mockQuerySelector.mockReturnValue(null);
+
+      render(
+        <ServiceDocPanel {...defaultProps} activeField="root/database/name" />
+      );
+
+      await waitFor(() => {
+        expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="name"]');
+      });
+
+      expect(lateElement.dataset.highlighted).toBeUndefined();
+
+      // The lazily loaded editor renders the section into the panel later.
+      mockQuerySelector.mockReturnValue(lateElement);
+      act(() => {
+        screen
+          .getByTestId('service-requirements')
+          .appendChild(document.createElement('section'));
+      });
+
+      await waitFor(() => {
+        expect(lateElement.dataset.highlighted).toBe('true');
+      });
+    });
+
+    it('should stop waiting for a section once another field is focused', async () => {
+      const staleElement = createMockElement();
+      mockQuerySelector.mockReturnValue(null);
+
+      const { rerender } = render(
+        <ServiceDocPanel {...defaultProps} activeField="root/database/host" />
+      );
+
+      await waitFor(() => {
+        expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="host"]');
+      });
+
+      rerender(
+        <ServiceDocPanel {...defaultProps} activeField="root/database/port" />
+      );
+
+      await waitFor(() => {
+        expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="port"]');
+      });
+
+      // Only the previously focused field's section renders.
+      mockQuerySelector.mockImplementation((selector: string) =>
+        selector === '[data-id="host"]' ? staleElement : null
+      );
+      // Async so the MutationObserver callbacks (microtasks) run before the assertion.
+      await act(async () => {
+        screen
+          .getByTestId('service-requirements')
+          .appendChild(document.createElement('section'));
+      });
+
+      expect(staleElement.dataset.highlighted).toBeUndefined();
+    });
+
     it('should handle field names with special patterns', async () => {
       render(
         <ServiceDocPanel
