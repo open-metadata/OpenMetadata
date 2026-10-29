@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { applyPatch } from 'fast-json-patch';
 import { MemoryRouter } from 'react-router-dom';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
@@ -342,6 +343,72 @@ const offeredRelationIds = (): string[] =>
     .map((option: { id: string }) => option.id);
 const waitForRegistry = (offered = PART_OF) =>
   waitFor(() => expect(offeredRelationIds()).toContain(offered));
+
+/** Keeps registry writes, so the list a retry loads holds what an earlier attempt wrote. */
+const keepRegistryWrites = () => {
+  const stored = new Map(registryTypes.map((type) => [type.id, type]));
+  const register = (
+    createRelationshipType as jest.Mock
+  ).getMockImplementation();
+  (listRelationshipTypes as jest.Mock).mockImplementation(() =>
+    Promise.resolve({
+      data: [...stored.values()],
+      paging: { total: stored.size },
+    })
+  );
+  (createRelationshipType as jest.Mock).mockImplementation(async (request) => {
+    const created: RelationshipType = await register?.(request);
+    stored.set(created.id, created);
+
+    return created;
+  });
+  (patchRelationshipType as jest.Mock).mockImplementation(async (id, patch) => {
+    const type = stored.get(id);
+    if (!type) {
+      throw new Error(`Unknown relationship type ${id}`);
+    }
+    const { newDocument } = applyPatch(type, patch, false, false);
+    stored.set(id, newDocument);
+
+    return newDocument;
+  });
+
+  return stored;
+};
+const registeredPairs = (stored: Map<string, RelationshipType>) =>
+  [...stored.values()]
+    .slice(registryTypes.length)
+    .map((type) => [type.name, type.inverse?.fullyQualifiedName]);
+const backLinkTo = (name: string) => [
+  {
+    op: 'add',
+    path: '/inverse',
+    value: {
+      fullyQualifiedName: name,
+      id: `type-${name}`,
+      name,
+      type: 'relationshipType',
+    },
+  },
+];
+const registerApprovedBy = async () => {
+  let creation: Promise<void> = Promise.resolve();
+  act(() => {
+    creation = latestGraphProps().onCreateRelation(
+      customer.id,
+      orphan.id,
+      'new:approved by'
+    );
+  });
+  await screen.findByTestId('relationship-type-dialog');
+  fireEvent.change(screen.getByTestId('relationship-type-inverse'), {
+    target: { value: 'approves' },
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('relationship-type-submit'));
+    await creation;
+  });
+};
 
 describe('OntologyGraphView', () => {
   beforeEach(() => {
@@ -1051,6 +1118,85 @@ describe('OntologyGraphView', () => {
       })
     );
     expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('reuses the inverse a failed primary write left behind when the author retries', async () => {
+    const stored = keepRegistryWrites();
+    const failure = { isAxiosError: true, response: { status: 500 } };
+    const register = (
+      createRelationshipType as jest.Mock
+    ).getMockImplementation();
+    (createRelationshipType as jest.Mock)
+      .mockImplementationOnce((request) => register?.(request))
+      .mockRejectedValueOnce(failure);
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    await registerApprovedBy();
+
+    expect(showErrorToast).toHaveBeenCalledWith(failure);
+
+    await registerApprovedBy();
+
+    expect(
+      (createRelationshipType as jest.Mock).mock.calls.map(([request]) => [
+        request.name,
+        request.inverse,
+      ])
+    ).toEqual([
+      ['approves', undefined],
+      ['approvedBy', 'approves'],
+      ['approvedBy', 'approves'],
+    ]);
+    expect((patchRelationshipType as jest.Mock).mock.calls).toEqual([
+      ['type-approves', backLinkTo('approvedBy')],
+    ]);
+    expect(registeredPairs(stored)).toEqual([
+      ['approves', 'approvedBy'],
+      ['approvedBy', 'approves'],
+    ]);
+    expect(createOntologyProperty).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ inverse: APPROVES, iri: APPROVED_BY })
+    );
+  });
+
+  it('links the inverse back when the author retries after the back link failed', async () => {
+    const stored = keepRegistryWrites();
+    const failure = { isAxiosError: true, response: { status: 500 } };
+    (patchRelationshipType as jest.Mock).mockRejectedValueOnce(failure);
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    await registerApprovedBy();
+
+    expect(showErrorToast).toHaveBeenCalledWith(failure);
+
+    await registerApprovedBy();
+
+    expect((patchRelationshipType as jest.Mock).mock.calls).toEqual([
+      ['type-approves', backLinkTo('approvedBy')],
+      ['type-approves', backLinkTo('approvedBy')],
+    ]);
+    expect(
+      (createRelationshipType as jest.Mock).mock.calls.map(([request]) => [
+        request.name,
+        request.inverse,
+      ])
+    ).toEqual([
+      ['approves', undefined],
+      ['approvedBy', 'approves'],
+    ]);
+    expect(registeredPairs(stored)).toEqual([
+      ['approves', 'approvedBy'],
+      ['approvedBy', 'approves'],
+    ]);
   });
 
   it('reuses a registry type whose label matches the requested new type', async () => {
