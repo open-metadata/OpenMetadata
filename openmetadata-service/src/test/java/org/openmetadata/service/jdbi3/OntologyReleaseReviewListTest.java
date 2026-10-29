@@ -79,8 +79,11 @@ class OntologyReleaseReviewListTest {
           reviews.inReview(
               "unvoted", requester, List.of(alice, bob), List.of(alice, bob), List.of());
 
+          Listing assigned = reviews.listing(View.ASSIGNED, alice);
+
           assertAll(
-              () -> assertEquals(List.of("unvoted", "voted"), reviews.list(View.ASSIGNED, alice)),
+              () -> assertEquals(List.of("unvoted", "voted"), assigned.releases()),
+              () -> assertEquals(List.of(Set.of("unvoted", "voted")), assigned.releasesRead()),
               () -> assertEquals(List.of("unvoted"), reviews.list(View.PENDING, alice)),
               () ->
                   assertEquals(List.of("unvoted", "voted"), reviews.list(View.CREATED, requester)));
@@ -176,7 +179,7 @@ class OntologyReleaseReviewListTest {
 
   private record Row(String release, UUID task) {}
 
-  private record Listing(List<String> releases, List<String> statements) {
+  private record Listing(List<String> releases, List<String> statements, Map<UUID, String> labels) {
     /** A task counts as read when any statement of the listing names or binds its id. */
     Set<UUID> tasksRead(Set<UUID> tasks) {
       return tasks.stream()
@@ -184,6 +187,22 @@ class OntologyReleaseReviewListTest {
               task ->
                   statements.stream().anyMatch(statement -> statement.contains(task.toString())))
           .collect(Collectors.toSet());
+    }
+
+    /**
+     * Each statement that reads release rows, as the releases it names or binds. Resolving a task's
+     * {@code about} reads only a release's name columns, so that lookup does not count.
+     */
+    List<Set<String>> releasesRead() {
+      return statements.stream()
+          .filter(statement -> statement.contains("json FROM ontology_release_entity"))
+          .map(
+              statement ->
+                  labels.entrySet().stream()
+                      .filter(release -> statement.contains(release.getKey().toString()))
+                      .map(Map.Entry::getValue)
+                      .collect(Collectors.toSet()))
+          .toList();
     }
   }
 
@@ -338,7 +357,7 @@ class OntologyReleaseReviewListTest {
             }
           });
       try {
-        return new Listing(list(view, caller), executed);
+        return new Listing(list(view, caller), executed, Map.copyOf(labels));
       } finally {
         statements.setSqlLogger(previous);
       }
