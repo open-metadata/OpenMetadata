@@ -595,17 +595,6 @@ test.describe('Team Activity - Notifications', () => {
     const notificationBell = page.getByTestId('task-notifications');
 
     if (await notificationBell.isVisible()) {
-      // Check if notification badge shows count
-      const badge = notificationBell.locator('.ant-badge-count');
-
-      if (await badge.isVisible()) {
-        const count = await badge.textContent();
-        const notificationCount = parseInt(count || '0', 10);
-
-        // Should have at least one notification (team task)
-        expect(notificationCount).toBeGreaterThanOrEqual(0);
-      }
-
       // Click to open notifications
       await notificationBell.click();
 

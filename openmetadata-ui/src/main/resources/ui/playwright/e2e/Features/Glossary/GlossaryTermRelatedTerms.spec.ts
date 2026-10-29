@@ -376,13 +376,28 @@ test.describe('Glossary Term — Related Terms', () => {
         await term.create(apiContext);
       }
 
+      // Seeded over the API: seven picker round-trips through the UI pushed this
+      // test past its timeout, and adding relations is covered by the tests above.
+      await parentTerm.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/relatedTerms',
+          value: relatedTerms.map((term) => ({
+            relationType: 'relatedTo',
+            term: {
+              id: term.responseData.id,
+              type: 'glossaryTerm',
+              name: term.responseData.name,
+              displayName: term.responseData.displayName,
+              fullyQualifiedName: term.responseData.fullyQualifiedName,
+            },
+          })),
+        },
+      ]);
+
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
       await selectActiveGlossaryTerm(page, parentTerm.data.displayName);
-
-      await addRelatedTermsByRelationType(page, [
-        { relationTypeLabel: 'Related To', terms: relatedTerms },
-      ]);
 
       const container = page.getByTestId('related-term-container');
       const toggle = page.getByTestId('related-terms-toggle-relatedTo');
@@ -401,15 +416,15 @@ test.describe('Glossary Term — Related Terms', () => {
 
       await expect(toggle).toBeVisible();
 
-      expect(await countVisibleTerms()).toBe(5);
+      await expect.poll(countVisibleTerms).toBe(5);
 
       await toggle.click();
 
-      expect(await countVisibleTerms()).toBe(7);
+      await expect.poll(countVisibleTerms).toBe(7);
 
       await toggle.click();
 
-      expect(await countVisibleTerms()).toBe(5);
+      await expect.poll(countVisibleTerms).toBe(5);
     } finally {
       for (const term of relatedTerms) {
         await term.delete(apiContext);

@@ -1,0 +1,79 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyPublicationStatus.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyPublicationStatus",
+  "description": "Publication state of an ontology. The server derives it on read from the ontology state, its sealed releases and its working content. It is never stored and clients cannot set it.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyPublicationStatus",
+  "definitions": {
+    "stage": {
+      "description": "Stage of the latest sealed release. Draft and InReview mirror the release status. ChangesRequested is a rejected release. Approved is an approved release that is not active. Published is an approved release that is active.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.type.OntologyPublicationStage",
+      "enum": ["Draft", "InReview", "ChangesRequested", "Approved", "Published"]
+    },
+    "activeRelease": {
+      "description": "The release the ontology currently publishes.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyActiveRelease",
+      "properties": {
+        "releaseId": {
+          "$ref": "basic.json#/definitions/uuid"
+        },
+        "releaseRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "existingJavaType": "java.lang.Long"
+        },
+        "semanticVersion": {
+          "description": "Semantic version of the release. Absent on releases captured without a version bump.",
+          "type": "string"
+        },
+        "activatedAt": {
+          "description": "Time of the activation that made this release current.",
+          "$ref": "basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["releaseId", "releaseRevision"],
+      "additionalProperties": false
+    },
+    "latestRelease": {
+      "description": "The newest sealed release, whatever its stage.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyLatestRelease",
+      "properties": {
+        "releaseId": {
+          "$ref": "basic.json#/definitions/uuid"
+        },
+        "releaseRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "existingJavaType": "java.lang.Long"
+        },
+        "semanticVersion": {
+          "type": "string"
+        },
+        "stage": {
+          "$ref": "#/definitions/stage"
+        }
+      },
+      "required": ["releaseId", "releaseRevision", "stage"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "active": {
+      "$ref": "#/definitions/activeRelease"
+    },
+    "latest": {
+      "$ref": "#/definitions/latestRelease"
+    },
+    "unpublishedChanges": {
+      "description": "Number of rows that paging through GET /v1/ontologies/{id}/working/diff returns: added, changed and removed members of the working ontology against the active release. Without an active release, every working member counts as added.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": ["unpublishedChanges"],
+  "additionalProperties": false
+}

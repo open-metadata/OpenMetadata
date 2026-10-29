@@ -182,6 +182,11 @@ public abstract class OntologyEntityRepository<T extends OntologyDefinition>
     if (operation.isPut() && Boolean.TRUE.equals(original.getDeleted())) {
       useRestoredRevision(original);
     }
+    return newUpdater(original, updated, operation, source);
+  }
+
+  protected OntologyUpdater newUpdater(
+      final T original, final T updated, final Operation operation, final ChangeSource source) {
     return new OntologyUpdater(original, updated, operation, source);
   }
 

@@ -22,64 +22,7 @@
   width: 700px;
 }
 
-.form-item-horizontal {
-  .ant-form-item-row {
-    flex-direction: row;
-
-    .ant-form-item-label {
-      display: block;
-      flex: 0 0 40%;
-      max-width: 40%;
-      padding: 0;
-      align-self: center;
-    }
-
-    .ant-form-item-control {
-      display: block;
-      flex: 0 0 60%;
-      max-width: 60%;
-    }
-  }
-}
-
-.form-item-vertical {
-  .ant-form-item-row {
-    flex-direction: column;
-  }
-}
-
-// As per out design we need to show it on right side of the label
-// Hide the default required mark
-.ant-form-item-label
-  > label.ant-form-item-required:not(
-    .ant-form-item-required-mark-optional
-  )::before {
-  content: '';
-}
-
-// Move the required mark to the right side of the label
-.ant-form-item-label
-  > label.ant-form-item-required:not(
-    .ant-form-item-required-mark-optional
-  )::after {
-  display: inline-block;
-  margin-left: var(--om-space-4);
-  color: @red-14;
-  font-size: var(--om-font-size-sm);
-  line-height: 1;
-  content: '*';
-}
-
 .new-form-style {
-  .ant-input,
-  .ant-picker,
-  .ant-input-number,
-  .ant-mentions,
-  .ant-cascader-picker,
-  .ant-tree-select-selector,
-  .ant-upload.ant-upload-drag,
-  .ant-select:not(.ant-select-customize-input) .ant-select-selector,
-  .ant-btn.ant-btn-default:not(:hover),
   .block-editor-wrapper.block-editor-wrapper--bar-menu {
     border-color: @grey-300;
     border-radius: @border-rad-xs;
@@ -104,42 +47,11 @@
     }
   }
 
-  .ant-switch {
-    background-color: @grey-100;
-    border-color: @grey-100;
-  }
-
-  .ant-switch-checked {
-    background-color: @primary-6;
-  }
-
-  .ant-switch-checked .ant-switch-handle::before,
-  .ant-switch-handle::before {
-    background-color: var(--tw-color-bg-primary);
-  }
-
-  .form-switch-container .ant-typography,
   .form-switch-container > span,
-  .ant-form-item-label > label,
   .form-label-title {
     color: @grey-700;
     font-weight: @font-medium;
     font-size: @font-size-base;
-  }
-
-  // Right align Required label
-  .ant-form-item-label > label.ant-form-item-required::before {
-    display: none;
-  }
-
-  .ant-form-item-label > label.ant-form-item-required::after {
-    display: inline-block;
-    margin-left: var(--om-space-4);
-    color: @highlight-color;
-    font-size: var(--om-font-size-sm);
-    font-family: SimSun, sans-serif;
-    line-height: 1;
-    content: '*';
   }
 
   .block-editor-wrapper {

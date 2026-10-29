@@ -16,6 +16,7 @@ import {
   SKIP_DOMAIN_FILTER_HEADER,
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
+import type { DataQualityReportBatchRequest } from '../generated/tests/dataQualityReportBatchRequest';
 import { isProductTourRunning } from '../hooks/product-tour/useProductTourStore';
 import { useDomainStore } from '../hooks/useDomainStore';
 import {
@@ -88,44 +89,73 @@ const isUnscopedSearch = (index?: string | string[]) => {
   );
 };
 
+/**
+ * The navbar domain a request should be scoped to, or `undefined` when none is
+ * selected or scoping is off (product tour, domain pages, auth calls).
+ */
+const getRequestDomain = (): string | undefined => {
+  const { activeDomain } = useDomainStore.getState();
+  const currentPath = getPathNameFromWindowLocation();
+  // A product tour shows every user the same recorded pages, whatever domain
+  // they have selected. Off while the tour is recorded too, so the recorded
+  // requests are the ones the tour sends.
+  const isUnscopedPage =
+    isProductTourRunning() ||
+    ['/domain', '/auth/logout', '/auth/refresh'].some((path) =>
+      currentPath.startsWith(path)
+    );
+
+  return activeDomain === DEFAULT_DOMAIN_VALUE || isUnscopedPage
+    ? undefined
+    : activeDomain;
+};
+
+// The Data Quality dashboard batches its reports into one POST, so each item
+// is scoped here the way a GET would be, unless the page scoped it itself.
+const DQ_REPORT_BATCH_PATH = '/dataQualityReport/batch';
+
+const withDomainOnReportBatch = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  const body = config.data as DataQualityReportBatchRequest | undefined;
+  if (body?.requests) {
+    config.data = {
+      ...body,
+      requests: body.requests.map((request) => ({
+        ...request,
+        domain: request.domain || activeDomain,
+      })),
+    };
+  }
+
+  return config;
+};
+
 export const withDomainFilter = (
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig => {
-  const isGetRequest = config.method === 'get';
-  const activeDomain = useDomainStore.getState().activeDomain;
-  const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
-  const currentPath = getPathNameFromWindowLocation();
-
   if (config.headers?.[SKIP_DOMAIN_FILTER_HEADER]) {
     delete config.headers[SKIP_DOMAIN_FILTER_HEADER];
 
     return config;
   }
 
-  // A product tour shows every user the same recorded pages, whatever domain
-  // they have selected. Off while the tour is recorded too, so the recorded
-  // requests are the ones the tour sends.
-  if (isProductTourRunning()) {
-    return config;
-  }
+  const activeDomain = getRequestDomain();
 
-  const shouldNotIntercept = [
-    '/domain',
-    '/auth/logout',
-    '/auth/refresh',
-  ].reduce((prev, curr) => {
-    return prev || currentPath.startsWith(curr);
-  }, false);
-
-  if (shouldNotIntercept) {
-    return config;
+  if (
+    activeDomain &&
+    config.method === 'post' &&
+    config.url?.includes(DQ_REPORT_BATCH_PATH)
+  ) {
+    return withDomainOnReportBatch(config, activeDomain);
   }
 
   if (isUnscopedList(config.url)) {
     return config;
   }
 
-  if (isGetRequest && hasActiveDomain) {
+  if (config.method === 'get' && activeDomain) {
     if (config.url?.includes('/search/query')) {
       if (isUnscopedSearch(config.params?.index)) {
         return config;

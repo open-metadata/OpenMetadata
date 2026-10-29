@@ -54,6 +54,8 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.TaskReviewVote;
+import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -352,6 +354,26 @@ public class TaskWorkflowHandler {
               comment),
           namespacedVariables);
     }
+    final TaskReviewVoteDecision voteDecision =
+        TaskReviewVotes.decisionForResult(variables.get(RESULT_VARIABLE));
+    final String voteProcessId;
+    if (namespacedVariables != null
+        && voteDecision != null
+        && workflowHandler.hasMultiApprovalSupport(taskId)) {
+      voteProcessId = workflowHandler.approvalTaskContext(taskId).processInstanceId();
+      namespacedVariables.put(
+          TaskReviewVotes.variable(taskId),
+          JsonUtils.pojoToJson(
+              List.of(
+                  TaskReviewVotes.vote(
+                      task,
+                      Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED),
+                      voteDecision,
+                      comment,
+                      System.currentTimeMillis()))));
+    } else {
+      voteProcessId = null;
+    }
     TaskResolutionOutcome ontologyOutcome =
         ontologyReview && namespacedVariables != null
             ? workflowHandler.resolveTaskOutcome(taskId, namespacedVariables)
@@ -397,12 +419,37 @@ public class TaskWorkflowHandler {
             "[TaskWorkflowHandler] No active Flowable runtime task found for '{}'; applying direct task resolution fallback",
             taskId);
         return applyTaskResolution(
-            task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
+            task,
+            resolutionType,
+            selectedTransition,
+            newValue,
+            resolvedPayload,
+            comment,
+            user,
+            null);
       }
       throw TaskStateConflictException.of(
           String.format(
               "Workflow resolution failed for task '%s' on transition '%s'",
               taskId, transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
+    }
+
+    final boolean waitingForVotes =
+        resolutionType != null
+            && (ontologyReview
+                ? ontologyOutcome == TaskResolutionOutcome.WAITING_FOR_VOTES
+                : workflowHandler.isAwaitingAdditionalVotes(taskId));
+    if (waitingForVotes) {
+      LOG.info("[TaskWorkflowHandler] Task '{}' still open, waiting for more approvals", taskId);
+      persistEditedWorkflowPayload(task, resolvedPayload, newValue, user);
+    }
+    final List<TaskReviewVote> recordedVotes =
+        voteProcessId == null ? null : workflowHandler.recordedReviewVotes(voteProcessId, taskId);
+    if (recordedVotes != null
+        && (waitingForVotes
+            || resolutionType == null
+            || ontologyOutcome == TaskResolutionOutcome.STAGE_ADVANCED)) {
+      taskRepository.recordReviewVotes(taskId, recordedVotes, user);
     }
 
     // Non-terminal transition: the next stage's CreateTask already updated the Task
@@ -418,13 +465,7 @@ public class TaskWorkflowHandler {
       return refreshTask(taskId);
     }
 
-    // Check if multi-approval task is still waiting for more votes
-    if (ontologyReview
-        ? ontologyOutcome == TaskResolutionOutcome.WAITING_FOR_VOTES
-        : workflowHandler.isAwaitingAdditionalVotes(taskId)) {
-      LOG.info("[TaskWorkflowHandler] Task '{}' still open, waiting for more approvals", taskId);
-      persistEditedWorkflowPayload(task, resolvedPayload, newValue, user);
-      updateTaskVotes(task, user, isPositiveResolution(resolutionType));
+    if (waitingForVotes) {
       return refreshTask(taskId);
     }
 
@@ -434,7 +475,14 @@ public class TaskWorkflowHandler {
       return refreshTask(taskId);
     }
     return applyTaskResolution(
-        task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
+        task,
+        resolutionType,
+        selectedTransition,
+        newValue,
+        resolvedPayload,
+        comment,
+        user,
+        recordedVotes);
   }
 
   private static boolean isRejection(
@@ -537,7 +585,7 @@ public class TaskWorkflowHandler {
       String comment,
       String user) {
     return applyTaskResolution(
-        task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
+        task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user, null);
   }
 
   /**
@@ -550,7 +598,8 @@ public class TaskWorkflowHandler {
       String newValue,
       Object resolvedPayload,
       String comment,
-      String user) {
+      String user,
+      List<TaskReviewVote> reviewVotes) {
     UUID taskId = task.getId();
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     boolean approved = isPositiveResolution(resolutionType);
@@ -598,7 +647,7 @@ public class TaskWorkflowHandler {
             .withComment(comment)
             .withPayload(resolvedPayload);
 
-    task = taskRepository.resolveTask(task, resolution, selectedTransition, user);
+    task = taskRepository.resolveTask(task, resolution, selectedTransition, user, reviewVotes);
 
     LOG.info(
         "[TaskWorkflowHandler] Task '{}' resolved: status={}, resolution={}",
@@ -1429,19 +1478,6 @@ public class TaskWorkflowHandler {
     }
 
     return JsonUtils.convertValue(node, Object.class);
-  }
-
-  /**
-   * Update task to reflect that a user has voted (for multi-approval tasks).
-   */
-  private void updateTaskVotes(Task task, String user, boolean approved) {
-    // This updates metadata to track who has voted
-    // The actual vote tracking is in Flowable variables
-    LOG.debug(
-        "[TaskWorkflowHandler] User '{}' voted {} on task '{}'",
-        user,
-        approved ? "approve" : "reject",
-        task.getId());
   }
 
   /**
