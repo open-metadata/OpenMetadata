@@ -70,7 +70,9 @@ const DataAssetsTab = () => {
   ]);
 
   useEffect(() => {
-    !kpi.isLoading && fetchTotalAssets();
+    if (!kpi.isLoading) {
+      void fetchTotalAssets();
+    }
   }, [fetchTotalAssets, kpi.isLoading]);
 
   if (kpi.isLoading) {

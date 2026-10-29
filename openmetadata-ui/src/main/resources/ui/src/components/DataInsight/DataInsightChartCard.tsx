@@ -556,7 +556,9 @@ export const DataInsightChartCard = ({
   };
 
   useEffect(() => {
-    !kpi.isLoading && !isTotalAssetsChart && fetchData();
+    if (!kpi.isLoading && !isTotalAssetsChart) {
+      void fetchData();
+    }
   }, [fetchData, kpi.isLoading, isTotalAssetsChart]);
 
   const rightSidePanelLabel = useMemo(() => {
@@ -635,9 +637,7 @@ export const DataInsightChartCard = ({
           {isLoading ? (
             <SkeletonParagraph rows={4} />
           ) : (
-            <>
-              <EmptyGraphPlaceholder />
-            </>
+            <EmptyGraphPlaceholder />
           )}
         </Card.Content>
       </Card>
