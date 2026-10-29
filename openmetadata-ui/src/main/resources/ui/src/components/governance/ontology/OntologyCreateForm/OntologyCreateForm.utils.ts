@@ -48,8 +48,8 @@ export const ontologyFormValues = (
   iri: ontology?.iri ?? '',
   namespace: ontology?.namespace ?? '',
   layer: {
-    id: ontology?.layer ?? Layer.L1,
-    label: ontology?.layer ?? Layer.L1,
+    id: ontology?.layer ?? Layer.L3,
+    label: ontology?.layer ?? Layer.L3,
   },
   owners: (ontology?.owners ?? []).map(toEntityReferenceOption),
   reviewers: (ontology?.reviewers ?? []).map(toEntityReferenceOption),
@@ -71,6 +71,50 @@ export const ontologyRequest = (
   ),
   reviewers: toEntityReferences(values.reviewers),
 });
+
+const USER_NAMESPACE_SEGMENT = 'onto';
+const PREFIX_LENGTH = 8;
+const PREFIX_FALLBACK = 'onto';
+const PREFIX_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9._-]*$/;
+
+export const derivePrefix = (name: string): string =>
+  name
+    .toLowerCase()
+    .replaceAll(/[^a-z]/g, '')
+    .slice(0, PREFIX_LENGTH) || PREFIX_FALLBACK;
+
+export const isValidPrefix = (prefix: string): boolean =>
+  PREFIX_PATTERN.test(prefix);
+
+export const ontologyIris = (baseUri: string, prefix: string) => {
+  const iri = `${baseUri.replace(
+    /\/+$/,
+    ''
+  )}/${USER_NAMESPACE_SEGMENT}/${prefix}`;
+
+  return { iri, namespace: `${iri}#` };
+};
+
+interface NewOntologyDraft {
+  readonly name: string;
+  readonly description: string;
+  readonly baseUri: string;
+  readonly prefix: string;
+}
+
+export const newOntologyRequest = (
+  { name, description, baseUri, prefix }: NewOntologyDraft,
+  currentUserId?: string
+): CreateOntology =>
+  ontologyRequest(
+    {
+      ...ontologyFormValues(),
+      name,
+      description,
+      ...ontologyIris(baseUri, prefix),
+    },
+    currentUserId
+  );
 
 export const ontologyPatch = (
   ontology: Ontology,

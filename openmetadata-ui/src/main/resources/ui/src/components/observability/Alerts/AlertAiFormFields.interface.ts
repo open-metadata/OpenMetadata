@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { SelectItemType } from '@openmetadata/ui-core-components';
+import {
+  FieldDocPopoverVariant,
+  SelectItemType,
+} from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { InlineAlertProps } from '../../../components/common/InlineAlert/InlineAlert.interface';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -74,6 +77,7 @@ interface AlertAiFormBaseProps
     'isViewOnly' | 'onChange' | 'showBasicFields' | 'value'
   > {
   fieldDocDisplay?: 'popover' | 'panel';
+  fieldDocVariant?: FieldDocPopoverVariant;
   formId?: string;
   showHint?: boolean;
 }

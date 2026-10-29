@@ -21,7 +21,7 @@ import { Fragment, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
-import { createOntology, patchOntology } from '../../../../rest/ontologyAPI';
+import { patchOntology } from '../../../../rest/ontologyAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import {
@@ -29,20 +29,17 @@ import {
   ontologyFormValues,
   OntologyFormValues,
   ontologyPatch,
-  ontologyRequest,
 } from './OntologyCreateForm.utils';
 
 interface OntologyCreateFormProps {
-  canCreate: boolean;
-  ontology?: Ontology;
-  currentUserId?: string;
+  canEdit: boolean;
+  ontology: Ontology;
   onSaved: (ontology: Ontology) => void;
 }
 
 const OntologyCreateForm = ({
-  canCreate,
+  canEdit,
   ontology,
-  currentUserId,
   onSaved,
 }: OntologyCreateFormProps) => {
   const { t } = useTranslation();
@@ -53,15 +50,13 @@ const OntologyCreateForm = ({
   });
   const [isSaving, setIsSaving] = useState(false);
   const save = async (values: OntologyFormValues) => {
-    if (!canCreate) {
+    if (!canEdit) {
       return;
     }
     setIsSaving(true);
     try {
       onSaved(
-        ontology
-          ? await patchOntology(ontology.id, ontologyPatch(ontology, values))
-          : await createOntology(ontologyRequest(values, currentUserId))
+        await patchOntology(ontology.id, ontologyPatch(ontology, values))
       );
     } catch (error) {
       showErrorToast(
@@ -82,12 +77,12 @@ const OntologyCreateForm = ({
           t,
           owners,
           reviewers,
-          !canCreate || isSaving,
-          Boolean(ontology)
+          !canEdit || isSaving,
+          true
         ).map((field) => (
           <Fragment key={field.name}>{getField(field)}</Fragment>
         ))}
-        <Button isDisabled={!canCreate} isLoading={isSaving} type="submit">
+        <Button isDisabled={!canEdit} isLoading={isSaving} type="submit">
           {t('label.save')}
         </Button>
       </Box>

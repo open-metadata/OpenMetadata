@@ -137,11 +137,12 @@ public final class OntologyUnpublishedChanges {
       workingDefinitions(source.kind(), List.copyOf(ids))
           .forEach(definition -> current.put(definition.getId(), definition));
       for (final OntologyReleaseMember member :
-          EntityDAO.queryInChunks(
+          OntologyReleaseMemberQuery.run(
+              releaseIds,
               ids.stream().map(UUID::toString).toList(),
-              chunk ->
+              (releases, members) ->
                   dao.ontologyReleaseDAO()
-                      .listMemberPayloads(releaseIds, source.kind().value(), chunk))) {
+                      .listMemberPayloads(releases, source.kind().value(), members))) {
         final OntologyDefinition now = current.get(member.getMemberId());
         final UUID owner = staleOwner.get(member.getMemberId());
         if (now != null

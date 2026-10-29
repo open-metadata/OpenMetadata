@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -21,6 +21,7 @@ import {
   fillDescriptionBox,
   uuid,
 } from '../../../utils/common';
+import { setupTestCaseWithFailedRows } from '../../../utils/testCases';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { test } from '../../fixtures/pages';
 import {
@@ -59,15 +60,21 @@ test.describe(
         tableFqn = fqn;
         const testCase = await table.createTestCase(apiContext);
         testCaseFqn = testCase.fullyQualifiedName;
-        initialQuery = `SELECT * FROM test_table /* ${uuid()} */`;
+        initialQuery = `SELECT * FROM test_table /* ${uuid()} */\nLIMIT 50;`;
+        // The endpoint stores the body verbatim, so send the raw SQL as ingestion
+        // and the SDK do. A string `data` with a JSON content type is
+        // JSON-encoded by Playwright and would persist the surrounding quotes.
         const response = await apiContext.put(
           `/api/v1/dataQuality/testCases/${testCase.id}/inspectionQuery`,
           {
-            data: JSON.stringify(initialQuery),
+            data: Buffer.from(initialQuery),
             headers: { 'Content-Type': 'application/json' },
           }
         );
         expect(response.status()).toBe(200);
+        // "Explore with query" lives on the failed rows sample, which only
+        // renders for a failed run that stored one.
+        await setupTestCaseWithFailedRows(apiContext, table);
       } finally {
         await afterAction();
       }
@@ -88,15 +95,42 @@ test.describe(
       }
     });
 
-    test.beforeEach(async ({ page }) => {
+    // The whole editor text, so a quoted or JSON-encoded query (literal "\n")
+    // fails instead of still containing the query. innerText keeps the line
+    // breaks between CodeMirror's line elements; textContent joins them.
+    const expectInspectionQuery = async (page: Page) =>
+      expect(
+        page.getByTestId('code-mirror-container').getByRole('textbox')
+      ).toHaveText(initialQuery, { useInnerText: true });
+
+    const openTestCase = async (page: Page, tab: string) => {
       await disableAiAppMode(page);
       await stubUserPreferencesAppMode(page, 'classic');
-      await page.goto(
-        `/test-case/${encodeURIComponent(testCaseFqn)}/sql-query`,
-        {
-          waitUntil: 'domcontentloaded',
-        }
-      );
+      await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}/${tab}`, {
+        waitUntil: 'domcontentloaded',
+      });
+    };
+
+    test('shows the inspection query to a user who cannot create queries, without Add to table', async ({
+      dataConsumerPage,
+    }) => {
+      await openTestCase(dataConsumerPage, 'sql-query');
+
+      await expectInspectionQuery(dataConsumerPage);
+      await expect(
+        dataConsumerPage.getByTestId('add-to-table-button')
+      ).toHaveCount(0);
+    });
+
+    test('opens the SQL Query tab from Explore with query on the failed rows sample', async ({
+      page,
+    }) => {
+      await openTestCase(page, 'test-case-results');
+
+      await page.getByTestId('explore-with-query').click();
+
+      await expect(page).toHaveURL(/\/sql-query$/);
+      await expectInspectionQuery(page);
       await expect(page.getByTestId('add-to-table-button')).toBeVisible();
     });
 
@@ -108,13 +142,16 @@ test.describe(
       const editor = dialog
         .getByTestId('sql-editor-container')
         .getByRole('textbox');
-      const editedQuery = `${initialQuery}\nWHERE id > 0`;
+      const editMarker = `edited ${uuid()}`;
+      const editedQuery = `${initialQuery}\n-- ${editMarker}`;
       const description = 'Inspection query saved from the incident';
 
       await test.step('Show the inspection query and reject an empty query', async () => {
+        await openTestCase(page, 'sql-query');
+        await expectInspectionQuery(page);
         await page.getByTestId('add-to-table-button').click();
         await expect(dialog).toBeVisible();
-        await expect(editor).toContainText(initialQuery);
+        await expect(editor).toHaveText(initialQuery, { useInnerText: true });
         await expect(dialog.getByTestId('table')).toBeDisabled();
         await expect(dialog.getByTestId('table')).toHaveValue(tableFqn);
         await editor.fill('');
@@ -164,6 +201,24 @@ test.describe(
         } finally {
           await afterAction();
         }
+      });
+
+      await test.step('Show the saved query on the table Queries tab', async () => {
+        const queryCard = page
+          .getByTestId('query-card')
+          .filter({ hasText: editMarker });
+        // The tab lists queries from the search index, which picks up the
+        // new query shortly after the save; reload until it does.
+        await expect(async () => {
+          await page.goto(
+            `/table/${encodeURIComponent(tableFqn)}/table_queries`,
+            { waitUntil: 'domcontentloaded' }
+          );
+          await expect(queryCard).toBeVisible({ timeout: 5_000 });
+        }).toPass({ timeout: 30_000 });
+        await expect(
+          queryCard.getByTestId('code-mirror-container').getByRole('textbox')
+        ).toHaveText(editedQuery, { useInnerText: true });
       });
     });
   }

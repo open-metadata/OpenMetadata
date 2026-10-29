@@ -121,6 +121,30 @@ describe('InboxTaskListItem', () => {
     expect(screen.getByText('2')).toBeInTheDocument();
   });
 
+  it('names the agent that proposed the term instead of its bot', () => {
+    render(
+      <InboxTaskListItem
+        task={
+          {
+            ...task,
+            createdBy: { id: 'bot', name: 'aiautomationapplicationbot' },
+            payload: {
+              proposal: { provider: 'automation', agent: 'Glossary Agent' },
+            },
+          } as unknown as Task
+        }
+        onClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('agent-badge')).toHaveTextContent(
+      'Glossary Agent'
+    );
+    expect(
+      screen.queryByText('aiautomationapplicationbot')
+    ).not.toBeInTheDocument();
+  });
+
   // The type is carried by the list's group header, so repeating it on every
   // card would be noise.
   it('does not repeat the task type on the card', () => {

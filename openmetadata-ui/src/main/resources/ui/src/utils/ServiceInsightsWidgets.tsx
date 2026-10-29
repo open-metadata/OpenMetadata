@@ -21,7 +21,12 @@ import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-saf
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import type { AgentsStatusWidgetProps } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
-import type { PlatformInsightsWidgetProps } from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget.interface';
+import type {
+  ChartData,
+  ChartSeriesData,
+  PlatformInsightsWidgetProps,
+} from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget.interface';
+import type { ServiceInsightWidgetCommonProps } from '../components/ServiceInsights/ServiceInsightsTab.interface';
 import type { TotalAssetsWidgetProps } from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget.interface';
 import type { MetadataAgentsWidgetProps } from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget.interface';
 import { SystemChartType } from '../enums/DataInsight.enum';
@@ -250,7 +255,20 @@ export const getDefaultAgentsTabWidgets = (): Record<
   MetadataAgentsWidget,
 });
 
+type OptionalInsightsWidget = React.ComponentType<
+  ServiceInsightWidgetCommonProps & {
+    chartsData: ChartData[] | ChartSeriesData[];
+    isLoading: boolean;
+  }
+>;
+
 export const getDefaultInsightsTabWidgets = (): {
+  CollateAIWidget?: OptionalInsightsWidget;
+  PIIDistributionWidget?: OptionalInsightsWidget;
+  TierDistributionWidget?: OptionalInsightsWidget;
+  MostUsedAssetsWidget?: OptionalInsightsWidget;
+  MostExpensiveQueriesWidget?: OptionalInsightsWidget;
+  DataQualityWidget?: OptionalInsightsWidget;
   AgentsStatusWidget: React.ComponentType<AgentsStatusWidgetProps>;
   PlatformInsightsWidget: React.ComponentType<PlatformInsightsWidgetProps>;
   TotalDataAssetsWidget: React.ComponentType<TotalAssetsWidgetProps>;

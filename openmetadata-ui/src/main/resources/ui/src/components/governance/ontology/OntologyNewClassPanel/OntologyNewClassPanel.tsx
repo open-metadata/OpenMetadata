@@ -103,14 +103,12 @@ const OntologyNewClassPanel = ({
   const trigger = useRef(document.activeElement);
   const labelInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
+    const opener = trigger.current;
     labelInput.current?.focus();
 
     return () => {
-      if (
-        trigger.current instanceof HTMLElement &&
-        trigger.current.isConnected
-      ) {
-        trigger.current.focus();
+      if (opener instanceof HTMLElement && opener.isConnected) {
+        opener.focus();
       }
     };
   }, []);

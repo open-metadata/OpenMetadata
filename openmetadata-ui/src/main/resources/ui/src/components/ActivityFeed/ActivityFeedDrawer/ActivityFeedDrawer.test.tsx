@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import ActivityFeedDrawer from './ActivityFeedDrawer';
 
 const mockHideDrawer = jest.fn();
@@ -62,13 +63,13 @@ describe('ActivityFeedDrawer', () => {
   it('renders nothing without a selected thread, task or activity', () => {
     mockProvider.mockReturnValue({ hideDrawer: mockHideDrawer });
 
-    render(<ActivityFeedDrawer open />);
+    render(<ActivityFeedDrawer open />, { wrapper: MemoryRouter });
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('renders the thread header and body in the drawer panel', () => {
-    render(<ActivityFeedDrawer open />);
+    render(<ActivityFeedDrawer open />, { wrapper: MemoryRouter });
 
     const dialog = screen.getByRole('dialog');
 
@@ -85,7 +86,7 @@ describe('ActivityFeedDrawer', () => {
       selectedActivity: { id: 'activity-1' },
     });
 
-    render(<ActivityFeedDrawer open />);
+    render(<ActivityFeedDrawer open />, { wrapper: MemoryRouter });
 
     expect(screen.getByTestId('activity-panel-header')).toBeInTheDocument();
     expect(screen.getByTestId('activity-panel-body')).toBeInTheDocument();
@@ -97,14 +98,14 @@ describe('ActivityFeedDrawer', () => {
       selectedTask: { id: 'task-1', about: { type: 'table' } },
     });
 
-    render(<ActivityFeedDrawer open />);
+    render(<ActivityFeedDrawer open />, { wrapper: MemoryRouter });
 
     expect(screen.getByTestId('task-panel-header')).toBeInTheDocument();
     expect(await screen.findByTestId('task-tab')).toBeInTheDocument();
   });
 
   it('hides the drawer on Escape', () => {
-    render(<ActivityFeedDrawer open />);
+    render(<ActivityFeedDrawer open />, { wrapper: MemoryRouter });
 
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
 
@@ -112,7 +113,7 @@ describe('ActivityFeedDrawer', () => {
   });
 
   it('hides the drawer from the header close action', () => {
-    render(<ActivityFeedDrawer open />);
+    render(<ActivityFeedDrawer open />, { wrapper: MemoryRouter });
 
     fireEvent.click(screen.getByTestId('closeDrawer'));
 

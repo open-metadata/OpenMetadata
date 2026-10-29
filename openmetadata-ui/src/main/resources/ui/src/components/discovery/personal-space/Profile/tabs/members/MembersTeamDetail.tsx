@@ -1188,7 +1188,24 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     if (activePluginTab) {
       const PluginTabComponent = activePluginTab.component;
 
-      return <PluginTabComponent teamId={team.id} />;
+      // Lets the tab promote one of its own routes to a panel-level sub-page,
+      // which replaces this team detail rather than nesting inside the tab.
+      return (
+        <PluginTabComponent
+          teamId={team.id}
+          onNavigate={(subPath?: string) =>
+            subPath
+              ? onNavigate({
+                  type: 'team-tab-subpage',
+                  fqn: team.fullyQualifiedName ?? fqn,
+                  teamId: team.id,
+                  key: activePluginTab.key,
+                  subPath,
+                })
+              : undefined
+          }
+        />
+      );
     }
 
     if (activeTab === CUSTOM_PROPERTIES) {
@@ -1196,6 +1213,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         <CustomPropertiesList
           canEdit={Boolean(canEditCustomFields) && !team.deleted}
           canView={Boolean(canViewCustomFields)}
+          cardVariant="default"
           entityType={EntityType.TEAM}
           extension={team.extension as Record<string, unknown> | undefined}
           onUpdate={handleTeamExtensionUpdate}
@@ -1369,7 +1387,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         <div className="tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-y-auto tw:py-4">
           <TableCard.Root
             className="tw:rounded-xl tw:shadow-none"
-            size="compact">
+            size="compact"
+            variant="muted">
             <Tabs
               selectedKey={activeTab}
               onSelectionChange={(key: Key) => {
