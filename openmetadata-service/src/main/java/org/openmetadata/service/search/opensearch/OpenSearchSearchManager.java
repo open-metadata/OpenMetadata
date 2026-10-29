@@ -82,6 +82,7 @@ import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import os.org.opensearch.client.json.JsonData;
@@ -1215,6 +1216,10 @@ public class OpenSearchSearchManager implements SearchManagementClient {
    */
   static String rbacCacheKey(SubjectContext subjectContext) {
     return ServiceAttributeResolver.generation()
+        + ":"
+        // A policy-rule or role-policy edit leaves the ids below unchanged, so without this the
+        // compiled query would be served stale until the TTL; it bumps on every policy-cache drop.
+        + SubjectCache.policyGeneration()
         + ":"
         + subjectContext.user().getId()
         + ":"
