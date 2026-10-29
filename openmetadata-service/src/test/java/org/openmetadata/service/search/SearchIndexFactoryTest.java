@@ -225,6 +225,7 @@ class SearchIndexFactoryTest {
     assertEquals(Set.of("metricCount"), factory.getFieldsLoadedOnWriteFor(Entity.METRIC_GROUP));
     assertEquals(Set.of("userCount"), factory.getFieldsLoadedOnWriteFor(Entity.TEAM));
     assertEquals(Set.of("childrenCount"), factory.getFieldsLoadedOnWriteFor(Entity.FOLDER));
+    assertEquals(Set.of("childrenCount"), factory.getFieldsLoadedOnWriteFor(Entity.GLOSSARY_TERM));
   }
 
   // --- per-index reindex-field contract guards ------------------------------------
@@ -279,7 +280,7 @@ class SearchIndexFactoryTest {
 
   @Test
   void glossaryTermReindexFieldsIncludeRelatedTerms() {
-    assertReindexFields(Entity.GLOSSARY_TERM, "relatedTerms");
+    assertReindexFields(Entity.GLOSSARY_TERM, "relatedTerms", "childrenCount");
   }
 
   @Test
