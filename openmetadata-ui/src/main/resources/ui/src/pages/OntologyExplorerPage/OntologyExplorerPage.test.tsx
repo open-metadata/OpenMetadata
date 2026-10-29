@@ -501,7 +501,8 @@ describe('OntologyExplorerPage', () => {
 
   const renderNativeStudio = (
     search: string,
-    conceptNames = ['Party', 'Customer']
+    conceptNames = ['Party', 'Customer'],
+    ontologies = [nativeOntology]
   ) => {
     (usePermissionProvider as jest.Mock).mockReturnValue({
       permissions: {
@@ -524,8 +525,8 @@ describe('OntologyExplorerPage', () => {
       paging: { total: 0 },
     });
     (listOntologies as jest.Mock).mockResolvedValue({
-      data: [nativeOntology],
-      paging: { total: 1 },
+      data: ontologies,
+      paging: { total: ontologies.length },
     });
     mockUseOntologyStudioScopes.mockReturnValue({
       glossaries: [],
@@ -534,21 +535,33 @@ describe('OntologyExplorerPage', () => {
       isOntologyError: false,
       isOntologyLoading: false,
       refetchOntologies: jest.fn(),
-      ontologies: [nativeOntology],
+      ontologies,
       refetch: jest.fn(),
     });
-    (listOntologyConcepts as jest.Mock).mockResolvedValue({
-      data: conceptNames.map((name) => ({
-        id: name,
-        name,
-        iri: `urn:${name}`,
-        fullyQualifiedName: `NativeSales.${name}`,
-        ontology: { id: nativeOntology.id, type: 'ontology' },
-        conceptType: OntologyConceptType.OwlClass,
-        superClasses: name === 'Customer' ? ['urn:Party'] : [],
-      })),
-      paging: { total: conceptNames.length },
-    });
+    (listOntologyConcepts as jest.Mock).mockImplementation(
+      async ({ ontology }: { ontology?: string }) => {
+        const owner =
+          ontologies.find((item) => item.fullyQualifiedName === ontology) ??
+          nativeOntology;
+        const names =
+          owner.id === nativeOntology.id
+            ? conceptNames
+            : [`${owner.fullyQualifiedName}Concept`];
+
+        return {
+          data: names.map((name) => ({
+            id: name,
+            name,
+            iri: `urn:${name}`,
+            fullyQualifiedName: `${owner.fullyQualifiedName}.${name}`,
+            ontology: { id: owner.id, type: 'ontology' },
+            conceptType: OntologyConceptType.OwlClass,
+            superClasses: name === 'Customer' ? ['urn:Party'] : [],
+          })),
+          paging: { total: names.length },
+        };
+      }
+    );
     (listOntologyProperties as jest.Mock).mockResolvedValue({
       data: [],
       paging: { total: 0 },
@@ -1808,7 +1821,18 @@ describe('OntologyExplorerPage', () => {
         ],
       })
     );
-    renderNativeStudio('?concept=Customer&source=review');
+    const financeOntology: Ontology = {
+      ...nativeOntology,
+      id: 'native-finance',
+      name: 'Native finance',
+      fullyQualifiedName: 'NativeFinance',
+      iri: 'urn:NativeFinance',
+      namespace: 'urn:NativeFinance:',
+    };
+    renderNativeStudio('?concept=Customer&source=review', undefined, [
+      financeOntology,
+      nativeOntology,
+    ]);
     await screen.findByTestId('ontology-concept-inspector');
     fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
 
