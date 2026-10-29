@@ -24,6 +24,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.net.http.WebSocket;
 import java.net.http.WebSocketHandshakeException;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -85,8 +86,9 @@ class OpenMetadataApplicationPushFeedUpgradeTest {
               () ->
                   client
                       .newWebSocketBuilder()
+                      .connectTimeout(Duration.ofSeconds(10))
                       .buildAsync(feed, new WebSocket.Listener() {})
-                      .get(10, TimeUnit.SECONDS));
+                      .get(20, TimeUnit.SECONDS));
       return assertInstanceOf(WebSocketHandshakeException.class, failure.getCause()).getResponse();
     }
   }

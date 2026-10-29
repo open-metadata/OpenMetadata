@@ -4,9 +4,9 @@
 - **Revisions:** v1 2026-10-25 (initial)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** `CredentialVerifierTest`, `CheckDecisionTest`, `VerifiedCredentialsTest`,
-  `CredentialsTest`, `OmCredentialTest`, `JwtFilterTest`, `MintedTokensAreRecognizedTest`;
-  `CredentialRevocationTwoProcessIT`, `CredentialDatabaseOutageIT`, `RevokeWaitForPropagationIT`,
-  `UserResourceIT`
+  `CredentialsTest`, `OmCredentialTest`, `JwtFilterTest`, `MintedTokensAreRecognizedTest`,
+  `OpenMetadataApplicationPushFeedUpgradeTest`; `CredentialRevocationTwoProcessIT`,
+  `CredentialDatabaseOutageIT`, `RevokeWaitForPropagationIT`, `UserResourceIT`
 - **Related:** ADR:2026-10-14-cache-misses-that-do-io-load-outside-the-cache-lock,
   ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server,
   ADR:2026-10-23-every-jetty-request-clears-per-request-thread-state
