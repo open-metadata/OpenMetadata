@@ -159,14 +159,15 @@ const waitForInheritedReviewer = async (
     .toBe(true);
 };
 
-// DEBUG (do not merge): run the pair 3 times with no retries, so a flake fails the shard job
+// DEBUG (do not merge): run the pair 3 times, serially (:240 right after :166 cleanup, as in the
+// merge-queue failures), with no retries, so a flake fails the shard job
 // and CI uploads the server log with the WFDBG lines.
 for (const run of [1, 2, 3]) {
   test.describe(
     `Glossary Approval - inherited reviewers (run ${run})`,
     { tag: ['@Features', '@Governance'] },
     () => {
-      test.describe.configure({ retries: 0 });
+      test.describe.configure({ mode: 'serial', retries: 0 });
 
       test('term inherits reviewer added to the glossary after an earlier term ran the workflow', async ({
         browser,
