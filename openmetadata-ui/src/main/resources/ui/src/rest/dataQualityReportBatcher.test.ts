@@ -73,7 +73,12 @@ describe('dataQualityReportBatcher', () => {
 
     expect(mockGetDataQualityReportBatch).toHaveBeenCalledWith({
       requests: [
-        { index: 'table', aggregationQuery: 'agg1', domain: 'Finance', key: '0' },
+        {
+          index: 'table',
+          aggregationQuery: 'agg1',
+          domain: 'Finance',
+          key: '0',
+        },
         {
           index: 'table',
           aggregationQuery: 'agg2',

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
-import { getRequestDomain } from '../hoc/withDomainFilter';
 import { DataQualityReportRequest } from '../generated/tests/dataQualityReportBatchRequest';
+import { getRequestDomain } from '../hoc/withDomainFilter';
 import {
   DataQualityReportParamsType,
   getDataQualityReportBatch,
