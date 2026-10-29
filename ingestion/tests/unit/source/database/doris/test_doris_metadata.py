@@ -87,6 +87,25 @@ class TestGetColumnChildren:
         latitude = next(c for c in column["children"] if c["name"] == "latitude")
         assert latitude["dataType"] == DataType.DOUBLE.value
 
+    def test_v2_and_largeint_struct_fields_keep_type(self):
+        # Must match the types the pre-parser connector code produced, or the server
+        # re-adds every existing child (columnMatch includes dataType) and drops its
+        # custom properties.
+        column = _get_column(0, "c", "struct<a:datev2,b:datetimev2(3),c:largeint,d:decimalv3(10,2)>", "YES", None, "")
+        assert [child["dataType"] for child in column["children"]] == [
+            DataType.DATE.value,
+            DataType.DATETIME.value,
+            DataType.LARGEINT.value,
+            DataType.DECIMAL.value,
+        ]
+
+    def test_v2_and_largeint_array_struct_fields_keep_type(self):
+        column = _get_column(0, "c", "array<struct<a:datev2,b:largeint>>", "YES", None, "")
+        assert [child["dataType"] for child in column["children"]] == [
+            DataType.DATE.value,
+            DataType.LARGEINT.value,
+        ]
+
     def test_primitive_column_has_no_children(self):
         column = _get_column(0, "collision_id", "bigint", "NO", None, "")
         assert column["children"] is None
