@@ -1790,15 +1790,17 @@ public class SearchRepository {
           return;
         }
         IndexMapping indexMapping = entityIndexMap.get(entityType);
+        List<EntityInterface<?>> indexed = new ArrayList<>(entities);
+        if (!loadFieldsOnWriteOrRetry(entityType, indexed, "createEntitiesIndex")) {
+          return;
+        }
         List<Map<String, String>> docs = new ArrayList<>();
-        for (EntityInterface<?> entity : entities) {
+        for (EntityInterface<?> entity : indexed) {
           try {
             if (!Entity.isSearchIndexable(entity)) {
               continue;
             }
-            SearchIndex index =
-                searchIndexFactory.buildIndex(
-                    entityType, withFieldsLoadedOnWrite(entityType, entity));
+            SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
             String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
             docs.add(Collections.singletonMap(entity.getId().toString(), doc));
           } catch (Exception ie) {
@@ -2344,7 +2346,8 @@ public class SearchRepository {
           deleteEntityIndex(entity);
         }
       }
-      if (typeEntities.isEmpty() || !loadFieldsOnWriteOrRetry(entityType, typeEntities)) {
+      if (typeEntities.isEmpty()
+          || !loadFieldsOnWriteOrRetry(entityType, typeEntities, "updateEntitiesBulk")) {
         continue;
       }
       Map<String, EntityInterface<?>> typeEntitiesById =
@@ -2745,21 +2748,26 @@ public class SearchRepository {
   }
 
   /**
-   * Swaps each entity for its copy with the fields loaded on write. When the load fails the batch is
-   * queued for retry, which re-reads every reindex field, instead of being written with zeros.
+   * Swaps each entity for its copy with the fields loaded on write, in one batched read. When the
+   * load fails the batch is queued for retry, which re-reads every reindex field, instead of being
+   * written with zeros or not written at all.
    */
   private boolean loadFieldsOnWriteOrRetry(
-      String entityType, List<EntityInterface<?>> typeEntities) {
+      String entityType, List<EntityInterface<?>> entities, String operation) {
     boolean loaded = true;
     try {
-      List<EntityInterface<?>> copies = withFieldsLoadedOnWrite(entityType, typeEntities);
+      List<EntityInterface<?>> copies = withFieldsLoadedOnWrite(entityType, entities);
       for (int i = 0; i < copies.size(); i++) {
-        typeEntities.set(i, copies.get(i));
+        entities.set(i, copies.get(i));
       }
     } catch (RuntimeException e) {
       LOG.warn(
-          "Loading fields on write failed for {} {} entities", typeEntities.size(), entityType);
-      typeEntities.forEach(entity -> enqueueEntityRetry(entity, "updateEntitiesBulk", e));
+          "{}: loading fields on write failed for {} {} entities",
+          operation,
+          entities.size(),
+          entityType,
+          e);
+      entities.forEach(entity -> enqueueEntityRetry(entity, operation, e));
       loaded = false;
     }
     return loaded;

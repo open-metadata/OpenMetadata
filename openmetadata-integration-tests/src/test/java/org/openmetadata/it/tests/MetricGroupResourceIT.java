@@ -69,6 +69,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -988,6 +989,31 @@ public class MetricGroupResourceIT {
         document -> {
           assertEquals("Edited group description", document.path("description").asText());
           assertEquals(3, document.path("metricCount").asInt());
+        });
+  }
+
+  @Test
+  void csvReimportKeepsAParentsChildrenCount(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Metric parent = createMetric(ns, "csv_count_parent");
+    createChild(ns, "csv_count_child", parent);
+    awaitMetricSearchDocument(
+        rest, parent.getId(), document -> assertEquals(1, document.path("childrenCount").asInt()));
+
+    String exported = SdkClients.adminClient().metrics().exportCsv(parent.getFullyQualifiedName());
+    String reimported = exported.replace("Group member", "Re-imported through CSV");
+    CsvImportResult result =
+        JSON.readValue(
+            SdkClients.adminClient().metrics().importCsv("*", reimported, false),
+            CsvImportResult.class);
+    assertEquals(1, result.getNumberOfRowsPassed(), result.getImportResultsCsv());
+
+    awaitMetricSearchDocument(
+        rest,
+        parent.getId(),
+        document -> {
+          assertEquals("Re-imported through CSV", document.path("description").asText());
+          assertEquals(1, document.path("childrenCount").asInt());
         });
   }
 

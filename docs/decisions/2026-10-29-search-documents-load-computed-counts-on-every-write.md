@@ -5,7 +5,8 @@
 - **Deciders:** Vishnu Jain
 - **Guard:** `SearchIndexFactoryTest#fieldsLoadedOnWriteAreAlsoReindexFields`,
   `SearchIndexFactoryTest#computedCountsAreLoadedOnWrite`,
-  `TeamMembershipSearchIT#teamCreatedWithAUserKeepsItsUserCountThroughAPlainEdit`
+  `TeamMembershipSearchIT#teamCreatedWithAUserKeepsItsUserCountThroughAPlainEdit`,
+  `MetricGroupResourceIT#csvReimportKeepsAParentsChildrenCount`
 - **Related:** #36494, ADR:2026-10-29-parent-metric-reads-carry-up-to-25-variant-expressions
 
 ## Context
@@ -25,11 +26,14 @@ The bulk updater path already reloads every reindex field before it writes; the 
 - Every field loaded on write is also in `getRequiredReindexFields()`, so reindex writes the same
   value.
 - A type that declares no fields pays nothing: no copy and no read.
-- If loading fails on the bulk update path, the batch goes to the search retry queue instead of
-  being written with zeros.
+- The bulk paths load once per batch. If that load fails, the batch goes to the search retry queue,
+  which re-reads every reindex field, instead of being written with zeros or not written at all.
+- Folder reindex also loads `parent`, which `FolderIndex` writes but reindex never loaded.
 
 ## Consequences
-- Each write of a declaring type costs one batched count query.
+- Each write of a declaring type reads its counts once, batched on the bulk paths. A metric,
+  metric group or folder count is one query; a team's `userCount` walks the team's sub-tree, so a
+  write to a large team or the organization costs that walk.
 - The parent refresh path, which already reads every reindex field, counts once more.
 - This replaces the per-repository `postUpdate` loading of `childrenCount` and `metricCount` that
   MetricRepository and MetricGroupRepository carried. Metric and metric group PATCH/PUT responses
