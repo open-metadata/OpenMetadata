@@ -178,7 +178,7 @@ class LightdashApiClient:
                 # SQL Runner (sql_chart) tiles reference savedSqlUuid and carry
                 # neither belongsToDashboard nor savedChartUuid
                 if "savedChartUuid" not in chart:
-                    logger.debug(f"Skipping Lightdash tile without savedChartUuid: {chart.get('chartName')}")
+                    logger.debug("Skipping Lightdash tile without savedChartUuid: %s", chart.get("chartName"))
                     continue
                 if chart.get("belongsToDashboard"):
                     dashboard_internal_charts.append(
