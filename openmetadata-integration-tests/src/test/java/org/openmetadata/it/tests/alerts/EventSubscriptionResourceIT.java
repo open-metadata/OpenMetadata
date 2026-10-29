@@ -2551,6 +2551,47 @@ public class EventSubscriptionResourceIT
     }
   }
 
+  /**
+   * Each receiver replaces the endpoint at send time and is sent the same headers and
+   * credentials, so a receivers list is a target like the endpoint itself: the stored secrets do
+   * not follow one the request chose, and re-entering every secret moves it.
+   */
+  @Test
+  void test_receiversCannotRedirectStoredCredentials(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      String headerValue = ns.prefix("receiver-header");
+      CreateEventSubscription request =
+          secretRequest(ns, "receiver_sub", receiver.url("/hook"), headerValue, null);
+      Map<String, Object> config = configOf(request.getDestinations().getFirst());
+      config.put("receivers", List.of(receiver.url("/stored-receiver")));
+      request.getDestinations().getFirst().withConfig(config);
+      EventSubscription created = createEntity(request);
+      String id = created.getId().toString();
+      assertSecretsMasked(created.getDestinations().getFirst());
+
+      EventSubscription withOtherReceiver = getEntity(id);
+      Map<String, Object> changed = configOf(withOtherReceiver.getDestinations().getFirst());
+      changed.put("receivers", List.of(receiver.url("/other-receiver")));
+      withOtherReceiver.getDestinations().getFirst().withConfig(changed);
+      Map<String, Object> before = storedConfig(created.getId());
+      assertRefused(() -> patchEntity(id, withOtherReceiver));
+      assertEquals(before, storedConfig(created.getId()), "the stored ciphertext is kept");
+
+      Map<String, Object> fresh = new LinkedHashMap<>(changed);
+      fresh.put("endpoint", receiver.url("/hook"));
+      fresh.put("headers", Map.of("Authorization", headerValue));
+      withOtherReceiver.getDestinations().getFirst().withConfig(fresh);
+      EventSubscription moved = patchEntity(id, withOtherReceiver);
+      assertSecretsMasked(moved.getDestinations().getFirst());
+      assertEquals(
+          List.of(receiver.url("/other-receiver")),
+          configOf(moved.getDestinations().getFirst()).get("receivers"));
+      assertEquals(
+          headerValue, decrypted(headersOf(storedConfig(created.getId())).get("Authorization")));
+      assertTrue(receiver.received().isEmpty(), "the alert never runs, disabled as it is");
+    }
+  }
+
   /** A destination an update keeps by id serves through the channel it is stored under. */
   @Test
   void test_patchKeepsTheServedChannel_400(TestNamespace ns) {

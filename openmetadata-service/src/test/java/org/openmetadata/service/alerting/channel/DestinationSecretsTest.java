@@ -379,6 +379,28 @@ class DestinationSecretsTest {
             stored, DestinationSecrets.mask(List.of(stored)).getFirst()));
   }
 
+  // A receiver replaces the endpoint at send time and is sent the same headers and credentials,
+  // so a changed receivers list is a moved target: the stored secrets do not follow it.
+  @Test
+  void aChangedReceiversListMovesTheTarget() {
+    SubscriptionDestination stored = incomingWebhook(SubscriptionType.SLACK);
+    Map<String, Object> config = new LinkedHashMap<>(configOf(stored));
+    config.put("receivers", List.of("https://hooks.example.com/a"));
+    stored.withConfig(config);
+    DestinationSecrets.encrypt(List.of(stored));
+
+    SubscriptionDestination masked = DestinationSecrets.mask(List.of(stored)).getFirst();
+    assertFalse(DestinationSecrets.targetMoved(stored, masked));
+
+    Map<String, Object> other = new LinkedHashMap<>(configOf(masked));
+    other.put("receivers", List.of("https://hooks.example.com/b"));
+    SubscriptionDestination moved = masked.withConfig(other);
+    assertTrue(DestinationSecrets.targetMoved(stored, moved));
+
+    DestinationSecrets.restore(stored, moved);
+    assertEquals(PASSWORD_MASK, headersOf(moved).get("Authorization"));
+  }
+
   private static SubscriptionDestination oauth2Destination() {
     WebhookOAuth2Config oauth2 =
         new WebhookOAuth2Config()

@@ -1,9 +1,9 @@
 # An alert destination's endpoint, header values and credentials are encrypted at rest, masked in every response, and restored from the stored alert when the mask is sent back
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial); v2 2026-10-26 (bind stored OAuth2 test credentials to their token URL); v3 2026-10-27 (a stored secret does not follow a moved target; a destination keeps its served channel); v4 2026-10-27 (a PATCH that moves a target must itself write every secret, since a row stored in plaintext reads as entered); v5 2026-10-28 (a PATCH may not carry a stored value into a channel that does not name it a secret)
+- **Revisions:** v1 2026-10-23 (initial); v2 2026-10-26 (bind stored OAuth2 test credentials to their token URL); v3 2026-10-27 (a stored secret does not follow a moved target; a destination keeps its served channel); v4 2026-10-27 (a PATCH that moves a target must itself write every secret, since a row stored in plaintext reads as entered); v5 2026-10-28 (a PATCH may not carry a stored value into a channel that does not name it a secret); v6 2026-10-29 (a receivers list is a target; a template send resolves masks as a test send does)
 - **Deciders:** Teddy Crepineau
-- **Guard:** `DestinationSecretsTest`, `DestinationSecretGuardsTest`, `EventSubscriptionResourceIT#test_destinationSecretsAreMaskedEncryptedAndRestored`, `EventSubscriptionResourceIT#test_patchCannotCarryAStoredSecretIntoAChannelThatDoesNotMaskIt`
+- **Guard:** `DestinationSecretsTest`, `DestinationSecretGuardsTest`, `EventSubscriptionResourceIT#test_destinationSecretsAreMaskedEncryptedAndRestored`, `EventSubscriptionResourceIT#test_patchCannotCarryAStoredSecretIntoAChannelThatDoesNotMaskIt`, `EventSubscriptionResourceIT#test_receiversCannotRedirectStoredCredentials`, `TemplateTestSendIT`
 - **Related:** ADR:2026-10-20-mcp-responses-mask-stored-credentials
 
 ## Context
@@ -35,7 +35,9 @@ mask back, decrypt only at the point of use.
 - A test send of a destination that carries masks uses the stored secrets, only for a caller
   allowed to edit the alert that holds them, and only when every secret and the OAuth2 token URL
   are the stored ones; a destination whose credentials or token URL changed is tested once all
-  credentials are entered.
+  credentials are entered. `testDestination` and `POST /v1/notificationTemplates/send` resolve a
+  destination the same way (v6:2026-10-29), so a template can be test-sent to an existing alert's
+  destination read back as it is.
 - A stored secret is restored from the mask only while the destination still sends where it is
   stored: its `endpoint` and, for OAuth2 credentials, `tokenUrl`. A request (v3:2026-10-27) that
   moves either, and keeps any stored or masked value at another secret field, is refused with 400
@@ -46,6 +48,10 @@ mask back, decrypt only at the point of use.
   secret it does not write, which by value reads as entered; the patch is replayed on the stored
   alert with a marker at every secret, and a destination whose target moved is refused unless the
   patch wrote each of its secrets. A PUT carries only what its caller typed, since reads are masked.
+  (v6:2026-10-29) Each entry of a destination's `receivers` list replaces the endpoint at send
+  time and is sent the same headers and credentials, so a receivers list is a target too: a
+  request that changes it, and keeps any stored or masked value at another secret field, is
+  refused the same way.
 - A destination an update keeps by its id serves through the channel it is stored under; the
   update that names another channel is refused, since the channel's rules would no longer name
   the secrets its configuration carries. A replacement destination carries a new id and chooses

@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.macasaet.fernet.TokenValidationException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -62,6 +63,9 @@ public final class DestinationSecrets {
   // cannot be allowed to pick, so a target that moved gets every secret entered again.
   private static final List<JsonPointer> SECRET_TARGETS =
       List.of(JsonPointer.compile("/endpoint"), JsonPointer.compile("/authType/tokenUrl"));
+  // Each receiver replaces the endpoint at send time and is sent the same headers and
+  // credentials, so a receivers list is a target too.
+  private static final JsonPointer RECEIVERS = JsonPointer.compile("/receivers");
 
   private DestinationSecrets() {}
 
@@ -237,13 +241,18 @@ public final class DestinationSecrets {
   static boolean targetMoved(SubscriptionDestination stored, SubscriptionDestination sent) {
     JsonNode storedConfig = JsonUtils.valueToTree(stored.getConfig());
     JsonNode sentConfig = JsonUtils.valueToTree(sent.getConfig());
-    for (JsonPointer target : SECRET_TARGETS) {
-      if (!targetUnchanged(
-          sentConfig.at(target).asText(null), storedConfig.at(target).asText(null))) {
-        return true;
-      }
-    }
-    return false;
+    return SECRET_TARGETS.stream()
+            .anyMatch(
+                target ->
+                    !targetUnchanged(
+                        sentConfig.at(target).asText(null), storedConfig.at(target).asText(null)))
+        || !receiverTexts(storedConfig).equals(receiverTexts(sentConfig));
+  }
+
+  private static Set<String> receiverTexts(JsonNode config) {
+    Set<String> receivers = new HashSet<>();
+    config.at(RECEIVERS).forEach(receiver -> receivers.add(receiver.asText()));
+    return receivers;
   }
 
   private static boolean standsForStored(String incoming, String stored) {

@@ -31,7 +31,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -54,7 +53,6 @@ import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
@@ -86,7 +84,6 @@ import org.openmetadata.service.alerting.AlertDiagnostics;
 import org.openmetadata.service.alerting.AlertLimits;
 import org.openmetadata.service.alerting.TestSends;
 import org.openmetadata.service.alerting.channel.Destination;
-import org.openmetadata.service.alerting.channel.DestinationSecretGuards;
 import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.alerting.channel.DestinationStatuses;
 import org.openmetadata.service.alerting.channel.DestinationValidation;
@@ -100,7 +97,6 @@ import org.openmetadata.service.events.consumer.schedule.AlertJobs;
 import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
-import org.openmetadata.service.jdbi3.EventSubscriptionRepository.StoredDestination;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
@@ -131,9 +127,11 @@ public class EventSubscriptionResource
   private static final String RESOURCES_DEPRECATED_SINCE = "@1792454400";
   private static final String CAPABILITIES_PATH = "/capabilities";
   private final EventSubscriptionMapper mapper = new EventSubscriptionMapper();
+  private final DestinationTestSecrets destinationTestSecrets;
 
   public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
     super(Entity.EVENT_SUBSCRIPTION, authorizer, limits);
+    this.destinationTestSecrets = new DestinationTestSecrets(repository, authorizer);
   }
 
   @Override
@@ -1480,7 +1478,7 @@ public class EventSubscriptionResource
     // anything judges or sends its configuration.
     request
         .getDestinations()
-        .forEach(destination -> withStoredSecrets(securityContext, destination));
+        .forEach(destination -> destinationTestSecrets.resolve(securityContext, destination));
     request.getDestinations().forEach(DestinationValidation::validate);
     List<SubscriptionDestination> resultDestinations =
         TestSends.toEach(
@@ -1516,33 +1514,6 @@ public class EventSubscriptionResource
               TestDestinationStatus.Status.FAILED, reason, System.currentTimeMillis()));
     }
     return destination.withConfig(null);
-  }
-
-  /**
-   * A destination sent as it was read carries masks for its secrets. It is tested with the secrets
-   * stored for it, by a caller allowed to edit the alert that holds them, and only as stored: one
-   * whose credentials changed is tested once every one of them is entered.
-   */
-  private void withStoredSecrets(
-      SecurityContext securityContext, SubscriptionDestination destination) {
-    if (DestinationSecrets.hasMaskedSecrets(destination)) {
-      StoredDestination stored = storedDestination(destination);
-      OperationContext editing = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-      authorizer.authorize(securityContext, editing, getResourceContextById(stored.alertId()));
-      DestinationSecrets.restore(stored.destination(), destination);
-      DestinationSecretGuards.requireSecretsAsStored(stored.destination(), destination);
-    } else {
-      DestinationSecretGuards.requireNoCiphertext(List.of(destination));
-    }
-  }
-
-  private StoredDestination storedDestination(SubscriptionDestination destination) {
-    return Optional.ofNullable(destination.getId())
-        .flatMap(repository::findDestination)
-        .orElseThrow(
-            () ->
-                new BadRequestException(
-                    "A destination with masked values is tested as stored; provide the actual values"));
   }
 
   private static Response maskResponse(Response response) {
