@@ -492,36 +492,13 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   public List<Metric> updateManyEntitiesForImport(
       List<Metric> originals, List<Metric> updates, String updatedBy, String impersonatedBy) {
-    // Load before the batch replaces the CONTAINS edges: the originals are read without them.
+    // The parent lives only in the CONTAINS edge, which the originals are read without. Load it so
+    // the base batch path can tell which parents a CSV moved metrics away from.
     fetchAndSetParents(originals, getFields(FIELD_PARENT));
     List<Metric> updated =
         super.updateManyEntitiesForImport(originals, updates, updatedBy, impersonatedBy);
     reconcileImportedHierarchyGroups(updated);
-    refreshParentsOfMovedMetrics(originals, updated);
     return updated;
-  }
-
-  /**
-   * The batch import path never runs MetricUpdater.updateParent, so a parent changed in a CSV
-   * refreshed neither parent's search document. This does the same for each moved metric. The
-   * batch keeps the order of its inputs, so originals and updates pair up by position.
-   */
-  private void refreshParentsOfMovedMetrics(List<Metric> originals, List<Metric> updated) {
-    Set<UUID> refreshed = new HashSet<>();
-    for (int i = 0; i < listOrEmpty(updated).size(); i++) {
-      EntityReference previousParent = originals.get(i).getParent();
-      EntityReference currentParent = updated.get(i).getParent();
-      if (!sameReferenceById(previousParent, currentParent)) {
-        refreshParentOnce(previousParent, refreshed);
-        refreshParentOnce(currentParent, refreshed);
-      }
-    }
-  }
-
-  private void refreshParentOnce(EntityReference parent, Set<UUID> refreshed) {
-    if (parent != null && refreshed.add(parent.getId())) {
-      refreshCountingParent(parent);
-    }
   }
 
   private void reconcileImportedHierarchyGroups(List<Metric> metrics) {
