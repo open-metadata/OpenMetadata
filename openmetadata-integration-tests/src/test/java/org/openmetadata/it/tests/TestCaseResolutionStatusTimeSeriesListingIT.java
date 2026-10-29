@@ -34,6 +34,7 @@ import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestCaseResolutionStatusTimeSeriesDAO;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -95,19 +96,28 @@ public class TestCaseResolutionStatusTimeSeriesListingIT {
 
   /** Seeds a resolution revision as production does: the record row (the DAO hashes the FQN it
    * is given) plus the PARENT_OF relationship the listing's field expansion requires — without it
-   * a restful listing answers 500 ("does not have expected relationship parentOf"). */
-  private static void seedRevision(
+   * a restful listing answers 500 ("does not have expected relationship parentOf") — and the
+   * test_case_incident row the date-range filters' stateId subquery reads. */
+  private static UUID seedRevision(
       Fixture fixture, UUID stateId, long timestamp, String statusType) {
     UUID recordId = UUID.randomUUID();
-    Entity.getCollectionDAO()
-        .testCaseResolutionStatusTimeSeriesDao()
-        .insert(
-            fixture.testCase().getFullyQualifiedName(),
-            "testCaseResolutionStatus",
-            seriesJson(
-                recordId,
-                timestamp,
-                Map.of("stateId", stateId.toString(), "testCaseResolutionStatusType", statusType)));
+    TestCaseResolutionStatusTimeSeriesDAO dao =
+        Entity.getCollectionDAO().testCaseResolutionStatusTimeSeriesDao();
+    dao.insert(
+        fixture.testCase().getFullyQualifiedName(),
+        "testCaseResolutionStatus",
+        seriesJson(
+            recordId,
+            timestamp,
+            Map.of("stateId", stateId.toString(), "testCaseResolutionStatusType", statusType)));
+    dao.upsertIncident(
+        stateId.toString(),
+        fixture.testCase().getFullyQualifiedName(),
+        statusType,
+        null,
+        null,
+        timestamp,
+        recordId.toString());
     Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS)
         .addRelationship(
             fixture.testCase().getId(),
@@ -117,6 +127,7 @@ public class TestCaseResolutionStatusTimeSeriesListingIT {
             Relationship.PARENT_OF,
             null,
             false);
+    return recordId;
   }
 
   @Test
@@ -239,6 +250,24 @@ public class TestCaseResolutionStatusTimeSeriesListingIT {
             .testCaseResolutionStatusTimeSeriesDao()
             .listCount(origin, older - 1, older + 1, true));
 
+    // The incident date-range filter rides the same condition path as a stateId subquery on
+    // test_case_incident (seeded alongside the records): over the whole incident it answers its
+    // latest record; past its updatedAt it answers none.
+    ListFilter dateRanged =
+        new ListFilter(Include.NON_DELETED)
+            .addQueryParam("originEntityFQN", tableFqn)
+            .addQueryParam("incidentListDateField", "updatedAt")
+            .addQueryParam("incidentListStartTs", "0")
+            .addQueryParam("incidentListEndTs", String.valueOf(newer + 1_000));
+    List<String> dateRangedLatest =
+        Entity.getCollectionDAO()
+            .testCaseResolutionStatusTimeSeriesDao()
+            .listWithOffset(dateRanged, 10, 0, true);
+    assertEquals(
+        1,
+        dateRangedLatest.size(),
+        "the date filter's stateId subquery matched the seeded incident");
+
     // Over REST, the same shape: latest without a time range, page total matching the DAO count.
     String encodedFQN =
         URLEncoder.encode(fixture.testCase().getFullyQualifiedName(), StandardCharsets.UTF_8);
@@ -248,6 +277,17 @@ public class TestCaseResolutionStatusTimeSeriesListingIT {
             INCIDENT_LISTING_PATH + "?testCaseFQN=" + encodedFQN + "&latest=true&limit=10");
     assertEquals(1, data(latestPage).size());
     assertEquals(1, total(latestPage), "the REST listing's total is the partition count");
+
+    // Over REST with the date filter: the subquery path answers the same incident.
+    Map<String, Object> datePage =
+        getJson(
+            SdkClients.adminClient(),
+            INCIDENT_LISTING_PATH
+                + "?testCaseFQN="
+                + encodedFQN
+                + "&latest=true&dateField=updatedAt&startTs=0&endTs="
+                + (newer + 1_000_000));
+    assertEquals(1, total(datePage), "the date filter finds the seeded incident");
   }
 
   @Test
