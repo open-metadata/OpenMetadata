@@ -49,6 +49,22 @@ const testCaseResult = {
 };
 
 /**
+ * The column select opens its full list on focus, and only then does the
+ * filled text filter it, so the popover shrinks and the row moves. A click in
+ * that window releases over a different spot and selects nothing. Wait for the
+ * filtered list before clicking, then confirm the pick took.
+ */
+const pickProfilerColumn = async (page: Page, testId: string, name: string) => {
+  const combobox = page.getByTestId(testId).getByRole('combobox');
+  const listbox = page.getByRole('listbox');
+
+  await combobox.fill(name);
+  await expect(listbox.getByRole('option')).toHaveCount(1);
+  await listbox.getByRole('option', { name, exact: true }).click();
+  await expect(combobox).toHaveValue(name);
+};
+
+/**
  * Profiler Role Access Tests
  * @description Validates profiler matrix and test case graph visibility for different user roles.
  * Tests are run sequentially (not in parallel) to avoid flakiness.
@@ -303,17 +319,11 @@ test.describe(
         await clickCodeEditor(page);
         await page.keyboard.type(profilerSetting.profileQuery);
 
-        await page
-          .getByTestId('include-column-select')
-          .getByRole('combobox')
-          .fill(profilerSetting.includeColumns);
-        await page
-          .getByRole('listbox')
-          .getByRole('option', {
-            name: profilerSetting.includeColumns,
-            exact: true,
-          })
-          .click();
+        await pickProfilerColumn(
+          page,
+          'include-column-select',
+          profilerSetting.includeColumns
+        );
         await page.locator('[data-testid="enable-partition-switch"]').click();
         await page.locator('[data-testid="interval-type"]').click();
         await page
@@ -324,17 +334,11 @@ test.describe(
           })
           .click();
 
-        await page
-          .getByTestId('column-name')
-          .getByRole('combobox')
-          .fill(profilerSetting.partitionColumnName);
-        await page
-          .getByRole('listbox')
-          .getByRole('option', {
-            name: profilerSetting.partitionColumnName,
-            exact: true,
-          })
-          .click();
+        await pickProfilerColumn(
+          page,
+          'column-name',
+          profilerSetting.partitionColumnName
+        );
         await page
           .locator('[data-testid="partition-value"]')
           .fill(profilerSetting.partitionValues);
