@@ -16,11 +16,17 @@ import {
   Category,
   PaletteKey,
 } from '../../generated/entity/data/relationshipType';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { listRelationshipTypes } from '../../rest/ontologyAPI';
 import RelationshipTypePicker from './RelationshipTypePicker.component';
 
 jest.mock('../../rest/ontologyAPI', () => ({
   listRelationshipTypes: jest.fn(),
+}));
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -303,5 +309,35 @@ describe('RelationshipTypePicker', () => {
     fireEvent.click(screen.getByTestId('relation-type-cancel'));
 
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  describe('in AI mode', () => {
+    beforeEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(false);
+    });
+
+    it('keeps filtering, selection and cancel', async () => {
+      const onSelect = jest.fn();
+      const onCancel = jest.fn();
+      renderPicker({ onCancel, onSelect });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('relation-type-broader')).toBeInTheDocument()
+      );
+      fireEvent.change(screen.getByTestId('relation-type-search'), {
+        target: { value: 'govern' },
+      });
+      fireEvent.click(screen.getByTestId('relation-type-governedBy'));
+
+      expect(onSelect).toHaveBeenCalledWith('governedBy');
+
+      fireEvent.click(screen.getByTestId('relation-type-cancel'));
+
+      expect(onCancel).toHaveBeenCalled();
+    });
   });
 });

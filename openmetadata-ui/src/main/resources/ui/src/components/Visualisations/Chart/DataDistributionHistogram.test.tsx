@@ -175,7 +175,7 @@ describe('DataDistributionHistogram component test', () => {
         key: 'frequency',
         name: 'label.frequency',
         status: 'info',
-        seriesOption: { barWidth: 22 },
+        seriesOption: { barMaxWidth: 22 },
       },
     ]);
     expect(calls[0].data[0]).toEqual({

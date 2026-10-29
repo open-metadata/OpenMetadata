@@ -88,7 +88,8 @@ Options:
   --skip-ui            Skip `yarn install` for the frontend.
   --skip-generate      Skip `make generate` (Pydantic/TS model generation).
   --skip-precommit     Skip installing the pre-commit hooks.
-  --slim               Install ingestion `[dev]` only, not `[all-dev-env]`.
+  --slim               Install ingestion `dev` dependencies only, not the full
+                       test environment.
                        Much faster; omits most connector dependencies.
   --with-build         Also run `mvn clean install -DskipTests`.
   --with-docker        Also start docker/development/docker-compose.yml.
@@ -881,20 +882,19 @@ export_brew_build_flags() {
 
 install_ingestion() {
   export_brew_build_flags
-  run python -m pip install --upgrade pip "setuptools<81"
   if [ "$SLIM_PYTHON" -eq 1 ]; then
-    info "Slim mode: installing ingestion[dev] only."
-    run make -C "$REPO_ROOT" install_dev
+    info "Slim mode: installing the locked dev profile."
+    run make -C "$REPO_ROOT" install_dev OM_VENV_DIR="$VENV_DIR"
   else
     info "Installing the full dev environment; this pulls every connector's dependencies and takes a while."
-    run make -C "$REPO_ROOT" install_dev_env
+    run make -C "$REPO_ROOT" install_test OM_VENV_DIR="$VENV_DIR"
   fi
   ok "Ingestion framework installed"
 }
 
 generate_models() {
   # `make generate` wipes and regenerates ingestion/src/metadata/generated and
-  # the ANTLR parsers, then reinstalls the ingestion package.
+  # the ANTLR parsers.
   run make -C "$REPO_ROOT" generate
   ok "Generated Pydantic models and ANTLR parsers"
 }
@@ -908,7 +908,6 @@ install_ui_deps() {
 }
 
 install_precommit() {
-  run make -C "$REPO_ROOT" install_test
   run make -C "$REPO_ROOT" precommit_install
   ok "pre-commit hooks installed (format + license gate on every commit)"
 }
