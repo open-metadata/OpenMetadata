@@ -49,11 +49,9 @@ import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.masker.ConnectionSecretsGuard;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.JsonPatchUtils;
 
 public abstract class ServiceEntityResource<
@@ -102,7 +100,7 @@ public abstract class ServiceEntityResource<
    */
   private void filterPipelines(SecurityContext securityContext, T service) {
     List<EntityReference> pipelines = service.getPipelines();
-    if (nullOrEmpty(pipelines) || readsStoredSecrets(securityContext)) {
+    if (nullOrEmpty(pipelines) || ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
       return;
     }
     Set<UUID> viewable = viewPermissionFilter.viewableIds(securityContext, pipelines);
@@ -195,7 +193,8 @@ public abstract class ServiceEntityResource<
   protected T unmask(SecurityContext securityContext, T service) {
     // Only a write that carries a connection can keep a stored secret, so check that first and
     // resolve the caller's subject only then — a connectionless write needs no guard.
-    if (service.getConnection() != null && !readsStoredSecrets(securityContext)) {
+    if (service.getConnection() != null
+        && !ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
       repository.setFullyQualifiedName(service);
       requireSecretsReenteredOnRetarget(
           repository.findByNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED),
@@ -204,14 +203,9 @@ public abstract class ServiceEntityResource<
     return unmask(service);
   }
 
-  /** Admins and bots may already read or replace any connection's secrets. */
-  private static boolean readsStoredSecrets(SecurityContext securityContext) {
-    SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
-    return subject.isAdmin() || subject.isBot();
-  }
-
   private static boolean mayRetargetConnection(SecurityContext securityContext, JsonPatch patch) {
-    return patchMayChangeConnection(patch) && !readsStoredSecrets(securityContext);
+    return patchMayChangeConnection(patch)
+        && !ConnectionSecretsGuard.readsStoredSecrets(securityContext);
   }
 
   /**

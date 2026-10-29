@@ -124,6 +124,19 @@ public class SubResourceAuthorizationIT {
     assertNotNull(adminGet("/v1/tables/entityRelationship" + fqnQuery));
   }
 
+  /**
+   * The RDF diff reads stored versions directly, past the redaction each entity's own versions
+   * endpoint applies, so viewing the entity is not enough to read it.
+   */
+  @Test
+  void rdfEntityDiff_isAdminOnly(TestNamespace ns) {
+    Table table = createTable(ns);
+    String path = "/v1/rdf/entity/table/" + table.getId() + "/diff?fromVersion=0.1&toVersion=0.1";
+
+    assertHttpStatusFor(SdkClients.dataConsumerClient(), 403, HttpMethod.GET, path, null);
+    assertNotNull(adminGet(path));
+  }
+
   @Test
   void schemaEntityRelationship_requiresViewOnTheSchema(TestNamespace ns) {
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);

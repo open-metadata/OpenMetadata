@@ -71,11 +71,23 @@ public class RdfPropertyMapper {
   //   3. Authentication material, which must not become SPARQL-queryable metadata:
   //      identityProviderSubject is the IdP's 'sub' claim, stored only to bind an account to one
   //      provider identity. It carries no discovery value and is an identity correlator. Contrast
-  //      user email, which reaches the graph only through a deliberate foaf:mbox mapping.
+  //      user email, which reaches the graph only through a deliberate foaf:mbox mapping. The
+  //      CREDENTIAL_PROPERTIES below carry stored secrets: a service's connection, a pipeline's
+  //      source config and server connection, a user's password hash or bot token.
   //
   // These must not be fetched at all — see isIndexableEntityField.
+  static final Set<String> CREDENTIAL_PROPERTIES =
+      Set.of(
+          "identityProviderSubject",
+          "connection",
+          "sourceConfig",
+          "openMetadataServerConnection",
+          "authenticationMechanism");
   private static final Set<String> NON_GRAPH_PROPERTIES =
-      Set.of("changeDescription", "votes", "testCaseResult", "identityProviderSubject");
+      Stream.concat(
+              Stream.of("changeDescription", "votes", "testCaseResult"),
+              CREDENTIAL_PROPERTIES.stream())
+          .collect(Collectors.toUnmodifiableSet());
 
   // Properties that DO belong in the graph but are emitted by a dedicated structured-emission step
   // (emitStructuredProperties) rather than the generic field loop, so the generic loop must not
