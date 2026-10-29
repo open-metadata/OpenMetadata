@@ -12,12 +12,12 @@
  */
 
 import { uniqBy } from 'lodash';
+import { FQN_SEPARATOR_CHAR } from '../../../../../constants/char.constants';
 import {
   CERTIFICATION_CATEGORY,
   PAGE_SIZE_LARGE as TAG_PAGE_SIZE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../../constants/constants';
-import { FQN_SEPARATOR_CHAR } from '../../../../../constants/char.constants';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { searchData } from '../../../../../rest/miscAPI';
 import { searchQuery } from '../../../../../rest/searchAPI';
