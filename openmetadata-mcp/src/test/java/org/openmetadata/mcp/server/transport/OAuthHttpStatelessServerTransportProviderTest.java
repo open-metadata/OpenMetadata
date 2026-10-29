@@ -360,7 +360,7 @@ class OAuthHttpStatelessServerTransportProviderTest {
     JwtFilter jwtFilter = spy(new JwtFilter(authConfig, mock(AuthorizerConfiguration.class)));
     Claim emailClaim = mock(Claim.class);
     when(emailClaim.asString()).thenReturn("mcp.user@company.com");
-    doReturn(Map.of("email", emailClaim)).when(jwtFilter).validateJwtAndGetClaims("token");
+    doReturn(Map.of("email", emailClaim)).when(jwtFilter).verifySignatureOnly("token");
     doNothing().when(jwtFilter).checkValidationsForToken(any(), any(), any(), isNull());
     OAuthHttpStatelessServerTransportProvider transport =
         transportWith(mock(UserSSOOAuthProvider.class));

@@ -322,6 +322,25 @@ class VerifiedCredentialsTest {
     assertEquals(VerifiedCredentials.MAX_WITHDRAWN, withdrawn);
   }
 
+  /** The cap never costs a check its own verdict, whichever of the removed tokens it presented. */
+  @Test
+  void aReadThatFindsMoreThanTheCapGoneShowsWithdrawnTheTokenItsCheckPresented() {
+    Set<TokenDigest> many =
+        IntStream.range(0, 20)
+            .mapToObj(i -> TokenDigest.of("pat-" + i))
+            .collect(Collectors.toSet());
+    CredentialRecord all = new CredentialRecord(SourceFingerprint.of("all"), many, null, null);
+    VerifiedCredentials earlier = read(all, 100L, new ReadOrder(1, 2), Set.of());
+
+    for (TokenDigest presented : many) {
+      VerifiedCredentials ownRead =
+          read(CredentialRecord.ABSENT, 200L, new ReadOrder(3, 4), Set.of(presented));
+
+      assertEquals(
+          Standing.WITHDRAWN, VerifiedCredentials.newer(earlier, ownRead).standingOf(presented));
+    }
+  }
+
   @Test
   void anUnconfirmedEntryKeepsItsWithdrawnDigests() {
     VerifiedCredentials entry = read(RECORD, 100L, new ReadOrder(1, 2), Set.of(PRESENTED));

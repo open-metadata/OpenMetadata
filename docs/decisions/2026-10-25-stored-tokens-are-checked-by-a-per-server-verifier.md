@@ -31,13 +31,15 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   - `JwtFilter.getCatalogSecurityContext` calls `authenticate`. The MCP tool callbacks
     (`McpServer.executeTool`) and prompt callbacks (`DefaultPromptsContext.callPrompt`) use it.
   - `JwtFilter.validateJwtAndGetClaims` calls `requireCurrentCredential` directly and resolves the
-    principal only for a stored kind. `SocketAddressFilter.validatePrefixedTokenRequest` calls it,
-    for the WebSocket handshake and for the MCP HTTP transport.
+    principal only for a stored kind.
   - `JwtFilter.checkValidationsForToken` decodes the token it is given and calls
-    `requireCurrentCredential` with that token's own claims before its other checks. Callers
-    outside this repository call it after their own signature check.
-  - `JwtFilter.verifySignatureOnly` classifies nothing and calls no `require`. The probes that grant
-    no access use it (`BotTokenCheck`, `TestLoginService`, `SystemRepository`).
+    `requireCurrentCredential` with that token's own claims before its other checks.
+    `SocketAddressFilter.validatePrefixedTokenRequest` calls it after `verifySignatureOnly`, for the
+    WebSocket handshake and for the MCP HTTP transport, so each of those requests makes one check.
+    Callers outside this repository call it after their own signature check.
+  - `JwtFilter.verifySignatureOnly` classifies nothing and calls no `require`. Apart from
+    `SocketAddressFilter`, only the probes that grant no access use it (`BotTokenCheck`,
+    `TestLoginService`, `SystemRepository`).
 
   An OpenMetadata-signed claim combination that matches no issued kind is rejected as unrecognized.
   So is a token that OpenMetadata's key did not sign and that claims `isBot=true` or
@@ -53,8 +55,11 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   check presented it before that read began, or when an earlier read held it and the read began
   after that one finished. A counter taken just before and just after each read's statement orders
   the reads, and an entry keeps at most 8 withdrawn digests (`MAX_WITHDRAWN`, a constant, not a
-  setting). So a principal's unknown or failing tokens cost at most about two reads per second per
-  server.
+  setting). When more than 8 go at once, the entry keeps the token of the check whose read found
+  them gone. So a principal's unknown or failing tokens cost at most about two reads per second per
+  server. A withdrawn token can come back, as when a deleted principal is restored. It then answers
+  401 until the last full read is `missRefreshMinAge` old, and the next check reads the principal
+  again.
 - Check reads run on a pool of `min(maxConcurrentRequestReads, databasePool / 2)` platform threads
   (16 by default, at least 1), so they cannot fill a small database pool. A request thread waits for
   its read within `loadTimeout`. The pool queues 16 reads per thread (`QUEUED_READS_PER_THREAD`, a
@@ -72,10 +77,13 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   the principals cached when it begins, 10 to a read (`DEEP_CHUNK_SIZE`, a constant, not a
   setting). Each sweep pass reconfirms every batch first, then makes at least one of these reads,
   and starts another only while the pass has run less than `maxStaleness` minus twice
-  `sweepInterval` (1 s by default). So while 10 decrypts take no longer than `sweepInterval`, no
-  entry ages past `maxStaleness` between passes, however many principals the deep pass covers. The
-  next deep pass begins `deepVerifyInterval` after this one began, or `min(deepVerifyInterval, 1
-  min)` after it when one of its reads threw, and a read that throws changes no entry.
+  `sweepInterval` (1 s by default). Between two reconfirmations an entry then ages about
+  `sweepInterval`, plus one of these reads, plus the longer of the reconfirmations and that budget.
+  That stays within `maxStaleness` while reconfirming takes less than 1 s and 10 decrypts take no
+  longer than `sweepInterval`, however many principals the deep pass covers. The next deep pass
+  begins `deepVerifyInterval` after this one began, or `min(deepVerifyInterval, 1 min)` after it
+  when one of its reads threw, and at the first sweep after this one ends when that is later. A
+  read that throws changes no entry.
 - When the verifier cannot confirm within `loadTimeout` (2 s), the request gets 503 with
   `Retry-After` (the sweep interval, rounded up), and an MCP tool or prompt call gets JSON-RPC
   error -32003. It never gets 401, and it is never accepted unconfirmed. A check whose thread is
@@ -114,16 +122,16 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   than `maxStaleness`. Session tokens and identity-provider tokens that claim neither `isBot=true`
   nor `tokenType=PERSONAL_ACCESS` are not affected.
 - While the secrets manager cannot decrypt a bot's secret, the bot's requests answer 503 from the
-  next deep pass on, so within `deepVerifyInterval`, until a read decrypts the secret again. On
-  each server, each bot that keeps sending requests costs about two check reads a second, each
-  with a decrypt, and once its stored rows change, a decrypt on every sweep as well. Nothing bounds
-  how long a decrypt takes. A slow one delays only the deep pass, but one that hangs during a deep
-  read holds the sweep thread, so no sweep completes until the secrets manager answers. After `maxStaleness`, every bot and PAT check then
-  needs a read, and the sweep-age gauge alerts. One that hangs in a check read holds a
-  request-read thread, so with more such bots than request-read threads, other checks that need a
-  read wait for a thread or answer 503. The next step named below takes the secrets manager out of
-  these reads. The warning about a principal whose credentials cannot be converted is logged at
-  most once a minute per principal on each server, and sooner only after a read converted it.
+  next deep read of the bot on, until a read decrypts the secret again. On each server, each bot
+  that keeps sending requests costs about two check reads a second, each with a decrypt, and once
+  its stored rows change, a decrypt on every sweep as well. Nothing bounds how long a decrypt takes.
+  A slow one delays only the deep pass, but one that hangs during a deep read holds the sweep
+  thread, so no sweep completes until the secrets manager answers. After `maxStaleness`, every bot
+  and PAT check then needs a read, and the sweep-age gauge alerts. One that hangs in a check read
+  holds a request-read thread, so with more such bots than request-read threads, other checks that
+  need a read wait for a thread or answer 503. The next step named below takes the secrets manager
+  out of these reads. The warning about a principal whose credentials cannot be converted is logged
+  at most once a minute per principal on each server, and sooner only after a read converted it.
 - Operators alert when `om.credential.sweep.last.complete.age.seconds` (Prometheus name
   `om_credential_sweep_last_complete_age_seconds`) exceeds `maxStaleness`, and watch
   `om.credential.unavailable`. The gauge is the age of the last sweep that re-confirmed every

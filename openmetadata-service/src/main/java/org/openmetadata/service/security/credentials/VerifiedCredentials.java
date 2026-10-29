@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.security.credentials;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -53,8 +54,9 @@ import java.util.Set;
  */
 final class VerifiedCredentials {
   /**
-   * Withdrawn digests one entry keeps. One past the cap is forgotten, so inside the window it
-   * answers "cannot confirm" instead of "not current" until a read shows it withdrawn again.
+   * Withdrawn digests one entry keeps, newest first. The oldest past the cap is forgotten, so
+   * inside the window it answers "cannot confirm" instead of "not current" until a read shows it
+   * withdrawn again.
    */
   static final int MAX_WITHDRAWN = 8;
 
@@ -111,7 +113,7 @@ final class VerifiedCredentials {
     this(
         read,
         read.stampNanos(),
-        Set.copyOf(Sets.difference(read.presentedBefore(), read.record().digests())));
+        ImmutableSet.copyOf(Sets.difference(read.presentedBefore(), read.record().digests())));
   }
 
   private VerifiedCredentials(FullRead read, long verifiedAtNanos, Set<TokenDigest> withdrawn) {
@@ -207,15 +209,19 @@ final class VerifiedCredentials {
         : new VerifiedCredentials(kept.read, kept.verifiedAtNanos, withdrawn, kept.confirmed);
   }
 
-  /** Newest knowledge first, so the cap forgets what was learned earliest. */
+  /**
+   * Newest knowledge first, so the cap forgets what was learned earliest: what the candidate's own
+   * read shows withdrawn, which decides the check that installs it, then what the two reads show
+   * together, then what the existing entry showed, in its own order.
+   */
   private static Set<TokenDigest> withdrawnAcross(
       VerifiedCredentials existing, VerifiedCredentials candidate, CredentialRecord kept) {
-    Set<TokenDigest> withdrawn = new LinkedHashSet<>(goneBy(existing, candidate));
+    Set<TokenDigest> withdrawn = new LinkedHashSet<>(candidate.withdrawn);
+    withdrawn.addAll(goneBy(existing, candidate));
     withdrawn.addAll(goneBy(candidate, existing));
-    withdrawn.addAll(candidate.withdrawn);
     withdrawn.addAll(existing.withdrawn);
     withdrawn.removeAll(kept.digests());
-    return Set.copyOf(withdrawn.stream().limit(MAX_WITHDRAWN).toList());
+    return withdrawn.stream().limit(MAX_WITHDRAWN).collect(ImmutableSet.toImmutableSet());
   }
 
   /**

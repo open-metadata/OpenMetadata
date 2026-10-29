@@ -1113,6 +1113,42 @@ class CredentialVerifierTest {
   }
 
   /**
+   * The first of the three reads of that slow deep verify throws, and the other two succeed on the
+   * next passes. The verify still counts as failed, so the next one begins a minute after this one
+   * began, and not ten minutes after it or a minute after it ended.
+   */
+  @Test
+  void aDeepVerifyWhoseFirstReadThrowsIsRetriedAMinuteAfterItBegan() {
+    List<String> bots = IntStream.range(0, 25).mapToObj(i -> "bot-" + i).toList();
+    bots.forEach(bot -> source.withJwtMechanism(bot, "jwt-" + bot));
+    verifier(DEFAULTS);
+    bots.forEach(bot -> assertAccepted(bot, "jwt-" + bot));
+    sweepsAfterInterval(299);
+    source.duringEachDecrypt(() -> ticker.advanceNanos(150 * MILLISECOND));
+    source.duringNextRead(
+        () -> {
+          throw new IllegalStateException("injected statement failure");
+        });
+
+    ticker.advanceNanos(2 * SECOND);
+    long began = ticker.read();
+    verifier.sweepOnce();
+    sweepsAfterInterval(2);
+    assertEquals(1.0, counter("om.credential.reads", "reason", "deep", "outcome", "error"));
+    assertEquals(2.0, counter("om.credential.reads", "reason", "deep", "outcome", "ok"));
+    int decrypts = source.decrypts();
+
+    ticker.advanceNanos(began + MINUTE - 1 - ticker.read());
+    verifier.sweepOnce();
+    assertEquals(decrypts, source.decrypts(), "no deep read until a minute after the verify began");
+    ticker.advanceNanos(1);
+    verifier.sweepOnce();
+
+    assertEquals(decrypts + 10, source.decrypts(), "the retry reads its first ten bots");
+    bots.forEach(bot -> assertAccepted(bot, "jwt-" + bot));
+  }
+
+  /**
    * The deep pass at 10 min reconfirms bob by fingerprint and then cannot convert him. From then on
    * his checks read instead of trusting the entry: unavailable while his rows still do not convert,
    * at most one read per missRefreshMinAge, and the first read that converts them decides.

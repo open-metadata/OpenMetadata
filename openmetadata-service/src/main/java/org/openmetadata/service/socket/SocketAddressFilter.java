@@ -295,7 +295,7 @@ public class SocketAddressFilter implements Filter {
   public static ValidatedTokenPrincipal validatePrefixedTokenRequest(
       JwtFilter jwtFilter, String prefixedToken) {
     String token = JwtFilter.extractToken(prefixedToken);
-    Map<String, Claim> claims = jwtFilter.validateJwtAndGetClaims(token);
+    Map<String, Claim> claims = jwtFilter.verifySignatureOnly(token);
     String userName = jwtFilter.resolveUserName(claims);
     jwtFilter.checkValidationsForToken(claims, token, userName, null);
     String sessionId =

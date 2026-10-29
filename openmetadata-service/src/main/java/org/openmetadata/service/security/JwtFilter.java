@@ -567,13 +567,13 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   /**
-   * The checks that follow {@link #validateJwtAndGetClaims}: the stored-credential check, the
-   * logout denylist, the email and principal domain rules, and the session binding. The
-   * stored-credential check classifies the token from its own claims and checks its own principal,
-   * so it holds whatever {@code claims} and {@code userName} the caller passes. After
-   * validateJwtAndGetClaims accepted the same token it is answered from memory. {@code
-   * impersonatedBy} is not consulted; the parameter stays because other distributions call this
-   * signature.
+   * The checks that follow {@link #verifySignatureOnly}: the stored-credential check, the logout
+   * denylist, the email and principal domain rules, and the session binding. The stored-credential
+   * check classifies the token from its own claims and checks its own principal, so it holds
+   * whatever {@code claims} and {@code userName} the caller passes. A caller that verified the
+   * token with {@link #validateJwtAndGetClaims} instead makes that check twice, and the second is
+   * answered from memory. {@code impersonatedBy} is not consulted; the parameter stays because
+   * other distributions call this signature.
    *
    * @throws AuthenticationException the token cannot be decoded, or is unrecognized or not current
    * @throws CredentialUnavailableException the stored-credential check could not be confirmed
@@ -709,7 +709,8 @@ public class JwtFilter implements ContainerRequestFilter {
 
   /**
    * Signature, expiry and issuer only, with no stored-credential check. For probes and dry runs
-   * that grant no access: anything that authenticates a request calls {@link
+   * that grant no access, and for a caller that runs {@link #checkValidationsForToken} next, which
+   * makes that check. Anything else that authenticates a request calls {@link
    * #validateJwtAndGetClaims}.
    */
   public Map<String, Claim> verifySignatureOnly(String token) {

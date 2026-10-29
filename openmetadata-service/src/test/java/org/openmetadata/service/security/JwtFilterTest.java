@@ -36,6 +36,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
 import com.github.benmanes.caffeine.cache.Ticker;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.MultivaluedHashMap;
@@ -106,6 +107,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
+import org.openmetadata.service.socket.SocketAddressFilter;
 
 class JwtFilterTest {
 
@@ -127,6 +129,8 @@ class JwtFilterTest {
 
   /** A real verifier over an in-memory source, replaced for every test. */
   private static CredentialVerifierFixture credentials;
+
+  private static SimpleMeterRegistry registry;
 
   private static final Supplier<CredentialVerifier> VERIFIER = () -> credentials.verifier();
   private static JWTTokenGenerator generator;
@@ -174,11 +178,10 @@ class JwtFilterTest {
 
   @BeforeEach
   void newVerifier() {
+    registry = new SimpleMeterRegistry();
     credentials =
         new CredentialVerifierFixture(
-            new SimpleMeterRegistry(),
-            Ticker.systemTicker(),
-            CredentialVerificationConfig.defaults());
+            registry, Ticker.systemTicker(), CredentialVerificationConfig.defaults());
   }
 
   // Every test resolves accounts through this per-test mock. Left to the real SubjectCache, the
@@ -748,6 +751,20 @@ class JwtFilterTest {
     assertEquals(INVALID_PAT, rejected.getMessage());
   }
 
+  /** Operators read the check rate from {@code om.credential.checks}: one per authentication. */
+  @ParameterizedTest
+  @EnumSource(EntryPoint.class)
+  void everyEntryPointCountsOneStoredCredentialCheck(EntryPoint entryPoint) {
+    String pat = personalAccessToken(USER);
+    credentials.withPats(Map.of(USER, List.of(pat)));
+
+    entryPoint.authenticate(omFilter, pat);
+
+    double checks =
+        registry.find("om.credential.checks").counters().stream().mapToDouble(Counter::count).sum();
+    assertEquals(1.0, checks);
+  }
+
   /** OpenMetadata never issues these: each one is rejected even when its token is stored. */
   @ParameterizedTest
   @CsvSource({"false, BOT", "true, PERSONAL_ACCESS", "true, OM_USER"})
@@ -920,6 +937,13 @@ class JwtFilterTest {
       void authenticate(JwtFilter filter, String token) {
         Map<String, Claim> claims = filter.verifySignatureOnly(token);
         filter.checkValidationsForToken(claims, token, claims.get("sub").asString(), null);
+      }
+    },
+    /** The WebSocket handshake and the MCP HTTP transport. */
+    PREFIXED_TOKEN_REQUEST {
+      @Override
+      void authenticate(JwtFilter filter, String token) {
+        SocketAddressFilter.validatePrefixedTokenRequest(filter, "Bearer " + token);
       }
     };
 

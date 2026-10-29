@@ -416,13 +416,13 @@ public final class CredentialVerifier implements Managed {
    * <p>When the deep verify is due, a cycle begins over the subjects cached then. Each pass reads
    * the next of them in full with every decrypt forced, a chunk at a time, and starts another chunk
    * only while the pass has run for less than maxStaleness minus twice sweepInterval. The next pass
-   * starts sweepInterval after this one ends, so an entry reconfirmed by both is then at most one
-   * chunk past maxStaleness minus sweepInterval old, however slow the decrypts. A subject the deep
-   * read leaves out is unconfirmed, so its next check reads it again, and it does not fail the
-   * cycle. A deep read that throws, on a statement failure or on an {@link Error} for one subject,
-   * which the source's per-subject guard does not catch, changes no entry; the next cycle then
-   * begins {@code min(deepVerifyInterval, 1 min)} after this one began instead of
-   * deepVerifyInterval after it.
+   * starts sweepInterval after this one ends, so an entry reconfirmed by both ages about
+   * sweepInterval plus one chunk plus the longer of the reconfirmations and that budget between
+   * them, however slow the decrypts. A subject the deep read leaves out is unconfirmed, so its next
+   * check reads it again, and it does not fail the cycle. A deep read that throws, on a statement
+   * failure or on an {@link Error} for one subject, which the source's per-subject guard does not
+   * catch, changes no entry; the next cycle then begins {@code min(deepVerifyInterval, 1 min)}
+   * after this one began instead of deepVerifyInterval after it.
    */
   void sweepOnce() {
     long sweepStart = ticker.read();
