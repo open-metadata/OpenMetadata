@@ -149,14 +149,6 @@ export const updateVotes = async (page: Page) => {
   await expect(page.locator('[data-testid="down-vote-count"]')).toHaveText('1');
 };
 
-export const updateFollowers = async (page: Page) => {
-  await page.click('[data-testid="entity-follow-button"]');
-
-  await expect(
-    page.locator('[data-testid="entity-follow-button"] > .ant-typography')
-  ).toHaveText('1');
-};
-
 export const readArticleData = async (
   page: Page,
   data: {
