@@ -444,7 +444,7 @@ public class DashboardServiceResource
       @Valid CreateDashboardService update) {
     DashboardService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
   }
