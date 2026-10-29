@@ -49,6 +49,11 @@ import org.openmetadata.service.util.RestUtil;
 public final class OntologyReleaseRepository extends OntologyEntityRepository<OntologyRelease> {
   private static final String USER_APPROVAL_TASK = "userApprovalTask";
   private static final String REVIEW_TASK_FIELDS = "assignees,reviewers,createdBy";
+
+  /** Storage keeps a task's {@code about} out of its JSON, so a read that needs it asks for it. */
+  private static final String LISTED_REVIEW_TASK_FIELDS =
+      REVIEW_TASK_FIELDS + "," + TaskRepository.FIELD_ABOUT;
+
   private static final String REVIEW_SETUP_CHANGED =
       "The ontology's reviewers or approval rule changed while this review was being requested; submit the review again";
 
@@ -288,7 +293,7 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
     final TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     final ListFilter filter = reviewTaskFilter(view, SubjectContext.getSubjectContext(caller));
     final List<OpenReview> reviews = new ArrayList<>();
-    for (final Task task : tasks.listAll(tasks.getFields(REVIEW_TASK_FIELDS), filter)) {
+    for (final Task task : tasks.listAll(tasks.getFields(LISTED_REVIEW_TASK_FIELDS), filter)) {
       final OntologyRelease release = reviewedRelease(task);
       if (release != null && canView.test(release)) {
         final OntologyReleaseReviewReader reader =
