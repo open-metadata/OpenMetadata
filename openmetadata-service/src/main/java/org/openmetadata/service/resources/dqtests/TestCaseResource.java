@@ -898,10 +898,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         TestCaseResourceContext.builder()
             .entityLink(EntityLink.parse(create.getEntityLink()))
             .build();
-    List<AuthRequest> requests =
-        List.of(
-            new AuthRequest(tableOpContext, tableResourceContext),
-            testCaseCreateOrUpdateRequest(test));
+    List<AuthRequest> requests = new ArrayList<>();
+    requests.add(new AuthRequest(tableOpContext, tableResourceContext));
+    requests.addAll(testCaseCreateOrUpdateRequests(test));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
@@ -911,20 +910,32 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   /**
-   * The test-case half of a PUT: CREATE for a test case that does not exist yet, EDIT_ALL for one
-   * that does. A context built by name looks the test case up, which fails for a new one, and
-   * AuthorizationLogic.ANY evaluates every request, so a new test case must not get one.
+   * The test-case half of a PUT. An existing test case is checked by name, as {@code
+   * ODCSTestCaseWriteGuard} checks an update. A new one is checked against the request, as POST
+   * does: a context built by name looks the test case up, which fails for one that does not exist,
+   * and AuthorizationLogic.ANY evaluates every request.
    */
-  private AuthRequest testCaseCreateOrUpdateRequest(TestCase test) {
+  private List<AuthRequest> testCaseCreateOrUpdateRequests(TestCase test) {
     boolean testCaseExists =
         repository.findByNameOrNull(test.getFullyQualifiedName(), Include.ALL) != null;
-    return testCaseExists
-        ? new AuthRequest(
-            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
-            TestCaseResourceContext.builder().name(test.getFullyQualifiedName()).build())
-        : new AuthRequest(
+    return testCaseExists ? testCaseUpdateRequests(test) : testCaseCreateRequests(test);
+  }
+
+  private List<AuthRequest> testCaseCreateRequests(TestCase test) {
+    return List.of(
+        new AuthRequest(
             new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE),
-            new CreateResourceContext<>(entityType, test));
+            new CreateResourceContext<>(entityType, test)));
+  }
+
+  private static List<AuthRequest> testCaseUpdateRequests(TestCase test) {
+    ResourceContextInterface testCaseContext =
+        TestCaseResourceContext.builder().name(test.getFullyQualifiedName()).build();
+    return List.of(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE), testCaseContext),
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL), testCaseContext));
   }
 
   @DELETE
