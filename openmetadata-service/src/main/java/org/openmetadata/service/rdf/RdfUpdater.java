@@ -14,7 +14,6 @@ package org.openmetadata.service.rdf;
 
 import java.time.Clock;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +26,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
-import org.openmetadata.service.cluster.ClusterCapabilities;
 import org.openmetadata.service.config.AsyncOperationsConfiguration;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.rdf.maintenance.RdfStorageMaintenanceService;
@@ -40,21 +38,12 @@ public final class RdfUpdater {
   private static volatile Consumer<RdfLiveWrite> writeQueue;
   private static volatile RdfLiveWriteStore liveWriteStore;
   private static RdfLiveWriter writer;
-  // Set once by the application; until then storage maintenance waits, as it cannot tell
-  // whether every server holds its writes back.
-  private static volatile ClusterCapabilities cluster =
-      capability -> Set.of("this server, whose cluster membership is not known yet");
   private static RdfStorageMaintenanceService maintenance;
 
   private RdfUpdater() {}
 
   public static void initialize(final RdfConfiguration config) {
     initialize(config, new AsyncOperationsConfiguration());
-  }
-
-  /** Tells storage maintenance which servers do not hold their writes back yet. */
-  public static void useClusterCapabilities(final ClusterCapabilities capabilities) {
-    cluster = capabilities;
   }
 
   public static synchronized void initialize(
@@ -97,8 +86,7 @@ public final class RdfUpdater {
               Entity.getCollectionDAO().rdfReindexLockDAO(),
               RdfRepository::getInstance,
               Clock.systemUTC(),
-              ServerIdentityResolver.getInstance().getServerId(),
-              capability -> cluster.serversLacking(capability));
+              ServerIdentityResolver.getInstance().getServerId());
       maintenance.start();
     } else {
       LOG.warn(

@@ -1139,14 +1139,3 @@ DELETE FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id')
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-
--- Server registry: the version and cross-server protocols of each server - OpenMetadata 2.1.0
-CREATE TABLE IF NOT EXISTS server_registry (
-  instanceId VARCHAR(255) NOT NULL,
-  serverId VARCHAR(255) NOT NULL,
-  version VARCHAR(64) NOT NULL,
-  capabilities TEXT NOT NULL,
-  startedAt BIGINT NOT NULL,
-  lastHeartbeat BIGINT NOT NULL,
-  PRIMARY KEY (instanceId)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

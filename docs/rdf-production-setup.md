@@ -472,9 +472,8 @@ writes to the serving dataset first, on every server. Queued live writes wait in
 applied once the pause ends; waiting does not count as a failed delivery attempt and does not mark
 the projection degraded. Other writes wait for the pause for up to `RDF_REQUEST_TIMEOUT_MS`, then
 get HTTP 503 with `Retry-After`. A write that times out while Fuseki compacts, whoever started the
-compaction, is retried the same way. Maintenance never overlaps a reindex or an inference run, and
-it waits while any live server, such as one not yet upgraded, does not hold its writes back; the
-server logs which ones it waits for.
+compaction, is retried the same way. Maintenance never overlaps a reindex or an inference run, and a
+server's first check runs five minutes after it starts.
 `RDF_MAINTENANCE_MAX_DURATION_MINUTES` bounds how long a compaction, or the clear that starts a
 recreate run, may hold that pause. Both run under this budget rather than the per-request timeout:
 Fuseki cannot cancel a `CLEAR`, so a shorter budget would only abandon a clear that still completes.
