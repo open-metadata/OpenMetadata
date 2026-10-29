@@ -484,10 +484,11 @@ its files, so a write on a full volume does not fail cleanly: the JVM gets SIGBU
 every restart.
 
 Each compaction is logged, and timed by result in `ontology.rdf.compaction`; alert on
-`ontology.rdf.compaction.last.success` falling behind the interval. A compaction that does not
-succeed is logged as an error and retried at the next check, unless Fuseki restarted during it:
-that one waits for the next interval, because a copy the volume cannot hold would only crash
-Fuseki again. To compact by hand:
+`ontology.rdf.compaction.last.success` falling behind the interval. A compaction Fuseki could not
+start is retried at the next check. One it started and that did not succeed is logged as an error
+and waits for the next interval: when the volume has less free space than the live data, the copy
+fails or restarts Fuseki, and a retry would only do the same. A copy that failed stays allocated
+until Fuseki restarts, so expand the volume, then restart Fuseki. To compact by hand:
 
 ```bash
 curl -u admin:<password> -X POST \
