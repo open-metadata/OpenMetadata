@@ -656,6 +656,9 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
         "ingestion",
         "reindex",
         "search-rbac",
+        # Visual states own their page and HTTP fixtures. Split the growing
+        # catalog within the existing budget instead of lengthening its job.
+        "visual",
     }:
         return (1, 8) if mode == "full" else (1, 2)
     return (1, 1)
@@ -820,8 +823,8 @@ def main() -> None:
     # below requires that full-mode planning stay unblocked even when a
     # newly re-enabled suite has no baseline. In full mode, the softer
     # emit_unweighted_warnings above still surfaces the issue as a warning.
-    # Gated lanes are single-shard, so an unweighted test cannot push a shard
-    # over budget there.
+    # Gated lanes always select their complete catalog. Missing timings use
+    # fallback weights; the unit and shard budget checks still apply below.
     stale_files = (
         stale_baseline_files_in_plan(
             [unit for unit in units if PROJECT_LANES[unit.project] not in GATED_LANES],

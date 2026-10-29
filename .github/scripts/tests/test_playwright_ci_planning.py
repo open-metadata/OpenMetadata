@@ -104,6 +104,46 @@ def test_common_assignment_stays_within_the_execution_ceiling():
     )
 
 
+@pytest.mark.parametrize("mode", ["full", "targeted"])
+def test_visual_assignment_splits_without_losing_cases_or_raising_the_budget(mode):
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "visual-regression",
+            f"VisualRegression/area-{index}.spec.ts",
+            f"area {index}",
+            weight_ms=600_000,
+            test_ids={f"visual-case-{index}"},
+        )
+        for index in range(8)
+    ]
+
+    shards = planner.assign_lane_within_budget(units, "visual", mode)
+
+    assert len(shards) == 2
+    assert all(
+        planner.predicted_execution_ms(shard, 3) <= planner.TARGET_MS
+        for shard in shards
+    )
+    assigned = [
+        test_id for shard in shards for unit in shard for test_id in unit.test_ids
+    ]
+    assert sorted(assigned) == [f"visual-case-{index}" for index in range(8)]
+
+
+def test_visual_assignment_preserves_the_bounded_side_lane_ceiling():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "visual-regression", f"{index}.spec.ts", str(index), weight_ms=600_000
+        )
+        for index in range(43)
+    ]
+
+    with pytest.raises(SystemExit, match=r"Lane visual needs more than 8 shards"):
+        planner.assign_lane_within_budget(units, "visual", "full")
+
+
 def test_full_mode_chromium_converges_above_the_old_24_shard_ceiling():
     # Regression guard for BOTH historical outages on this lane:
     # 1. Under budget=19m × cap=24, content past ~1163 worker-minutes
