@@ -19,9 +19,11 @@ class OntologyConceptSqlGeneratorTest {
   private static final String TRANSFERS = "finance.warehouse.payments.transfers";
   private static final String CUSTOMERS = "finance.warehouse.payments.customers";
   private static final String ACCOUNTS = "finance.warehouse.payments.accounts";
+  private static final String LEDGER = "finance.warehouse.payments.ledger";
   private static final UUID PART_OF = UUID.randomUUID();
   private static final UUID PAID_BY = UUID.randomUUID();
   private static final UUID RECEIVED_BY = UUID.randomUUID();
+  private static final UUID HOLDS = UUID.randomUUID();
 
   @Test
   void oneTableSelectsTheBoundColumnsWithTheRowLimit() {
@@ -117,7 +119,7 @@ class OntologyConceptSqlGeneratorTest {
   }
 
   @Test
-  void aForeignKeyWinsOverABindingAndOtherServicesAreNeverJoined() {
+  void aBindingWinsOverAForeignKeyOnAnotherColumnAndOtherServicesAreNeverJoined() {
     final BoundTable transfers =
         new BoundTable(
             TRANSFERS,
@@ -144,8 +146,144 @@ class OntologyConceptSqlGeneratorTest {
 
     assertEquals(
         "SELECT t1.*\nFROM payments.transfers t0\n"
-            + "JOIN payments.customers t1 ON t0.customer_id = t1.customer_id -- paid by\nLIMIT 50",
+            + "JOIN payments.customers t1 ON t0.payer_id = t1.customer_id -- paid by\nLIMIT 50",
         generated.sql());
+  }
+
+  @Test
+  void aBoundHopIgnoresTheOnlyForeignKeyWhenItIsOnAnotherColumn() {
+    assertEquals(
+        "SELECT t1.customer_id\nFROM payments.transfers t0\n"
+            + "JOIN payments.customers t1 ON t0.payee_id = t1.customer_id -- received by\nLIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                concept("Funds Transfer", payeeBoundTransfers()),
+                List.of(
+                    new Hop(
+                        RECEIVED_BY, "received by", concept("Customer", identifiedCustomers()))))
+            .sql());
+  }
+
+  @Test
+  void aBoundHopFromTheReferredTableIgnoresTheOnlyForeignKeyWhenItIsOnAnotherColumn() {
+    assertEquals(
+        "SELECT t1.transfer_id\nFROM payments.customers t0\n"
+            + "JOIN payments.transfers t1 ON t0.customer_id = t1.payee_id -- received\nLIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                concept("Customer", identifiedCustomers()),
+                List.of(
+                    new Hop(
+                        RECEIVED_BY, "received", concept("Funds Transfer", payeeBoundTransfers()))))
+            .sql());
+  }
+
+  @Test
+  void aForeignKeyThatAgreesWithTheBindingJoinsWithoutAnIdentifier() {
+    final BoundTable transfers =
+        new BoundTable(
+            TRANSFERS,
+            "Postgres",
+            List.of(List.of("transfer_id")),
+            Map.of(RECEIVED_BY, List.of("payee_id")),
+            List.of(),
+            List.of(foreignKey(List.of("payee_id"), CUSTOMERS, "customer_id")));
+
+    assertEquals(
+        "SELECT t1.name\nFROM payments.transfers t0\n"
+            + "JOIN payments.customers t1 ON t0.payee_id = t1.customer_id -- received by\nLIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                concept("Funds Transfer", transfers),
+                List.of(
+                    new Hop(
+                        RECEIVED_BY,
+                        "received by",
+                        concept("Customer", table(CUSTOMERS, "Postgres", "name")))))
+            .sql());
+  }
+
+  @Test
+  void anUnboundHopWithAForeignKeyInEachDirectionIsANamedBadRequest() {
+    final BoundTable customers =
+        withConstraints(
+            table(CUSTOMERS, "Postgres", "customer_id"),
+            foreignKey(List.of("primary_account_id"), ACCOUNTS, "account_id"));
+    final BoundTable accounts =
+        withConstraints(
+            table(ACCOUNTS, "Postgres", "account_id"),
+            foreignKey(List.of("customer_id"), CUSTOMERS, "customer_id"));
+
+    assertEquals(
+        "Hop 1 (holds): several foreign keys join "
+            + CUSTOMERS
+            + " and "
+            + ACCOUNTS
+            + "; bind the holds property to one of their columns",
+        assertThrows(
+                BadRequestException.class,
+                () ->
+                    OntologyConceptSqlGenerator.generate(
+                        concept("Customer", customers),
+                        List.of(new Hop(HOLDS, "holds", concept("Account", accounts)))))
+            .getMessage());
+  }
+
+  @Test
+  void aBindingPicksBetweenForeignKeysInEachDirection() {
+    final BoundTable customers =
+        withConstraints(
+            table(CUSTOMERS, "Postgres", "customer_id"),
+            foreignKey(List.of("primary_account_id"), ACCOUNTS, "account_id"));
+    final BoundTable accounts =
+        new BoundTable(
+            ACCOUNTS,
+            "Postgres",
+            List.of(List.of("account_id")),
+            Map.of(HOLDS, List.of("customer_id")),
+            List.of(),
+            List.of(foreignKey(List.of("customer_id"), CUSTOMERS, "customer_id")));
+
+    assertEquals(
+        "SELECT t1.account_id\nFROM payments.customers t0\n"
+            + "JOIN payments.accounts t1 ON t0.customer_id = t1.customer_id -- holds\nLIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                concept("Customer", customers),
+                List.of(new Hop(HOLDS, "holds", concept("Account", accounts))))
+            .sql());
+  }
+
+  @Test
+  void aBoundHopSkipsAnEarlierCandidateWhoseForeignKeyIgnoresTheBinding() {
+    final BoundTable customers =
+        new BoundTable(
+            CUSTOMERS,
+            "Postgres",
+            List.of(List.of("customer_id")),
+            Map.of(),
+            List.of("customer_id"),
+            List.of());
+    final BoundTable ledger =
+        withConstraints(
+            table(LEDGER, "Postgres", "entry_id"),
+            foreignKey(List.of("customer_id"), CUSTOMERS, "customer_id"));
+    final BoundTable transfers =
+        new BoundTable(
+            TRANSFERS,
+            "Postgres",
+            List.of(List.of("transfer_id")),
+            Map.of(RECEIVED_BY, List.of("payee_id")),
+            List.of("transfer_id"),
+            List.of());
+
+    assertEquals(
+        "SELECT t1.transfer_id\nFROM payments.customers t0\n"
+            + "JOIN payments.transfers t1 ON t0.customer_id = t1.payee_id -- received\nLIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                concept("Customer", customers),
+                List.of(
+                    new Hop(
+                        RECEIVED_BY,
+                        "received",
+                        new BoundConcept("Funds Transfer", List.of(ledger, transfers)))))
+            .sql());
   }
 
   @Test
@@ -420,6 +558,26 @@ class OntologyConceptSqlGeneratorTest {
     return OntologyConceptSqlGenerator.generate(
             concept("Funds Transfer", table(table, serviceType, columns)), List.of())
         .sql();
+  }
+
+  private static BoundTable payeeBoundTransfers() {
+    return new BoundTable(
+        TRANSFERS,
+        "Postgres",
+        List.of(List.of("transfer_id")),
+        Map.of(RECEIVED_BY, List.of("payee_id")),
+        List.of("transfer_id"),
+        List.of(foreignKey(List.of("payer_id"), CUSTOMERS, "customer_id")));
+  }
+
+  private static BoundTable identifiedCustomers() {
+    return new BoundTable(
+        CUSTOMERS,
+        "Postgres",
+        List.of(List.of("customer_id")),
+        Map.of(),
+        List.of("customer_id"),
+        List.of());
   }
 
   private static BoundConcept concept(final String label, final BoundTable table) {
