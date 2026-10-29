@@ -45,6 +45,7 @@ import OntologyVersionEditor from './OntologyVersionEditor';
 const CHANGE_BADGE_COLOR = {
   [ChangeType.Added]: 'success',
   [ChangeType.Changed]: 'warning',
+  [ChangeType.Deprecated]: 'gray',
   [ChangeType.Removed]: 'error',
 } as const;
 

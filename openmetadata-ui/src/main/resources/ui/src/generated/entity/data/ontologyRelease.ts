@@ -164,7 +164,13 @@ export interface FieldChange {
 export interface OntologyReleaseChangeSummary {
     added:   number;
     changed: number;
-    removed: number;
+    /**
+     * Existing concepts or properties newly marked deprecated. Disjoint from added, changed and
+     * removed. New captures always set this count; its absence on older summaries means the
+     * total is unavailable.
+     */
+    deprecated?: number;
+    removed:     number;
 }
 
 /**

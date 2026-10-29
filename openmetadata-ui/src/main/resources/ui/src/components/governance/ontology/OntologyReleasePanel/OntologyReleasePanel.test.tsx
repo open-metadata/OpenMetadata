@@ -1206,6 +1206,38 @@ describe('OntologyReleasePanel', () => {
     });
   });
 
+  it('shows a deprecated working change with its badge in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const defaultGet = get.getMockImplementation();
+    get.mockImplementation(async (url, config) =>
+      url.endsWith('/working/diff')
+        ? {
+            data: {
+              state: currentState,
+              data: [
+                {
+                  changeType: 'DEPRECATED',
+                  entity: {
+                    id: 'legacy-customer-id',
+                    name: 'LegacyCustomer',
+                    type: 'ontologyConcept',
+                  },
+                  memberKind: 'CONCEPT',
+                  ontologyId: ontology.id,
+                },
+              ],
+              paging: { total: 1 },
+            },
+          }
+        : defaultGet?.(url, config)
+    );
+    await renderPanel(true, 'changes');
+
+    const row = (await screen.findByText('LegacyCustomer')).closest('li');
+
+    expect(row).toHaveTextContent('label.deprecated');
+  });
+
   it('keeps release rows, export and the release detail actions in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     currentState.activeReleaseId = release.id;

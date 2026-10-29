@@ -83,7 +83,12 @@ class OntologyReleaseProjectionTest {
                         List.of(
                             new ConceptMapping()
                                 .withMappingType(ConceptMapping.ConceptMappingType.EXACT_MATCH)
-                                .withConceptIri(URI.create(EX + "external")))),
+                                .withConceptIri(URI.create(EX + "external"))))
+                    .withAbstract(true)
+                    .withDefinitionSource(URI.create("https://standards.example.org/party"))
+                    .withDeprecated(true)
+                    .withReplacedBy(URI.create(EX + "Account")),
+                concept("Account"),
                 property("code")
                     .withKind(OntologyPropertyKind.DATA)
                     .withEnumValues(
@@ -95,12 +100,54 @@ class OntologyReleaseProjectionTest {
                                 .withValue("Gold")
                                 .withDatatypeIri(URI.create(XSD.xstring.getURI()))))
                     .withUnit("kg")
-                    .withIsIdentifier(true),
+                    .withIsIdentifier(true)
+                    .withDeprecated(true)
+                    .withReplacedBy(URI.create(EX + "related")),
                 property("related")
                     .withPropertyChain(List.of(URI.create(EX + "first"), URI.create(EX + "second")))
                     .withInverse(URI.create(EX + "inverse")),
                 axiom("subclass")));
     assertNativeReimportIsNoOp(bundle, format);
+  }
+
+  @Test
+  void classModelFieldsProjectAsStandardAnnotations() {
+    final Model model =
+        projection(
+            concept("Customer")
+                .withAbstract(true)
+                .withDefinitionSource(URI.create("https://standards.example.org/party"))
+                .withDeprecated(true)
+                .withReplacedBy(URI.create(EX + "Account")),
+            concept("Account"),
+            property("code").withDeprecated(true).withReplacedBy(URI.create(EX + "identifier")),
+            property("identifier"));
+    try {
+      final var abstractClass = model.createProperty("https://open-metadata.org/ontology/abstract");
+      final var customer = model.createResource(EX + "Customer");
+      assertTrue(model.contains(customer, abstractClass, model.createTypedLiteral(true)));
+      assertTrue(
+          model.contains(
+              customer,
+              DCTerms.source,
+              model.createResource("https://standards.example.org/party")));
+      assertTrue(model.contains(customer, OWL2.deprecated, model.createTypedLiteral(true)));
+      assertTrue(
+          model.contains(customer, DCTerms.isReplacedBy, model.createResource(EX + "Account")));
+      final var code = model.createResource(EX + "code");
+      assertTrue(model.contains(code, OWL2.deprecated, model.createTypedLiteral(true)));
+      assertTrue(
+          model.contains(code, DCTerms.isReplacedBy, model.createResource(EX + "identifier")));
+      final var account = model.createResource(EX + "Account");
+      assertFalse(model.contains(account, abstractClass));
+      assertFalse(model.contains(account, DCTerms.source));
+      assertFalse(model.contains(account, OWL2.deprecated));
+      assertFalse(model.contains(account, DCTerms.isReplacedBy));
+      assertEquals("https://open-metadata.org/ontology/", model.getNsPrefixURI("om"));
+      assertEquals(List.of(), OwlApiProjection.dlViolations(OwlApiProjection.parse(model)));
+    } finally {
+      model.close();
+    }
   }
 
   @ParameterizedTest

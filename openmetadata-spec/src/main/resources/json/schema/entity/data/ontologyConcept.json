@@ -84,6 +84,24 @@
       },
       "default": []
     },
+    "abstract": {
+      "description": "An abstract class has no direct instances; data is classified by its subclasses.",
+      "type": "boolean",
+      "default": false
+    },
+    "definitionSource": {
+      "description": "IRI of the document or standard this definition is taken from.",
+      "$ref": "../../type/ontologyIri.json"
+    },
+    "deprecated": {
+      "description": "A deprecated definition stays resolvable for existing references but should not be used for new ones.",
+      "type": "boolean",
+      "default": false
+    },
+    "replacedBy": {
+      "description": "IRI of the concept in the same ontology that replaces this one.",
+      "$ref": "../../type/ontologyIri.json"
+    },
     "superClasses": {
       "description": "Direct named superclasses, derived from non-deleted ontology-owned SUBCLASS_OF axioms. Not stored or independently editable.",
       "type": "array",
