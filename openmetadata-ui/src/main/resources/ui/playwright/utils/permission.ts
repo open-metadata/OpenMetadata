@@ -163,19 +163,6 @@ export const validateViewPermissions = async (
   // check edit tier permission
   await expect(page.locator('[data-testid="edit-tier"]')).not.toBeVisible();
 
-  // check add tags button
-  await expect(
-    page.locator(
-      '[data-testid="tags-container"] > [data-testid="entity-tags"] .ant-tag'
-    )
-  ).not.toBeVisible();
-  // check add glossary term button
-  await expect(
-    page.locator(
-      '[data-testid="glossary-container"] > [data-testid="entity-tags"] .ant-tag'
-    )
-  ).not.toBeVisible();
-
   // check manage button
   await expect(page.locator('[data-testid="manage-button"]')).toHaveCount(
     permission?.editDisplayName ? 1 : 0

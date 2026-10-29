@@ -370,11 +370,6 @@
       "count": 2
     }
   },
-  "playwright/e2e/Flow/IngestionBot.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Flow/ObservabilityAlerts.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
@@ -565,7 +560,7 @@
   },
   "playwright/e2e/Pages/Users.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 16
+      "count": 15
     }
   },
   "playwright/e2e/Search/SearchRelevance.spec.ts": {
@@ -689,7 +684,7 @@
   },
   "playwright/utils/entity.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 14
+      "count": 12
     }
   },
   "playwright/utils/entityPanel.ts": {
@@ -757,7 +752,7 @@
   },
   "playwright/utils/task.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 1
     }
   },
   "playwright/utils/taskWorkflow.ts": {

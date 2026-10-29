@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
@@ -117,6 +118,9 @@ public class OpenSearchClient implements SearchClient {
   private final OpenSearchTransport transport;
   private final SdkHttpClient awsHttpClient; // Stored for cleanup on close()
 
+  /** Caps bulk requests in flight on this client's connection pool, across all bulk sinks. */
+  @Getter private final BulkConnectionBudget bulkConnectionBudget;
+
   private volatile OSLineageGraphBuilder lineageGraphBuilder;
   private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
 
@@ -143,9 +147,11 @@ public class OpenSearchClient implements SearchClient {
       this.transport =
           MeteredOpenSearchTransport.wrap(
               createAwsSdk2Transport(config, awsConfig, this.awsHttpClient));
+      this.bulkConnectionBudget = BulkConnectionBudget.forAwsSdkClient();
     } else {
       this.awsHttpClient = null;
       this.transport = MeteredOpenSearchTransport.wrap(createApacheHttpClient5Transport(config));
+      this.bulkConnectionBudget = BulkConnectionBudget.forHttpClientPool(config);
     }
 
     this.newClient = createOpenSearchNewClient(transport);
@@ -787,6 +793,19 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     entityManager.updateChildrenByNestedField(
         indexNames, docIds, nestedPaths, field, values, updates);
+  }
+
+  @Override
+  public void updateReferenceCopies(
+      List<String> indexNames,
+      List<String> nestedPaths,
+      List<String> objectPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateReferenceCopies(
+        indexNames, nestedPaths, objectPaths, field, values, updates);
   }
 
   @Override

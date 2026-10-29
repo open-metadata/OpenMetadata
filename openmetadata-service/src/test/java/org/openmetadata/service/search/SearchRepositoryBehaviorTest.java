@@ -19,6 +19,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -96,6 +97,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
@@ -995,25 +997,31 @@ class SearchRepositoryBehaviorTest {
   void propagateInheritedFieldsToChildrenUpdatesDomainChildrenAndDataProductsSeparately()
       throws IOException {
     EntityInterface<?> domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
+    EntityReference owner = new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER);
+    doReturn(List.of(owner)).when(domainEntity).getOwners();
     ChangeDescription changeDescription =
         changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_OWNERS).withNewValue(List.of(owner))),
             List.of(),
-            List.of(
-                new FieldChange()
-                    .withName(Entity.FIELD_DISPLAY_NAME)
-                    .withOldValue("Old Domain")
-                    .withNewValue("New Domain")),
             List.of());
 
     repository.propagateInheritedFieldsToChildren(
         Entity.DOMAIN, "domain-id", changeDescription, DOMAIN_MAPPING, domainEntity);
 
+    // The reconciled, synchronous variant: the relabel pass that follows rewrites the same data
+    // products, and two concurrent passes over a document drop one of the writes.
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_domain_search_index")), any(Pair.class), any(Pair.class));
+            eq(List.of("cluster_domain_search_index")),
+            eq("parent.id"),
+            eq(List.of("domain-id")),
+            any(Pair.class));
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_data_product_search_index")), any(Pair.class), any(Pair.class));
+            eq(List.of("cluster_data_product_search_index")),
+            eq("domains.id"),
+            eq(List.of("domain-id")),
+            any(Pair.class));
   }
 
   @Test
@@ -3162,10 +3170,11 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void propagateToRelatedEntitiesUpdatesGlossaryTagFqnsAndDisplayNames() {
-    EntityInterface<?> glossaryTerm =
-        mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
+  @SuppressWarnings("unchecked")
+  void propagateToRelatedEntitiesRelabelsGlossaryTermCopiesWithoutPrefixRewrite() {
+    EntityInterface<?> glossaryTerm = mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Income");
     when(glossaryTerm.getFullyQualifiedName()).thenReturn("BusinessGlossary.Income");
+    when(glossaryTerm.getDisplayName()).thenReturn("Income Display");
 
     ChangeDescription changeDescription =
         changeDescription(
@@ -3184,19 +3193,20 @@ class SearchRepositoryBehaviorTest {
     repository.propagateToRelatedEntities(
         Entity.GLOSSARY_TERM, changeDescription, TABLE_MAPPING, glossaryTerm);
 
-    verify(searchClient)
-        .updateByFqnPrefix(
-            SearchClient.GLOBAL_SEARCH_ALIAS,
-            "BusinessGlossary.Revenue",
-            "BusinessGlossary.Income",
-            "tags.tagFQN");
+    // The term's updater rewrites the tag FQNs on assets; the prefix script that used to run here
+    // also substring-replaced the assets' own FQNs.
+    verify(searchClient, never()).updateByFqnPrefix(any(), any(), any(), any());
+    ArgumentCaptor<Pair<String, Map<String, Object>>> update = ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
         .updateChildren(
             eq(SearchClient.GLOBAL_SEARCH_ALIAS),
             eq(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     "tags.tagFQN", "BusinessGlossary.Income")),
-            any(Pair.class));
+            update.capture());
+    assertEquals(
+        Map.of(Entity.FIELD_DISPLAY_NAME, "Income Display"),
+        update.getValue().getValue().get("updates"));
   }
 
   @Test
@@ -3747,6 +3757,9 @@ class SearchRepositoryBehaviorTest {
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
 
     when(openSearchClient.getNewClient()).thenReturn(rawClient);
+    lenient()
+        .when(openSearchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     when(embeddingClient.getDimension()).thenReturn(1536);
     doReturn(true).when(spyRepository).isVectorEmbeddingEnabled();
     doReturn(embeddingClient)
@@ -3790,6 +3803,9 @@ class SearchRepositoryBehaviorTest {
     ElasticSearchVectorService vectorService = mock(ElasticSearchVectorService.class);
 
     when(elasticSearchClient.getNewClient()).thenReturn(rawClient);
+    lenient()
+        .when(elasticSearchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     when(embeddingClient.getDimension()).thenReturn(1536);
     doReturn(true).when(spyRepository).isVectorEmbeddingEnabled();
     doReturn(embeddingClient)

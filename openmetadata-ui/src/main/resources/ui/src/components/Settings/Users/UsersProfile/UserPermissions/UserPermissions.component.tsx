@@ -180,8 +180,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
               aria-label={t('label.entity-detail-plural', {
                 entity: getEntityName(policy.policy),
               })}
-              className="tw:w-auto"
-            />
+              className="tw:w-auto">
+              {null}
+            </AccordionHeader>
             <Box className="tw:min-w-0 tw:flex-1">
               <Box
                 inline

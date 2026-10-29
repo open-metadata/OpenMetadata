@@ -17,12 +17,13 @@ import {
   Button,
   Table,
   TableCard,
+  TableCardVariant,
   Toggle,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
-import { FC, useCallback, useMemo } from 'react';
+import { FC, MouseEvent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
@@ -37,19 +38,29 @@ import {
 } from '../../utils/IntakeFormUtils';
 
 interface IntakeFormsTableProps {
+  /**
+   * Shrinks the Enabled and Actions columns to their content, so Entity Type
+   * and Fields get the width. Used where the table sits in the narrower
+   * settings modal. @default false
+   */
+  compactActionColumns?: boolean;
   forms: IntakeForm[];
   loading: boolean;
-  onDelete: (form: IntakeForm) => void;
+  /** `trigger` is the pressed delete button, to anchor a confirmation to. */
+  onDelete: (form: IntakeForm, trigger?: HTMLElement) => void;
   onEdit: (form: IntakeForm) => void;
   onToggleEnabled: (form: IntakeForm, enabled: boolean) => void;
+  variant?: TableCardVariant;
 }
 
 const IntakeFormsTable: FC<IntakeFormsTableProps> = ({
+  compactActionColumns = false,
   forms,
   loading,
   onDelete,
   onEdit,
   onToggleEnabled,
+  variant,
 }) => {
   const { t } = useTranslation();
 
@@ -62,20 +73,29 @@ const IntakeFormsTable: FC<IntakeFormsTableProps> = ({
     () => [
       { id: 'entityType', name: t('label.entity-type') },
       { id: 'formFields', name: t('label.field-plural') },
-      { id: 'enabled', name: t('label.enabled') },
-      { id: 'actions', name: t('label.action-plural') },
+      {
+        id: 'enabled',
+        name: t('label.enabled'),
+        className: compactActionColumns ? 'tw:w-28' : undefined,
+      },
+      {
+        id: 'actions',
+        name: t('label.action-plural'),
+        className: compactActionColumns ? 'tw:w-24' : undefined,
+      },
     ],
-    [t]
+    [t, compactActionColumns]
   );
 
   return (
-    <TableCard.Root size="sm">
+    <TableCard.Root size="sm" variant={variant}>
       <Table
         aria-label={t('label.intake-form-plural')}
         data-testid="intake-forms-table">
         <Table.Header columns={columns}>
           {(col) => (
             <Table.Head
+              className={col.className}
               id={col.id}
               isRowHeader={col.id === 'entityType'}
               key={col.id}
@@ -159,7 +179,9 @@ const IntakeFormsTable: FC<IntakeFormsTableProps> = ({
                       data-testid={`delete-${record.entityType}`}
                       iconLeading={Trash01}
                       size="sm"
-                      onClick={() => onDelete(record)}
+                      onClick={(event: MouseEvent<HTMLElement>) =>
+                        onDelete(record, event.currentTarget)
+                      }
                     />
                   </Tooltip>
                 </Box>

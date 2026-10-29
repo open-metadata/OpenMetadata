@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.tools;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -107,7 +108,9 @@ public class SemanticSearchTool implements McpTool {
     String query = (String) params.get("query");
     String paramError = validateParams(query, params);
     if (paramError != null) {
-      return errorResponse(paramError);
+      Map<String, Object> rejected = errorResponse(paramError);
+      rejected.put(McpResponseTrim.STATUS_CODE_KEY, Response.Status.BAD_REQUEST.getStatusCode());
+      return rejected;
     }
 
     if (!Entity.getSearchRepository().isVectorEmbeddingEnabled()) {

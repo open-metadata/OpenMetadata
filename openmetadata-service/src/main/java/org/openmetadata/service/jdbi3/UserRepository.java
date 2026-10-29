@@ -60,7 +60,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -2038,13 +2037,16 @@ public class UserRepository extends EntityRepository<User> {
       recordListChange(
           TEAMS_FIELD, origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
 
-      // Update users and userCount in team search index
-      Stream.concat(added.stream(), deleted.stream())
-          .forEach(
-              teamRef -> {
-                EntityInterface<?> team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
-                searchRepository.updateEntityIndex(team);
-              });
+      // The teams' user counts changed. Rebuild their documents from full reads: a team read with
+      // only its id and user count would blank the owners and domains in its document. There is
+      // no retry locator, because the rebuild files a retry for each document it fails to write.
+      List<EntityReference> changedTeams = Stream.concat(added.stream(), deleted.stream()).toList();
+      searchRepository.deferIfFlushScopeActive(
+          () -> searchRepository.updateEntitiesByReference(changedTeams),
+          "reindexChangedTeams",
+          null,
+          null,
+          Entity.TEAM);
     }
 
     private List<EntityReference> findAddedTeams(
@@ -2179,7 +2181,14 @@ public class UserRepository extends EntityRepository<User> {
     private void updateAuthenticationMechanism(User original, User updated) {
       AuthenticationMechanism origAuthMechanism = original.getAuthenticationMechanism();
       AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
-      if (origAuthMechanism == null && updatedAuthMechanism != null) {
+      if (updatedAuthMechanism == null) {
+        // CreateUser and CSV rows never carry a person's mechanism, so its absence means "keep it".
+        // Dropping it would erase the stored password, and the admin seeding at startup would then
+        // reset the admin account to its default password.
+        updated.setAuthenticationMechanism(origAuthMechanism);
+        return;
+      }
+      if (origAuthMechanism == null) {
         recordChange(
             AUTH_MECHANISM_FIELD, original.getAuthenticationMechanism(), "new-encrypted-value");
       } else if (origAuthMechanism != null

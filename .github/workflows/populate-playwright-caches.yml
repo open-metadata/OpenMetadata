@@ -40,8 +40,8 @@
 #                shards. The commit was already tested by the queue entry that
 #                produced it; re-running the suite on main proves nothing.
 #   warm-venv    the ingestion Python venv, one per py-tests matrix version.
-#                py-tests-shared.yml, playwright-visual.yml and the knowledge-
-#                graph e2e all restore it, but none of them run on push, so
+#                py-tests-shared.yml and the Playwright RDF lane
+#                restore it, but none of them run on push, so
 #                until 2026-09-29 main never held a copy: every PR built its
 #                own ~300 MB entry under its PR ref, and merge_group always
 #                built cold. Calls the composite exactly as py-tests does.
@@ -222,10 +222,9 @@ jobs:
   # distribution input pays the full build-and-seed.
   #
   # DATABASE: postgresql only, matching the PR/merge-queue pipeline this warms
-  # for. Note the three cache keys do NOT encode the database flavour while the
-  # fixture itself is a postgres dump — safe today because the mysql nightly is
-  # workflow_dispatch-only against release branches and so never writes main's
-  # scope, but the keys should grow a flavour segment before that changes.
+  # for. The golden-fixture key carries the database, so a mysql run never
+  # restores this postgres fixture; the distribution and ingestion-image keys
+  # are database-independent.
   warm-fixture:
     # GitHub replaces the single pending run by default; let the active warmer finish.
     # https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency

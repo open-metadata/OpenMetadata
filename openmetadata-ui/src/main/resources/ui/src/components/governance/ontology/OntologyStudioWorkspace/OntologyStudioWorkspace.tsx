@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import OntologyMemoryReviewPanel from '../../../OntologyExplorer/OntologyMemoryReviewPanel';
 import OntologyAuthoringWorkspace from '../OntologyAuthoringWorkspace/OntologyAuthoringWorkspace';
 import OntologyAxiomWorkspace from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace';
@@ -40,10 +42,18 @@ interface OntologyStudioWorkspaceProps {
   onWorkingChange?: () => void;
 }
 
-const getWorkspaceClassName = (mode: OntologyStudioWorkspaceProps['mode']) =>
-  mode === 'view' || mode === 'edit'
-    ? 'tw:min-h-0 tw:flex-1 tw:overflow-hidden'
+const getWorkspaceClassName = (
+  mode: OntologyStudioWorkspaceProps['mode'],
+  isAiMode: boolean
+) => {
+  if (mode === 'view' || mode === 'edit') {
+    return 'tw:min-h-0 tw:flex-1 tw:overflow-hidden';
+  }
+
+  return isAiMode
+    ? 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:px-8 tw:pt-6 tw:pb-10'
     : 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-6';
+};
 
 const OntologyStudioWorkspace = ({
   ontology,
@@ -61,6 +71,7 @@ const OntologyStudioWorkspace = ({
 }: OntologyStudioWorkspaceProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const isAiMode = useIsAiMode();
   const [revision, setRevision] = useState(0);
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
@@ -84,7 +95,28 @@ const OntologyStudioWorkspace = ({
     switch (mode) {
       case 'definitions':
         return (
-          <Tabs defaultSelectedKey="concept">
+          <Tabs
+            className={isAiMode ? 'tw:gap-5' : undefined}
+            defaultSelectedKey="concept">
+            {isAiMode ? (
+              <Box direction="col" gap={1}>
+                <Typography
+                  as="h2"
+                  className="not-prose tw:m-0"
+                  size="text-lg"
+                  weight="semibold">
+                  {getEntityName(ontology)}
+                </Typography>
+                {ontology.description ? (
+                  <Typography
+                    color="secondary"
+                    ellipsis={{ rows: 2 }}
+                    size="text-sm">
+                    {ontology.description}
+                  </Typography>
+                ) : null}
+              </Box>
+            ) : null}
             <Tabs.List aria-label={t('label.definition')} type="underline">
               <Tabs.Item id="concept">{t('label.concept-plural')}</Tabs.Item>
               <Tabs.Item id="property">{t('label.property-plural')}</Tabs.Item>
@@ -158,7 +190,10 @@ const OntologyStudioWorkspace = ({
   };
 
   return (
-    <Box className={getWorkspaceClassName(mode)} direction="col" gap={4}>
+    <Box
+      className={getWorkspaceClassName(mode, isAiMode)}
+      direction="col"
+      gap={4}>
       {renderContent()}
     </Box>
   );
