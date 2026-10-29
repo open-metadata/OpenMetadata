@@ -48,8 +48,8 @@ import org.openmetadata.service.rdf.storage.StorageFacts;
  * lease that marks the next one due one interval later, so the cluster compacts once per interval.
  * The compaction holds the RDF reindex and inference locks, so it never overlaps a reindex or an
  * inference run, and pauses writes to the serving dataset, because Fuseki blocks them for the whole
- * copy. A compaction that does not succeed releases its lease, so the next check tries again,
- * unless Fuseki restarted during it: that one waits for the next interval. Nothing is compacted
+ * copy. A compaction Fuseki could not start releases its lease, so the next check tries again; one
+ * it started keeps the lease until the next interval, whatever its outcome. Nothing is compacted
  * until every live server holds its writes back for maintenance, so a rolling upgrade from an
  * older version never has servers writing into a compaction. See
  * ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule.
@@ -229,19 +229,22 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
   }
 
   /**
-   * A compaction that did not run or did not succeed is retried at the next check, except one that
-   * Fuseki started and then lost: Fuseki restarted during the copy, as it does when the volume
-   * cannot hold the copy, and retrying would only restart it again.
+   * Only a compaction Fuseki never started is retried at the next check. One it started and that
+   * did not succeed keeps its slot until the next interval: it failed or restarted Fuseki because
+   * the volume cannot hold the copy, or it is still copying, and a retry would only repeat that.
    */
   private static boolean retryAtNextCheck(final CompactionResult result) {
-    final boolean lost = result != null && result.lostByTheStore();
-    if (lost) {
+    final boolean started = result != null && result.startedByTheStore();
+    if (started && !result.succeeded()) {
       LOG.error(
-          "Fuseki restarted while compacting the RDF store, as it does when the volume has less"
-              + " free space than the live data. The next compaction waits for its schedule; expand"
-              + " the volume if this repeats.");
+          "Compacting the RDF store did not succeed ({}, task {}); the next compaction waits for"
+              + " its schedule. A compaction fails, or restarts Fuseki, when the volume has less"
+              + " free space than the live data: expand the volume, then restart Fuseki to release"
+              + " the space a failed copy still holds.",
+          result.outcome(),
+          result.taskId());
     }
-    return result == null || !result.succeeded() && !lost;
+    return !started;
   }
 
   private CompactionResult compactExclusively(final String jobId) {
