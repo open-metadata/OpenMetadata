@@ -52,7 +52,6 @@ function ObservabilityAlertActions({
 
   const editButton = (
     <ButtonUtility
-      color="tertiary"
       data-testid={`alert-edit-${record.name}`}
       href={
         onEditAlert
@@ -82,7 +81,6 @@ function ObservabilityAlertActions({
       {alertPermission.edit && editButton}
       {alertPermission.delete && (
         <ButtonUtility
-          color="tertiary"
           data-testid={`alert-delete-${record.name}`}
           icon={Trash01}
           isDisabled={record.provider === ProviderType.System}

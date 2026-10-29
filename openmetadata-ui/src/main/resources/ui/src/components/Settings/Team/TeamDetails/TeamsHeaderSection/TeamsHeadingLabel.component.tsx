@@ -13,17 +13,17 @@
 
 import {
   Box,
-  Button,
+  ButtonUtility,
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 
 import {
   Check,
+  Edit01,
   ExclamationCircleFilled,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
@@ -119,19 +119,18 @@ const TeamsHeadingLabel = ({
 
     const canEditHeading = hasAccess || isCurrentTeamOwner;
     const editHeadingButton = canEditHeading && !currentTeam.deleted && (
-      <EditIconButton
-        newLook
+      <ButtonUtility
         data-testid="edit-team-name"
-        disabled={!hasEditDisplayNamePermission}
-        size="small"
-        title={
+        icon={Edit01}
+        isDisabled={!hasEditDisplayNamePermission}
+        tooltip={
           hasEditDisplayNamePermission
             ? t('label.edit-entity', {
                 entity: t('label.display-name'),
               })
             : t('message.no-permission-for-action')
         }
-        onClick={(e) => {
+        onClick={(e: MouseEvent) => {
           // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
           e.stopPropagation();
           setIsHeadingEditing(true);
@@ -163,20 +162,22 @@ const TeamsHeadingLabel = ({
           data-testid="buttons"
           gap={1}
           itemClassName="layout-space-item">
-          <Button
+          <ButtonUtility
             color="primary"
             data-testid="cancelAssociatedTag"
+            icon={XClose}
             isDisabled={isLoading}
-            onMouseDown={handleClose}>
-            <XClose className="tw:shrink-0" size={14} />
-          </Button>
-          <Button
+            tooltip={t('label.cancel')}
+            onMouseDown={handleClose}
+          />
+          <ButtonUtility
             color="primary"
             data-testid="saveAssociatedTag"
+            icon={Check}
             isLoading={isLoading}
-            onMouseDown={onHeadingSave}>
-            <Check className="tw:shrink-0" size={14} />
-          </Button>
+            tooltip={t('label.save')}
+            onMouseDown={onHeadingSave}
+          />
         </Box>
       </div>
     ) : (

@@ -47,7 +47,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     <button
       data-testid={props['data-testid'] as string}
       onClick={props.onClick as React.MouseEventHandler}>
-      {props.iconTrailing as React.ReactNode}
       {children}
     </button>
   ),

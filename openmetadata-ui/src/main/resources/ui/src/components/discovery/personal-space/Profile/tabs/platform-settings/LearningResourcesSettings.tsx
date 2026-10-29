@@ -312,10 +312,9 @@ const LearningResourcesSettings = ({
         return (
           <Box gap={1}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`edit-${record.name}`}
               icon={Edit01}
-              size="xs"
+              size="lg"
               tooltip={t('label.edit')}
               onPress={() => openForm(record)}
             />
@@ -329,10 +328,9 @@ const LearningResourcesSettings = ({
               })}
               onConfirm={() => handleDelete(record)}>
               <ButtonUtility
-                color="tertiary"
                 data-testid={`delete-${record.name}`}
                 icon={Trash01}
-                size="xs"
+                size="lg"
                 tooltip={t('label.delete')}
               />
             </ConfirmPopover>

@@ -311,7 +311,13 @@ describe('DataQualitySettingsPage', () => {
 
     renderPage();
 
-    expect(await screen.findByTestId('edit-Accuracy')).toBeDisabled();
-    expect(screen.getByTestId('delete-Accuracy')).toBeDisabled();
+    expect(await screen.findByTestId('edit-Accuracy')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+    expect(screen.getByTestId('delete-Accuracy')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
   });
 });

@@ -12,13 +12,12 @@
  */
 
 import { Box, Select, Typography } from '@openmetadata/ui-core-components';
+import { Download01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 
 import { isEmpty, lowerCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconDownload } from '../../../assets/svg/ic-download.svg';
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
@@ -221,7 +220,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
           description={t('message.download-entity-data', {
             entity: t('label.sample-data'),
           })}
-          icon={IconDownload}
+          icon={Download01}
           id="export-button"
           name={t('label.export')}
         />
@@ -243,7 +242,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
                     entityType: t('label.sample-data'),
                   }
                 )}
-                icon={IconDelete}
+                icon={Trash01}
                 id="delete-button"
                 name={t('label.delete')}
               />

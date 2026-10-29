@@ -14,7 +14,7 @@
 import {
   Alert,
   Box,
-  Button,
+  ButtonUtility,
   Input,
   Select,
   Toggle,
@@ -265,13 +265,14 @@ const AlertAiDestinationItem = ({
           )}
         </div>
         {!isViewOnly && (
-          <Button
-            className={ALERT_AI_FORM_CLASS_NAMES.removeButton}
-            color="secondary"
+          <ButtonUtility
+            className="tw:shrink-0"
+            color="tertiary-destructive"
             data-testid={`remove-destination-${name}`}
-            iconLeading={Trash01}
-            size="sm"
-            onPress={() => remove?.(name)}
+            icon={Trash01}
+            size="lg"
+            tooltip={t('label.remove')}
+            onClick={() => remove?.(name)}
           />
         )}
       </Box>

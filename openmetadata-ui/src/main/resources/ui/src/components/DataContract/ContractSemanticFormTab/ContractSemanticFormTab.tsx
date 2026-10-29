@@ -168,18 +168,17 @@ export const ContractSemanticFormTab: React.FC<{
       <Box align="center" gap={3}>
         <ButtonUtility
           className="edit-expand-button"
-          color="secondary"
           data-testid={`edit-semantic-${index}`}
           icon={Edit01}
-          size="sm"
+          size="lg"
           tooltip={t('label.edit')}
           onClick={() => setEditingKey(index)}
         />
         <ButtonUtility
-          color="secondary-destructive"
+          color="tertiary-destructive"
           data-testid={`delete-semantic-${index}`}
           icon={Trash01}
-          size="sm"
+          size="lg"
           tooltip={t('label.delete')}
           onClick={() => handleDeleteSemantic(index)}
         />

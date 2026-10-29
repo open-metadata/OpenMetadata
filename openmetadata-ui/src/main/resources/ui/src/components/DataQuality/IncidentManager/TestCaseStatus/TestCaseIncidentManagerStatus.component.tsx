@@ -13,9 +13,11 @@
 
 import {
   Box,
+  ButtonUtility,
   Tooltip,
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +30,6 @@ import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import { TestCaseStatusModal } from '../../TestCaseStatusModal/TestCaseStatusModal.component';
 import '../incident-manager.style.less';
 import InlineTestCaseIncidentStatus from './InlineTestCaseIncidentStatus.component';
@@ -38,7 +39,6 @@ const TestCaseIncidentManagerStatus = ({
   data,
   onSubmit,
   hasPermission,
-  newLook = false,
   headerName,
   isInline = false,
 }: TestCaseStatusIncidentManagerProps) => {
@@ -94,11 +94,10 @@ const TestCaseIncidentManagerStatus = ({
           </CoreTypography>
 
           {hasEditPermission && (
-            <EditIconButton
+            <ButtonUtility
               data-testid="edit-resolution-icon"
-              newLook={newLook}
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.status'),
               })}
               onClick={onEditStatus}
@@ -172,13 +171,11 @@ const TestCaseIncidentManagerStatus = ({
         </Tooltip>
 
         {hasEditPermission && (
-          <EditIconButton
-            newLook
-            className="flex-center"
+          <ButtonUtility
             data-testid="edit-resolution-icon"
-            disabled={!hasEditPermission}
-            size="small"
-            title={t('label.edit-entity', {
+            icon={Edit01}
+            isDisabled={!hasEditPermission}
+            tooltip={t('label.edit-entity', {
               entity: t('label.status'),
             })}
             onClick={onEditStatus}

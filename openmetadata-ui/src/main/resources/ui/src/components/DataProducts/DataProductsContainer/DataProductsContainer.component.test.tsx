@@ -62,25 +62,6 @@ jest.mock('../DataProductsSelectList/DataProductsSelectList', () => ({
     ),
 }));
 
-jest.mock('../../common/WidgetActionButton/WidgetActionButton', () => ({
-  WidgetPlusButton: jest
-    .fn()
-    .mockImplementation(({ onClick, disabled, ...props }) => (
-      <button
-        data-testid="add-data-product"
-        disabled={disabled}
-        onClick={onClick}
-        {...props}>
-        Add
-      </button>
-    )),
-  WidgetEditButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
-    <button data-testid="edit-button" onClick={onClick} {...props}>
-      Edit
-    </button>
-  )),
-}));
-
 jest.mock('../../common/WidgetCard/WidgetCard', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(({ children, headerExtra }) => (
@@ -169,10 +150,12 @@ describe('DataProductsContainer', () => {
   it('disables add button with no domain when rule is enabled', () => {
     render(<DataProductsContainer {...defaultProps} activeDomains={[]} />);
 
-    expect(screen.getByTestId('add-data-product')).toBeDisabled();
-    expect(
-      screen.getByText('message.select-domain-to-add-data-product')
-    ).toBeInTheDocument();
+    const addButton = screen.getByTestId('add-data-product');
+
+    expect(addButton).toHaveAttribute('aria-disabled', 'true');
+    expect(addButton).toHaveAccessibleName(
+      'message.select-domain-to-add-data-product'
+    );
   });
 
   it('enables add button with no domain when rule is disabled', () => {
@@ -184,9 +167,11 @@ describe('DataProductsContainer', () => {
       />
     );
 
-    expect(screen.getByTestId('add-data-product')).not.toBeDisabled();
-    expect(
-      screen.queryByText('message.select-domain-to-add-data-product')
-    ).not.toBeInTheDocument();
+    const addButton = screen.getByTestId('add-data-product');
+
+    expect(addButton).not.toHaveAttribute('aria-disabled');
+    expect(addButton).not.toHaveAccessibleName(
+      'message.select-domain-to-add-data-product'
+    );
   });
 });

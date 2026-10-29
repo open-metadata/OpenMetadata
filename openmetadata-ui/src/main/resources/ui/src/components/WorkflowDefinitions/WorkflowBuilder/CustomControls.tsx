@@ -12,7 +12,7 @@
  */
 
 import {
-  Button,
+  ButtonUtility,
   Card,
   Divider,
   Typography,
@@ -76,31 +76,29 @@ export const CustomControls: React.FC<CustomControlsProps> = ({
     <Card
       className="tw:absolute tw:bottom-5 tw:right-5 tw:flex tw:items-center tw:gap-0.5 tw:z-10 tw:p-1 tw:bg-canvas"
       data-testid="workflow-controls">
-      <Button
-        color="tertiary"
+      <ButtonUtility
         data-testid="undo-button"
-        iconLeading={WorkflowUndo}
+        icon={WorkflowUndo}
         isDisabled={!canUndo || isViewMode}
-        size="sm"
-        onPress={onUndo}
+        size="lg"
+        onClick={onUndo}
       />
-      <Button
-        color="tertiary"
+      <ButtonUtility
         data-testid="redo-button"
-        iconLeading={WorkflowRedo}
+        icon={WorkflowRedo}
         isDisabled={!canRedo || isViewMode}
-        size="sm"
-        onPress={onRedo}
+        size="lg"
+        onClick={onRedo}
       />
 
       <Divider orientation="vertical" />
 
-      <Button
-        color="tertiary"
+      <ButtonUtility
         data-testid="zoom-out-button"
-        iconLeading={Minus}
-        size="sm"
-        onPress={handleZoomOut}
+        icon={Minus}
+        size="lg"
+        tooltip={t('label.zoom-out')}
+        onClick={handleZoomOut}
       />
       <Typography
         className="tw:min-w-11 tw:text-center tw:text-secondary"
@@ -109,33 +107,33 @@ export const CustomControls: React.FC<CustomControlsProps> = ({
         {currentZoom}
         {t('label.percentage-symbol')}
       </Typography>
-      <Button
-        color="tertiary"
+      <ButtonUtility
         data-testid="zoom-in-button"
-        iconLeading={Plus}
-        size="sm"
-        onPress={handleZoomIn}
+        icon={Plus}
+        size="lg"
+        tooltip={t('label.zoom-in')}
+        onClick={handleZoomIn}
       />
 
       <Divider orientation="vertical" />
 
-      <Button
-        color="tertiary"
+      <ButtonUtility
         data-testid="fit-view-button"
-        iconLeading={Maximize01}
-        size="sm"
-        onPress={handleFitView}
+        icon={Maximize01}
+        size="lg"
+        tooltip={t('label.fit-to-screen')}
+        onClick={handleFitView}
       />
 
       <Divider orientation="vertical" />
 
-      <Button
-        color="tertiary"
+      <ButtonUtility
         data-testid="rearrange-button"
-        iconLeading={GitBranch01}
+        icon={GitBranch01}
         isDisabled={isViewMode || !allowStructuralGraphEdits}
-        size="sm"
-        onPress={
+        size="lg"
+        tooltip={t('label.rearrange-nodes')}
+        onClick={
           isViewMode || !allowStructuralGraphEdits ? undefined : handleRearrange
         }
       />

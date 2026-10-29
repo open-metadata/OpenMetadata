@@ -17,7 +17,7 @@ import {
   AccordionPanel,
   Badge,
   Box,
-  Button,
+  ButtonUtility,
   Divider,
   Select,
   Slider,
@@ -26,9 +26,9 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { MouseEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/setting-colored.svg';
 import { SearchFieldMatchType as MatchType } from '../../../generated/configuration/searchSettings';
 import './field-configuration.less';
@@ -153,11 +153,11 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             </AccordionHeader>
           </div>
           <Box className="tw:absolute tw:end-3 tw:top-3">
-            <Button
-              aria-label={t('label.delete')}
-              color="secondary"
+            <ButtonUtility
               data-testid="delete-search-field"
-              iconLeading={<Delete className="tw:size-3.5 tw:shrink-0" />}
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.delete')}
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
                 onDeleteSearchField(field.fieldName);

@@ -342,7 +342,6 @@ const AlertDetailsPage = ({
       <>
         {editPermission && alertDetails?.provider !== ProviderType.System && (
           <ButtonUtility
-            color="tertiary"
             data-testid="edit-button"
             icon={Edit01}
             size="lg"
@@ -354,7 +353,6 @@ const AlertDetailsPage = ({
         )}
         {deletePermission && alertDetails?.provider !== ProviderType.System && (
           <ButtonUtility
-            color="tertiary"
             data-testid="delete-button"
             icon={Trash01}
             size="lg"
@@ -365,7 +363,6 @@ const AlertDetailsPage = ({
           />
         )}
         <ButtonUtility
-          color="tertiary"
           data-testid="sync-button"
           icon={RefreshCw04}
           isDisabled={isSyncing}

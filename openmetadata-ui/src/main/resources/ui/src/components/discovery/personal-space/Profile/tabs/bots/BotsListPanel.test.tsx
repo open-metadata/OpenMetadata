@@ -306,8 +306,13 @@ describe('BotsListPanel', () => {
       expect(screen.getByTestId('bot-delete-system-bot')).toBeInTheDocument()
     );
 
-    expect(screen.getByTestId('bot-delete-system-bot')).toBeDisabled();
-    expect(screen.getByTestId('bot-delete-ingest')).not.toBeDisabled();
+    expect(screen.getByTestId('bot-delete-system-bot')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+    expect(screen.getByTestId('bot-delete-ingest')).not.toHaveAttribute(
+      'aria-disabled'
+    );
   });
 
   it('should disable delete for non-admin users', async () => {
@@ -318,7 +323,10 @@ describe('BotsListPanel', () => {
       expect(screen.getByTestId('bot-delete-ingest')).toBeInTheDocument()
     );
 
-    expect(screen.getByTestId('bot-delete-ingest')).toBeDisabled();
+    expect(screen.getByTestId('bot-delete-ingest')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
   });
 
   it('should refetch with deleted included when the toggle is switched', async () => {

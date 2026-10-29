@@ -124,21 +124,19 @@ const AccessControlRulesTable: FC<AccessControlRulesTableProps> = ({
         return (
           <Box direction="row" gap={1}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`edit-rule-${rule.name}`}
               icon={Edit01}
               isDisabled={actionsDisabled}
-              size="xs"
+              size="lg"
               tooltip={actionTooltip(t('label.edit'))}
               tooltipPlacement="left"
               onPress={() => onEdit(rule)}
             />
             <ButtonUtility
-              color="tertiary"
               data-testid={`delete-rule-${rule.name}`}
               icon={Trash01}
               isDisabled={actionsDisabled}
-              size="xs"
+              size="lg"
               tooltip={actionTooltip(t('label.delete'))}
               tooltipPlacement="left"
               onPress={() => onDelete(rule.name ?? '')}

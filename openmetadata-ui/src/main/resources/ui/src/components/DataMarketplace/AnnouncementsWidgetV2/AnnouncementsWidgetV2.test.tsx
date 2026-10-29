@@ -111,7 +111,11 @@ describe('AnnouncementsWidgetV2', () => {
         name: 'label.announcement: Data product update',
       })
     ).toBeInTheDocument();
-    expect(screen.getByTestId('announcement-next-btn')).toBeDisabled();
+    // A disabled ButtonUtility with a tooltip stays focusable (aria-disabled).
+    expect(screen.getByTestId('announcement-next-btn')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
     expect(screen.queryByText('Table update')).not.toBeInTheDocument();
   });
 

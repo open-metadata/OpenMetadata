@@ -157,11 +157,10 @@ const renderEntityCell = (
         })}
         onConfirm={() => onRemove(item)}>
         <ButtonUtility
-          color="tertiary"
           data-testid={`remove-${getEntityName(item)}`}
           icon={Delete}
           isDisabled={!canEditAll || isLoadingOnSave}
-          size="xs"
+          size="lg"
           tooltip={translate('label.remove')}
           tooltipPlacement="left"
         />
@@ -292,10 +291,8 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
       </Typography>
       {canEdit && !isEditing && (
         <ButtonUtility
-          color="tertiary"
           data-testid="edit-description-btn"
           icon={Edit}
-          size="xs"
           tooltip={String(
             t('label.edit-entity', { entity: t('label.description') })
           )}
@@ -521,11 +518,9 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     const titleSuffixNode: React.ReactNode = isRenameOpen ? undefined : (
       <Box align="center" direction="row" gap={1}>
         <ButtonUtility
-          color="tertiary"
           data-testid="rename-role-btn"
           icon={Edit}
           isDisabled={!canEditAll}
-          size="xs"
           tooltip={String(
             canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -536,10 +531,9 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           }}
         />
         <ButtonUtility
-          color="tertiary"
           data-testid="copy-link-btn"
           icon={Copy01}
-          size="xs"
+          size="lg"
           tooltip={String(
             hasCopied
               ? t('message.link-copy-to-clipboard')
@@ -560,11 +554,10 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         entityName={getEntityName(role)}
         entityType={EntityType.ROLE}>
         <ButtonUtility
-          color="tertiary"
           data-testid="delete-role-btn"
           icon={Delete}
           isDisabled={!canDelete}
-          size="xs"
+          size="lg"
           tooltip={String(
             canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
           )}

@@ -13,12 +13,14 @@
 
 import {
   Button,
+  ButtonUtility,
   Dropdown,
   Grid,
   Label,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
@@ -105,7 +107,6 @@ import {
 } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
-import { WidgetEditButton } from '../../common/WidgetActionButton/WidgetActionButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -717,11 +718,12 @@ const SchemaTable = () => {
             </div>
             <div className="d-flex items-center gap-2">
               {editDisplayNamePermission && (
-                <WidgetEditButton
-                  compact
+                <ButtonUtility
                   className="hover-cell-icon"
                   data-testid="edit-displayName-button"
-                  title={t('label.edit')}
+                  icon={Edit01}
+                  size="xs"
+                  tooltip={t('label.edit')}
                   onClick={() => handleEditDisplayNameClick(record)}
                 />
               )}
@@ -770,24 +772,26 @@ const SchemaTable = () => {
       {
         title: (
           <Button
+            className={classNames(
+              sortBy === 'name' && 'tw:*:data-icon:text-utility-brand-600'
+            )}
             color="tertiary"
             data-testid="name-column-header"
+            iconTrailing={
+              <IconSortIndicator
+                className={classNames(
+                  'tw:transition-transform',
+                  sortOrder === 'desc' && 'tw:rotate-180'
+                )}
+                data-icon="trailing"
+                data-testid="sort-indicator"
+              />
+            }
             onClick={handleColumnHeaderSortToggle}>
             <Typography
               className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
               {t('label.name')}
             </Typography>
-            <IconSortIndicator
-              className="m-l-xss"
-              data-testid="sort-indicator"
-              height={12}
-              style={{
-                color: sortBy === 'name' ? 'var(--primary-color)' : '#6B7280',
-                transform: sortOrder === 'desc' ? 'rotate(180deg)' : 'none',
-                transition: 'transform 0.2s ease',
-              }}
-              width={8}
-            />
           </Button>
         ),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
@@ -1010,7 +1014,7 @@ const SchemaTable = () => {
                 <Button
                   color="tertiary"
                   data-testid="sort-dropdown"
-                  iconLeading={<IconSort height={14} width={14} />}
+                  iconLeading={IconSort}
                   size="sm">
                   {t('label.sort')}
                 </Button>

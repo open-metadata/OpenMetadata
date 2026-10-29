@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1975 endpoints** across 75 resource packages · 1965 carry a summary.
+**1982 endpoints** across 75 resource packages · 1972 carry a summary.
 
 ## (root)
 
@@ -983,9 +983,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 |---|---|---|
 | `GET` | `/v1/events/subscriptions` | List all available Event Subscriptions |
 | `POST` | `/v1/events/subscriptions` | Create a new Event Subscription |
+| `POST` | `/v1/events/subscriptions` | Get what a selection of sources supports |
 | `PUT` | `/v1/events/subscriptions` | Updated an existing or create a new Event Subscription |
 | `DELETE` | `/v1/events/subscriptions/async/{id}` | Asynchronously delete an Event Subscription by Id |
-| `POST` | `/v1/events/subscriptions/capabilities` | Get what a selection of sources supports |
 | `GET` | `/v1/events/subscriptions/history` |  |
 | `GET` | `/v1/events/subscriptions/id/{eventSubscriptionId}/destinations` | Get the destinations for a specific Event Subscription |
 | `GET` | `/v1/events/subscriptions/id/{id}/failedEvents` | Get failed events for a subscription by id |
@@ -1356,12 +1356,16 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologies/{id}` | Get an ontology |
 | `PATCH` | `/v1/ontologies/{id}` | Patch an ontology |
 | `PUT` | `/v1/ontologies/{id}/activation` | Activate an approved ontology release or roll back to an older release |
+| `POST` | `/v1/ontologies/{id}/imports/preview` | Preview local RDF as native ontology draft operations |
+| `POST` | `/v1/ontologies/{id}/library/{packId}/preview` | Preview verified library modules as native ontology draft operations |
 | `GET` | `/v1/ontologies/{id}/references` | Find working definitions that reference an exact IRI in this ontology |
+| `GET` | `/v1/ontologies/{id}/releases` | List this ontology's sealed releases, newest first |
 | `POST` | `/v1/ontologies/{id}/releases` | Capture immutable ontology release content |
 | `POST` | `/v1/ontologies/{id}/sparql` | Query the active ontology release |
 | `GET` | `/v1/ontologies/{id}/state` | Get ontology working and activation revisions |
 | `GET` | `/v1/ontologies/{id}/versions` | List ontology versions |
 | `GET` | `/v1/ontologies/{id}/versions/{version}` | Get an ontology version |
+| `GET` | `/v1/ontologies/{id}/working/diff` | Preview working ontology changes against the active release |
 | `POST` | `/v1/ontology/ai/drafts` | Generate a reviewable ontology change-set Draft |
 | `POST` | `/v1/ontology/ai/mappings/suggestions` | Propose reviewable external concept mappings |
 | `POST` | `/v1/ontology/ai/relationships/suggestions` | Propose reviewable ontology relationships |
@@ -1410,6 +1414,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/ontologyConcepts/{id}` | Delete an ontology concept |
 | `GET` | `/v1/ontologyConcepts/{id}` | Get an ontology concept |
 | `PATCH` | `/v1/ontologyConcepts/{id}` | Patch an ontology concept |
+| `GET` | `/v1/ontologyConcepts/{id}/bindings` | Get authorized catalog bindings for a concept |
+| `PUT` | `/v1/ontologyConcepts/{id}/bindings` | Replace one concept catalog association |
+| `DELETE` | `/v1/ontologyConcepts/{id}/bindings/{assetType}/{assetId}` | Remove one concept catalog association |
 | `GET` | `/v1/ontologyConcepts/{id}/versions` | List ontology concept versions |
 | `GET` | `/v1/ontologyConcepts/{id}/versions/{version}` | Get an ontology concept version |
 | `POST` | `/v1/ontologyEditLocks/acquire` | Acquire an authoring lease |

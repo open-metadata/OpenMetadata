@@ -13,11 +13,12 @@
 import {
   Autocomplete,
   Box,
-  Button,
+  ButtonUtility,
   Popover,
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +32,6 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { getAllPersonas, searchPersonas } from '../../../../rest/PersonaAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
-import { WidgetEditButton } from '../../../common/WidgetActionButton/WidgetActionButton';
 import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
 
 export const PersonaListItemRenderer = (props: EntityReference) => {
@@ -218,9 +218,11 @@ export const PersonaSelectableList = ({
 
   return (
     <PopoverTrigger isOpen={popupVisible} onOpenChange={setPopupVisible}>
-      <WidgetEditButton
+      <ButtonUtility
         data-testid={`${isDefaultPersona ? 'default-' : ''}edit-user-persona`}
-        title={t('label.edit-entity', {
+        icon={Edit01}
+        size="sm"
+        tooltip={t('label.edit-entity', {
           entity: t('label.persona'),
         })}
       />
@@ -278,25 +280,23 @@ export const PersonaSelectableList = ({
           </Box>
 
           <div className="flex justify-end gap-2">
-            <Button
-              aria-label={t('label.cancel')}
+            <ButtonUtility
               color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }persona-edit-cancel`}
-              iconLeading={<ClosePopoverIcon height={24} />}
-              size="xs"
+              icon={ClosePopoverIcon}
+              tooltip={t('label.cancel')}
               onClick={handleCloseEditTeam}
             />
-            <Button
-              aria-label={t('label.save')}
+            <ButtonUtility
               color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }-persona-edit-save`}
-              iconLeading={<SavePopoverIcon height={24} />}
+              icon={SavePopoverIcon}
               isLoading={isSaving}
-              size="xs"
+              tooltip={t('label.save')}
               onClick={handlePersonaUpdate}
             />
           </div>

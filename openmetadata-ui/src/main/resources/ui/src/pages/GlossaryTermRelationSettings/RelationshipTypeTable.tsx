@@ -247,11 +247,10 @@ const RelationshipTypeRow = ({
       <Table.Cell>
         <div className="tw:flex tw:gap-2">
           <ButtonUtility
-            color="tertiary"
             data-testid={`edit-${relationshipType.name}-btn`}
             icon={Edit01}
             isDisabled={!isAdminUser || relationshipType.systemDefined}
-            size="sm"
+            size="lg"
             tooltip={
               relationshipType.systemDefined
                 ? t('label.system-defined')
@@ -260,11 +259,10 @@ const RelationshipTypeRow = ({
             onClick={() => onEdit(relationshipType)}
           />
           <ButtonUtility
-            color="tertiary"
             data-testid={`delete-${relationshipType.name}-btn`}
             icon={Trash01}
             isDisabled={!canDelete}
-            size="sm"
+            size="lg"
             tooltip={getDeleteTooltip(usageCount, t)}
             onClick={(event: MouseEvent<HTMLElement>) =>
               onDelete(relationshipType, event.currentTarget)

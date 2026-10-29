@@ -88,7 +88,7 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
       <Button
         color="secondary"
         data-testid={testId}
-        iconLeading={<Download01 height={20} width={20} />}
+        iconLeading={Download01}
         isDisabled={exporting}
         isLoading={exporting}
         size="sm">

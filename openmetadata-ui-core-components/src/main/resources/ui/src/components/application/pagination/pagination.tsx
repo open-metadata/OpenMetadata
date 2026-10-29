@@ -3,6 +3,7 @@ import {
   ButtonGroupItem,
 } from '@/components/base/button-group/button-group';
 import { Button } from '@/components/base/buttons/button';
+import { ButtonUtility } from '@/components/base/buttons/button-utility';
 import { Select } from '@/components/base/select/select';
 import { useBreakpoint } from '@/hooks/use-breakpoint';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
@@ -52,17 +53,8 @@ const PaginationItem = ({
 const compactTextClassName =
   'tw:text-xs tw:font-normal tw:leading-[18px] tw:text-secondary';
 
-const compactControlClassName =
-  'tw:flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg';
-
 const compactPageControlClassName =
   'tw:flex tw:h-6 tw:min-w-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:px-1.5';
-
-const compactIconButtonClassName = cx(
-  compactControlClassName,
-  'tw:cursor-pointer tw:border tw:border-primary tw:bg-primary tw:text-fg-quaternary tw:shadow-xs-skeuomorphic tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
-  'tw:hover:bg-primary_hover tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled'
-);
 
 const compactPageItemClassName = ({ isSelected }: { isSelected: boolean }) =>
   cx(
@@ -115,11 +107,10 @@ const MobilePagination = ({
         'tw:flex tw:items-center tw:justify-between tw:md:hidden',
         className
       )}>
-      <Button
-        aria-label={t('label.previous-page', 'Go to previous page')}
-        color="secondary"
-        iconLeading={ArrowLeft}
-        size="sm"
+      <ButtonUtility
+        icon={ArrowLeft}
+        size="lg"
+        tooltip={t('label.previous-page', 'Go to previous page')}
         onClick={() => onPageChange?.(Math.max(1, page - 1))}
       />
 
@@ -128,11 +119,10 @@ const MobilePagination = ({
         <span className="tw:font-medium">{total}</span>
       </span>
 
-      <Button
-        aria-label={t('label.next-page', 'Go to next page')}
-        color="secondary"
-        iconLeading={ArrowRight}
-        size="sm"
+      <ButtonUtility
+        icon={ArrowRight}
+        size="lg"
+        tooltip={t('label.next-page', 'Go to next page')}
         onClick={() => onPageChange?.(Math.min(total, page + 1))}
       />
     </nav>
@@ -536,12 +526,11 @@ export const PaginationCardWithControls = ({
 
         <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-2 tw:px-1">
           <Pagination.PrevTrigger asChild>
-            <button
-              className={compactIconButtonClassName}
+            <ButtonUtility
               data-testid="previous"
-              type="button">
-              <ChevronLeft className="tw:size-3.5" />
-            </button>
+              icon={ChevronLeft}
+              size="sm"
+            />
           </Pagination.PrevTrigger>
 
           {minimal && (
@@ -577,12 +566,7 @@ export const PaginationCardWithControls = ({
           )}
 
           <Pagination.NextTrigger asChild>
-            <button
-              className={compactIconButtonClassName}
-              data-testid="next"
-              type="button">
-              <ChevronRight className="tw:size-3.5" />
-            </button>
+            <ButtonUtility data-testid="next" icon={ChevronRight} size="sm" />
           </Pagination.NextTrigger>
         </div>
 

@@ -134,11 +134,11 @@ function RegexDisclosure({
         color="link-color"
         iconLeading={
           <ChevronRight
+            data-icon
             className={classNames(
               'tw:transition-transform tw:duration-150',
               isOpen && 'tw:rotate-90'
             )}
-            size={13}
           />
         }
         size="sm"

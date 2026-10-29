@@ -566,7 +566,7 @@ const AccessControlAuditLogsPanel: React.FC<
       <Button
         color="primary"
         data-testid="export-audit-logs-button"
-        iconLeading={<ExportIcon height={16} width={16} />}
+        iconLeading={ExportIcon}
         onPress={() => setIsExportModalOpen(true)}>
         {t('label.export')}
       </Button>
@@ -715,9 +715,9 @@ const AccessControlAuditLogsPanel: React.FC<
                     </Box>
                     <ButtonUtility
                       aria-label={t('label.remove-filter')}
-                      color="tertiary"
                       data-testid={`remove-filter-${filter.category}`}
-                      icon={<XClose size={14} />}
+                      icon={XClose}
+                      size="xs"
                       onClick={() => handleRemoveFilter(filter.category)}
                     />
                   </Badge>

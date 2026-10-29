@@ -40,10 +40,9 @@ const WidgetMoreOptions = ({
       <ButtonUtility
         aria-label={t('label.more-action-plural')}
         className={className}
-        color="secondary"
         data-testid="more-options-button"
         icon={DotsVertical}
-        size="sm"
+        size="lg"
       />
       <Dropdown.Popover className="tw:w-42" placement="bottom start">
         <Dropdown.Menu

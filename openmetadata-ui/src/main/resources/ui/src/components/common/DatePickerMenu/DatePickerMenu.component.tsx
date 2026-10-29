@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Dropdown,
   Popover,
   RangeCalendar,
@@ -22,7 +23,7 @@ import {
 import {
   ChevronDown,
   ChevronRight,
-  XCircle,
+  CloseCircleFilled,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, pick } from 'lodash';
@@ -254,7 +255,7 @@ const DatePickerMenu = ({
         className={getTriggerClassName(size, isCustomRangeSelected)}
         color="secondary"
         data-testid="date-picker-menu"
-        iconTrailing={<ChevronDown size={14} />}
+        iconTrailing={ChevronDown}
         size={size === 'small' ? 'sm' : 'md'}>
         <Typography
           as="span"
@@ -332,13 +333,12 @@ const DatePickerMenu = ({
       data-testid="date-picker-container">
       {datePickerMenu}
       {selectedTimeRangeKey && (
-        <Button
-          aria-label={t('label.clear')}
+        <ButtonUtility
           className="tw:absolute tw:right-8 tw:top-1/2 tw:z-10 tw:-translate-y-1/2"
-          color="tertiary"
           data-testid="clear-date-picker"
-          iconLeading={XCircle}
+          icon={CloseCircleFilled}
           size="xs"
+          tooltip={t('label.clear')}
           onPress={handleClear}
         />
       )}

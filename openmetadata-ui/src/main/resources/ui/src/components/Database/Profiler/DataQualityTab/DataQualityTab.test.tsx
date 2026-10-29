@@ -358,6 +358,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return {
     Box: MockBox,
     Button: MockButton,
+    ButtonUtility: ({
+      icon: _icon,
+      size: _size,
+      tooltip,
+      ...props
+    }: {
+      icon?: unknown;
+      size?: string;
+      tooltip?: string;
+      [key: string]: unknown;
+    }) => <MockButton aria-label={tooltip} {...props} />,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Skeleton: () => <span data-testid="skeleton">Loading...</span>,
     Table: MockTable,

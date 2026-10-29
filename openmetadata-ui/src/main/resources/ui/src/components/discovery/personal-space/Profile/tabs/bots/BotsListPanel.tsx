@@ -443,11 +443,10 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
             entityName={getEntityName(bot)}
             entityType={EntityType.BOT}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`bot-delete-${bot.name}`}
               icon={Trash01}
               isDisabled={isDisabled}
-              size="xs"
+              size="lg"
               tooltip={tooltipContent}
             />
           </DeleteEntityPopover>

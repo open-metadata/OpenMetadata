@@ -13,6 +13,7 @@
 import {
   Alert,
   Button,
+  ButtonUtility,
   FieldProp,
   FieldTypes,
   FormFields,
@@ -420,11 +421,11 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
             <div className="tw:flex tw:justify-between">
               <span>{`${t('label.parameter')} ${index + 1}`}</span>
               {!isReadOnlyField && (
-                <Button
-                  color="link-color"
+                <ButtonUtility
                   data-testid={`remove-parameter-${index}`}
-                  iconLeading={Trash01}
-                  size="sm"
+                  icon={Trash01}
+                  size="lg"
+                  tooltip={t('label.remove')}
                   onClick={() => remove(index)}
                 />
               )}

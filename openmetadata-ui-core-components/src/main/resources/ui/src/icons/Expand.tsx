@@ -17,7 +17,7 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const Edit02: FC<Props> = ({
+export const Expand: FC<Props> = ({
   size = 20,
   color = 'currentColor',
   ...props
@@ -32,11 +32,20 @@ export const Edit02: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
+    <rect
+      height={16}
+      rx={5}
+      stroke="currentColor"
+      strokeWidth={1.3}
+      width={16}
+      x={2}
+      y={2}
+    />
     <path
-      d="M15 8.333 11.667 5M2.083 17.917l2.82-.313c.345-.038.517-.058.678-.109a1.7 1.7 0 0 0 .404-.195c.142-.092.264-.216.508-.461L17.5 5.833A2.357 2.357 0 1 0 14.167 2.5L3.162 13.505c-.245.245-.368.368-.461.509a1.7 1.7 0 0 0-.195.404c-.052.161-.071.333-.109.678z"
+      d="M13.557 12.665 10.891 10l2.666-2.667M8.223 2.89v14.223"
       stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>
 );
-Edit02.displayName = 'Edit02';
+Expand.displayName = 'Expand';

@@ -96,10 +96,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../../../assets/svg/close.svg', () => ({
-  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
-}));
-
 describe('WhatsNewAlert', () => {
   beforeEach(() => {
     jest.clearAllMocks();

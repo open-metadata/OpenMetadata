@@ -1848,11 +1848,6 @@ Badge's own default neutral border/background instead of the tint. */
   text-decoration: none;
 }
 
-.tag-tinted__close-icon button,
-.tag-accent__close-icon button {
-  color: color-mix(in srgb, var(--tag-color) 60%, transparent);
-}
-
 /* Typography wraps its content in a `.prose` div, which sets its own
 unconditional `color` — that intermediate declaration silences inherited
 `var(--tag-color)` from the badge span above it. Applied directly to the

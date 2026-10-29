@@ -17,6 +17,7 @@ import {
   AccordionItem,
   AccordionPanel,
   Button,
+  ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
@@ -145,11 +146,11 @@ const AdvancedPropertiesSection: FunctionComponent<
             color="link-color"
             iconLeading={
               <ChevronDown
+                data-icon
                 className={classNames(
                   'tw:transition-transform',
                   !advancedOpen && 'tw:-rotate-90'
                 )}
-                size={16}
               />
             }
             onClick={() => setAdvancedOpen((value) => !value)}>
@@ -217,16 +218,15 @@ const getAddButton = (
   }
 
   return (
-    <Button
-      aria-label={t('label.add-entity', { entity: addEntityLabel })}
-      className="core-object-field-template-add-button tw:inline-flex tw:size-9 tw:items-center tw:justify-center tw:rounded-lg tw:p-0 tw:leading-none"
+    <ButtonUtility
       color="primary"
       data-testid={`add-item-${addEntityLabel}`}
+      icon={Plus}
       id={`${idSchema.$id}`}
-      size="sm"
-      onClick={() => onAddClick(schema)()}>
-      <Plus data-icon size={14} />
-    </Button>
+      size="lg"
+      tooltip={t('label.add-entity', { entity: addEntityLabel })}
+      onClick={() => onAddClick(schema)()}
+    />
   );
 };
 

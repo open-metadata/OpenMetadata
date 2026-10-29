@@ -50,7 +50,7 @@ const DataStatisticWidget = ({
         <Button
           className="data-statistic-widget-default-button"
           color="link-color"
-          iconTrailing={<RightArrowIcon />}>
+          iconTrailing={RightArrowIcon}>
           {linkLabel}
         </Button>
       </Link>

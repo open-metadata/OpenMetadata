@@ -106,11 +106,12 @@ const DraggableMenuItemV2: FC<DraggableMenuItemProps> = ({
           <Typography>{label}</Typography>
 
           {isItemSelected ? (
-            <Eye aria-label="eye" className="tw:ml-auto tw:size-4" />
+            <Eye aria-label="eye" className="tw:ml-auto" size={16} />
           ) : (
             <EyeOff
               aria-label="eye-invisible"
-              className="tw:ml-auto tw:size-4"
+              className="tw:ml-auto"
+              size={16}
             />
           )}
         </button>

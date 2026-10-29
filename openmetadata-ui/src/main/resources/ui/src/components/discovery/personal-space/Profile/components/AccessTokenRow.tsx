@@ -15,6 +15,7 @@ import {
   BadgeWithDot,
   Box,
   Button,
+  ButtonUtility,
   Card,
   FeaturedIcon,
   Select,
@@ -28,7 +29,7 @@ import {
   Key01,
   Plus,
   RefreshCcw02,
-  Trash02,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, {
@@ -229,14 +230,12 @@ const AccessTokenDetails = ({
                 : '************************************************************'}
             </span>
           </Box>
-          <Button
-            noTextPadding
-            aria-label={t('label.show')}
-            color="secondary"
+          <ButtonUtility
             data-testid="reveal-token"
-            iconLeading={reveal ? Eye : EyeOff}
+            icon={reveal ? Eye : EyeOff}
             isDisabled={!canReveal}
-            size="sm"
+            size="lg"
+            tooltip={t('label.show')}
             onClick={() => setReveal(!reveal)}
           />
           <Button
@@ -269,7 +268,7 @@ const AccessTokenDetails = ({
       <Button
         color="secondary"
         data-testid="regenerate-token"
-        iconLeading={<RefreshCcw02 height={12} width={12} />}
+        iconLeading={RefreshCcw02}
         isDisabled={isLimitReached}
         isLoading={isLoading}
         size="sm"
@@ -279,7 +278,7 @@ const AccessTokenDetails = ({
       <Button
         color="secondary-destructive"
         data-testid="revoke-token"
-        iconLeading={<Trash02 height={12} width={12} />}
+        iconLeading={Trash01}
         isLoading={isLoading}
         size="sm"
         onClick={handleRevoke}>

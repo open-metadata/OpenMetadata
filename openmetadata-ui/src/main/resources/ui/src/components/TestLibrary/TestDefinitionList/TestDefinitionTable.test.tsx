@@ -140,10 +140,10 @@ describe('TestDefinitionTable loading', () => {
     ).toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByTestId('delete-test-definition-columnValuesToBeNotNull')
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
   });
 
   // Mounting straight into the refetching state proves nothing: the rows are
@@ -159,7 +159,7 @@ describe('TestDefinitionTable loading', () => {
 
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).not.toBeDisabled();
+    ).not.toHaveAttribute('aria-disabled');
 
     rerender(
       <TestDefinitionTable
@@ -179,10 +179,10 @@ describe('TestDefinitionTable loading', () => {
     ).toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByTestId('delete-test-definition-columnValuesToBeNotNull')
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('should hand the row controls back when the refetch lands', () => {
@@ -196,7 +196,7 @@ describe('TestDefinitionTable loading', () => {
 
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
 
     rerender(<TestDefinitionTable {...props} isLoading={false} />);
 
@@ -207,10 +207,10 @@ describe('TestDefinitionTable loading', () => {
     ).not.toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).not.toBeDisabled();
+    ).not.toHaveAttribute('aria-disabled');
     expect(
       screen.getByTestId('delete-test-definition-columnValuesToBeNotNull')
-    ).not.toBeDisabled();
+    ).not.toHaveAttribute('aria-disabled');
   });
 
   it('should leave the row controls usable once the refetch lands', () => {
@@ -227,7 +227,7 @@ describe('TestDefinitionTable loading', () => {
     ).not.toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).not.toBeDisabled();
+    ).not.toHaveAttribute('aria-disabled');
   });
 
   it('should not dim or mark the table busy when idle', () => {

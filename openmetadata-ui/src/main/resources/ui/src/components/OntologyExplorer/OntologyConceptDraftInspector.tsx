@@ -188,7 +188,7 @@ const OntologyConceptDraftInspector = ({
               color="tertiary"
               data-testid="ontology-draft-close"
               icon={XClose}
-              size="sm"
+              size="lg"
               tooltip={t('label.close')}
               onClick={onCancel}
             />

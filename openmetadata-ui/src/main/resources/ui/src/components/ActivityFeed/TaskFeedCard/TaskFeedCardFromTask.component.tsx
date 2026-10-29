@@ -378,7 +378,6 @@ const TaskFeedCardFromTask = ({
         <Box align="center" gap={2} justify="center">
           <ButtonUtility
             aria-label={t('label.reply')}
-            color="tertiary"
             data-testid="task-reply-button"
             icon={Comment}
             size="sm"
@@ -409,15 +408,10 @@ const TaskFeedCardFromTask = ({
         <Box gap={4}>
           {canQuickResolve() && (
             <Button
-              className="tw:gap-1.5 tw:text-success-primary tw:hover:text-success-primary"
+              className="tw:gap-1.5 tw:text-success-primary tw:hover:text-success-primary tw:*:data-icon:text-fg-success-primary"
               color="link-gray"
               data-testid="approve-button"
-              iconLeading={
-                <CheckCircleFilled
-                  className="tw:shrink-0 tw:text-fg-success-primary"
-                  size={14}
-                />
-              }
+              iconLeading={CheckCircleFilled}
               size="xs"
               onPress={onTaskResolve}>
               {t('label.approve')}
@@ -428,9 +422,7 @@ const TaskFeedCardFromTask = ({
               className="tw:gap-1.5"
               color="link-destructive"
               data-testid="reject-button"
-              iconLeading={
-                <CloseCircleFilled className="tw:shrink-0" size={14} />
-              }
+              iconLeading={CloseCircleFilled}
               size="xs"
               onPress={onTaskReject}>
               {t('label.reject')}

@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Dialog,
   Divider,
   FormItemLabel,
@@ -26,6 +27,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, last, orderBy, startCase } from 'lodash';
@@ -53,7 +55,6 @@ import icColumnRequested from '../../../../assets/svg/ic_column-requested.svg';
 import icDuration from '../../../../assets/svg/ic_duration.svg';
 import icReasonAccess from '../../../../assets/svg/ic_reason-access.svg';
 import icTicket from '../../../../assets/svg/ic_ticket.svg';
-import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -147,7 +148,6 @@ import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.c
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -553,7 +553,7 @@ export const TaskTabNew = ({
       {
         label,
         key: TaskActionMode.EDIT,
-        icon: AddColored,
+        icon: Plus,
       },
       ...TASK_ACTION_COMMON_ITEM,
     ];
@@ -1513,11 +1513,10 @@ export const TaskTabNew = ({
   };
 
   const editAssigneeButton = shouldEditAssignee ? (
-    <EditIconButton
-      className="p-0"
+    <ButtonUtility
       data-testid="edit-assignees"
-      size="small"
-      title={t('label.edit-entity', {
+      icon={Edit01}
+      tooltip={t('label.edit-entity', {
         entity: t('label.assignee-plural'),
       })}
       onClick={handleEditClick}

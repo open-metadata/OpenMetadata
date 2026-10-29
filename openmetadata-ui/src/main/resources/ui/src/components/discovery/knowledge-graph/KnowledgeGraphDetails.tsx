@@ -16,6 +16,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Input,
   Tabs,
   Typography,
@@ -636,12 +637,11 @@ const KnowledgeGraphDetails = ({
               }}
             />
           )}
-          <Button
-            aria-label={t('label.close')}
-            color="tertiary"
-            iconLeading={XClose}
-            size="sm"
-            onPress={close}
+          <ButtonUtility
+            icon={XClose}
+            size="lg"
+            tooltip={t('label.close')}
+            onClick={close}
           />
         </Box>
         <Tabs.Panel

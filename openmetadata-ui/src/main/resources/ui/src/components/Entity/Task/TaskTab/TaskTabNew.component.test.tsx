@@ -440,14 +440,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Owner: jest.fn().mockReturnValue(null),
 }));
 
-jest.mock('../../../common/IconButtons/EditIconButton', () => ({
-  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
-    <button type="button" onClick={onClick} {...props}>
-      EditIconButton
-    </button>
-  )),
-}));
-
 jest.mock(
   '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask',
   () => {

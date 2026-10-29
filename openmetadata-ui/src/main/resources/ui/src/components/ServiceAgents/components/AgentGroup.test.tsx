@@ -174,7 +174,7 @@ describe('AgentGroup', () => {
 
     const refreshButton = screen.getByTestId('agent-group-refresh');
 
-    expect(refreshButton).toBeDisabled();
+    expect(refreshButton).toHaveAttribute('aria-disabled', 'true');
 
     fireEvent.click(refreshButton);
 

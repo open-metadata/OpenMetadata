@@ -353,10 +353,9 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
       <Box direction="row" gap={1}>
         {hasEdit && (
           <ButtonUtility
-            color="tertiary"
             data-testid={`alert-edit-${getEntityName(alert)}`}
             icon={Edit}
-            size="xs"
+            size="lg"
             tooltip={t('label.edit')}
             onPress={() =>
               onNavigate({
@@ -378,10 +377,9 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
             entityName={getEntityName(alert)}
             entityType={EntityType.SUBSCRIPTION}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`alert-delete-${getEntityName(alert)}`}
               icon={Delete}
-              size="xs"
+              size="lg"
               tooltip={t('label.delete')}
             />
           </DeleteEntityPopover>

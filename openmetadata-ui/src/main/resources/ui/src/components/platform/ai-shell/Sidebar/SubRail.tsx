@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import { Link as AriaLink } from 'react-aria-components';
@@ -30,14 +34,14 @@ const SubRail: React.FC<SubRailProps> = ({ items, onExpand }) => {
   return (
     <div className="ask-sub-rail" data-testid="ask-sub-rail">
       <div className="ask-sub-rail__header">
-        <button
-          aria-label={t('label.expand')}
-          className="ask-sub-rail__expand-btn"
+        <ButtonUtility
           data-testid="ask-sub-rail-expand-btn"
-          type="button"
-          onClick={onExpand}>
-          <ExpandPanelIcon height={20} width={20} />
-        </button>
+          icon={ExpandPanelIcon}
+          size="lg"
+          tooltip={t('label.expand')}
+          tooltipPlacement="right"
+          onClick={onExpand}
+        />
       </div>
 
       <nav className="ask-sub-rail__nav">

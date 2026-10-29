@@ -10,11 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../../../assets/svg/ic-suggestions.svg';
-import { WidgetEditButton } from '../../../../common/WidgetActionButton/WidgetActionButton';
 import {
   ConfigurationParameterRow,
   TestCaseConfigurationCardProps,
@@ -247,9 +252,10 @@ const TestCaseConfigurationCard = ({
           {t('label.configuration')}
         </Typography>
         {showEditButton && (
-          <WidgetEditButton
+          <ButtonUtility
             data-testid="edit-parameter-icon"
-            title={t('label.edit-entity', { entity: t('label.parameter') })}
+            icon={Edit01}
+            tooltip={t('label.edit-entity', { entity: t('label.parameter') })}
             onClick={onEditParameter}
           />
         )}

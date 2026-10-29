@@ -15,11 +15,11 @@ import {
   FileIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { NodeViewProps } from '@tiptap/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DownloadIcon } from '../../../../../assets/svg/action-icons/download.svg';
-import { ReactComponent as TrashIcon } from '../../../../../assets/svg/action-icons/trash.svg';
 import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 import { bytesToSize } from '../../../../../utils/StringUtils';
 
@@ -56,9 +56,8 @@ const UploadStatus = ({
     <>
       <span className="separator">|</span>
       <ButtonUtility
-        color="tertiary"
         data-testid="download-file-attachment"
-        icon={<DownloadIcon height={18} width={18} />}
+        icon={DownloadIcon}
         isDisabled={isFileLoading}
         size="sm"
         tooltip={t('label.download')}
@@ -137,10 +136,9 @@ const FileAttachment = ({
       </div>
       {!isUploading && (
         <ButtonUtility
-          color="tertiary"
           data-testid="delete-icon"
-          icon={<TrashIcon height={18} width={18} />}
-          size="sm"
+          icon={Trash01}
+          size="lg"
           tooltip={t('label.delete')}
           onClick={(e: React.MouseEvent) => {
             e.preventDefault();

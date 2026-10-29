@@ -16,7 +16,7 @@ import {
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit02 } from '@openmetadata/ui-core-components/icons';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -116,9 +116,8 @@ const CustomPropertyRow = ({
             <Box className="tw:min-w-0">{renderValue()}</Box>
             {canEdit && (
               <ButtonUtility
-                color="tertiary"
                 data-testid={`edit-${property.name}`}
-                icon={Edit02}
+                icon={Edit01}
                 size="xs"
                 tooltip={t('label.edit-entity', { entity: label })}
                 onClick={() => onEdit(property)}

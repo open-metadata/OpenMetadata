@@ -13,14 +13,15 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { VERSION } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
@@ -171,8 +172,11 @@ const WhatsNewAlert = () => {
                 </div>
               </Box>
               <Box className="layout-column tw:block tw:flex-[0_0_48px]">
-                <CloseIcon
-                  className="whats-new-alert-close tw:size-3.5 tw:shrink-0"
+                <ButtonUtility
+                  className="whats-new-alert-close"
+                  icon={XClose}
+                  size="lg"
+                  tooltip={t('label.close')}
                   onClick={handleCancel}
                 />
               </Box>

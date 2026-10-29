@@ -61,31 +61,29 @@ const KnowledgeGraphDetailButtons = ({
       {(Object.keys(icons) as KnowledgeGraphDrawer[]).map((key) => {
         const active = details.active === key;
         const warn = key === 'coverage' && details.counts.coverage > 0;
-        const Icon = icons[key];
 
         return (
           <Button
             aria-expanded={active}
             className={classNames(
-              'tw:border',
+              'tw:gap-1 tw:border',
               active
                 ? 'tw:border-utility-brand-200 tw:bg-utility-brand-50'
-                : 'tw:border-transparent'
+                : 'tw:border-transparent',
+              {
+                'tw:*:data-icon:text-warning-primary tw:hover:*:data-icon:text-warning-primary':
+                  warn,
+                'tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-600':
+                  active && !warn,
+              }
             )}
             color="tertiary"
             data-testid={'graph-open-' + key}
+            iconLeading={icons[key]}
             key={key}
             size="xs"
             onPress={() => details.onChange(key)}>
             <Box align="center" gap={1}>
-              <Icon
-                aria-hidden="true"
-                className={classNames('tw:size-3.5', {
-                  'tw:text-warning-primary': warn,
-                  'tw:text-utility-brand-700': active && !warn,
-                  'tw:text-quaternary': !active && !warn,
-                })}
-              />
               <Typography
                 as="span"
                 className={

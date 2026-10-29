@@ -115,8 +115,7 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
         <DomainIcon
           className="domain-icon"
           data-testid="domain-icon"
-          height={22}
-          width={22}
+          size={18}
         />
         <span className="text-sm font-medium domain-title">
           {domainDisplayName}
@@ -125,8 +124,7 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
           aria-hidden
           className="dropdown-icon"
           data-testid="dropdown-icon"
-          height={14}
-          width={14}
+          size={16}
         />
       </button>
     );

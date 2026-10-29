@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Button, Card, Tooltip } from '@openmetadata/ui-core-components';
+import { Badge, ButtonUtility, Card } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, split } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -74,25 +74,14 @@ const QueryViewer = ({
                   size="sm">
                   {queryLine}
                 </Badge>
-                <Tooltip
-                  placement="top end"
-                  title={t('message.copy-to-clipboard')}>
-                  <Button
-                    aria-label={t('message.copy-to-clipboard')}
-                    className="tw:size-8"
-                    color="secondary"
-                    data-testid="query-entity-copy-button"
-                    iconLeading={
-                      <CopyIcon
-                        aria-hidden
-                        className="tw:text-[var(--om-legacy-color-37352f)] tw:dark:text-fg-secondary tw:[&_path]:fill-current"
-                        height={16}
-                        width={16}
-                      />
-                    }
-                    onPress={() => onCopyToClipBoard()}
-                  />
-                </Tooltip>
+                <ButtonUtility
+                  data-testid="query-entity-copy-button"
+                  icon={Copy01}
+                  size="lg"
+                  tooltip={t('message.copy-to-clipboard')}
+                  tooltipPlacement="top end"
+                  onClick={() => onCopyToClipBoard()}
+                />
               </div>
             ) : null
           }

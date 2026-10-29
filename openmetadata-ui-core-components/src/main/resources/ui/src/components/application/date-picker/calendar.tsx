@@ -22,6 +22,7 @@ import {
   useSlottedContext,
 } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
+import { ButtonUtility } from '@/components/base/buttons/button-utility';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { CalendarCell } from './cell';
@@ -97,21 +98,9 @@ export const Calendar = ({
           )
         }>
         <header className="tw:flex tw:items-center tw:justify-between">
-          <Button
-            className="tw:size-8"
-            color="tertiary"
-            iconLeading={ChevronLeft}
-            size="sm"
-            slot="previous"
-          />
+          <ButtonUtility icon={ChevronLeft} size="lg" slot="previous" />
           <AriaHeading className="tw:text-sm tw:font-semibold tw:text-fg-secondary" />
-          <Button
-            className="tw:size-8"
-            color="tertiary"
-            iconLeading={ChevronRight}
-            size="sm"
-            slot="next"
-          />
+          <ButtonUtility icon={ChevronRight} size="lg" slot="next" />
         </header>
 
         <div className="tw:flex tw:gap-3">

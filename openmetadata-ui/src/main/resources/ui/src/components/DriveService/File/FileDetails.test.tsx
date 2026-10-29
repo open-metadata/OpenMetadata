@@ -125,18 +125,6 @@ jest.mock('../../../hoc/LimitWrapper', () =>
   jest.fn(({ children }) => <div>{children}</div>)
 );
 
-jest.mock('../../common/IconButtons/EditIconButton', () => ({
-  AlignRightIconButton: jest.fn(({ onClick, title, className }) => (
-    <button
-      className={className}
-      data-testid="expand-button"
-      title={title}
-      onClick={onClick}>
-      Expand
-    </button>
-  )),
-}));
-
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -564,7 +552,7 @@ describe('FileDetails', () => {
   it('should toggle tab expanded state', async () => {
     renderFileDetails();
 
-    const expandButton = screen.queryByTestId('expand-button');
+    const expandButton = screen.queryByTestId('tab-expand-button');
     if (expandButton) {
       fireEvent.click(expandButton);
     }

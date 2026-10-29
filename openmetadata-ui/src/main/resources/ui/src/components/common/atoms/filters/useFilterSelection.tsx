@@ -147,9 +147,11 @@ export const useFilterSelection = (config: FilterSelectionConfig) => {
                   </div>
                 </div>
                 <ButtonUtility
-                  aria-label="Remove filter"
-                  color="tertiary"
-                  icon={<XClose size={14} />}
+                  icon={XClose}
+                  size="xs"
+                  tooltip={t('label.remove-entity', {
+                    entity: t('label.filter'),
+                  })}
                   onClick={() => handleRemoveFilter(filter.key)}
                 />
               </Badge>

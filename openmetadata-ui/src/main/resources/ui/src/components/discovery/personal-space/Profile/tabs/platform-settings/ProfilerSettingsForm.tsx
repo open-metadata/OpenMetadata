@@ -225,10 +225,9 @@ const ProfilerConfigForm = ({
                 {getField(disabled)}
                 <ButtonUtility
                   className="tw:mt-7"
-                  color="tertiary"
                   data-testid={`remove-filter-${index}`}
                   icon={XClose}
-                  size="sm"
+                  size="lg"
                   tooltip={t('label.remove')}
                   onPress={() => remove(index)}
                 />

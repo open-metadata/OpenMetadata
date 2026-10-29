@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as BotIcon } from '../../../assets/svg/bot.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   PAGE_SIZE_MEDIUM,
   TEXT_GREY_MUTED,
@@ -232,11 +232,10 @@ export const UserSelectableList = ({
           placement="top right"
           title={t(NO_PERMISSION_FOR_ACTION)}>
           <ButtonUtility
-            color="tertiary"
             data-testid="add-user"
-            icon={EditIcon}
+            icon={Edit01}
             isDisabled={!hasPermission}
-            size="xs"
+            size="sm"
           />
         </Tooltip>
       )}

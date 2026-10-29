@@ -326,7 +326,6 @@ export const WidgetEditPopover: StoryObj = {
                 label="Glossary Term"
                 renderTrigger={({ toggle }) => (
                   <ButtonUtility
-                    color="tertiary"
                     icon={Edit01}
                     size="xs"
                     tooltip="Edit Glossary Terms"

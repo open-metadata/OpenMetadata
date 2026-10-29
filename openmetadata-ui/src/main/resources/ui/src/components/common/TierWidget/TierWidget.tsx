@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ClassificationTag } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  ClassificationTag,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,10 +30,6 @@ import {
 } from '../../../utils/TagsPureUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TierCard from '../TierCard/TierCard';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
 const TierWidget = () => {
   const {
@@ -70,14 +70,16 @@ const TierWidget = () => {
   );
 
   const tierEditControl = tier ? (
-    <WidgetEditButton
+    <ButtonUtility
       data-testid="edit-tier"
-      title={t('label.edit-entity', { entity: t('label.tier') })}
+      icon={Edit01}
+      tooltip={t('label.edit-entity', { entity: t('label.tier') })}
     />
   ) : (
-    <WidgetPlusButton
+    <ButtonUtility
       data-testid="add-tier"
-      title={t('label.add-entity', { entity: t('label.tier') })}
+      icon={Plus}
+      tooltip={t('label.add-entity', { entity: t('label.tier') })}
     />
   );
 

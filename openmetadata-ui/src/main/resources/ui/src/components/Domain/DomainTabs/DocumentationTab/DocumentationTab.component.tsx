@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Owner } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,10 +36,6 @@ import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivatio
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
@@ -156,16 +153,18 @@ const DocumentationTab = ({
             await onUpdate({ ...domain, owners: updatedOwners });
           }}>
           {isEmpty((domain as Domain | DataProduct).owners) ? (
-            <WidgetPlusButton
+            <ButtonUtility
               data-testid="add-owner"
-              title={t('label.add-entity', {
+              icon={Plus}
+              tooltip={t('label.add-entity', {
                 entity: t('label.owner-plural'),
               })}
             />
           ) : (
-            <WidgetEditButton
+            <ButtonUtility
               data-testid="edit-owner"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.owner-plural'),
               })}
             />

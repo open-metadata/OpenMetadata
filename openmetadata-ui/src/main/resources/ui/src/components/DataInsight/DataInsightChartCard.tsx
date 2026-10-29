@@ -20,6 +20,7 @@ import {
   LineChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import {
   first,
@@ -36,7 +37,6 @@ import {
 } from 'lodash';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as RightArrowIcon } from '../../assets/svg/right-arrow.svg';
 import {
   DI_STRUCTURE,
   GRAPH_HEIGHT,
@@ -287,7 +287,7 @@ const ExploreAssetsLink = ({ type, tabsInfo, t }: ExploreAssetsLinkProps) => {
             ),
           },
         })}
-        iconTrailing={<RightArrowIcon height={12} width={12} />}
+        iconTrailing={ChevronRight}
         size="xs">
         {t('label.explore-asset-plural-with-type', {
           type: isDescriptionType

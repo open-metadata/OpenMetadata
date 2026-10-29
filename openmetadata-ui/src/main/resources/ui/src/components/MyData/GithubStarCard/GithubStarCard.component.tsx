@@ -19,11 +19,11 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 
+import { Star01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as StarGithubIcon } from '../../../assets/svg/ic-star-github.svg';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-start-filled-github.svg';
 import {
   STAR_OMD_USER,
@@ -157,9 +157,7 @@ const GithubStarCard = () => {
               <Button
                 color="secondary"
                 href={OMD_REPOSITORY_LINK}
-                iconLeading={
-                  <StarGithubIcon className="tw:size-3 tw:shrink-0" />
-                }
+                iconLeading={Star01}
                 rel="noopener noreferrer"
                 target="_blank">
                 {t('label.star')}

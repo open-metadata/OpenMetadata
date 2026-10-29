@@ -41,7 +41,7 @@ export const chipTriggerClassName = (hasSelection: boolean) =>
 export const chipChevronClassName = (hasSelection: boolean) =>
   classNames(
     'tw:size-5 tw:shrink-0',
-    hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
+    hasSelection ? 'tw:text-utility-brand-600' : 'tw:text-fg-quaternary'
   );
 
 /** Matches the count badge `FilterSelect` renders on its own trigger. */

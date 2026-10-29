@@ -40,7 +40,7 @@ export const EyeFilled: FC<Props> = ({
     />
     <path
       d="M12.402 10.006a2.4 2.4 0 1 0-4.8 0 2.4 2.4 0 0 0 4.8 0"
-      stroke="white"
+      stroke="#fff"
       strokeWidth={1.3}
     />
   </svg>

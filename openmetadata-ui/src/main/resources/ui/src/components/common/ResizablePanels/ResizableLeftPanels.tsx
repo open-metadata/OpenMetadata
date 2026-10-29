@@ -109,9 +109,9 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
           {isLeftPanelCollapsed && (
             <Card className="reflex-card tw:p-1">
               <ButtonUtility
-                color="tertiary"
                 data-testid="sidebar-toggle"
                 icon={SidebarCollapsedIcon}
+                size="lg"
                 tooltip={t('label.expand')}
                 tooltipPlacement="right"
                 onClick={handleCollapse}

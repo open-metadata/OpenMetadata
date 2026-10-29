@@ -270,7 +270,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
           </Box>
 
           {selectedIds.size === 0 && (
-            <Check className="tw:shrink-0" size={16} strokeWidth={1.5} />
+            <Check className="tw:shrink-0" size={18} />
           )}
         </button>
         <Divider className="tw:my-1" />
@@ -344,7 +344,6 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
                 autoFocus
                 className="tw:w-full"
                 icon={Search}
-                iconClassName="tw:size-3.5"
                 inputClassName="tw:text-xs tw:placeholder:text-xs"
                 placeholder={
                   placeholder ??
