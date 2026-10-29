@@ -35,6 +35,7 @@ import { BindingSnapshot } from '../../../../interface/governance/ontology/ontol
 import APIClient from '../../../../rest/axiosClient';
 import {
   deleteOntologyConceptBinding,
+  generateOntologyConceptQuery,
   getOntologyConceptBindings,
   putOntologyConceptBinding,
 } from '../../../../rest/ontologyAPI';
@@ -648,4 +649,27 @@ it('adds a relationship from the rail, changes its type and retries a refused sa
   );
 
   expect(save).toHaveBeenLastCalledWith(target.id, 'isA');
+});
+
+it('ends the rail with the Live data section and its generated SQL', async () => {
+  jest.mocked(getOntologyConceptBindings).mockResolvedValue(response);
+  jest.mocked(generateOntologyConceptQuery).mockResolvedValue({
+    hops: [],
+    sql: 'SELECT customer_name\nFROM sales.customers\nLIMIT 50',
+  });
+  renderInspector([property]);
+
+  const liveData = await screen.findByTestId('ontology-concept-live-data');
+
+  expect(
+    await within(liveData).findByTestId('ontology-live-data-sql')
+  ).toHaveTextContent('SELECT customer_name FROM sales.customers LIMIT 50');
+  expect(
+    within(liveData).getByTestId('ontology-live-data-not-stored')
+  ).toBeVisible();
+  expect(generateOntologyConceptQuery).toHaveBeenCalledWith(
+    'customer',
+    [],
+    expect.any(AbortSignal)
+  );
 });

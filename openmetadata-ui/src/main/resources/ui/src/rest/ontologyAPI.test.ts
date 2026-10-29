@@ -24,6 +24,7 @@ import {
   createOntology,
   createOntologyConcept,
   deleteOntologyConceptBinding,
+  generateOntologyConceptQuery,
   generateOntologyDomainDraft,
   generateOntologySparql,
   getNativeOntologyDataGraphPage,
@@ -79,6 +80,25 @@ describe('ontologyAPI', () => {
       { propertyId: 'name', columnPath: ['customer_name'], state: 'resolved' },
     ],
   };
+
+  it('posts the search-around hops to the concept query and returns the generated SQL', async () => {
+    const signal = new AbortController().signal;
+    const hops = [{ property: 'part-of', target: 'customer' }];
+    const body = {
+      hops: [{ ...hops[0], label: 'part of' }],
+      sql: 'SELECT t1.name\nFROM payments.transfers t0\nLIMIT 50',
+    };
+    mockedApiClient.post.mockResolvedValueOnce({ data: body });
+
+    expect(await generateOntologyConceptQuery('concept/id', hops, signal)).toBe(
+      body
+    );
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologyConcepts/concept%2Fid/query',
+      { hops },
+      { signal }
+    );
+  });
 
   it('posts one graph page selection to the ontology and returns the page body', async () => {
     const signal = new AbortController().signal;
