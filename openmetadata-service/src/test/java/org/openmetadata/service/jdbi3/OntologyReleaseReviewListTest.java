@@ -114,6 +114,30 @@ class OntologyReleaseReviewListTest {
         });
   }
 
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void aSupersededReviewTaskIsNotListed(ConnectionType dialect) {
+    withReviews(
+        dialect,
+        reviews -> {
+          User requester = reviews.user("requester");
+          User steward = reviews.user("steward");
+          UUID current =
+              reviews.inReview("release", requester, List.of(steward), List.of(steward), List.of());
+          reviews.supersededBy(current, requester, List.of(steward));
+
+          assertAll(
+              () ->
+                  assertEquals(
+                      List.of(new Row("release", current)), reviews.rows(View.ASSIGNED, steward)),
+              () ->
+                  assertEquals(
+                      List.of(new Row("release", current)), reviews.rows(View.PENDING, steward)));
+        });
+  }
+
   private static TaskReviewVote approval(User voter) {
     return new TaskReviewVote()
         .withVoter(voter.getEntityReference())
@@ -150,6 +174,8 @@ class OntologyReleaseReviewListTest {
         });
   }
 
+  private record Row(String release, UUID task) {}
+
   private record Listing(List<String> releases, List<String> statements) {
     /** A task counts as read when any statement of the listing names or binds its id. */
     Set<UUID> tasksRead(Set<UUID> tasks) {
@@ -164,6 +190,7 @@ class OntologyReleaseReviewListTest {
   private static final class Reviews {
     private final String run = UUID.randomUUID().toString().substring(0, 8);
     private final Map<UUID, String> labels = new HashMap<>();
+    private final Map<UUID, OntologyRelease> releasesByTask = new HashMap<>();
     private final Jdbi jdbi;
     private final MockedStatic<SubjectContext> subjects;
     private final OntologyReleaseRepository releases;
@@ -237,6 +264,7 @@ class OntologyReleaseReviewListTest {
               .withReviewTask(taskId);
       Entity.getCollectionDAO().ontologyReleaseDAO().insert(release, release.getName());
       labels.put(release.getId(), label);
+      releasesByTask.put(taskId, release);
       store(
           openApproval(taskId, requester)
               .withOntologyReview(OntologyReview.target(release))
@@ -246,6 +274,21 @@ class OntologyReleaseReviewListTest {
           reviewers,
           assignees);
       return taskId;
+    }
+
+    /**
+     * Stores another open approval task about the release that {@code current} reviews: an earlier
+     * review that {@code current} superseded and that nobody closed.
+     */
+    void supersededBy(UUID current, User requester, List<User> reviewers) {
+      OntologyRelease release = releasesByTask.get(current);
+      store(
+          openApproval(UUID.randomUUID(), requester)
+              .withOntologyReview(OntologyReview.target(release)),
+          release.getEntityReference(),
+          requester,
+          reviewers,
+          reviewers);
     }
 
     UUID glossaryApproval(String label, User requester, User steward) {
@@ -271,11 +314,15 @@ class OntologyReleaseReviewListTest {
     }
 
     List<String> list(View view, User caller) {
+      return rows(view, caller).stream().map(Row::release).toList();
+    }
+
+    List<Row> rows(View view, User caller) {
       return releases
           .listReviews(view, caller.getName(), DEFAULT_PAGE_SIZE, null, release -> true)
           .getData()
           .stream()
-          .map(review -> labels.get(review.getRelease().getId()))
+          .map(review -> new Row(labels.get(review.getRelease().getId()), review.getTask().getId()))
           .toList();
     }
 
