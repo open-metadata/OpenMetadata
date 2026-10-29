@@ -112,7 +112,7 @@ $$
 $$section
 #### dbt Cloud Job IDs $(id="dbtCloudJobId")
 
-Comma-separated IDs of the dbt Cloud jobs to extract the dbt run artifacts from, e.g. `553344,553345`. The artifacts of the latest completed run of each job are ingested.
+Comma-separated IDs of the dbt Cloud jobs to extract the dbt run artifacts from, e.g. `553344,553345`. The artifacts of the latest completed run of each job are ingested. Artifacts of jobs in the same environment are merged.
 
 If left empty, the dbt artifacts will be fetched from the most recent run on dbt cloud, unless **Ingest From All Jobs** is enabled.
 
@@ -126,7 +126,7 @@ $$section
 
 When no job IDs are set, fetch the dbt artifacts from the latest completed run of every job of the project (or of the whole account, when no project ID is set) instead of only the most recent run.
 
-CI jobs are skipped, since their runs build into temporary pull-request schemas. Each job's manifest covers the whole project, so the dbt models are processed once per job.
+CI jobs are skipped, since their runs build into temporary pull-request schemas. The artifacts of jobs in the same dbt Cloud environment are merged, so a model keeps the compiled SQL and catalog of whichever job built it. Jobs that have no completed run or no manifest are skipped.
 
 This option is ignored when job IDs are set.
 $$
