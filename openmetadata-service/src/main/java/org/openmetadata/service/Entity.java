@@ -782,7 +782,8 @@ public final class Entity {
         ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(
-          CatalogExceptionMessage.entityRepositoryNotFound(entityType));
+          CatalogExceptionMessage.entityRepositoryNotFound(
+              entityType, ENTITY_REPOSITORY_MAP.keySet()));
     }
     return entityRepository;
   }
